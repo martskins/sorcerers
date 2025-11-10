@@ -1,0 +1,10 @@
+[package]
+name = "sorcerers"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.100"
+macroquad = "0.4.14"
+image = { version = "0.24", features = ["jpeg", "webp"] }
+uuid = { version = "1.18.1", features = ["v4"] }
