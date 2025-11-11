@@ -1,6 +1,4 @@
-use macroquad::{math::Vec2, prelude::Rect, texture::Texture2D};
-
-use crate::window::{CARD_HEIGHT, CARD_WIDTH};
+use macroquad::{prelude::Rect, texture::Texture2D};
 
 pub(crate) mod avatar;
 pub(crate) mod database;
@@ -47,12 +45,12 @@ impl Card {
         }
     }
 
-    pub fn get_dimensions(&self) -> Vec2 {
-        match self {
-            Card::Site(_) => Vec2::new(CARD_HEIGHT, CARD_WIDTH),
-            _ => Vec2::new(CARD_WIDTH, CARD_HEIGHT),
-        }
-    }
+    // pub fn get_dimensions(&self) -> Vec2 {
+    //     match self {
+    //         Card::Site(_) => Vec2::new(CARD_HEIGHT, CARD_WIDTH),
+    //         _ => Vec2::new(CARD_WIDTH, CARD_HEIGHT),
+    //     }
+    // }
 
     pub fn get_zone(&self) -> &CardZone {
         match self {
@@ -126,17 +124,4 @@ pub enum CardType {
     Spell,
     Site,
     Avatar,
-}
-
-impl CardType {
-    pub fn get_dimensions(&self) -> Vec2 {
-        match self {
-            CardType::Site => Vec2::new(CARD_HEIGHT, CARD_WIDTH),
-            _ => Vec2::new(CARD_WIDTH, CARD_HEIGHT),
-        }
-    }
-}
-
-pub fn get_image_path(name: &str) -> String {
-    return format!("assets/images/cards/{}.webp", name);
 }

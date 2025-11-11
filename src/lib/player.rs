@@ -24,12 +24,12 @@ impl Player {
     pub fn draw_site(&mut self) {
         if let Some(mut site) = self.deck.draw_site() {
             site.zone = crate::card::CardZone::Hand;
-            site.rect = Some(Rect::new(
-                HAND_RECT.x + (self.cards_in_hand.len() as f32 * CARD_OFFSET_X),
-                HAND_RECT.y,
-                CardType::Spell.get_dimensions().x,
-                CardType::Spell.get_dimensions().y,
-            ));
+            // site.rect = Some(Rect::new(
+            //     HAND_RECT.x + (self.cards_in_hand.len() as f32 * CARD_OFFSET_X),
+            //     HAND_RECT.y,
+            //     CardType::Spell.get_dimensions().x,
+            //     CardType::Spell.get_dimensions().y,
+            // ));
             self.cards_in_hand.push(Card::Site(site));
         }
     }
@@ -37,12 +37,12 @@ impl Player {
     pub fn draw_spell(&mut self) {
         if let Some(mut spell) = self.deck.draw_spell() {
             spell.zone = crate::card::CardZone::Hand;
-            spell.rect = Some(Rect::new(
-                HAND_RECT.x + (self.cards_in_hand.len() as f32 * CARD_OFFSET_X),
-                HAND_RECT.y,
-                CardType::Spell.get_dimensions().x,
-                CardType::Spell.get_dimensions().y,
-            ));
+            // spell.rect = Some(Rect::new(
+            //     HAND_RECT.x + (self.cards_in_hand.len() as f32 * CARD_OFFSET_X),
+            //     HAND_RECT.y,
+            //     CardType::Spell.get_dimensions().x,
+            //     CardType::Spell.get_dimensions().y,
+            // ));
             self.cards_in_hand.push(Card::Spell(spell));
         }
     }

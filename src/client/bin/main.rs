@@ -1,13 +1,8 @@
-mod card;
-mod deck;
-mod game;
-mod player;
-mod playground;
-mod render;
-mod window;
+mod client;
+mod config;
+mod scene;
 
-use crate::window::*;
-use game::Game;
+use crate::{client::Client, config::*};
 use macroquad::prelude::*;
 
 fn window_conf() -> Conf {
@@ -21,12 +16,12 @@ fn window_conf() -> Conf {
 }
 
 #[macroquad::main(window_conf)]
-async fn main() {
-    let mut game = Game::setup().await;
-    game.start();
+async fn main() -> anyhow::Result<()> {
+    let mut client = Client::new()?;
+    client.start().unwrap();
 
     loop {
-        game.step().await;
+        client.step().await?;
         next_frame().await
     }
 }
