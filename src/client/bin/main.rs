@@ -1,8 +1,10 @@
 mod client;
 mod config;
+mod render;
 mod scene;
+mod texture_cache;
 
-use crate::{client::Client, config::*};
+use crate::{client::Client, config::*, texture_cache::TextureCache};
 use macroquad::prelude::*;
 
 fn window_conf() -> Conf {
@@ -17,11 +19,13 @@ fn window_conf() -> Conf {
 
 #[macroquad::main(window_conf)]
 async fn main() -> anyhow::Result<()> {
-    let mut client = Client::new()?;
+    let mut client = Client::new().unwrap();
     client.start().unwrap();
 
+    TextureCache::init();
+
     loop {
-        client.step().await?;
+        client.step().await.unwrap();
         next_frame().await
     }
 }

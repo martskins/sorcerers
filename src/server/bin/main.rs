@@ -1,7 +1,7 @@
 mod server;
 
 use crate::server::Server;
-use std::{io, net::SocketAddr};
+use std::net::SocketAddr;
 use tokio::net::UdpSocket;
 
 #[tokio::main]

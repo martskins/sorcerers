@@ -1,11 +1,10 @@
 pub mod client;
 
 use crate::card::{Card, CardType};
-use rmp_serde::{Deserializer, Serializer};
 use serde::{Deserialize, Serialize};
 use uuid;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub enum Message {
     Connect,
     ConnectResponse {
@@ -15,12 +14,18 @@ pub enum Message {
         player1: uuid::Uuid,
         player2: uuid::Uuid,
     },
+    DrawCard {
+        card_type: CardType,
+        player_id: uuid::Uuid,
+    },
     Sync {
         cards: Vec<Card>,
     },
-    Disconnect,
-    PlayCard {
-        card_id: u32,
+    CardPlayed {
+        player_id: uuid::Uuid,
+        card_id: uuid::Uuid,
+        cell_id: u8,
     },
+    Disconnect,
     EndTurn,
 }

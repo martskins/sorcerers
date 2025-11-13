@@ -1,4 +1,5 @@
 pub mod card;
+pub mod deck;
 pub mod networking;
 // pub mod card;
 // pub mod deck;
