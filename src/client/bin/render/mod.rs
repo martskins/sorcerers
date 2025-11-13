@@ -5,6 +5,7 @@ use sorcerers::card::Card;
 pub struct CardDisplay {
     pub card: Card,
     pub rect: Rect,
+    pub rotation: f32,
     pub is_hovered: bool,
     pub is_selected: bool,
 }

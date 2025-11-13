@@ -1,9 +1,8 @@
 use macroquad::math::{Rect, Vec2};
 
 pub const CARD_OFFSET_X: f32 = 50.0;
-pub const SCREEN_WIDTH: f32 = 1024.0;
-pub const SCREEN_HEIGHT: f32 = 768.0;
-// pub const SCREEN_DIMENSIONS: Vec2 = Vec2::new(SCREEN_WIDTH, SCREEN_HEIGHT);
+pub const SCREEN_WIDTH: f32 = 1024.0 * 1.5;
+pub const SCREEN_HEIGHT: f32 = 768.0 * 1.5;
 
 pub const HAND_RECT: Rect = Rect::new(
     (SCREEN_WIDTH / 2.0) - 150.0,

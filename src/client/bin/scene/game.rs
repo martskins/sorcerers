@@ -266,7 +266,6 @@ impl Game {
                 continue;
             }
 
-            println!("Render card with type {:?}", card_display.card.get_type());
             let img = TextureCache::get_texture(&card_display.card.get_image()).await;
             draw_texture_ex(
                 &img,
@@ -303,7 +302,7 @@ impl Game {
                 WHITE,
                 DrawTextureParams {
                     dest_size: Some(Vec2::new(card_display.rect.w, card_display.rect.h) * scale),
-                    // rotation,
+                    rotation: card_display.rotation,
                     ..Default::default()
                 },
             );
@@ -370,9 +369,9 @@ impl Game {
         for card in cards {
             if let CardZone::Realm(cell_id) = card.get_zone() {
                 let cell_rect = self.cells.iter().find(|c| c.id == *cell_id).unwrap().rect;
-                let mut dimensions = SPELL_DIMENSIONS * CARD_IN_PLAY_SCALE;
+                let mut dimensions = SPELL_DIMENSIONS;
                 if card.get_card_type() == sorcerers::card::CardType::Site {
-                    dimensions = SITE_DIMENSIONS * CARD_IN_PLAY_SCALE;
+                    dimensions = SITE_DIMENSIONS;
                 }
 
                 let rect = Rect::new(
@@ -387,6 +386,7 @@ impl Game {
                     rect,
                     is_hovered: false,
                     is_selected: false,
+                    rotation: 0.0,
                 });
             }
         }
@@ -395,45 +395,85 @@ impl Game {
     }
 
     fn update_cards_in_hand(&mut self, cards: &[Card]) -> anyhow::Result<()> {
-        let cards = cards
+        let spells: Vec<&Card> = cards
             .iter()
             .filter(|c| c.get_zone() == &CardZone::Hand)
             .filter(|c| c.get_owner_id() == &self.player_id)
-            .enumerate()
-            .map(|(idx, card)| {
-                let mut dimensions = SPELL_DIMENSIONS;
-                if card.get_card_type() == sorcerers::card::CardType::Site {
-                    dimensions = SITE_DIMENSIONS;
-                }
-
-                let rect = Rect::new(
-                    HAND_RECT.x + idx as f32 * CARD_OFFSET_X + 20.0,
-                    HAND_RECT.y + 20.0,
-                    dimensions.x,
-                    dimensions.y,
-                );
-
-                let current_card = self.cards.iter().find(|c| c.card.get_id() == card.get_id());
-                let mut is_selected = false;
-                let mut is_hovered = false;
-                match current_card {
-                    Some(c) => {
-                        is_selected = c.is_selected;
-                        is_hovered = c.is_hovered;
-                    }
-                    None => {}
-                }
-
-                return CardDisplay {
-                    card: card.clone(),
-                    rect,
-                    is_hovered,
-                    is_selected,
-                };
-            })
+            .filter(|c| c.get_card_type() == sorcerers::card::CardType::Spell)
             .collect();
 
-        self.cards = cards;
+        let sites: Vec<&Card> = cards
+            .iter()
+            .filter(|c| c.get_zone() == &CardZone::Hand)
+            .filter(|c| c.get_owner_id() == &self.player_id)
+            .filter(|c| c.get_card_type() == sorcerers::card::CardType::Site)
+            .collect();
+
+        let spell_hand_size = spells.len();
+        let fan_angle = 30.0;
+        let center = spell_hand_size as f32 / 2.0;
+        let radius = 40.0;
+
+        let mut displays: Vec<CardDisplay> = Vec::new();
+
+        // Fanned spells
+        for (idx, card) in spells.iter().enumerate() {
+            let dimensions = SPELL_DIMENSIONS;
+            let angle = if spell_hand_size > 1 {
+                ((idx as f32 - center) / center) * (fan_angle / 2.0)
+            } else {
+                0.0
+            };
+            let rad = angle.to_radians();
+            let x = HAND_RECT.x + idx as f32 * CARD_OFFSET_X + 20.0;
+            let y = HAND_RECT.y + 20.0 + radius * rad.sin();
+
+            let rect = Rect::new(x, y, dimensions.x, dimensions.y);
+
+            let current_card = self.cards.iter().find(|c| c.card.get_id() == card.get_id());
+            let mut is_selected = false;
+            let mut is_hovered = false;
+            if let Some(c) = current_card {
+                is_selected = c.is_selected;
+                is_hovered = c.is_hovered;
+            }
+
+            displays.push(CardDisplay {
+                card: (*card).clone(),
+                rect,
+                is_hovered,
+                is_selected,
+                rotation: rad,
+            });
+        }
+
+        // Stacked sites to the right of spells
+        let site_x = HAND_RECT.x + spell_hand_size as f32 * CARD_OFFSET_X + 40.0;
+        for (idx, card) in sites.iter().enumerate() {
+            let dimensions = SITE_DIMENSIONS;
+            let x = site_x;
+            let y = HAND_RECT.y + 20.0 + 20.0 * idx as f32;
+
+            let rect = Rect::new(x, y, dimensions.x, dimensions.y);
+
+            let current_card = self.cards.iter().find(|c| c.card.get_id() == card.get_id());
+            let mut is_selected = false;
+            let mut is_hovered = false;
+            if let Some(c) = current_card {
+                is_selected = c.is_selected;
+                is_hovered = c.is_hovered;
+            }
+
+            displays.push(CardDisplay {
+                card: (*card).clone(),
+                rect,
+                is_hovered,
+                is_selected,
+                rotation: 0.0,
+            });
+        }
+
+        self.cards = displays;
         Ok(())
     }
 }
