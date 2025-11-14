@@ -201,7 +201,7 @@ impl Game {
         };
     }
 
-    fn get_selected_card_id(&self) -> Option<uuid::Uuid> {
+    fn get_selected_card_id(&self) -> Option<&uuid::Uuid> {
         for card_display in &self.cards {
             if card_display.is_selected {
                 return Some(card_display.card.get_id());
@@ -230,7 +230,7 @@ impl Game {
                     .send(Message::CardPlayed {
                         player_id: self.player_id,
                         cell_id: cell_id as u8,
-                        card_id: self.get_selected_card_id().unwrap(),
+                        card_id: self.get_selected_card_id().cloned().unwrap(),
                     })
                     .unwrap();
             }

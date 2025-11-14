@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 use crate::{card::Card, deck::Deck};
 
@@ -11,12 +11,20 @@ pub enum Phase {
     EndPhase,
 }
 
+pub enum Effect {
+    DamageCreature { card_id: String, amount: u8 },
+}
+
 pub struct State {
     pub phase: Phase,
     pub turn_count: u32,
     pub current_player: uuid::Uuid,
     pub next_player: uuid::Uuid,
     pub selected_cards: Vec<String>,
+    pub cards: Vec<Card>,
+    pub cells: Vec<Cell>,
+    pub effects_queue: VecDeque<Effect>,
+    pub player_life_totals: HashMap<uuid::Uuid, u8>,
 }
 
 impl State {
@@ -27,6 +35,10 @@ impl State {
             current_player: uuid::Uuid::nil(),
             next_player: uuid::Uuid::nil(),
             selected_cards: vec![],
+            cards: vec![],
+            cells: vec![],
+            effects_queue: VecDeque::new(),
+            player_life_totals: HashMap::new(),
         }
     }
 }
@@ -41,8 +53,6 @@ pub struct Game {
     pub players: Vec<uuid::Uuid>,
     pub decks: HashMap<uuid::Uuid, Deck>,
     pub state: State,
-    pub cards: Vec<Card>,
-    pub cells: Vec<Cell>,
 }
 
 impl Game {
@@ -57,9 +67,7 @@ impl Game {
             id: uuid::Uuid::new_v4(),
             players: vec![player1, player2],
             state: State::zero(),
-            cards: vec![],
             decks,
-            cells: vec![],
         }
     }
 }

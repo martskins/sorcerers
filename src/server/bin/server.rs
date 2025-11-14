@@ -10,7 +10,7 @@ pub struct Server {
     pub active_games: HashMap<uuid::Uuid, Game>,
     pub looking_for_match: Vec<uuid::Uuid>,
     pub player_to_game: HashMap<uuid::Uuid, uuid::Uuid>,
-    pub clients: HashMap<uuid::Uuid, SocketAddr>,
+    pub sockets: HashMap<uuid::Uuid, SocketAddr>,
 }
 
 impl Server {
@@ -20,7 +20,7 @@ impl Server {
             active_games: HashMap::new(),
             looking_for_match: vec![],
             player_to_game: HashMap::new(),
-            clients: HashMap::new(),
+            sockets: HashMap::new(),
         }
     }
 
@@ -34,30 +34,31 @@ impl Server {
             Message::Connect => {
                 let player_id = uuid::Uuid::new_v4();
                 self.looking_for_match.push(player_id);
-                self.clients.insert(player_id, addr);
+                self.sockets.insert(player_id, addr);
                 self.send_to(&Message::ConnectResponse { player_id }, &addr)
                     .await?;
 
                 match self.find_match() {
                     Some((player1, player2)) => {
-                        let game = Game::new(player1, player2);
-                        let game_id = game.id.clone();
+                        let mut game = Game::new(player1, player2);
                         self.player_to_game.insert(player1, game.id);
                         self.player_to_game.insert(player2, game.id);
+                        for player in &[player1, player2] {
+                            self.draw_initial_six(player).await?;
+                        }
+                        self.place_avatars(&game.id)?;
+                        self.send_sync(&game.id).await?;
+                        game.state.player_life_totals.insert(player1, 20);
+                        game.state.player_life_totals.insert(player2, 20);
                         self.active_games.insert(game.id, game);
-                        let addr1 = self.clients.get(&player1).unwrap();
-                        let addr2 = self.clients.get(&player2).unwrap();
+
+                        let addr1 = self.sockets.get(&player1).unwrap();
+                        let addr2 = self.sockets.get(&player2).unwrap();
                         self.send_to_many(
                             &Message::MatchCreated { player1, player2 },
                             &[addr1, addr2],
                         )
                         .await?;
-
-                        for player in &[player1, player2] {
-                            self.draw_initial_six(player).await?;
-                        }
-                        self.place_avatars(&game_id)?;
-                        self.send_sync(&game_id).await?;
                     }
                     None => {}
                 }
@@ -67,20 +68,7 @@ impl Server {
                 cell_id,
                 player_id,
             } => {
-                assert!(cell_id >= 1 && cell_id <= 20);
-                let game_id = self.player_to_game.get(&player_id).unwrap();
-                {
-                    let game = self.active_games.get_mut(game_id).unwrap();
-                    if let Some(card) = game
-                        .cards
-                        .iter_mut()
-                        .find(|card| card.get_id() == card_id && card.get_owner_id() == &player_id)
-                    {
-                        card.set_zone(CardZone::Realm(cell_id));
-                    }
-                }
-
-                self.send_sync(game_id).await?;
+                self.card_played(&player_id, &card_id, cell_id).await?;
             }
             Message::DrawCard {
                 card_type,
@@ -92,6 +80,29 @@ impl Server {
         Ok(())
     }
 
+    async fn card_played(
+        &mut self,
+        player_id: &uuid::Uuid,
+        card_id: &uuid::Uuid,
+        cell_id: u8,
+    ) -> anyhow::Result<()> {
+        assert!(cell_id >= 1 && cell_id <= 20);
+        let game_id = self.player_to_game.get(&player_id).unwrap();
+        {
+            let game = self.active_games.get_mut(game_id).unwrap();
+            if let Some(card) = game
+                .state
+                .cards
+                .iter_mut()
+                .find(|card| card.get_id() == card_id && card.get_owner_id() == player_id)
+            {
+                card.set_zone(CardZone::Realm(cell_id));
+            }
+        }
+
+        self.send_sync(game_id).await
+    }
+
     fn place_avatars(&mut self, game_id: &uuid::Uuid) -> anyhow::Result<()> {
         let game = self.active_games.get_mut(&game_id).unwrap();
         for player_id in &game.players {
@@ -99,7 +110,7 @@ impl Server {
             let mut avatar_card = Card::Avatar(deck.avatar.clone());
             let cell_id = if game.players[0] == *player_id { 3 } else { 18 };
             avatar_card.set_zone(CardZone::Realm(cell_id));
-            game.cards.push(avatar_card);
+            game.state.cards.push(avatar_card);
         }
         Ok(())
     }
@@ -151,7 +162,7 @@ impl Server {
 
             let mut card = card.unwrap();
             card.set_zone(CardZone::Hand);
-            game.cards.push(card);
+            game.state.cards.push(card);
         }
 
         self.send_sync(game_id).await?;
@@ -161,8 +172,9 @@ impl Server {
     async fn send_sync(&self, game_id: &uuid::Uuid) -> anyhow::Result<()> {
         let game = self.active_games.get(&game_id).unwrap();
         for player_id in &game.players {
-            let addr = self.clients.get(&player_id).unwrap();
+            let addr = self.sockets.get(&player_id).unwrap();
             let player_cards: Vec<Card> = game
+                .state
                 .cards
                 .iter()
                 .filter(|card| {

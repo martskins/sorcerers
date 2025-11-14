@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::game::State;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CardType {
     Site,
@@ -74,11 +76,19 @@ impl Card {
         }
     }
 
-    pub fn get_id(&self) -> uuid::Uuid {
+    pub fn get_id(&self) -> &uuid::Uuid {
         match self {
-            Card::Site(card) => card.id,
-            Card::Spell(card) => card.id,
-            Card::Avatar(card) => card.id,
+            Card::Site(card) => &card.id,
+            Card::Spell(card) => &card.id,
+            Card::Avatar(card) => &card.id,
+        }
+    }
+
+    pub fn on_cast(&self, state: &mut State) {
+        match self {
+            Card::Spell(spell) => spell.on_cast(state),
+            Card::Site(site) => site.on_cast(state),
+            Card::Avatar(spell) => {}
         }
     }
 }
@@ -99,6 +109,12 @@ pub struct Site {
     pub zone: CardZone,
 }
 
+impl Site {
+    fn on_cast(&self, state: &mut State) {
+        // Implement site-specific effects here
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Spell {
     pub id: uuid::Uuid,
@@ -109,4 +125,10 @@ pub struct Spell {
     pub mana_cost: u32,
     pub description: Option<String>,
     pub tapped: bool,
+}
+
+impl Spell {
+    fn on_cast(&self, state: &mut State) {
+        // Implement site-specific effects here
+    }
 }
