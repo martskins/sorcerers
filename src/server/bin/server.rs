@@ -24,6 +24,13 @@ impl Server {
         }
     }
 
+    pub fn process_effects(&mut self) -> anyhow::Result<()> {
+        for game in self.active_games.values_mut() {
+            game.step();
+        }
+        Ok(())
+    }
+
     pub async fn process_message(
         &mut self,
         message: &[u8],
@@ -40,17 +47,17 @@ impl Server {
 
                 match self.find_match() {
                     Some((player1, player2)) => {
-                        let mut game = Game::new(player1, player2);
+                        let game = Game::new(player1, player2);
+                        let game_id = game.id;
                         self.player_to_game.insert(player1, game.id);
                         self.player_to_game.insert(player2, game.id);
+                        self.active_games.insert(game.id, game);
+
+                        self.place_avatars(&game_id)?;
+                        self.send_sync(&game_id).await?;
                         for player in &[player1, player2] {
                             self.draw_initial_six(player).await?;
                         }
-                        self.place_avatars(&game.id)?;
-                        self.send_sync(&game.id).await?;
-                        game.state.player_life_totals.insert(player1, 20);
-                        game.state.player_life_totals.insert(player2, 20);
-                        self.active_games.insert(game.id, game);
 
                         let addr1 = self.sockets.get(&player1).unwrap();
                         let addr2 = self.sockets.get(&player2).unwrap();
@@ -88,16 +95,14 @@ impl Server {
     ) -> anyhow::Result<()> {
         assert!(cell_id >= 1 && cell_id <= 20);
         let game_id = self.player_to_game.get(&player_id).unwrap();
-        {
-            let game = self.active_games.get_mut(game_id).unwrap();
-            if let Some(card) = game
-                .state
-                .cards
-                .iter_mut()
-                .find(|card| card.get_id() == card_id && card.get_owner_id() == player_id)
-            {
-                card.set_zone(CardZone::Realm(cell_id));
-            }
+        let game = self.active_games.get_mut(game_id).unwrap();
+        let card = game
+            .state
+            .cards
+            .iter_mut()
+            .find(|card| card.get_id() == card_id && card.get_owner_id() == player_id);
+        if let Some(card) = card {
+            card.set_zone(CardZone::Realm(cell_id));
         }
 
         self.send_sync(game_id).await
@@ -108,7 +113,7 @@ impl Server {
         for player_id in &game.players {
             let deck = game.decks.get_mut(&player_id).unwrap();
             let mut avatar_card = Card::Avatar(deck.avatar.clone());
-            let cell_id = if game.players[0] == *player_id { 3 } else { 18 };
+            let cell_id = if game.players[0] == *player_id { 18 } else { 3 };
             avatar_card.set_zone(CardZone::Realm(cell_id));
             game.state.cards.push(avatar_card);
         }
@@ -185,6 +190,8 @@ impl Server {
                 .collect();
             let message = Message::Sync {
                 cards: player_cards,
+                mana: game.state.player_mana.clone(),
+                thresholds: game.state.player_thresholds.clone(),
             };
             self.send_to(&message, addr).await?;
         }
@@ -218,11 +225,4 @@ impl Server {
         }
         Ok(())
     }
-
-    // pub async fn recv(&self) -> anyhow::Result<Message> {
-    //     let mut res = [0; 1024];
-    //     self.socket.recv(&mut res).await?;
-    //     let response: Message = rmp_serde::from_slice(&res).unwrap();
-    //     Ok(response)
-    // }
 }

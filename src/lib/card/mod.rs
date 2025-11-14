@@ -1,12 +1,25 @@
-use serde::{Deserialize, Serialize};
+pub mod avatar;
+pub mod site;
+pub mod spell;
 
-use crate::game::State;
+use crate::{
+    card::{avatar::Avatar, site::Site, spell::Spell},
+    game::State,
+};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CardType {
     Site,
     Spell,
     Avatar,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CardBase {
+    pub id: uuid::Uuid,
+    pub owner_id: uuid::Uuid,
+    pub zone: CardZone,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -29,9 +42,9 @@ pub enum Card {
 impl Card {
     pub fn get_image(&self) -> String {
         let name = match self {
-            Card::Site(site) => &site.name,
-            Card::Spell(spell) => &spell.name,
-            Card::Avatar(avatar) => &avatar.name,
+            Card::Site(site) => site.get_name(),
+            Card::Spell(spell) => spell.get_name(),
+            Card::Avatar(avatar) => avatar.get_name(),
         };
         format!("assets/images/cards/{}.png", name).to_string()
     }
@@ -46,25 +59,25 @@ impl Card {
 
     pub fn set_zone(&mut self, zone: CardZone) {
         match self {
-            Card::Site(card) => card.zone = zone,
-            Card::Spell(card) => card.zone = zone,
-            Card::Avatar(card) => card.zone = zone,
+            Card::Site(card) => card.set_zone(zone),
+            Card::Spell(card) => card.set_zone(zone),
+            Card::Avatar(card) => card.set_zone(zone),
         }
     }
 
     pub fn get_owner_id(&self) -> &uuid::Uuid {
         match self {
-            Card::Site(card) => &card.owner_id,
-            Card::Spell(card) => &card.owner_id,
-            Card::Avatar(card) => &card.owner_id,
+            Card::Site(card) => &card.get_owner_id(),
+            Card::Spell(card) => &card.get_owner_id(),
+            Card::Avatar(card) => &card.get_owner_id(),
         }
     }
 
     pub fn get_zone(&self) -> &CardZone {
         match self {
-            Card::Site(card) => &card.zone,
-            Card::Spell(card) => &card.zone,
-            Card::Avatar(card) => &card.zone,
+            Card::Site(card) => &card.get_zone(),
+            Card::Spell(card) => &card.get_zone(),
+            Card::Avatar(card) => &card.get_zone(),
         }
     }
 
@@ -78,57 +91,17 @@ impl Card {
 
     pub fn get_id(&self) -> &uuid::Uuid {
         match self {
-            Card::Site(card) => &card.id,
-            Card::Spell(card) => &card.id,
-            Card::Avatar(card) => &card.id,
+            Card::Site(card) => &card.get_id(),
+            Card::Spell(card) => &card.get_id(),
+            Card::Avatar(card) => &card.get_id(),
         }
     }
 
-    pub fn on_cast(&self, state: &mut State) {
+    pub fn genesis(&self, state: &mut State) {
         match self {
-            Card::Spell(spell) => spell.on_cast(state),
-            Card::Site(site) => site.on_cast(state),
-            Card::Avatar(spell) => {}
+            Card::Spell(card) => card.genesis(state),
+            Card::Site(card) => card.genesis(state),
+            Card::Avatar(_card) => {}
         }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Avatar {
-    pub id: uuid::Uuid,
-    pub name: String,
-    pub owner_id: uuid::Uuid,
-    pub zone: CardZone,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Site {
-    pub id: uuid::Uuid,
-    pub name: String,
-    pub owner_id: uuid::Uuid,
-    pub zone: CardZone,
-}
-
-impl Site {
-    fn on_cast(&self, state: &mut State) {
-        // Implement site-specific effects here
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Spell {
-    pub id: uuid::Uuid,
-    pub name: String,
-    pub owner_id: uuid::Uuid,
-    pub zone: CardZone,
-    pub card_type: CardType,
-    pub mana_cost: u32,
-    pub description: Option<String>,
-    pub tapped: bool,
-}
-
-impl Spell {
-    fn on_cast(&self, state: &mut State) {
-        // Implement site-specific effects here
     }
 }

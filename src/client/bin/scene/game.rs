@@ -122,9 +122,15 @@ impl Game {
 
                 Ok(())
             }
-            Message::Sync { cards } => {
+            Message::Sync {
+                cards,
+                mana,
+                thresholds,
+            } => {
                 self.update_cards_in_hand(&cards)?;
                 self.update_cards_in_realm(&cards).await?;
+                println!("Player Mana: {:?}", mana.get(&self.player_id));
+                println!("Player Thresholds: {:?}", thresholds.get(&self.player_id));
                 Ok(())
             }
             _ => Ok(()),

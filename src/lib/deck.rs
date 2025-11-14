@@ -1,4 +1,7 @@
-use crate::card::{Avatar, CardType, CardZone, Site, Spell};
+use crate::card::site::Site;
+use crate::card::spell::Spell;
+use crate::card::CardBase;
+use crate::card::{avatar::Avatar, CardZone};
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -13,135 +16,49 @@ pub struct Deck {
 
 impl Deck {
     pub fn test_deck(player_id: uuid::Uuid) -> Self {
-        let spells = vec![
-            "Black Knight",
-            "Bailey",
-            "Cast Into Exile",
-            "Castle Haunt",
-            "Arc Lightning",
-            "Castle Servants",
-            "Caerleon-Upon-Usk",
-            "Ball Lightning",
-            "Treasures of Britain",
-            "Arcane Barrage",
-            "Bonfire",
-            "Burning Hands",
-            "Amulet of Niniane",
-            "Attack by Night",
-            "A Midsummer Night's Dream",
-            "Black Knight",
-            "Bailey",
-            "Cast Into Exile",
-            "Castle Haunt",
-            "Arc Lightning",
-            "Castle Servants",
-            "Caerleon-Upon-Usk",
-            "Ball Lightning",
-            "Treasures of Britain",
-            "Arcane Barrage",
-            "Bonfire",
-            "Burning Hands",
-            "Amulet of Niniane",
-            "Attack by Night",
-            "A Midsummer Night's Dream",
-            "Black Knight",
-            "Bailey",
-            "Cast Into Exile",
-            "Castle Haunt",
-            "Arc Lightning",
-            "Castle Servants",
-            "Caerleon-Upon-Usk",
-            "Ball Lightning",
-            "Treasures of Britain",
-            "Arcane Barrage",
-            "Bonfire",
-            "Burning Hands",
-            "Amulet of Niniane",
-            "Attack by Night",
-            "A Midsummer Night's Dream",
-            "Black Knight",
-            "Bailey",
-            "Cast Into Exile",
-            "Castle Haunt",
-            "Arc Lightning",
-            "Castle Servants",
-            "Caerleon-Upon-Usk",
-            "Ball Lightning",
-            "Treasures of Britain",
-            "Arcane Barrage",
-            "Bonfire",
-            "Burning Hands",
-            "Amulet of Niniane",
-            "Attack by Night",
-            "A Midsummer Night's Dream",
-        ];
-        let spells: Vec<Spell> = spells
-            .into_iter()
-            .map(|s| Spell {
+        let mut spells = vec![];
+        for _i in 0..10 {
+            spells.push(Spell::BurningHands(CardBase {
                 id: uuid::Uuid::new_v4(),
-                name: s.to_string(),
                 owner_id: player_id,
                 zone: CardZone::Spellbook,
-                card_type: CardType::Spell,
-                mana_cost: 1,
-                description: None,
-                tapped: false,
-            })
-            .collect();
-
-        let sites = vec![
-            "Beacon",
-            "Bog",
-            "Annual Fair",
-            "Beacon",
-            "Bog",
-            "Annual Fair",
-            "Beacon",
-            "Bog",
-            "Annual Fair",
-            "Beacon",
-            "Bog",
-            "Annual Fair",
-            "Beacon",
-            "Bog",
-            "Annual Fair",
-            "Beacon",
-            "Bog",
-            "Annual Fair",
-            "Beacon",
-            "Bog",
-            "Annual Fair",
-            "Beacon",
-            "Bog",
-            "Annual Fair",
-            "Beacon",
-            "Bog",
-            "Annual Fair",
-            "Beacon",
-            "Bog",
-            "Annual Fair",
-        ];
-        let sites: Vec<Site> = sites
-            .into_iter()
-            .map(|s| Site {
+            }));
+            spells.push(Spell::BallLightning(CardBase {
                 id: uuid::Uuid::new_v4(),
-                name: s.to_string(),
                 owner_id: player_id,
-                zone: CardZone::Atlasbook,
-            })
-            .collect();
+                zone: CardZone::Spellbook,
+            }));
+        }
+
+        let mut sites = vec![];
+        for _i in 0..10 {
+            sites.push(Site::Beacon(CardBase {
+                id: uuid::Uuid::new_v4(),
+                owner_id: player_id,
+                zone: CardZone::Spellbook,
+            }));
+            sites.push(Site::Bog(CardBase {
+                id: uuid::Uuid::new_v4(),
+                owner_id: player_id,
+                zone: CardZone::Spellbook,
+            }));
+            sites.push(Site::AnnualFair(CardBase {
+                id: uuid::Uuid::new_v4(),
+                owner_id: player_id,
+                zone: CardZone::Spellbook,
+            }));
+        }
 
         Deck {
             id: 0,
             name: "Test Deck".to_string(),
             sites,
             spells,
-            avatar: Avatar {
+            avatar: Avatar::Sorcerer(CardBase {
                 id: uuid::Uuid::new_v4(),
-                name: "Battlemage".to_string(),
                 owner_id: player_id,
                 zone: CardZone::Avatar,
-            },
+            }),
         }
     }
 

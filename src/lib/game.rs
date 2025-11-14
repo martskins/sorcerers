@@ -1,6 +1,11 @@
 use std::collections::{HashMap, VecDeque};
 
-use crate::{card::Card, deck::Deck};
+use crate::{
+    card::{avatar::Avatar, Card, CardBase, CardZone},
+    deck::Deck,
+    effect::Effect,
+    networking::Thresholds,
+};
 
 pub enum Phase {
     None,
@@ -9,10 +14,6 @@ pub enum Phase {
     WaitingForCellSelectionPhase,
     MainPhase,
     EndPhase,
-}
-
-pub enum Effect {
-    DamageCreature { card_id: String, amount: u8 },
 }
 
 pub struct State {
@@ -24,7 +25,8 @@ pub struct State {
     pub cards: Vec<Card>,
     pub cells: Vec<Cell>,
     pub effects_queue: VecDeque<Effect>,
-    pub player_life_totals: HashMap<uuid::Uuid, u8>,
+    pub player_mana: HashMap<uuid::Uuid, u8>,
+    pub player_thresholds: HashMap<uuid::Uuid, Thresholds>,
 }
 
 impl State {
@@ -38,8 +40,13 @@ impl State {
             cards: vec![],
             cells: vec![],
             effects_queue: VecDeque::new(),
-            player_life_totals: HashMap::new(),
+            player_mana: HashMap::new(),
+            player_thresholds: HashMap::new(),
         }
+    }
+
+    pub fn add_effect(&mut self, effect: Effect) {
+        self.effects_queue.push_back(effect);
     }
 }
 
@@ -60,7 +67,11 @@ impl Game {
         let mut decks = HashMap::new();
         decks.insert(player1, Deck::test_deck(player1));
         let mut deck_two = Deck::test_deck(player2);
-        deck_two.avatar.name = "Sorcerer".to_string();
+        deck_two.avatar = Avatar::Battlemage(CardBase {
+            id: uuid::Uuid::new_v4(),
+            owner_id: player2,
+            zone: CardZone::Avatar,
+        });
         decks.insert(player2, deck_two);
 
         Game {
@@ -68,6 +79,14 @@ impl Game {
             players: vec![player1, player2],
             state: State::zero(),
             decks,
+        }
+    }
+
+    pub fn step(&mut self) {
+        println!("Stepping game {}", self.id);
+        while let Some(effect) = self.state.effects_queue.pop_front() {
+            println!("Applying effect in game {}", self.id);
+            effect.apply(&mut self.state);
         }
     }
 }

@@ -12,5 +12,6 @@ async fn main() -> anyhow::Result<()> {
     loop {
         let (_len, addr) = server.socket.recv_from(&mut buf).await?;
         server.process_message(&buf, addr).await?;
+        server.process_effects()?;
     }
 }
