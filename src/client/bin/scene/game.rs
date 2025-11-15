@@ -1,14 +1,15 @@
 use macroquad::{
-    color::WHITE,
+    color::{Color, BLUE, RED, WHITE},
     input::{is_mouse_button_released, mouse_position, MouseButton},
     math::{Rect, Vec2},
-    shapes::draw_rectangle_lines,
+    shapes::{draw_line, draw_rectangle_lines, draw_triangle, draw_triangle_lines},
     text::draw_text,
     texture::{draw_texture_ex, DrawTextureParams},
 };
 use sorcerers::{
     card::{Card, CardType, CardZone},
-    networking::{self, Message},
+    game::{Phase, State},
+    networking::{self, Message, Thresholds},
 };
 
 use crate::{
@@ -32,6 +33,7 @@ pub struct Game {
     pub status: Status,
     pub client: networking::client::Client,
     pub is_player_one: bool,
+    pub state: State,
 }
 
 impl Game {
@@ -59,6 +61,7 @@ impl Game {
             status: Status::InProgress,
             client,
             is_player_one: false,
+            state: State::new(),
         }
     }
 
@@ -75,6 +78,7 @@ impl Game {
         self.render_player_hand().await;
         self.render_realm().await;
         self.render_discard_pile().await?;
+        self.render_gui().await?;
         Ok(())
     }
 
@@ -122,19 +126,150 @@ impl Game {
 
                 Ok(())
             }
-            Message::Sync {
-                cards,
-                mana,
-                thresholds,
-            } => {
-                self.update_cards_in_hand(&cards)?;
-                self.update_cards_in_realm(&cards).await?;
-                println!("Player Mana: {:?}", mana.get(&self.player_id));
-                println!("Player Thresholds: {:?}", thresholds.get(&self.player_id));
+            Message::Sync { state } => {
+                self.state = state.clone();
+                self.update_cards_in_hand(&state.cards)?;
+                self.update_cards_in_realm(&state.cards).await?;
                 Ok(())
             }
             _ => Ok(()),
         }
+    }
+
+    fn draw_fire_symbol(x: f32, y: f32, size: f32) {
+        draw_triangle_lines(
+            Vec2::new(x, y + size),
+            Vec2::new(x + size / 2.0, y),
+            Vec2::new(x + size, y + size),
+            3.0,
+            RED,
+        );
+    }
+
+    fn draw_air_symbol(x: f32, y: f32, size: f32) {
+        const PURPLE: Color = Color::new(0.6, 0.2, 0.8, 1.0);
+        draw_triangle_lines(
+            Vec2::new(x, y + size),
+            Vec2::new(x + size / 2.0, y),
+            Vec2::new(x + size, y + size),
+            3.0,
+            PURPLE,
+        );
+        let line_offset_y: f32 = size / 2.0;
+        draw_line(
+            x,
+            y + line_offset_y,
+            x + size,
+            y + line_offset_y,
+            2.0,
+            PURPLE,
+        );
+    }
+
+    fn draw_earth_symbol(x: f32, y: f32, size: f32) {
+        const BROWN: Color = Color::new(0.6, 0.4, 0.2, 1.0);
+        draw_triangle_lines(
+            Vec2::new(x, y),
+            Vec2::new(x + size / 2.0, y + size),
+            Vec2::new(x + size, y),
+            3.0,
+            BROWN,
+        );
+    }
+
+    fn draw_water_symbol(x: f32, y: f32, size: f32) {
+        draw_triangle_lines(
+            Vec2::new(x, y),
+            Vec2::new(x + size / 2.0, y + size),
+            Vec2::new(x + size, y),
+            3.0,
+            BLUE,
+        );
+        let line_offset_y: f32 = size / 3.0;
+        draw_line(x, y + line_offset_y, x + size, y + line_offset_y, 2.0, BLUE);
+    }
+
+    async fn render_gui(&self) -> anyhow::Result<()> {
+        const FONT_SIZE: f32 = 24.0;
+        const TEXT_OFFSET_X: f32 = 20.0;
+        const SYMBOL_SIZE: f32 = 20.0;
+        const SYMBOL_SPACING: f32 = 60.0;
+        const BASE_Y: f32 = 30.0;
+
+        if self.state.phase == Phase::None {
+            return Ok(());
+        }
+
+        let thresholds = self
+            .state
+            .player_thresholds
+            .get(&self.player_id)
+            .cloned()
+            .unwrap_or(Thresholds::zero());
+
+        // Fire: Red upward triangle
+        let fire_x = TEXT_OFFSET_X;
+        let fire_y = BASE_Y;
+        Game::draw_fire_symbol(fire_x, fire_y, SYMBOL_SIZE);
+        draw_text(
+            &thresholds.fire.to_string(),
+            fire_x + SYMBOL_SIZE + 5.0,
+            fire_y + SYMBOL_SIZE,
+            FONT_SIZE,
+            WHITE,
+        );
+
+        // Air: Purple upward triangle with top horizontal line
+        let air_x = fire_x + SYMBOL_SPACING;
+        let air_y = BASE_Y;
+        Game::draw_air_symbol(air_x, air_y, SYMBOL_SIZE);
+        draw_text(
+            &thresholds.air.to_string(),
+            air_x + SYMBOL_SIZE + 5.0,
+            air_y + SYMBOL_SIZE,
+            FONT_SIZE,
+            WHITE,
+        );
+
+        // Earth: Brown downward triangle
+        let earth_x = air_x + SYMBOL_SPACING;
+        let earth_y = BASE_Y;
+        let brown = Color::new(0.6, 0.4, 0.2, 1.0);
+        Game::draw_earth_symbol(earth_x, earth_y, SYMBOL_SIZE);
+        draw_text(
+            &thresholds.earth.to_string(),
+            earth_x + SYMBOL_SIZE + 5.0,
+            earth_y + SYMBOL_SIZE,
+            FONT_SIZE,
+            WHITE,
+        );
+
+        // Water: Blue downward triangle with bottom horizontal line
+        let water_x = earth_x + SYMBOL_SPACING;
+        let water_y = BASE_Y;
+        Game::draw_water_symbol(water_x, water_y, SYMBOL_SIZE);
+        draw_text(
+            &thresholds.water.to_string(),
+            water_x + SYMBOL_SIZE + 5.0,
+            water_y + SYMBOL_SIZE,
+            FONT_SIZE,
+            WHITE,
+        );
+
+        // Opponent info (unchanged)
+        let opponent_id = &self
+            .state
+            .player_mana
+            .keys()
+            .find(|id| *id != &self.player_id)
+            .unwrap();
+        let opponents_mana_text = format!(
+            "Opponent Mana: {}",
+            self.state.player_mana.get(opponent_id).unwrap_or(&0)
+        );
+        draw_text(&opponents_mana_text, TEXT_OFFSET_X, 90.0, FONT_SIZE, WHITE);
+
+        Ok(())
     }
 
     async fn render_discard_pile(&self) -> anyhow::Result<()> {

@@ -1,6 +1,6 @@
 use sorcerers::{
     card::{Card, CardType, CardZone},
-    game::Game,
+    game::{Game, Phase},
     networking::Message,
 };
 use std::{collections::HashMap, net::SocketAddr};
@@ -24,7 +24,7 @@ impl Server {
         }
     }
 
-    pub fn process_effects(&mut self) -> anyhow::Result<()> {
+    pub async fn process_effects(&mut self) -> anyhow::Result<()> {
         for game in self.active_games.values_mut() {
             game.step();
         }
@@ -47,7 +47,10 @@ impl Server {
 
                 match self.find_match() {
                     Some((player1, player2)) => {
-                        let game = Game::new(player1, player2);
+                        let mut game = Game::new(player1, player2);
+                        game.state.phase = Phase::TurnStartPhase;
+                        game.state.player_mana.insert(player1, 0);
+                        game.state.player_mana.insert(player2, 0);
                         let game_id = game.id;
                         self.player_to_game.insert(player1, game.id);
                         self.player_to_game.insert(player2, game.id);
@@ -76,6 +79,9 @@ impl Server {
                 player_id,
             } => {
                 self.card_played(&player_id, &card_id, cell_id).await?;
+                self.process_effects().await?;
+                let game_id = self.player_to_game.get(&player_id).unwrap();
+                self.send_sync(game_id).await?;
             }
             Message::DrawCard {
                 card_type,
@@ -96,13 +102,15 @@ impl Server {
         assert!(cell_id >= 1 && cell_id <= 20);
         let game_id = self.player_to_game.get(&player_id).unwrap();
         let game = self.active_games.get_mut(game_id).unwrap();
-        let card = game
-            .state
+        let state = &mut game.state;
+        let card = state
             .cards
             .iter_mut()
             .find(|card| card.get_id() == card_id && card.get_owner_id() == player_id);
         if let Some(card) = card {
             card.set_zone(CardZone::Realm(cell_id));
+            let effects = card.genesis();
+            state.effects_queue.extend(effects.into_iter());
         }
 
         self.send_sync(game_id).await
@@ -178,20 +186,8 @@ impl Server {
         let game = self.active_games.get(&game_id).unwrap();
         for player_id in &game.players {
             let addr = self.sockets.get(&player_id).unwrap();
-            let player_cards: Vec<Card> = game
-                .state
-                .cards
-                .iter()
-                .filter(|card| {
-                    card.get_owner_id() == player_id
-                        || matches!(card.get_zone(), CardZone::Realm(_))
-                })
-                .cloned()
-                .collect();
             let message = Message::Sync {
-                cards: player_cards,
-                mana: game.state.player_mana.clone(),
-                thresholds: game.state.player_thresholds.clone(),
+                state: game.state.clone(),
             };
             self.send_to(&message, addr).await?;
         }

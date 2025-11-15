@@ -4,7 +4,7 @@ pub mod spell;
 
 use crate::{
     card::{avatar::Avatar, site::Site, spell::Spell},
-    game::State,
+    effect::Effect,
 };
 use serde::{Deserialize, Serialize};
 
@@ -97,11 +97,11 @@ impl Card {
         }
     }
 
-    pub fn genesis(&self, state: &mut State) {
+    pub fn genesis(&self) -> Vec<Effect> {
         match self {
-            Card::Spell(card) => card.genesis(state),
-            Card::Site(card) => card.genesis(state),
-            Card::Avatar(_card) => {}
+            Card::Spell(card) => card.genesis(),
+            Card::Site(card) => card.genesis(),
+            Card::Avatar(_card) => vec![],
         }
     }
 }

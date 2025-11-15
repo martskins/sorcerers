@@ -1,17 +1,36 @@
 pub mod client;
 
-use std::collections::HashMap;
-
-use crate::card::{Card, CardType};
+use crate::{card::CardType, game::State};
 use serde::{Deserialize, Serialize};
 use uuid;
 
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Thresholds {
     pub fire: u8,
     pub water: u8,
     pub earth: u8,
     pub air: u8,
+}
+
+impl Thresholds {
+    pub fn zero() -> Self {
+        Self {
+            fire: 0,
+            water: 0,
+            earth: 0,
+            air: 0,
+        }
+    }
+}
+
+impl std::fmt::Display for Thresholds {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Fire: {}, Water: {}, Earth: {}, Air: {}",
+            self.fire, self.water, self.earth, self.air
+        )
+    }
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -29,9 +48,7 @@ pub enum Message {
         player_id: uuid::Uuid,
     },
     Sync {
-        cards: Vec<Card>,
-        mana: HashMap<uuid::Uuid, u8>,
-        thresholds: HashMap<uuid::Uuid, Thresholds>,
+        state: State,
     },
     CardPlayed {
         player_id: uuid::Uuid,

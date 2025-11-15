@@ -1,12 +1,13 @@
-use std::collections::{HashMap, VecDeque};
-
 use crate::{
     card::{avatar::Avatar, Card, CardBase, CardZone},
     deck::Deck,
     effect::Effect,
     networking::Thresholds,
 };
+use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, VecDeque};
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Phase {
     None,
     TurnStartPhase,
@@ -16,6 +17,7 @@ pub enum Phase {
     EndPhase,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct State {
     pub phase: Phase,
     pub turn_count: u32,
@@ -30,7 +32,7 @@ pub struct State {
 }
 
 impl State {
-    pub fn zero() -> Self {
+    pub fn new() -> Self {
         State {
             phase: Phase::None,
             turn_count: 0,
@@ -50,6 +52,7 @@ impl State {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Cell {
     pub id: u8,
     pub occupied_by: Vec<Card>,
@@ -77,15 +80,13 @@ impl Game {
         Game {
             id: uuid::Uuid::new_v4(),
             players: vec![player1, player2],
-            state: State::zero(),
+            state: State::new(),
             decks,
         }
     }
 
     pub fn step(&mut self) {
-        println!("Stepping game {}", self.id);
         while let Some(effect) = self.state.effects_queue.pop_front() {
-            println!("Applying effect in game {}", self.id);
             effect.apply(&mut self.state);
         }
     }

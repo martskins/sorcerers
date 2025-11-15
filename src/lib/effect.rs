@@ -1,5 +1,8 @@
+use serde::{Deserialize, Serialize};
+
 use crate::game::State;
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Effect {
     AddMana { player_id: uuid::Uuid, amount: u32 },
 }

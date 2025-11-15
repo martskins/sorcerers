@@ -1,7 +1,6 @@
 use crate::{
     card::{CardBase, CardZone},
     effect::Effect,
-    game::State,
 };
 use serde::{Deserialize, Serialize};
 
@@ -53,24 +52,24 @@ impl Site {
         };
     }
 
-    pub fn genesis(&self, state: &mut State) {
+    pub fn genesis(&self) -> Vec<Effect> {
         match self {
             _ => {
-                state.add_effect(Effect::AddMana {
+                vec![Effect::AddMana {
                     player_id: self.get_owner_id().clone(),
                     amount: 1,
-                });
+                }]
             }
         }
     }
 
-    pub fn on_turn_start(&self, state: &mut State) {
+    pub fn on_turn_start(&self) -> Vec<Effect> {
         match self {
             _ => {
-                state.add_effect(Effect::AddMana {
+                vec![Effect::AddMana {
                     player_id: self.get_owner_id().clone(),
                     amount: 1,
-                });
+                }]
             }
         }
     }

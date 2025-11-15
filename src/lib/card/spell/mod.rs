@@ -1,4 +1,7 @@
-use crate::card::{CardBase, CardZone};
+use crate::{
+    card::{CardBase, CardZone},
+    effect::Effect,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -43,7 +46,8 @@ impl Spell {
         };
     }
 
-    pub fn genesis(&self, _state: &mut crate::game::State) {
+    pub fn genesis(&self) -> Vec<Effect> {
+        vec![]
         // Implement site-specific on_cast effects here
     }
 }
