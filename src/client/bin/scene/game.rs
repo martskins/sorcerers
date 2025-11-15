@@ -546,7 +546,6 @@ impl Game {
         let radius = 40.0;
 
         let mut displays: Vec<CardDisplay> = Vec::new();
-
         for (idx, card) in spells.iter().enumerate() {
             let dimensions = SPELL_DIMENSIONS;
             let angle = if spell_hand_size > 1 {
