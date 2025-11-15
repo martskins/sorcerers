@@ -1,6 +1,6 @@
 use sorcerers::{
     card::{Card, CardType, CardZone},
-    game::{Game, Phase},
+    game::{Game, Phase, Resources},
     networking::Message,
 };
 use std::{collections::HashMap, net::SocketAddr};
@@ -49,8 +49,8 @@ impl Server {
                     Some((player1, player2)) => {
                         let mut game = Game::new(player1, player2);
                         game.state.phase = Phase::TurnStartPhase;
-                        game.state.player_mana.insert(player1, 0);
-                        game.state.player_mana.insert(player2, 0);
+                        game.state.resources.insert(player1, Resources::new());
+                        game.state.resources.insert(player2, Resources::new());
                         let game_id = game.id;
                         self.player_to_game.insert(player1, game.id);
                         self.player_to_game.insert(player2, game.id);

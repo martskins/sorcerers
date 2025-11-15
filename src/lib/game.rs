@@ -2,7 +2,6 @@ use crate::{
     card::{avatar::Avatar, Card, CardBase, CardZone},
     deck::Deck,
     effect::Effect,
-    networking::Thresholds,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
@@ -18,6 +17,27 @@ pub enum Phase {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Resources {
+    pub fire_threshold: u8,
+    pub water_threshold: u8,
+    pub earth_threshold: u8,
+    pub air_threshold: u8,
+    pub mana: u8,
+}
+
+impl Resources {
+    pub fn new() -> Self {
+        Resources {
+            fire_threshold: 0,
+            water_threshold: 0,
+            earth_threshold: 0,
+            air_threshold: 0,
+            mana: 0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct State {
     pub phase: Phase,
     pub turn_count: u32,
@@ -27,8 +47,7 @@ pub struct State {
     pub cards: Vec<Card>,
     pub cells: Vec<Cell>,
     pub effects_queue: VecDeque<Effect>,
-    pub player_mana: HashMap<uuid::Uuid, u8>,
-    pub player_thresholds: HashMap<uuid::Uuid, Thresholds>,
+    pub resources: HashMap<uuid::Uuid, Resources>,
 }
 
 impl State {
@@ -42,8 +61,7 @@ impl State {
             cards: vec![],
             cells: vec![],
             effects_queue: VecDeque::new(),
-            player_mana: HashMap::new(),
-            player_thresholds: HashMap::new(),
+            resources: HashMap::new(),
         }
     }
 

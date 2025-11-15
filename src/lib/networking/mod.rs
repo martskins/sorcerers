@@ -12,6 +12,14 @@ pub struct Thresholds {
     pub air: u8,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Element {
+    Fire,
+    Water,
+    Earth,
+    Air,
+}
+
 impl Thresholds {
     pub fn zero() -> Self {
         Self {

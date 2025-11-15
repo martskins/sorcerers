@@ -2,14 +2,14 @@ use macroquad::{
     color::{Color, BLUE, RED, WHITE},
     input::{is_mouse_button_released, mouse_position, MouseButton},
     math::{Rect, Vec2},
-    shapes::{draw_line, draw_rectangle_lines, draw_triangle, draw_triangle_lines},
+    shapes::{draw_line, draw_rectangle_lines, draw_triangle_lines},
     text::draw_text,
     texture::{draw_texture_ex, DrawTextureParams},
 };
 use sorcerers::{
     card::{Card, CardType, CardZone},
-    game::{Phase, State},
-    networking::{self, Message, Thresholds},
+    game::{Phase, Resources, State},
+    networking::{self, Element, Message},
 };
 
 use crate::{
@@ -24,6 +24,10 @@ pub enum Status {
     InProgress,
     WaitingForCellSelection,
 }
+
+const FONT_SIZE: f32 = 24.0;
+const THRESHOLD_SYMBOL_SPACING: f32 = 18.0;
+const SYMBOL_SIZE: f32 = 20.0;
 
 #[derive(Debug)]
 pub struct Game {
@@ -136,138 +140,93 @@ impl Game {
         }
     }
 
-    fn draw_fire_symbol(x: f32, y: f32, size: f32) {
-        draw_triangle_lines(
-            Vec2::new(x, y + size),
-            Vec2::new(x + size / 2.0, y),
-            Vec2::new(x + size, y + size),
-            3.0,
-            RED,
-        );
-    }
+    fn render_threshold(x: f32, y: f32, value: u8, element: Element) {
+        let text_offset_y = SYMBOL_SIZE * 0.8;
+        draw_text(&value.to_string(), x, y + text_offset_y, FONT_SIZE, WHITE);
 
-    fn draw_air_symbol(x: f32, y: f32, size: f32) {
         const PURPLE: Color = Color::new(0.6, 0.2, 0.8, 1.0);
-        draw_triangle_lines(
-            Vec2::new(x, y + size),
-            Vec2::new(x + size / 2.0, y),
-            Vec2::new(x + size, y + size),
-            3.0,
-            PURPLE,
-        );
-        let line_offset_y: f32 = size / 2.0;
-        draw_line(
-            x,
-            y + line_offset_y,
-            x + size,
-            y + line_offset_y,
-            2.0,
-            PURPLE,
-        );
-    }
-
-    fn draw_earth_symbol(x: f32, y: f32, size: f32) {
         const BROWN: Color = Color::new(0.6, 0.4, 0.2, 1.0);
-        draw_triangle_lines(
-            Vec2::new(x, y),
-            Vec2::new(x + size / 2.0, y + size),
-            Vec2::new(x + size, y),
-            3.0,
-            BROWN,
-        );
+        let element_color = match element {
+            Element::Fire => RED,
+            Element::Air => PURPLE,
+            Element::Earth => BROWN,
+            Element::Water => BLUE,
+        };
+
+        if element == Element::Earth || element == Element::Water {
+            let v1 = Vec2::new(x + THRESHOLD_SYMBOL_SPACING, y);
+            let v2 = Vec2::new(
+                x + THRESHOLD_SYMBOL_SPACING + SYMBOL_SIZE / 2.0,
+                y + SYMBOL_SIZE,
+            );
+            let v3 = Vec2::new(x + THRESHOLD_SYMBOL_SPACING + SYMBOL_SIZE, y);
+            draw_triangle_lines(v1, v2, v3, 3.0, element_color);
+        } else {
+            let v1 = Vec2::new(x + THRESHOLD_SYMBOL_SPACING, y + SYMBOL_SIZE);
+            let v2 = Vec2::new(x + THRESHOLD_SYMBOL_SPACING + SYMBOL_SIZE / 2.0, y);
+            let v3 = Vec2::new(x + THRESHOLD_SYMBOL_SPACING + SYMBOL_SIZE, y + SYMBOL_SIZE);
+            draw_triangle_lines(v1, v2, v3, 3.0, element_color);
+        }
+
+        if element == Element::Air || element == Element::Water {
+            let line_offset_y: f32 = SYMBOL_SIZE / 2.0;
+            draw_line(
+                x + THRESHOLD_SYMBOL_SPACING,
+                y + line_offset_y,
+                x + THRESHOLD_SYMBOL_SPACING + SYMBOL_SIZE,
+                y + line_offset_y,
+                2.0,
+                element_color,
+            );
+        }
     }
 
-    fn draw_water_symbol(x: f32, y: f32, size: f32) {
-        draw_triangle_lines(
-            Vec2::new(x, y),
-            Vec2::new(x + size / 2.0, y + size),
-            Vec2::new(x + size, y),
-            3.0,
-            BLUE,
-        );
-        let line_offset_y: f32 = size / 3.0;
-        draw_line(x, y + line_offset_y, x + size, y + line_offset_y, 2.0, BLUE);
+    fn render_resources(x: f32, y: f32, resources: &Resources) {
+        let mana_text = format!("Mana: {}", resources.mana);
+        draw_text(&mana_text, x, y, FONT_SIZE, WHITE);
+
+        let thresholds_y: f32 = y + 10.0;
+        let fire_x = x;
+        let fire_y = thresholds_y;
+        Game::render_threshold(fire_x, fire_y, resources.fire_threshold, Element::Fire);
+
+        let air_x = fire_x + SYMBOL_SIZE + THRESHOLD_SYMBOL_SPACING + 5.0;
+        let air_y = thresholds_y;
+        Game::render_threshold(air_x, air_y, resources.air_threshold, Element::Air);
+
+        let earth_x = air_x + SYMBOL_SIZE + THRESHOLD_SYMBOL_SPACING + 5.0;
+        let earth_y = thresholds_y;
+        Game::render_threshold(earth_x, earth_y, resources.earth_threshold, Element::Earth);
+
+        let water_x = earth_x + SYMBOL_SIZE + THRESHOLD_SYMBOL_SPACING + 5.0;
+        let water_y = thresholds_y;
+        Game::render_threshold(water_x, water_y, resources.water_threshold, Element::Water);
     }
 
     async fn render_gui(&self) -> anyhow::Result<()> {
-        const FONT_SIZE: f32 = 24.0;
-        const TEXT_OFFSET_X: f32 = 20.0;
-        const SYMBOL_SIZE: f32 = 20.0;
-        const SYMBOL_SPACING: f32 = 60.0;
-        const BASE_Y: f32 = 30.0;
-
         if self.state.phase == Phase::None {
             return Ok(());
         }
 
-        let thresholds = self
+        const BASE_X: f32 = 20.0;
+        const PLAYER_Y: f32 = SCREEN_HEIGHT - 40.0;
+        let resources = self
             .state
-            .player_thresholds
+            .resources
             .get(&self.player_id)
             .cloned()
-            .unwrap_or(Thresholds::zero());
+            .unwrap_or(Resources::new());
+        Game::render_resources(BASE_X, PLAYER_Y, &resources);
 
-        // Fire: Red upward triangle
-        let fire_x = TEXT_OFFSET_X;
-        let fire_y = BASE_Y;
-        Game::draw_fire_symbol(fire_x, fire_y, SYMBOL_SIZE);
-        draw_text(
-            &thresholds.fire.to_string(),
-            fire_x + SYMBOL_SIZE + 5.0,
-            fire_y + SYMBOL_SIZE,
-            FONT_SIZE,
-            WHITE,
-        );
-
-        // Air: Purple upward triangle with top horizontal line
-        let air_x = fire_x + SYMBOL_SPACING;
-        let air_y = BASE_Y;
-        Game::draw_air_symbol(air_x, air_y, SYMBOL_SIZE);
-        draw_text(
-            &thresholds.air.to_string(),
-            air_x + SYMBOL_SIZE + 5.0,
-            air_y + SYMBOL_SIZE,
-            FONT_SIZE,
-            WHITE,
-        );
-
-        // Earth: Brown downward triangle
-        let earth_x = air_x + SYMBOL_SPACING;
-        let earth_y = BASE_Y;
-        let brown = Color::new(0.6, 0.4, 0.2, 1.0);
-        Game::draw_earth_symbol(earth_x, earth_y, SYMBOL_SIZE);
-        draw_text(
-            &thresholds.earth.to_string(),
-            earth_x + SYMBOL_SIZE + 5.0,
-            earth_y + SYMBOL_SIZE,
-            FONT_SIZE,
-            WHITE,
-        );
-
-        // Water: Blue downward triangle with bottom horizontal line
-        let water_x = earth_x + SYMBOL_SPACING;
-        let water_y = BASE_Y;
-        Game::draw_water_symbol(water_x, water_y, SYMBOL_SIZE);
-        draw_text(
-            &thresholds.water.to_string(),
-            water_x + SYMBOL_SIZE + 5.0,
-            water_y + SYMBOL_SIZE,
-            FONT_SIZE,
-            WHITE,
-        );
-
-        // Opponent info (unchanged)
-        let opponent_id = &self
+        const OPPONENT_Y: f32 = 25.0;
+        let opponent_resources = self
             .state
-            .player_mana
-            .keys()
-            .find(|id| *id != &self.player_id)
-            .unwrap();
-        let opponents_mana_text = format!(
-            "Opponent Mana: {}",
-            self.state.player_mana.get(opponent_id).unwrap_or(&0)
-        );
-        draw_text(&opponents_mana_text, TEXT_OFFSET_X, 90.0, FONT_SIZE, WHITE);
+            .resources
+            .iter()
+            .find(|(player_id, _)| **player_id != self.player_id)
+            .map(|(_, resources)| resources.clone())
+            .unwrap_or(Resources::new());
+        Game::render_resources(BASE_X, OPPONENT_Y, &opponent_resources);
 
         Ok(())
     }

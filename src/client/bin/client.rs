@@ -58,7 +58,7 @@ impl Client {
     }
 
     async fn render(&mut self) -> anyhow::Result<()> {
-        clear_background(RED);
+        clear_background(BLACK);
         let scene = &mut *self.scene.lock().unwrap();
         scene.render().await
     }

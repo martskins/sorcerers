@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::game::State;
+use crate::game::{Resources, State};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Effect {
@@ -11,8 +11,11 @@ impl Effect {
     pub fn apply(&self, state: &mut State) {
         match self {
             Effect::AddMana { player_id, amount } => {
-                let entry = state.player_mana.entry(*player_id).or_insert(0);
-                *entry += *amount as u8;
+                let entry = state
+                    .resources
+                    .entry(*player_id)
+                    .or_insert(Resources::new());
+                entry.mana += *amount as u8;
             }
         }
     }
