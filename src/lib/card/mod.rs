@@ -40,6 +40,18 @@ pub enum Card {
 }
 
 impl Card {
+    pub fn is_site(&self) -> bool {
+        matches!(self, Card::Site(_))
+    }
+
+    pub fn is_avatar(&self) -> bool {
+        matches!(self, Card::Avatar(_))
+    }
+
+    pub fn is_spell(&self) -> bool {
+        matches!(self, Card::Spell(_))
+    }
+
     pub fn get_image(&self) -> String {
         let name = match self {
             Card::Site(site) => site.get_name(),

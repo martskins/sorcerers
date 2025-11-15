@@ -1,9 +1,9 @@
+use macroquad::texture::{Image, Texture2D};
+use sorcerers::card::Card;
 use std::{
     collections::HashMap,
     sync::{OnceLock, RwLock},
 };
-
-use macroquad::texture::Texture2D;
 
 static TEXTURE_CACHE: OnceLock<RwLock<TextureCache>> = OnceLock::new();
 
@@ -23,37 +23,42 @@ impl TextureCache {
         TEXTURE_CACHE.get_or_init(|| RwLock::new(TextureCache::new()));
     }
 
-    pub async fn get_texture(path: &str) -> Texture2D {
+    pub async fn get_card_texture(card: &Card) -> Texture2D {
+        let rotate = card.is_site();
+        TextureCache::get_texture(&card.get_image(), rotate).await
+    }
+
+    pub async fn get_texture(path: &str, rotate: bool) -> Texture2D {
         if let Some(tex) = TEXTURE_CACHE.get().unwrap().read().unwrap().inner.get(path) {
-            tex.clone()
-        } else {
-            let mut cache = TEXTURE_CACHE.get().unwrap().write().unwrap();
-            let new_path = path.to_string();
-            // if path.starts_with("http") {
-            //     println!("Downloading texture from URL: {}", path);
-            //     let img_bytes = reqwest::blocking::get(path).unwrap().bytes().unwrap();
-            //     new_path = format!(
-            //         "./assets/images/cache/{}",
-            //         path.split('/')
-            //             .last()
-            //             .unwrap_or("default_texture.png")
-            //             .split('?')
-            //             .next()
-            //             .unwrap()
-            //     );
-            //     let img = image::load_from_memory(&img_bytes).unwrap();
-            //     image::save_buffer(
-            //         &new_path,
-            //         &img_bytes,
-            //         img.width(),
-            //         img.height(),
-            //         img.color(),
-            //     )
-            //     .unwrap();
-            // }
-            let image = macroquad::texture::load_texture(&new_path).await.unwrap();
-            cache.inner.insert(path.to_string(), image.clone());
-            image
+            return tex.clone();
         }
+
+        let mut cache = TEXTURE_CACHE.get().unwrap().write().unwrap();
+        let new_path = path.to_string();
+        let mut texture = macroquad::texture::load_texture(&new_path).await.unwrap();
+        if rotate {
+            TextureCache::rotate_texture_clockwise(&mut texture);
+        }
+        cache.inner.insert(path.to_string(), texture.clone());
+        texture
+    }
+
+    fn rotate_texture_clockwise(texture: &mut Texture2D) {
+        let image = texture.get_texture_data();
+        let (w, h) = (image.width() as u32, image.height() as u32);
+        let mut rotated = Image::gen_image_color(
+            h.try_into().unwrap(),
+            w.try_into().unwrap(),
+            macroquad::color::WHITE,
+        );
+
+        for y in 0..h {
+            for x in 0..w {
+                let pixel = image.get_pixel(x, y);
+                rotated.set_pixel(h - y - 1, x, pixel);
+            }
+        }
+
+        *texture = Texture2D::from_image(&rotated);
     }
 }

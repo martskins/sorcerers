@@ -241,15 +241,14 @@ impl Game {
         if let Some(card_display) = selected_card {
             const PREVIEW_SCALE: f32 = 2.7;
             let mut dimensions = SPELL_DIMENSIONS * PREVIEW_SCALE;
-            if card_display.card.get_type() == CardType::Site {
+            if card_display.card.is_site() {
                 dimensions = SITE_DIMENSIONS * PREVIEW_SCALE;
             }
 
             let preview_x = 20.0;
             let preview_y = SCREEN_HEIGHT - dimensions.y - 20.0;
-
             draw_texture_ex(
-                &TextureCache::get_texture(&card_display.card.get_image()).await,
+                &TextureCache::get_card_texture(&card_display.card).await,
                 preview_x,
                 preview_y,
                 WHITE,
@@ -271,7 +270,7 @@ impl Game {
             .collect::<Vec<&CardDisplay>>();
         for card in discarded_cards {
             draw_texture_ex(
-                &TextureCache::get_texture(&card.card.get_image()).await,
+                &TextureCache::get_card_texture(&card.card).await,
                 DISCARD_PILE_RECT.x,
                 DISCARD_PILE_RECT.y,
                 WHITE,
@@ -398,7 +397,7 @@ impl Game {
                 continue;
             }
 
-            let img = TextureCache::get_texture(&card_display.card.get_image()).await;
+            let img = TextureCache::get_card_texture(&card_display.card).await;
             draw_texture_ex(
                 &img,
                 card_display.rect.x,
@@ -426,7 +425,7 @@ impl Game {
                 scale = 1.2;
             }
 
-            let img = TextureCache::get_texture(&card_display.card.get_image()).await;
+            let img = TextureCache::get_card_texture(&card_display.card).await;
             draw_texture_ex(
                 &img,
                 card_display.rect.x,
@@ -454,7 +453,7 @@ impl Game {
 
     async fn render_background(&self) {
         draw_texture_ex(
-            &TextureCache::get_texture(REALM_BACKGROUND_IMAGE).await,
+            &TextureCache::get_texture(REALM_BACKGROUND_IMAGE, false).await,
             REALM_RECT.x,
             REALM_RECT.y,
             WHITE,
@@ -467,7 +466,7 @@ impl Game {
 
     async fn render_deck(&self) {
         draw_texture_ex(
-            &TextureCache::get_texture(SPELLBOOK_IMAGE).await,
+            &TextureCache::get_texture(SPELLBOOK_IMAGE, false).await,
             SPELLBOOK_RECT.x,
             SPELLBOOK_RECT.y,
             WHITE,
@@ -478,7 +477,7 @@ impl Game {
         );
 
         draw_texture_ex(
-            &TextureCache::get_texture(ATLASBOOK_IMAGE).await,
+            &TextureCache::get_texture(ATLASBOOK_IMAGE, false).await,
             ATLASBOOK_RECT.x,
             ATLASBOOK_RECT.y,
             WHITE,
@@ -502,7 +501,7 @@ impl Game {
             if let CardZone::Realm(cell_id) = card.get_zone() {
                 let cell_rect = self.cells.iter().find(|c| c.id == *cell_id).unwrap().rect;
                 let mut dimensions = SPELL_DIMENSIONS;
-                if card.get_card_type() == sorcerers::card::CardType::Site {
+                if card.is_site() {
                     dimensions = SITE_DIMENSIONS;
                 }
 
@@ -531,14 +530,14 @@ impl Game {
             .iter()
             .filter(|c| c.get_zone() == &CardZone::Hand)
             .filter(|c| c.get_owner_id() == &self.player_id)
-            .filter(|c| c.get_card_type() == sorcerers::card::CardType::Spell)
+            .filter(|c| c.is_spell())
             .collect();
 
         let sites: Vec<&Card> = cards
             .iter()
             .filter(|c| c.get_zone() == &CardZone::Hand)
             .filter(|c| c.get_owner_id() == &self.player_id)
-            .filter(|c| c.get_card_type() == sorcerers::card::CardType::Site)
+            .filter(|c| c.is_site())
             .collect();
 
         let spell_hand_size = spells.len();
@@ -548,7 +547,6 @@ impl Game {
 
         let mut displays: Vec<CardDisplay> = Vec::new();
 
-        // Fanned spells
         for (idx, card) in spells.iter().enumerate() {
             let dimensions = SPELL_DIMENSIONS;
             let angle = if spell_hand_size > 1 {
@@ -579,7 +577,6 @@ impl Game {
             });
         }
 
-        // Stacked sites to the right of spells
         let site_x = HAND_RECT.x + spell_hand_size as f32 * CARD_OFFSET_X + 40.0;
         for (idx, card) in sites.iter().enumerate() {
             let dimensions = SITE_DIMENSIONS;
