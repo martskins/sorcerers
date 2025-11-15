@@ -83,6 +83,7 @@ impl Game {
         self.render_realm().await;
         self.render_discard_pile().await?;
         self.render_gui().await?;
+        self.render_card_preview().await?;
         Ok(())
     }
 
@@ -227,6 +228,37 @@ impl Game {
             .map(|(_, resources)| resources.clone())
             .unwrap_or(Resources::new());
         Game::render_resources(BASE_X, OPPONENT_Y, &opponent_resources);
+
+        Ok(())
+    }
+
+    async fn render_card_preview(&self) -> anyhow::Result<()> {
+        let selected_card = self
+            .cards
+            .iter()
+            .find(|card_display| card_display.is_hovered);
+
+        if let Some(card_display) = selected_card {
+            const PREVIEW_SCALE: f32 = 2.7;
+            let mut dimensions = SPELL_DIMENSIONS * PREVIEW_SCALE;
+            if card_display.card.get_type() == CardType::Site {
+                dimensions = SITE_DIMENSIONS * PREVIEW_SCALE;
+            }
+
+            let preview_x = 20.0;
+            let preview_y = SCREEN_HEIGHT - dimensions.y - 20.0;
+
+            draw_texture_ex(
+                &TextureCache::get_texture(&card_display.card.get_image()).await,
+                preview_x,
+                preview_y,
+                WHITE,
+                DrawTextureParams {
+                    dest_size: Some(dimensions),
+                    ..Default::default()
+                },
+            );
+        }
 
         Ok(())
     }
