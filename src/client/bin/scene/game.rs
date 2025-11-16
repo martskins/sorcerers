@@ -229,6 +229,20 @@ impl Game {
             .unwrap_or(Resources::new());
         Game::render_resources(BASE_X, OPPONENT_Y, &opponent_resources);
 
+        let turn_label = if self.state.is_players_turn(&self.player_id) {
+            "Your Turn"
+        } else {
+            "Opponent's Turn"
+        };
+
+        draw_text(
+            turn_label,
+            SCREEN_WIDTH / 2.0 - 50.0,
+            30.0,
+            FONT_SIZE,
+            WHITE,
+        );
+
         Ok(())
     }
 

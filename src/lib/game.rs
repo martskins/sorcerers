@@ -68,6 +68,10 @@ impl State {
     pub fn add_effect(&mut self, effect: Effect) {
         self.effects_queue.push_back(effect);
     }
+
+    pub fn is_players_turn(&self, player_id: &uuid::Uuid) -> bool {
+        &self.current_player == player_id
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
