@@ -1,10 +1,10 @@
 use macroquad::{
-    color::{Color, BLUE, GREEN, RED, WHITE},
-    input::{is_mouse_button_released, mouse_position, MouseButton},
+    color::{BLUE, Color, GREEN, RED, WHITE},
+    input::{MouseButton, is_mouse_button_released, mouse_position},
     math::{Rect, Vec2},
     shapes::{draw_line, draw_rectangle_lines, draw_triangle_lines},
     text::draw_text,
-    texture::{draw_texture_ex, DrawTextureParams},
+    texture::{DrawTextureParams, draw_texture_ex},
 };
 use sorcerers::{
     card::{Card, CardType, CardZone},
@@ -44,10 +44,7 @@ impl Game {
                     REALM_RECT.w / 5.0,
                     REALM_RECT.h / 4.0,
                 );
-                CellDisplay {
-                    id: i as u8 + 1,
-                    rect,
-                }
+                CellDisplay { id: i as u8 + 1, rect }
             })
             .collect();
         Self {
@@ -152,10 +149,7 @@ impl Game {
 
         if element == Element::Earth || element == Element::Water {
             let v1 = Vec2::new(x + THRESHOLD_SYMBOL_SPACING, y);
-            let v2 = Vec2::new(
-                x + THRESHOLD_SYMBOL_SPACING + SYMBOL_SIZE / 2.0,
-                y + SYMBOL_SIZE,
-            );
+            let v2 = Vec2::new(x + THRESHOLD_SYMBOL_SPACING + SYMBOL_SIZE / 2.0, y + SYMBOL_SIZE);
             let v3 = Vec2::new(x + THRESHOLD_SYMBOL_SPACING + SYMBOL_SIZE, y);
             draw_triangle_lines(v1, v2, v3, 3.0, element_color);
         } else {
@@ -231,22 +225,13 @@ impl Game {
             "Opponent's Turn"
         };
 
-        draw_text(
-            turn_label,
-            SCREEN_WIDTH / 2.0 - 50.0,
-            30.0,
-            FONT_SIZE,
-            WHITE,
-        );
+        draw_text(turn_label, SCREEN_WIDTH / 2.0 - 50.0, 30.0, FONT_SIZE, WHITE);
 
         Ok(())
     }
 
     async fn render_card_preview(&self) -> anyhow::Result<()> {
-        let selected_card = self
-            .cards
-            .iter()
-            .find(|card_display| card_display.is_hovered);
+        let selected_card = self.cards.iter().find(|card_display| card_display.is_hovered);
 
         if let Some(card_display) = selected_card {
             const PREVIEW_SCALE: f32 = 2.7;
@@ -355,7 +340,11 @@ impl Game {
     }
 
     fn handle_cell_selection(&mut self, mouse_position: Vec2) {
-        if let Phase::SelectingCell { cell_ids, .. } = &self.state.phase {
+        if let Phase::SelectingCell { cell_ids, player_id } = &self.state.phase {
+            if player_id != &self.player_id {
+                return;
+            }
+
             for (idx, cell) in self.cells.iter().enumerate() {
                 if !cell_ids.contains(&cell.id) {
                     continue;
@@ -426,9 +415,7 @@ impl Game {
                 card_display.rect.y,
                 WHITE,
                 DrawTextureParams {
-                    dest_size: Some(
-                        Vec2::new(card_display.rect.w, card_display.rect.h) * CARD_IN_PLAY_SCALE,
-                    ),
+                    dest_size: Some(Vec2::new(card_display.rect.w, card_display.rect.h) * CARD_IN_PLAY_SCALE),
                     // rotation,
                     ..Default::default()
                 },

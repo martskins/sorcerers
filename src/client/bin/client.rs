@@ -1,5 +1,5 @@
-use crate::scene::menu::Menu;
 use crate::scene::Scene;
+use crate::scene::menu::Menu;
 use macroquad::prelude::*;
 use sorcerers::networking;
 use std::sync::{Arc, Mutex};
@@ -30,12 +30,7 @@ impl Client {
                     let msg = receiver.recv().unwrap();
                     match msg {
                         _ => {
-                            scene
-                                .lock()
-                                .unwrap()
-                                .process_message(msg.clone())
-                                .await
-                                .unwrap();
+                            scene.lock().unwrap().process_message(msg.clone()).await.unwrap();
                         }
                     }
                 }

@@ -16,10 +16,7 @@ impl Effect {
     pub fn apply(&self, state: &mut State) {
         match self {
             Effect::AddMana { player_id, amount } => {
-                let entry = state
-                    .resources
-                    .entry(*player_id)
-                    .or_insert(Resources::new());
+                let entry = state.resources.entry(*player_id).or_insert(Resources::new());
                 entry.mana += *amount as u8;
             }
             Effect::CardMovedToCell { card_id, cell_id } => {

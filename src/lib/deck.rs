@@ -1,7 +1,7 @@
+use crate::card::CardBase;
 use crate::card::site::Site;
 use crate::card::spell::Spell;
-use crate::card::CardBase;
-use crate::card::{avatar::Avatar, CardZone};
+use crate::card::{CardZone, avatar::Avatar};
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 

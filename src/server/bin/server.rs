@@ -30,11 +30,7 @@ impl Server {
         Ok(())
     }
 
-    pub async fn process_message(
-        &mut self,
-        message: &[u8],
-        addr: SocketAddr,
-    ) -> anyhow::Result<()> {
+    pub async fn process_message(&mut self, message: &[u8], addr: SocketAddr) -> anyhow::Result<()> {
         let msg = rmp_serde::from_slice::<Message>(message).unwrap();
         match msg {
             Message::Connect => {
@@ -53,8 +49,7 @@ impl Server {
                             game.draw_initial_six(player).await?;
                         }
 
-                        game.broadcast(&Message::MatchCreated { player1, player2 })
-                            .await?;
+                        game.broadcast(&Message::MatchCreated { player1, player2 }).await?;
                     }
                     None => {}
                 }
@@ -92,20 +87,10 @@ impl Server {
     fn create_game(&mut self, player1: &uuid::Uuid, player2: &uuid::Uuid) -> &mut Game {
         let addr1 = self.sockets.remove(player1).unwrap().clone();
         let addr2 = self.sockets.remove(player2).unwrap().clone();
-        let mut game = Game::new(
-            player1.clone(),
-            player2.clone(),
-            self.socket.clone(),
-            addr1,
-            addr2,
-        );
+        let mut game = Game::new(player1.clone(), player2.clone(), self.socket.clone(), addr1, addr2);
         game.state.phase = Phase::TurnStartPhase;
-        game.state
-            .resources
-            .insert(player1.clone(), Resources::new());
-        game.state
-            .resources
-            .insert(player2.clone(), Resources::new());
+        game.state.resources.insert(player1.clone(), Resources::new());
+        game.state.resources.insert(player2.clone(), Resources::new());
 
         let game_id = game.id;
         self.player_to_game.insert(player1.clone(), game.id);

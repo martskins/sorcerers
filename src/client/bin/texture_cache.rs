@@ -14,9 +14,7 @@ pub struct TextureCache {
 
 impl TextureCache {
     fn new() -> Self {
-        Self {
-            inner: HashMap::new(),
-        }
+        Self { inner: HashMap::new() }
     }
 
     pub fn init() {
@@ -46,11 +44,7 @@ impl TextureCache {
     fn rotate_texture_clockwise(texture: &mut Texture2D) {
         let image = texture.get_texture_data();
         let (w, h) = (image.width() as u32, image.height() as u32);
-        let mut rotated = Image::gen_image_color(
-            h.try_into().unwrap(),
-            w.try_into().unwrap(),
-            macroquad::color::WHITE,
-        );
+        let mut rotated = Image::gen_image_color(h.try_into().unwrap(), w.try_into().unwrap(), macroquad::color::WHITE);
 
         for y in 0..h {
             for x in 0..w {

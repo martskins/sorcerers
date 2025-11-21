@@ -4,12 +4,7 @@ pub const CARD_OFFSET_X: f32 = 50.0;
 pub const SCREEN_WIDTH: f32 = 1024.0;
 pub const SCREEN_HEIGHT: f32 = 768.0;
 
-pub const HAND_RECT: Rect = Rect::new(
-    (SCREEN_WIDTH / 2.0) - 150.0,
-    SCREEN_HEIGHT - 200.0,
-    300.0,
-    200.0,
-);
+pub const HAND_RECT: Rect = Rect::new((SCREEN_WIDTH / 2.0) - 150.0, SCREEN_HEIGHT - 200.0, 300.0, 200.0);
 
 pub const SCALE: f32 = 3.5;
 pub const CARD_WIDTH: f32 = 384.0 / SCALE;
@@ -42,9 +37,4 @@ pub const REALM_BACKGROUND_IMAGE: &str = "assets/images/Realm.jpg";
 pub const SPELLBOOK_IMAGE: &str = "assets/images/cards/Spell Back.webp";
 pub const ATLASBOOK_IMAGE: &str = "assets/images/cards/Site Back.webp";
 
-pub const REALM_RECT: Rect = Rect::new(
-    100.0,
-    0.0,
-    SCREEN_WIDTH - 200.0,
-    SCREEN_HEIGHT - HAND_RECT.h,
-);
+pub const REALM_RECT: Rect = Rect::new(100.0, 0.0, SCREEN_WIDTH - 200.0, SCREEN_HEIGHT - HAND_RECT.h);

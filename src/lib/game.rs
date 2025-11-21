@@ -1,5 +1,5 @@
 use crate::{
-    card::{avatar::Avatar, Card, CardBase, CardType, CardZone},
+    card::{Card, CardBase, CardType, CardZone, avatar::Avatar},
     deck::Deck,
     effect::{Action, Effect},
     networking::Message,
@@ -20,10 +20,7 @@ pub enum Phase {
     WaitingForCellSelectionPhase,
     MainPhase,
     EndPhase,
-    SelectingCell {
-        player_id: uuid::Uuid,
-        cell_ids: Vec<u8>,
-    },
+    SelectingCell { player_id: uuid::Uuid, cell_ids: Vec<u8> },
     WaitingForPlay,
 }
 
@@ -115,9 +112,7 @@ impl State {
 
     pub fn has_played_site(&self, owner_id: &uuid::Uuid) -> bool {
         self.cards.iter().any(|card| {
-            card.get_owner_id() == owner_id
-                && card.is_site()
-                && matches!(card.get_zone(), CardZone::Realm(_))
+            card.get_owner_id() == owner_id && card.is_site() && matches!(card.get_zone(), CardZone::Realm(_))
         })
     }
 
@@ -234,11 +229,7 @@ impl Game {
         for player_id in &self.players {
             let deck = self.decks.get_mut(&player_id).unwrap();
             let mut avatar_card = Card::Avatar(deck.avatar.clone());
-            let cell_id = if self.state.is_player_one(player_id) {
-                3
-            } else {
-                18
-            };
+            let cell_id = if self.state.is_player_one(player_id) { 3 } else { 18 };
             avatar_card.set_zone(CardZone::Realm(cell_id));
             self.state.cards.push(avatar_card);
         }
@@ -262,11 +253,7 @@ impl Game {
         Ok(())
     }
 
-    pub async fn send_to_player(
-        &self,
-        message: &Message,
-        player_id: &uuid::Uuid,
-    ) -> anyhow::Result<()> {
+    pub async fn send_to_player(&self, message: &Message, player_id: &uuid::Uuid) -> anyhow::Result<()> {
         let addr = self.addrs.get(player_id).unwrap();
         self.send_message(message, addr).await
     }
@@ -282,26 +269,16 @@ impl Game {
         let deck = self.decks.get_mut(player_id).unwrap();
         deck.shuffle();
 
-        self.draw_card_for_player(&player_id, CardType::Spell)
-            .await?;
-        self.draw_card_for_player(&player_id, CardType::Spell)
-            .await?;
-        self.draw_card_for_player(&player_id, CardType::Spell)
-            .await?;
-        self.draw_card_for_player(&player_id, CardType::Site)
-            .await?;
-        self.draw_card_for_player(&player_id, CardType::Site)
-            .await?;
-        self.draw_card_for_player(&player_id, CardType::Site)
-            .await?;
+        self.draw_card_for_player(&player_id, CardType::Spell).await?;
+        self.draw_card_for_player(&player_id, CardType::Spell).await?;
+        self.draw_card_for_player(&player_id, CardType::Spell).await?;
+        self.draw_card_for_player(&player_id, CardType::Site).await?;
+        self.draw_card_for_player(&player_id, CardType::Site).await?;
+        self.draw_card_for_player(&player_id, CardType::Site).await?;
         Ok(())
     }
 
-    async fn draw_card_for_player(
-        &mut self,
-        player_id: &uuid::Uuid,
-        card_type: CardType,
-    ) -> anyhow::Result<()> {
+    async fn draw_card_for_player(&mut self, player_id: &uuid::Uuid, card_type: CardType) -> anyhow::Result<()> {
         let deck = self.decks.get_mut(&player_id).unwrap();
 
         let card = match card_type {
@@ -322,11 +299,7 @@ impl Game {
         Ok(())
     }
 
-    pub async fn card_selected(
-        &mut self,
-        player_id: &uuid::Uuid,
-        card_id: &uuid::Uuid,
-    ) -> anyhow::Result<()> {
+    pub async fn card_selected(&mut self, player_id: &uuid::Uuid, card_id: &uuid::Uuid) -> anyhow::Result<()> {
         let state_clone = self.state.clone();
         let card = self
             .state
