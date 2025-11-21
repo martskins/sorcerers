@@ -59,6 +59,15 @@ impl Server {
                     None => {}
                 }
             }
+            Message::CardPlayed {
+                card_id,
+                player_id,
+                cell_id,
+            } => {
+                let game_id = self.player_to_game.get(&player_id).unwrap();
+                let game = self.active_games.get_mut(game_id).unwrap();
+                game.card_played(&player_id, &card_id, cell_id).await?;
+            }
             Message::CardSelected { card_id, player_id } => {
                 let game_id = self.player_to_game.get(&player_id).unwrap();
                 let game = self.active_games.get_mut(game_id).unwrap();

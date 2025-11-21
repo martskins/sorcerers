@@ -20,6 +20,8 @@ pub enum Phase {
     WaitingForCellSelectionPhase,
     MainPhase,
     EndPhase,
+    SelectingCell { player_id: uuid::Uuid },
+    WaitingForPlay,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -338,6 +340,9 @@ impl Game {
                         cell_ids: cell_ids.clone(),
                     };
                     self.send_to_player(&message, player_id).await?;
+                    self.state.phase = Phase::SelectingCell {
+                        player_id: player_id.clone(),
+                    };
                 }
             }
         }
@@ -364,6 +369,9 @@ impl Game {
             cell_id,
         });
         self.state.effects_queue.extend(card.genesis());
+        self.state.effects_queue.push_back(Effect::PhaseChanged {
+            new_phase: Phase::WaitingForPlay,
+        });
 
         self.process_effects();
         self.send_sync().await

@@ -2,13 +2,14 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     card::CardZone,
-    game::{Resources, State},
+    game::{Phase, Resources, State},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Effect {
     AddMana { player_id: uuid::Uuid, amount: u32 },
     CardMovedToCell { card_id: uuid::Uuid, cell_id: u8 },
+    PhaseChanged { new_phase: Phase },
 }
 
 impl Effect {
@@ -26,6 +27,9 @@ impl Effect {
                 if let Some(card) = card {
                     card.set_zone(CardZone::Realm(*cell_id));
                 }
+            }
+            Effect::PhaseChanged { new_phase } => {
+                state.phase = new_phase.clone();
             }
         }
     }

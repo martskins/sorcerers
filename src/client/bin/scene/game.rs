@@ -19,12 +19,6 @@ use crate::{
     texture_cache::TextureCache,
 };
 
-#[derive(Debug, PartialEq)]
-pub enum Status {
-    InProgress,
-    WaitingForCellSelection,
-}
-
 const FONT_SIZE: f32 = 24.0;
 const THRESHOLD_SYMBOL_SPACING: f32 = 18.0;
 const SYMBOL_SIZE: f32 = 20.0;
@@ -34,7 +28,6 @@ pub struct Game {
     pub player_id: uuid::Uuid,
     pub cards: Vec<CardDisplay>,
     pub cells: Vec<CellDisplay>,
-    pub status: Status,
     pub client: networking::client::Client,
     pub state: State,
 }
@@ -62,7 +55,6 @@ impl Game {
             player_id,
             cards: vec![],
             cells,
-            status: Status::InProgress,
             client,
             state: State::new(vec![]),
         }
@@ -143,6 +135,12 @@ impl Game {
                 Ok(())
             }
             _ => Ok(()),
+        }
+    }
+
+    fn clear_cell_highlights(&mut self) {
+        for cell_display in &mut self.cells {
+            cell_display.is_highlighted = false;
         }
     }
 
@@ -354,17 +352,14 @@ impl Game {
             };
         }
 
-        self.status = if card_selected.is_some() {
+        if card_selected.is_some() {
             self.client
                 .send(Message::CardSelected {
                     card_id: card_selected.unwrap(),
                     player_id: self.player_id,
                 })
                 .unwrap();
-            Status::WaitingForCellSelection
-        } else {
-            Status::InProgress
-        };
+        }
     }
 
     fn get_selected_card_id(&self) -> Option<&uuid::Uuid> {
@@ -377,28 +372,29 @@ impl Game {
     }
 
     fn handle_cell_selection(&mut self, mouse_position: Vec2) {
-        if self.status != Status::WaitingForCellSelection {
+        if !matches!(self.state.phase, Phase::SelectingCell { .. }) {
             return;
         }
 
-        let mut selected_cell_index = None;
+        let mut played_card = false;
         for (idx, cell) in self.cells.iter().enumerate() {
             if cell.rect.contains(mouse_position.into()) {
-                selected_cell_index = Some(idx);
+                let cell_id = self.cells[idx].id;
+                if is_mouse_button_released(MouseButton::Left) {
+                    self.client
+                        .send(Message::CardPlayed {
+                            player_id: self.player_id,
+                            card_id: self.get_selected_card_id().cloned().unwrap(),
+                            cell_id,
+                        })
+                        .unwrap();
+                    played_card = true;
+                }
             }
         }
 
-        if let Some(cell_idx) = selected_cell_index {
-            let cell_id = self.cells[cell_idx].id;
-            if is_mouse_button_released(MouseButton::Left) {
-                self.status = Status::InProgress;
-                self.client
-                    .send(Message::CardSelected {
-                        player_id: self.player_id,
-                        card_id: self.get_selected_card_id().cloned().unwrap(),
-                    })
-                    .unwrap();
-            }
+        if played_card {
+            self.clear_cell_highlights();
         }
     }
 
