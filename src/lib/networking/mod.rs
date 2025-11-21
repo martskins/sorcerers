@@ -67,10 +67,6 @@ pub enum Message {
         card_id: uuid::Uuid,
         cell_id: u8,
     },
-    SelectCell {
-        player_id: uuid::Uuid,
-        cell_ids: Vec<u8>,
-    },
     Disconnect,
     EndTurn,
 }

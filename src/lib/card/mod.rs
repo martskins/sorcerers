@@ -126,7 +126,7 @@ impl Card {
         }
     }
 
-    pub fn on_cast(&self, state: &State) -> Vec<Action> {
+    pub fn on_cast(&self, _state: &State) -> Vec<Action> {
         match self {
             Card::Spell(_) => vec![],
             Card::Site(_) => vec![],

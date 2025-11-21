@@ -14,5 +14,4 @@ pub struct CardDisplay {
 pub struct CellDisplay {
     pub id: u8,
     pub rect: Rect,
-    pub is_highlighted: bool,
 }

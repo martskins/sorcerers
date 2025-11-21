@@ -20,7 +20,10 @@ pub enum Phase {
     WaitingForCellSelectionPhase,
     MainPhase,
     EndPhase,
-    SelectingCell { player_id: uuid::Uuid },
+    SelectingCell {
+        player_id: uuid::Uuid,
+        cell_ids: Vec<u8>,
+    },
     WaitingForPlay,
 }
 
@@ -335,13 +338,14 @@ impl Game {
         for action in &actions {
             match action {
                 Action::SelectCell { cell_ids } => {
-                    let message = Message::SelectCell {
-                        player_id: player_id.clone(),
-                        cell_ids: cell_ids.clone(),
-                    };
-                    self.send_to_player(&message, player_id).await?;
+                    // let message = Message::SelectCell {
+                    //     player_id: player_id.clone(),
+                    //     cell_ids: cell_ids.clone(),
+                    // };
+                    // self.send_to_player(&message, player_id).await?;
                     self.state.phase = Phase::SelectingCell {
                         player_id: player_id.clone(),
+                        cell_ids: cell_ids.clone(),
                     };
                 }
             }

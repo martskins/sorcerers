@@ -47,7 +47,6 @@ impl Game {
                 CellDisplay {
                     id: i as u8 + 1,
                     rect,
-                    is_highlighted: false,
                 }
             })
             .collect();
@@ -111,14 +110,14 @@ impl Game {
 
     pub async fn process_message(&mut self, message: networking::Message) -> anyhow::Result<()> {
         match message {
-            Message::SelectCell {
-                player_id,
-                cell_ids,
-            } => {
-                self.highlight_cells(&cell_ids);
-                Ok(())
-            }
-            Message::MatchCreated { player1, .. } => {
+            // Message::SelectCell {
+            //     player_id,
+            //     cell_ids,
+            // } => {
+            //     self.highlight_cells(&cell_ids);
+            //     Ok(())
+            // }
+            Message::MatchCreated { .. } => {
                 if !self.state.is_player_one(&self.player_id) {
                     for cell in &mut self.cells {
                         let new_id: i8 = cell.id as i8 - 21;
@@ -135,22 +134,6 @@ impl Game {
                 Ok(())
             }
             _ => Ok(()),
-        }
-    }
-
-    fn clear_cell_highlights(&mut self) {
-        for cell_display in &mut self.cells {
-            cell_display.is_highlighted = false;
-        }
-    }
-
-    fn highlight_cells(&mut self, cell_ids: &[u8]) {
-        for cell_display in &mut self.cells {
-            if cell_ids.contains(&cell_display.id) {
-                cell_display.is_highlighted = true;
-            } else {
-                cell_display.is_highlighted = false;
-            }
         }
     }
 
@@ -376,7 +359,6 @@ impl Game {
             return;
         }
 
-        let mut played_card = false;
         for (idx, cell) in self.cells.iter().enumerate() {
             if cell.rect.contains(mouse_position.into()) {
                 let cell_id = self.cells[idx].id;
@@ -388,13 +370,8 @@ impl Game {
                             cell_id,
                         })
                         .unwrap();
-                    played_card = true;
                 }
             }
-        }
-
-        if played_card {
-            self.clear_cell_highlights();
         }
     }
 
@@ -419,15 +396,17 @@ impl Game {
                 WHITE,
             );
 
-            if cell_display.is_highlighted {
-                draw_rectangle_lines(
-                    cell_display.rect.x,
-                    cell_display.rect.y,
-                    cell_display.rect.w,
-                    cell_display.rect.h,
-                    5.0,
-                    GREEN,
-                );
+            if let Phase::SelectingCell { cell_ids, .. } = &self.state.phase {
+                if cell_ids.contains(&cell_display.id) {
+                    draw_rectangle_lines(
+                        cell_display.rect.x,
+                        cell_display.rect.y,
+                        cell_display.rect.w,
+                        cell_display.rect.h,
+                        5.0,
+                        GREEN,
+                    );
+                }
             }
         }
     }
