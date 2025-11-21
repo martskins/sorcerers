@@ -355,21 +355,23 @@ impl Game {
     }
 
     fn handle_cell_selection(&mut self, mouse_position: Vec2) {
-        if !matches!(self.state.phase, Phase::SelectingCell { .. }) {
-            return;
-        }
+        if let Phase::SelectingCell { cell_ids, .. } = &self.state.phase {
+            for (idx, cell) in self.cells.iter().enumerate() {
+                if !cell_ids.contains(&cell.id) {
+                    continue;
+                }
 
-        for (idx, cell) in self.cells.iter().enumerate() {
-            if cell.rect.contains(mouse_position.into()) {
-                let cell_id = self.cells[idx].id;
-                if is_mouse_button_released(MouseButton::Left) {
-                    self.client
-                        .send(Message::CardPlayed {
-                            player_id: self.player_id,
-                            card_id: self.get_selected_card_id().cloned().unwrap(),
-                            cell_id,
-                        })
-                        .unwrap();
+                if cell.rect.contains(mouse_position.into()) {
+                    let cell_id = self.cells[idx].id;
+                    if is_mouse_button_released(MouseButton::Left) {
+                        self.client
+                            .send(Message::CardPlayed {
+                                player_id: self.player_id,
+                                card_id: self.get_selected_card_id().cloned().unwrap(),
+                                cell_id,
+                            })
+                            .unwrap();
+                    }
                 }
             }
         }
