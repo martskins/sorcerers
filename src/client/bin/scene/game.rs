@@ -1,10 +1,11 @@
 use macroquad::{
-    color::{BLUE, Color, GREEN, RED, WHITE},
-    input::{MouseButton, is_mouse_button_released, mouse_position},
+    color::{Color, BLUE, GREEN, RED, WHITE},
+    input::{is_mouse_button_released, mouse_position, MouseButton},
     math::{Rect, Vec2},
     shapes::{draw_line, draw_rectangle_lines, draw_triangle_lines},
     text::draw_text,
-    texture::{DrawTextureParams, draw_texture_ex},
+    texture::{draw_texture_ex, DrawTextureParams},
+    ui,
 };
 use sorcerers::{
     card::{Card, CardType, CardZone},
@@ -107,13 +108,6 @@ impl Game {
 
     pub async fn process_message(&mut self, message: networking::Message) -> anyhow::Result<()> {
         match message {
-            // Message::SelectCell {
-            //     player_id,
-            //     cell_ids,
-            // } => {
-            //     self.highlight_cells(&cell_ids);
-            //     Ok(())
-            // }
             Message::MatchCreated { .. } => {
                 if !self.state.is_player_one(&self.player_id) {
                     for cell in &mut self.cells {
@@ -124,7 +118,7 @@ impl Game {
 
                 Ok(())
             }
-            Message::Sync { state } => {
+            Message::Sync { state, .. } => {
                 self.state = state.clone();
                 self.update_cards_in_hand(&state.cards)?;
                 self.update_cards_in_realm(&state.cards).await?;
@@ -194,7 +188,7 @@ impl Game {
         Game::render_threshold(water_x, water_y, resources.water_threshold, Element::Water);
     }
 
-    async fn render_gui(&self) -> anyhow::Result<()> {
+    async fn render_gui(&mut self) -> anyhow::Result<()> {
         if self.state.phase == Phase::None {
             return Ok(());
         }
@@ -226,6 +220,15 @@ impl Game {
         };
 
         draw_text(turn_label, SCREEN_WIDTH / 2.0 - 50.0, 30.0, FONT_SIZE, WHITE);
+
+        let is_in_turn = self.state.current_player == self.player_id;
+        if is_in_turn {
+            if ui::root_ui().button(Vec2::new(SCREEN_WIDTH - 100.0, SCREEN_HEIGHT - 40.0), "End Turn") {
+                self.client.send(Message::EndTurn {
+                    player_id: self.player_id.clone(),
+                })?;
+            }
+        }
 
         Ok(())
     }
@@ -287,46 +290,52 @@ impl Game {
     }
 
     fn handle_card_selection(&mut self, mouse_position: Vec2) {
-        let mut hovered_card_index = None;
-        for (idx, card_display) in self.cards.iter().enumerate() {
-            if card_display.card.get_zone() != &CardZone::Hand {
-                continue;
-            }
-
-            if card_display.rect.contains(mouse_position.into()) {
-                hovered_card_index = Some(idx);
-            };
-        }
-
-        for card in &mut self.cards_in_hand_mut() {
-            card.is_hovered = false;
-        }
-
-        if let Some(idx) = hovered_card_index {
-            self.cards_in_hand_mut().get_mut(idx).unwrap().is_hovered = true;
-        }
-
-        let mut card_selected = None;
-        for card_display in self.cards_in_hand_mut() {
-            if card_display.card.get_zone() != &CardZone::Hand {
-                continue;
-            }
-
-            if card_display.is_hovered && is_mouse_button_released(MouseButton::Left) {
-                card_display.is_selected = !card_display.is_selected;
-                if card_display.is_selected {
-                    card_selected = Some(card_display.card.get_id().clone());
+        if let Phase::WaitingForPlay { player_id } = self.state.phase {
+            let mut hovered_card_index = None;
+            for (idx, card_display) in self.cards.iter().enumerate() {
+                if card_display.card.get_zone() != &CardZone::Hand {
+                    continue;
                 }
-            };
-        }
 
-        if card_selected.is_some() {
-            self.client
-                .send(Message::CardSelected {
-                    card_id: card_selected.unwrap(),
-                    player_id: self.player_id,
-                })
-                .unwrap();
+                if card_display.rect.contains(mouse_position.into()) {
+                    hovered_card_index = Some(idx);
+                };
+            }
+
+            for card in &mut self.cards_in_hand_mut() {
+                card.is_hovered = false;
+            }
+
+            if let Some(idx) = hovered_card_index {
+                self.cards_in_hand_mut().get_mut(idx).unwrap().is_hovered = true;
+            }
+
+            if player_id != self.player_id {
+                return;
+            }
+
+            let mut card_selected = None;
+            for card_display in self.cards_in_hand_mut() {
+                if card_display.card.get_zone() != &CardZone::Hand {
+                    continue;
+                }
+
+                if card_display.is_hovered && is_mouse_button_released(MouseButton::Left) {
+                    card_display.is_selected = !card_display.is_selected;
+                    if card_display.is_selected {
+                        card_selected = Some(card_display.card.get_id().clone());
+                    }
+                };
+            }
+
+            if card_selected.is_some() {
+                self.client
+                    .send(Message::CardSelected {
+                        card_id: card_selected.unwrap(),
+                        player_id: self.player_id,
+                    })
+                    .unwrap();
+            }
         }
     }
 
@@ -387,7 +396,11 @@ impl Game {
                 WHITE,
             );
 
-            if let Phase::SelectingCell { cell_ids, .. } = &self.state.phase {
+            if let Phase::SelectingCell { cell_ids, player_id } = &self.state.phase {
+                if &self.player_id != player_id {
+                    continue;
+                }
+
                 if cell_ids.contains(&cell_display.id) {
                     draw_rectangle_lines(
                         cell_display.rect.x,

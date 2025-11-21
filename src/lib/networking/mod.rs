@@ -67,6 +67,10 @@ pub enum Message {
         card_id: uuid::Uuid,
         cell_id: u8,
     },
-    Disconnect,
-    EndTurn,
+    Disconnect {
+        player_id: uuid::Uuid,
+    },
+    EndTurn {
+        player_id: uuid::Uuid,
+    },
 }

@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardType, CardZone, avatar::Avatar},
+    card::{avatar::Avatar, Card, CardBase, CardType, CardZone},
     deck::Deck,
     effect::{Action, Effect},
     networking::Message,
@@ -15,13 +15,12 @@ use tokio::net::UdpSocket;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Phase {
     None,
-    TurnStartPhase,
     WaitingForCardDrawPhase,
     WaitingForCellSelectionPhase,
     MainPhase,
     EndPhase,
     SelectingCell { player_id: uuid::Uuid, cell_ids: Vec<u8> },
-    WaitingForPlay,
+    WaitingForPlay { player_id: uuid::Uuid },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -48,7 +47,7 @@ impl Resources {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct State {
     pub phase: Phase,
-    pub turn_count: u32,
+    pub turns_taken: u32,
     pub players: Vec<uuid::Uuid>,
     pub current_player: uuid::Uuid,
     pub next_player: uuid::Uuid,
@@ -62,7 +61,7 @@ impl State {
     pub fn new(players: Vec<uuid::Uuid>) -> Self {
         State {
             phase: Phase::None,
-            turn_count: 0,
+            turns_taken: 0,
             current_player: uuid::Uuid::nil(),
             next_player: uuid::Uuid::nil(),
             players,
@@ -299,6 +298,29 @@ impl Game {
         Ok(())
     }
 
+    pub async fn end_turn(&mut self, player_id: &uuid::Uuid) -> anyhow::Result<()> {
+        assert!(self.state.is_players_turn(player_id));
+
+        self.state.current_player = self
+            .players
+            .iter()
+            .cycle()
+            .skip(self.state.turns_taken as usize)
+            .next()
+            .unwrap()
+            .clone();
+        self.state.turns_taken += 1;
+        self.state.effects_queue.push_back(Effect::PhaseChanged {
+            new_phase: Phase::WaitingForPlay {
+                player_id: self.state.current_player.clone(),
+            },
+        });
+
+        self.process_effects();
+        self.send_sync().await?;
+        Ok(())
+    }
+
     pub async fn card_selected(&mut self, player_id: &uuid::Uuid, card_id: &uuid::Uuid) -> anyhow::Result<()> {
         let state_clone = self.state.clone();
         let card = self
@@ -347,7 +369,9 @@ impl Game {
         });
         self.state.effects_queue.extend(card.genesis());
         self.state.effects_queue.push_back(Effect::PhaseChanged {
-            new_phase: Phase::WaitingForPlay,
+            new_phase: Phase::WaitingForPlay {
+                player_id: player_id.clone(),
+            },
         });
 
         self.process_effects();

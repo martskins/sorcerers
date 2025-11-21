@@ -68,6 +68,11 @@ impl Server {
                 let game = self.active_games.get_mut(game_id).unwrap();
                 game.card_selected(&player_id, &card_id).await?;
             }
+            Message::EndTurn { player_id } => {
+                let game_id = self.player_to_game.get(&player_id).unwrap();
+                let game = self.active_games.get_mut(game_id).unwrap();
+                game.end_turn(&player_id).await?;
+            }
             // Message::DrawCard {
             //     card_type,
             //     player_id,
@@ -88,7 +93,10 @@ impl Server {
         let addr1 = self.sockets.remove(player1).unwrap().clone();
         let addr2 = self.sockets.remove(player2).unwrap().clone();
         let mut game = Game::new(player1.clone(), player2.clone(), self.socket.clone(), addr1, addr2);
-        game.state.phase = Phase::TurnStartPhase;
+        game.state.current_player = player1.clone();
+        game.state.phase = Phase::WaitingForPlay {
+            player_id: player1.clone(),
+        };
         game.state.resources.insert(player1.clone(), Resources::new());
         game.state.resources.insert(player2.clone(), Resources::new());
 
