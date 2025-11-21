@@ -4,7 +4,8 @@ pub mod spell;
 
 use crate::{
     card::{avatar::Avatar, site::Site, spell::Spell},
-    effect::Effect,
+    effect::{Action, Effect},
+    game::State,
 };
 use serde::{Deserialize, Serialize};
 
@@ -114,6 +115,22 @@ impl Card {
             Card::Spell(card) => card.genesis(),
             Card::Site(card) => card.genesis(),
             Card::Avatar(_card) => vec![],
+        }
+    }
+
+    pub fn on_select(&self, state: &State) -> Vec<Action> {
+        match self {
+            Card::Spell(_) => vec![],
+            Card::Site(card) => card.on_select(state),
+            Card::Avatar(_) => vec![],
+        }
+    }
+
+    pub fn on_cast(&self, state: &State) -> Vec<Action> {
+        match self {
+            Card::Spell(_) => vec![],
+            Card::Site(_) => vec![],
+            Card::Avatar(_) => vec![],
         }
     }
 }

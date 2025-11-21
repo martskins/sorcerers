@@ -1,5 +1,5 @@
 use macroquad::{
-    color::{Color, BLUE, RED, WHITE},
+    color::{Color, BLUE, GREEN, RED, WHITE},
     input::{is_mouse_button_released, mouse_position, MouseButton},
     math::{Rect, Vec2},
     shapes::{draw_line, draw_rectangle_lines, draw_triangle_lines},
@@ -36,7 +36,6 @@ pub struct Game {
     pub cells: Vec<CellDisplay>,
     pub status: Status,
     pub client: networking::client::Client,
-    pub is_player_one: bool,
     pub state: State,
 }
 
@@ -55,6 +54,7 @@ impl Game {
                 CellDisplay {
                     id: i as u8 + 1,
                     rect,
+                    is_highlighted: false,
                 }
             })
             .collect();
@@ -64,8 +64,7 @@ impl Game {
             cells,
             status: Status::InProgress,
             client,
-            is_player_one: false,
-            state: State::new(),
+            state: State::new(vec![]),
         }
     }
 
@@ -120,9 +119,15 @@ impl Game {
 
     pub async fn process_message(&mut self, message: networking::Message) -> anyhow::Result<()> {
         match message {
+            Message::SelectCell {
+                player_id,
+                cell_ids,
+            } => {
+                self.highlight_cells(&cell_ids);
+                Ok(())
+            }
             Message::MatchCreated { player1, .. } => {
-                self.is_player_one = dbg!(self.player_id == player1);
-                if !self.is_player_one {
+                if !self.state.is_player_one(&self.player_id) {
                     for cell in &mut self.cells {
                         let new_id: i8 = cell.id as i8 - 21;
                         cell.id = new_id.abs() as u8;
@@ -138,6 +143,16 @@ impl Game {
                 Ok(())
             }
             _ => Ok(()),
+        }
+    }
+
+    fn highlight_cells(&mut self, cell_ids: &[u8]) {
+        for cell_display in &mut self.cells {
+            if cell_ids.contains(&cell_display.id) {
+                cell_display.is_highlighted = true;
+            } else {
+                cell_display.is_highlighted = false;
+            }
         }
     }
 
@@ -325,6 +340,7 @@ impl Game {
             self.cards_in_hand_mut().get_mut(idx).unwrap().is_hovered = true;
         }
 
+        let mut card_selected = None;
         for card_display in self.cards_in_hand_mut() {
             if card_display.card.get_zone() != &CardZone::Hand {
                 continue;
@@ -332,14 +348,19 @@ impl Game {
 
             if card_display.is_hovered && is_mouse_button_released(MouseButton::Left) {
                 card_display.is_selected = !card_display.is_selected;
+                if card_display.is_selected {
+                    card_selected = Some(card_display.card.get_id().clone());
+                }
             };
         }
 
-        let has_selected_card = self
-            .cards_in_hand_mut()
-            .iter()
-            .any(|card_display| card_display.is_selected);
-        self.status = if has_selected_card {
+        self.status = if card_selected.is_some() {
+            self.client
+                .send(Message::CardSelected {
+                    card_id: card_selected.unwrap(),
+                    player_id: self.player_id,
+                })
+                .unwrap();
             Status::WaitingForCellSelection
         } else {
             Status::InProgress
@@ -372,9 +393,8 @@ impl Game {
             if is_mouse_button_released(MouseButton::Left) {
                 self.status = Status::InProgress;
                 self.client
-                    .send(Message::CardPlayed {
+                    .send(Message::CardSelected {
                         player_id: self.player_id,
-                        cell_id: cell_id as u8,
                         card_id: self.get_selected_card_id().cloned().unwrap(),
                     })
                     .unwrap();
@@ -402,6 +422,17 @@ impl Game {
                 12.0,
                 WHITE,
             );
+
+            if cell_display.is_highlighted {
+                draw_rectangle_lines(
+                    cell_display.rect.x,
+                    cell_display.rect.y,
+                    cell_display.rect.w,
+                    cell_display.rect.h,
+                    5.0,
+                    GREEN,
+                );
+            }
         }
     }
 

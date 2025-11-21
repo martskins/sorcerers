@@ -1,6 +1,7 @@
 use crate::{
-    card::{CardBase, CardZone},
-    effect::Effect,
+    card::{Card, CardBase, CardZone},
+    effect::{Action, Effect},
+    game::State,
 };
 use serde::{Deserialize, Serialize};
 
@@ -50,6 +51,11 @@ impl Site {
             Site::Bog(cb) => cb.zone = new_zone,
             Site::AnnualFair(cb) => cb.zone = new_zone,
         };
+    }
+
+    pub fn on_select(&self, state: &State) -> Vec<Action> {
+        let cell_ids = state.find_valid_cells_for_card(&Card::Site(self.clone()));
+        vec![Action::SelectCell { cell_ids }]
     }
 
     pub fn genesis(&self) -> Vec<Effect> {

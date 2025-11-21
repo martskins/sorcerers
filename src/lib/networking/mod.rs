@@ -58,10 +58,18 @@ pub enum Message {
     Sync {
         state: State,
     },
+    CardSelected {
+        player_id: uuid::Uuid,
+        card_id: uuid::Uuid,
+    },
     CardPlayed {
         player_id: uuid::Uuid,
         card_id: uuid::Uuid,
         cell_id: u8,
+    },
+    SelectCell {
+        player_id: uuid::Uuid,
+        cell_ids: Vec<u8>,
     },
     Disconnect,
     EndTurn,
