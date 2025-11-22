@@ -73,10 +73,11 @@ impl Server {
                 let game = self.active_games.get_mut(game_id).unwrap();
                 game.end_turn(&player_id).await?;
             }
-            // Message::DrawCard {
-            //     card_type,
-            //     player_id,
-            // } => self.draw_card_for_player(&player_id, card_type).await?,
+            Message::DrawCard { card_type, player_id } => {
+                let game_id = self.player_to_game.get(&player_id).unwrap();
+                let game = self.active_games.get_mut(game_id).unwrap();
+                game.draw_card_for_player(&player_id, card_type).await?;
+            }
             _ => {}
         }
 

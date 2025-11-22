@@ -15,10 +15,7 @@ use tokio::net::UdpSocket;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Phase {
     None,
-    WaitingForCardDrawPhase,
-    WaitingForCellSelectionPhase,
-    MainPhase,
-    EndPhase,
+    WaitingForCardDraw { player_id: uuid::Uuid, count: u8 },
     SelectingCell { player_id: uuid::Uuid, cell_ids: Vec<u8> },
     WaitingForPlay { player_id: uuid::Uuid },
 }
@@ -277,27 +274,6 @@ impl Game {
         Ok(())
     }
 
-    async fn draw_card_for_player(&mut self, player_id: &uuid::Uuid, card_type: CardType) -> anyhow::Result<()> {
-        let deck = self.decks.get_mut(&player_id).unwrap();
-
-        let card = match card_type {
-            CardType::Site => deck.draw_site().map(|site| Card::Site(site)),
-            CardType::Spell => deck.draw_spell().map(|spell| Card::Spell(spell)),
-            CardType::Avatar => None,
-        };
-
-        if card.is_none() {
-            return Ok(());
-        }
-
-        let mut card = card.unwrap();
-        card.set_zone(CardZone::Hand);
-        self.state.cards.push(card);
-
-        self.send_sync().await?;
-        Ok(())
-    }
-
     pub async fn end_turn(&mut self, player_id: &uuid::Uuid) -> anyhow::Result<()> {
         assert!(self.state.is_players_turn(player_id));
 
@@ -311,8 +287,9 @@ impl Game {
             .clone();
         self.state.turns_taken += 1;
         self.state.effects_queue.push_back(Effect::PhaseChanged {
-            new_phase: Phase::WaitingForPlay {
+            new_phase: Phase::WaitingForCardDraw {
                 player_id: self.state.current_player.clone(),
+                count: 1,
             },
         });
 
@@ -376,5 +353,39 @@ impl Game {
 
         self.process_effects();
         self.send_sync().await
+    }
+
+    pub async fn draw_card_for_player(&mut self, player_id: &uuid::Uuid, card_type: CardType) -> anyhow::Result<()> {
+        let deck = self.decks.get_mut(&player_id).unwrap();
+        let card = match card_type {
+            CardType::Site => deck.draw_site().map(|site| Card::Site(site)),
+            CardType::Spell => deck.draw_spell().map(|spell| Card::Spell(spell)),
+            CardType::Avatar => None,
+        };
+
+        if card.is_none() {
+            return Ok(());
+        }
+
+        let mut card = card.unwrap();
+        card.set_zone(CardZone::Hand);
+        self.state.cards.push(card);
+
+        match self.state.phase {
+            Phase::WaitingForCardDraw { ref mut count, .. } => {
+                *count -= 1;
+
+                if *count == 0 {
+                    self.state.effects_queue.push_back(Effect::PhaseChanged {
+                        new_phase: Phase::WaitingForPlay {
+                            player_id: player_id.clone(),
+                        },
+                    });
+                }
+            }
+            _ => {}
+        }
+        self.send_sync().await?;
+        Ok(())
     }
 }
