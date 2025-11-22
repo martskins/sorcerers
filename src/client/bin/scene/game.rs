@@ -501,12 +501,17 @@ impl Game {
     }
 
     fn draw_card(&self, card_type: CardType) -> anyhow::Result<()> {
-        let message = networking::Message::DrawCard {
-            card_type,
-            player_id: self.player_id,
-            game_id: self.game_id,
-        };
-        self.client.send(message)
+        match self.state.phase {
+            Phase::WaitingForCardDraw { player_id, count } if player_id == self.player_id => {
+                let message = networking::Message::DrawCard {
+                    card_type,
+                    player_id: self.player_id,
+                    game_id: self.game_id,
+                };
+                self.client.send(message)
+            }
+            _ => Ok(()),
+        }
     }
 
     async fn update_cards_in_realm(&mut self, cards: &[Card]) -> anyhow::Result<()> {

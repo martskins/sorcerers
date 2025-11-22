@@ -298,6 +298,9 @@ impl Game {
     pub async fn end_turn(&mut self, player_id: &uuid::Uuid) -> anyhow::Result<()> {
         assert!(self.state.is_players_turn(player_id));
 
+        let resources = self.state.resources.get_mut(&self.state.current_player).unwrap();
+        resources.mana = 0;
+
         self.state.turns_taken += 1;
         self.state.current_player = self
             .players
@@ -311,6 +314,16 @@ impl Game {
             player_id: self.state.current_player.clone(),
             count: 1,
         };
+
+        self.state
+            .cards
+            .iter()
+            .filter(|card| card.get_owner_id() == &self.state.current_player)
+            .filter(|card| matches!(card.get_zone(), CardZone::Realm(_)))
+            .for_each(|card| {
+                let effects = card.on_turn_start();
+                self.state.effects_queue.extend(effects);
+            });
 
         Ok(())
     }

@@ -2,6 +2,7 @@ use crate::{
     card::{Card, CardBase, CardZone},
     effect::{Action, Effect},
     game::State,
+    networking::Thresholds,
 };
 use serde::{Deserialize, Serialize};
 
@@ -59,14 +60,28 @@ impl Site {
     }
 
     pub fn genesis(&self) -> Vec<Effect> {
+        let mana = 1;
+        let mut thresholds = Thresholds::zero();
         match self {
-            _ => {
-                vec![Effect::AddMana {
-                    player_id: self.get_owner_id().clone(),
-                    amount: 1,
-                }]
+            Site::Beacon(_) => {
+                thresholds.air = 1;
             }
+            Site::Bog(_) => {
+                thresholds.water = 1;
+            }
+            Site::AnnualFair(_) => {}
         }
+
+        vec![
+            Effect::AddMana {
+                player_id: self.get_owner_id().clone(),
+                amount: mana,
+            },
+            Effect::AddThresholds {
+                player_id: self.get_owner_id().clone(),
+                thresholds,
+            },
+        ]
     }
 
     pub fn on_turn_start(&self) -> Vec<Effect> {

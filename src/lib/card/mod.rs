@@ -110,6 +110,14 @@ impl Card {
         }
     }
 
+    pub fn on_turn_start(&self) -> Vec<Effect> {
+        match self {
+            Card::Spell(card) => card.on_turn_start(),
+            Card::Site(card) => card.on_turn_start(),
+            Card::Avatar(_card) => vec![],
+        }
+    }
+
     pub fn genesis(&self) -> Vec<Effect> {
         match self {
             Card::Spell(card) => card.genesis(),

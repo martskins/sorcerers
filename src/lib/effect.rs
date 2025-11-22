@@ -3,13 +3,26 @@ use serde::{Deserialize, Serialize};
 use crate::{
     card::CardZone,
     game::{Phase, Resources, State},
+    networking::Thresholds,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Effect {
-    AddMana { player_id: uuid::Uuid, amount: u32 },
-    CardMovedToCell { card_id: uuid::Uuid, cell_id: u8 },
-    PhaseChanged { new_phase: Phase },
+    AddMana {
+        player_id: uuid::Uuid,
+        amount: u32,
+    },
+    AddThresholds {
+        player_id: uuid::Uuid,
+        thresholds: Thresholds,
+    },
+    CardMovedToCell {
+        card_id: uuid::Uuid,
+        cell_id: u8,
+    },
+    PhaseChanged {
+        new_phase: Phase,
+    },
 }
 
 impl Effect {
@@ -18,6 +31,13 @@ impl Effect {
             Effect::AddMana { player_id, amount } => {
                 let entry = state.resources.entry(*player_id).or_insert(Resources::new());
                 entry.mana += *amount as u8;
+            }
+            Effect::AddThresholds { player_id, thresholds } => {
+                let entry = state.resources.entry(*player_id).or_insert(Resources::new());
+                entry.fire_threshold += thresholds.fire;
+                entry.air_threshold += thresholds.air;
+                entry.water_threshold += thresholds.water;
+                entry.earth_threshold += thresholds.earth;
             }
             Effect::CardMovedToCell { card_id, cell_id } => {
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id);

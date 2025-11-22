@@ -48,6 +48,9 @@ impl Spell {
 
     pub fn genesis(&self) -> Vec<Effect> {
         vec![]
-        // Implement site-specific on_cast effects here
+    }
+
+    pub fn on_turn_start(&self) -> Vec<Effect> {
+        vec![]
     }
 }
