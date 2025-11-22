@@ -8,7 +8,7 @@ use tokio::net::UdpSocket;
 async fn main() -> anyhow::Result<()> {
     let sock = UdpSocket::bind("0.0.0.0:8080".parse::<SocketAddr>().unwrap()).await?;
     let mut server = Server::new(sock);
-    let mut buf = [0; 1024];
+    let mut buf = [0; 32000];
     loop {
         let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(100));
         tokio::select! {
@@ -21,9 +21,5 @@ async fn main() -> anyhow::Result<()> {
                 server.process_effects().await.unwrap();
             }
         }
-
-        // let (_len, addr) = server.socket.recv_from(&mut buf).await?;
-        // server.process_message(&buf, addr).await?;
-        // server.process_effects()?;
     }
 }

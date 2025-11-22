@@ -27,6 +27,7 @@ const SYMBOL_SIZE: f32 = 20.0;
 #[derive(Debug)]
 pub struct Game {
     pub player_id: uuid::Uuid,
+    pub game_id: uuid::Uuid,
     pub cards: Vec<CardDisplay>,
     pub cells: Vec<CellDisplay>,
     pub client: networking::client::Client,
@@ -51,6 +52,7 @@ impl Game {
         Self {
             player_id,
             cards: vec![],
+            game_id: uuid::Uuid::nil(),
             cells,
             client,
             state: State::new(vec![]),
@@ -77,30 +79,14 @@ impl Game {
 
     pub async fn process_input(&mut self) -> Option<Scene> {
         if is_mouse_button_released(MouseButton::Left) {
-            // if !self.is_current_player() {
-            //     return;
-            // }
-
             let mouse_position = mouse_position();
-            // if self.state.phase == Phase::WaitingForCardDrawPhase {
-            // let current_player = self.players.get_mut(&self.player_id).unwrap();
-            // let mut drew_card = false;
             if ATLASBOOK_RECT.contains(mouse_position.into()) {
                 self.draw_card(CardType::Site).unwrap();
-                // current_player.draw_site();
-                // drew_card = true;
             }
 
             if SPELLBOOK_RECT.contains(mouse_position.into()) {
                 self.draw_card(CardType::Spell).unwrap();
-                // current_player.draw_spell();
-                // drew_card = true;
             }
-
-            // if drew_card {
-            //     self.state.next_phase();
-            // }
-            // }
         }
 
         None
@@ -108,7 +94,7 @@ impl Game {
 
     pub async fn process_message(&mut self, message: networking::Message) -> anyhow::Result<()> {
         match message {
-            Message::MatchCreated { .. } => {
+            Message::MatchCreated { game_id, .. } => {
                 if !self.state.is_player_one(&self.player_id) {
                     for cell in &mut self.cells {
                         let new_id: i8 = cell.id as i8 - 21;
@@ -116,6 +102,7 @@ impl Game {
                     }
                 }
 
+                self.game_id = game_id;
                 Ok(())
             }
             Message::Sync { state, .. } => {
@@ -226,6 +213,7 @@ impl Game {
             if ui::root_ui().button(Vec2::new(SCREEN_WIDTH - 100.0, SCREEN_HEIGHT - 40.0), "End Turn") {
                 self.client.send(Message::EndTurn {
                     player_id: self.player_id.clone(),
+                    game_id: self.game_id.clone(),
                 })?;
             }
         }
@@ -333,6 +321,7 @@ impl Game {
                     .send(Message::CardSelected {
                         card_id: card_selected.unwrap(),
                         player_id: self.player_id,
+                        game_id: self.game_id,
                     })
                     .unwrap();
             }
@@ -367,6 +356,7 @@ impl Game {
                                 player_id: self.player_id,
                                 card_id: self.get_selected_card_id().cloned().unwrap(),
                                 cell_id,
+                                game_id: self.game_id,
                             })
                             .unwrap();
                     }
@@ -514,6 +504,7 @@ impl Game {
         let message = networking::Message::DrawCard {
             card_type,
             player_id: self.player_id,
+            game_id: self.game_id,
         };
         self.client.send(message)
     }

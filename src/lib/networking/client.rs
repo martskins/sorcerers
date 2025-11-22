@@ -28,19 +28,9 @@ impl Client {
     }
 
     pub fn recv(&self) -> anyhow::Result<Message> {
-        let mut res = [0; 1024];
+        let mut res = [0; 32000];
         self.socket.recv(&mut res).unwrap();
         let response: Message = rmp_serde::from_slice(&res).unwrap();
         Ok(response)
     }
-
-    // pub fn try_recv(&self) -> anyhow::Result<Message> {
-    //     let mut res = [0; 1024];
-    //     self.socket
-    //         .set_read_timeout(Some(std::time::Duration::from_secs(1)))
-    //         .unwrap();
-    //     self.socket.recv(&mut res).unwrap();
-    //     let response: Message = rmp_serde::from_slice(&res).unwrap();
-    //     Ok(response)
-    // }
 }

@@ -215,6 +215,27 @@ impl Game {
         }
     }
 
+    pub async fn process_message(&mut self, msg: Message) -> anyhow::Result<()> {
+        match msg {
+            Message::CardPlayed {
+                card_id,
+                player_id,
+                cell_id,
+                ..
+            } => self.card_played(&player_id, &card_id, cell_id).await?,
+            Message::CardSelected { card_id, player_id, .. } => self.card_selected(&player_id, &card_id).await?,
+            Message::EndTurn { player_id, .. } => self.end_turn(&player_id).await?,
+            Message::DrawCard {
+                card_type, player_id, ..
+            } => self.draw_card_for_player(&player_id, card_type).await?,
+            _ => {}
+        }
+
+        self.process_effects();
+        self.send_sync().await?;
+        Ok(())
+    }
+
     pub fn process_effects(&mut self) {
         while let Some(effect) = self.state.effects_queue.pop_front() {
             effect.apply(&mut self.state);
@@ -277,6 +298,7 @@ impl Game {
     pub async fn end_turn(&mut self, player_id: &uuid::Uuid) -> anyhow::Result<()> {
         assert!(self.state.is_players_turn(player_id));
 
+        self.state.turns_taken += 1;
         self.state.current_player = self
             .players
             .iter()
@@ -285,16 +307,11 @@ impl Game {
             .next()
             .unwrap()
             .clone();
-        self.state.turns_taken += 1;
-        self.state.effects_queue.push_back(Effect::PhaseChanged {
-            new_phase: Phase::WaitingForCardDraw {
-                player_id: self.state.current_player.clone(),
-                count: 1,
-            },
-        });
+        self.state.phase = Phase::WaitingForCardDraw {
+            player_id: self.state.current_player.clone(),
+            count: 1,
+        };
 
-        self.process_effects();
-        self.send_sync().await?;
         Ok(())
     }
 
@@ -310,11 +327,6 @@ impl Game {
         for action in &actions {
             match action {
                 Action::SelectCell { cell_ids } => {
-                    // let message = Message::SelectCell {
-                    //     player_id: player_id.clone(),
-                    //     cell_ids: cell_ids.clone(),
-                    // };
-                    // self.send_to_player(&message, player_id).await?;
                     self.state.phase = Phase::SelectingCell {
                         player_id: player_id.clone(),
                         cell_ids: cell_ids.clone(),
@@ -323,8 +335,7 @@ impl Game {
             }
         }
 
-        self.process_effects();
-        self.send_sync().await
+        Ok(())
     }
 
     pub async fn card_played(
@@ -351,8 +362,7 @@ impl Game {
             },
         });
 
-        self.process_effects();
-        self.send_sync().await
+        Ok(())
     }
 
     pub async fn draw_card_for_player(&mut self, player_id: &uuid::Uuid, card_type: CardType) -> anyhow::Result<()> {
@@ -385,7 +395,6 @@ impl Game {
             }
             _ => {}
         }
-        self.send_sync().await?;
         Ok(())
     }
 }

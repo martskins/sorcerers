@@ -50,10 +50,12 @@ pub enum Message {
     MatchCreated {
         player1: uuid::Uuid,
         player2: uuid::Uuid,
+        game_id: uuid::Uuid,
     },
     DrawCard {
         card_type: CardType,
         player_id: uuid::Uuid,
+        game_id: uuid::Uuid,
     },
     Sync {
         state: State,
@@ -61,16 +63,33 @@ pub enum Message {
     CardSelected {
         player_id: uuid::Uuid,
         card_id: uuid::Uuid,
+        game_id: uuid::Uuid,
     },
     CardPlayed {
         player_id: uuid::Uuid,
         card_id: uuid::Uuid,
         cell_id: u8,
+        game_id: uuid::Uuid,
     },
     Disconnect {
         player_id: uuid::Uuid,
+        game_id: uuid::Uuid,
     },
     EndTurn {
         player_id: uuid::Uuid,
+        game_id: uuid::Uuid,
     },
+}
+
+impl Message {
+    pub fn get_game_id(&self) -> Option<uuid::Uuid> {
+        match self {
+            Message::DrawCard { game_id, .. } => Some(game_id.clone()),
+            Message::CardSelected { game_id, .. } => Some(game_id.clone()),
+            Message::CardPlayed { game_id, .. } => Some(game_id.clone()),
+            Message::Disconnect { game_id, .. } => Some(game_id.clone()),
+            Message::EndTurn { game_id, .. } => Some(game_id.clone()),
+            _ => None,
+        }
+    }
 }

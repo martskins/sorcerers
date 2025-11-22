@@ -32,6 +32,7 @@ impl Server {
 
     pub async fn process_message(&mut self, message: &[u8], addr: SocketAddr) -> anyhow::Result<()> {
         let msg = rmp_serde::from_slice::<Message>(message).unwrap();
+        let game_id = msg.get_game_id();
         match msg {
             Message::Connect => {
                 let player_id = uuid::Uuid::new_v4();
@@ -44,41 +45,29 @@ impl Server {
                     Some((player1, player2)) => {
                         let game = self.create_game(&player1, &player2);
                         game.place_avatars()?;
-                        game.send_sync().await?;
                         for player in &[player1, player2] {
                             game.draw_initial_six(player).await?;
                         }
+                        game.send_sync().await?;
 
-                        game.broadcast(&Message::MatchCreated { player1, player2 }).await?;
+                        game.broadcast(&Message::MatchCreated {
+                            player1,
+                            player2,
+                            game_id: game.id.clone(),
+                        })
+                        .await?;
                     }
                     None => {}
                 }
             }
-            Message::CardPlayed {
-                card_id,
-                player_id,
-                cell_id,
-            } => {
-                let game_id = self.player_to_game.get(&player_id).unwrap();
-                let game = self.active_games.get_mut(game_id).unwrap();
-                game.card_played(&player_id, &card_id, cell_id).await?;
+            _ => {
+                if !game_id.is_some() {
+                    return Ok(());
+                }
+
+                let game = self.active_games.get_mut(&game_id.unwrap()).unwrap();
+                game.process_message(msg).await?;
             }
-            Message::CardSelected { card_id, player_id } => {
-                let game_id = self.player_to_game.get(&player_id).unwrap();
-                let game = self.active_games.get_mut(game_id).unwrap();
-                game.card_selected(&player_id, &card_id).await?;
-            }
-            Message::EndTurn { player_id } => {
-                let game_id = self.player_to_game.get(&player_id).unwrap();
-                let game = self.active_games.get_mut(game_id).unwrap();
-                game.end_turn(&player_id).await?;
-            }
-            Message::DrawCard { card_type, player_id } => {
-                let game_id = self.player_to_game.get(&player_id).unwrap();
-                let game = self.active_games.get_mut(game_id).unwrap();
-                game.draw_card_for_player(&player_id, card_type).await?;
-            }
-            _ => {}
         }
 
         Ok(())
