@@ -23,6 +23,7 @@ use crate::{
 const FONT_SIZE: f32 = 24.0;
 const THRESHOLD_SYMBOL_SPACING: f32 = 18.0;
 const SYMBOL_SIZE: f32 = 20.0;
+const ACTION_SELECTION_WINDOW_ID: u64 = 1;
 
 #[derive(Debug)]
 pub struct Game {
@@ -32,6 +33,8 @@ pub struct Game {
     pub cells: Vec<CellDisplay>,
     pub client: networking::client::Client,
     pub state: State,
+    action_window_position: Option<Vec2>,
+    action_window_size: Option<Vec2>,
 }
 
 impl Game {
@@ -56,13 +59,14 @@ impl Game {
             cells,
             client,
             state: State::new(vec![]),
+            action_window_position: None,
+            action_window_size: None,
         }
     }
 
     pub async fn update(&mut self) {
         let mouse_position = mouse_position().into();
-        self.handle_card_selection(mouse_position);
-        self.handle_cell_selection(mouse_position);
+        self.handle_click(mouse_position);
     }
 
     pub async fn render(&mut self) -> anyhow::Result<()> {
@@ -113,6 +117,31 @@ impl Game {
             }
             _ => Ok(()),
         }
+    }
+
+    fn handle_click(&mut self, mouse_position: Vec2) {
+        if self.action_window_position.is_some() && is_mouse_button_released(MouseButton::Left) {
+            let rect = Rect::new(
+                self.action_window_position.unwrap().x,
+                self.action_window_position.unwrap().y,
+                self.action_window_size.unwrap().x,
+                self.action_window_size.unwrap().y,
+            );
+
+            if !rect.contains(mouse_position) {
+                self.action_window_position = None;
+                self.action_window_size = None;
+                self.client
+                    .send(Message::SelectActionCancelled {
+                        player_id: self.player_id,
+                        game_id: self.game_id,
+                    })
+                    .unwrap();
+            }
+        }
+
+        self.handle_card_click(mouse_position);
+        self.handle_cell_click(mouse_position);
     }
 
     fn render_threshold(x: f32, y: f32, value: u8, element: Element) {
@@ -218,6 +247,38 @@ impl Game {
             }
         }
 
+        match &self.state.phase {
+            Phase::SelectingAction { player_id, actions } if player_id == &self.player_id => {
+                if self.action_window_position.is_none() {
+                    self.action_window_position = Some(mouse_position().into());
+                }
+
+                if self.action_window_size.is_none() {
+                    self.action_window_size = Some(Vec2::new(100.0, 30.0 * actions.len() as f32 + 20.0));
+                }
+
+                ui::root_ui().window(
+                    ACTION_SELECTION_WINDOW_ID,
+                    self.action_window_position.unwrap(),
+                    self.action_window_size.unwrap(),
+                    |ui| {
+                        for (idx, action) in actions.iter().enumerate() {
+                            if ui.button(Vec2::new(0.0, 30.0 * idx as f32), action.get_name()) {
+                                self.client
+                                    .send(Message::ActionSelected {
+                                        action_idx: idx,
+                                        player_id: self.player_id,
+                                        game_id: self.game_id,
+                                    })
+                                    .unwrap();
+                            }
+                        }
+                    },
+                );
+            }
+            _ => {}
+        }
+
         Ok(())
     }
 
@@ -270,32 +331,21 @@ impl Game {
         Ok(())
     }
 
-    fn cards_in_hand_mut(&mut self) -> Vec<&mut CardDisplay> {
-        self.cards
-            .iter_mut()
-            .filter(|card_display| card_display.card.get_zone() == &CardZone::Hand)
-            .collect()
-    }
-
-    fn handle_card_selection(&mut self, mouse_position: Vec2) {
+    fn handle_card_click(&mut self, mouse_position: Vec2) {
         if let Phase::WaitingForPlay { player_id } = self.state.phase {
             let mut hovered_card_index = None;
             for (idx, card_display) in self.cards.iter().enumerate() {
-                if card_display.card.get_zone() != &CardZone::Hand {
-                    continue;
-                }
-
                 if card_display.rect.contains(mouse_position.into()) {
                     hovered_card_index = Some(idx);
                 };
             }
 
-            for card in &mut self.cards_in_hand_mut() {
+            for card in &mut self.cards {
                 card.is_hovered = false;
             }
 
             if let Some(idx) = hovered_card_index {
-                self.cards_in_hand_mut().get_mut(idx).unwrap().is_hovered = true;
+                self.cards.get_mut(idx).unwrap().is_hovered = true;
             }
 
             if player_id != self.player_id {
@@ -303,11 +353,7 @@ impl Game {
             }
 
             let mut card_selected = None;
-            for card_display in self.cards_in_hand_mut() {
-                if card_display.card.get_zone() != &CardZone::Hand {
-                    continue;
-                }
-
+            for card_display in &mut self.cards {
                 if card_display.is_hovered && is_mouse_button_released(MouseButton::Left) {
                     card_display.is_selected = !card_display.is_selected;
                     if card_display.is_selected {
@@ -337,7 +383,7 @@ impl Game {
         None
     }
 
-    fn handle_cell_selection(&mut self, mouse_position: Vec2) {
+    fn handle_cell_click(&mut self, mouse_position: Vec2) {
         if let Phase::SelectingCell { cell_ids, player_id } = &self.state.phase {
             if player_id != &self.player_id {
                 return;
@@ -412,6 +458,11 @@ impl Game {
             }
 
             let img = TextureCache::get_card_texture(&card_display.card).await;
+            let mut rotation = 0.0;
+            if card_display.card.is_tapped() {
+                rotation = std::f32::consts::FRAC_PI_2;
+            }
+
             draw_texture_ex(
                 &img,
                 card_display.rect.x,
@@ -419,7 +470,7 @@ impl Game {
                 WHITE,
                 DrawTextureParams {
                     dest_size: Some(Vec2::new(card_display.rect.w, card_display.rect.h) * CARD_IN_PLAY_SCALE),
-                    // rotation,
+                    rotation,
                     ..Default::default()
                 },
             );
@@ -502,7 +553,11 @@ impl Game {
 
     fn draw_card(&self, card_type: CardType) -> anyhow::Result<()> {
         match self.state.phase {
-            Phase::WaitingForCardDraw { player_id, count } if player_id == self.player_id => {
+            Phase::WaitingForCardDraw {
+                player_id,
+                ref allowed_types,
+                ..
+            } if player_id == self.player_id && allowed_types.contains(&card_type) => {
                 let message = networking::Message::DrawCard {
                     card_type,
                     player_id: self.player_id,

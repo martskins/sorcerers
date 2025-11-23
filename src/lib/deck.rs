@@ -1,7 +1,7 @@
-use crate::card::CardBase;
 use crate::card::site::Site;
 use crate::card::spell::Spell;
-use crate::card::{CardZone, avatar::Avatar};
+use crate::card::CardBase;
+use crate::card::{avatar::Avatar, CardZone};
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -22,11 +22,13 @@ impl Deck {
                 id: uuid::Uuid::new_v4(),
                 owner_id: player_id,
                 zone: CardZone::Spellbook,
+                tapped: false,
             }));
             spells.push(Spell::BallLightning(CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id: player_id,
                 zone: CardZone::Spellbook,
+                tapped: false,
             }));
         }
 
@@ -36,16 +38,19 @@ impl Deck {
                 id: uuid::Uuid::new_v4(),
                 owner_id: player_id,
                 zone: CardZone::Spellbook,
+                tapped: false,
             }));
             sites.push(Site::Bog(CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id: player_id,
                 zone: CardZone::Spellbook,
+                tapped: false,
             }));
             sites.push(Site::AnnualFair(CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id: player_id,
                 zone: CardZone::Spellbook,
+                tapped: false,
             }));
         }
 
@@ -58,6 +63,7 @@ impl Deck {
                 id: uuid::Uuid::new_v4(),
                 owner_id: player_id,
                 zone: CardZone::Avatar,
+                tapped: false,
             }),
         }
     }

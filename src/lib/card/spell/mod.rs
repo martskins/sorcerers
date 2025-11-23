@@ -11,6 +11,20 @@ pub enum Spell {
 }
 
 impl Spell {
+    pub fn get_base(&self) -> &CardBase {
+        match self {
+            Spell::BurningHands(cb) => cb,
+            Spell::BallLightning(cb) => cb,
+        }
+    }
+
+    pub fn get_base_mut(&mut self) -> &mut CardBase {
+        match self {
+            Spell::BurningHands(cb) => cb,
+            Spell::BallLightning(cb) => cb,
+        }
+    }
+
     pub fn get_id(&self) -> &uuid::Uuid {
         match self {
             Spell::BurningHands(cb) => &cb.id,

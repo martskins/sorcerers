@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    card::CardZone,
+    card::{CardType, CardZone},
     game::{Phase, Resources, State},
     networking::Thresholds,
 };
@@ -20,8 +20,15 @@ pub enum Effect {
         card_id: uuid::Uuid,
         cell_id: u8,
     },
-    PhaseChanged {
+    ChangePhase {
         new_phase: Phase,
+    },
+    SetPlayerActions {
+        player_id: uuid::Uuid,
+        actions: Vec<Action>,
+    },
+    TapCard {
+        card_id: uuid::Uuid,
     },
 }
 
@@ -45,13 +52,39 @@ impl Effect {
                     card.set_zone(CardZone::Realm(*cell_id));
                 }
             }
-            Effect::PhaseChanged { new_phase } => {
+            Effect::ChangePhase { new_phase } => {
                 state.phase = new_phase.clone();
+            }
+            Effect::SetPlayerActions { player_id, actions } => {
+                state.actions.insert(player_id.clone(), actions.clone());
+            }
+            Effect::TapCard { card_id } => {
+                let card = state.cards.iter_mut().find(|c| c.get_id() == card_id);
+                if let Some(card) = card {
+                    card.tap();
+                }
             }
         }
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Action {
     SelectCell { cell_ids: Vec<u8> },
+    SelectAction { actions: Vec<Action> },
+    DrawCard { allowed_types: Vec<CardType> },
+    DrawSite { after_select: Vec<Effect> },
+    PlaySite { after_select: Vec<Effect> },
+}
+
+impl Action {
+    pub fn get_name(&self) -> &'static str {
+        match self {
+            Action::SelectCell { .. } => "Select Cell",
+            Action::SelectAction { .. } => "Select Action",
+            Action::DrawCard { .. } => "Draw Card",
+            Action::DrawSite { .. } => "Draw Site",
+            Action::PlaySite { .. } => "Play Site",
+        }
+    }
 }

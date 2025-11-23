@@ -79,17 +79,31 @@ pub enum Message {
         player_id: uuid::Uuid,
         game_id: uuid::Uuid,
     },
+    ActionSelected {
+        player_id: uuid::Uuid,
+        action_idx: usize,
+        game_id: uuid::Uuid,
+    },
+    SelectActionCancelled {
+        player_id: uuid::Uuid,
+        game_id: uuid::Uuid,
+    },
 }
 
 impl Message {
     pub fn get_game_id(&self) -> Option<uuid::Uuid> {
         match self {
+            Message::Connect => None,
+            Message::ConnectResponse { .. } => None,
+            Message::MatchCreated { .. } => None,
+            Message::Sync { .. } => None,
             Message::DrawCard { game_id, .. } => Some(game_id.clone()),
             Message::CardSelected { game_id, .. } => Some(game_id.clone()),
             Message::CardPlayed { game_id, .. } => Some(game_id.clone()),
             Message::Disconnect { game_id, .. } => Some(game_id.clone()),
             Message::EndTurn { game_id, .. } => Some(game_id.clone()),
-            _ => None,
+            Message::ActionSelected { game_id, .. } => Some(game_id.clone()),
+            Message::SelectActionCancelled { game_id, .. } => Some(game_id.clone()),
         }
     }
 }

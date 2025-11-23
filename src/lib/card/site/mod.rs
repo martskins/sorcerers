@@ -1,7 +1,7 @@
 use crate::{
     card::{Card, CardBase, CardZone},
-    effect::{Action, Effect},
-    game::State,
+    effect::Effect,
+    game::{Phase, State},
     networking::Thresholds,
 };
 use serde::{Deserialize, Serialize};
@@ -14,6 +14,22 @@ pub enum Site {
 }
 
 impl Site {
+    pub fn get_base_mut(&mut self) -> &mut CardBase {
+        match self {
+            Site::Beacon(cb) => cb,
+            Site::Bog(cb) => cb,
+            Site::AnnualFair(cb) => cb,
+        }
+    }
+
+    pub fn get_base(&self) -> &CardBase {
+        match self {
+            Site::Beacon(cb) => cb,
+            Site::Bog(cb) => cb,
+            Site::AnnualFair(cb) => cb,
+        }
+    }
+
     pub fn get_id(&self) -> &uuid::Uuid {
         match self {
             Site::Beacon(cb) => &cb.id,
@@ -54,9 +70,14 @@ impl Site {
         };
     }
 
-    pub fn on_select(&self, state: &State) -> Vec<Action> {
+    pub fn on_select(&self, state: &State) -> Vec<Effect> {
         let cell_ids = state.find_valid_cells_for_card(&Card::Site(self.clone()));
-        vec![Action::SelectCell { cell_ids }]
+        vec![Effect::ChangePhase {
+            new_phase: Phase::SelectingCell {
+                player_id: self.get_owner_id().clone(),
+                cell_ids: cell_ids.clone(),
+            },
+        }]
     }
 
     pub fn genesis(&self) -> Vec<Effect> {

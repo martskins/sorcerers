@@ -21,6 +21,7 @@ pub struct CardBase {
     pub id: uuid::Uuid,
     pub owner_id: uuid::Uuid,
     pub zone: CardZone,
+    pub tapped: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -41,6 +42,31 @@ pub enum Card {
 }
 
 impl Card {
+    pub fn tap(&mut self) {
+        let base = self.get_base_mut();
+        base.tapped = true;
+    }
+
+    pub fn is_tapped(&self) -> bool {
+        self.get_base().tapped
+    }
+
+    fn get_base_mut(&mut self) -> &mut CardBase {
+        match self {
+            Card::Site(card) => card.get_base_mut(),
+            Card::Spell(card) => card.get_base_mut(),
+            Card::Avatar(card) => card.get_base_mut(),
+        }
+    }
+
+    fn get_base(&self) -> &CardBase {
+        match self {
+            Card::Site(card) => card.get_base(),
+            Card::Spell(card) => card.get_base(),
+            Card::Avatar(card) => card.get_base(),
+        }
+    }
+
     pub fn is_site(&self) -> bool {
         matches!(self, Card::Site(_))
     }
@@ -126,11 +152,11 @@ impl Card {
         }
     }
 
-    pub fn on_select(&self, state: &State) -> Vec<Action> {
+    pub fn on_select(&self, state: &State) -> Vec<Effect> {
         match self {
             Card::Spell(_) => vec![],
             Card::Site(card) => card.on_select(state),
-            Card::Avatar(_) => vec![],
+            Card::Avatar(card) => card.on_select(state),
         }
     }
 

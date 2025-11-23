@@ -15,9 +15,22 @@ use tokio::net::UdpSocket;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Phase {
     None,
-    WaitingForCardDraw { player_id: uuid::Uuid, count: u8 },
-    SelectingCell { player_id: uuid::Uuid, cell_ids: Vec<u8> },
-    WaitingForPlay { player_id: uuid::Uuid },
+    WaitingForCardDraw {
+        player_id: uuid::Uuid,
+        count: u8,
+        allowed_types: Vec<CardType>,
+    },
+    SelectingCell {
+        player_id: uuid::Uuid,
+        cell_ids: Vec<u8>,
+    },
+    SelectingAction {
+        player_id: uuid::Uuid,
+        actions: Vec<Action>,
+    },
+    WaitingForPlay {
+        player_id: uuid::Uuid,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -47,11 +60,10 @@ pub struct State {
     pub turns_taken: u32,
     pub players: Vec<uuid::Uuid>,
     pub current_player: uuid::Uuid,
-    pub next_player: uuid::Uuid,
-    pub selected_cards: Vec<String>,
     pub cards: Vec<Card>,
-    pub effects_queue: VecDeque<Effect>,
+    pub effects: VecDeque<Effect>,
     pub resources: HashMap<uuid::Uuid, Resources>,
+    pub actions: HashMap<uuid::Uuid, Vec<Action>>,
 }
 
 impl State {
@@ -60,17 +72,16 @@ impl State {
             phase: Phase::None,
             turns_taken: 0,
             current_player: uuid::Uuid::nil(),
-            next_player: uuid::Uuid::nil(),
             players,
-            selected_cards: vec![],
             cards: vec![],
-            effects_queue: VecDeque::new(),
+            effects: VecDeque::new(),
             resources: HashMap::new(),
+            actions: HashMap::new(),
         }
     }
 
     pub fn add_effect(&mut self, effect: Effect) {
-        self.effects_queue.push_back(effect);
+        self.effects.push_back(effect);
     }
 
     pub fn is_players_turn(&self, player_id: &uuid::Uuid) -> bool {
@@ -202,6 +213,7 @@ impl Game {
             id: uuid::Uuid::new_v4(),
             owner_id: player2,
             zone: CardZone::Avatar,
+            tapped: false,
         });
         decks.insert(player2, deck_two);
 
@@ -228,6 +240,12 @@ impl Game {
             Message::DrawCard {
                 card_type, player_id, ..
             } => self.draw_card_for_player(&player_id, card_type).await?,
+            Message::ActionSelected {
+                player_id, action_idx, ..
+            } => self.trigger_action(&player_id, action_idx).await?,
+            Message::SelectActionCancelled { player_id, .. } => {
+                self.state.phase = Phase::WaitingForPlay { player_id };
+            }
             _ => {}
         }
 
@@ -236,8 +254,52 @@ impl Game {
         Ok(())
     }
 
+    async fn trigger_action(&mut self, player_id: &uuid::Uuid, action_idx: usize) -> anyhow::Result<()> {
+        let actions = self.state.actions.get(player_id).unwrap();
+        if action_idx >= actions.len() {
+            return Ok(());
+        }
+
+        match &actions[action_idx] {
+            Action::DrawSite { after_select } => {
+                self.state.effects.extend(after_select.clone());
+                self.draw_card_for_player(player_id, CardType::Site).await?;
+                self.state.effects.push_back(Effect::ChangePhase {
+                    new_phase: Phase::WaitingForPlay {
+                        player_id: player_id.clone(),
+                    },
+                });
+            }
+            Action::PlaySite { after_select } => {
+                self.state.effects.extend(after_select.clone());
+                // let valid_cells: Vec<u8> = self
+                //     .state
+                //     .cards
+                //     .iter()
+                //     .filter(|card| card.get_owner_id() == player_id)
+                //     .filter_map(|card| match card.get_zone() {
+                //         CardZone::Hand => Some(card),
+                //         _ => None,
+                //     })
+                //     .filter(|card| card.is_site())
+                //     .flat_map(|card| self.state.find_valid_cells_for_card(card))
+                //     .collect();
+                //
+                // self.state.effects.push_back(Effect::ChangePhase {
+                //     new_phase: Phase::SelectingCell {
+                //         player_id: player_id.clone(),
+                //         cell_ids: valid_cells,
+                //     },
+                // });
+            }
+            _ => {}
+        }
+
+        Ok(())
+    }
+
     pub fn process_effects(&mut self) {
-        while let Some(effect) = self.state.effects_queue.pop_front() {
+        while let Some(effect) = self.state.effects.pop_front() {
             effect.apply(&mut self.state);
         }
     }
@@ -313,6 +375,7 @@ impl Game {
         self.state.phase = Phase::WaitingForCardDraw {
             player_id: self.state.current_player.clone(),
             count: 1,
+            allowed_types: vec![CardType::Site, CardType::Spell],
         };
 
         self.state
@@ -322,7 +385,7 @@ impl Game {
             .filter(|card| matches!(card.get_zone(), CardZone::Realm(_)))
             .for_each(|card| {
                 let effects = card.on_turn_start();
-                self.state.effects_queue.extend(effects);
+                self.state.effects.extend(effects);
             });
 
         Ok(())
@@ -334,20 +397,13 @@ impl Game {
             .state
             .cards
             .iter_mut()
-            .find(|card| card.get_id() == card_id && card.get_owner_id() == player_id)
-            .unwrap();
-        let actions = card.on_select(&state_clone);
-        for action in &actions {
-            match action {
-                Action::SelectCell { cell_ids } => {
-                    self.state.phase = Phase::SelectingCell {
-                        player_id: player_id.clone(),
-                        cell_ids: cell_ids.clone(),
-                    };
-                }
-            }
+            .find(|card| card.get_id() == card_id && card.get_owner_id() == player_id);
+        if card.is_none() {
+            return Ok(());
         }
 
+        let effects = card.unwrap().on_select(&state_clone);
+        self.state.effects.extend(effects);
         Ok(())
     }
 
@@ -364,12 +420,12 @@ impl Game {
             .iter_mut()
             .find(|card| card.get_id() == card_id && card.get_owner_id() == player_id)
             .unwrap();
-        self.state.effects_queue.push_back(Effect::CardMovedToCell {
+        self.state.effects.push_back(Effect::CardMovedToCell {
             card_id: card_id.clone(),
             cell_id,
         });
-        self.state.effects_queue.extend(card.genesis());
-        self.state.effects_queue.push_back(Effect::PhaseChanged {
+        self.state.effects.extend(card.genesis());
+        self.state.effects.push_back(Effect::ChangePhase {
             new_phase: Phase::WaitingForPlay {
                 player_id: player_id.clone(),
             },
@@ -399,7 +455,7 @@ impl Game {
                 *count -= 1;
 
                 if *count == 0 {
-                    self.state.effects_queue.push_back(Effect::PhaseChanged {
+                    self.state.effects.push_back(Effect::ChangePhase {
                         new_phase: Phase::WaitingForPlay {
                             player_id: player_id.clone(),
                         },
