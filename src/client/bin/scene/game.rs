@@ -120,25 +120,25 @@ impl Game {
     }
 
     fn handle_click(&mut self, mouse_position: Vec2) {
-        if self.action_window_position.is_some() && is_mouse_button_released(MouseButton::Left) {
-            let rect = Rect::new(
-                self.action_window_position.unwrap().x,
-                self.action_window_position.unwrap().y,
-                self.action_window_size.unwrap().x,
-                self.action_window_size.unwrap().y,
-            );
-
-            if !rect.contains(mouse_position) {
-                self.action_window_position = None;
-                self.action_window_size = None;
-                self.client
-                    .send(Message::SelectActionCancelled {
-                        player_id: self.player_id,
-                        game_id: self.game_id,
-                    })
-                    .unwrap();
-            }
-        }
+        // if self.action_window_position.is_some() && is_mouse_button_released(MouseButton::Left) {
+        //     let rect = Rect::new(
+        //         self.action_window_position.unwrap().x,
+        //         self.action_window_position.unwrap().y,
+        //         self.action_window_size.unwrap().x,
+        //         self.action_window_size.unwrap().y,
+        //     );
+        //
+        //     if !rect.contains(mouse_position) {
+        //         self.action_window_position = None;
+        //         self.action_window_size = None;
+        //         self.client
+        //             .send(Message::SelectActionCancelled {
+        //                 player_id: self.player_id,
+        //                 game_id: self.game_id,
+        //             })
+        //             .unwrap();
+        //     }
+        // }
 
         self.handle_card_click(mouse_position);
         self.handle_cell_click(mouse_position);
@@ -273,8 +273,45 @@ impl Game {
                                     .unwrap();
                             }
                         }
+
+                        if ui.button(Vec2::new(0.0, 30.0 * actions.len() as f32), "Cancel") {
+                            self.action_window_position = None;
+                            self.action_window_size = None;
+                            self.client
+                                .send(Message::SelectActionCancelled {
+                                    player_id: self.player_id,
+                                    game_id: self.game_id,
+                                })
+                                .unwrap();
+                        }
                     },
                 );
+            }
+            Phase::SelectingCard { player_id, card_ids } if player_id == &self.player_id => {
+                let valid_cards: Vec<&CardDisplay> = self
+                    .cards
+                    .iter()
+                    .filter(|c| card_ids.contains(&c.card.get_id()))
+                    .collect();
+
+                let has_selected_card = valid_cards.iter().any(|c| c.is_selected);
+                let mut scale = 1.0;
+                for card in valid_cards {
+                    if card.is_hovered {
+                        scale = 1.2;
+                    }
+
+                    if !has_selected_card || card.is_selected {
+                        draw_rectangle_lines(
+                            card.rect.x,
+                            card.rect.y,
+                            card.rect.w * scale,
+                            card.rect.h * scale,
+                            3.0,
+                            WHITE,
+                        );
+                    }
+                }
             }
             _ => {}
         }
@@ -332,45 +369,76 @@ impl Game {
     }
 
     fn handle_card_click(&mut self, mouse_position: Vec2) {
-        if let Phase::WaitingForPlay { player_id } = self.state.phase {
-            let mut hovered_card_index = None;
-            for (idx, card_display) in self.cards.iter().enumerate() {
-                if card_display.rect.contains(mouse_position.into()) {
-                    hovered_card_index = Some(idx);
-                };
-            }
+        let mut hovered_card_index = None;
+        for (idx, card_display) in self.cards.iter().enumerate() {
+            if card_display.rect.contains(mouse_position.into()) {
+                hovered_card_index = Some(idx);
+            };
+        }
 
-            for card in &mut self.cards {
-                card.is_hovered = false;
-            }
+        for card in &mut self.cards {
+            card.is_hovered = false;
+        }
 
-            if let Some(idx) = hovered_card_index {
-                self.cards.get_mut(idx).unwrap().is_hovered = true;
-            }
+        if let Some(idx) = hovered_card_index {
+            self.cards.get_mut(idx).unwrap().is_hovered = true;
+        }
 
-            if player_id != self.player_id {
-                return;
-            }
+        match &self.state.phase {
+            Phase::WaitingForPlay { player_id } if player_id == &self.player_id => {
+                let mut card_selected = None;
+                for card_display in &mut self
+                    .cards
+                    .iter_mut()
+                    .filter(|c| matches!(c.card.get_zone(), CardZone::Realm(_)))
+                {
+                    if card_display.is_hovered && is_mouse_button_released(MouseButton::Left) {
+                        card_display.is_selected = !card_display.is_selected;
+                        if card_display.is_selected {
+                            card_selected = Some(card_display.card.get_id().clone());
+                        }
+                    };
+                }
 
-            let mut card_selected = None;
-            for card_display in &mut self.cards {
-                if card_display.is_hovered && is_mouse_button_released(MouseButton::Left) {
-                    card_display.is_selected = !card_display.is_selected;
-                    if card_display.is_selected {
-                        card_selected = Some(card_display.card.get_id().clone());
+                if card_selected.is_some() {
+                    self.client
+                        .send(Message::CardSelected {
+                            card_id: card_selected.unwrap(),
+                            player_id: self.player_id,
+                            game_id: self.game_id,
+                        })
+                        .unwrap();
+                }
+            }
+            Phase::SelectingCard { player_id, card_ids } if player_id == &self.player_id => {
+                let valid_cards: Vec<&CardDisplay> = self
+                    .cards
+                    .iter()
+                    .filter(|c| card_ids.contains(&c.card.get_id()))
+                    .collect();
+                let mut card_id = None;
+                for card in valid_cards {
+                    if card.rect.contains(mouse_position.into()) && is_mouse_button_released(MouseButton::Left) {
+                        card_id = Some(card.card.get_id().clone());
                     }
-                };
-            }
+                }
 
-            if card_selected.is_some() {
-                self.client
-                    .send(Message::CardSelected {
-                        card_id: card_selected.unwrap(),
-                        player_id: self.player_id,
-                        game_id: self.game_id,
-                    })
-                    .unwrap();
+                if let Some(id) = card_id {
+                    let card = self.cards.iter_mut().find(|c| c.card.get_id() == &id).unwrap();
+                    card.is_selected = !card.is_selected;
+
+                    if card.is_selected {
+                        self.client
+                            .send(Message::CardSelected {
+                                card_id: card.card.get_id().clone(),
+                                player_id: self.player_id,
+                                game_id: self.game_id,
+                            })
+                            .unwrap();
+                    }
+                }
             }
+            _ => {}
         }
     }
 
@@ -389,6 +457,7 @@ impl Game {
                 return;
             }
 
+            let mut played_card = false;
             for (idx, cell) in self.cells.iter().enumerate() {
                 if !cell_ids.contains(&cell.id) {
                     continue;
@@ -405,9 +474,20 @@ impl Game {
                                 game_id: self.game_id,
                             })
                             .unwrap();
+                        played_card = true;
                     }
                 }
             }
+
+            if played_card {
+                self.clear_selected_cards();
+            }
+        }
+    }
+
+    fn clear_selected_cards(&mut self) {
+        for card_display in &mut self.cards {
+            card_display.is_selected = false;
         }
     }
 
@@ -501,16 +581,16 @@ impl Game {
                 },
             );
 
-            if card_display.is_selected {
-                draw_rectangle_lines(
-                    card_display.rect.x,
-                    card_display.rect.y,
-                    card_display.rect.w * scale,
-                    card_display.rect.h * scale,
-                    3.0,
-                    WHITE,
-                );
-            }
+            // if card_display.is_selected {
+            //     draw_rectangle_lines(
+            //         card_display.rect.x,
+            //         card_display.rect.y,
+            //         card_display.rect.w * scale,
+            //         card_display.rect.h * scale,
+            //         3.0,
+            //         WHITE,
+            //     );
+            // }
         }
     }
 
@@ -554,10 +634,8 @@ impl Game {
     fn draw_card(&self, card_type: CardType) -> anyhow::Result<()> {
         match self.state.phase {
             Phase::WaitingForCardDraw {
-                player_id,
-                ref allowed_types,
-                ..
-            } if player_id == self.player_id && allowed_types.contains(&card_type) => {
+                player_id, ref types, ..
+            } if player_id == self.player_id && types.contains(&card_type) => {
                 let message = networking::Message::DrawCard {
                     card_type,
                     player_id: self.player_id,

@@ -72,7 +72,7 @@ impl Effect {
 pub enum Action {
     SelectCell { cell_ids: Vec<u8> },
     SelectAction { actions: Vec<Action> },
-    DrawCard { allowed_types: Vec<CardType> },
+    DrawCard { types: Vec<CardType> },
     DrawSite { after_select: Vec<Effect> },
     PlaySite { after_select: Vec<Effect> },
 }

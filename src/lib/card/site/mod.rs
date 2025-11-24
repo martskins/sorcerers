@@ -71,6 +71,11 @@ impl Site {
     }
 
     pub fn on_select(&self, state: &State) -> Vec<Effect> {
+        println!("State phase: {:?}", state.phase);
+        if !matches!(state.phase, Phase::SelectingCard { .. }) {
+            return vec![];
+        }
+
         let cell_ids = state.find_valid_cells_for_card(&Card::Site(self.clone()));
         vec![Effect::ChangePhase {
             new_phase: Phase::SelectingCell {

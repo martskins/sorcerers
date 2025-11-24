@@ -18,7 +18,7 @@ pub enum Phase {
     WaitingForCardDraw {
         player_id: uuid::Uuid,
         count: u8,
-        allowed_types: Vec<CardType>,
+        types: Vec<CardType>,
     },
     SelectingCell {
         player_id: uuid::Uuid,
@@ -30,6 +30,10 @@ pub enum Phase {
     },
     WaitingForPlay {
         player_id: uuid::Uuid,
+    },
+    SelectingCard {
+        player_id: uuid::Uuid,
+        card_ids: Vec<uuid::Uuid>,
     },
 }
 
@@ -272,25 +276,21 @@ impl Game {
             }
             Action::PlaySite { after_select } => {
                 self.state.effects.extend(after_select.clone());
-                // let valid_cells: Vec<u8> = self
-                //     .state
-                //     .cards
-                //     .iter()
-                //     .filter(|card| card.get_owner_id() == player_id)
-                //     .filter_map(|card| match card.get_zone() {
-                //         CardZone::Hand => Some(card),
-                //         _ => None,
-                //     })
-                //     .filter(|card| card.is_site())
-                //     .flat_map(|card| self.state.find_valid_cells_for_card(card))
-                //     .collect();
-                //
-                // self.state.effects.push_back(Effect::ChangePhase {
-                //     new_phase: Phase::SelectingCell {
-                //         player_id: player_id.clone(),
-                //         cell_ids: valid_cells,
-                //     },
-                // });
+                let site_ids = self
+                    .state
+                    .cards
+                    .iter()
+                    .filter(|card| card.get_owner_id() == player_id && card.is_site())
+                    .filter(|card| matches!(card.get_zone(), CardZone::Hand))
+                    .map(|card| card.get_id())
+                    .cloned()
+                    .collect();
+                self.state.effects.push_back(Effect::ChangePhase {
+                    new_phase: Phase::SelectingCard {
+                        player_id: player_id.clone(),
+                        card_ids: site_ids,
+                    },
+                });
             }
             _ => {}
         }
@@ -375,7 +375,7 @@ impl Game {
         self.state.phase = Phase::WaitingForCardDraw {
             player_id: self.state.current_player.clone(),
             count: 1,
-            allowed_types: vec![CardType::Site, CardType::Spell],
+            types: vec![CardType::Site, CardType::Spell],
         };
 
         self.state
