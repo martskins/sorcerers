@@ -61,6 +61,12 @@ impl Avatar {
         };
     }
 
+    pub fn on_turn_start(&self, _: &State) -> Vec<Effect> {
+        vec![Effect::UntapCard {
+            card_id: self.get_id().clone(),
+        }]
+    }
+
     pub fn on_select(&self, _: &State) -> Vec<Effect> {
         if self.get_base().tapped {
             return vec![];

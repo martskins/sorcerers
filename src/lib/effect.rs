@@ -30,6 +30,9 @@ pub enum Effect {
     TapCard {
         card_id: uuid::Uuid,
     },
+    UntapCard {
+        card_id: uuid::Uuid,
+    },
     DealDamage {
         target_id: uuid::Uuid,
         amount: u8,
@@ -70,6 +73,12 @@ impl Effect {
             }
             Effect::SetPlayerActions { player_id, actions } => {
                 state.actions.insert(player_id.clone(), actions.clone());
+            }
+            Effect::UntapCard { card_id } => {
+                let card = state.cards.iter_mut().find(|c| c.get_id() == card_id);
+                if let Some(card) = card {
+                    card.untap();
+                }
             }
             Effect::TapCard { card_id } => {
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id);

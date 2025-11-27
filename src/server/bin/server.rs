@@ -32,6 +32,7 @@ impl Server {
     pub async fn process_effects(&mut self) -> anyhow::Result<()> {
         for game in self.active_games.values_mut() {
             game.process_effects();
+            println!("Game phase {:?}", game.state.phase);
         }
         Ok(())
     }

@@ -40,6 +40,15 @@ impl Thresholds {
             air: 0,
         }
     }
+
+    pub fn new(fire: u8, water: u8, earth: u8, air: u8) -> Self {
+        Self {
+            fire,
+            water,
+            earth,
+            air,
+        }
+    }
 }
 
 impl std::fmt::Display for Thresholds {

@@ -1,5 +1,5 @@
 use crate::{
-    card::{avatar::Avatar, Card, CardBase, CardType, CardZone, Target},
+    card::{avatar::Avatar, spell::Spell, Card, CardBase, CardType, CardZone, Target},
     deck::Deck,
     effect::{Action, Effect, GameAction, PlayerAction},
     networking::{Message, Socket},
@@ -59,6 +59,17 @@ impl Resources {
             mana: 0,
             health: 20,
         }
+    }
+
+    pub fn has_enough_for_spell(&self, card: &Spell) -> bool {
+        let mana = card.get_mana_cost();
+        let thresholds = card.get_required_threshold();
+
+        self.mana >= mana
+            && self.fire_threshold >= thresholds.fire
+            && self.water_threshold >= thresholds.water
+            && self.earth_threshold >= thresholds.earth
+            && self.air_threshold >= thresholds.air
     }
 }
 
@@ -395,13 +406,14 @@ impl Game {
             types: vec![CardType::Site, CardType::Spell],
         };
 
+        let state = self.state.clone();
         self.state
             .cards
             .iter()
             .filter(|card| card.get_owner_id() == &self.state.current_player)
             .filter(|card| matches!(card.get_zone(), CardZone::Realm(_)))
             .for_each(|card| {
-                let effects = card.on_turn_start();
+                let effects = card.on_turn_start(&state);
                 self.state.effects.extend(effects);
             });
 

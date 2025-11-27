@@ -2,6 +2,7 @@ use crate::{
     card::{CardBase, CardType, CardZone, Target},
     effect::{Action, Effect, GameAction},
     game::{Phase, Resources, State},
+    networking::Thresholds,
 };
 use serde::{Deserialize, Serialize};
 
@@ -82,8 +83,10 @@ impl Spell {
     }
 
     /// Returns the effects that occur at the start of a turn for this spell.
-    pub fn on_turn_start(&self) -> Vec<Effect> {
-        vec![]
+    pub fn on_turn_start(&self, _: &State) -> Vec<Effect> {
+        vec![Effect::UntapCard {
+            card_id: self.get_id().clone(),
+        }]
     }
 
     pub fn is_permanent(&self) -> bool {
@@ -148,7 +151,8 @@ impl Spell {
 
     fn on_select_in_hand(&self, state: &State) -> Vec<Effect> {
         let owner_id = self.get_owner_id();
-        if state.resources.get(&owner_id).unwrap_or(&Resources::new()).mana < self.get_mana_cost() {
+        let resources = state.resources.get(&owner_id).cloned().unwrap_or(Resources::new());
+        if !resources.has_enough_for_spell(self) {
             return vec![];
         }
 
@@ -199,15 +203,20 @@ impl Spell {
     /// Returns the mana cost required to play the spell.
     pub fn get_mana_cost(&self) -> u8 {
         match self {
-            // Spell::BurningHands(_) => 3,
-            // Spell::BallLightning(_) => 2,
-            Spell::BurningHands(_) => 1,
-            Spell::BallLightning(_) => 1,
+            Spell::BurningHands(_) => 3,
+            Spell::BallLightning(_) => 2,
+        }
+    }
+
+    /// Returns the required thresholds to play the spell.
+    pub fn get_required_threshold(&self) -> Thresholds {
+        match self {
+            Spell::BurningHands(_) => Thresholds::new(1, 0, 0, 0),
+            Spell::BallLightning(_) => Thresholds::new(0, 0, 0, 2),
         }
     }
 
     pub fn on_cast(&self, _state: &State, target: Target) -> Vec<Effect> {
-        println!("Casting spell: {}", self.get_name());
         match self {
             Spell::BurningHands(_) | Spell::BallLightning(_) => {
                 match target {

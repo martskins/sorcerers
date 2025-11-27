@@ -99,7 +99,7 @@ impl Site {
         ]
     }
 
-    pub fn on_turn_start(&self) -> Vec<Effect> {
+    pub fn on_turn_start(&self, _: &State) -> Vec<Effect> {
         match self {
             _ => {
                 vec![Effect::AddMana {

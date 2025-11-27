@@ -6,6 +6,7 @@ use crate::{
     card::{avatar::Avatar, site::Site, spell::Spell},
     effect::Effect,
     game::State,
+    networking::Thresholds,
 };
 use serde::{Deserialize, Serialize};
 
@@ -56,6 +57,11 @@ pub enum Card {
 }
 
 impl Card {
+    pub fn untap(&mut self) {
+        let base = self.get_base_mut();
+        base.tapped = false;
+    }
+
     pub fn tap(&mut self) {
         let base = self.get_base_mut();
         base.tapped = true;
@@ -150,11 +156,11 @@ impl Card {
         }
     }
 
-    pub fn on_turn_start(&self) -> Vec<Effect> {
+    pub fn on_turn_start(&self, state: &State) -> Vec<Effect> {
         match self {
-            Card::Spell(card) => card.on_turn_start(),
-            Card::Site(card) => card.on_turn_start(),
-            Card::Avatar(_card) => vec![],
+            Card::Spell(card) => card.on_turn_start(state),
+            Card::Site(card) => card.on_turn_start(state),
+            Card::Avatar(card) => card.on_turn_start(state),
         }
     }
 
@@ -187,6 +193,15 @@ impl Card {
             Card::Spell(card) => card.on_prepare(state),
             Card::Site(card) => card.on_prepare(state),
             Card::Avatar(_) => vec![],
+        }
+    }
+
+    /// Returns the required thresholds to play the spell.
+    pub fn get_required_threshold(&self) -> Thresholds {
+        match self {
+            Card::Site(_) => Thresholds::zero(),
+            Card::Spell(spell) => spell.get_required_threshold(),
+            Card::Avatar(_) => Thresholds::zero(),
         }
     }
 }
