@@ -1,13 +1,12 @@
 use crate::{
-    card::{avatar::Avatar, Card, CardBase, CardType, CardZone},
+    card::{avatar::Avatar, Card, CardBase, CardType, CardZone, Target},
     deck::Deck,
-    effect::{Action, Effect},
-    networking::Message,
+    effect::{Action, Effect, GameAction, PlayerAction},
+    networking::{Message, Socket},
 };
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, VecDeque},
-    net::SocketAddr,
     sync::Arc,
 };
 use tokio::net::UdpSocket;
@@ -23,6 +22,7 @@ pub enum Phase {
     SelectingCell {
         player_id: uuid::Uuid,
         cell_ids: Vec<u8>,
+        after_select: Option<Action>,
     },
     SelectingAction {
         player_id: uuid::Uuid,
@@ -34,6 +34,8 @@ pub enum Phase {
     SelectingCard {
         player_id: uuid::Uuid,
         card_ids: Vec<uuid::Uuid>,
+        amount: u8,
+        after_select: Option<Action>,
     },
 }
 
@@ -44,6 +46,7 @@ pub struct Resources {
     pub earth_threshold: u8,
     pub air_threshold: u8,
     pub mana: u8,
+    pub health: u8,
 }
 
 impl Resources {
@@ -54,6 +57,7 @@ impl Resources {
             earth_threshold: 0,
             air_threshold: 0,
             mana: 0,
+            health: 20,
         }
     }
 }
@@ -68,6 +72,8 @@ pub struct State {
     pub effects: VecDeque<Effect>,
     pub resources: HashMap<uuid::Uuid, Resources>,
     pub actions: HashMap<uuid::Uuid, Vec<Action>>,
+    pub current_target: Option<Target>,
+    pub targeting: u8,
 }
 
 impl State {
@@ -81,6 +87,8 @@ impl State {
             effects: VecDeque::new(),
             resources: HashMap::new(),
             actions: HashMap::new(),
+            current_target: None,
+            targeting: 0,
         }
     }
 
@@ -198,33 +206,31 @@ pub struct Game {
     pub players: Vec<uuid::Uuid>,
     pub decks: HashMap<uuid::Uuid, Deck>,
     pub state: State,
-    pub addrs: HashMap<uuid::Uuid, SocketAddr>,
+    pub addrs: HashMap<uuid::Uuid, Socket>,
     pub socket: Arc<UdpSocket>,
 }
 
 impl Game {
-    pub fn new(
-        player1: uuid::Uuid,
-        player2: uuid::Uuid,
-        socket: Arc<UdpSocket>,
-        addr1: SocketAddr,
-        addr2: SocketAddr,
-    ) -> Self {
+    pub fn new(player1: uuid::Uuid, player2: uuid::Uuid, socket: Arc<UdpSocket>, addr1: Socket, addr2: Socket) -> Self {
         let mut decks = HashMap::new();
-        decks.insert(player1, Deck::test_deck(player1));
+        let deck_one = Deck::test_deck(player1);
+
         let mut deck_two = Deck::test_deck(player2);
         deck_two.avatar = Avatar::Battlemage(CardBase {
             id: uuid::Uuid::new_v4(),
             owner_id: player2,
-            zone: CardZone::Avatar,
+            zone: CardZone::Realm(18),
             tapped: false,
         });
+
+        let state = State::new(vec![player1, player2]);
+        decks.insert(player1, deck_one);
         decks.insert(player2, deck_two);
 
         Game {
             id: uuid::Uuid::new_v4(),
             players: vec![player1, player2],
-            state: State::new(vec![player1, player2]),
+            state,
             decks,
             socket,
             addrs: HashMap::from([(player1, addr1), (player2, addr2)]),
@@ -233,12 +239,15 @@ impl Game {
 
     pub async fn process_message(&mut self, msg: Message) -> anyhow::Result<()> {
         match msg {
+            Message::PrepareCardForPlay { card_id, player_id, .. } => {
+                self.prepare_card_for_play(&player_id, &card_id).await?
+            }
             Message::CardPlayed {
                 card_id,
                 player_id,
-                cell_id,
+                targets,
                 ..
-            } => self.card_played(&player_id, &card_id, cell_id).await?,
+            } => self.card_played(&player_id, &card_id, targets).await?,
             Message::CardSelected { card_id, player_id, .. } => self.card_selected(&player_id, &card_id).await?,
             Message::EndTurn { player_id, .. } => self.end_turn(&player_id).await?,
             Message::DrawCard {
@@ -265,7 +274,7 @@ impl Game {
         }
 
         match &actions[action_idx] {
-            Action::DrawSite { after_select } => {
+            Action::PlayerAction(PlayerAction::DrawSite { after_select }) => {
                 self.state.effects.extend(after_select.clone());
                 self.draw_card_for_player(player_id, CardType::Site).await?;
                 self.state.effects.push_back(Effect::ChangePhase {
@@ -274,7 +283,7 @@ impl Game {
                     },
                 });
             }
-            Action::PlaySite { after_select } => {
+            Action::PlayerAction(PlayerAction::PlaySite { after_select }) => {
                 self.state.effects.extend(after_select.clone());
                 let site_ids = self
                     .state
@@ -289,6 +298,8 @@ impl Game {
                     new_phase: Phase::SelectingCard {
                         player_id: player_id.clone(),
                         card_ids: site_ids,
+                        amount: 1,
+                        after_select: Some(Action::GameAction(GameAction::PlaySelectedCard)),
                     },
                 });
             }
@@ -326,9 +337,15 @@ impl Game {
         Ok(())
     }
 
-    async fn send_message(&self, message: &Message, addr: &SocketAddr) -> anyhow::Result<()> {
-        let bytes = rmp_serde::to_vec(&message)?;
-        self.socket.send_to(&bytes, addr).await?;
+    async fn send_message(&self, message: &Message, addr: &Socket) -> anyhow::Result<()> {
+        match addr {
+            Socket::SocketAddr(addr) => {
+                let bytes = rmp_serde::to_vec(&message)?;
+                self.socket.send_to(&bytes, addr).await?;
+            }
+            Socket::Noop => {}
+        }
+
         Ok(())
     }
 
@@ -402,7 +419,28 @@ impl Game {
             return Ok(());
         }
 
+        if self.state.targeting > 0 {
+            self.state.current_target = Some(Target::Cards(vec![card_id.clone()]));
+            self.state.targeting -= 1;
+        }
+
         let effects = card.unwrap().on_select(&state_clone);
+        self.state.effects.extend(effects);
+        Ok(())
+    }
+
+    pub async fn prepare_card_for_play(&mut self, player_id: &uuid::Uuid, card_id: &uuid::Uuid) -> anyhow::Result<()> {
+        let state = self.state.clone();
+        let card = self
+            .state
+            .cards
+            .iter_mut()
+            .find(|card| card.get_id() == card_id && card.get_owner_id() == player_id);
+        if card.is_none() {
+            return Ok(());
+        }
+
+        let effects = card.unwrap().on_prepare(&state);
         self.state.effects.extend(effects);
         Ok(())
     }
@@ -411,20 +449,29 @@ impl Game {
         &mut self,
         player_id: &uuid::Uuid,
         card_id: &uuid::Uuid,
-        cell_id: u8,
+        target: Target,
     ) -> anyhow::Result<()> {
-        assert!(cell_id >= 1 && cell_id <= 20);
         let card = self
             .state
             .cards
             .iter_mut()
-            .find(|card| card.get_id() == card_id && card.get_owner_id() == player_id)
+            .find(|card| card.get_id() == card_id)
+            .cloned()
             .unwrap();
-        self.state.effects.push_back(Effect::CardMovedToCell {
-            card_id: card_id.clone(),
-            cell_id,
-        });
-        self.state.effects.extend(card.genesis());
+        match target {
+            Target::Cell(cell_id) => {
+                self.state.effects.push_back(Effect::MoveCardToCell {
+                    card_id: card_id.clone(),
+                    cell_id,
+                });
+                self.state.effects.extend(card.genesis());
+            }
+            Target::Card(_) => {
+                let effects = card.on_cast(&self.state, target);
+                self.state.effects.extend(effects);
+            }
+            _ => {}
+        }
         self.state.effects.push_back(Effect::ChangePhase {
             new_phase: Phase::WaitingForPlay {
                 player_id: player_id.clone(),

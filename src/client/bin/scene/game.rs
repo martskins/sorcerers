@@ -8,7 +8,8 @@ use macroquad::{
     ui,
 };
 use sorcerers::{
-    card::{Card, CardType, CardZone},
+    card::{Card, CardType, CardZone, Target},
+    effect::{Action, GameAction},
     game::{Phase, Resources, State},
     networking::{self, Element, Message},
 };
@@ -183,10 +184,13 @@ impl Game {
     }
 
     fn render_resources(x: f32, y: f32, resources: &Resources) {
-        let mana_text = format!("Mana: {}", resources.mana);
-        draw_text(&mana_text, x, y, FONT_SIZE, WHITE);
+        let health = format!("Health: {}", resources.health);
+        draw_text(&health, x, y, FONT_SIZE, WHITE);
 
-        let thresholds_y: f32 = y + 10.0;
+        let mana_text = format!("Mana: {}", resources.mana);
+        draw_text(&mana_text, x, y + 20.0, FONT_SIZE, WHITE);
+
+        let thresholds_y: f32 = y + 10.0 + 20.0;
         let fire_x = x;
         let fire_y = thresholds_y;
         Game::render_threshold(fire_x, fire_y, resources.fire_threshold, Element::Fire);
@@ -210,7 +214,7 @@ impl Game {
         }
 
         const BASE_X: f32 = 20.0;
-        const PLAYER_Y: f32 = SCREEN_HEIGHT - 40.0;
+        const PLAYER_Y: f32 = SCREEN_HEIGHT - 70.0;
         let resources = self
             .state
             .resources
@@ -287,7 +291,9 @@ impl Game {
                     },
                 );
             }
-            Phase::SelectingCard { player_id, card_ids } if player_id == &self.player_id => {
+            Phase::SelectingCard {
+                player_id, card_ids, ..
+            } if player_id == &self.player_id => {
                 let valid_cards: Vec<&CardDisplay> = self
                     .cards
                     .iter()
@@ -390,7 +396,7 @@ impl Game {
                 for card_display in &mut self
                     .cards
                     .iter_mut()
-                    .filter(|c| matches!(c.card.get_zone(), CardZone::Realm(_)))
+                    .filter(|c| matches!(c.card.get_zone(), CardZone::Realm(_)) || c.card.get_zone() == &CardZone::Hand)
                 {
                     if card_display.is_hovered && is_mouse_button_released(MouseButton::Left) {
                         card_display.is_selected = !card_display.is_selected;
@@ -410,31 +416,52 @@ impl Game {
                         .unwrap();
                 }
             }
-            Phase::SelectingCard { player_id, card_ids } if player_id == &self.player_id => {
+            Phase::SelectingCard {
+                player_id,
+                card_ids,
+                after_select,
+                ..
+            } if player_id == &self.player_id => {
                 let valid_cards: Vec<&CardDisplay> = self
                     .cards
                     .iter()
                     .filter(|c| card_ids.contains(&c.card.get_id()))
                     .collect();
-                let mut card_id = None;
+                let mut selected_id = None;
                 for card in valid_cards {
                     if card.rect.contains(mouse_position.into()) && is_mouse_button_released(MouseButton::Left) {
-                        card_id = Some(card.card.get_id().clone());
+                        selected_id = Some(card.card.get_id().clone());
                     }
                 }
 
-                if let Some(id) = card_id {
+                if let Some(id) = selected_id {
                     let card = self.cards.iter_mut().find(|c| c.card.get_id() == &id).unwrap();
                     card.is_selected = !card.is_selected;
 
                     if card.is_selected {
-                        self.client
-                            .send(Message::CardSelected {
-                                card_id: card.card.get_id().clone(),
-                                player_id: self.player_id,
-                                game_id: self.game_id,
-                            })
-                            .unwrap();
+                        match after_select {
+                            Some(Action::GameAction(GameAction::PlayCardOnSelectedTargets { card_id })) => {
+                                self.client
+                                    .send(Message::CardPlayed {
+                                        player_id: self.player_id,
+                                        card_id: card_id.clone(),
+                                        game_id: self.game_id,
+                                        targets: Target::Card(id.clone()),
+                                    })
+                                    .unwrap();
+                            }
+                            Some(Action::GameAction(GameAction::PlaySelectedCard)) => {
+                                println!("Playing selected card");
+                                self.client
+                                    .send(Message::PrepareCardForPlay {
+                                        player_id: self.player_id,
+                                        card_id: card.card.get_id().clone(),
+                                        game_id: self.game_id,
+                                    })
+                                    .unwrap();
+                            }
+                            _ => {}
+                        }
                     }
                 }
             }
@@ -442,17 +469,13 @@ impl Game {
         }
     }
 
-    fn get_selected_card_id(&self) -> Option<&uuid::Uuid> {
-        for card_display in &self.cards {
-            if card_display.is_selected {
-                return Some(card_display.card.get_id());
-            }
-        }
-        None
-    }
-
     fn handle_cell_click(&mut self, mouse_position: Vec2) {
-        if let Phase::SelectingCell { cell_ids, player_id } = &self.state.phase {
+        if let Phase::SelectingCell {
+            cell_ids,
+            player_id,
+            after_select,
+        } = &self.state.phase
+        {
             if player_id != &self.player_id {
                 return;
             }
@@ -466,14 +489,19 @@ impl Game {
                 if cell.rect.contains(mouse_position.into()) {
                     let cell_id = self.cells[idx].id;
                     if is_mouse_button_released(MouseButton::Left) {
-                        self.client
-                            .send(Message::CardPlayed {
-                                player_id: self.player_id,
-                                card_id: self.get_selected_card_id().cloned().unwrap(),
-                                cell_id,
-                                game_id: self.game_id,
-                            })
-                            .unwrap();
+                        match after_select {
+                            Some(Action::GameAction(GameAction::PlayCardOnSelectedTargets { card_id })) => {
+                                self.client
+                                    .send(Message::CardPlayed {
+                                        player_id: self.player_id,
+                                        card_id: card_id.clone(),
+                                        targets: Target::Cell(cell_id),
+                                        game_id: self.game_id,
+                                    })
+                                    .unwrap();
+                            }
+                            _ => {}
+                        }
                         played_card = true;
                     }
                 }
@@ -512,7 +540,10 @@ impl Game {
                 WHITE,
             );
 
-            if let Phase::SelectingCell { cell_ids, player_id } = &self.state.phase {
+            if let Phase::SelectingCell {
+                cell_ids, player_id, ..
+            } = &self.state.phase
+            {
                 if &self.player_id != player_id {
                     continue;
                 }

@@ -1,6 +1,6 @@
 use crate::{
     card::{Card, CardBase, CardZone},
-    effect::Effect,
+    effect::{Action, Effect, GameAction},
     game::{Phase, State},
     networking::Thresholds,
 };
@@ -70,19 +70,8 @@ impl Site {
         };
     }
 
-    pub fn on_select(&self, state: &State) -> Vec<Effect> {
-        println!("State phase: {:?}", state.phase);
-        if !matches!(state.phase, Phase::SelectingCard { .. }) {
-            return vec![];
-        }
-
-        let cell_ids = state.find_valid_cells_for_card(&Card::Site(self.clone()));
-        vec![Effect::ChangePhase {
-            new_phase: Phase::SelectingCell {
-                player_id: self.get_owner_id().clone(),
-                cell_ids: cell_ids.clone(),
-            },
-        }]
+    pub fn on_select(&self, _state: &State) -> Vec<Effect> {
+        vec![]
     }
 
     pub fn genesis(&self) -> Vec<Effect> {
@@ -119,5 +108,22 @@ impl Site {
                 }]
             }
         }
+    }
+
+    pub fn on_prepare(&self, state: &State) -> Vec<Effect> {
+        if !matches!(state.phase, Phase::SelectingCard { .. }) {
+            return vec![];
+        }
+
+        let cell_ids = state.find_valid_cells_for_card(&Card::Site(self.clone()));
+        vec![Effect::ChangePhase {
+            new_phase: Phase::SelectingCell {
+                player_id: self.get_owner_id().clone(),
+                cell_ids: cell_ids.clone(),
+                after_select: Some(Action::GameAction(GameAction::PlayCardOnSelectedTargets {
+                    card_id: self.get_id().clone(),
+                })),
+            },
+        }]
     }
 }

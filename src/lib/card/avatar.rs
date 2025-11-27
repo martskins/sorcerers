@@ -1,6 +1,6 @@
 use crate::{
     card::{CardBase, CardZone},
-    effect::{Action, Effect},
+    effect::{Action, Effect, PlayerAction},
     game::{Phase, State},
 };
 use serde::{Deserialize, Serialize};
@@ -67,16 +67,16 @@ impl Avatar {
         }
 
         let actions = vec![
-            Action::DrawSite {
+            Action::PlayerAction(PlayerAction::DrawSite {
                 after_select: vec![Effect::TapCard {
                     card_id: self.get_id().clone(),
                 }],
-            },
-            Action::PlaySite {
+            }),
+            Action::PlayerAction(PlayerAction::PlaySite {
                 after_select: vec![Effect::TapCard {
                     card_id: self.get_id().clone(),
                 }],
-            },
+            }),
         ];
 
         vec![

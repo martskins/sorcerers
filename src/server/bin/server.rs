@@ -1,6 +1,6 @@
 use sorcerers::{
     game::{Game, Phase, Resources},
-    networking::Message,
+    networking::{Message, Socket},
 };
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 
@@ -9,17 +9,23 @@ pub struct Server {
     pub active_games: HashMap<uuid::Uuid, Game>,
     pub looking_for_match: Vec<uuid::Uuid>,
     pub player_to_game: HashMap<uuid::Uuid, uuid::Uuid>,
-    pub sockets: HashMap<uuid::Uuid, SocketAddr>,
+    pub sockets: HashMap<uuid::Uuid, Socket>,
 }
 
 impl Server {
     pub fn new(socket: tokio::net::UdpSocket) -> Self {
+        // let player_id = uuid::Uuid::new_v4();
+        // let sockets = HashMap::from([(player_id, Socket::Noop)]);
+        // let looking_for_match = vec![player_id];
+        let sockets = HashMap::new();
+        let looking_for_match = vec![];
+
         Self {
             socket: Arc::new(socket),
             active_games: HashMap::new(),
-            looking_for_match: vec![],
             player_to_game: HashMap::new(),
-            sockets: HashMap::new(),
+            looking_for_match,
+            sockets,
         }
     }
 
@@ -37,13 +43,13 @@ impl Server {
             Message::Connect => {
                 let player_id = uuid::Uuid::new_v4();
                 self.looking_for_match.push(player_id);
-                self.sockets.insert(player_id, addr);
+                self.sockets.insert(player_id, Socket::SocketAddr(addr));
                 self.send_to_addr(&Message::ConnectResponse { player_id }, &addr)
                     .await?;
 
                 match self.find_match() {
                     Some((player1, player2)) => {
-                        let game = self.create_game(&player1, &player2);
+                        let game = self.create_game(&player2, &player1);
                         game.place_avatars()?;
                         for player in &[player1, player2] {
                             game.draw_initial_six(player).await?;

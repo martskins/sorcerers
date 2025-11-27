@@ -1,8 +1,19 @@
 pub mod client;
 
-use crate::{card::CardType, game::State};
+use std::net::SocketAddr;
+
+use crate::{
+    card::{CardType, Target},
+    game::State,
+};
 use serde::{Deserialize, Serialize};
 use uuid;
+
+#[derive(Debug, Clone)]
+pub enum Socket {
+    SocketAddr(SocketAddr),
+    Noop,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Thresholds {
@@ -68,7 +79,12 @@ pub enum Message {
     CardPlayed {
         player_id: uuid::Uuid,
         card_id: uuid::Uuid,
-        cell_id: u8,
+        game_id: uuid::Uuid,
+        targets: Target,
+    },
+    PrepareCardForPlay {
+        player_id: uuid::Uuid,
+        card_id: uuid::Uuid,
         game_id: uuid::Uuid,
     },
     Disconnect {
@@ -99,6 +115,7 @@ impl Message {
             Message::Sync { .. } => None,
             Message::DrawCard { game_id, .. } => Some(game_id.clone()),
             Message::CardSelected { game_id, .. } => Some(game_id.clone()),
+            Message::PrepareCardForPlay { game_id, .. } => Some(game_id.clone()),
             Message::CardPlayed { game_id, .. } => Some(game_id.clone()),
             Message::Disconnect { game_id, .. } => Some(game_id.clone()),
             Message::EndTurn { game_id, .. } => Some(game_id.clone()),

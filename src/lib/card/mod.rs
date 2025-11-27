@@ -4,7 +4,7 @@ pub mod spell;
 
 use crate::{
     card::{avatar::Avatar, site::Site, spell::Spell},
-    effect::{Action, Effect},
+    effect::Effect,
     game::State,
 };
 use serde::{Deserialize, Serialize};
@@ -16,7 +16,7 @@ pub enum CardType {
     Avatar,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CardBase {
     pub id: uuid::Uuid,
     pub owner_id: uuid::Uuid,
@@ -26,12 +26,26 @@ pub struct CardBase {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CardZone {
+    None,
     Hand,
     Spellbook,
     Atlasbook,
     DiscardPile,
-    Avatar,
     Realm(u8),
+}
+
+impl Default for CardZone {
+    fn default() -> Self {
+        CardZone::None
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Target {
+    None,
+    Cards(Vec<uuid::Uuid>),
+    Card(uuid::Uuid),
+    Cell(u8),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -154,16 +168,24 @@ impl Card {
 
     pub fn on_select(&self, state: &State) -> Vec<Effect> {
         match self {
-            Card::Spell(_) => vec![],
+            Card::Spell(card) => card.on_select(state),
             Card::Site(card) => card.on_select(state),
             Card::Avatar(card) => card.on_select(state),
         }
     }
 
-    pub fn on_cast(&self, _state: &State) -> Vec<Action> {
+    pub fn on_cast(&self, state: &State, target: Target) -> Vec<Effect> {
         match self {
-            Card::Spell(_) => vec![],
+            Card::Spell(card) => card.on_cast(state, target),
             Card::Site(_) => vec![],
+            Card::Avatar(_) => vec![],
+        }
+    }
+
+    pub fn on_prepare(&self, state: &State) -> Vec<Effect> {
+        match self {
+            Card::Spell(card) => card.on_prepare(state),
+            Card::Site(card) => card.on_prepare(state),
             Card::Avatar(_) => vec![],
         }
     }

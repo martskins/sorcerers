@@ -1,7 +1,7 @@
 use crate::card::site::Site;
 use crate::card::spell::Spell;
-use crate::card::CardBase;
 use crate::card::{avatar::Avatar, CardZone};
+use crate::card::{spell::SpellBase, CardBase};
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -18,17 +18,23 @@ impl Deck {
     pub fn test_deck(player_id: uuid::Uuid) -> Self {
         let mut spells = vec![];
         for _i in 0..10 {
-            spells.push(Spell::BurningHands(CardBase {
-                id: uuid::Uuid::new_v4(),
-                owner_id: player_id,
-                zone: CardZone::Spellbook,
-                tapped: false,
+            spells.push(Spell::BurningHands(SpellBase {
+                card_base: CardBase {
+                    id: uuid::Uuid::new_v4(),
+                    owner_id: player_id,
+                    zone: CardZone::Spellbook,
+                    tapped: false,
+                },
+                ..Default::default()
             }));
-            spells.push(Spell::BallLightning(CardBase {
-                id: uuid::Uuid::new_v4(),
-                owner_id: player_id,
-                zone: CardZone::Spellbook,
-                tapped: false,
+            spells.push(Spell::BallLightning(SpellBase {
+                card_base: CardBase {
+                    id: uuid::Uuid::new_v4(),
+                    owner_id: player_id,
+                    zone: CardZone::Spellbook,
+                    tapped: false,
+                },
+                ..Default::default()
             }));
         }
 
@@ -62,7 +68,7 @@ impl Deck {
             avatar: Avatar::Sorcerer(CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id: player_id,
-                zone: CardZone::Avatar,
+                zone: CardZone::Realm(3),
                 tapped: false,
             }),
         }

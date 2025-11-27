@@ -1,37 +1,50 @@
 use crate::{
-    card::{CardBase, CardZone},
-    effect::Effect,
+    card::{CardBase, CardType, CardZone, Target},
+    effect::{Action, Effect, GameAction},
+    game::{Phase, Resources, State},
 };
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SpellBase {
+    pub card_base: CardBase,
+    pub power: u8,
+    pub damage_taken: u8,
+}
+
+/// Represents the different spell cards in the game.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Spell {
-    BurningHands(CardBase),
-    BallLightning(CardBase),
+    BurningHands(SpellBase),
+    BallLightning(SpellBase),
 }
 
 impl Spell {
+    /// Returns a reference to the underlying `CardBase` of the spell.
     pub fn get_base(&self) -> &CardBase {
         match self {
-            Spell::BurningHands(cb) => cb,
-            Spell::BallLightning(cb) => cb,
+            Spell::BurningHands(cb) => &cb.card_base,
+            Spell::BallLightning(cb) => &cb.card_base,
         }
     }
 
+    /// Returns a mutable reference to the underlying `CardBase` of the spell.
     pub fn get_base_mut(&mut self) -> &mut CardBase {
         match self {
-            Spell::BurningHands(cb) => cb,
-            Spell::BallLightning(cb) => cb,
+            Spell::BurningHands(cb) => &mut cb.card_base,
+            Spell::BallLightning(cb) => &mut cb.card_base,
         }
     }
 
+    /// Returns a reference to the unique identifier (`Uuid`) of the spell card.
     pub fn get_id(&self) -> &uuid::Uuid {
         match self {
-            Spell::BurningHands(cb) => &cb.id,
-            Spell::BallLightning(cb) => &cb.id,
+            Spell::BurningHands(cb) => &cb.card_base.id,
+            Spell::BallLightning(cb) => &cb.card_base.id,
         }
     }
 
+    /// Returns the name of the spell as a string slice.
     pub fn get_name(&self) -> &str {
         match self {
             Spell::BurningHands(_) => "Burning Hands",
@@ -39,32 +52,186 @@ impl Spell {
         }
     }
 
+    /// Returns a reference to the owner's unique identifier (`Uuid`).
     pub fn get_owner_id(&self) -> &uuid::Uuid {
         match self {
-            Spell::BurningHands(cb) => &cb.owner_id,
-            Spell::BallLightning(cb) => &cb.owner_id,
+            Spell::BurningHands(cb) => &cb.card_base.owner_id,
+            Spell::BallLightning(cb) => &cb.card_base.owner_id,
         }
     }
 
+    /// Returns a reference to the current zone of the spell card.
     pub fn get_zone(&self) -> &CardZone {
         match self {
-            Spell::BurningHands(cb) => &cb.zone,
-            Spell::BallLightning(cb) => &cb.zone,
+            Spell::BurningHands(cb) => &cb.card_base.zone,
+            Spell::BallLightning(cb) => &cb.card_base.zone,
         }
     }
 
+    /// Sets the zone of the spell card to a new value.
     pub fn set_zone(&mut self, new_zone: CardZone) {
         match self {
-            Spell::BurningHands(cb) => cb.zone = new_zone,
-            Spell::BallLightning(cb) => cb.zone = new_zone,
+            Spell::BurningHands(cb) => cb.card_base.zone = new_zone,
+            Spell::BallLightning(cb) => cb.card_base.zone = new_zone,
         };
     }
 
+    /// Returns the effects that occur when the spell is created (genesis).
     pub fn genesis(&self) -> Vec<Effect> {
         vec![]
     }
 
+    /// Returns the effects that occur at the start of a turn for this spell.
     pub fn on_turn_start(&self) -> Vec<Effect> {
+        vec![]
+    }
+
+    pub fn is_permanent(&self) -> bool {
+        match self {
+            Spell::BurningHands(_) => false,
+            Spell::BallLightning(_) => false,
+        }
+    }
+
+    pub fn get_power(&self) -> u8 {
+        match self {
+            Spell::BurningHands(cb) => cb.power,
+            Spell::BallLightning(cb) => cb.power,
+        }
+    }
+
+    pub fn is_dead(&self) -> bool {
+        match self {
+            Spell::BurningHands(cb) => cb.damage_taken >= cb.power,
+            Spell::BallLightning(cb) => cb.damage_taken >= cb.power,
+        }
+    }
+
+    pub fn take_damage(&mut self, amount: u8) {
+        match self {
+            Spell::BurningHands(cb) => cb.damage_taken += amount,
+            Spell::BallLightning(cb) => cb.damage_taken += amount,
+        }
+    }
+
+    pub fn reset_damage(&mut self) {
+        match self {
+            Spell::BurningHands(cb) => cb.damage_taken = 0,
+            Spell::BallLightning(cb) => cb.damage_taken = 0,
+        }
+    }
+
+    /// Returns the effects that occur when the spell is selected, given the current game state.
+    /// It also does basic state checks like verifying if the owner has enough mana to trigger any
+    /// actions on the card or not.
+    pub fn on_select(&self, state: &State) -> Vec<Effect> {
+        match self.get_zone() {
+            CardZone::None => unreachable!(),
+            CardZone::Hand => self.on_select_in_hand(state),
+            CardZone::Spellbook => todo!(),
+            CardZone::Atlasbook => todo!(),
+            CardZone::DiscardPile => todo!(),
+            CardZone::Realm(_) => self.on_select_in_realm(state),
+        }
+    }
+
+    fn on_select_in_realm(&self, _state: &State) -> Vec<Effect> {
+        if !self.is_permanent() {
+            return vec![];
+        }
+
+        match self {
+            Spell::BurningHands(_) => vec![],
+            Spell::BallLightning(_) => vec![],
+        }
+    }
+
+    fn on_select_in_hand(&self, state: &State) -> Vec<Effect> {
+        let owner_id = self.get_owner_id();
+        if state.resources.get(&owner_id).unwrap_or(&Resources::new()).mana < self.get_mana_cost() {
+            return vec![];
+        }
+
+        match self {
+            Spell::BurningHands(_) => vec![
+                Effect::SetTargeting(1),
+                Effect::ChangePhase {
+                    new_phase: Phase::SelectingCard {
+                        player_id: self.get_owner_id().clone(),
+                        card_ids: state
+                            .cards
+                            .iter()
+                            .filter(|c| matches!(c.get_zone(), CardZone::Realm(_)))
+                            .filter(|c| c.get_type() == CardType::Spell || c.get_type() == CardType::Avatar)
+                            .map(|c| c.get_id())
+                            .cloned()
+                            .collect(),
+                        amount: 1,
+                        after_select: Some(Action::GameAction(GameAction::PlayCardOnSelectedTargets {
+                            card_id: self.get_id().clone(),
+                        })),
+                    },
+                },
+            ],
+            Spell::BallLightning(_) => vec![
+                Effect::SetTargeting(1),
+                Effect::ChangePhase {
+                    new_phase: Phase::SelectingCard {
+                        player_id: self.get_owner_id().clone(),
+                        card_ids: state
+                            .cards
+                            .iter()
+                            .filter(|c| matches!(c.get_zone(), CardZone::Realm(_)))
+                            .filter(|c| c.get_type() == CardType::Spell || c.get_type() == CardType::Avatar)
+                            .map(|c| c.get_id())
+                            .cloned()
+                            .collect(),
+                        amount: 1,
+                        after_select: Some(Action::GameAction(GameAction::PlayCardOnSelectedTargets {
+                            card_id: self.get_id().clone(),
+                        })),
+                    },
+                },
+            ],
+        }
+    }
+
+    /// Returns the mana cost required to play the spell.
+    pub fn get_mana_cost(&self) -> u8 {
+        match self {
+            // Spell::BurningHands(_) => 3,
+            // Spell::BallLightning(_) => 2,
+            Spell::BurningHands(_) => 1,
+            Spell::BallLightning(_) => 1,
+        }
+    }
+
+    pub fn on_cast(&self, _state: &State, target: Target) -> Vec<Effect> {
+        println!("Casting spell: {}", self.get_name());
+        match self {
+            Spell::BurningHands(_) | Spell::BallLightning(_) => {
+                match target {
+                    Target::Card(target_id) => {
+                        vec![
+                            // TODO: Change DealDamage to support area of effect damage.
+                            Effect::DealDamage { target_id, amount: 4 },
+                            Effect::SpendMana {
+                                player_id: self.get_owner_id().clone(),
+                                amount: self.get_mana_cost(),
+                            },
+                            Effect::MoveCard {
+                                card_id: self.get_id().clone(),
+                                to_zone: CardZone::DiscardPile,
+                            },
+                        ]
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        }
+    }
+
+    pub fn on_prepare(&self, _state: &State) -> Vec<Effect> {
         vec![]
     }
 }
