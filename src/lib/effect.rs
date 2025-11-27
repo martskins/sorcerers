@@ -90,6 +90,7 @@ impl Effect {
                 let card = state.cards.iter().find(|c| c.get_id() == target_id).unwrap();
                 match card.get_type() {
                     CardType::Spell => {
+                        // TODO: implement damage taking
                         state.effects.push_back(Effect::MoveCard {
                             card_id: *target_id,
                             to_zone: CardZone::DiscardPile,

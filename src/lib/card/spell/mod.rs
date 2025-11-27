@@ -7,10 +7,46 @@ use crate::{
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum AuraType {
+    #[default]
+    None,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum MagicType {
+    #[default]
+    None,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ArtifactType {
+    #[default]
+    None,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum MinionType {
+    #[default]
+    None,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SpellType {
+    #[default]
+    None,
+    Minion(MinionType),
+    Artifact(ArtifactType),
+    Magic(MagicType),
+    Aura(AuraType),
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SpellBase {
     pub card_base: CardBase,
-    pub power: u8,
+    pub power: Option<u8>,
+    // TODO: Implement damange reset at the end of turn
     pub damage_taken: u8,
+    pub spell_type: SpellType,
 }
 
 /// Represents the different spell cards in the game.
@@ -21,6 +57,14 @@ pub enum Spell {
 }
 
 impl Spell {
+    /// Returns a reference to the underlying `CardBase` of the spell.
+    pub fn get_spell_base(&self) -> &SpellBase {
+        match self {
+            Spell::BurningHands(cb) => &cb,
+            Spell::BallLightning(cb) => &cb,
+        }
+    }
+
     /// Returns a reference to the underlying `CardBase` of the spell.
     pub fn get_base(&self) -> &CardBase {
         match self {
@@ -90,13 +134,16 @@ impl Spell {
     }
 
     pub fn is_permanent(&self) -> bool {
-        match self {
-            Spell::BurningHands(_) => false,
-            Spell::BallLightning(_) => false,
+        match &self.get_spell_base().spell_type {
+            SpellType::None => false,
+            SpellType::Minion(_) => true,
+            SpellType::Artifact(_) => true,
+            SpellType::Magic(_) => false,
+            SpellType::Aura(_) => true,
         }
     }
 
-    pub fn get_power(&self) -> u8 {
+    pub fn get_power(&self) -> Option<u8> {
         match self {
             Spell::BurningHands(cb) => cb.power,
             Spell::BallLightning(cb) => cb.power,
@@ -104,9 +151,10 @@ impl Spell {
     }
 
     pub fn is_dead(&self) -> bool {
-        match self {
-            Spell::BurningHands(cb) => cb.damage_taken >= cb.power,
-            Spell::BallLightning(cb) => cb.damage_taken >= cb.power,
+        let base = self.get_spell_base();
+        match self.get_power() {
+            None => false,
+            Some(power) => base.damage_taken >= power,
         }
     }
 
@@ -217,30 +265,49 @@ impl Spell {
     }
 
     pub fn on_cast(&self, _state: &State, target: Target) -> Vec<Effect> {
+        let mut effects = vec![];
+        effects.push(Effect::SpendMana {
+            player_id: self.get_owner_id().clone(),
+            amount: self.get_mana_cost(),
+        });
+
         match self {
             Spell::BurningHands(_) | Spell::BallLightning(_) => {
                 match target {
                     Target::Card(target_id) => {
-                        vec![
-                            // TODO: Change DealDamage to support area of effect damage.
-                            Effect::DealDamage { target_id, amount: 4 },
-                            Effect::SpendMana {
-                                player_id: self.get_owner_id().clone(),
-                                amount: self.get_mana_cost(),
-                            },
-                            Effect::MoveCard {
-                                card_id: self.get_id().clone(),
-                                to_zone: CardZone::DiscardPile,
-                            },
-                        ]
+                        // TODO: Change DealDamage to support area of effect damage.
+                        effects.push(Effect::DealDamage { target_id, amount: 4 });
                     }
                     _ => unreachable!(),
                 }
             }
         }
+
+        effects
     }
 
+    /// Returns the effects that occur when the player selects a card with the intention to play
+    /// it.
     pub fn on_prepare(&self, _state: &State) -> Vec<Effect> {
         vec![]
+    }
+
+    /// Returns the effects that occur after the spell has been resolved.
+    pub fn after_resolve(&self, _state: &State) -> Vec<Effect> {
+        if !self.is_permanent() {
+            return vec![Effect::MoveCard {
+                card_id: self.get_id().clone(),
+                to_zone: CardZone::DiscardPile,
+            }];
+        }
+
+        vec![]
+    }
+
+    pub fn is_unit(&self) -> bool {
+        match &self.get_spell_base().spell_type {
+            SpellType::Minion(_) => true,
+            _ => false,
+        }
     }
 }

@@ -490,6 +490,9 @@ impl Game {
             },
         });
 
+        let resolve_effects = card.after_resolve(&self.state);
+        self.state.effects.extend(resolve_effects);
+
         Ok(())
     }
 

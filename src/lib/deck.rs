@@ -1,5 +1,5 @@
 use crate::card::site::Site;
-use crate::card::spell::Spell;
+use crate::card::spell::{MagicType, Spell, SpellType};
 use crate::card::{avatar::Avatar, CardZone};
 use crate::card::{spell::SpellBase, CardBase};
 use rand::prelude::*;
@@ -25,6 +25,7 @@ impl Deck {
                     zone: CardZone::Spellbook,
                     tapped: false,
                 },
+                spell_type: SpellType::Magic(MagicType::None),
                 ..Default::default()
             }));
             spells.push(Spell::BallLightning(SpellBase {
@@ -34,6 +35,7 @@ impl Deck {
                     zone: CardZone::Spellbook,
                     tapped: false,
                 },
+                spell_type: SpellType::Magic(MagicType::None),
                 ..Default::default()
             }));
         }

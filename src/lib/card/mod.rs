@@ -204,4 +204,20 @@ impl Card {
             Card::Avatar(_) => Thresholds::zero(),
         }
     }
+
+    pub fn after_resolve(&self, state: &State) -> Vec<Effect> {
+        match self {
+            Card::Spell(card) => card.after_resolve(state),
+            Card::Site(_) => vec![],
+            Card::Avatar(_) => vec![],
+        }
+    }
+
+    pub fn is_unit(&self) -> bool {
+        match self {
+            Card::Site(_) => false,
+            Card::Spell(card) => card.is_unit(),
+            Card::Avatar(_) => true,
+        }
+    }
 }
