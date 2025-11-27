@@ -55,14 +55,13 @@ impl Server {
                         for player in &[player1, player2] {
                             game.draw_initial_six(player).await?;
                         }
-                        game.send_sync().await?;
-
                         game.broadcast(&Message::MatchCreated {
                             player1,
                             player2,
                             game_id: game.id.clone(),
                         })
                         .await?;
+                        game.send_sync().await?;
                     }
                     None => {}
                 }

@@ -99,8 +99,10 @@ impl Game {
 
     pub async fn process_message(&mut self, message: networking::Message) -> anyhow::Result<()> {
         match message {
-            Message::MatchCreated { game_id, .. } => {
-                if !self.state.is_player_one(&self.player_id) {
+            Message::MatchCreated { game_id, player1, .. } => {
+                // Flip the board for player 2. Use player1 instead of the is_player_one method
+                // because state is not set at this point.
+                if player1 != self.player_id {
                     for cell in &mut self.cells {
                         let new_id: i8 = cell.id as i8 - 21;
                         cell.id = new_id.abs() as u8;
@@ -121,26 +123,6 @@ impl Game {
     }
 
     fn handle_click(&mut self, mouse_position: Vec2) {
-        // if self.action_window_position.is_some() && is_mouse_button_released(MouseButton::Left) {
-        //     let rect = Rect::new(
-        //         self.action_window_position.unwrap().x,
-        //         self.action_window_position.unwrap().y,
-        //         self.action_window_size.unwrap().x,
-        //         self.action_window_size.unwrap().y,
-        //     );
-        //
-        //     if !rect.contains(mouse_position) {
-        //         self.action_window_position = None;
-        //         self.action_window_size = None;
-        //         self.client
-        //             .send(Message::SelectActionCancelled {
-        //                 player_id: self.player_id,
-        //                 game_id: self.game_id,
-        //             })
-        //             .unwrap();
-        //     }
-        // }
-
         self.handle_card_click(mouse_position);
         self.handle_cell_click(mouse_position);
     }
