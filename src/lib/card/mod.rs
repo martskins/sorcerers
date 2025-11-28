@@ -25,6 +25,17 @@ pub struct CardBase {
     pub tapped: bool,
 }
 
+impl CardBase {
+    pub fn new(owner_id: uuid::Uuid, zone: CardZone) -> Self {
+        Self {
+            id: uuid::Uuid::new_v4(),
+            owner_id,
+            zone,
+            tapped: false,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CardZone {
     None,

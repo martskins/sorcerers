@@ -43,10 +43,17 @@ pub enum SpellType {
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SpellBase {
     pub card_base: CardBase,
-    pub power: Option<u8>,
     // TODO: Implement damange reset at the end of turn
     pub damage_taken: u8,
-    pub spell_type: SpellType,
+}
+
+impl SpellBase {
+    pub fn new(owner_id: uuid::Uuid, zone: CardZone) -> Self {
+        Self {
+            card_base: CardBase::new(owner_id, zone),
+            damage_taken: 0,
+        }
+    }
 }
 
 /// Represents the different spell cards in the game.
@@ -134,7 +141,7 @@ impl Spell {
     }
 
     pub fn is_permanent(&self) -> bool {
-        match &self.get_spell_base().spell_type {
+        match &self.get_spell_type() {
             SpellType::None => false,
             SpellType::Minion(_) => true,
             SpellType::Artifact(_) => true,
@@ -145,8 +152,8 @@ impl Spell {
 
     pub fn get_power(&self) -> Option<u8> {
         match self {
-            Spell::BurningHands(cb) => cb.power,
-            Spell::BallLightning(cb) => cb.power,
+            Spell::BurningHands(_) => None,
+            Spell::BallLightning(_) => None,
         }
     }
 
@@ -304,8 +311,15 @@ impl Spell {
         vec![]
     }
 
+    pub fn get_spell_type(&self) -> SpellType {
+        match self {
+            Spell::BurningHands(_) => SpellType::Magic(MagicType::None),
+            Spell::BallLightning(_) => SpellType::Magic(MagicType::None),
+        }
+    }
+
     pub fn is_unit(&self) -> bool {
-        match &self.get_spell_base().spell_type {
+        match &self.get_spell_type() {
             SpellType::Minion(_) => true,
             _ => false,
         }
