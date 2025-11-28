@@ -61,6 +61,7 @@ impl SpellBase {
 pub enum Spell {
     BurningHands(SpellBase),
     BallLightning(SpellBase),
+    BlackKnight(SpellBase),
 }
 
 impl Spell {
@@ -69,6 +70,7 @@ impl Spell {
         match self {
             Spell::BurningHands(cb) => &cb,
             Spell::BallLightning(cb) => &cb,
+            Spell::BlackKnight(cb) => &cb,
         }
     }
 
@@ -77,6 +79,7 @@ impl Spell {
         match self {
             Spell::BurningHands(cb) => &cb.card_base,
             Spell::BallLightning(cb) => &cb.card_base,
+            Spell::BlackKnight(cb) => &cb.card_base,
         }
     }
 
@@ -85,6 +88,7 @@ impl Spell {
         match self {
             Spell::BurningHands(cb) => &mut cb.card_base,
             Spell::BallLightning(cb) => &mut cb.card_base,
+            Spell::BlackKnight(cb) => &mut cb.card_base,
         }
     }
 
@@ -93,6 +97,7 @@ impl Spell {
         match self {
             Spell::BurningHands(cb) => &cb.card_base.id,
             Spell::BallLightning(cb) => &cb.card_base.id,
+            Spell::BlackKnight(cb) => &cb.card_base.id,
         }
     }
 
@@ -101,6 +106,7 @@ impl Spell {
         match self {
             Spell::BurningHands(_) => "Burning Hands",
             Spell::BallLightning(_) => "Ball Lightning",
+            Spell::BlackKnight(_) => "Black Knight",
         }
     }
 
@@ -109,6 +115,7 @@ impl Spell {
         match self {
             Spell::BurningHands(cb) => &cb.card_base.owner_id,
             Spell::BallLightning(cb) => &cb.card_base.owner_id,
+            Spell::BlackKnight(cb) => &cb.card_base.owner_id,
         }
     }
 
@@ -117,6 +124,7 @@ impl Spell {
         match self {
             Spell::BurningHands(cb) => &cb.card_base.zone,
             Spell::BallLightning(cb) => &cb.card_base.zone,
+            Spell::BlackKnight(cb) => &cb.card_base.zone,
         }
     }
 
@@ -125,6 +133,7 @@ impl Spell {
         match self {
             Spell::BurningHands(cb) => cb.card_base.zone = new_zone,
             Spell::BallLightning(cb) => cb.card_base.zone = new_zone,
+            Spell::BlackKnight(cb) => cb.card_base.zone = new_zone,
         };
     }
 
@@ -150,10 +159,19 @@ impl Spell {
         }
     }
 
+    pub fn get_toughness(&self) -> Option<u8> {
+        match self {
+            Spell::BurningHands(_) => None,
+            Spell::BallLightning(_) => None,
+            Spell::BlackKnight(_) => Some(3),
+        }
+    }
+
     pub fn get_power(&self) -> Option<u8> {
         match self {
             Spell::BurningHands(_) => None,
             Spell::BallLightning(_) => None,
+            Spell::BlackKnight(_) => Some(5),
         }
     }
 
@@ -169,6 +187,7 @@ impl Spell {
         match self {
             Spell::BurningHands(cb) => cb.damage_taken += amount,
             Spell::BallLightning(cb) => cb.damage_taken += amount,
+            Spell::BlackKnight(cb) => cb.damage_taken += amount,
         }
     }
 
@@ -176,6 +195,7 @@ impl Spell {
         match self {
             Spell::BurningHands(cb) => cb.damage_taken = 0,
             Spell::BallLightning(cb) => cb.damage_taken = 0,
+            Spell::BlackKnight(cb) => cb.damage_taken = 0,
         }
     }
 
@@ -201,6 +221,7 @@ impl Spell {
         match self {
             Spell::BurningHands(_) => vec![],
             Spell::BallLightning(_) => vec![],
+            Spell::BlackKnight(_) => vec![],
         }
     }
 
@@ -252,6 +273,25 @@ impl Spell {
                     },
                 },
             ],
+            Spell::BlackKnight(_) => vec![Effect::ChangePhase {
+                new_phase: Phase::SelectingCell {
+                    player_id: self.get_owner_id().clone(),
+                    cell_ids: state
+                        .cards
+                        .iter()
+                        .filter(|c| c.get_owner_id() == owner_id)
+                        .filter(|c| matches!(c.get_zone(), CardZone::Realm(_)))
+                        .filter(|c| c.get_type() == CardType::Site)
+                        .map(|c| match c.get_zone() {
+                            CardZone::Realm(cell_id) => cell_id.clone(),
+                            _ => unreachable!(),
+                        })
+                        .collect(),
+                    after_select: Some(Action::GameAction(GameAction::PlayCardOnSelectedTargets {
+                        card_id: self.get_id().clone(),
+                    })),
+                },
+            }],
         }
     }
 
@@ -260,6 +300,7 @@ impl Spell {
         match self {
             Spell::BurningHands(_) => 3,
             Spell::BallLightning(_) => 2,
+            Spell::BlackKnight(_) => 5,
         }
     }
 
@@ -268,6 +309,7 @@ impl Spell {
         match self {
             Spell::BurningHands(_) => Thresholds::new(1, 0, 0, 0),
             Spell::BallLightning(_) => Thresholds::new(0, 0, 0, 2),
+            Spell::BlackKnight(_) => Thresholds::new(1, 1, 0, 0),
         }
     }
 
@@ -288,6 +330,7 @@ impl Spell {
                     _ => unreachable!(),
                 }
             }
+            _ => {}
         }
 
         effects
@@ -315,6 +358,7 @@ impl Spell {
         match self {
             Spell::BurningHands(_) => SpellType::Magic,
             Spell::BallLightning(_) => SpellType::Magic,
+            Spell::BlackKnight(_) => SpellType::Minion,
         }
     }
 

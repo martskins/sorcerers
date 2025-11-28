@@ -15,7 +15,7 @@ pub enum Socket {
     Noop,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Thresholds {
     pub fire: u8,
     pub water: u8,
@@ -47,6 +47,34 @@ impl Thresholds {
             water,
             earth,
             air,
+        }
+    }
+
+    pub fn fire(amount: u8) -> Self {
+        Self {
+            fire: amount,
+            ..Default::default()
+        }
+    }
+
+    pub fn earth(amount: u8) -> Self {
+        Self {
+            earth: amount,
+            ..Default::default()
+        }
+    }
+
+    pub fn air(amount: u8) -> Self {
+        Self {
+            air: amount,
+            ..Default::default()
+        }
+    }
+
+    pub fn water(amount: u8) -> Self {
+        Self {
+            water: amount,
+            ..Default::default()
         }
     }
 }

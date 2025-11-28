@@ -20,6 +20,7 @@ impl Deck {
         for _i in 0..10 {
             spells.push(Spell::BurningHands(SpellBase::new(player_id, CardZone::Spellbook)));
             spells.push(Spell::BallLightning(SpellBase::new(player_id, CardZone::Spellbook)));
+            spells.push(Spell::BlackKnight(SpellBase::new(player_id, CardZone::Spellbook)));
         }
 
         let mut sites = vec![];
@@ -27,6 +28,7 @@ impl Deck {
             sites.push(Site::Beacon(CardBase::new(player_id, CardZone::Atlasbook)));
             sites.push(Site::Bog(CardBase::new(player_id, CardZone::Atlasbook)));
             sites.push(Site::AnnualFair(CardBase::new(player_id, CardZone::Atlasbook)));
+            sites.push(Site::RedDesert(CardBase::new(player_id, CardZone::Atlasbook)));
         }
 
         Deck {

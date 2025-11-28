@@ -11,6 +11,7 @@ pub enum Site {
     Beacon(CardBase),
     Bog(CardBase),
     AnnualFair(CardBase),
+    RedDesert(CardBase),
 }
 
 impl Site {
@@ -19,6 +20,7 @@ impl Site {
             Site::Beacon(cb) => cb,
             Site::Bog(cb) => cb,
             Site::AnnualFair(cb) => cb,
+            Site::RedDesert(cb) => cb,
         }
     }
 
@@ -27,6 +29,7 @@ impl Site {
             Site::Beacon(cb) => cb,
             Site::Bog(cb) => cb,
             Site::AnnualFair(cb) => cb,
+            Site::RedDesert(cb) => cb,
         }
     }
 
@@ -35,6 +38,7 @@ impl Site {
             Site::Beacon(cb) => &cb.id,
             Site::Bog(cb) => &cb.id,
             Site::AnnualFair(cb) => &cb.id,
+            Site::RedDesert(cb) => &cb.id,
         }
     }
 
@@ -43,6 +47,7 @@ impl Site {
             Site::Beacon(_) => "Beacon",
             Site::Bog(_) => "Bog",
             Site::AnnualFair(_) => "Annual Fair",
+            Site::RedDesert(_) => "Red Desert",
         }
     }
 
@@ -51,6 +56,7 @@ impl Site {
             Site::Beacon(cb) => &cb.owner_id,
             Site::Bog(cb) => &cb.owner_id,
             Site::AnnualFair(cb) => &cb.owner_id,
+            Site::RedDesert(cb) => &cb.owner_id,
         }
     }
 
@@ -59,6 +65,7 @@ impl Site {
             Site::Beacon(cb) => &cb.zone,
             Site::Bog(cb) => &cb.zone,
             Site::AnnualFair(cb) => &cb.zone,
+            Site::RedDesert(cb) => &cb.zone,
         }
     }
 
@@ -67,6 +74,7 @@ impl Site {
             Site::Beacon(cb) => cb.zone = new_zone,
             Site::Bog(cb) => cb.zone = new_zone,
             Site::AnnualFair(cb) => cb.zone = new_zone,
+            Site::RedDesert(cb) => cb.zone = new_zone,
         };
     }
 
@@ -76,16 +84,12 @@ impl Site {
 
     pub fn genesis(&self) -> Vec<Effect> {
         let mana = 1;
-        let mut thresholds = Thresholds::zero();
-        match self {
-            Site::Beacon(_) => {
-                thresholds.air = 1;
-            }
-            Site::Bog(_) => {
-                thresholds.water = 1;
-            }
-            Site::AnnualFair(_) => {}
-        }
+        let thresholds = match self {
+            Site::Beacon(_) => Thresholds::air(1),
+            Site::Bog(_) => Thresholds::water(1),
+            Site::AnnualFair(_) => Thresholds::zero(),
+            Site::RedDesert(_) => Thresholds::fire(1),
+        };
 
         vec![
             Effect::AddMana {
