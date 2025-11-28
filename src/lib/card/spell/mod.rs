@@ -34,10 +34,10 @@ pub enum MinionType {
 pub enum SpellType {
     #[default]
     None,
-    Minion(MinionType),
-    Artifact(ArtifactType),
-    Magic(MagicType),
-    Aura(AuraType),
+    Minion,
+    Artifact,
+    Magic,
+    Aura,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -143,10 +143,10 @@ impl Spell {
     pub fn is_permanent(&self) -> bool {
         match &self.get_spell_type() {
             SpellType::None => false,
-            SpellType::Minion(_) => true,
-            SpellType::Artifact(_) => true,
-            SpellType::Magic(_) => false,
-            SpellType::Aura(_) => true,
+            SpellType::Minion => true,
+            SpellType::Artifact => true,
+            SpellType::Magic => false,
+            SpellType::Aura => true,
         }
     }
 
@@ -313,14 +313,14 @@ impl Spell {
 
     pub fn get_spell_type(&self) -> SpellType {
         match self {
-            Spell::BurningHands(_) => SpellType::Magic(MagicType::None),
-            Spell::BallLightning(_) => SpellType::Magic(MagicType::None),
+            Spell::BurningHands(_) => SpellType::Magic,
+            Spell::BallLightning(_) => SpellType::Magic,
         }
     }
 
     pub fn is_unit(&self) -> bool {
         match &self.get_spell_type() {
-            SpellType::Minion(_) => true,
+            SpellType::Minion => true,
             _ => false,
         }
     }
