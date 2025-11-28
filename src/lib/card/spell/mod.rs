@@ -1,8 +1,11 @@
+mod util;
+
 use crate::{
     card::{CardBase, CardType, CardZone, Target},
     effect::{Action, Effect, GameAction},
     game::{Phase, Resources, State},
     networking::Thresholds,
+    spells,
 };
 use serde::{Deserialize, Serialize};
 
@@ -56,87 +59,17 @@ impl SpellBase {
     }
 }
 
-/// Represents the different spell cards in the game.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum Spell {
-    BurningHands(SpellBase),
-    BallLightning(SpellBase),
-    BlackKnight(SpellBase),
-}
+// ident, name, mana_cost, power, health
+#[rustfmt::skip]
+spells!(
+    BurningHands, "Burning Hands", 3, "R", SpellType::Magic, None, None,
+    BallLightning, "Ball Lightning", 2, "AA", SpellType::Magic, None, None,
+    BlackKnight, "Black Knight", 5, "FA", SpellType::Minion, Some(5),Some(3),
+    SlyFox, "Sly Fox", 1, "W", SpellType::Minion, Some(1),Some(1),
+    CastIntoExile, "Cast Into Exile", 2, "AA", SpellType::Magic, None, None
+);
 
 impl Spell {
-    /// Returns a reference to the underlying `CardBase` of the spell.
-    pub fn get_spell_base(&self) -> &SpellBase {
-        match self {
-            Spell::BurningHands(cb) => &cb,
-            Spell::BallLightning(cb) => &cb,
-            Spell::BlackKnight(cb) => &cb,
-        }
-    }
-
-    /// Returns a reference to the underlying `CardBase` of the spell.
-    pub fn get_base(&self) -> &CardBase {
-        match self {
-            Spell::BurningHands(cb) => &cb.card_base,
-            Spell::BallLightning(cb) => &cb.card_base,
-            Spell::BlackKnight(cb) => &cb.card_base,
-        }
-    }
-
-    /// Returns a mutable reference to the underlying `CardBase` of the spell.
-    pub fn get_base_mut(&mut self) -> &mut CardBase {
-        match self {
-            Spell::BurningHands(cb) => &mut cb.card_base,
-            Spell::BallLightning(cb) => &mut cb.card_base,
-            Spell::BlackKnight(cb) => &mut cb.card_base,
-        }
-    }
-
-    /// Returns a reference to the unique identifier (`Uuid`) of the spell card.
-    pub fn get_id(&self) -> &uuid::Uuid {
-        match self {
-            Spell::BurningHands(cb) => &cb.card_base.id,
-            Spell::BallLightning(cb) => &cb.card_base.id,
-            Spell::BlackKnight(cb) => &cb.card_base.id,
-        }
-    }
-
-    /// Returns the name of the spell as a string slice.
-    pub fn get_name(&self) -> &str {
-        match self {
-            Spell::BurningHands(_) => "Burning Hands",
-            Spell::BallLightning(_) => "Ball Lightning",
-            Spell::BlackKnight(_) => "Black Knight",
-        }
-    }
-
-    /// Returns a reference to the owner's unique identifier (`Uuid`).
-    pub fn get_owner_id(&self) -> &uuid::Uuid {
-        match self {
-            Spell::BurningHands(cb) => &cb.card_base.owner_id,
-            Spell::BallLightning(cb) => &cb.card_base.owner_id,
-            Spell::BlackKnight(cb) => &cb.card_base.owner_id,
-        }
-    }
-
-    /// Returns a reference to the current zone of the spell card.
-    pub fn get_zone(&self) -> &CardZone {
-        match self {
-            Spell::BurningHands(cb) => &cb.card_base.zone,
-            Spell::BallLightning(cb) => &cb.card_base.zone,
-            Spell::BlackKnight(cb) => &cb.card_base.zone,
-        }
-    }
-
-    /// Sets the zone of the spell card to a new value.
-    pub fn set_zone(&mut self, new_zone: CardZone) {
-        match self {
-            Spell::BurningHands(cb) => cb.card_base.zone = new_zone,
-            Spell::BallLightning(cb) => cb.card_base.zone = new_zone,
-            Spell::BlackKnight(cb) => cb.card_base.zone = new_zone,
-        };
-    }
-
     /// Returns the effects that occur when the spell is created (genesis).
     pub fn genesis(&self) -> Vec<Effect> {
         vec![]
@@ -159,43 +92,11 @@ impl Spell {
         }
     }
 
-    pub fn get_toughness(&self) -> Option<u8> {
-        match self {
-            Spell::BurningHands(_) => None,
-            Spell::BallLightning(_) => None,
-            Spell::BlackKnight(_) => Some(3),
-        }
-    }
-
-    pub fn get_power(&self) -> Option<u8> {
-        match self {
-            Spell::BurningHands(_) => None,
-            Spell::BallLightning(_) => None,
-            Spell::BlackKnight(_) => Some(5),
-        }
-    }
-
     pub fn is_dead(&self) -> bool {
         let base = self.get_spell_base();
         match self.get_power() {
             None => false,
             Some(power) => base.damage_taken >= power,
-        }
-    }
-
-    pub fn take_damage(&mut self, amount: u8) {
-        match self {
-            Spell::BurningHands(cb) => cb.damage_taken += amount,
-            Spell::BallLightning(cb) => cb.damage_taken += amount,
-            Spell::BlackKnight(cb) => cb.damage_taken += amount,
-        }
-    }
-
-    pub fn reset_damage(&mut self) {
-        match self {
-            Spell::BurningHands(cb) => cb.damage_taken = 0,
-            Spell::BallLightning(cb) => cb.damage_taken = 0,
-            Spell::BlackKnight(cb) => cb.damage_taken = 0,
         }
     }
 
@@ -222,6 +123,8 @@ impl Spell {
             Spell::BurningHands(_) => vec![],
             Spell::BallLightning(_) => vec![],
             Spell::BlackKnight(_) => vec![],
+            Spell::SlyFox(_) => vec![],
+            Spell::CastIntoExile(_) => vec![],
         }
     }
 
@@ -292,24 +195,8 @@ impl Spell {
                     })),
                 },
             }],
-        }
-    }
-
-    /// Returns the mana cost required to play the spell.
-    pub fn get_mana_cost(&self) -> u8 {
-        match self {
-            Spell::BurningHands(_) => 3,
-            Spell::BallLightning(_) => 2,
-            Spell::BlackKnight(_) => 5,
-        }
-    }
-
-    /// Returns the required thresholds to play the spell.
-    pub fn get_required_threshold(&self) -> Thresholds {
-        match self {
-            Spell::BurningHands(_) => Thresholds::new(1, 0, 0, 0),
-            Spell::BallLightning(_) => Thresholds::new(0, 0, 0, 2),
-            Spell::BlackKnight(_) => Thresholds::new(1, 1, 0, 0),
+            Spell::SlyFox(_) => vec![],
+            Spell::CastIntoExile(_) => vec![],
         }
     }
 
@@ -352,14 +239,6 @@ impl Spell {
         }
 
         vec![]
-    }
-
-    pub fn get_spell_type(&self) -> SpellType {
-        match self {
-            Spell::BurningHands(_) => SpellType::Magic,
-            Spell::BallLightning(_) => SpellType::Magic,
-            Spell::BlackKnight(_) => SpellType::Minion,
-        }
     }
 
     pub fn is_unit(&self) -> bool {

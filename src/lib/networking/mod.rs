@@ -32,6 +32,28 @@ pub enum Element {
 }
 
 impl Thresholds {
+    pub fn parse(input: &str) -> Self {
+        let mut threshold = Self::zero();
+        for c in input.to_uppercase().chars() {
+            match c {
+                'F' => {
+                    threshold.fire += 1;
+                }
+                'W' => {
+                    threshold.water += 1;
+                }
+                'E' => {
+                    threshold.earth += 1;
+                }
+                'A' => {
+                    threshold.air += 1;
+                }
+                _ => continue,
+            }
+        }
+        threshold
+    }
+
     pub fn zero() -> Self {
         Self {
             fire: 0,
