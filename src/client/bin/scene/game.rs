@@ -2,7 +2,7 @@ use macroquad::{
     color::{Color, BLUE, GREEN, RED, WHITE},
     input::{is_mouse_button_released, mouse_position, MouseButton},
     math::{Rect, Vec2},
-    shapes::{draw_line, draw_rectangle_lines, draw_triangle_lines},
+    shapes::{draw_line, draw_rectangle, draw_rectangle_lines, draw_triangle_lines},
     text::draw_text,
     texture::{draw_texture_ex, DrawTextureParams},
     ui,
@@ -381,10 +381,8 @@ impl Game {
                     .filter(|c| matches!(c.card.get_zone(), CardZone::Realm(_)) || c.card.get_zone() == &CardZone::Hand)
                 {
                     if card_display.is_hovered && is_mouse_button_released(MouseButton::Left) {
-                        card_display.is_selected = !card_display.is_selected;
-                        if card_display.is_selected {
-                            card_selected = Some(card_display.card.get_id().clone());
-                        }
+                        card_selected = Some(card_display.card.get_id().clone());
+                        break;
                     };
                 }
 
@@ -420,7 +418,7 @@ impl Game {
                     let card = self.cards.iter_mut().find(|c| c.card.get_id() == &id).unwrap();
                     card.is_selected = !card.is_selected;
 
-                    if dbg!(card.is_selected) {
+                    if card.is_selected {
                         match after_select {
                             Some(Action::GameAction(GameAction::PlayCardOnSelectedTargets { card_id })) => {
                                 self.client
@@ -603,30 +601,16 @@ impl Game {
                     ..Default::default()
                 },
             );
-
-            // if card_display.is_selected {
-            //     draw_rectangle_lines(
-            //         card_display.rect.x,
-            //         card_display.rect.y,
-            //         card_display.rect.w * scale,
-            //         card_display.rect.h * scale,
-            //         3.0,
-            //         WHITE,
-            //     );
-            // }
         }
     }
 
     async fn render_background(&self) {
-        draw_texture_ex(
-            &TextureCache::get_texture(REALM_BACKGROUND_IMAGE, "background", false).await,
+        draw_rectangle(
             REALM_RECT.x,
             REALM_RECT.y,
-            WHITE,
-            DrawTextureParams {
-                dest_size: Some(Vec2::new(REALM_RECT.w, REALM_RECT.h)),
-                ..Default::default()
-            },
+            REALM_RECT.w,
+            REALM_RECT.h,
+            Color::new(0.08, 0.12, 0.18, 1.0),
         );
     }
 
@@ -734,10 +718,8 @@ impl Game {
             let rect = Rect::new(x, y, dimensions.x, dimensions.y);
 
             let current_card = self.cards.iter().find(|c| c.card.get_id() == card.get_id());
-            let mut is_selected = false;
             let mut is_hovered = false;
             if let Some(c) = current_card {
-                is_selected = c.is_selected;
                 is_hovered = c.is_hovered;
             }
 
@@ -745,7 +727,7 @@ impl Game {
                 card: (*card).clone(),
                 rect,
                 is_hovered,
-                is_selected,
+                is_selected: false,
                 rotation: rad,
             });
         }
@@ -759,10 +741,8 @@ impl Game {
             let rect = Rect::new(x, y, dimensions.x, dimensions.y);
 
             let current_card = self.cards.iter().find(|c| c.card.get_id() == card.get_id());
-            let mut is_selected = false;
             let mut is_hovered = false;
             if let Some(c) = current_card {
-                is_selected = c.is_selected;
                 is_hovered = c.is_hovered;
             }
 
@@ -770,7 +750,7 @@ impl Game {
                 card: (*card).clone(),
                 rect,
                 is_hovered,
-                is_selected,
+                is_selected: false,
                 rotation: 0.0,
             });
         }
