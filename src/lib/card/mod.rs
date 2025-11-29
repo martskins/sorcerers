@@ -11,6 +11,27 @@ use crate::{
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Edition {
+    Alpha,
+    Beta,
+    ArthurianLegends,
+    Dragonlord,
+    Gothic,
+}
+
+impl Edition {
+    pub fn url_name(&self) -> &str {
+        match self {
+            Edition::Beta => "bet",
+            Edition::ArthurianLegends => "art",
+            Edition::Alpha => todo!(),
+            Edition::Dragonlord => todo!(),
+            Edition::Gothic => todo!(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CardType {
     Site,
     Spell,
@@ -108,6 +129,14 @@ impl Card {
 
     pub fn is_spell(&self) -> bool {
         matches!(self, Card::Spell(_))
+    }
+
+    pub fn get_name(&self) -> &str {
+        match self {
+            Card::Site(site) => site.get_name(),
+            Card::Spell(spell) => spell.get_name(),
+            Card::Avatar(avatar) => avatar.get_name(),
+        }
     }
 
     pub fn get_image(&self) -> String {
@@ -229,6 +258,14 @@ impl Card {
             Card::Site(_) => false,
             Card::Spell(card) => card.is_unit(),
             Card::Avatar(_) => true,
+        }
+    }
+
+    pub fn get_edition(&self) -> Edition {
+        match self {
+            Card::Site(site) => site.get_edition(),
+            Card::Spell(spell) => spell.get_edition(),
+            Card::Avatar(avatar) => avatar.get_edition(),
         }
     }
 }

@@ -1,13 +1,29 @@
 #[macro_export]
 macro_rules! spells {
-    ($($name:ident, $card_name:expr, $mana_cost:literal, $threshold:literal, $spell_type:expr, $power:expr, $toughness:expr),+) => {
+    ($($name:ident, $card_name:expr, $mana_cost:literal, $threshold:literal, $spell_type:expr, $power:expr, $toughness:expr, $edition:expr),+) => {
         /// Represents the different spell cards in the game.
         #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
         pub enum Spell {
             $($name(SpellBase),)+
         }
 
+        pub const ALL_SPELLS: &[&str] = &[
+            $($card_name,)+
+        ];
+
         impl Spell {
+            pub fn from_name(name: &str, owner_id: uuid::Uuid) -> Option<Self> {
+                match name {
+                    $($card_name => Some(Spell::$name(SpellBase::new(owner_id, CardZone::Spellbook))),)+
+                    _ => None,
+                }
+            }
+            pub fn get_edition(&self) -> Edition {
+                match self {
+                    $(Spell::$name(_) => $edition,)+
+                }
+            }
+
             pub fn get_name(&self) -> &'static str {
                 match self {
                     $(Spell::$name(_) => $card_name,)+

@@ -1,7 +1,7 @@
-use crate::card::site::Site;
-use crate::card::spell::Spell;
+use crate::card::site::{Site, ALL_SITES};
+use crate::card::spell::{Spell, ALL_SPELLS};
+use crate::card::CardBase;
 use crate::card::{avatar::Avatar, CardZone};
-use crate::card::{spell::SpellBase, CardBase};
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -18,17 +18,16 @@ impl Deck {
     pub fn test_deck(player_id: uuid::Uuid) -> Self {
         let mut spells = vec![];
         for _i in 0..10 {
-            spells.push(Spell::BurningHands(SpellBase::new(player_id, CardZone::Spellbook)));
-            spells.push(Spell::BallLightning(SpellBase::new(player_id, CardZone::Spellbook)));
-            spells.push(Spell::BlackKnight(SpellBase::new(player_id, CardZone::Spellbook)));
+            for spell in ALL_SPELLS {
+                spells.push(Spell::from_name(spell, player_id).unwrap());
+            }
         }
 
         let mut sites = vec![];
         for _i in 0..10 {
-            sites.push(Site::Beacon(CardBase::new(player_id, CardZone::Atlasbook)));
-            sites.push(Site::Bog(CardBase::new(player_id, CardZone::Atlasbook)));
-            sites.push(Site::AnnualFair(CardBase::new(player_id, CardZone::Atlasbook)));
-            sites.push(Site::RedDesert(CardBase::new(player_id, CardZone::Atlasbook)));
+            for site in ALL_SITES {
+                sites.push(Site::from_name(site, player_id).unwrap());
+            }
         }
 
         Deck {

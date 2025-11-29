@@ -609,7 +609,7 @@ impl Game {
 
     async fn render_background(&self) {
         draw_texture_ex(
-            &TextureCache::get_texture(REALM_BACKGROUND_IMAGE, false).await,
+            &TextureCache::get_texture(REALM_BACKGROUND_IMAGE, "background", false).await,
             REALM_RECT.x,
             REALM_RECT.y,
             WHITE,
@@ -622,7 +622,7 @@ impl Game {
 
     async fn render_deck(&self) {
         draw_texture_ex(
-            &TextureCache::get_texture(SPELLBOOK_IMAGE, false).await,
+            &TextureCache::get_texture(SPELLBOOK_IMAGE, "spellbook", false).await,
             SPELLBOOK_RECT.x,
             SPELLBOOK_RECT.y,
             WHITE,
@@ -633,7 +633,7 @@ impl Game {
         );
 
         draw_texture_ex(
-            &TextureCache::get_texture(ATLASBOOK_IMAGE, false).await,
+            &TextureCache::get_texture(ATLASBOOK_IMAGE, "atlas", false).await,
             ATLASBOOK_RECT.x,
             ATLASBOOK_RECT.y,
             WHITE,

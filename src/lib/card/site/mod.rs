@@ -1,96 +1,29 @@
+mod util;
+
 use crate::{
-    card::{Card, CardBase, CardZone},
+    card::{Card, CardBase, CardZone, Edition},
     effect::{Action, Effect, GameAction},
     game::{Phase, State},
     networking::Thresholds,
+    sites,
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum Site {
-    Beacon(CardBase),
-    Bog(CardBase),
-    AnnualFair(CardBase),
-    RedDesert(CardBase),
+#[rustfmt::skip]
+sites! {
+    Aqueduct, "Aqueduct", 1, "", Edition::Beta,
+    AridDesert, "Arid Desert", 1, "", Edition::Beta,
+    AstralAlcazar, "Astral Alcazar", 2, "", Edition::Beta
 }
 
 impl Site {
-    pub fn get_base_mut(&mut self) -> &mut CardBase {
-        match self {
-            Site::Beacon(cb) => cb,
-            Site::Bog(cb) => cb,
-            Site::AnnualFair(cb) => cb,
-            Site::RedDesert(cb) => cb,
-        }
-    }
-
-    pub fn get_base(&self) -> &CardBase {
-        match self {
-            Site::Beacon(cb) => cb,
-            Site::Bog(cb) => cb,
-            Site::AnnualFair(cb) => cb,
-            Site::RedDesert(cb) => cb,
-        }
-    }
-
-    pub fn get_id(&self) -> &uuid::Uuid {
-        match self {
-            Site::Beacon(cb) => &cb.id,
-            Site::Bog(cb) => &cb.id,
-            Site::AnnualFair(cb) => &cb.id,
-            Site::RedDesert(cb) => &cb.id,
-        }
-    }
-
-    pub fn get_name(&self) -> &str {
-        match self {
-            Site::Beacon(_) => "Beacon",
-            Site::Bog(_) => "Bog",
-            Site::AnnualFair(_) => "Annual Fair",
-            Site::RedDesert(_) => "Red Desert",
-        }
-    }
-
-    pub fn get_owner_id(&self) -> &uuid::Uuid {
-        match self {
-            Site::Beacon(cb) => &cb.owner_id,
-            Site::Bog(cb) => &cb.owner_id,
-            Site::AnnualFair(cb) => &cb.owner_id,
-            Site::RedDesert(cb) => &cb.owner_id,
-        }
-    }
-
-    pub fn get_zone(&self) -> &CardZone {
-        match self {
-            Site::Beacon(cb) => &cb.zone,
-            Site::Bog(cb) => &cb.zone,
-            Site::AnnualFair(cb) => &cb.zone,
-            Site::RedDesert(cb) => &cb.zone,
-        }
-    }
-
-    pub fn set_zone(&mut self, new_zone: CardZone) {
-        match self {
-            Site::Beacon(cb) => cb.zone = new_zone,
-            Site::Bog(cb) => cb.zone = new_zone,
-            Site::AnnualFair(cb) => cb.zone = new_zone,
-            Site::RedDesert(cb) => cb.zone = new_zone,
-        };
-    }
-
     pub fn on_select(&self, _state: &State) -> Vec<Effect> {
         vec![]
     }
 
     pub fn genesis(&self) -> Vec<Effect> {
-        let mana = 1;
-        let thresholds = match self {
-            Site::Beacon(_) => Thresholds::air(1),
-            Site::Bog(_) => Thresholds::water(1),
-            Site::AnnualFair(_) => Thresholds::zero(),
-            Site::RedDesert(_) => Thresholds::fire(1),
-        };
-
+        let mana = self.get_provided_mana();
+        let thresholds = self.get_provided_threshold();
         vec![
             Effect::AddMana {
                 player_id: self.get_owner_id().clone(),

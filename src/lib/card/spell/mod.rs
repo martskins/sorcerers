@@ -1,7 +1,7 @@
 mod util;
 
 use crate::{
-    card::{CardBase, CardType, CardZone, Target},
+    card::{CardBase, CardType, CardZone, Edition, Target},
     effect::{Action, Effect, GameAction},
     game::{Phase, Resources, State},
     networking::Thresholds,
@@ -59,14 +59,32 @@ impl SpellBase {
     }
 }
 
-// ident, name, mana_cost, power, health
 #[rustfmt::skip]
 spells!(
-    BurningHands, "Burning Hands", 3, "R", SpellType::Magic, None, None,
-    BallLightning, "Ball Lightning", 2, "AA", SpellType::Magic, None, None,
-    BlackKnight, "Black Knight", 5, "FA", SpellType::Minion, Some(5),Some(3),
-    SlyFox, "Sly Fox", 1, "W", SpellType::Minion, Some(1),Some(1),
-    CastIntoExile, "Cast Into Exile", 2, "AA", SpellType::Magic, None, None
+    Abundance, "Abundance", 5, "WW", SpellType::Magic, None, None, Edition::Beta,
+    AccursedAlbatros, "Accursed Albatros", 3, "W", SpellType::Minion, Some(1), Some(1), Edition::Beta,
+    AdeptIllusionist, "Adept Illusionist", 2, "WW", SpellType::Minion, Some(2),Some(2), Edition::Beta,
+    AlbespinePikemen, "Albespine Pikemen", 3, "EE", SpellType::Minion, Some(3),Some(3), Edition::Beta,
+    AllTerrainVestments, "All-Terrain Vestments", 3, "", SpellType::Artifact, None, None, Edition::Beta,
+    AlvalinneDryads, "Alvalinne Dryads", 3, "", SpellType::Minion, Some(1), Some(1), Edition::Beta,
+    AmazonWarriors, "Amazon Warriors", 5, "E", SpellType::Minion, Some(5),Some(5), Edition::Beta,
+    AmethystCore, "Amethyst Core", 1, "", SpellType::Artifact, None, None, Edition::Beta,
+    AncientDragon, "Ancient Dragon", 7, "RRR", SpellType::Minion, Some(6), Some(6), Edition::Beta,
+    AngelsEgg, "Angels Egg", 3, "", SpellType::Artifact, None, None, Edition::Beta,
+    AnuiUndine, "Anui Undine", 5, "WW", SpellType::Minion, Some(0),Some(0), Edition::Beta,
+    ApprenticeWizard, "Apprentice Wizard", 3, "A", SpellType::Minion, Some(1),Some(1), Edition::Beta,
+    AquamarineCore, "Aquamarine Core", 1, "", SpellType::Artifact, None, None, Edition::Beta,
+    AramosMercenaries, "Aramos Mercenaries", 3, "FF", SpellType::Minion, Some(3),Some(3), Edition::Beta,
+    AskelonPhoenix, "Askelon Phoenix", 5, "RR", SpellType::Minion, Some(4),Some(4), Edition::Beta,
+    AssortedAnimas, "Assorted Animas", 0, "", SpellType::Artifact, None, None, Edition::Beta, // TODO: Implemenet X cost
+    AutumnUnicon, "Autumn Unicorn", 3, "EE", SpellType::Minion, Some(4),Some(4), Edition::Beta,
+    AwakenedMummies, "Awakened Mummies", 1, "F", SpellType::Minion, Some(3),Some(3), Edition::Beta,
+    AzuridgeCaravan, "Azuridge Caravan", 5, "F", SpellType::Minion, Some(4),Some(4), Edition::Beta,
+    BurningHands, "Burning Hands", 3, "R", SpellType::Magic, None, None, Edition::Beta,
+    BallLightning, "Ball Lightning", 2, "AA", SpellType::Magic, None, None, Edition::Beta,
+    BlackKnight, "Black Knight", 5, "FA", SpellType::Minion, Some(5),Some(3), Edition::Beta,
+    SlyFox, "Sly Fox", 1, "W", SpellType::Minion, Some(1),Some(1), Edition::Beta,
+    CastIntoExile, "Cast Into Exile", 2, "AA", SpellType::Magic, None, None, Edition::Beta
 );
 
 impl Spell {
@@ -125,6 +143,8 @@ impl Spell {
             Spell::BlackKnight(_) => vec![],
             Spell::SlyFox(_) => vec![],
             Spell::CastIntoExile(_) => vec![],
+            Spell::AdeptIllusionist(_) => vec![],
+            _ => vec![],
         }
     }
 
@@ -197,6 +217,17 @@ impl Spell {
             }],
             Spell::SlyFox(_) => vec![],
             Spell::CastIntoExile(_) => vec![],
+            Spell::AdeptIllusionist(_) => vec![],
+            Spell::Abundance(_) => vec![],
+            Spell::AccursedAlbatros(_) => vec![],
+            Spell::AlbespinePikemen(_) => vec![],
+            Spell::AllTerrainVestments(_) => vec![],
+            Spell::AlvalinneDryads(_) => vec![],
+            Spell::AmazonWarriors(_) => vec![],
+            Spell::AmethystCore(_) => vec![],
+            Spell::AncientDragon(_) => vec![],
+            Spell::AngelsEgg(_) => vec![],
+            _ => vec![],
         }
     }
 

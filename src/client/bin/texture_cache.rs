@@ -22,12 +22,13 @@ impl TextureCache {
     }
 
     pub async fn get_card_texture(card: &Card) -> Texture2D {
-        let rotate = card.is_site();
-        TextureCache::get_texture(&card.get_image(), rotate).await
+        tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(async { TextureCache::texture_for_card(card).await })
     }
 
-    pub async fn get_texture(path: &str, rotate: bool) -> Texture2D {
-        if let Some(tex) = TEXTURE_CACHE.get().unwrap().read().unwrap().inner.get(path) {
+    pub async fn get_texture(path: &str, name: &str, rotate: bool) -> Texture2D {
+        if let Some(tex) = TEXTURE_CACHE.get().unwrap().read().unwrap().inner.get(name) {
             return tex.clone();
         }
 
@@ -37,7 +38,48 @@ impl TextureCache {
         if rotate {
             TextureCache::rotate_texture_clockwise(&mut texture);
         }
-        cache.inner.insert(path.to_string(), texture.clone());
+        cache.inner.insert(name.to_string(), texture.clone());
+        texture
+    }
+
+    async fn texture_for_card(card: &Card) -> Texture2D {
+        if let Some(tex) = TEXTURE_CACHE.get().unwrap().read().unwrap().inner.get(card.get_name()) {
+            return tex.clone();
+        }
+
+        let mut name = card.get_name().to_string();
+        name = name.to_lowercase();
+        name = name.replace(" ", "_");
+
+        let edition = card.get_edition();
+        let set = edition.url_name();
+        let path = format!(
+            "https://d27a44hjr9gen3.cloudfront.net/cards/{}-{}-b-s.png?updated=2025-11-25T21:31:34.196Z&w=3840&q=75",
+            set, name
+        );
+
+        println!("downloading: {}", path);
+        let response = reqwest::get(path).await;
+        if let Err(e) = response {
+            println!("Error fetching texture for card {}: {}", card.get_name(), e);
+            let path = format!("assets/images/cards/{}.png", card.get_name()).to_string();
+            return TextureCache::get_texture(&path, card.get_name(), card.is_site()).await;
+        }
+
+        let response = response.unwrap();
+        if response.status() != reqwest::StatusCode::OK {
+            println!("Error fetching texture for card {}", card.get_name());
+            let path = format!("assets/images/cards/{}.png", card.get_name()).to_string();
+            return TextureCache::get_texture(&path, card.get_name(), card.is_site()).await;
+        }
+
+        let mut cache = TEXTURE_CACHE.get().unwrap().write().unwrap();
+        let bytes = response.bytes().await.unwrap();
+        let mut texture = macroquad::texture::Texture2D::from_file_with_format(&bytes, None);
+        if card.is_site() {
+            TextureCache::rotate_texture_clockwise(&mut texture);
+        }
+        cache.inner.insert(card.get_name().to_string(), texture.clone());
         texture
     }
 
