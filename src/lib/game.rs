@@ -88,7 +88,6 @@ pub struct State {
     pub resources: HashMap<uuid::Uuid, Resources>,
     pub actions: HashMap<uuid::Uuid, Vec<Action>>,
     pub current_target: Option<Target>,
-    pub targeting: u8,
 }
 
 impl State {
@@ -103,7 +102,6 @@ impl State {
             resources: HashMap::new(),
             actions: HashMap::new(),
             current_target: None,
-            targeting: 0,
         }
     }
 
@@ -543,11 +541,6 @@ impl Game {
             .find(|card| card.get_id() == card_id && card.get_owner_id() == player_id);
         if card.is_none() {
             return Ok(());
-        }
-
-        if self.state.targeting > 0 {
-            self.state.current_target = Some(Target::Cards(vec![card_id.clone()]));
-            self.state.targeting -= 1;
         }
 
         let effects = card.unwrap().on_select(&state_clone);

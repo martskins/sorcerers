@@ -45,7 +45,6 @@ pub enum Effect {
         card_id: uuid::Uuid,
         to_zone: CardZone,
     },
-    SetTargeting(u8),
 }
 
 impl Effect {
@@ -111,9 +110,6 @@ impl Effect {
                 if let Some(card) = card {
                     card.set_zone(to_zone.clone());
                 }
-            }
-            Effect::SetTargeting(nr) => {
-                state.targeting = *nr;
             }
         }
     }
