@@ -79,7 +79,7 @@ macro_rules! avatars {
                 }
             }
 
-            pub fn take_damage(&mut self, _amount: u8) {
+            pub fn take_damage(&mut self, _amount: u8) -> Vec<Effect> {
                 todo!();
                 // match self {
                 //     $(Avatar::$name(cb) => cb.damage_taken += amount,)+

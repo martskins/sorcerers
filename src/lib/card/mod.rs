@@ -172,6 +172,14 @@ impl Card {
         }
     }
 
+    pub fn get_cell_id(&self) -> Option<u8> {
+        match self {
+            Card::Site(card) => card.get_cell_id(),
+            Card::Spell(card) => card.get_cell_id(),
+            Card::Avatar(card) => card.get_cell_id(),
+        }
+    }
+
     pub fn get_zone(&self) -> &CardZone {
         match self {
             Card::Site(card) => &card.get_zone(),
@@ -266,6 +274,14 @@ impl Card {
             Card::Site(site) => site.get_edition(),
             Card::Spell(spell) => spell.get_edition(),
             Card::Avatar(avatar) => avatar.get_edition(),
+        }
+    }
+
+    pub fn take_damage(&mut self, amount: u8) -> Vec<Effect> {
+        match self {
+            Card::Site(site) => site.take_damage(amount),
+            Card::Spell(spell) => spell.take_damage(amount),
+            Card::Avatar(avatar) => avatar.take_damage(amount),
         }
     }
 }

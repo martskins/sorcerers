@@ -91,11 +91,11 @@ macro_rules! sites {
                 }
             }
 
-            pub fn take_damage(&mut self, _amount: u8) {
-                todo!()
-                // match self {
-                //     $(Site::$name(cb) => cb.damage_taken += amount,)+
-                // }
+            pub fn take_damage(&mut self, amount: u8) -> Vec<Effect>{
+                vec![Effect::DealDamage {
+                    target_id: *self.get_id(),
+                    amount,
+                }]
             }
         }
     };

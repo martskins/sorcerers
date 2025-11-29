@@ -1,4 +1,9 @@
 use sorcerers::{
+    card::{
+        site::Site,
+        spell::{Spell, SpellBase},
+        Card, CardBase, CardZone,
+    },
     game::{Game, Phase, Resources},
     networking::{Message, Socket},
 };
@@ -32,7 +37,6 @@ impl Server {
     pub async fn process_effects(&mut self) -> anyhow::Result<()> {
         for game in self.active_games.values_mut() {
             game.process_effects();
-            println!("Game phase {:?}", game.state.phase);
         }
         Ok(())
     }
@@ -40,7 +44,7 @@ impl Server {
     pub async fn process_message(&mut self, message: &[u8], addr: SocketAddr) -> anyhow::Result<()> {
         let msg = rmp_serde::from_slice::<Message>(message).unwrap();
         let game_id = msg.get_game_id();
-        match msg {
+        match dbg!(&msg) {
             Message::Connect => {
                 let player_id = uuid::Uuid::new_v4();
                 self.looking_for_match.push(player_id);
@@ -95,6 +99,63 @@ impl Server {
         };
         game.state.resources.insert(player1.clone(), Resources::new());
         game.state.resources.insert(player2.clone(), Resources::new());
+
+        game.state.cards.push(Card::Site(Site::AridDesert(CardBase {
+            id: uuid::Uuid::new_v4(),
+            owner_id: player1.clone(),
+            zone: CardZone::Realm(3),
+            tapped: false,
+        })));
+        game.state.cards.push(Card::Site(Site::AridDesert(CardBase {
+            id: uuid::Uuid::new_v4(),
+            owner_id: player1.clone(),
+            zone: CardZone::Realm(8),
+            tapped: false,
+        })));
+        game.state.cards.push(Card::Spell(Spell::BlackKnight(SpellBase {
+            card_base: CardBase {
+                id: uuid::Uuid::new_v4(),
+                owner_id: player1.clone(),
+                zone: CardZone::Realm(8),
+                tapped: false,
+            },
+            damage_taken: 0,
+        })));
+        game.state.cards.push(Card::Spell(Spell::BurningHands(SpellBase {
+            card_base: CardBase {
+                id: uuid::Uuid::new_v4(),
+                owner_id: player1.clone(),
+                zone: CardZone::Hand,
+                tapped: false,
+            },
+            damage_taken: 0,
+        })));
+        game.state.resources.get_mut(player1).unwrap().mana = 2;
+        game.state.resources.get_mut(player1).unwrap().fire_threshold = 2;
+
+        game.state.cards.push(Card::Site(Site::AridDesert(CardBase {
+            id: uuid::Uuid::new_v4(),
+            owner_id: player2.clone(),
+            zone: CardZone::Realm(13),
+            tapped: false,
+        })));
+        game.state.cards.push(Card::Site(Site::AridDesert(CardBase {
+            id: uuid::Uuid::new_v4(),
+            owner_id: player2.clone(),
+            zone: CardZone::Realm(18),
+            tapped: false,
+        })));
+        game.state.cards.push(Card::Spell(Spell::BlackKnight(SpellBase {
+            card_base: CardBase {
+                id: uuid::Uuid::new_v4(),
+                owner_id: player2.clone(),
+                zone: CardZone::Realm(13),
+                tapped: false,
+            },
+            damage_taken: 0,
+        })));
+        game.state.resources.get_mut(player2).unwrap().mana = 2;
+        game.state.resources.get_mut(player2).unwrap().fire_threshold = 2;
 
         let game_id = game.id;
         self.player_to_game.insert(player1.clone(), game.id);

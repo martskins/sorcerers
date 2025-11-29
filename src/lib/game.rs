@@ -1,5 +1,9 @@
 use crate::{
-    card::{avatar::Avatar, spell::Spell, Card, CardBase, CardType, CardZone, Target},
+    card::{
+        avatar::Avatar,
+        spell::{Spell, SpellType},
+        Card, CardBase, CardType, CardZone, Target,
+    },
     deck::Deck,
     effect::{Action, Effect, GameAction, PlayerAction},
     networking::{Message, Socket},
@@ -182,6 +186,31 @@ impl State {
         adjacent_cells
     }
 
+    /// Returns the ids of the cells that are directly above, below, left or right of the given
+    /// cell id.
+    pub fn get_nearby_cell_ids(cell_id: u8) -> Vec<u8> {
+        let mut neighbors = Vec::new();
+        let rows = 4;
+        let cols = 5;
+        let row = cell_id / cols;
+        let col = cell_id % cols;
+
+        if row > 0 {
+            neighbors.push((row - 1) * cols + col);
+        }
+        if row < rows - 1 {
+            neighbors.push((row + 1) * cols + col);
+        }
+        if col > 0 {
+            neighbors.push(row * cols + (col - 1));
+        }
+        if col < cols - 1 {
+            neighbors.push(row * cols + (col + 1));
+        }
+
+        neighbors
+    }
+
     pub fn get_adjacent_cell_ids(cell_id: u8) -> Vec<u8> {
         let mut neighbors = Vec::new();
         let rows = 4;
@@ -210,6 +239,18 @@ impl State {
 pub struct Cell {
     pub id: u8,
     pub occupied_by: Vec<Card>,
+}
+
+impl Cell {
+    pub fn are_adjacent(a: u8, b: u8) -> bool {
+        let adjacent_cells = State::get_adjacent_cell_ids(a);
+        adjacent_cells.contains(&b)
+    }
+
+    pub fn are_nearby(a: u8, b: u8) -> bool {
+        let adjacent_cells = State::get_nearby_cell_ids(a);
+        adjacent_cells.contains(&b)
+    }
 }
 
 pub struct Game {
@@ -270,11 +311,84 @@ impl Game {
             Message::SelectActionCancelled { player_id, .. } => {
                 self.state.phase = Phase::WaitingForPlay { player_id };
             }
+            Message::AttackTarget {
+                attacker_id, target_id, ..
+            } => self.attack_target(&attacker_id, &target_id).await?,
             _ => {}
         }
 
         self.process_effects();
+        self.check_damage();
         self.send_sync().await?;
+        Ok(())
+    }
+
+    fn get_card_by_id_mut(&mut self, card_id: &uuid::Uuid) -> Option<&mut Card> {
+        self.state.cards.iter_mut().find(|card| card.get_id() == card_id)
+    }
+
+    fn get_card_by_id(&self, card_id: &uuid::Uuid) -> Option<&Card> {
+        self.state.cards.iter().find(|card| card.get_id() == card_id)
+    }
+
+    fn check_damage(&mut self) {
+        self.state
+            .cards
+            .iter_mut()
+            .find(|c| match c {
+                Card::Spell(spell) => spell.is_dead(),
+                Card::Site(_) => false,
+                Card::Avatar(_) => false,
+            })
+            .iter_mut()
+            .for_each(|c| c.set_zone(CardZone::DiscardPile));
+    }
+
+    async fn attack_target(&mut self, attacker_id: &uuid::Uuid, target_id: &uuid::Uuid) -> anyhow::Result<()> {
+        let target_cell_id = self.get_card_by_id(&target_id).unwrap().get_cell_id().unwrap();
+        let mut effects = vec![
+            Effect::TapCard {
+                card_id: attacker_id.clone(),
+            },
+            Effect::MoveCardToCell {
+                card_id: attacker_id.clone(),
+                cell_id: target_cell_id,
+            },
+        ];
+        match self.get_card_by_id(&attacker_id).unwrap() {
+            Card::Spell(spell) => match spell.get_spell_type() {
+                SpellType::Minion => {
+                    let power = spell.get_power();
+                    if let Some(power) = power {
+                        let target = self.get_card_by_id_mut(&target_id).unwrap();
+                        effects.extend(target.take_damage(power));
+                    }
+                }
+                _ => {}
+            },
+            _ => {}
+        }
+
+        match self.get_card_by_id(&target_id).unwrap() {
+            Card::Spell(spell) => match spell.get_spell_type() {
+                SpellType::Minion => {
+                    let power = spell.get_power();
+                    if let Some(power) = power {
+                        let attacker = self.get_card_by_id_mut(&attacker_id).unwrap();
+                        effects.extend(attacker.take_damage(power));
+                    }
+                }
+                _ => {}
+            },
+            _ => {}
+        }
+
+        self.state.effects.extend(effects);
+        self.state.effects.push_back(Effect::ChangePhase {
+            new_phase: Phase::WaitingForPlay {
+                player_id: self.state.current_player.clone(),
+            },
+        });
         Ok(())
     }
 

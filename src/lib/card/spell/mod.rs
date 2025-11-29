@@ -3,7 +3,7 @@ mod util;
 use crate::{
     card::{CardBase, CardType, CardZone, Edition, Target},
     effect::{Action, Effect, GameAction},
-    game::{Phase, Resources, State},
+    game::{Cell, Phase, Resources, State},
     networking::Thresholds,
     spells,
 };
@@ -116,9 +116,9 @@ impl Spell {
 
     pub fn is_dead(&self) -> bool {
         let base = self.get_spell_base();
-        match self.get_power() {
+        match self.get_toughness() {
             None => false,
-            Some(power) => base.damage_taken >= power,
+            Some(toughness) => base.damage_taken >= toughness,
         }
     }
 
@@ -136,20 +136,52 @@ impl Spell {
         }
     }
 
-    fn on_select_in_realm(&self, _state: &State) -> Vec<Effect> {
-        if !self.is_permanent() {
+    pub fn get_cell_id(&self) -> Option<u8> {
+        match self.get_zone() {
+            CardZone::Realm(cell_id) => Some(*cell_id),
+            _ => None,
+        }
+    }
+
+    fn on_select_in_realm(&self, state: &State) -> Vec<Effect> {
+        if !self.is_permanent() || self.get_base().tapped {
             return vec![];
         }
 
-        match self {
-            Spell::BurningHands(_) => vec![],
-            Spell::BallLightning(_) => vec![],
-            Spell::BlackKnight(_) => vec![],
-            Spell::SlyFox(_) => vec![],
-            Spell::CastIntoExile(_) => vec![],
-            Spell::AdeptIllusionist(_) => vec![],
-            _ => vec![],
+        let mut effects = vec![];
+        if self.get_spell_type() == SpellType::Minion {
+            let valid_targets = state
+                .cards
+                .iter()
+                .filter(|c| c.get_owner_id() != self.get_owner_id())
+                .filter(|c| matches!(c.get_zone(), CardZone::Realm(_)))
+                .filter(|c| Cell::are_adjacent(c.get_cell_id().unwrap(), self.get_cell_id().unwrap()))
+                .map(|c| c.get_id())
+                .cloned()
+                .collect::<Vec<uuid::Uuid>>();
+            effects.push(Effect::ChangePhase {
+                new_phase: Phase::SelectingCard {
+                    player_id: self.get_owner_id().clone(),
+                    card_ids: valid_targets,
+                    amount: 1,
+                    after_select: Some(Action::GameAction(GameAction::AttackSelectedTarget {
+                        attacker_id: self.get_id().clone(),
+                    })),
+                },
+            });
         }
+
+        match self {
+            Spell::BurningHands(_) => {}
+            Spell::BallLightning(_) => {}
+            Spell::BlackKnight(_) => {}
+            Spell::SlyFox(_) => {}
+            Spell::CastIntoExile(_) => {}
+            Spell::AdeptIllusionist(_) => {}
+            _ => {}
+        }
+
+        effects
     }
 
     fn on_select_in_hand(&self, state: &State) -> Vec<Effect> {
@@ -159,10 +191,31 @@ impl Spell {
             return vec![];
         }
 
-        match self {
-            Spell::BurningHands(_) => vec![
-                Effect::SetTargeting(1),
-                Effect::ChangePhase {
+        let mut effects = vec![];
+        match self.get_spell_type() {
+            SpellType::Minion => {
+                effects.push(Effect::ChangePhase {
+                    new_phase: Phase::SelectingCell {
+                        player_id: self.get_owner_id().clone(),
+                        cell_ids: state
+                            .cards
+                            .iter()
+                            .filter(|c| c.get_owner_id() == owner_id)
+                            .filter(|c| matches!(c.get_zone(), CardZone::Realm(_)))
+                            .filter(|c| c.get_type() == CardType::Site)
+                            .map(|c| match c.get_zone() {
+                                CardZone::Realm(cell_id) => cell_id.clone(),
+                                _ => unreachable!(),
+                            })
+                            .collect(),
+                        after_select: Some(Action::GameAction(GameAction::PlayCardOnSelectedTargets {
+                            card_id: self.get_id().clone(),
+                        })),
+                    },
+                });
+            }
+            SpellType::Magic => {
+                effects.push(Effect::ChangePhase {
                     new_phase: Phase::SelectingCard {
                         player_id: self.get_owner_id().clone(),
                         card_ids: state
@@ -178,61 +231,12 @@ impl Spell {
                             card_id: self.get_id().clone(),
                         })),
                     },
-                },
-            ],
-            Spell::BallLightning(_) => vec![
-                Effect::SetTargeting(1),
-                Effect::ChangePhase {
-                    new_phase: Phase::SelectingCard {
-                        player_id: self.get_owner_id().clone(),
-                        card_ids: state
-                            .cards
-                            .iter()
-                            .filter(|c| matches!(c.get_zone(), CardZone::Realm(_)))
-                            .filter(|c| c.get_type() == CardType::Spell || c.get_type() == CardType::Avatar)
-                            .map(|c| c.get_id())
-                            .cloned()
-                            .collect(),
-                        amount: 1,
-                        after_select: Some(Action::GameAction(GameAction::PlayCardOnSelectedTargets {
-                            card_id: self.get_id().clone(),
-                        })),
-                    },
-                },
-            ],
-            Spell::BlackKnight(_) => vec![Effect::ChangePhase {
-                new_phase: Phase::SelectingCell {
-                    player_id: self.get_owner_id().clone(),
-                    cell_ids: state
-                        .cards
-                        .iter()
-                        .filter(|c| c.get_owner_id() == owner_id)
-                        .filter(|c| matches!(c.get_zone(), CardZone::Realm(_)))
-                        .filter(|c| c.get_type() == CardType::Site)
-                        .map(|c| match c.get_zone() {
-                            CardZone::Realm(cell_id) => cell_id.clone(),
-                            _ => unreachable!(),
-                        })
-                        .collect(),
-                    after_select: Some(Action::GameAction(GameAction::PlayCardOnSelectedTargets {
-                        card_id: self.get_id().clone(),
-                    })),
-                },
-            }],
-            Spell::SlyFox(_) => vec![],
-            Spell::CastIntoExile(_) => vec![],
-            Spell::AdeptIllusionist(_) => vec![],
-            Spell::Abundance(_) => vec![],
-            Spell::AccursedAlbatross(_) => vec![],
-            Spell::AlbespinePikemen(_) => vec![],
-            Spell::AllTerrainVestments(_) => vec![],
-            Spell::AlvalinneDryads(_) => vec![],
-            Spell::AmazonWarriors(_) => vec![],
-            Spell::AmethystCore(_) => vec![],
-            Spell::AncientDragon(_) => vec![],
-            Spell::AngelsEgg(_) => vec![],
-            _ => vec![],
+                });
+            }
+            _ => {}
         }
+
+        effects
     }
 
     pub fn on_cast(&self, _state: &State, target: Target) -> Vec<Effect> {
@@ -281,5 +285,12 @@ impl Spell {
             SpellType::Minion => true,
             _ => false,
         }
+    }
+
+    pub fn take_damage(&mut self, amount: u8) -> Vec<Effect> {
+        vec![Effect::DealDamage {
+            target_id: *self.get_id(),
+            amount,
+        }]
     }
 }

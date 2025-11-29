@@ -420,7 +420,7 @@ impl Game {
                     let card = self.cards.iter_mut().find(|c| c.card.get_id() == &id).unwrap();
                     card.is_selected = !card.is_selected;
 
-                    if card.is_selected {
+                    if dbg!(card.is_selected) {
                         match after_select {
                             Some(Action::GameAction(GameAction::PlayCardOnSelectedTargets { card_id })) => {
                                 self.client
@@ -438,6 +438,16 @@ impl Game {
                                     .send(Message::PrepareCardForPlay {
                                         player_id: self.player_id,
                                         card_id: card.card.get_id().clone(),
+                                        game_id: self.game_id,
+                                    })
+                                    .unwrap();
+                            }
+                            Some(Action::GameAction(GameAction::AttackSelectedTarget { attacker_id })) => {
+                                self.client
+                                    .send(Message::AttackTarget {
+                                        player_id: self.player_id,
+                                        attacker_id: attacker_id.clone(),
+                                        target_id: card.card.get_id().clone(),
                                         game_id: self.game_id,
                                     })
                                     .unwrap();

@@ -21,6 +21,13 @@ impl Avatar {
         }]
     }
 
+    pub fn get_cell_id(&self) -> Option<u8> {
+        match self.get_zone() {
+            CardZone::Realm(cell_id) => Some(*cell_id),
+            _ => None,
+        }
+    }
+
     pub fn on_select(&self, _: &State) -> Vec<Effect> {
         if self.get_base().tapped {
             return vec![];

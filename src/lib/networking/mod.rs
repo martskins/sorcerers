@@ -163,6 +163,12 @@ pub enum Message {
         player_id: uuid::Uuid,
         game_id: uuid::Uuid,
     },
+    AttackTarget {
+        player_id: uuid::Uuid,
+        attacker_id: uuid::Uuid,
+        target_id: uuid::Uuid,
+        game_id: uuid::Uuid,
+    },
 }
 
 impl Message {
@@ -180,6 +186,7 @@ impl Message {
             Message::EndTurn { game_id, .. } => Some(game_id.clone()),
             Message::ActionSelected { game_id, .. } => Some(game_id.clone()),
             Message::SelectActionCancelled { game_id, .. } => Some(game_id.clone()),
+            Message::AttackTarget { game_id, .. } => Some(game_id.clone()),
         }
     }
 }

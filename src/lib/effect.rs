@@ -97,6 +97,7 @@ impl Effect {
                         });
                     }
                     CardType::Avatar | CardType::Site => {
+                        println!("Dealing {} damage to player {:?}", amount, card.get_owner_id());
                         state.resources.get_mut(card.get_owner_id()).unwrap().health -= amount;
                     }
                 }
@@ -131,6 +132,7 @@ pub enum GameAction {
     DrawCard { types: Vec<CardType> },
     PlayCardOnSelectedTargets { card_id: uuid::Uuid },
     PlaySelectedCard,
+    AttackSelectedTarget { attacker_id: uuid::Uuid },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

@@ -11,14 +11,21 @@ use serde::{Deserialize, Serialize};
 
 #[rustfmt::skip]
 sites! {
-    Aqueduct, "Aqueduct", 1, "", Edition::Beta,
-    AridDesert, "Arid Desert", 1, "", Edition::Beta,
+    Aqueduct, "Aqueduct", 1, "EW", Edition::Beta,
+    AridDesert, "Arid Desert", 1, "F", Edition::Beta,
     AstralAlcazar, "Astral Alcazar", 2, "", Edition::Beta
 }
 
 impl Site {
     pub fn on_select(&self, _state: &State) -> Vec<Effect> {
         vec![]
+    }
+
+    pub fn get_cell_id(&self) -> Option<u8> {
+        match self.get_zone() {
+            CardZone::Realm(cell_id) => Some(*cell_id),
+            _ => None,
+        }
     }
 
     pub fn genesis(&self) -> Vec<Effect> {

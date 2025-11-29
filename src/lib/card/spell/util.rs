@@ -97,11 +97,11 @@ macro_rules! spells {
                 }
             }
 
-            pub fn take_damage(&mut self, amount: u8) {
-                match self {
-                    $(Spell::$name(cb) => cb.damage_taken += amount,)+
-                }
-            }
+            // pub fn take_damage(&mut self, amount: u8) -> Vec<Effect> {
+            //     match self {
+            //         $(Spell::$name(cb) => cb.damage_taken += amount,)+
+            //     }
+            // }
 
             pub fn reset_damage(&mut self) {
                 match self {
