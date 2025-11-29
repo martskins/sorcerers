@@ -77,9 +77,13 @@ spells!(
     AramosMercenaries, "Aramos Mercenaries", 3, "FF", SpellType::Minion, Some(3),Some(3), Edition::Beta,
     AskelonPhoenix, "Askelon Phoenix", 5, "RR", SpellType::Minion, Some(4),Some(4), Edition::Beta,
     AssortedAnimals, "Assorted Animals", 0, "", SpellType::Artifact, None, None, Edition::Beta, // TODO: Implemenet X cost
+    AtlanteanFate, "Atlantean Fate", 5, "WW", SpellType::Aura, None, None, Edition::Beta,
+    AtlasWanderers, "Atlas Wanderers", 5, "EEE", SpellType::Minion, Some(5), Some(5), Edition::Beta,
     AutumnUnicon, "Autumn Unicorn", 3, "EE", SpellType::Minion, Some(4),Some(4), Edition::Beta,
     AwakenedMummies, "Awakened Mummies", 1, "F", SpellType::Minion, Some(3),Some(3), Edition::Beta,
     AzuridgeCaravan, "Azuridge Caravan", 5, "F", SpellType::Minion, Some(4),Some(4), Edition::Beta,
+    Backstab, "Backstab", 2, "F", SpellType::Magic, None, None, Edition::Beta,
+    BaneWidow, "Bane Widow", 4, "FF", SpellType::Minion, Some(1),Some(1), Edition::Beta,
     BallLightning, "Ball Lightning", 2, "AA", SpellType::Magic, None, None, Edition::ArthurianLegends,
     CastIntoExile, "Cast Into Exile", 2, "AA", SpellType::Magic, None, None, Edition::ArthurianLegends,
     BurningHands, "Burning Hands", 3, "R", SpellType::Magic, None, None, Edition::ArthurianLegends,
