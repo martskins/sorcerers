@@ -17,7 +17,7 @@ impl Scene {
         }
     }
 
-    pub async fn update(&mut self) {
+    pub async fn update(&mut self) -> anyhow::Result<()> {
         match self {
             Scene::Menu(menu) => menu.update().await,
             Scene::Game(game) => game.update().await,

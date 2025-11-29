@@ -4,15 +4,15 @@ mod render;
 mod scene;
 mod texture_cache;
 
-use crate::{client::Client, config::*, texture_cache::TextureCache};
+use crate::{client::Client, texture_cache::TextureCache};
 use macroquad::prelude::*;
 
 fn window_conf() -> Conf {
     Conf {
         window_title: "Sorcerer".to_owned(),
         // fullscreen: true,
-        window_height: SCREEN_HEIGHT as i32,
-        window_width: SCREEN_WIDTH as i32,
+        window_width: 1024,
+        window_height: 768,
         ..Default::default()
     }
 }

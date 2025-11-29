@@ -18,7 +18,9 @@ impl Menu {
         Ok(())
     }
 
-    pub async fn update(&mut self) {}
+    pub async fn update(&mut self) -> anyhow::Result<()> {
+        Ok(())
+    }
 
     pub async fn process_message(&mut self, _msg: networking::Message) -> anyhow::Result<()> {
         Ok(())

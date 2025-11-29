@@ -42,14 +42,7 @@ impl Game {
     pub fn new(player_id: uuid::Uuid, client: networking::client::Client) -> Self {
         let cells = (0..20)
             .map(|i| {
-                let col = i % 5;
-                let row = i / 5;
-                let rect = Rect::new(
-                    REALM_RECT.x + col as f32 * (REALM_RECT.w / 5.0),
-                    REALM_RECT.y + row as f32 * (REALM_RECT.h / 4.0),
-                    REALM_RECT.w / 5.0,
-                    REALM_RECT.h / 4.0,
-                );
+                let rect = cell_rect(i, true);
                 CellDisplay { id: i as u8 + 1, rect }
             })
             .collect();
@@ -65,9 +58,27 @@ impl Game {
         }
     }
 
-    pub async fn update(&mut self) {
+    pub async fn update(&mut self) -> anyhow::Result<()> {
         let mouse_position = mouse_position().into();
+        let state = self.state.clone();
+        self.resize_cells().await?;
+        self.update_cards_in_hand(&state.cards)?;
+        self.update_cards_in_realm(&state.cards).await?;
         self.handle_click(mouse_position);
+        Ok(())
+    }
+
+    fn is_player_one(&self) -> bool {
+        self.state.is_player_one(&self.player_id)
+    }
+
+    async fn resize_cells(&mut self) -> anyhow::Result<()> {
+        let mirror = self.is_player_one();
+        for cell in &mut self.cells {
+            cell.rect = cell_rect(cell.id - 1, mirror);
+        }
+
+        Ok(())
     }
 
     pub async fn render(&mut self) -> anyhow::Result<()> {
@@ -85,11 +96,11 @@ impl Game {
     pub async fn process_input(&mut self) -> Option<Scene> {
         if is_mouse_button_released(MouseButton::Left) {
             let mouse_position = mouse_position();
-            if ATLASBOOK_RECT.contains(mouse_position.into()) {
+            if atlasbook_rect().contains(mouse_position.into()) {
                 self.draw_card(CardType::Site).unwrap();
             }
 
-            if SPELLBOOK_RECT.contains(mouse_position.into()) {
+            if spellbook_rect().contains(mouse_position.into()) {
                 self.draw_card(CardType::Spell).unwrap();
             }
         }
@@ -114,8 +125,6 @@ impl Game {
             }
             Message::Sync { state, .. } => {
                 self.state = state.clone();
-                self.update_cards_in_hand(&state.cards)?;
-                self.update_cards_in_realm(&state.cards).await?;
                 Ok(())
             }
             _ => Ok(()),
@@ -195,15 +204,16 @@ impl Game {
             return Ok(());
         }
 
-        const BASE_X: f32 = 20.0;
-        const PLAYER_Y: f32 = SCREEN_HEIGHT - 70.0;
+        let screen_rect = screen_rect();
+        let base_x: f32 = 20.0;
+        let player_y: f32 = screen_rect.h - 70.0;
         let resources = self
             .state
             .resources
             .get(&self.player_id)
             .cloned()
             .unwrap_or(Resources::new());
-        Game::render_resources(BASE_X, PLAYER_Y, &resources);
+        Game::render_resources(base_x, player_y, &resources);
 
         const OPPONENT_Y: f32 = 25.0;
         let opponent_resources = self
@@ -213,7 +223,7 @@ impl Game {
             .find(|(player_id, _)| **player_id != self.player_id)
             .map(|(_, resources)| resources.clone())
             .unwrap_or(Resources::new());
-        Game::render_resources(BASE_X, OPPONENT_Y, &opponent_resources);
+        Game::render_resources(base_x, OPPONENT_Y, &opponent_resources);
 
         let turn_label = if self.state.is_players_turn(&self.player_id) {
             "Your Turn"
@@ -221,11 +231,11 @@ impl Game {
             "Opponent's Turn"
         };
 
-        draw_text(turn_label, SCREEN_WIDTH / 2.0 - 50.0, 30.0, FONT_SIZE, WHITE);
+        draw_text(turn_label, screen_rect.w / 2.0 - 50.0, 30.0, FONT_SIZE, WHITE);
 
         let is_in_turn = self.state.current_player == self.player_id;
         if is_in_turn {
-            if ui::root_ui().button(Vec2::new(SCREEN_WIDTH - 100.0, SCREEN_HEIGHT - 40.0), "End Turn") {
+            if ui::root_ui().button(Vec2::new(screen_rect.w - 100.0, screen_rect.h - 40.0), "End Turn") {
                 self.client.send(Message::EndTurn {
                     player_id: self.player_id.clone(),
                     game_id: self.game_id.clone(),
@@ -309,16 +319,17 @@ impl Game {
 
     async fn render_card_preview(&self) -> anyhow::Result<()> {
         let selected_card = self.cards.iter().find(|card_display| card_display.is_hovered);
+        let screen_rect = screen_rect();
 
         if let Some(card_display) = selected_card {
             const PREVIEW_SCALE: f32 = 2.7;
-            let mut dimensions = SPELL_DIMENSIONS * PREVIEW_SCALE;
+            let mut dimensions = spell_dimensions() * PREVIEW_SCALE;
             if card_display.card.is_site() {
-                dimensions = SITE_DIMENSIONS * PREVIEW_SCALE;
+                dimensions = site_dimensions() * PREVIEW_SCALE;
             }
 
             let preview_x = 20.0;
-            let preview_y = SCREEN_HEIGHT - dimensions.y - 20.0;
+            let preview_y = screen_rect.h - dimensions.y - 20.0;
             draw_texture_ex(
                 &TextureCache::get_card_texture(&card_display.card).await,
                 preview_x,
@@ -341,13 +352,14 @@ impl Game {
             .filter(|card_display| card_display.card.get_zone() == &CardZone::DiscardPile)
             .collect::<Vec<&CardDisplay>>();
         for card in discarded_cards {
+            let discard_pile_rect = discard_pile_rect();
             draw_texture_ex(
                 &TextureCache::get_card_texture(&card.card).await,
-                DISCARD_PILE_RECT.x,
-                DISCARD_PILE_RECT.y,
+                discard_pile_rect.x,
+                discard_pile_rect.y,
                 WHITE,
                 DrawTextureParams {
-                    dest_size: Some(DISCARD_PILE_RECT.size() * CARD_IN_PLAY_SCALE),
+                    dest_size: Some(discard_pile_rect.size() * CARD_IN_PLAY_SCALE),
                     ..Default::default()
                 },
             );
@@ -605,34 +617,31 @@ impl Game {
     }
 
     async fn render_background(&self) {
-        draw_rectangle(
-            REALM_RECT.x,
-            REALM_RECT.y,
-            REALM_RECT.w,
-            REALM_RECT.h,
-            Color::new(0.08, 0.12, 0.18, 1.0),
-        );
+        let rect = realm_rect();
+        draw_rectangle(rect.x, rect.y, rect.w, rect.h, Color::new(0.08, 0.12, 0.18, 1.0));
     }
 
     async fn render_deck(&self) {
+        let spellbook_rect = spellbook_rect();
         draw_texture_ex(
             &TextureCache::get_texture(SPELLBOOK_IMAGE, "spellbook", false).await,
-            SPELLBOOK_RECT.x,
-            SPELLBOOK_RECT.y,
+            spellbook_rect.x,
+            spellbook_rect.y,
             WHITE,
             DrawTextureParams {
-                dest_size: Some(SPELLBOOK_RECT.size() * CARD_IN_PLAY_SCALE),
+                dest_size: Some(spellbook_rect.size() * CARD_IN_PLAY_SCALE),
                 ..Default::default()
             },
         );
 
+        let atlasbook_rect = atlasbook_rect();
         draw_texture_ex(
             &TextureCache::get_texture(ATLASBOOK_IMAGE, "atlas", false).await,
-            ATLASBOOK_RECT.x,
-            ATLASBOOK_RECT.y,
+            atlasbook_rect.x,
+            atlasbook_rect.y,
             WHITE,
             DrawTextureParams {
-                dest_size: Some(ATLASBOOK_RECT.size() * CARD_IN_PLAY_SCALE),
+                dest_size: Some(atlasbook_rect.size() * CARD_IN_PLAY_SCALE),
                 ..Default::default()
             },
         );
@@ -658,9 +667,9 @@ impl Game {
         for card in cards {
             if let CardZone::Realm(cell_id) = card.get_zone() {
                 let cell_rect = self.cells.iter().find(|c| c.id == *cell_id).unwrap().rect;
-                let mut dimensions = SPELL_DIMENSIONS;
+                let mut dimensions = spell_dimensions();
                 if card.is_site() {
-                    dimensions = SITE_DIMENSIONS;
+                    dimensions = site_dimensions();
                 }
 
                 let rect = Rect::new(
@@ -704,16 +713,17 @@ impl Game {
         let radius = 40.0;
 
         let mut displays: Vec<CardDisplay> = Vec::new();
+        let hand_rect = hand_rect();
         for (idx, card) in spells.iter().enumerate() {
-            let dimensions = SPELL_DIMENSIONS;
+            let dimensions = spell_dimensions();
             let angle = if spell_hand_size > 1 {
                 ((idx as f32 - center) / center) * (fan_angle / 2.0)
             } else {
                 0.0
             };
             let rad = angle.to_radians();
-            let x = HAND_RECT.x + idx as f32 * CARD_OFFSET_X + 20.0;
-            let y = HAND_RECT.y + 20.0 + radius * rad.sin();
+            let x = hand_rect.x + idx as f32 * CARD_OFFSET_X + 20.0;
+            let y = hand_rect.y + 20.0 + radius * rad.sin();
 
             let rect = Rect::new(x, y, dimensions.x, dimensions.y);
 
@@ -732,11 +742,11 @@ impl Game {
             });
         }
 
-        let site_x = HAND_RECT.x + spell_hand_size as f32 * CARD_OFFSET_X + 40.0;
+        let site_x = hand_rect.x + spell_hand_size as f32 * CARD_OFFSET_X + 40.0;
         for (idx, card) in sites.iter().enumerate() {
-            let dimensions = SITE_DIMENSIONS;
+            let dimensions = site_dimensions();
             let x = site_x;
-            let y = HAND_RECT.y + 20.0 + 20.0 * idx as f32;
+            let y = hand_rect.y + 20.0 + 20.0 * idx as f32;
 
             let rect = Rect::new(x, y, dimensions.x, dimensions.y);
 
