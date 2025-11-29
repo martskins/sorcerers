@@ -2,8 +2,10 @@ use macroquad::texture::{Image, Texture2D};
 use sorcerers::card::Card;
 use std::{
     collections::HashMap,
+    path::Path,
     sync::{OnceLock, RwLock},
 };
+use tokio_util::bytes::Bytes;
 
 static TEXTURE_CACHE: OnceLock<RwLock<TextureCache>> = OnceLock::new();
 
@@ -47,40 +49,70 @@ impl TextureCache {
             return tex.clone();
         }
 
-        let mut name = card.get_name().to_string();
-        name = name.to_lowercase();
-        name = name.replace(" ", "_");
+        let path = format!("assets/images/cache/{}.png", card.get_name());
+        if Path::new(&path).exists() {
+            return TextureCache::get_card_image_from_disk(card, &path).await.unwrap();
+        }
 
+        TextureCache::download_card_image(card).await.unwrap()
+    }
+
+    async fn get_card_image_from_disk(card: &Card, path: &str) -> anyhow::Result<Texture2D> {
+        let texture = macroquad::texture::load_texture(path).await?;
+        let mut cache = TEXTURE_CACHE.get().unwrap().write().unwrap();
+        cache.inner.insert(card.get_name().to_string(), texture.clone());
+        Ok(texture)
+    }
+
+    async fn download_card_image(card: &Card) -> anyhow::Result<Texture2D> {
+        println!("Downloading image for {}", card.get_name());
         let edition = card.get_edition();
         let set = edition.url_name();
+        let name = card
+            .get_name()
+            .to_string()
+            .to_lowercase()
+            .replace(" ", "_")
+            .replace("-", "_");
         let path = format!(
             "https://d27a44hjr9gen3.cloudfront.net/cards/{}-{}-b-s.png?updated=2025-11-25T21:31:34.196Z&w=3840&q=75",
             set, name
         );
 
-        println!("downloading: {}", path);
-        let response = reqwest::get(path).await;
-        if let Err(e) = response {
-            println!("Error fetching texture for card {}: {}", card.get_name(), e);
-            let path = format!("assets/images/cards/{}.png", card.get_name()).to_string();
-            return TextureCache::get_texture(&path, card.get_name(), card.is_site()).await;
-        }
-
-        let response = response.unwrap();
+        let response = reqwest::get(&path).await?;
         if response.status() != reqwest::StatusCode::OK {
-            println!("Error fetching texture for card {}", card.get_name());
-            let path = format!("assets/images/cards/{}.png", card.get_name()).to_string();
-            return TextureCache::get_texture(&path, card.get_name(), card.is_site()).await;
+            eprintln!("Failed to download image for {} from {}", card.get_name(), path);
+            return Err(anyhow::anyhow!("Failed to download image: HTTP {}", response.status()));
         }
 
-        let mut cache = TEXTURE_CACHE.get().unwrap().write().unwrap();
-        let bytes = response.bytes().await.unwrap();
+        let mut bytes = response.bytes().await.unwrap();
         let mut texture = macroquad::texture::Texture2D::from_file_with_format(&bytes, None);
         if card.is_site() {
             TextureCache::rotate_texture_clockwise(&mut texture);
+            let rotated_image = texture.get_texture_data();
+            let dyn_img = image::DynamicImage::ImageRgba8(
+                image::RgbaImage::from_raw(
+                    rotated_image.width() as u32,
+                    rotated_image.height() as u32,
+                    rotated_image.bytes.to_vec(),
+                )
+                .unwrap(),
+            );
+
+            let mut png_bytes: Vec<u8> = Vec::new();
+            dyn_img.write_to(&mut std::io::Cursor::new(&mut png_bytes), image::ImageOutputFormat::Png)?;
+            bytes = Bytes::copy_from_slice(&png_bytes);
         }
+
+        let mut cache = TEXTURE_CACHE.get().unwrap().write().unwrap();
         cache.inner.insert(card.get_name().to_string(), texture.clone());
-        texture
+
+        let save_path = format!("assets/images/cache/{}.png", card.get_name());
+        if let Err(e) = std::fs::write(&save_path, &bytes) {
+            println!("Error saving image to disk: {}", e);
+        }
+
+        Ok(texture)
     }
 
     fn rotate_texture_clockwise(texture: &mut Texture2D) {

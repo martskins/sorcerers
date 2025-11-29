@@ -62,7 +62,7 @@ impl SpellBase {
 #[rustfmt::skip]
 spells!(
     Abundance, "Abundance", 5, "WW", SpellType::Magic, None, None, Edition::Beta,
-    AccursedAlbatros, "Accursed Albatros", 3, "W", SpellType::Minion, Some(1), Some(1), Edition::Beta,
+    AccursedAlbatross, "Accursed Albatross", 3, "W", SpellType::Minion, Some(1), Some(1), Edition::Beta,
     AdeptIllusionist, "Adept Illusionist", 2, "WW", SpellType::Minion, Some(2),Some(2), Edition::Beta,
     AlbespinePikemen, "Albespine Pikemen", 3, "EE", SpellType::Minion, Some(3),Some(3), Edition::Beta,
     AllTerrainVestments, "All-Terrain Vestments", 3, "", SpellType::Artifact, None, None, Edition::Beta,
@@ -76,15 +76,15 @@ spells!(
     AquamarineCore, "Aquamarine Core", 1, "", SpellType::Artifact, None, None, Edition::Beta,
     AramosMercenaries, "Aramos Mercenaries", 3, "FF", SpellType::Minion, Some(3),Some(3), Edition::Beta,
     AskelonPhoenix, "Askelon Phoenix", 5, "RR", SpellType::Minion, Some(4),Some(4), Edition::Beta,
-    AssortedAnimas, "Assorted Animas", 0, "", SpellType::Artifact, None, None, Edition::Beta, // TODO: Implemenet X cost
+    AssortedAnimals, "Assorted Animals", 0, "", SpellType::Artifact, None, None, Edition::Beta, // TODO: Implemenet X cost
     AutumnUnicon, "Autumn Unicorn", 3, "EE", SpellType::Minion, Some(4),Some(4), Edition::Beta,
     AwakenedMummies, "Awakened Mummies", 1, "F", SpellType::Minion, Some(3),Some(3), Edition::Beta,
     AzuridgeCaravan, "Azuridge Caravan", 5, "F", SpellType::Minion, Some(4),Some(4), Edition::Beta,
-    BurningHands, "Burning Hands", 3, "R", SpellType::Magic, None, None, Edition::Beta,
-    BallLightning, "Ball Lightning", 2, "AA", SpellType::Magic, None, None, Edition::Beta,
-    BlackKnight, "Black Knight", 5, "FA", SpellType::Minion, Some(5),Some(3), Edition::Beta,
-    SlyFox, "Sly Fox", 1, "W", SpellType::Minion, Some(1),Some(1), Edition::Beta,
-    CastIntoExile, "Cast Into Exile", 2, "AA", SpellType::Magic, None, None, Edition::Beta
+    BallLightning, "Ball Lightning", 2, "AA", SpellType::Magic, None, None, Edition::ArthurianLegends,
+    CastIntoExile, "Cast Into Exile", 2, "AA", SpellType::Magic, None, None, Edition::ArthurianLegends,
+    BurningHands, "Burning Hands", 3, "R", SpellType::Magic, None, None, Edition::ArthurianLegends,
+    SlyFox, "Sly Fox", 1, "W", SpellType::Minion, Some(1),Some(1), Edition::ArthurianLegends,
+    BlackKnight, "Black Knight", 5, "FA", SpellType::Minion, Some(5),Some(3), Edition::ArthurianLegends
 );
 
 impl Spell {
@@ -219,7 +219,7 @@ impl Spell {
             Spell::CastIntoExile(_) => vec![],
             Spell::AdeptIllusionist(_) => vec![],
             Spell::Abundance(_) => vec![],
-            Spell::AccursedAlbatros(_) => vec![],
+            Spell::AccursedAlbatross(_) => vec![],
             Spell::AlbespinePikemen(_) => vec![],
             Spell::AllTerrainVestments(_) => vec![],
             Spell::AlvalinneDryads(_) => vec![],
