@@ -52,13 +52,6 @@ macro_rules! avatars {
 
 
             /// Returns a reference to the underlying `CardBase` of the spell.
-            pub fn get_spell_base(&self) -> &CardBase {
-                match self {
-                    $(Avatar::$name(cb) => cb,)+
-                }
-            }
-
-            /// Returns a reference to the underlying `CardBase` of the spell.
             pub fn get_base(&self) -> &CardBase {
                 match self {
                     $(Avatar::$name(cb) => &cb,)+
@@ -77,13 +70,6 @@ macro_rules! avatars {
                 match self {
                     $(Avatar::$name(cb) => &cb.id,)+
                 }
-            }
-
-            pub fn take_damage(&mut self, _amount: u8) -> Vec<Effect> {
-                todo!();
-                // match self {
-                //     $(Avatar::$name(cb) => cb.damage_taken += amount,)+
-                // }
             }
         }
     };

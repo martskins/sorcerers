@@ -141,7 +141,7 @@ impl State {
             })
     }
 
-    pub fn find_valid_cells_for_card(&self, card: &Card) -> Vec<u8> {
+    pub fn valid_play_cells(&self, card: &Card) -> Vec<u8> {
         let adjacent_cells = self.get_cells_adjacent_to_sites(&card.get_owner_id());
         match card.get_type() {
             CardType::Site => {
@@ -204,26 +204,34 @@ impl State {
     /// Returns the ids of the cells that are directly above, below, left or right of the given
     /// cell id.
     pub fn get_nearby_cell_ids(cell_id: u8) -> Vec<u8> {
-        let mut neighbors = Vec::new();
+        let mut nearby = Vec::new();
         let rows = 4;
         let cols = 5;
         let row = cell_id / cols;
         let col = cell_id % cols;
 
         if row > 0 {
-            neighbors.push((row - 1) * cols + col);
+            nearby.push((row - 1) * cols + col);
         }
         if row < rows - 1 {
-            neighbors.push((row + 1) * cols + col);
+            nearby.push((row + 1) * cols + col);
         }
         if col > 0 {
-            neighbors.push(row * cols + (col - 1));
+            nearby.push(row * cols + (col - 1));
         }
         if col < cols - 1 {
-            neighbors.push(row * cols + (col + 1));
+            nearby.push(row * cols + (col + 1));
         }
 
-        neighbors
+        let diagonal_offsets = [(-1, -1), (-1, 1), (1, -1), (1, 1)];
+        for (dr, dc) in diagonal_offsets {
+            let new_row = row as i8 + dr;
+            let new_col = col as i8 + dc;
+            if new_row >= 0 && new_row < rows as i8 && new_col >= 0 && new_col < cols as i8 {
+                nearby.push((new_row as u8) * cols + (new_col as u8));
+            }
+        }
+        nearby
     }
 
     pub fn get_adjacent_cell_ids(cell_id: u8) -> Vec<u8> {
@@ -356,12 +364,26 @@ impl Game {
             Message::AttackTarget {
                 attacker_id, target_id, ..
             } => self.attack_target(&attacker_id, &target_id).await?,
+            Message::CardMoved { card_id, cell_id, .. } => self.move_card(&card_id, cell_id).await?,
             _ => {}
         }
 
         self.process_effects().await;
         self.check_damage();
         self.send_sync().await?;
+        Ok(())
+    }
+
+    async fn move_card(&mut self, card_id: &uuid::Uuid, cell_id: u8) -> anyhow::Result<()> {
+        self.state.effects.push_back(Effect::MoveCardToCell {
+            card_id: card_id.clone(),
+            cell_id: cell_id,
+        });
+        self.state.effects.push_back(Effect::ChangePhase {
+            new_phase: Phase::WaitingForPlay {
+                player_id: self.state.current_player.clone(),
+            },
+        });
         Ok(())
     }
 
@@ -403,7 +425,7 @@ impl Game {
                     let power = spell.get_power();
                     if let Some(power) = power {
                         let target = self.get_card_by_id_mut(&target_id).unwrap();
-                        effects.extend(target.take_damage(power));
+                        effects.extend(target.take_damage(attacker_id, power));
                     }
                 }
                 _ => {}
@@ -417,7 +439,7 @@ impl Game {
                     let power = spell.get_power();
                     if let Some(power) = power {
                         let attacker = self.get_card_by_id_mut(&attacker_id).unwrap();
-                        effects.extend(attacker.take_damage(power));
+                        effects.extend(attacker.take_damage(target_id, power));
                     }
                 }
                 _ => {}

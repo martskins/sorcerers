@@ -160,24 +160,83 @@ impl Spell {
             .iter()
             .filter(|c| c.get_owner_id() != self.get_owner_id())
             .filter(|c| matches!(c.get_zone(), CardZone::Realm(_)))
-            .filter(|c| Cell::are_adjacent(c.get_cell_id().unwrap(), self.get_cell_id().unwrap()))
+            .filter(|c| {
+                let a = self.get_cell_id().unwrap();
+                let b = c.get_cell_id().unwrap();
+                if self.get_abilities().contains(&Ability::Airborne) {
+                    return Cell::are_nearby(a, b);
+                }
+
+                Cell::are_adjacent(a, b)
+            })
             .map(|c| c.get_id())
             .cloned()
             .collect::<Vec<uuid::Uuid>>()
     }
 
-    fn get_valid_move_cells(&self, state: &State) -> Vec<u8> {
+    fn valid_move_cells(&self, state: &State) -> Vec<u8> {
         state
             .cards
             .iter()
-            .filter(|c| c.get_owner_id() == self.get_owner_id())
             .filter(|c| matches!(c.get_zone(), CardZone::Realm(_)))
-            .filter(|c| Cell::are_adjacent(c.get_cell_id().unwrap(), self.get_cell_id().unwrap()))
+            .filter(|c| {
+                let a = self.get_cell_id().unwrap();
+                let b = c.get_cell_id().unwrap();
+                if self.get_abilities().contains(&Ability::Airborne) {
+                    return Cell::are_nearby(a, b);
+                }
+
+                Cell::are_adjacent(a, b)
+            })
             .map(|c| match c.get_zone() {
                 CardZone::Realm(cell_id) => cell_id.clone(),
                 _ => unreachable!(),
             })
             .collect::<Vec<u8>>()
+    }
+
+    pub fn deathrite(&self) -> Vec<Effect> {
+        vec![]
+    }
+
+    pub fn take_damage(&self, from: &uuid::Uuid, amount: u8) -> Vec<Effect> {
+        vec![Effect::DealDamage {
+            target_id: *self.get_id(),
+            from: from.clone(),
+            amount,
+        }]
+    }
+
+    pub fn on_damage_taken(&self, from: &uuid::Uuid, _amount: u8, state: &State) -> Vec<Effect> {
+        let mut effects = Vec::new();
+        match self {
+            Spell::AccursedAlbatross(cb) => {
+                if cb.damage_taken >= self.get_toughness().unwrap_or(0) {
+                    let attacker_owner_id = state.cards.iter().find(|c| c.get_id() == from).unwrap().get_owner_id();
+                    let nearby_minions = state
+                        .cards
+                        .iter()
+                        .filter(|c| c.is_minion())
+                        .filter(|c| c.get_owner_id() == attacker_owner_id)
+                        .filter(|c| c.get_id() != from)
+                        .filter(|c| matches!(c.get_zone(), CardZone::Realm(_)))
+                        .filter(|c| {
+                            let a = self.get_cell_id().unwrap();
+                            let b = c.get_cell_id().unwrap();
+                            Cell::are_nearby(a, b)
+                        })
+                        .map(|c| c.get_id())
+                        .cloned()
+                        .collect::<Vec<uuid::Uuid>>();
+                    for id in nearby_minions {
+                        effects.push(Effect::KillUnit { card_id: id });
+                    }
+                }
+            }
+            _ => {}
+        }
+
+        effects
     }
 
     fn on_select_in_realm(&self, state: &State) -> Vec<Effect> {
@@ -208,7 +267,7 @@ impl Spell {
                                 after_select: vec![Effect::ChangePhase {
                                     new_phase: Phase::SelectingCell {
                                         player_id: self.get_owner_id().clone(),
-                                        cell_ids: self.get_valid_move_cells(state),
+                                        cell_ids: self.valid_move_cells(state),
                                         after_select: Some(Action::GameAction(GameAction::MoveCardToSelectedCell {
                                             card_id: self.get_id().clone(),
                                         })),
@@ -302,7 +361,11 @@ impl Spell {
                 match target {
                     Target::Card(target_id) => {
                         // TODO: Change DealDamage to support area of effect damage.
-                        effects.push(Effect::DealDamage { target_id, amount: 4 });
+                        effects.push(Effect::DealDamage {
+                            from: self.get_id().clone(),
+                            target_id,
+                            amount: 4,
+                        });
                     }
                     _ => unreachable!(),
                 }
@@ -336,12 +399,5 @@ impl Spell {
             SpellType::Minion => true,
             _ => false,
         }
-    }
-
-    pub fn take_damage(&mut self, amount: u8) -> Vec<Effect> {
-        vec![Effect::DealDamage {
-            target_id: *self.get_id(),
-            amount,
-        }]
     }
 }

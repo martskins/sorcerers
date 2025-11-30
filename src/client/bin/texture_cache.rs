@@ -65,7 +65,6 @@ impl TextureCache {
     }
 
     async fn download_card_image(card: &Card) -> anyhow::Result<Texture2D> {
-        println!("Downloading image for {}", card.get_name());
         let edition = card.get_edition();
         let set = edition.url_name();
         let name = card
@@ -81,7 +80,6 @@ impl TextureCache {
 
         let response = reqwest::get(&path).await?;
         if response.status() != reqwest::StatusCode::OK {
-            eprintln!("Failed to download image for {} from {}", card.get_name(), path);
             return Err(anyhow::anyhow!("Failed to download image: HTTP {}", response.status()));
         }
 

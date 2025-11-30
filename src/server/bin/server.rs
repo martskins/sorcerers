@@ -44,7 +44,7 @@ impl Server {
     pub async fn process_message(&mut self, message: &[u8], addr: SocketAddr) -> anyhow::Result<()> {
         let msg = rmp_serde::from_slice::<Message>(message).unwrap();
         let game_id = msg.get_game_id();
-        match dbg!(&msg) {
+        match &msg {
             Message::Connect => {
                 let player_id = uuid::Uuid::new_v4();
                 self.looking_for_match.push(player_id);
@@ -112,11 +112,26 @@ impl Server {
             zone: CardZone::Realm(8),
             tapped: false,
         })));
+        game.state.cards.push(Card::Site(Site::AridDesert(CardBase {
+            id: uuid::Uuid::new_v4(),
+            owner_id: player1.clone(),
+            zone: CardZone::Realm(9),
+            tapped: false,
+        })));
         game.state.cards.push(Card::Spell(Spell::BlackKnight(SpellBase {
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id: player1.clone(),
                 zone: CardZone::Realm(8),
+                tapped: false,
+            },
+            damage_taken: 0,
+        })));
+        game.state.cards.push(Card::Spell(Spell::AccursedAlbatross(SpellBase {
+            card_base: CardBase {
+                id: uuid::Uuid::new_v4(),
+                owner_id: player1.clone(),
+                zone: CardZone::Realm(9),
                 tapped: false,
             },
             damage_taken: 0,
@@ -142,8 +157,23 @@ impl Server {
         game.state.cards.push(Card::Site(Site::AridDesert(CardBase {
             id: uuid::Uuid::new_v4(),
             owner_id: player2.clone(),
+            zone: CardZone::Realm(14),
+            tapped: false,
+        })));
+        game.state.cards.push(Card::Site(Site::AridDesert(CardBase {
+            id: uuid::Uuid::new_v4(),
+            owner_id: player2.clone(),
             zone: CardZone::Realm(18),
             tapped: false,
+        })));
+        game.state.cards.push(Card::Spell(Spell::BlackKnight(SpellBase {
+            card_base: CardBase {
+                id: uuid::Uuid::new_v4(),
+                owner_id: player2.clone(),
+                zone: CardZone::Realm(14),
+                tapped: false,
+            },
+            damage_taken: 0,
         })));
         game.state.cards.push(Card::Spell(Spell::BlackKnight(SpellBase {
             card_base: CardBase {

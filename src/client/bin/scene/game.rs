@@ -443,7 +443,6 @@ impl Game {
                                     .unwrap();
                             }
                             Some(Action::GameAction(GameAction::PlaySelectedCard)) => {
-                                println!("Playing selected card");
                                 self.client
                                     .send(Message::PrepareCardForPlay {
                                         player_id: self.player_id,
@@ -498,6 +497,16 @@ impl Game {
                                         player_id: self.player_id,
                                         card_id: card_id.clone(),
                                         targets: Target::Cell(cell_id),
+                                        game_id: self.game_id,
+                                    })
+                                    .unwrap();
+                            }
+                            Some(Action::GameAction(GameAction::MoveCardToSelectedCell { card_id })) => {
+                                self.client
+                                    .send(Message::CardMoved {
+                                        player_id: self.player_id,
+                                        card_id: card_id.clone(),
+                                        cell_id,
                                         game_id: self.game_id,
                                     })
                                     .unwrap();

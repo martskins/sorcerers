@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    card::{CardType, CardZone},
+    card::{Card, CardType, CardZone},
     game::{Phase, Resources, State},
     networking::Thresholds,
 };
@@ -31,6 +31,7 @@ pub enum Effect {
     },
     DealDamage {
         target_id: uuid::Uuid,
+        from: uuid::Uuid,
         amount: u8,
     },
     SpendMana {
@@ -44,6 +45,9 @@ pub enum Effect {
     DrawCard {
         player_id: uuid::Uuid,
         card_type: CardType,
+    },
+    KillUnit {
+        card_id: uuid::Uuid,
     },
 }
 
@@ -85,18 +89,20 @@ impl Effect {
                     card.tap();
                 }
             }
-            Effect::DealDamage { target_id, amount } => {
-                let card = state.cards.iter().find(|c| c.get_id() == target_id).unwrap();
-                match card.get_type() {
-                    CardType::Spell => {
-                        // TODO: implement damage taking
-                        state.effects.push_back(Effect::MoveCard {
-                            card_id: *target_id,
-                            to_zone: CardZone::DiscardPile,
-                        });
+            Effect::DealDamage {
+                from,
+                target_id,
+                amount,
+            } => {
+                let immutable_state = state.clone();
+                let card = state.cards.iter_mut().find(|c| c.get_id() == target_id).unwrap();
+                match card {
+                    Card::Spell(spell) => {
+                        spell.get_spell_base_mut().damage_taken += *amount;
+                        let effects = spell.on_damage_taken(from, *amount, &immutable_state);
+                        state.effects.extend(effects);
                     }
-                    CardType::Avatar | CardType::Site => {
-                        println!("Dealing {} damage to player {:?}", amount, card.get_owner_id());
+                    Card::Avatar(_) | Card::Site(_) => {
                         state.resources.get_mut(card.get_owner_id()).unwrap().health -= amount;
                     }
                 }
@@ -113,6 +119,15 @@ impl Effect {
             }
             Effect::DrawCard { player_id, card_type } => {
                 state.draw_card_for_player(player_id, card_type.clone()).await.unwrap();
+            }
+            Effect::KillUnit { card_id } => {
+                let card = state.cards.iter().find(|c| c.get_id() == card_id).unwrap();
+                let effects = card.deathrite();
+                state.effects.extend(effects);
+                state.effects.push_back(Effect::MoveCard {
+                    card_id: card_id.clone(),
+                    to_zone: CardZone::DiscardPile,
+                });
             }
         }
     }

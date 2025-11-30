@@ -169,6 +169,12 @@ pub enum Message {
         target_id: uuid::Uuid,
         game_id: uuid::Uuid,
     },
+    CardMoved {
+        player_id: uuid::Uuid,
+        card_id: uuid::Uuid,
+        cell_id: u8,
+        game_id: uuid::Uuid,
+    },
 }
 
 impl Message {
@@ -187,6 +193,7 @@ impl Message {
             Message::ActionSelected { game_id, .. } => Some(game_id.clone()),
             Message::SelectActionCancelled { game_id, .. } => Some(game_id.clone()),
             Message::AttackTarget { game_id, .. } => Some(game_id.clone()),
+            Message::CardMoved { game_id, .. } => Some(game_id.clone()),
         }
     }
 }

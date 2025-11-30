@@ -3,7 +3,11 @@ pub mod site;
 pub mod spell;
 
 use crate::{
-    card::{avatar::Avatar, site::Site, spell::Spell},
+    card::{
+        avatar::Avatar,
+        site::Site,
+        spell::{Spell, SpellType},
+    },
     effect::Effect,
     game::State,
     networking::Thresholds,
@@ -212,6 +216,30 @@ impl Card {
         }
     }
 
+    pub fn deathrite(&self) -> Vec<Effect> {
+        match self {
+            Card::Spell(card) => card.deathrite(),
+            Card::Site(card) => card.deathrite(),
+            Card::Avatar(_card) => vec![],
+        }
+    }
+
+    pub fn take_damage(&self, from: &uuid::Uuid, amount: u8) -> Vec<Effect> {
+        match self {
+            Card::Spell(card) => card.take_damage(from, amount),
+            Card::Site(card) => card.take_damage(from, amount),
+            Card::Avatar(card) => card.take_damage(from, amount),
+        }
+    }
+
+    pub fn on_damage_taken(&self, from: &uuid::Uuid, amount: u8, state: &State) -> Vec<Effect> {
+        match self {
+            Card::Spell(card) => card.on_damage_taken(from, amount, state),
+            Card::Site(card) => card.on_damage_taken(from, amount, state),
+            Card::Avatar(card) => card.on_damage_taken(from, amount, state),
+        }
+    }
+
     pub fn genesis(&self) -> Vec<Effect> {
         match self {
             Card::Spell(card) => card.genesis(),
@@ -261,6 +289,14 @@ impl Card {
         }
     }
 
+    pub fn is_minion(&self) -> bool {
+        match self {
+            Card::Site(_) => false,
+            Card::Spell(card) => card.get_spell_type() == SpellType::Minion,
+            Card::Avatar(_) => true,
+        }
+    }
+
     pub fn is_unit(&self) -> bool {
         match self {
             Card::Site(_) => false,
@@ -274,14 +310,6 @@ impl Card {
             Card::Site(site) => site.get_edition(),
             Card::Spell(spell) => spell.get_edition(),
             Card::Avatar(avatar) => avatar.get_edition(),
-        }
-    }
-
-    pub fn take_damage(&mut self, amount: u8) -> Vec<Effect> {
-        match self {
-            Card::Site(site) => site.take_damage(amount),
-            Card::Spell(spell) => spell.take_damage(amount),
-            Card::Avatar(avatar) => avatar.take_damage(amount),
         }
     }
 }

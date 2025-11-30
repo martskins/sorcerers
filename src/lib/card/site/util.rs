@@ -64,13 +64,6 @@ macro_rules! sites {
 
 
             /// Returns a reference to the underlying `CardBase` of the spell.
-            pub fn get_spell_base(&self) -> &CardBase {
-                match self {
-                    $(Site::$name(cb) => cb,)+
-                }
-            }
-
-            /// Returns a reference to the underlying `CardBase` of the spell.
             pub fn get_base(&self) -> &CardBase {
                 match self {
                     $(Site::$name(cb) => &cb,)+
@@ -89,13 +82,6 @@ macro_rules! sites {
                 match self {
                     $(Site::$name(cb) => &cb.id,)+
                 }
-            }
-
-            pub fn take_damage(&mut self, amount: u8) -> Vec<Effect>{
-                vec![Effect::DealDamage {
-                    target_id: *self.get_id(),
-                    amount,
-                }]
             }
         }
     };

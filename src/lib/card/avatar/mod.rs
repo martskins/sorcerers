@@ -28,6 +28,14 @@ impl Avatar {
         }
     }
 
+    pub fn take_damage(&self, _from: &uuid::Uuid, _amount: u8) -> Vec<Effect> {
+        vec![]
+    }
+
+    pub fn on_damage_taken(&self, _from: &uuid::Uuid, _amount: u8, _state: &State) -> Vec<Effect> {
+        vec![]
+    }
+
     pub fn on_select(&self, state: &State) -> Vec<Effect> {
         if self.get_base().tapped {
             return vec![];

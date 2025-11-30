@@ -54,12 +54,24 @@ impl Site {
         }
     }
 
+    pub fn deathrite(&self) -> Vec<Effect> {
+        vec![]
+    }
+
+    pub fn take_damage(&self, _from: &uuid::Uuid, _amount: u8) -> Vec<Effect> {
+        vec![]
+    }
+
+    pub fn on_damage_taken(&self, _from: &uuid::Uuid, _amount: u8, _state: &State) -> Vec<Effect> {
+        vec![]
+    }
+
     pub fn on_prepare(&self, state: &State) -> Vec<Effect> {
         if !matches!(state.phase, Phase::SelectingCard { .. }) {
             return vec![];
         }
 
-        let cell_ids = state.find_valid_cells_for_card(&Card::Site(self.clone()));
+        let cell_ids = state.valid_play_cells(&Card::Site(self.clone()));
         vec![Effect::ChangePhase {
             new_phase: Phase::SelectingCell {
                 player_id: self.get_owner_id().clone(),

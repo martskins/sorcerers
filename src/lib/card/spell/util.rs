@@ -75,6 +75,13 @@ macro_rules! spells {
 
 
             /// Returns a reference to the underlying `CardBase` of the spell.
+            pub fn get_spell_base_mut(&mut self) -> &mut SpellBase {
+                match self {
+                    $(Spell::$name(cb) => cb,)+
+                }
+            }
+
+            /// Returns a reference to the underlying `CardBase` of the spell.
             pub fn get_spell_base(&self) -> &SpellBase {
                 match self {
                     $(Spell::$name(cb) => cb,)+
@@ -101,12 +108,6 @@ macro_rules! spells {
                     $(Spell::$name(cb) => &cb.card_base.id,)+
                 }
             }
-
-            // pub fn take_damage(&mut self, amount: u8) -> Vec<Effect> {
-            //     match self {
-            //         $(Spell::$name(cb) => cb.damage_taken += amount,)+
-            //     }
-            // }
 
             pub fn reset_damage(&mut self) {
                 match self {
