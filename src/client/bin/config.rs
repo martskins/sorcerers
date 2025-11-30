@@ -57,7 +57,7 @@ pub fn spellbook_rect() -> Rect {
     )
 }
 
-pub fn discard_pile_rect() -> Rect {
+pub fn cemetery_rect() -> Rect {
     let realm_rect = realm_rect();
     Rect::new(
         realm_rect.x + realm_rect.w + 10.0,

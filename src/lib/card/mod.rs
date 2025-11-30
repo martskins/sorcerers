@@ -67,7 +67,7 @@ pub enum CardZone {
     Hand,
     Spellbook,
     Atlasbook,
-    DiscardPile,
+    Cemetery,
     Realm(u8),
 }
 

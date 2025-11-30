@@ -6,6 +6,7 @@ use macroquad::{
     text::draw_text,
     texture::{draw_texture_ex, DrawTextureParams},
     ui,
+    window::{screen_height, screen_width},
 };
 use sorcerers::{
     card::{Card, CardType, CardZone, Target},
@@ -25,6 +26,7 @@ const FONT_SIZE: f32 = 24.0;
 const THRESHOLD_SYMBOL_SPACING: f32 = 18.0;
 const SYMBOL_SIZE: f32 = 20.0;
 const ACTION_SELECTION_WINDOW_ID: u64 = 1;
+const CARD_SELECTION_WINDOW_ID: u64 = 2;
 
 #[derive(Debug)]
 pub struct Game {
@@ -87,7 +89,7 @@ impl Game {
         self.render_deck().await;
         self.render_player_hand().await;
         self.render_realm().await;
-        self.render_discard_pile().await?;
+        self.render_cemetery().await?;
         self.render_gui().await?;
         self.render_card_preview().await?;
         Ok(())
@@ -283,6 +285,42 @@ impl Game {
                     },
                 );
             }
+            Phase::SelectingCardOutsideRealm {
+                player_id,
+                owner,
+                spellbook,
+                cemetery,
+                hand,
+            } => {
+                if player_id != &self.player_id {
+                    return Ok(());
+                }
+
+                let mut number_of_zones = 0;
+                if spellbook.is_some() {
+                    number_of_zones += 1;
+                }
+
+                if hand.is_some() {
+                    number_of_zones += 1;
+                }
+
+                if cemetery.is_some() {
+                    number_of_zones += 1;
+                }
+
+                let width = screen_width() - 20.0;
+                let height = screen_height() - 20.0;
+                println!("Number of zones: {}", number_of_zones);
+                ui::root_ui().window(
+                    CARD_SELECTION_WINDOW_ID,
+                    Vec2::new(10.0, 10.0),
+                    Vec2::new(width, height),
+                    |ui| {
+                        //
+                    },
+                );
+            }
             Phase::SelectingCard {
                 player_id, card_ids, ..
             } if player_id == &self.player_id => {
@@ -345,21 +383,21 @@ impl Game {
         Ok(())
     }
 
-    async fn render_discard_pile(&self) -> anyhow::Result<()> {
+    async fn render_cemetery(&self) -> anyhow::Result<()> {
         let discarded_cards = self
             .cards
             .iter()
-            .filter(|card_display| card_display.card.get_zone() == &CardZone::DiscardPile)
+            .filter(|card_display| card_display.card.get_zone() == &CardZone::Cemetery)
             .collect::<Vec<&CardDisplay>>();
         for card in discarded_cards {
-            let discard_pile_rect = discard_pile_rect();
+            let cemetery_rect = cemetery_rect();
             draw_texture_ex(
                 &TextureCache::get_card_texture(&card.card).await,
-                discard_pile_rect.x,
-                discard_pile_rect.y,
+                cemetery_rect.x,
+                cemetery_rect.y,
                 WHITE,
                 DrawTextureParams {
-                    dest_size: Some(discard_pile_rect.size() * CARD_IN_PLAY_SCALE),
+                    dest_size: Some(cemetery_rect.size() * CARD_IN_PLAY_SCALE),
                     ..Default::default()
                 },
             );

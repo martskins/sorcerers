@@ -74,7 +74,7 @@ pub enum Ability {
 spells!(
     Abundance, "Abundance", 5, "WW", SpellType::Aura, None, None, vec![], Edition::Beta,
     AccursedAlbatross, "Accursed Albatross", 3, "W", SpellType::Minion, Some(1), Some(1), vec![Ability::Airborne], Edition::Beta,
-    AdeptIllusionist, "Adept Illusionist", 2, "WW", SpellType::Minion, Some(2),Some(2), vec![], Edition::Beta,
+    AdeptIllusionist, "Adept Illusionist", 2, "WW", SpellType::Minion, Some(2),Some(2), vec![Ability::Spellcaster], Edition::Beta,
     AlbespinePikemen, "Albespine Pikemen", 3, "EE", SpellType::Minion, Some(3),Some(3), vec![], Edition::Beta,
     AllTerrainVestments, "All-Terrain Vestments", 3, "", SpellType::Artifact, None, None, vec![], Edition::Beta,
     AlvalinneDryads, "Alvalinne Dryads", 3, "", SpellType::Minion, Some(1), Some(1), vec![], Edition::Beta,
@@ -142,7 +142,7 @@ impl Spell {
             CardZone::Hand => self.on_select_in_hand(state),
             CardZone::Spellbook => todo!(),
             CardZone::Atlasbook => todo!(),
-            CardZone::DiscardPile => todo!(),
+            CardZone::Cemetery => todo!(),
             CardZone::Realm(_) => self.on_select_in_realm(state),
         }
     }
@@ -245,49 +245,90 @@ impl Spell {
         }
 
         let mut effects = vec![];
+        let mut actions = vec![
+            Action::PlayerAction(PlayerAction::Attack {
+                after_select: vec![Effect::ChangePhase {
+                    new_phase: Phase::SelectingCard {
+                        player_id: self.get_owner_id().clone(),
+                        card_ids: self.get_valid_attack_targets(state),
+                        amount: 1,
+                        after_select: Some(Action::GameAction(GameAction::AttackSelectedTarget {
+                            attacker_id: self.get_id().clone(),
+                        })),
+                    },
+                }],
+            }),
+            Action::PlayerAction(PlayerAction::Move {
+                after_select: vec![Effect::ChangePhase {
+                    new_phase: Phase::SelectingCell {
+                        player_id: self.get_owner_id().clone(),
+                        cell_ids: self.valid_move_cells(state),
+                        after_select: Some(Action::GameAction(GameAction::MoveCardToSelectedCell {
+                            card_id: self.get_id().clone(),
+                        })),
+                    },
+                }],
+            }),
+        ];
+
+        match self {
+            Spell::AdeptIllusionist(_) => {
+                let spellbook = state
+                    .cards
+                    .iter()
+                    .filter(|c| c.get_owner_id() == self.get_owner_id())
+                    .filter(|c| matches!(c.get_zone(), CardZone::Spellbook))
+                    .filter(|c| c.get_name() == self.get_name())
+                    .map(|c| c.get_id())
+                    .cloned()
+                    .collect();
+                let cemetery = state
+                    .cards
+                    .iter()
+                    .filter(|c| c.get_owner_id() == self.get_owner_id())
+                    .filter(|c| matches!(c.get_zone(), CardZone::Cemetery))
+                    .filter(|c| c.get_name() == self.get_name())
+                    .map(|c| c.get_id())
+                    .cloned()
+                    .collect();
+                let hand = state
+                    .cards
+                    .iter()
+                    .filter(|c| c.get_owner_id() == self.get_owner_id())
+                    .filter(|c| matches!(c.get_zone(), CardZone::Hand))
+                    .filter(|c| c.get_name() == self.get_name())
+                    .map(|c| c.get_id())
+                    .cloned()
+                    .collect();
+                actions.push(Action::PlayerAction(PlayerAction::ActivateTapAbility {
+                    after_select: vec![
+                        Effect::TapCard {
+                            card_id: self.get_id().clone(),
+                        },
+                        Effect::ChangePhase {
+                            new_phase: Phase::SelectingCardOutsideRealm {
+                                player_id: self.get_owner_id().clone(),
+                                spellbook: Some(spellbook),
+                                cemetery: Some(cemetery),
+                                hand: Some(hand),
+                                owner: self.get_owner_id().clone(),
+                            },
+                        },
+                    ],
+                }));
+            }
+            _ => {}
+        }
+
         match self.get_spell_type() {
             SpellType::Minion => {
                 effects.push(Effect::ChangePhase {
                     new_phase: Phase::SelectingAction {
                         player_id: self.get_owner_id().clone(),
-                        actions: vec![
-                            Action::PlayerAction(PlayerAction::Attack {
-                                after_select: vec![Effect::ChangePhase {
-                                    new_phase: Phase::SelectingCard {
-                                        player_id: self.get_owner_id().clone(),
-                                        card_ids: self.get_valid_attack_targets(state),
-                                        amount: 1,
-                                        after_select: Some(Action::GameAction(GameAction::AttackSelectedTarget {
-                                            attacker_id: self.get_id().clone(),
-                                        })),
-                                    },
-                                }],
-                            }),
-                            Action::PlayerAction(PlayerAction::Move {
-                                after_select: vec![Effect::ChangePhase {
-                                    new_phase: Phase::SelectingCell {
-                                        player_id: self.get_owner_id().clone(),
-                                        cell_ids: self.valid_move_cells(state),
-                                        after_select: Some(Action::GameAction(GameAction::MoveCardToSelectedCell {
-                                            card_id: self.get_id().clone(),
-                                        })),
-                                    },
-                                }],
-                            }),
-                        ],
+                        actions,
                     },
                 });
             }
-            _ => {}
-        }
-
-        match self {
-            Spell::BurningHands(_) => {}
-            Spell::BallLightning(_) => {}
-            Spell::BlackKnight(_) => {}
-            Spell::SlyFox(_) => {}
-            Spell::CastIntoExile(_) => {}
-            Spell::AdeptIllusionist(_) => {}
             _ => {}
         }
 
@@ -387,7 +428,7 @@ impl Spell {
         if !self.is_permanent() {
             return vec![Effect::MoveCard {
                 card_id: self.get_id().clone(),
-                to_zone: CardZone::DiscardPile,
+                to_zone: CardZone::Cemetery,
             }];
         }
 

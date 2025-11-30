@@ -126,7 +126,7 @@ impl Effect {
                 state.effects.extend(effects);
                 state.effects.push_back(Effect::MoveCard {
                     card_id: card_id.clone(),
-                    to_zone: CardZone::DiscardPile,
+                    to_zone: CardZone::Cemetery,
                 });
             }
         }
@@ -140,6 +140,7 @@ pub enum PlayerAction {
     Attack { after_select: Vec<Effect> },
     Move { after_select: Vec<Effect> },
     Defend { after_select: Vec<Effect> },
+    ActivateTapAbility { after_select: Vec<Effect> },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -167,6 +168,7 @@ impl Action {
             Action::PlayerAction(PlayerAction::Attack { .. }) => "Attack",
             Action::PlayerAction(PlayerAction::Move { .. }) => "Move",
             Action::PlayerAction(PlayerAction::Defend { .. }) => "Defend",
+            Action::PlayerAction(PlayerAction::ActivateTapAbility { .. }) => "Activate Tap Ability",
             Action::GameAction(_) => "",
         }
     }
@@ -178,6 +180,7 @@ impl Action {
             Action::PlayerAction(PlayerAction::Attack { after_select }) => after_select.clone(),
             Action::PlayerAction(PlayerAction::Move { after_select }) => after_select.clone(),
             Action::PlayerAction(PlayerAction::Defend { after_select }) => after_select.clone(),
+            Action::PlayerAction(PlayerAction::ActivateTapAbility { after_select }) => after_select.clone(),
             _ => vec![],
         }
     }

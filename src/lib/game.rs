@@ -41,6 +41,13 @@ pub enum Phase {
         amount: u8,
         after_select: Option<Action>,
     },
+    SelectingCardOutsideRealm {
+        player_id: uuid::Uuid,
+        owner: uuid::Uuid,
+        spellbook: Option<Vec<uuid::Uuid>>,
+        cemetery: Option<Vec<uuid::Uuid>>,
+        hand: Option<Vec<uuid::Uuid>>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -405,7 +412,7 @@ impl Game {
                 Card::Avatar(_) => false,
             })
             .iter_mut()
-            .for_each(|c| c.set_zone(CardZone::DiscardPile));
+            .for_each(|c| c.set_zone(CardZone::Cemetery));
     }
 
     async fn attack_target(&mut self, attacker_id: &uuid::Uuid, target_id: &uuid::Uuid) -> anyhow::Result<()> {

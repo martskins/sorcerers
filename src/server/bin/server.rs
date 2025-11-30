@@ -127,7 +127,7 @@ impl Server {
             },
             damage_taken: 0,
         })));
-        game.state.cards.push(Card::Spell(Spell::AccursedAlbatross(SpellBase {
+        game.state.cards.push(Card::Spell(Spell::AdeptIllusionist(SpellBase {
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id: player1.clone(),
