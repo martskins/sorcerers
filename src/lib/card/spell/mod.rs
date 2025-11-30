@@ -2,7 +2,7 @@ mod util;
 
 use crate::{
     card::{CardBase, CardType, CardZone, Edition, Target},
-    effect::{Action, Effect, GameAction},
+    effect::{Action, Effect, GameAction, PlayerAction},
     game::{Cell, Phase, Resources, State},
     networking::Thresholds,
     spells,
@@ -59,36 +59,47 @@ impl SpellBase {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Ability {
+    Airborne,
+    Charge,
+    Burrowing,
+    Submerge,
+    Movement(u8),
+    Voidwalk,
+    Spellcaster,
+}
+
 #[rustfmt::skip]
 spells!(
-    Abundance, "Abundance", 5, "WW", SpellType::Magic, None, None, Edition::Beta,
-    AccursedAlbatross, "Accursed Albatross", 3, "W", SpellType::Minion, Some(1), Some(1), Edition::Beta,
-    AdeptIllusionist, "Adept Illusionist", 2, "WW", SpellType::Minion, Some(2),Some(2), Edition::Beta,
-    AlbespinePikemen, "Albespine Pikemen", 3, "EE", SpellType::Minion, Some(3),Some(3), Edition::Beta,
-    AllTerrainVestments, "All-Terrain Vestments", 3, "", SpellType::Artifact, None, None, Edition::Beta,
-    AlvalinneDryads, "Alvalinne Dryads", 3, "", SpellType::Minion, Some(1), Some(1), Edition::Beta,
-    AmazonWarriors, "Amazon Warriors", 5, "E", SpellType::Minion, Some(5),Some(5), Edition::Beta,
-    AmethystCore, "Amethyst Core", 1, "", SpellType::Artifact, None, None, Edition::Beta,
-    AncientDragon, "Ancient Dragon", 7, "RRR", SpellType::Minion, Some(6), Some(6), Edition::Beta,
-    AngelsEgg, "Angels Egg", 3, "", SpellType::Artifact, None, None, Edition::Beta,
-    AnuiUndine, "Anui Undine", 5, "WW", SpellType::Minion, Some(0),Some(0), Edition::Beta,
-    ApprenticeWizard, "Apprentice Wizard", 3, "A", SpellType::Minion, Some(1),Some(1), Edition::Beta,
-    AquamarineCore, "Aquamarine Core", 1, "", SpellType::Artifact, None, None, Edition::Beta,
-    AramosMercenaries, "Aramos Mercenaries", 3, "FF", SpellType::Minion, Some(3),Some(3), Edition::Beta,
-    AskelonPhoenix, "Askelon Phoenix", 5, "RR", SpellType::Minion, Some(4),Some(4), Edition::Beta,
-    AssortedAnimals, "Assorted Animals", 0, "", SpellType::Artifact, None, None, Edition::Beta, // TODO: Implemenet X cost
-    AtlanteanFate, "Atlantean Fate", 5, "WW", SpellType::Aura, None, None, Edition::Beta,
-    AtlasWanderers, "Atlas Wanderers", 5, "EEE", SpellType::Minion, Some(5), Some(5), Edition::Beta,
-    AutumnUnicon, "Autumn Unicorn", 3, "EE", SpellType::Minion, Some(4),Some(4), Edition::Beta,
-    AwakenedMummies, "Awakened Mummies", 1, "F", SpellType::Minion, Some(3),Some(3), Edition::Beta,
-    AzuridgeCaravan, "Azuridge Caravan", 5, "F", SpellType::Minion, Some(4),Some(4), Edition::Beta,
-    Backstab, "Backstab", 2, "F", SpellType::Magic, None, None, Edition::Beta,
-    BaneWidow, "Bane Widow", 4, "FF", SpellType::Minion, Some(1),Some(1), Edition::Beta,
-    BallLightning, "Ball Lightning", 2, "AA", SpellType::Magic, None, None, Edition::ArthurianLegends,
-    CastIntoExile, "Cast Into Exile", 2, "AA", SpellType::Magic, None, None, Edition::ArthurianLegends,
-    BurningHands, "Burning Hands", 3, "R", SpellType::Magic, None, None, Edition::ArthurianLegends,
-    SlyFox, "Sly Fox", 1, "W", SpellType::Minion, Some(1),Some(1), Edition::ArthurianLegends,
-    BlackKnight, "Black Knight", 5, "FA", SpellType::Minion, Some(5),Some(3), Edition::ArthurianLegends
+    Abundance, "Abundance", 5, "WW", SpellType::Aura, None, None, vec![], Edition::Beta,
+    AccursedAlbatross, "Accursed Albatross", 3, "W", SpellType::Minion, Some(1), Some(1), vec![Ability::Airborne], Edition::Beta,
+    AdeptIllusionist, "Adept Illusionist", 2, "WW", SpellType::Minion, Some(2),Some(2), vec![], Edition::Beta,
+    AlbespinePikemen, "Albespine Pikemen", 3, "EE", SpellType::Minion, Some(3),Some(3), vec![], Edition::Beta,
+    AllTerrainVestments, "All-Terrain Vestments", 3, "", SpellType::Artifact, None, None, vec![], Edition::Beta,
+    AlvalinneDryads, "Alvalinne Dryads", 3, "", SpellType::Minion, Some(1), Some(1), vec![], Edition::Beta,
+    AmazonWarriors, "Amazon Warriors", 5, "E", SpellType::Minion, Some(5),Some(5), vec![], Edition::Beta,
+    AmethystCore, "Amethyst Core", 1, "", SpellType::Artifact, None, None, vec![], Edition::Beta,
+    AncientDragon, "Ancient Dragon", 7, "RRR", SpellType::Minion, Some(6), Some(6), vec![], Edition::Beta,
+    AngelsEgg, "Angels Egg", 3, "", SpellType::Artifact, None, None, vec![], Edition::Beta,
+    AnuiUndine, "Anui Undine", 5, "WW", SpellType::Minion, Some(0),Some(0), vec![], Edition::Beta,
+    ApprenticeWizard, "Apprentice Wizard", 3, "A", SpellType::Minion, Some(1),Some(1), vec![], Edition::Beta,
+    AquamarineCore, "Aquamarine Core", 1, "", SpellType::Artifact, None, None, vec![], Edition::Beta,
+    AramosMercenaries, "Aramos Mercenaries", 3, "FF", SpellType::Minion, Some(3),Some(3), vec![], Edition::Beta,
+    AskelonPhoenix, "Askelon Phoenix", 5, "RR", SpellType::Minion, Some(4),Some(4), vec![], Edition::Beta,
+    AssortedAnimals, "Assorted Animals", 0, "", SpellType::Artifact, None, None, vec![], Edition::Beta, // TODO: Implemenet X cost
+    AtlanteanFate, "Atlantean Fate", 5, "WW", SpellType::Aura, None, None, vec![], Edition::Beta,
+    AtlasWanderers, "Atlas Wanderers", 5, "EEE", SpellType::Minion, Some(5), Some(5), vec![], Edition::Beta,
+    AutumnUnicon, "Autumn Unicorn", 3, "EE", SpellType::Minion, Some(4),Some(4), vec![], Edition::Beta,
+    AwakenedMummies, "Awakened Mummies", 1, "F", SpellType::Minion, Some(3),Some(3), vec![], Edition::Beta,
+    AzuridgeCaravan, "Azuridge Caravan", 5, "F", SpellType::Minion, Some(4),Some(4), vec![], Edition::Beta,
+    Backstab, "Backstab", 2, "F", SpellType::Magic, None, None, vec![], Edition::Beta,
+    BaneWidow, "Bane Widow", 4, "FF", SpellType::Minion, Some(1),Some(1), vec![], Edition::Beta,
+    BallLightning, "Ball Lightning", 2, "AA", SpellType::Magic, None, None, vec![], Edition::ArthurianLegends,
+    CastIntoExile, "Cast Into Exile", 2, "AA", SpellType::Magic, None, None, vec![], Edition::ArthurianLegends,
+    BurningHands, "Burning Hands", 3, "R", SpellType::Magic, None, None, vec![], Edition::ArthurianLegends,
+    SlyFox, "Sly Fox", 1, "W", SpellType::Minion, Some(1),Some(1), vec![], Edition::ArthurianLegends,
+    BlackKnight, "Black Knight", 5, "FA", SpellType::Minion, Some(5),Some(3), vec![], Edition::ArthurianLegends
 );
 
 impl Spell {
@@ -143,32 +154,72 @@ impl Spell {
         }
     }
 
+    fn get_valid_attack_targets(&self, state: &State) -> Vec<uuid::Uuid> {
+        state
+            .cards
+            .iter()
+            .filter(|c| c.get_owner_id() != self.get_owner_id())
+            .filter(|c| matches!(c.get_zone(), CardZone::Realm(_)))
+            .filter(|c| Cell::are_adjacent(c.get_cell_id().unwrap(), self.get_cell_id().unwrap()))
+            .map(|c| c.get_id())
+            .cloned()
+            .collect::<Vec<uuid::Uuid>>()
+    }
+
+    fn get_valid_move_cells(&self, state: &State) -> Vec<u8> {
+        state
+            .cards
+            .iter()
+            .filter(|c| c.get_owner_id() == self.get_owner_id())
+            .filter(|c| matches!(c.get_zone(), CardZone::Realm(_)))
+            .filter(|c| Cell::are_adjacent(c.get_cell_id().unwrap(), self.get_cell_id().unwrap()))
+            .map(|c| match c.get_zone() {
+                CardZone::Realm(cell_id) => cell_id.clone(),
+                _ => unreachable!(),
+            })
+            .collect::<Vec<u8>>()
+    }
+
     fn on_select_in_realm(&self, state: &State) -> Vec<Effect> {
         if !self.is_permanent() || self.get_base().tapped {
             return vec![];
         }
 
         let mut effects = vec![];
-        if self.get_spell_type() == SpellType::Minion {
-            let valid_targets = state
-                .cards
-                .iter()
-                .filter(|c| c.get_owner_id() != self.get_owner_id())
-                .filter(|c| matches!(c.get_zone(), CardZone::Realm(_)))
-                .filter(|c| Cell::are_adjacent(c.get_cell_id().unwrap(), self.get_cell_id().unwrap()))
-                .map(|c| c.get_id())
-                .cloned()
-                .collect::<Vec<uuid::Uuid>>();
-            effects.push(Effect::ChangePhase {
-                new_phase: Phase::SelectingCard {
-                    player_id: self.get_owner_id().clone(),
-                    card_ids: valid_targets,
-                    amount: 1,
-                    after_select: Some(Action::GameAction(GameAction::AttackSelectedTarget {
-                        attacker_id: self.get_id().clone(),
-                    })),
-                },
-            });
+        match self.get_spell_type() {
+            SpellType::Minion => {
+                effects.push(Effect::ChangePhase {
+                    new_phase: Phase::SelectingAction {
+                        player_id: self.get_owner_id().clone(),
+                        actions: vec![
+                            Action::PlayerAction(PlayerAction::Attack {
+                                after_select: vec![Effect::ChangePhase {
+                                    new_phase: Phase::SelectingCard {
+                                        player_id: self.get_owner_id().clone(),
+                                        card_ids: self.get_valid_attack_targets(state),
+                                        amount: 1,
+                                        after_select: Some(Action::GameAction(GameAction::AttackSelectedTarget {
+                                            attacker_id: self.get_id().clone(),
+                                        })),
+                                    },
+                                }],
+                            }),
+                            Action::PlayerAction(PlayerAction::Move {
+                                after_select: vec![Effect::ChangePhase {
+                                    new_phase: Phase::SelectingCell {
+                                        player_id: self.get_owner_id().clone(),
+                                        cell_ids: self.get_valid_move_cells(state),
+                                        after_select: Some(Action::GameAction(GameAction::MoveCardToSelectedCell {
+                                            card_id: self.get_id().clone(),
+                                        })),
+                                    },
+                                }],
+                            }),
+                        ],
+                    },
+                });
+            }
+            _ => {}
         }
 
         match self {

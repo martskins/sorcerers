@@ -1,6 +1,6 @@
 #[macro_export]
 macro_rules! spells {
-    ($($name:ident, $card_name:expr, $mana_cost:literal, $threshold:literal, $spell_type:expr, $power:expr, $toughness:expr, $edition:expr),+) => {
+    ($($name:ident, $card_name:expr, $mana_cost:literal, $threshold:literal, $spell_type:expr, $power:expr, $toughness:expr, $abilities:expr, $edition:expr),+) => {
         /// Represents the different spell cards in the game.
         #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
         pub enum Spell {
@@ -12,6 +12,11 @@ macro_rules! spells {
         ];
 
         impl Spell {
+            pub fn get_abilities(&self) -> Vec<Ability> {
+                match self {
+                    $(Spell::$name(_) => $abilities.clone(),)+
+                }
+            }
             pub fn from_name(name: &str, owner_id: uuid::Uuid) -> Option<Self> {
                 match name {
                     $($card_name => Some(Spell::$name(SpellBase::new(owner_id, CardZone::Spellbook))),)+

@@ -23,10 +23,6 @@ pub enum Effect {
     ChangePhase {
         new_phase: Phase,
     },
-    SetPlayerActions {
-        player_id: uuid::Uuid,
-        actions: Vec<Action>,
-    },
     TapCard {
         card_id: uuid::Uuid,
     },
@@ -45,10 +41,14 @@ pub enum Effect {
         card_id: uuid::Uuid,
         to_zone: CardZone,
     },
+    DrawCard {
+        player_id: uuid::Uuid,
+        card_type: CardType,
+    },
 }
 
 impl Effect {
-    pub fn apply(&self, state: &mut State) {
+    pub async fn apply(&self, state: &mut State) {
         match self {
             Effect::AddMana { player_id, amount } => {
                 let entry = state.resources.entry(*player_id).or_insert(Resources::new());
@@ -69,9 +69,9 @@ impl Effect {
             }
             Effect::ChangePhase { new_phase } => {
                 state.phase = new_phase.clone();
-            }
-            Effect::SetPlayerActions { player_id, actions } => {
-                state.actions.insert(player_id.clone(), actions.clone());
+                if let Phase::SelectingAction { player_id, actions } = new_phase {
+                    state.actions.insert(player_id.clone(), actions.clone());
+                }
             }
             Effect::UntapCard { card_id } => {
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id);
@@ -111,6 +111,9 @@ impl Effect {
                     card.set_zone(to_zone.clone());
                 }
             }
+            Effect::DrawCard { player_id, card_type } => {
+                state.draw_card_for_player(player_id, card_type.clone()).await.unwrap();
+            }
         }
     }
 }
@@ -119,6 +122,9 @@ impl Effect {
 pub enum PlayerAction {
     DrawSite { after_select: Vec<Effect> },
     PlaySite { after_select: Vec<Effect> },
+    Attack { after_select: Vec<Effect> },
+    Move { after_select: Vec<Effect> },
+    Defend { after_select: Vec<Effect> },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -129,6 +135,7 @@ pub enum GameAction {
     PlayCardOnSelectedTargets { card_id: uuid::Uuid },
     PlaySelectedCard,
     AttackSelectedTarget { attacker_id: uuid::Uuid },
+    MoveCardToSelectedCell { card_id: uuid::Uuid },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -142,7 +149,21 @@ impl Action {
         match self {
             Action::PlayerAction(PlayerAction::DrawSite { .. }) => "Draw Site",
             Action::PlayerAction(PlayerAction::PlaySite { .. }) => "Play Site",
+            Action::PlayerAction(PlayerAction::Attack { .. }) => "Attack",
+            Action::PlayerAction(PlayerAction::Move { .. }) => "Move",
+            Action::PlayerAction(PlayerAction::Defend { .. }) => "Defend",
             Action::GameAction(_) => "",
+        }
+    }
+
+    pub fn after_select_effects(&self) -> Vec<Effect> {
+        match self {
+            Action::PlayerAction(PlayerAction::DrawSite { after_select }) => after_select.clone(),
+            Action::PlayerAction(PlayerAction::PlaySite { after_select }) => after_select.clone(),
+            Action::PlayerAction(PlayerAction::Attack { after_select }) => after_select.clone(),
+            Action::PlayerAction(PlayerAction::Move { after_select }) => after_select.clone(),
+            Action::PlayerAction(PlayerAction::Defend { after_select }) => after_select.clone(),
+            _ => vec![],
         }
     }
 }

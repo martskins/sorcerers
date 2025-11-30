@@ -5,7 +5,7 @@ use crate::{
         Card, CardBase, CardType, CardZone, Target,
     },
     deck::Deck,
-    effect::{Action, Effect, GameAction, PlayerAction},
+    effect::{Action, Effect},
     networking::{Message, Socket},
 };
 use serde::{Deserialize, Serialize};
@@ -84,14 +84,35 @@ pub struct State {
     pub players: Vec<uuid::Uuid>,
     pub current_player: uuid::Uuid,
     pub cards: Vec<Card>,
-    pub effects: VecDeque<Effect>,
     pub resources: HashMap<uuid::Uuid, Resources>,
+    #[serde(skip)]
+    pub decks: HashMap<uuid::Uuid, Deck>,
+    #[serde(skip)]
     pub actions: HashMap<uuid::Uuid, Vec<Action>>,
-    pub current_target: Option<Target>,
+    #[serde(skip)]
+    pub effects: VecDeque<Effect>,
 }
 
 impl State {
     pub fn new(players: Vec<uuid::Uuid>) -> Self {
+        let mut decks = HashMap::new();
+        if players.len() >= 2 {
+            let player1 = players[0];
+            let player2 = players[1];
+            let deck_one = Deck::test_deck(player1);
+
+            let mut deck_two = Deck::test_deck(player2);
+            deck_two.avatar = Avatar::Battlemage(CardBase {
+                id: uuid::Uuid::new_v4(),
+                owner_id: player2,
+                zone: CardZone::Realm(18),
+                tapped: false,
+            });
+
+            decks.insert(player1, deck_one);
+            decks.insert(player2, deck_two);
+        }
+
         State {
             phase: Phase::None,
             turns_taken: 0,
@@ -101,12 +122,8 @@ impl State {
             effects: VecDeque::new(),
             resources: HashMap::new(),
             actions: HashMap::new(),
-            current_target: None,
+            decks,
         }
-    }
-
-    pub fn add_effect(&mut self, effect: Effect) {
-        self.effects.push_back(effect);
     }
 
     pub fn is_players_turn(&self, player_id: &uuid::Uuid) -> bool {
@@ -231,6 +248,49 @@ impl State {
 
         neighbors
     }
+
+    pub fn get_playable_site_ids(&self, player_id: &uuid::Uuid) -> Vec<uuid::Uuid> {
+        self.cards
+            .iter()
+            .filter(|card| card.get_owner_id() == player_id && card.is_site())
+            .filter(|card| matches!(card.get_zone(), CardZone::Hand))
+            .map(|card| card.get_id())
+            .cloned()
+            .collect()
+    }
+
+    pub async fn draw_card_for_player(&mut self, player_id: &uuid::Uuid, card_type: CardType) -> anyhow::Result<()> {
+        let deck = self.decks.get_mut(&player_id).unwrap();
+        let card = match card_type {
+            CardType::Site => deck.draw_site().map(|site| Card::Site(site)),
+            CardType::Spell => deck.draw_spell().map(|spell| Card::Spell(spell)),
+            CardType::Avatar => None,
+        };
+
+        if card.is_none() {
+            return Ok(());
+        }
+
+        let mut card = card.unwrap();
+        card.set_zone(CardZone::Hand);
+        self.cards.push(card);
+
+        match self.phase {
+            Phase::WaitingForCardDraw { ref mut count, .. } => {
+                *count -= 1;
+
+                if *count == 0 {
+                    self.effects.push_back(Effect::ChangePhase {
+                        new_phase: Phase::WaitingForPlay {
+                            player_id: player_id.clone(),
+                        },
+                    });
+                }
+            }
+            _ => {}
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -254,7 +314,6 @@ impl Cell {
 pub struct Game {
     pub id: uuid::Uuid,
     pub players: Vec<uuid::Uuid>,
-    pub decks: HashMap<uuid::Uuid, Deck>,
     pub state: State,
     pub addrs: HashMap<uuid::Uuid, Socket>,
     pub socket: Arc<UdpSocket>,
@@ -262,26 +321,11 @@ pub struct Game {
 
 impl Game {
     pub fn new(player1: uuid::Uuid, player2: uuid::Uuid, socket: Arc<UdpSocket>, addr1: Socket, addr2: Socket) -> Self {
-        let mut decks = HashMap::new();
-        let deck_one = Deck::test_deck(player1);
-
-        let mut deck_two = Deck::test_deck(player2);
-        deck_two.avatar = Avatar::Battlemage(CardBase {
-            id: uuid::Uuid::new_v4(),
-            owner_id: player2,
-            zone: CardZone::Realm(18),
-            tapped: false,
-        });
-
         let state = State::new(vec![player1, player2]);
-        decks.insert(player1, deck_one);
-        decks.insert(player2, deck_two);
-
         Game {
             id: uuid::Uuid::new_v4(),
             players: vec![player1, player2],
             state,
-            decks,
             socket,
             addrs: HashMap::from([(player1, addr1), (player2, addr2)]),
         }
@@ -302,7 +346,7 @@ impl Game {
             Message::EndTurn { player_id, .. } => self.end_turn(&player_id).await?,
             Message::DrawCard {
                 card_type, player_id, ..
-            } => self.draw_card_for_player(&player_id, card_type).await?,
+            } => self.state.draw_card_for_player(&player_id, card_type).await?,
             Message::ActionSelected {
                 player_id, action_idx, ..
             } => self.trigger_action(&player_id, action_idx).await?,
@@ -315,7 +359,7 @@ impl Game {
             _ => {}
         }
 
-        self.process_effects();
+        self.process_effects().await;
         self.check_damage();
         self.send_sync().await?;
         Ok(())
@@ -396,51 +440,20 @@ impl Game {
             return Ok(());
         }
 
-        match &actions[action_idx] {
-            Action::PlayerAction(PlayerAction::DrawSite { after_select }) => {
-                self.state.effects.extend(after_select.clone());
-                self.draw_card_for_player(player_id, CardType::Site).await?;
-                self.state.effects.push_back(Effect::ChangePhase {
-                    new_phase: Phase::WaitingForPlay {
-                        player_id: player_id.clone(),
-                    },
-                });
-            }
-            Action::PlayerAction(PlayerAction::PlaySite { after_select }) => {
-                self.state.effects.extend(after_select.clone());
-                let site_ids = self
-                    .state
-                    .cards
-                    .iter()
-                    .filter(|card| card.get_owner_id() == player_id && card.is_site())
-                    .filter(|card| matches!(card.get_zone(), CardZone::Hand))
-                    .map(|card| card.get_id())
-                    .cloned()
-                    .collect();
-                self.state.effects.push_back(Effect::ChangePhase {
-                    new_phase: Phase::SelectingCard {
-                        player_id: player_id.clone(),
-                        card_ids: site_ids,
-                        amount: 1,
-                        after_select: Some(Action::GameAction(GameAction::PlaySelectedCard)),
-                    },
-                });
-            }
-            _ => {}
-        }
-
+        let after_select = actions[action_idx].after_select_effects();
+        self.state.effects.extend(after_select.clone());
         Ok(())
     }
 
-    pub fn process_effects(&mut self) {
+    pub async fn process_effects(&mut self) {
         while let Some(effect) = self.state.effects.pop_front() {
-            effect.apply(&mut self.state);
+            effect.apply(&mut self.state).await;
         }
     }
 
     pub fn place_avatars(&mut self) -> anyhow::Result<()> {
         for player_id in &self.players {
-            let deck = self.decks.get_mut(&player_id).unwrap();
+            let deck = self.state.decks.get_mut(&player_id).unwrap();
             let mut avatar_card = Card::Avatar(deck.avatar.clone());
             let cell_id = if self.state.is_player_one(player_id) { 3 } else { 18 };
             avatar_card.set_zone(CardZone::Realm(cell_id));
@@ -485,15 +498,15 @@ impl Game {
     }
 
     pub async fn draw_initial_six(&mut self, player_id: &uuid::Uuid) -> anyhow::Result<()> {
-        let deck = self.decks.get_mut(player_id).unwrap();
+        let deck = self.state.decks.get_mut(player_id).unwrap();
         deck.shuffle();
 
-        self.draw_card_for_player(&player_id, CardType::Spell).await?;
-        self.draw_card_for_player(&player_id, CardType::Spell).await?;
-        self.draw_card_for_player(&player_id, CardType::Spell).await?;
-        self.draw_card_for_player(&player_id, CardType::Site).await?;
-        self.draw_card_for_player(&player_id, CardType::Site).await?;
-        self.draw_card_for_player(&player_id, CardType::Site).await?;
+        self.state.draw_card_for_player(&player_id, CardType::Spell).await?;
+        self.state.draw_card_for_player(&player_id, CardType::Spell).await?;
+        self.state.draw_card_for_player(&player_id, CardType::Spell).await?;
+        self.state.draw_card_for_player(&player_id, CardType::Site).await?;
+        self.state.draw_card_for_player(&player_id, CardType::Site).await?;
+        self.state.draw_card_for_player(&player_id, CardType::Site).await?;
         Ok(())
     }
 
@@ -600,39 +613,6 @@ impl Game {
         let resolve_effects = card.after_resolve(&self.state);
         self.state.effects.extend(resolve_effects);
 
-        Ok(())
-    }
-
-    pub async fn draw_card_for_player(&mut self, player_id: &uuid::Uuid, card_type: CardType) -> anyhow::Result<()> {
-        let deck = self.decks.get_mut(&player_id).unwrap();
-        let card = match card_type {
-            CardType::Site => deck.draw_site().map(|site| Card::Site(site)),
-            CardType::Spell => deck.draw_spell().map(|spell| Card::Spell(spell)),
-            CardType::Avatar => None,
-        };
-
-        if card.is_none() {
-            return Ok(());
-        }
-
-        let mut card = card.unwrap();
-        card.set_zone(CardZone::Hand);
-        self.state.cards.push(card);
-
-        match self.state.phase {
-            Phase::WaitingForCardDraw { ref mut count, .. } => {
-                *count -= 1;
-
-                if *count == 0 {
-                    self.state.effects.push_back(Effect::ChangePhase {
-                        new_phase: Phase::WaitingForPlay {
-                            player_id: player_id.clone(),
-                        },
-                    });
-                }
-            }
-            _ => {}
-        }
         Ok(())
     }
 }

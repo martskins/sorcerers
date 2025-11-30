@@ -2,8 +2,8 @@ mod util;
 
 use crate::{
     avatars,
-    card::{CardBase, CardZone, Edition},
-    effect::{Action, Effect, PlayerAction},
+    card::{CardBase, CardType, CardZone, Edition},
+    effect::{Action, Effect, GameAction, PlayerAction},
     game::{Phase, State},
 };
 use serde::{Deserialize, Serialize};
@@ -28,35 +28,50 @@ impl Avatar {
         }
     }
 
-    pub fn on_select(&self, _: &State) -> Vec<Effect> {
+    pub fn on_select(&self, state: &State) -> Vec<Effect> {
         if self.get_base().tapped {
             return vec![];
         }
 
         let actions = vec![
             Action::PlayerAction(PlayerAction::DrawSite {
-                after_select: vec![Effect::TapCard {
-                    card_id: self.get_id().clone(),
-                }],
+                after_select: vec![
+                    Effect::TapCard {
+                        card_id: self.get_id().clone(),
+                    },
+                    Effect::DrawCard {
+                        player_id: self.get_owner_id().clone(),
+                        card_type: CardType::Site,
+                    },
+                    Effect::ChangePhase {
+                        new_phase: Phase::WaitingForPlay {
+                            player_id: self.get_owner_id().clone(),
+                        },
+                    },
+                ],
             }),
             Action::PlayerAction(PlayerAction::PlaySite {
-                after_select: vec![Effect::TapCard {
-                    card_id: self.get_id().clone(),
-                }],
+                after_select: vec![
+                    Effect::ChangePhase {
+                        new_phase: Phase::SelectingCard {
+                            player_id: self.get_owner_id().clone(),
+                            card_ids: state.get_playable_site_ids(self.get_owner_id()),
+                            amount: 1,
+                            after_select: Some(Action::GameAction(GameAction::PlaySelectedCard)),
+                        },
+                    },
+                    Effect::TapCard {
+                        card_id: self.get_id().clone(),
+                    },
+                ],
             }),
         ];
 
-        vec![
-            Effect::ChangePhase {
-                new_phase: Phase::SelectingAction {
-                    player_id: self.get_owner_id().clone(),
-                    actions: actions.clone(),
-                },
-            },
-            Effect::SetPlayerActions {
+        vec![Effect::ChangePhase {
+            new_phase: Phase::SelectingAction {
                 player_id: self.get_owner_id().clone(),
-                actions,
+                actions: actions.clone(),
             },
-        ]
+        }]
     }
 }
