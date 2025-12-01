@@ -10,7 +10,7 @@ use crate::{
 pub enum Effect {
     AddMana {
         player_id: uuid::Uuid,
-        amount: u32,
+        amount: u8,
     },
     AddThresholds {
         player_id: uuid::Uuid,

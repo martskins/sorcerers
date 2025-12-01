@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use macroquad::{
     color::{Color, BLUE, GREEN, RED, WHITE},
     input::{is_mouse_button_released, mouse_position, MouseButton},
@@ -5,7 +7,7 @@ use macroquad::{
     shapes::{draw_line, draw_rectangle, draw_rectangle_lines, draw_triangle_lines},
     text::draw_text,
     texture::{draw_texture_ex, DrawTextureParams},
-    ui,
+    ui::{self, widgets::Texture, Skin},
     window::{screen_height, screen_width},
 };
 use sorcerers::{
@@ -311,13 +313,53 @@ impl Game {
 
                 let width = screen_width() - 20.0;
                 let height = screen_height() - 20.0;
-                println!("Number of zones: {}", number_of_zones);
+                let mut images = HashMap::new();
+                let cards_to_display: Vec<Card> = self
+                    .cards
+                    .iter()
+                    .filter(|c| {
+                        if owner.is_some() {
+                            return c.card.get_owner_id() == owner.as_ref().unwrap();
+                        }
+
+                        true
+                    })
+                    .map(|c| c.card.clone())
+                    .collect();
+
+                for card in &cards_to_display {
+                    images.insert(card.get_name(), TextureCache::get_card_texture(&card).await);
+                }
+
+                let mut all_valid_cards: Vec<uuid::Uuid> = spellbook.as_deref().unwrap_or_default().into();
+                all_valid_cards.extend(cemetery.as_deref().unwrap_or_default());
+                all_valid_cards.extend(hand.as_deref().unwrap_or_default());
                 ui::root_ui().window(
                     CARD_SELECTION_WINDOW_ID,
                     Vec2::new(10.0, 10.0),
                     Vec2::new(width, height),
                     |ui| {
-                        //
+                        for (idx, card) in cards_to_display.iter().enumerate() {
+                            if Texture::new(images.get(card.get_name()).unwrap().clone())
+                                .position(Vec2::new(10.0, 30.0 * idx as f32))
+                                .size(card_width(), card_height())
+                                .ui(ui)
+                            {
+                                println!("Clicked card {}", card.get_name());
+                            }
+
+                            // if spellbook.as_deref().unwrap_or_default().contains(card.get_id()) {
+                            //     draw_rectangle_lines(10.0, 30.0 * idx as f32, card_width(), card_height(), 3.0, GREEN);
+                            // }
+                            //
+                            // if cemetery.as_deref().unwrap_or_default().contains(card.get_id()) {
+                            //     draw_rectangle_lines(10.0, 30.0 * idx as f32, card_width(), card_height(), 3.0, GREEN);
+                            // }
+                            //
+                            // if hand.as_deref().unwrap_or_default().contains(card.get_id()) {
+                            //     draw_rectangle_lines(10.0, 30.0 * idx as f32, card_width(), card_height(), 3.0, GREEN);
+                            // }
+                        }
                     },
                 );
             }

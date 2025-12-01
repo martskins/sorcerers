@@ -14,8 +14,10 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Edition {
+    #[default]
+    Unknown,
     Alpha,
     Beta,
     ArthurianLegends,
@@ -26,6 +28,7 @@ pub enum Edition {
 impl Edition {
     pub fn url_name(&self) -> &str {
         match self {
+            Edition::Unknown => "unk",
             Edition::Beta => "bet",
             Edition::ArthurianLegends => "art",
             Edition::Alpha => todo!(),
@@ -48,6 +51,7 @@ pub struct CardBase {
     pub owner_id: uuid::Uuid,
     pub zone: CardZone,
     pub tapped: bool,
+    pub edition: Edition,
 }
 
 impl CardBase {
@@ -57,6 +61,7 @@ impl CardBase {
             owner_id,
             zone,
             tapped: false,
+            edition: Edition::Unknown,
         }
     }
 }
@@ -259,7 +264,7 @@ impl Card {
     pub fn on_cast(&self, state: &State, target: Target) -> Vec<Effect> {
         match self {
             Card::Spell(card) => card.on_cast(state, target),
-            Card::Site(_) => vec![],
+            Card::Site(card) => card.on_cast(state, target),
             Card::Avatar(_) => vec![],
         }
     }
@@ -292,7 +297,7 @@ impl Card {
     pub fn is_minion(&self) -> bool {
         match self {
             Card::Site(_) => false,
-            Card::Spell(card) => card.get_spell_type() == SpellType::Minion,
+            Card::Spell(card) => card.get_spell_type() == &SpellType::Minion,
             Card::Avatar(_) => true,
         }
     }
@@ -306,10 +311,6 @@ impl Card {
     }
 
     pub fn get_edition(&self) -> Edition {
-        match self {
-            Card::Site(site) => site.get_edition(),
-            Card::Spell(spell) => spell.get_edition(),
-            Card::Avatar(avatar) => avatar.get_edition(),
-        }
+        self.get_base().edition.clone()
     }
 }

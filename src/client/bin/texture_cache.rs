@@ -44,6 +44,10 @@ impl TextureCache {
         texture
     }
 
+    pub async fn image_for_card(card: &Card) -> Image {
+        TextureCache::texture_for_card(card).await.get_texture_data()
+    }
+
     async fn texture_for_card(card: &Card) -> Texture2D {
         if let Some(tex) = TEXTURE_CACHE.get().unwrap().read().unwrap().inner.get(card.get_name()) {
             return tex.clone();

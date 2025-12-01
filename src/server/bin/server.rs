@@ -1,8 +1,8 @@
 use sorcerers::{
     card::{
-        site::Site,
+        site::{arid_desert::AridDesert, Site, SpringRiver},
         spell::{Spell, SpellBase},
-        Card, CardBase, CardZone,
+        Card, CardBase, CardZone, Edition,
     },
     game::{Game, Phase, Resources},
     networking::{Message, Socket},
@@ -100,92 +100,43 @@ impl Server {
         game.state.resources.insert(player1.clone(), Resources::new());
         game.state.resources.insert(player2.clone(), Resources::new());
 
-        game.state.cards.push(Card::Site(Site::AridDesert(CardBase {
-            id: uuid::Uuid::new_v4(),
-            owner_id: player1.clone(),
-            zone: CardZone::Realm(3),
-            tapped: false,
-        })));
-        game.state.cards.push(Card::Site(Site::AridDesert(CardBase {
-            id: uuid::Uuid::new_v4(),
-            owner_id: player1.clone(),
-            zone: CardZone::Realm(8),
-            tapped: false,
-        })));
-        game.state.cards.push(Card::Site(Site::AridDesert(CardBase {
-            id: uuid::Uuid::new_v4(),
-            owner_id: player1.clone(),
-            zone: CardZone::Realm(9),
-            tapped: false,
-        })));
-        game.state.cards.push(Card::Spell(Spell::BlackKnight(SpellBase {
-            card_base: CardBase {
-                id: uuid::Uuid::new_v4(),
-                owner_id: player1.clone(),
-                zone: CardZone::Realm(8),
-                tapped: false,
-            },
-            damage_taken: 0,
-        })));
-        game.state.cards.push(Card::Spell(Spell::AdeptIllusionist(SpellBase {
-            card_base: CardBase {
-                id: uuid::Uuid::new_v4(),
-                owner_id: player1.clone(),
-                zone: CardZone::Realm(9),
-                tapped: false,
-            },
-            damage_taken: 0,
-        })));
-        game.state.cards.push(Card::Spell(Spell::BurningHands(SpellBase {
-            card_base: CardBase {
-                id: uuid::Uuid::new_v4(),
-                owner_id: player1.clone(),
-                zone: CardZone::Hand,
-                tapped: false,
-            },
-            damage_taken: 0,
-        })));
+        game.state.cards.push(Card::Site(Site::AridDesert(AridDesert::new(
+            player1.clone(),
+            CardZone::Realm(8),
+        ))));
+        game.state.cards.push(Card::Site(Site::SpringRiver(SpringRiver::new(
+            player1.clone(),
+            CardZone::Realm(9),
+        ))));
+        game.state.cards.push(Card::Site(Site::AridDesert(AridDesert::new(
+            player1.clone(),
+            CardZone::Realm(3),
+        ))));
         game.state.resources.get_mut(player1).unwrap().mana = 2;
         game.state.resources.get_mut(player1).unwrap().fire_threshold = 2;
+        game.state.resources.get_mut(player1).unwrap().water_threshold = 1;
+        game.state.resources.get_mut(player1).unwrap().earth_threshold = 1;
 
-        game.state.cards.push(Card::Site(Site::AridDesert(CardBase {
-            id: uuid::Uuid::new_v4(),
-            owner_id: player2.clone(),
-            zone: CardZone::Realm(13),
-            tapped: false,
-        })));
-        game.state.cards.push(Card::Site(Site::AridDesert(CardBase {
-            id: uuid::Uuid::new_v4(),
-            owner_id: player2.clone(),
-            zone: CardZone::Realm(14),
-            tapped: false,
-        })));
-        game.state.cards.push(Card::Site(Site::AridDesert(CardBase {
-            id: uuid::Uuid::new_v4(),
-            owner_id: player2.clone(),
-            zone: CardZone::Realm(18),
-            tapped: false,
-        })));
-        game.state.cards.push(Card::Spell(Spell::BlackKnight(SpellBase {
-            card_base: CardBase {
-                id: uuid::Uuid::new_v4(),
-                owner_id: player2.clone(),
-                zone: CardZone::Realm(14),
-                tapped: false,
-            },
-            damage_taken: 0,
-        })));
-        game.state.cards.push(Card::Spell(Spell::BlackKnight(SpellBase {
-            card_base: CardBase {
-                id: uuid::Uuid::new_v4(),
-                owner_id: player2.clone(),
-                zone: CardZone::Realm(13),
-                tapped: false,
-            },
-            damage_taken: 0,
-        })));
+        game.state.cards.push(Card::Site(Site::AridDesert(AridDesert::new(
+            player2.clone(),
+            CardZone::Realm(13),
+        ))));
+        game.state.cards.push(Card::Site(Site::SpringRiver(SpringRiver::new(
+            player2.clone(),
+            CardZone::Realm(14),
+        ))));
+        game.state.cards.push(Card::Site(Site::AridDesert(AridDesert::new(
+            player2.clone(),
+            CardZone::Realm(18),
+        ))));
         game.state.resources.get_mut(player2).unwrap().mana = 2;
         game.state.resources.get_mut(player2).unwrap().fire_threshold = 2;
+        game.state.resources.get_mut(player1).unwrap().water_threshold = 1;
+        game.state.resources.get_mut(player1).unwrap().earth_threshold = 1;
+
+        let mut adept_illusionist = Spell::from_name("Adept Illusionist", player1.clone()).unwrap();
+        adept_illusionist.set_zone(CardZone::Realm(13));
+        game.state.cards.push(Card::Spell(adept_illusionist));
 
         let game_id = game.id;
         self.player_to_game.insert(player1.clone(), game.id);

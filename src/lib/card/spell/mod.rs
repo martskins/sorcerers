@@ -1,5 +1,9 @@
-mod util;
+mod accursed_albatross;
+use accursed_albatross::AccursedAlbatross;
+mod adept_illusionist;
+use adept_illusionist::AdeptIllusionist;
 
+mod util;
 use crate::{
     card::{CardBase, CardType, CardZone, Edition, Target},
     effect::{Action, Effect, GameAction, PlayerAction},
@@ -48,6 +52,10 @@ pub struct SpellBase {
     pub card_base: CardBase,
     // TODO: Implement damange reset at the end of turn
     pub damage_taken: u8,
+    pub mana_cost: u8,
+    pub thresholds: Thresholds,
+    pub power: Option<u8>,
+    pub toughness: Option<u8>,
 }
 
 impl SpellBase {
@@ -55,6 +63,10 @@ impl SpellBase {
         Self {
             card_base: CardBase::new(owner_id, zone),
             damage_taken: 0,
+            mana_cost: 0,
+            thresholds: Thresholds::default(),
+            power: None,
+            toughness: None,
         }
     }
 }
@@ -70,36 +82,42 @@ pub enum Ability {
     Spellcaster,
 }
 
+// #[rustfmt::skip]
+// spells!(
+//     Abundance, "Abundance", 5, "WW", SpellType::Aura, None, None, vec![], Edition::Beta,
+//     AccursedAlbatross, "Accursed Albatross", 3, "W", SpellType::Minion, Some(1), Some(1), vec![Ability::Airborne], Edition::Beta,
+//     AdeptIllusionist, "Adept Illusionist", 2, "WW", SpellType::Minion, Some(2),Some(2), vec![Ability::Spellcaster], Edition::Beta,
+//     AlbespinePikemen, "Albespine Pikemen", 3, "EE", SpellType::Minion, Some(3),Some(3), vec![], Edition::Beta,
+//     AllTerrainVestments, "All-Terrain Vestments", 3, "", SpellType::Artifact, None, None, vec![], Edition::Beta,
+//     AlvalinneDryads, "Alvalinne Dryads", 3, "", SpellType::Minion, Some(1), Some(1), vec![], Edition::Beta,
+//     AmazonWarriors, "Amazon Warriors", 5, "E", SpellType::Minion, Some(5),Some(5), vec![], Edition::Beta,
+//     AmethystCore, "Amethyst Core", 1, "", SpellType::Artifact, None, None, vec![], Edition::Beta,
+//     AncientDragon, "Ancient Dragon", 7, "RRR", SpellType::Minion, Some(6), Some(6), vec![], Edition::Beta,
+//     AngelsEgg, "Angels Egg", 3, "", SpellType::Artifact, None, None, vec![], Edition::Beta,
+//     AnuiUndine, "Anui Undine", 5, "WW", SpellType::Minion, Some(0),Some(0), vec![], Edition::Beta,
+//     ApprenticeWizard, "Apprentice Wizard", 3, "A", SpellType::Minion, Some(1),Some(1), vec![], Edition::Beta,
+//     AquamarineCore, "Aquamarine Core", 1, "", SpellType::Artifact, None, None, vec![], Edition::Beta,
+//     AramosMercenaries, "Aramos Mercenaries", 3, "FF", SpellType::Minion, Some(3),Some(3), vec![], Edition::Beta,
+//     AskelonPhoenix, "Askelon Phoenix", 5, "RR", SpellType::Minion, Some(4),Some(4), vec![], Edition::Beta,
+//     AssortedAnimals, "Assorted Animals", 0, "", SpellType::Artifact, None, None, vec![], Edition::Beta, // TODO: Implemenet X cost
+//     AtlanteanFate, "Atlantean Fate", 5, "WW", SpellType::Aura, None, None, vec![], Edition::Beta,
+//     AtlasWanderers, "Atlas Wanderers", 5, "EEE", SpellType::Minion, Some(5), Some(5), vec![], Edition::Beta,
+//     AutumnUnicon, "Autumn Unicorn", 3, "EE", SpellType::Minion, Some(4),Some(4), vec![], Edition::Beta,
+//     AwakenedMummies, "Awakened Mummies", 1, "F", SpellType::Minion, Some(3),Some(3), vec![], Edition::Beta,
+//     AzuridgeCaravan, "Azuridge Caravan", 5, "F", SpellType::Minion, Some(4),Some(4), vec![], Edition::Beta,
+//     Backstab, "Backstab", 2, "F", SpellType::Magic, None, None, vec![], Edition::Beta,
+//     BaneWidow, "Bane Widow", 4, "FF", SpellType::Minion, Some(1),Some(1), vec![], Edition::Beta,
+//     BallLightning, "Ball Lightning", 2, "AA", SpellType::Magic, None, None, vec![], Edition::ArthurianLegends,
+//     CastIntoExile, "Cast Into Exile", 2, "AA", SpellType::Magic, None, None, vec![], Edition::ArthurianLegends,
+//     BurningHands, "Burning Hands", 3, "R", SpellType::Magic, None, None, vec![], Edition::ArthurianLegends,
+//     SlyFox, "Sly Fox", 1, "W", SpellType::Minion, Some(1),Some(1), vec![], Edition::ArthurianLegends,
+//     BlackKnight, "Black Knight", 5, "FA", SpellType::Minion, Some(5),Some(3), vec![], Edition::ArthurianLegends
+// );
+
 #[rustfmt::skip]
 spells!(
-    Abundance, "Abundance", 5, "WW", SpellType::Aura, None, None, vec![], Edition::Beta,
-    AccursedAlbatross, "Accursed Albatross", 3, "W", SpellType::Minion, Some(1), Some(1), vec![Ability::Airborne], Edition::Beta,
-    AdeptIllusionist, "Adept Illusionist", 2, "WW", SpellType::Minion, Some(2),Some(2), vec![Ability::Spellcaster], Edition::Beta,
-    AlbespinePikemen, "Albespine Pikemen", 3, "EE", SpellType::Minion, Some(3),Some(3), vec![], Edition::Beta,
-    AllTerrainVestments, "All-Terrain Vestments", 3, "", SpellType::Artifact, None, None, vec![], Edition::Beta,
-    AlvalinneDryads, "Alvalinne Dryads", 3, "", SpellType::Minion, Some(1), Some(1), vec![], Edition::Beta,
-    AmazonWarriors, "Amazon Warriors", 5, "E", SpellType::Minion, Some(5),Some(5), vec![], Edition::Beta,
-    AmethystCore, "Amethyst Core", 1, "", SpellType::Artifact, None, None, vec![], Edition::Beta,
-    AncientDragon, "Ancient Dragon", 7, "RRR", SpellType::Minion, Some(6), Some(6), vec![], Edition::Beta,
-    AngelsEgg, "Angels Egg", 3, "", SpellType::Artifact, None, None, vec![], Edition::Beta,
-    AnuiUndine, "Anui Undine", 5, "WW", SpellType::Minion, Some(0),Some(0), vec![], Edition::Beta,
-    ApprenticeWizard, "Apprentice Wizard", 3, "A", SpellType::Minion, Some(1),Some(1), vec![], Edition::Beta,
-    AquamarineCore, "Aquamarine Core", 1, "", SpellType::Artifact, None, None, vec![], Edition::Beta,
-    AramosMercenaries, "Aramos Mercenaries", 3, "FF", SpellType::Minion, Some(3),Some(3), vec![], Edition::Beta,
-    AskelonPhoenix, "Askelon Phoenix", 5, "RR", SpellType::Minion, Some(4),Some(4), vec![], Edition::Beta,
-    AssortedAnimals, "Assorted Animals", 0, "", SpellType::Artifact, None, None, vec![], Edition::Beta, // TODO: Implemenet X cost
-    AtlanteanFate, "Atlantean Fate", 5, "WW", SpellType::Aura, None, None, vec![], Edition::Beta,
-    AtlasWanderers, "Atlas Wanderers", 5, "EEE", SpellType::Minion, Some(5), Some(5), vec![], Edition::Beta,
-    AutumnUnicon, "Autumn Unicorn", 3, "EE", SpellType::Minion, Some(4),Some(4), vec![], Edition::Beta,
-    AwakenedMummies, "Awakened Mummies", 1, "F", SpellType::Minion, Some(3),Some(3), vec![], Edition::Beta,
-    AzuridgeCaravan, "Azuridge Caravan", 5, "F", SpellType::Minion, Some(4),Some(4), vec![], Edition::Beta,
-    Backstab, "Backstab", 2, "F", SpellType::Magic, None, None, vec![], Edition::Beta,
-    BaneWidow, "Bane Widow", 4, "FF", SpellType::Minion, Some(1),Some(1), vec![], Edition::Beta,
-    BallLightning, "Ball Lightning", 2, "AA", SpellType::Magic, None, None, vec![], Edition::ArthurianLegends,
-    CastIntoExile, "Cast Into Exile", 2, "AA", SpellType::Magic, None, None, vec![], Edition::ArthurianLegends,
-    BurningHands, "Burning Hands", 3, "R", SpellType::Magic, None, None, vec![], Edition::ArthurianLegends,
-    SlyFox, "Sly Fox", 1, "W", SpellType::Minion, Some(1),Some(1), vec![], Edition::ArthurianLegends,
-    BlackKnight, "Black Knight", 5, "FA", SpellType::Minion, Some(5),Some(3), vec![], Edition::ArthurianLegends
+    AccursedAlbatross, "Accursed Albatross",
+    AdeptIllusionist, "Adept Illusionist"
 );
 
 impl Spell {
@@ -207,34 +225,11 @@ impl Spell {
         }]
     }
 
-    pub fn on_damage_taken(&self, from: &uuid::Uuid, _amount: u8, state: &State) -> Vec<Effect> {
-        let mut effects = Vec::new();
-        match self {
-            Spell::AccursedAlbatross(cb) => {
-                if cb.damage_taken >= self.get_toughness().unwrap_or(0) {
-                    let attacker_owner_id = state.cards.iter().find(|c| c.get_id() == from).unwrap().get_owner_id();
-                    let nearby_minions = state
-                        .cards
-                        .iter()
-                        .filter(|c| c.is_minion())
-                        .filter(|c| c.get_owner_id() == attacker_owner_id)
-                        .filter(|c| c.get_id() != from)
-                        .filter(|c| matches!(c.get_zone(), CardZone::Realm(_)))
-                        .filter(|c| {
-                            let a = self.get_cell_id().unwrap();
-                            let b = c.get_cell_id().unwrap();
-                            Cell::are_nearby(a, b)
-                        })
-                        .map(|c| c.get_id())
-                        .cloned()
-                        .collect::<Vec<uuid::Uuid>>();
-                    for id in nearby_minions {
-                        effects.push(Effect::KillUnit { card_id: id });
-                    }
-                }
-            }
-            _ => {}
-        }
+    pub fn on_damage_taken(&self, from: &uuid::Uuid, amount: u8, state: &State) -> Vec<Effect> {
+        let effects = match self {
+            Spell::AccursedAlbatross(c) => c.on_damage_taken(from, amount, state),
+            Spell::AdeptIllusionist(c) => c.on_damage_taken(from, amount, state),
+        };
 
         effects
     }
@@ -271,54 +266,7 @@ impl Spell {
             }),
         ];
 
-        match self {
-            Spell::AdeptIllusionist(_) => {
-                let spellbook = state
-                    .cards
-                    .iter()
-                    .filter(|c| c.get_owner_id() == self.get_owner_id())
-                    .filter(|c| matches!(c.get_zone(), CardZone::Spellbook))
-                    .filter(|c| c.get_name() == self.get_name())
-                    .map(|c| c.get_id())
-                    .cloned()
-                    .collect();
-                let cemetery = state
-                    .cards
-                    .iter()
-                    .filter(|c| c.get_owner_id() == self.get_owner_id())
-                    .filter(|c| matches!(c.get_zone(), CardZone::Cemetery))
-                    .filter(|c| c.get_name() == self.get_name())
-                    .map(|c| c.get_id())
-                    .cloned()
-                    .collect();
-                let hand = state
-                    .cards
-                    .iter()
-                    .filter(|c| c.get_owner_id() == self.get_owner_id())
-                    .filter(|c| matches!(c.get_zone(), CardZone::Hand))
-                    .filter(|c| c.get_name() == self.get_name())
-                    .map(|c| c.get_id())
-                    .cloned()
-                    .collect();
-                actions.push(Action::PlayerAction(PlayerAction::ActivateTapAbility {
-                    after_select: vec![
-                        Effect::TapCard {
-                            card_id: self.get_id().clone(),
-                        },
-                        Effect::ChangePhase {
-                            new_phase: Phase::SelectingCardOutsideRealm {
-                                player_id: self.get_owner_id().clone(),
-                                spellbook: Some(spellbook),
-                                cemetery: Some(cemetery),
-                                hand: Some(hand),
-                                owner: self.get_owner_id().clone(),
-                            },
-                        },
-                    ],
-                }));
-            }
-            _ => {}
-        }
+        actions.extend(self.on_select_in_realm_actions(state));
 
         match self.get_spell_type() {
             SpellType::Minion => {
@@ -390,29 +338,47 @@ impl Spell {
         effects
     }
 
-    pub fn on_cast(&self, _state: &State, target: Target) -> Vec<Effect> {
+    pub fn on_cast(&self, state: &State, target: Target) -> Vec<Effect> {
         let mut effects = vec![];
         effects.push(Effect::SpendMana {
             player_id: self.get_owner_id().clone(),
             amount: self.get_mana_cost(),
         });
 
-        match self {
-            Spell::BurningHands(_) | Spell::BallLightning(_) => {
-                match target {
-                    Target::Card(target_id) => {
-                        // TODO: Change DealDamage to support area of effect damage.
-                        effects.push(Effect::DealDamage {
-                            from: self.get_id().clone(),
-                            target_id,
-                            amount: 4,
-                        });
-                    }
-                    _ => unreachable!(),
+        if self.is_permanent() {
+            match target {
+                Target::Cell(cell_id) => {
+                    effects.push(Effect::MoveCard {
+                        card_id: self.get_id().clone(),
+                        to_zone: CardZone::Realm(cell_id),
+                    });
+                    effects.extend(self.genesis());
                 }
+                _ => unreachable!(),
             }
-            _ => {}
         }
+
+        let card_effects = match self {
+            _ => vec![],
+        };
+        effects.extend(card_effects);
+
+        // match self {
+        //     _ => {} // Spell::BurningHands(_) | Spell::BallLightning(_) => {
+        //             //     match target {
+        //             //         Target::Card(target_id) => {
+        //             //             // TODO: Change DealDamage to support area of effect damage.
+        //             //             effects.push(Effect::DealDamage {
+        //             //                 from: self.get_id().clone(),
+        //             //                 target_id,
+        //             //                 amount: 4,
+        //             //             });
+        //             //         }
+        //             //         _ => unreachable!(),
+        //             //     }
+        //             // }
+        //             // _ => {}
+        // }
 
         effects
     }

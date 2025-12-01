@@ -1,4 +1,4 @@
-use crate::card::site::{Site, ALL_SITES};
+use crate::card::site::Site;
 use crate::card::spell::{Spell, ALL_SPELLS};
 use crate::card::CardBase;
 use crate::card::{avatar::Avatar, CardZone};
@@ -25,7 +25,7 @@ impl Deck {
 
         let mut sites = vec![];
         for _i in 0..10 {
-            for site in ALL_SITES {
+            for site in ["Arid Desert"] {
                 sites.push(Site::from_name(site, player_id).unwrap());
             }
         }
@@ -40,6 +40,7 @@ impl Deck {
                 owner_id: player_id,
                 zone: CardZone::Realm(3),
                 tapped: false,
+                edition: crate::card::Edition::Beta,
             }),
         }
     }

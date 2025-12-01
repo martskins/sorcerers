@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+convert_case = "0.10.0"
 anyhow = "1.0.100"
 macroquad = "0.4.14"
 image = { version = "0.24", features = ["jpeg", "webp"] }
@@ -25,6 +26,10 @@ path = "src/server/bin/main.rs"
 [[bin]]
 name = "client"
 path = "src/client/bin/main.rs"
+
+[[bin]]
+name = "cli"
+path = "src/cli/bin/main.rs"
 
 [lib]
 name = "sorcerers"

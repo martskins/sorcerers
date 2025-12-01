@@ -1,130 +1,121 @@
 #[macro_export]
 macro_rules! spells {
-    ($($name:ident, $card_name:expr, $mana_cost:literal, $threshold:literal, $spell_type:expr, $power:expr, $toughness:expr, $abilities:expr, $edition:expr),+) => {
-        /// Represents the different spell cards in the game.
+    ($($variant:ident, $card_name:literal),+) => {
         #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
         pub enum Spell {
-            $($name(SpellBase),)+
+            $($variant($variant),)+
         }
 
-        pub const ALL_SPELLS: &[&str] = &[
-            $($card_name,)+
-        ];
+        pub const ALL_SPELLS: &[&str] = &[$($card_name),+];
 
         impl Spell {
             pub fn get_abilities(&self) -> Vec<Ability> {
                 match self {
-                    $(Spell::$name(_) => $abilities.clone(),)+
-                }
-            }
-            pub fn from_name(name: &str, owner_id: uuid::Uuid) -> Option<Self> {
-                match name {
-                    $($card_name => Some(Spell::$name(SpellBase::new(owner_id, CardZone::Spellbook))),)+
-                    _ => None,
-                }
-            }
-            pub fn get_edition(&self) -> Edition {
-                match self {
-                    $(Spell::$name(_) => $edition,)+
+                    $(Spell::$variant(cb) => cb.get_abilities(),)+
                 }
             }
 
-            pub fn get_name(&self) -> &'static str {
+            pub fn from_name(name: &str, owner_id: uuid::Uuid) -> Option<Self> {
+                match name {
+                    $($card_name => Some(Spell::$variant($variant::new(owner_id, CardZone::Spellbook))),)+
+                    _ => None,
+                }
+            }
+
+            pub fn get_edition(&self) -> Edition {
+                self.get_base().edition.clone()
+            }
+
+            pub fn get_name(&self) -> &str {
                 match self {
-                    $(Spell::$name(_) => $card_name,)+
+                    $(Spell::$variant(c) => c.get_name(),)+
                 }
             }
 
             pub fn get_mana_cost(&self) -> u8 {
-                match self {
-                    $(Spell::$name(_) => $mana_cost,)+
-                }
+                self.get_spell_base().mana_cost
             }
 
             pub fn get_power(&self) -> Option<u8> {
-                match self {
-                    $(Spell::$name(_) => $power,)+
-                }
+                self.get_spell_base().power
             }
 
             pub fn get_toughness(&self) -> Option<u8> {
-                match self {
-                    $(Spell::$name(_) => $toughness,)+
-                }
+                self.get_spell_base().toughness
             }
 
             /// Returns a reference to the owner's unique identifier (`Uuid`).
             pub fn get_owner_id(&self) -> &uuid::Uuid {
                 match self {
-                    $(Spell::$name(cb) => &cb.card_base.owner_id,)+
+                    $(Spell::$variant(c) => c.get_owner_id(),)+
                 }
             }
 
             /// Returns a reference to the current zone of the spell card.
             pub fn get_zone(&self) -> &CardZone {
-                match self {
-                    $(Spell::$name(cb) => &cb.card_base.zone,)+
-                }
+                &self.get_base().zone
             }
 
             pub fn set_zone(&mut self, zone: CardZone) {
-                match self {
-                    $(Spell::$name(cb) => cb.card_base.zone = zone,)+
-                }
+                self.get_base_mut().zone = zone;
             }
 
 
             /// Returns a reference to the underlying `CardBase` of the spell.
             pub fn get_spell_base_mut(&mut self) -> &mut SpellBase {
                 match self {
-                    $(Spell::$name(cb) => cb,)+
+                    $(Spell::$variant(cb) => &mut cb.spell,)+
                 }
             }
 
             /// Returns a reference to the underlying `CardBase` of the spell.
             pub fn get_spell_base(&self) -> &SpellBase {
                 match self {
-                    $(Spell::$name(cb) => cb,)+
+                    $(Spell::$variant(cb) => &cb.spell,)+
                 }
             }
 
             /// Returns a reference to the underlying `CardBase` of the spell.
             pub fn get_base(&self) -> &CardBase {
                 match self {
-                    $(Spell::$name(cb) => &cb.card_base,)+
+                    $(Spell::$variant(cb) => &cb.spell.card_base,)+
                 }
             }
 
             /// Returns a mutable reference to the underlying `CardBase` of the spell.
             pub fn get_base_mut(&mut self) -> &mut CardBase {
                 match self {
-                    $(Spell::$name(cb) => &mut cb.card_base,)+
+                    $(Spell::$variant(cb) => &mut cb.spell.card_base,)+
                 }
             }
 
             /// Returns a reference to the unique identifier (`Uuid`) of the spell card.
             pub fn get_id(&self) -> &uuid::Uuid {
                 match self {
-                    $(Spell::$name(cb) => &cb.card_base.id,)+
+                    $(Spell::$variant(c) => c.get_id(),)+
                 }
             }
 
             pub fn reset_damage(&mut self) {
                 match self {
-                    $(Spell::$name(cb) => cb.damage_taken = 0,)+
+                    $(Spell::$variant(cb) => cb.get_spell_base_mut().damage_taken = 0,)+
                 }
             }
 
             /// Returns the required thresholds to play the spell.
             pub fn get_required_threshold(&self) -> Thresholds {
+                self.get_spell_base().thresholds.clone()
+            }
+
+            pub fn get_spell_type(&self) -> &SpellType {
                 match self {
-                    $(Spell::$name(_) => Thresholds::parse($threshold),)+
+                    $(Spell::$variant(c) => c.get_spell_type(),)+
                 }
             }
 
-            pub fn get_spell_type(&self) -> SpellType {
+            pub fn on_select_in_realm_actions(&self, state: &State) -> Vec<Action> {
                 match self {
-                    $(Spell::$name(_) => $spell_type,)+
+                    $(Spell::$variant(c) => c.on_select_in_realm_actions(state),)+
                 }
             }
         }

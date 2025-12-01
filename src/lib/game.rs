@@ -43,10 +43,11 @@ pub enum Phase {
     },
     SelectingCardOutsideRealm {
         player_id: uuid::Uuid,
-        owner: uuid::Uuid,
+        owner: Option<uuid::Uuid>,
         spellbook: Option<Vec<uuid::Uuid>>,
         cemetery: Option<Vec<uuid::Uuid>>,
         hand: Option<Vec<uuid::Uuid>>,
+        after_select: Option<Action>,
     },
 }
 
@@ -114,6 +115,7 @@ impl State {
                 owner_id: player2,
                 zone: CardZone::Realm(18),
                 tapped: false,
+                edition: crate::card::Edition::Beta,
             });
 
             decks.insert(player1, deck_one);
@@ -619,20 +621,22 @@ impl Game {
             .find(|card| card.get_id() == card_id)
             .cloned()
             .unwrap();
-        match target {
-            Target::Cell(cell_id) => {
-                self.state.effects.push_back(Effect::MoveCardToCell {
-                    card_id: card_id.clone(),
-                    cell_id,
-                });
-                self.state.effects.extend(card.genesis());
-            }
-            Target::Card(_) => {
-                let effects = card.on_cast(&self.state, target);
-                self.state.effects.extend(effects);
-            }
-            _ => {}
-        }
+        let effects = card.on_cast(&self.state, target);
+        self.state.effects.extend(effects);
+        // match target {
+        //     Target::Cell(cell_id) => {
+        //         self.state.effects.push_back(Effect::MoveCardToCell {
+        //             card_id: card_id.clone(),
+        //             cell_id,
+        //         });
+        //         self.state.effects.extend(card.genesis());
+        //     }
+        //     Target::Card(_) => {
+        //         let effects = card.on_cast(&self.state, target);
+        //         self.state.effects.extend(effects);
+        //     }
+        //     _ => {}
+        // }
         self.state.effects.push_back(Effect::ChangePhase {
             new_phase: Phase::WaitingForPlay {
                 player_id: player_id.clone(),
