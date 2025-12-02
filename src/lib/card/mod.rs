@@ -55,13 +55,13 @@ pub struct CardBase {
 }
 
 impl CardBase {
-    pub fn new(owner_id: uuid::Uuid, zone: CardZone) -> Self {
+    pub fn new(owner_id: uuid::Uuid, zone: CardZone, edition: Edition) -> Self {
         Self {
             id: uuid::Uuid::new_v4(),
             owner_id,
             zone,
             tapped: false,
-            edition: Edition::Unknown,
+            edition,
         }
     }
 }

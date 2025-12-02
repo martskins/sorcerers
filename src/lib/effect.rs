@@ -152,6 +152,8 @@ pub enum GameAction {
     PlaySelectedCard,
     AttackSelectedTarget { attacker_id: uuid::Uuid },
     MoveCardToSelectedCell { card_id: uuid::Uuid },
+    SummonMinionToSelectedCell { card_id: uuid::Uuid },
+    SummonMinion { card_id: uuid::Uuid },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

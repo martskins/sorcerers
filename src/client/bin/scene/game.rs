@@ -7,7 +7,7 @@ use macroquad::{
     shapes::{draw_line, draw_rectangle, draw_rectangle_lines, draw_triangle_lines},
     text::draw_text,
     texture::{draw_texture_ex, DrawTextureParams},
-    ui::{self, widgets::Texture, Skin},
+    ui::{self, widgets::Texture},
     window::{screen_height, screen_width},
 };
 use sorcerers::{
@@ -265,7 +265,7 @@ impl Game {
                         for (idx, action) in actions.iter().enumerate() {
                             if ui.button(Vec2::new(0.0, 30.0 * idx as f32), action.get_name()) {
                                 self.client
-                                    .send(Message::ActionSelected {
+                                    .send(Message::TriggerAction {
                                         action_idx: idx,
                                         player_id: self.player_id,
                                         game_id: self.game_id,
@@ -278,7 +278,7 @@ impl Game {
                             self.action_window_position = None;
                             self.action_window_size = None;
                             self.client
-                                .send(Message::SelectActionCancelled {
+                                .send(Message::CancelSelectAction {
                                     player_id: self.player_id,
                                     game_id: self.game_id,
                                 })
@@ -293,6 +293,7 @@ impl Game {
                 spellbook,
                 cemetery,
                 hand,
+                after_select,
             } => {
                 if player_id != &self.player_id {
                     return Ok(());
@@ -345,7 +346,14 @@ impl Game {
                                 .size(card_width(), card_height())
                                 .ui(ui)
                             {
-                                println!("Clicked card {}", card.get_name());
+                                self.client
+                                    .send(Message::SummonMinion {
+                                        player_id: self.player_id.clone(),
+                                        card_id: card.get_id().clone(),
+                                        game_id: self.game_id.clone(),
+                                        cell_id: 0,
+                                    })
+                                    .unwrap();
                             }
 
                             // if spellbook.as_deref().unwrap_or_default().contains(card.get_id()) {
@@ -480,7 +488,7 @@ impl Game {
 
                 if card_selected.is_some() {
                     self.client
-                        .send(Message::CardSelected {
+                        .send(Message::SelectCard {
                             card_id: card_selected.unwrap(),
                             player_id: self.player_id,
                             game_id: self.game_id,
@@ -514,7 +522,7 @@ impl Game {
                         match after_select {
                             Some(Action::GameAction(GameAction::PlayCardOnSelectedTargets { card_id })) => {
                                 self.client
-                                    .send(Message::CardPlayed {
+                                    .send(Message::PlayCard {
                                         player_id: self.player_id,
                                         card_id: card_id.clone(),
                                         game_id: self.game_id,
@@ -573,7 +581,7 @@ impl Game {
                         match after_select {
                             Some(Action::GameAction(GameAction::PlayCardOnSelectedTargets { card_id })) => {
                                 self.client
-                                    .send(Message::CardPlayed {
+                                    .send(Message::PlayCard {
                                         player_id: self.player_id,
                                         card_id: card_id.clone(),
                                         targets: Target::Cell(cell_id),
@@ -583,10 +591,21 @@ impl Game {
                             }
                             Some(Action::GameAction(GameAction::MoveCardToSelectedCell { card_id })) => {
                                 self.client
-                                    .send(Message::CardMoved {
+                                    .send(Message::MoveCard {
                                         player_id: self.player_id,
                                         card_id: card_id.clone(),
                                         cell_id,
+                                        game_id: self.game_id,
+                                    })
+                                    .unwrap();
+                            }
+                            Some(Action::GameAction(GameAction::SummonMinionToSelectedCell { card_id })) => {
+                                println!("Summoning minion to cell {}", cell_id);
+                                self.client
+                                    .send(Message::SummonMinion {
+                                        player_id: self.player_id,
+                                        card_id: card_id.clone(),
+                                        cell_id: cell_id,
                                         game_id: self.game_id,
                                     })
                                     .unwrap();

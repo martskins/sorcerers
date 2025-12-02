@@ -1,3 +1,5 @@
+pub mod precon_beta;
+
 use crate::card::site::Site;
 use crate::card::spell::{Spell, ALL_SPELLS};
 use crate::card::CardBase;
@@ -7,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Deck {
-    pub id: u32,
+    pub id: uuid::Uuid,
     pub name: String,
     pub sites: Vec<Site>,
     pub spells: Vec<Spell>,
@@ -15,6 +17,22 @@ pub struct Deck {
 }
 
 impl Deck {
+    pub fn empty(player_id: uuid::Uuid) -> Self {
+        Deck {
+            id: uuid::Uuid::new_v4(),
+            name: "Empty Deck".to_string(),
+            sites: vec![],
+            spells: vec![],
+            avatar: Avatar::Sorcerer(CardBase {
+                id: uuid::Uuid::new_v4(),
+                owner_id: player_id,
+                zone: CardZone::Realm(3),
+                tapped: false,
+                edition: crate::card::Edition::Beta,
+            }),
+        }
+    }
+
     pub fn test_deck(player_id: uuid::Uuid) -> Self {
         let mut spells = vec![];
         for _i in 0..10 {
@@ -31,7 +49,7 @@ impl Deck {
         }
 
         Deck {
-            id: 0,
+            id: uuid::Uuid::new_v4(),
             name: "Test Deck".to_string(),
             sites,
             spells,

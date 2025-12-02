@@ -1,7 +1,9 @@
-use super::{Ability, SpellType};
 use crate::{
-    card::{spell::SpellBase, CardBase, CardType, CardZone, Edition},
-    effect::{Action, Effect, PlayerAction},
+    card::{
+        spell::{Ability, SpellBase, SpellType},
+        CardBase, CardType, CardZone, Edition,
+    },
+    effect::{Action, Effect, GameAction, PlayerAction},
     game::{Phase, State},
     networking::Thresholds,
 };
@@ -128,7 +130,9 @@ impl AdeptIllusionist {
                         cemetery: Some(cemetery),
                         hand: Some(hand),
                         owner: Some(self.get_owner_id().clone()),
-                        after_select: Some(Action::GameAction()),
+                        after_select: Some(Action::GameAction(GameAction::SummonMinion {
+                            card_id: self.get_id().clone(),
+                        })),
                     },
                 },
             ],

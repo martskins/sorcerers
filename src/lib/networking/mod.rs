@@ -130,12 +130,12 @@ pub enum Message {
     Sync {
         state: State,
     },
-    CardSelected {
+    SelectCard {
         player_id: uuid::Uuid,
         card_id: uuid::Uuid,
         game_id: uuid::Uuid,
     },
-    CardPlayed {
+    PlayCard {
         player_id: uuid::Uuid,
         card_id: uuid::Uuid,
         game_id: uuid::Uuid,
@@ -154,12 +154,12 @@ pub enum Message {
         player_id: uuid::Uuid,
         game_id: uuid::Uuid,
     },
-    ActionSelected {
+    TriggerAction {
         player_id: uuid::Uuid,
         action_idx: usize,
         game_id: uuid::Uuid,
     },
-    SelectActionCancelled {
+    CancelSelectAction {
         player_id: uuid::Uuid,
         game_id: uuid::Uuid,
     },
@@ -169,11 +169,17 @@ pub enum Message {
         target_id: uuid::Uuid,
         game_id: uuid::Uuid,
     },
-    CardMoved {
+    MoveCard {
         player_id: uuid::Uuid,
         card_id: uuid::Uuid,
         cell_id: u8,
         game_id: uuid::Uuid,
+    },
+    SummonMinion {
+        player_id: uuid::Uuid,
+        card_id: uuid::Uuid,
+        game_id: uuid::Uuid,
+        cell_id: u8,
     },
 }
 
@@ -185,15 +191,16 @@ impl Message {
             Message::MatchCreated { .. } => None,
             Message::Sync { .. } => None,
             Message::DrawCard { game_id, .. } => Some(game_id.clone()),
-            Message::CardSelected { game_id, .. } => Some(game_id.clone()),
+            Message::SelectCard { game_id, .. } => Some(game_id.clone()),
             Message::PrepareCardForPlay { game_id, .. } => Some(game_id.clone()),
-            Message::CardPlayed { game_id, .. } => Some(game_id.clone()),
+            Message::PlayCard { game_id, .. } => Some(game_id.clone()),
             Message::Disconnect { game_id, .. } => Some(game_id.clone()),
             Message::EndTurn { game_id, .. } => Some(game_id.clone()),
-            Message::ActionSelected { game_id, .. } => Some(game_id.clone()),
-            Message::SelectActionCancelled { game_id, .. } => Some(game_id.clone()),
+            Message::TriggerAction { game_id, .. } => Some(game_id.clone()),
+            Message::CancelSelectAction { game_id, .. } => Some(game_id.clone()),
             Message::AttackTarget { game_id, .. } => Some(game_id.clone()),
-            Message::CardMoved { game_id, .. } => Some(game_id.clone()),
+            Message::MoveCard { game_id, .. } => Some(game_id.clone()),
+            Message::SummonMinion { game_id, .. } => Some(game_id.clone()),
         }
     }
 }

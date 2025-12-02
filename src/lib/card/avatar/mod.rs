@@ -11,7 +11,8 @@ use serde::{Deserialize, Serialize};
 #[rustfmt::skip]
 avatars! {
     Sorcerer, "Sorcerer", Edition::Beta,
-    Battlemage, "Battlemage", Edition::Beta
+    Battlemage, "Battlemage", Edition::Beta,
+    Flamecaller, "Flamecaller", Edition::Beta
 }
 
 impl Avatar {

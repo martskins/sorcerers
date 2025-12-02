@@ -1,3 +1,13 @@
+pub mod vesuvius;
+pub use vesuvius::Vesuvius;
+pub mod shifting_sands;
+pub use shifting_sands::ShiftingSands;
+pub mod remote_desert;
+pub use remote_desert::RemoteDesert;
+pub mod red_desert;
+pub use red_desert::RedDesert;
+pub mod cornerstone;
+pub use cornerstone::Cornerstone;
 pub mod aqueduct;
 pub use aqueduct::Aqueduct;
 pub mod arid_desert;
@@ -23,5 +33,10 @@ sites! {
     AridDesert, "Arid Desert",
     SpringRiver, "Spring River",
     Aqueduct, "Aqueduct",
-    AstralAlcazar, "Astral Alcazar"
+    AstralAlcazar, "Astral Alcazar",
+    Cornerstone, "Cornerstone",
+    RemoteDesert, "Remote Desert",
+    RedDesert, "Red Desert",
+    ShiftingSands, "Shifting Sands",
+    Vesuvius, "Vesuvius"
 }

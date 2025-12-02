@@ -1,3 +1,4 @@
+use clap::Parser;
 use convert_case::{Case, Casing};
 use std::io::Read;
 use std::io::Write;
@@ -22,50 +23,215 @@ impl {Name} {
                     owner_id,
                     zone,
                     tapped: false,
-                    edition: Edition::X, // TODO: set edition
+                    edition: Edition::{Edition},
                 },
                 provided_mana: 1,
-                provided_threshold: Thresholds::parse(), // TODO: set threshold
+                provided_threshold: Thresholds::parse(""),
             },
         }
     }
 }"#;
 
-fn main() {
-    let args = std::env::args().collect::<Vec<String>>();
-    if args.len() != 3 {
-        eprintln!("Usage: {} <name>", args[0]);
+const SPELL_TEMPLATE: &'static str = r#"use super::{Ability, SpellType};
+use crate::{
+    card::{spell::SpellBase, CardBase, CardType, CardZone, Edition},
+    effect::{Action, Effect},
+    game::{Cell, State},
+    networking::Thresholds,
+};
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct {Name} {
+    pub spell: SpellBase,
+}
+
+impl {Name} {
+    pub fn new(owner_id: uuid::Uuid, zone: CardZone) -> Self {
+        Self {
+            spell: SpellBase {
+                card_base: CardBase {
+                    id: uuid::Uuid::new_v4(),
+                    owner_id,
+                    zone,
+                    tapped: false,
+                    edition: Edition::{Edition},
+                },
+                damage_taken: 0,
+                mana_cost: 3,
+                thresholds: Thresholds::parse(""),
+                power: Some(1),
+                toughness: Some(1),
+            },
+        }
     }
 
-    let ty = &args[1];
-    match ty.as_str() {
-        "site" => {
-            {
-                let name = args[2].clone();
-                let content = SITE_TEMPLATE.replace("{Name}", &name.to_case(Case::Pascal));
-                let path = format!("src/lib/card/site/{}.rs", name.to_lowercase().to_case(Case::Snake));
-                let mut file = std::fs::File::create(path).unwrap();
-                file.write_all(content.as_bytes()).unwrap();
-            }
+    pub fn get_spell_type(&self) -> &SpellType {
+        &SpellType::{SpellType}
+    }
 
-            let mut file = std::fs::File::open("src/lib/card/site/mod.rs").unwrap();
-            let mut mod_content = String::new();
-            file.read_to_string(&mut mod_content).unwrap();
-            let name = args[2].clone();
-            let mod_line = format!("pub mod {};\n", name.to_lowercase().to_case(Case::Snake));
-            let use_line = format!(
-                "use {}::{};\n",
-                name.to_lowercase().to_case(Case::Snake),
-                name.to_case(Case::Pascal)
-            );
-            if !mod_content.contains(&mod_line) {
-                mod_content = format!("{}{}{}", mod_line, use_line, mod_content);
-                let mut file = std::fs::File::create("src/lib/card/site/mod.rs").unwrap();
-                file.write_all(mod_content.as_bytes()).unwrap();
-            }
+    pub fn get_edition(&self) -> &Edition {
+        &Edition::{Edition}
+    }
+
+    pub fn get_type(&self) -> CardType {
+        CardType::Spell
+    }
+
+    pub fn get_toughness(&self) -> Option<u8> {
+        self.spell.toughness
+    }
+
+    pub fn get_power(&self) -> Option<u8> {
+        self.spell.power
+    }
+
+    pub fn get_abilities(&self) -> Vec<Ability> {
+        vec![]
+    }
+
+    pub fn get_spell_base(&self) -> &SpellBase {
+        &self.spell
+    }
+
+    pub fn get_spell_base_mut(&mut self) -> &mut SpellBase {
+        &mut self.spell
+    }
+
+    pub fn get_cell_id(&self) -> Option<u8> {
+        match self.spell.card_base.zone {
+            CardZone::Realm(cell_id) => Some(cell_id),
+            _ => None,
         }
-        _ => {
-            eprintln!("Unknown type: {}", ty);
+    }
+
+    pub fn get_name(&self) -> &str {
+        "{Name}"
+    }
+
+    pub fn get_owner_id(&self) -> &uuid::Uuid {
+        &self.spell.card_base.owner_id
+    }
+
+    pub fn get_id(&self) -> &uuid::Uuid {
+        &self.spell.card_base.id
+    }
+
+    pub fn on_damage_taken(&self, from: &uuid::Uuid, _amount: u8, state: &State) -> Vec<Effect> {
+        vec![]
+    }
+
+    pub fn on_select_in_realm_actions(&self, state: &State) -> Vec<Action> {
+        vec![]
+    }
+}
+"#;
+
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    #[arg(short, long)]
+    card_type: String,
+    #[arg(short, long)]
+    name: Vec<String>,
+    #[arg(short, long)]
+    edition: String,
+}
+
+fn create_file_with_content(path: &str, content: &str) -> anyhow::Result<()> {
+    let path = std::path::Path::new(path);
+    if path.exists() {
+        return Ok(());
+    }
+
+    let mut file = std::fs::File::create(path).unwrap();
+    file.write_all(content.as_bytes()).unwrap();
+    Ok(())
+}
+
+fn main() {
+    let args = Args::parse();
+    for name in args.name {
+        let variant = name.to_case(Case::Pascal);
+        let module = name.to_lowercase().to_case(Case::Snake);
+        let edition_mod = args.edition.to_lowercase().to_case(Case::Snake);
+        let edition_variant = args.edition.to_case(Case::Pascal);
+
+        match args.card_type.as_str() {
+            "site" => {
+                let content = SITE_TEMPLATE
+                    .replace("{Name}", &variant)
+                    .replace("{Edition}", &edition_variant);
+                let path = format!("src/lib/card/{}/site/{}.rs", edition_mod, module);
+                create_file_with_content(&path, &content).unwrap();
+
+                let mut mod_file = std::fs::File::open(format!("src/lib/card/{}/site/mod.rs", edition_mod)).unwrap();
+                let mut mod_content = String::new();
+                mod_file.read_to_string(&mut mod_content).unwrap();
+                let mod_line = format!("pub mod {};\n", module);
+                let use_line = format!("pub use {}::{};\n", module, variant);
+                if !mod_content.contains(&mod_line) {
+                    mod_content = format!("{}{}{}", mod_line, use_line, mod_content);
+                    mod_file.write_all(mod_content.as_bytes()).unwrap();
+                }
+            }
+            "magic" => {
+                let content = SPELL_TEMPLATE
+                    .replace("{Name}", &variant)
+                    .replace("{Edition}", &edition_variant)
+                    .replace("{SpellType}", "Magic");
+                let path = format!("src/lib/card/{}/spell/{}.rs", edition_mod, module);
+                create_file_with_content(&path, &content).unwrap();
+
+                let mut mod_file = std::fs::File::open("src/lib/card/{}/spell/mod.rs").unwrap();
+                let mut mod_content = String::new();
+                mod_file.read_to_string(&mut mod_content).unwrap();
+                let mod_line = format!("pub mod {};\n", module);
+                let use_line = format!("pub use {}::{};\n", module, variant,);
+                if !mod_content.contains(&mod_line) {
+                    mod_content = format!("{}{}{}", mod_line, use_line, mod_content);
+                    mod_file.write_all(mod_content.as_bytes()).unwrap();
+                }
+            }
+            "aura" => {
+                let content = SPELL_TEMPLATE
+                    .replace("{Name}", &variant)
+                    .replace("{Edition}", &edition_variant)
+                    .replace("{SpellType}", "Aura");
+                let path = format!("src/lib/card/{}/spell/{}.rs", edition_mod, module);
+                create_file_with_content(&path, &content).unwrap();
+
+                let mut mod_file = std::fs::File::open("src/lib/card/{}/spell/mod.rs").unwrap();
+                let mut mod_content = String::new();
+                mod_file.read_to_string(&mut mod_content).unwrap();
+                let mod_line = format!("pub mod {};\n", module);
+                let use_line = format!("pub use {}::{};\n", module, variant,);
+                if !mod_content.contains(&mod_line) {
+                    mod_content = format!("{}{}{}", mod_line, use_line, mod_content);
+                    mod_file.write_all(mod_content.as_bytes()).unwrap();
+                }
+            }
+            "minion" => {
+                let content = SPELL_TEMPLATE
+                    .replace("{Name}", &variant)
+                    .replace("{Edition}", &edition_variant)
+                    .replace("{SpellType}", "Minion");
+                let path = format!("src/lib/card/{}/spell/{}.rs", edition_mod, module);
+                create_file_with_content(&path, &content).unwrap();
+
+                let mut mod_file = std::fs::File::open("src/lib/card/{}/spell/mod.rs").unwrap();
+                let mut mod_content = String::new();
+                mod_file.read_to_string(&mut mod_content).unwrap();
+                let mod_line = format!("pub mod {};\n", module);
+                let use_line = format!("pub use {}::{};\n", module, variant,);
+                if !mod_content.contains(&mod_line) {
+                    mod_content = format!("{}{}{}", mod_line, use_line, mod_content);
+                    mod_file.write_all(mod_content.as_bytes()).unwrap();
+                }
+            }
+            _ => {
+                eprintln!("Unknown type: {}", args.card_type);
+            }
         }
     }
 }

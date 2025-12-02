@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+clap = { version = "4.5.53", features = ["derive"] }
 convert_case = "0.10.0"
 anyhow = "1.0.100"
 macroquad = "0.4.14"
@@ -28,7 +29,7 @@ name = "client"
 path = "src/client/bin/main.rs"
 
 [[bin]]
-name = "cli"
+name = "add-card"
 path = "src/cli/bin/main.rs"
 
 [lib]

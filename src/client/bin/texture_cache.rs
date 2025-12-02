@@ -77,14 +77,16 @@ impl TextureCache {
             .to_lowercase()
             .replace(" ", "_")
             .replace("-", "_");
-        let path = format!(
-            "https://d27a44hjr9gen3.cloudfront.net/cards/{}-{}-b-s.png?updated=2025-11-25T21:31:34.196Z&w=3840&q=75",
-            set, name
-        );
+        let path = format!("https://d27a44hjr9gen3.cloudfront.net/cards/{}-{}-b-s.png", set, name);
 
         let response = reqwest::get(&path).await?;
         if response.status() != reqwest::StatusCode::OK {
-            return Err(anyhow::anyhow!("Failed to download image: HTTP {}", response.status()));
+            return Err(anyhow::anyhow!(
+                "Failed to download image for {} on path {}: HTTP {}",
+                card.get_name(),
+                path,
+                response.status()
+            ));
         }
 
         let mut bytes = response.bytes().await.unwrap();

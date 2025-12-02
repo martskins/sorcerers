@@ -4,8 +4,8 @@ use crate::{
         spell::{Spell, SpellType},
         Card, CardBase, CardType, CardZone, Target,
     },
-    deck::Deck,
-    effect::{Action, Effect},
+    deck::{precon_beta, Deck},
+    effect::{Action, Effect, GameAction},
     networking::{Message, Socket},
 };
 use serde::{Deserialize, Serialize};
@@ -107,17 +107,9 @@ impl State {
         if players.len() >= 2 {
             let player1 = players[0];
             let player2 = players[1];
-            let deck_one = Deck::test_deck(player1);
-
-            let mut deck_two = Deck::test_deck(player2);
-            deck_two.avatar = Avatar::Battlemage(CardBase {
-                id: uuid::Uuid::new_v4(),
-                owner_id: player2,
-                zone: CardZone::Realm(18),
-                tapped: false,
-                edition: crate::card::Edition::Beta,
-            });
-
+            let deck_one = precon_beta::fire(player1);
+            println!("{:?}", deck_one.avatar.get_edition());
+            let deck_two = precon_beta::fire(player2);
             decks.insert(player1, deck_one);
             decks.insert(player2, deck_two);
         }
@@ -353,33 +345,73 @@ impl Game {
             Message::PrepareCardForPlay { card_id, player_id, .. } => {
                 self.prepare_card_for_play(&player_id, &card_id).await?
             }
-            Message::CardPlayed {
+            Message::PlayCard {
                 card_id,
                 player_id,
                 targets,
                 ..
-            } => self.card_played(&player_id, &card_id, targets).await?,
-            Message::CardSelected { card_id, player_id, .. } => self.card_selected(&player_id, &card_id).await?,
+            } => self.play_card(&player_id, &card_id, targets).await?,
+            Message::SelectCard { card_id, player_id, .. } => self.select_card(&player_id, &card_id).await?,
             Message::EndTurn { player_id, .. } => self.end_turn(&player_id).await?,
             Message::DrawCard {
                 card_type, player_id, ..
             } => self.state.draw_card_for_player(&player_id, card_type).await?,
-            Message::ActionSelected {
+            Message::TriggerAction {
                 player_id, action_idx, ..
             } => self.trigger_action(&player_id, action_idx).await?,
-            Message::SelectActionCancelled { player_id, .. } => {
+            Message::CancelSelectAction { player_id, .. } => {
                 self.state.phase = Phase::WaitingForPlay { player_id };
             }
             Message::AttackTarget {
                 attacker_id, target_id, ..
             } => self.attack_target(&attacker_id, &target_id).await?,
-            Message::CardMoved { card_id, cell_id, .. } => self.move_card(&card_id, cell_id).await?,
+            Message::MoveCard { card_id, cell_id, .. } => self.move_card(&card_id, cell_id).await?,
+            Message::SummonMinion { card_id, cell_id, .. } => self.summon_minion(&card_id, cell_id).await?,
             _ => {}
         }
 
         self.process_effects().await;
         self.check_damage();
         self.send_sync().await?;
+        Ok(())
+    }
+
+    async fn summon_minion(&mut self, card_id: &uuid::Uuid, cell_id: u8) -> anyhow::Result<()> {
+        let mut effects = vec![
+            Effect::MoveCardToCell {
+                card_id: card_id.clone(),
+                cell_id,
+            },
+            Effect::ChangePhase {
+                new_phase: Phase::WaitingForPlay {
+                    player_id: self.state.current_player.clone(),
+                },
+            },
+        ];
+        let genesis_effects = self
+            .state
+            .cards
+            .iter()
+            .find(|c| c.get_id() == card_id)
+            .unwrap()
+            .genesis();
+        effects.extend(genesis_effects);
+        // match cell_id {
+        //     Some(id) => {
+        //     }
+        //     None => {
+        //         self.state.effects.push_back(Effect::ChangePhase {
+        //             new_phase: Phase::SelectingCell {
+        //                 player_id: self.state.current_player.clone(),
+        //                 cell_ids: self.state.valid_play_cells(&self.get_card_by_id(&card_id).unwrap()),
+        //                 after_select: Some(Action::GameAction(GameAction::SummonMinionToSelectedCell {
+        //                     card_id: card_id.clone(),
+        //                 })),
+        //             },
+        //         });
+        //     }
+        // };
+        //
         Ok(())
     }
 
@@ -576,7 +608,7 @@ impl Game {
         Ok(())
     }
 
-    pub async fn card_selected(&mut self, player_id: &uuid::Uuid, card_id: &uuid::Uuid) -> anyhow::Result<()> {
+    pub async fn select_card(&mut self, player_id: &uuid::Uuid, card_id: &uuid::Uuid) -> anyhow::Result<()> {
         let state_clone = self.state.clone();
         let card = self
             .state
@@ -608,7 +640,7 @@ impl Game {
         Ok(())
     }
 
-    pub async fn card_played(
+    pub async fn play_card(
         &mut self,
         player_id: &uuid::Uuid,
         card_id: &uuid::Uuid,

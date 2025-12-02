@@ -13,7 +13,7 @@ macro_rules! avatars {
         impl Avatar {
             pub fn from_name(name: &str, owner_id: uuid::Uuid) -> Option<Self> {
                 match name {
-                    $($card_name => Some(Avatar::$name(CardBase::new(owner_id, CardZone::Spellbook))),)+
+                    $($card_name => Some(Avatar::$name(CardBase::new(owner_id, CardZone::Spellbook, $edition))),)+
                     _ => None,
                 }
             }
