@@ -1,7 +1,4 @@
-use crate::{
-    card::{site::SiteBase, CardBase, CardZone, Edition},
-    networking::Thresholds,
-};
+use crate::card::{site::SiteBase, CardBase, CardZone, Edition, Thresholds};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -22,6 +19,7 @@ impl SpringRiver {
                 },
                 provided_mana: 1,
                 provided_threshold: Thresholds::parse("W"),
+                site_types: vec![],
             },
         }
     }

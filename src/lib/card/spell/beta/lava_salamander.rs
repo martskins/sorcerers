@@ -1,11 +1,10 @@
 use crate::{
     card::{
         spell::{Ability, SpellBase, SpellType},
-        CardBase, CardType, CardZone, Edition,
+        CardBase, CardType, CardZone, Edition, Element, Thresholds,
     },
     effect::{Action, Effect},
     game::State,
-    networking::Thresholds,
 };
 use serde::{Deserialize, Serialize};
 
@@ -26,8 +25,8 @@ impl LavaSalamander {
                     edition: Edition::Beta,
                 },
                 damage_taken: 0,
-                mana_cost: 3,
-                thresholds: Thresholds::parse(""),
+                mana_cost: 2,
+                thresholds: Thresholds::parse("FF"),
                 power: Some(1),
                 toughness: Some(1),
             },
@@ -55,7 +54,10 @@ impl LavaSalamander {
     }
 
     pub fn get_abilities(&self) -> Vec<Ability> {
-        vec![]
+        vec![
+            Ability::Spellcaster(Some(vec![Element::Fire])),
+            Ability::ImmuneToSpells(Some(vec![Element::Fire])),
+        ]
     }
 
     pub fn get_spell_base(&self) -> &SpellBase {
@@ -90,6 +92,10 @@ impl LavaSalamander {
     }
 
     pub fn on_select_in_realm_actions(&self, state: &State) -> Vec<Action> {
+        vec![]
+    }
+
+    pub fn deathrite(&self, state: &State) -> Vec<Effect> {
         vec![]
     }
 }

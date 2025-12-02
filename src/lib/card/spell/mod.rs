@@ -2,10 +2,9 @@ mod beta;
 use beta::*;
 mod util;
 use crate::{
-    card::{CardBase, CardType, CardZone, Edition, Target},
+    card::{site::SiteType, CardBase, CardType, CardZone, Edition, Element, Target, Thresholds},
     effect::{Action, Effect, GameAction, PlayerAction},
     game::{Cell, Phase, Resources, State},
-    networking::Thresholds,
     spells,
 };
 use serde::{Deserialize, Serialize};
@@ -63,7 +62,10 @@ pub enum Ability {
     Submerge,
     Movement(u8),
     Voidwalk,
-    Spellcaster,
+    Spellcaster(Option<Vec<Element>>),
+    Lethal,
+    ImmuneToSpells(Option<Vec<Element>>),
+    ImmuneToSites(Option<Vec<SiteType>>),
 }
 
 #[rustfmt::skip]
@@ -189,10 +191,6 @@ impl Spell {
                 _ => unreachable!(),
             })
             .collect::<Vec<u8>>()
-    }
-
-    pub fn deathrite(&self) -> Vec<Effect> {
-        vec![]
     }
 
     pub fn take_damage(&self, from: &uuid::Uuid, amount: u8) -> Vec<Effect> {

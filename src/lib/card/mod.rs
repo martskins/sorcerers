@@ -10,7 +10,6 @@ use crate::{
     },
     effect::Effect,
     game::State,
-    networking::Thresholds,
 };
 use serde::{Deserialize, Serialize};
 
@@ -88,6 +87,102 @@ pub enum Target {
     Cards(Vec<uuid::Uuid>),
     Card(uuid::Uuid),
     Cell(u8),
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Thresholds {
+    pub fire: u8,
+    pub water: u8,
+    pub earth: u8,
+    pub air: u8,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Element {
+    Fire,
+    Water,
+    Earth,
+    Air,
+}
+
+impl Thresholds {
+    pub fn parse(input: &str) -> Self {
+        let mut threshold = Self::zero();
+        for c in input.to_uppercase().chars() {
+            match c {
+                'F' => {
+                    threshold.fire += 1;
+                }
+                'W' => {
+                    threshold.water += 1;
+                }
+                'E' => {
+                    threshold.earth += 1;
+                }
+                'A' => {
+                    threshold.air += 1;
+                }
+                _ => continue,
+            }
+        }
+        threshold
+    }
+
+    pub fn zero() -> Self {
+        Self {
+            fire: 0,
+            water: 0,
+            earth: 0,
+            air: 0,
+        }
+    }
+
+    pub fn new(fire: u8, water: u8, earth: u8, air: u8) -> Self {
+        Self {
+            fire,
+            water,
+            earth,
+            air,
+        }
+    }
+
+    pub fn fire(amount: u8) -> Self {
+        Self {
+            fire: amount,
+            ..Default::default()
+        }
+    }
+
+    pub fn earth(amount: u8) -> Self {
+        Self {
+            earth: amount,
+            ..Default::default()
+        }
+    }
+
+    pub fn air(amount: u8) -> Self {
+        Self {
+            air: amount,
+            ..Default::default()
+        }
+    }
+
+    pub fn water(amount: u8) -> Self {
+        Self {
+            water: amount,
+            ..Default::default()
+        }
+    }
+}
+
+impl std::fmt::Display for Thresholds {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Fire: {}, Water: {}, Earth: {}, Air: {}",
+            self.fire, self.water, self.earth, self.air
+        )
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -221,10 +316,10 @@ impl Card {
         }
     }
 
-    pub fn deathrite(&self) -> Vec<Effect> {
+    pub fn deathrite(&self, state: &State) -> Vec<Effect> {
         match self {
-            Card::Spell(card) => card.deathrite(),
-            Card::Site(card) => card.deathrite(),
+            Card::Spell(card) => card.deathrite(state),
+            Card::Site(card) => card.deathrite(state),
             Card::Avatar(_card) => vec![],
         }
     }

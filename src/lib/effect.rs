@@ -1,9 +1,8 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    card::{Card, CardType, CardZone},
+    card::{Card, CardType, CardZone, Thresholds},
     game::{Phase, Resources, State},
-    networking::Thresholds,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -122,7 +121,7 @@ impl Effect {
             }
             Effect::KillUnit { card_id } => {
                 let card = state.cards.iter().find(|c| c.get_id() == card_id).unwrap();
-                let effects = card.deathrite();
+                let effects = card.deathrite(state);
                 state.effects.extend(effects);
                 state.effects.push_back(Effect::MoveCard {
                     card_id: card_id.clone(),

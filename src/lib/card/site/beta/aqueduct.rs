@@ -1,15 +1,12 @@
-use crate::{
-    card::{site::SiteBase, CardBase, CardZone, Edition},
-    networking::Thresholds,
-};
+use crate::card::{site::SiteBase, CardBase, CardZone, Edition, Thresholds};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Vesuvius {
+pub struct Aqueduct {
     pub base: SiteBase,
 }
 
-impl Vesuvius {
+impl Aqueduct {
     pub fn new(owner_id: uuid::Uuid, zone: CardZone) -> Self {
         Self {
             base: SiteBase {
@@ -21,7 +18,8 @@ impl Vesuvius {
                     edition: Edition::Beta,
                 },
                 provided_mana: 1,
-                provided_threshold: Thresholds::parse("F"),
+                provided_threshold: Thresholds::parse("EW"),
+                site_types: vec![],
             },
         }
     }

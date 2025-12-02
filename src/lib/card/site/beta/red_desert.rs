@@ -1,15 +1,15 @@
-use crate::{
-    card::{site::SiteBase, CardBase, CardZone, Edition},
-    networking::Thresholds,
+use crate::card::{
+    site::{site::SiteType, SiteBase},
+    CardBase, CardZone, Edition, Thresholds,
 };
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Aqueduct {
+pub struct RedDesert {
     pub base: SiteBase,
 }
 
-impl Aqueduct {
+impl RedDesert {
     pub fn new(owner_id: uuid::Uuid, zone: CardZone) -> Self {
         Self {
             base: SiteBase {
@@ -21,7 +21,8 @@ impl Aqueduct {
                     edition: Edition::Beta,
                 },
                 provided_mana: 1,
-                provided_threshold: Thresholds::parse("EW"),
+                provided_threshold: Thresholds::parse("F"),
+                site_types: vec![SiteType::Desert],
             },
         }
     }

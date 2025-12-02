@@ -1,15 +1,12 @@
-use crate::{
-    card::{site::SiteBase, CardBase, CardZone, Edition},
-    networking::Thresholds,
-};
+use crate::card::{site::SiteBase, CardBase, CardZone, Edition, Thresholds};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Cornerstone {
+pub struct ShiftingSands {
     pub base: SiteBase,
 }
 
-impl Cornerstone {
+impl ShiftingSands {
     pub fn new(owner_id: uuid::Uuid, zone: CardZone) -> Self {
         Self {
             base: SiteBase {
@@ -22,6 +19,7 @@ impl Cornerstone {
                 },
                 provided_mana: 1,
                 provided_threshold: Thresholds::parse("F"),
+                site_types: vec![],
             },
         }
     }

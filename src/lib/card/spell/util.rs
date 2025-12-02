@@ -68,6 +68,12 @@ macro_rules! spells {
                 }
             }
 
+            pub fn deathrite(&self, state: &State) -> Vec<Effect> {
+                match self {
+                    $(Spell::$variant(cb) => cb.deathrite(state),)+
+                }
+            }
+
             /// Returns a reference to the underlying `CardBase` of the spell.
             pub fn get_spell_base(&self) -> &SpellBase {
                 match self {

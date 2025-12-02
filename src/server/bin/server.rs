@@ -1,8 +1,11 @@
 use sorcerers::{
     card::{
-        site::{arid_desert::AridDesert, Site, SpringRiver},
-        spell::{Spell, SpellBase},
-        Card, CardBase, CardZone, Edition,
+        site::{
+            beta::{AridDesert, SpringRiver},
+            Site,
+        },
+        spell::Spell,
+        Card, CardZone,
     },
     game::{Game, Phase, Resources},
     networking::{Message, Socket},
@@ -19,9 +22,6 @@ pub struct Server {
 
 impl Server {
     pub fn new(socket: tokio::net::UdpSocket) -> Self {
-        // let player_id = uuid::Uuid::new_v4();
-        // let sockets = HashMap::from([(player_id, Socket::Noop)]);
-        // let looking_for_match = vec![player_id];
         let sockets = HashMap::new();
         let looking_for_match = vec![];
 

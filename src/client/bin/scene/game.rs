@@ -11,10 +11,10 @@ use macroquad::{
     window::{screen_height, screen_width},
 };
 use sorcerers::{
-    card::{Card, CardType, CardZone, Target},
+    card::{Card, CardType, CardZone, Element, Target},
     effect::{Action, GameAction},
     game::{Phase, Resources, State},
-    networking::{self, Element, Message},
+    networking::{self, Message},
 };
 
 use crate::{

@@ -1,15 +1,12 @@
-use crate::{
-    card::{site::SiteBase, CardBase, CardZone, Edition},
-    networking::Thresholds,
-};
+use crate::card::{site::SiteBase, CardBase, CardZone, Edition, Thresholds};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct RedDesert {
+pub struct AstralAlcazar {
     pub base: SiteBase,
 }
 
-impl RedDesert {
+impl AstralAlcazar {
     pub fn new(owner_id: uuid::Uuid, zone: CardZone) -> Self {
         Self {
             base: SiteBase {
@@ -21,7 +18,8 @@ impl RedDesert {
                     edition: Edition::Beta,
                 },
                 provided_mana: 1,
-                provided_threshold: Thresholds::parse("F"),
+                provided_threshold: Thresholds::parse(""),
+                site_types: vec![],
             },
         }
     }

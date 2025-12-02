@@ -1,11 +1,10 @@
 use crate::{
     card::{
         spell::{Ability, SpellBase, SpellType},
-        CardBase, CardType, CardZone, Edition,
+        CardBase, CardType, CardZone, Edition, Thresholds,
     },
     effect::{Action, Effect},
     game::State,
-    networking::Thresholds,
 };
 use serde::{Deserialize, Serialize};
 
@@ -90,6 +89,10 @@ impl SandWorm {
     }
 
     pub fn on_select_in_realm_actions(&self, state: &State) -> Vec<Action> {
+        vec![]
+    }
+
+    pub fn deathrite(&self, state: &State) -> Vec<Effect> {
         vec![]
     }
 }

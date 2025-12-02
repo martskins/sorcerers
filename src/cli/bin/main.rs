@@ -3,9 +3,9 @@ use convert_case::{Case, Casing};
 use std::io::Read;
 use std::io::Write;
 
-const SITE_TEMPLATE: &'static str = r#"use crate::{
-    card::{site::SiteBase, CardBase, CardZone, Edition},
-    networking::Thresholds,
+const SITE_TEMPLATE: &'static str = r#"use crate::card::{
+    site::{site::SiteType, SiteBase},
+    CardBase, CardZone, Edition, Thresholds,
 };
 use serde::{Deserialize, Serialize};
 
@@ -27,6 +27,7 @@ impl {Name} {
                 },
                 provided_mana: 1,
                 provided_threshold: Thresholds::parse(""),
+                site_types: vec![],
             },
         }
     }
@@ -34,10 +35,12 @@ impl {Name} {
 
 const SPELL_TEMPLATE: &'static str = r#"use super::{Ability, SpellType};
 use crate::{
-    card::{spell::SpellBase, CardBase, CardType, CardZone, Edition},
-    effect::{Action, Effect},
-    game::{Cell, State},
-    networking::Thresholds,
+    card::{
+        spell::{Ability, SpellBase, SpellType},
+        CardBase, CardType, CardZone, Edition, Thresholds,
+    },
+    effect::{Action, Effect, GameAction, PlayerAction},
+    game::{Phase, State},
 };
 use serde::{Deserialize, Serialize};
 

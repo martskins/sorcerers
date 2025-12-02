@@ -1,16 +1,21 @@
 use crate::{
-    card::{site::Site, Card, CardBase, CardZone, Target},
+    card::{site::Site, Card, CardBase, CardZone, Target, Thresholds},
     effect::{Action, Effect, GameAction},
     game::{Phase, State},
-    networking::Thresholds,
 };
 use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SiteType {
+    Desert,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SiteBase {
     pub card_base: CardBase,
     pub provided_mana: u8,
     pub provided_threshold: Thresholds,
+    pub site_types: Vec<SiteType>,
 }
 
 impl Site {
@@ -51,7 +56,7 @@ impl Site {
         }
     }
 
-    pub fn deathrite(&self) -> Vec<Effect> {
+    pub fn deathrite(&self, state: &State) -> Vec<Effect> {
         vec![]
     }
 

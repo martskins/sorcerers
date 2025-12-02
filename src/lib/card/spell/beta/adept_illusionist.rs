@@ -1,11 +1,10 @@
 use crate::{
     card::{
         spell::{Ability, SpellBase, SpellType},
-        CardBase, CardType, CardZone, Edition,
+        CardBase, CardType, CardZone, Edition, Thresholds,
     },
     effect::{Action, Effect, GameAction, PlayerAction},
     game::{Phase, State},
-    networking::Thresholds,
 };
 use serde::{Deserialize, Serialize};
 
@@ -137,5 +136,9 @@ impl AdeptIllusionist {
                 },
             ],
         })]
+    }
+
+    pub fn deathrite(&self, state: &State) -> Vec<Effect> {
+        vec![]
     }
 }
