@@ -15,6 +15,18 @@ macro_rules! spells {
                 }
             }
 
+            pub fn on_damage_taken(&self, from: &uuid::Uuid, amount: u8, state: &State) -> Vec<Effect> {
+                match self {
+                    $(Spell::$variant(cb) => cb.on_damage_taken(from, amount, state),)+
+                }
+            }
+
+            pub fn genesis(&self, state: &State) -> Vec<Effect> {
+                match self {
+                    $(Spell::$variant(cb) => cb.genesis(state),)+
+                }
+            }
+
             pub fn from_name(name: &str, owner_id: uuid::Uuid) -> Option<Self> {
                 match name {
                     $($card_name => Some(Spell::$variant($variant::new(owner_id, CardZone::Spellbook))),)+

@@ -30,7 +30,7 @@ impl Site {
         }
     }
 
-    pub fn genesis(&self) -> Vec<Effect> {
+    pub fn genesis(&self, _state: &State) -> Vec<Effect> {
         let mana = self.get_provided_mana();
         let thresholds = self.get_provided_threshold();
         vec![
@@ -99,7 +99,7 @@ impl Site {
             _ => {}
         }
 
-        effects.extend(self.genesis());
+        effects.extend(self.genesis(state));
         effects
     }
 }

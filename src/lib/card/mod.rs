@@ -8,7 +8,7 @@ use crate::{
         site::Site,
         spell::{Spell, SpellType},
     },
-    effect::Effect,
+    effect::{Action, Effect},
     game::State,
 };
 use serde::{Deserialize, Serialize};
@@ -340,10 +340,10 @@ impl Card {
         }
     }
 
-    pub fn genesis(&self) -> Vec<Effect> {
+    pub fn genesis(&self, state: &State) -> Vec<Effect> {
         match self {
-            Card::Spell(card) => card.genesis(),
-            Card::Site(card) => card.genesis(),
+            Card::Spell(card) => card.genesis(state),
+            Card::Site(card) => card.genesis(state),
             Card::Avatar(_card) => vec![],
         }
     }
@@ -407,5 +407,39 @@ impl Card {
 
     pub fn get_edition(&self) -> Edition {
         self.get_base().edition.clone()
+    }
+}
+
+pub trait Lifecycle {
+    fn genesis(&self, state: &State) -> Vec<Effect> {
+        vec![]
+    }
+
+    fn on_cast(&self, state: &State, target: Target) -> Vec<Effect> {
+        vec![]
+    }
+
+    fn on_summon(&self, state: &State) -> Vec<Effect> {
+        vec![]
+    }
+
+    fn on_turn_start(&self, state: &State) -> Vec<Effect> {
+        vec![]
+    }
+
+    fn deathrite(&self, state: &State) -> Vec<Effect> {
+        vec![]
+    }
+}
+
+pub trait Combat {
+    fn on_damage_taken(&self, from: &uuid::Uuid, amount: u8, state: &State) -> Vec<Effect> {
+        vec![]
+    }
+}
+
+pub trait Interaction {
+    fn on_select_in_realm_actions(&self, state: &State) -> Vec<Action> {
+        vec![]
     }
 }

@@ -1,0 +1,17 @@
+edition,name,mana_cost,threshold,power,toughness,edition
+minion,Pit Vipers,1,F,1,1,beta
+minion,Raal Dromedary,1,F,2,2,beta
+minion,Lava Salamander,2,FF,1,1,beta
+minion,Rimland Nomads2,F,2,2,beta
+minion,Sacred Scarabs,2,F,1,1,beta
+minion,Wayfaring Pilgrim,2,F,1,1,beta
+minion,Colicky Dragonettes,3,FF,3,3,beta
+minion,Ogre Goons,3,F,3,3,beta
+minion,Quarrelsome Kobolds,3,F,2,2,beta
+minion,Clamor of Harpies,4,F,3,3,beta
+minion,Hillock Basilisk,4,F,3,3,beta
+minion,Petrosian Cavalry,4,F,3,3,beta
+minion,Sand Worm,4,F,4,4,beta
+minion,Askelon Phoenix,5,FF,4,4,beta
+minion,Escyllion Cyclops,6,FF,6,6,beta
+minion,Infernal Legion,6,FFF,6,6,beta

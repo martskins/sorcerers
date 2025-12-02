@@ -366,7 +366,7 @@ impl Game {
                 attacker_id, target_id, ..
             } => self.attack_target(&attacker_id, &target_id).await?,
             Message::MoveCard { card_id, cell_id, .. } => self.move_card(&card_id, cell_id).await?,
-            Message::SummonMinion { card_id, cell_id, .. } => self.summon_minion(&card_id, cell_id).await?,
+            Message::SummonMinion { card_id, cell_id, .. } => self.summon_minion(&card_id, cell_id, &self.state.clone()).await?,
             _ => {}
         }
 
@@ -376,7 +376,7 @@ impl Game {
         Ok(())
     }
 
-    async fn summon_minion(&mut self, card_id: &uuid::Uuid, cell_id: u8) -> anyhow::Result<()> {
+    async fn summon_minion(&mut self, card_id: &uuid::Uuid, cell_id: u8, state: &State) -> anyhow::Result<()> {
         let mut effects = vec![
             Effect::MoveCardToCell {
                 card_id: card_id.clone(),
@@ -394,7 +394,7 @@ impl Game {
             .iter()
             .find(|c| c.get_id() == card_id)
             .unwrap()
-            .genesis();
+            .genesis(state);
         effects.extend(genesis_effects);
         // match cell_id {
         //     Some(id) => {

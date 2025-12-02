@@ -1,9 +1,9 @@
 use crate::{
     card::{
         spell::{Ability, SpellBase, SpellType},
-        CardBase, CardType, CardZone, Edition, Thresholds,
+        CardBase, CardType, CardZone, Combat, Edition, Interaction, Lifecycle, Thresholds,
     },
-    effect::{Action, Effect},
+    effect::Effect,
     game::{Cell, State},
 };
 use serde::{Deserialize, Serialize};
@@ -83,8 +83,12 @@ impl AccursedAlbatross {
     pub fn get_id(&self) -> &uuid::Uuid {
         &self.spell.card_base.id
     }
+}
 
-    pub fn on_damage_taken(&self, from: &uuid::Uuid, _amount: u8, state: &State) -> Vec<Effect> {
+impl Lifecycle for AccursedAlbatross {}
+
+impl Combat for AccursedAlbatross {
+    fn on_damage_taken(&self, from: &uuid::Uuid, _amount: u8, state: &State) -> Vec<Effect> {
         if self.spell.damage_taken < self.get_toughness().unwrap_or(0) {
             return vec![];
         }
@@ -111,12 +115,6 @@ impl AccursedAlbatross {
         }
         effects
     }
-
-    pub fn on_select_in_realm_actions(&self, state: &State) -> Vec<Action> {
-        vec![]
-    }
-
-    pub fn deathrite(&self, state: &State) -> Vec<Effect> {
-        vec![]
-    }
 }
+
+impl Interaction for AccursedAlbatross {}

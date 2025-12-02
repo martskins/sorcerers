@@ -1,5 +1,8 @@
 use clap::Parser;
 use convert_case::{Case, Casing};
+use sorcerers::card::Thresholds;
+use std::io::BufRead;
+use std::io::BufReader;
 use std::io::Read;
 use std::io::Write;
 
@@ -33,14 +36,14 @@ impl {Name} {
     }
 }"#;
 
-const SPELL_TEMPLATE: &'static str = r#"use super::{Ability, SpellType};
+const SPELL_TEMPLATE: &'static str = r#"use serde::{Deserialize, Serialize};
 use crate::{
     card::{
         spell::{Ability, SpellBase, SpellType},
-        CardBase, CardType, CardZone, Edition, Thresholds,
+        CardBase, CardType, CardZone, Combat, Edition, Interaction, Lifecycle, Thresholds,
     },
-    effect::{Action, Effect, GameAction, PlayerAction},
-    game::{Phase, State},
+    effect::{Action, Effect},
+    game::State,
 };
 use serde::{Deserialize, Serialize};
 
@@ -61,10 +64,10 @@ impl {Name} {
                     edition: Edition::{Edition},
                 },
                 damage_taken: 0,
-                mana_cost: 3,
-                thresholds: Thresholds::parse(""),
-                power: Some(1),
-                toughness: Some(1),
+                mana_cost: {ManaCost},
+                thresholds: Thresholds::parse("{Thresholds}"),
+                power: {Power}
+                toughness: {Toughness},
             },
         }
     }
@@ -119,26 +122,18 @@ impl {Name} {
     pub fn get_id(&self) -> &uuid::Uuid {
         &self.spell.card_base.id
     }
-
-    pub fn on_damage_taken(&self, from: &uuid::Uuid, _amount: u8, state: &State) -> Vec<Effect> {
-        vec![]
-    }
-
-    pub fn on_select_in_realm_actions(&self, state: &State) -> Vec<Action> {
-        vec![]
-    }
 }
+
+impl Lifecycle for {Name} {}
+impl Combat for {Name} {}
+impl Interaction for {Name} {}
 "#;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
     #[arg(short, long)]
-    card_type: String,
-    #[arg(short, long)]
-    name: Vec<String>,
-    #[arg(short, long)]
-    edition: String,
+    file_path: String,
 }
 
 fn create_file_with_content(path: &str, content: &str) -> anyhow::Result<()> {
@@ -154,87 +149,109 @@ fn create_file_with_content(path: &str, content: &str) -> anyhow::Result<()> {
 
 fn main() {
     let args = Args::parse();
-    for name in args.name {
-        let variant = name.to_case(Case::Pascal);
-        let module = name.to_lowercase().to_case(Case::Snake);
-        let edition_mod = args.edition.to_lowercase().to_case(Case::Snake);
-        let edition_variant = args.edition.to_case(Case::Pascal);
+    // if args.name.is_some() {
+    //     for name in args.name.unwrap() {
+    //         let variant = name.to_case(Case::Pascal);
+    //         let module = name.to_lowercase().to_case(Case::Snake);
+    //         let edition_mod = args.edition.to_lowercase().to_case(Case::Snake);
+    //         let edition_variant = args.edition.to_case(Case::Pascal);
+    //
+    //         match args.card_type.as_str() {
+    //             "site" => {
+    //                 let content = SITE_TEMPLATE
+    //                     .replace("{Name}", &variant)
+    //                     .replace("{Edition}", &edition_variant);
+    //                 let path = format!("src/lib/card/{}/site/{}.rs", edition_mod, module);
+    //                 create_file_with_content(&path, &content).unwrap();
+    //
+    //                 let mut mod_file =
+    //                     std::fs::File::open(format!("src/lib/card/{}/site/mod.rs", edition_mod)).unwrap();
+    //                 let mut mod_content = String::new();
+    //                 mod_file.read_to_string(&mut mod_content).unwrap();
+    //                 let mod_line = format!("pub mod {};\n", module);
+    //                 let use_line = format!("pub use {}::{};\n", module, variant);
+    //                 if !mod_content.contains(&mod_line) {
+    //                     mod_content = format!("{}{}{}", mod_line, use_line, mod_content);
+    //                     mod_file.write_all(mod_content.as_bytes()).unwrap();
+    //                 }
+    //             }
+    //             "magic" => {
+    //                 let content = SPELL_TEMPLATE
+    //                     .replace("{Name}", &variant)
+    //                     .replace("{Edition}", &edition_variant)
+    //                     .replace("{SpellType}", "Magic");
+    //                 let path = format!("src/lib/card/{}/spell/{}.rs", edition_mod, module);
+    //                 create_file_with_content(&path, &content).unwrap();
+    //
+    //                 let mut mod_file = std::fs::File::open("src/lib/card/{}/spell/mod.rs").unwrap();
+    //                 let mut mod_content = String::new();
+    //                 mod_file.read_to_string(&mut mod_content).unwrap();
+    //                 let mod_line = format!("pub mod {};\n", module);
+    //                 let use_line = format!("pub use {}::{};\n", module, variant,);
+    //                 if !mod_content.contains(&mod_line) {
+    //                     mod_content = format!("{}{}{}", mod_line, use_line, mod_content);
+    //                     mod_file.write_all(mod_content.as_bytes()).unwrap();
+    //                 }
+    //             }
+    //             "aura" => {
+    //                 let content = SPELL_TEMPLATE
+    //                     .replace("{Name}", &variant)
+    //                     .replace("{Edition}", &edition_variant)
+    //                     .replace("{SpellType}", "Aura");
+    //                 let path = format!("src/lib/card/{}/spell/{}.rs", edition_mod, module);
+    //                 create_file_with_content(&path, &content).unwrap();
+    //
+    //                 let mut mod_file = std::fs::File::open("src/lib/card/{}/spell/mod.rs").unwrap();
+    //                 let mut mod_content = String::new();
+    //                 mod_file.read_to_string(&mut mod_content).unwrap();
+    //                 let mod_line = format!("pub mod {};\n", module);
+    //                 let use_line = format!("pub use {}::{};\n", module, variant,);
+    //                 if !mod_content.contains(&mod_line) {
+    //                     mod_content = format!("{}{}{}", mod_line, use_line, mod_content);
+    //                     mod_file.write_all(mod_content.as_bytes()).unwrap();
+    //                 }
+    //             }
+    //             "minion" => {}
+    //             _ => {
+    //                 eprintln!("Unknown type: {}", args.card_type);
+    //             }
+    //         }
+    //     }
+    // }
 
-        match args.card_type.as_str() {
-            "site" => {
-                let content = SITE_TEMPLATE
-                    .replace("{Name}", &variant)
-                    .replace("{Edition}", &edition_variant);
-                let path = format!("src/lib/card/{}/site/{}.rs", edition_mod, module);
-                create_file_with_content(&path, &content).unwrap();
+    let file = std::fs::File::open(args.file_path).unwrap();
+    let reader = BufReader::new(file);
+    for line in reader.lines().skip(1) {
+        let line = line.unwrap();
+        let parts = line.split(',').collect::<Vec<&str>>();
+        create_minion(parts[1], parts[2], parts[3], parts[4], parts[5], parts[6]);
+    }
+}
 
-                let mut mod_file = std::fs::File::open(format!("src/lib/card/{}/site/mod.rs", edition_mod)).unwrap();
-                let mut mod_content = String::new();
-                mod_file.read_to_string(&mut mod_content).unwrap();
-                let mod_line = format!("pub mod {};\n", module);
-                let use_line = format!("pub use {}::{};\n", module, variant);
-                if !mod_content.contains(&mod_line) {
-                    mod_content = format!("{}{}{}", mod_line, use_line, mod_content);
-                    mod_file.write_all(mod_content.as_bytes()).unwrap();
-                }
-            }
-            "magic" => {
-                let content = SPELL_TEMPLATE
-                    .replace("{Name}", &variant)
-                    .replace("{Edition}", &edition_variant)
-                    .replace("{SpellType}", "Magic");
-                let path = format!("src/lib/card/{}/spell/{}.rs", edition_mod, module);
-                create_file_with_content(&path, &content).unwrap();
+fn create_minion(name: &str, mana_cost: &str, thresholds: &str, power: &str, toughness: &str, edition: &str) {
+    let variant = name.to_case(Case::Pascal);
+    let module = name.to_lowercase().to_case(Case::Snake);
+    let edition_mod = edition.to_lowercase().to_case(Case::Snake);
+    let edition_variant = edition.to_case(Case::Pascal);
 
-                let mut mod_file = std::fs::File::open("src/lib/card/{}/spell/mod.rs").unwrap();
-                let mut mod_content = String::new();
-                mod_file.read_to_string(&mut mod_content).unwrap();
-                let mod_line = format!("pub mod {};\n", module);
-                let use_line = format!("pub use {}::{};\n", module, variant,);
-                if !mod_content.contains(&mod_line) {
-                    mod_content = format!("{}{}{}", mod_line, use_line, mod_content);
-                    mod_file.write_all(mod_content.as_bytes()).unwrap();
-                }
-            }
-            "aura" => {
-                let content = SPELL_TEMPLATE
-                    .replace("{Name}", &variant)
-                    .replace("{Edition}", &edition_variant)
-                    .replace("{SpellType}", "Aura");
-                let path = format!("src/lib/card/{}/spell/{}.rs", edition_mod, module);
-                create_file_with_content(&path, &content).unwrap();
+    let content = SPELL_TEMPLATE
+        .replace("{Name}", &variant)
+        .replace("{Edition}", &edition_variant)
+        .replace("{Power}", power)
+        .replace("{Toughness}", toughness)
+        .replace("{Thresholds}", thresholds)
+        .replace("{ManaCost}", mana_cost)
+        .replace("{SpellType}", "Minion");
+    let path = format!("src/lib/card/{}/spell/{}.rs", edition_mod, module);
+    create_file_with_content(&path, &content).unwrap();
 
-                let mut mod_file = std::fs::File::open("src/lib/card/{}/spell/mod.rs").unwrap();
-                let mut mod_content = String::new();
-                mod_file.read_to_string(&mut mod_content).unwrap();
-                let mod_line = format!("pub mod {};\n", module);
-                let use_line = format!("pub use {}::{};\n", module, variant,);
-                if !mod_content.contains(&mod_line) {
-                    mod_content = format!("{}{}{}", mod_line, use_line, mod_content);
-                    mod_file.write_all(mod_content.as_bytes()).unwrap();
-                }
-            }
-            "minion" => {
-                let content = SPELL_TEMPLATE
-                    .replace("{Name}", &variant)
-                    .replace("{Edition}", &edition_variant)
-                    .replace("{SpellType}", "Minion");
-                let path = format!("src/lib/card/{}/spell/{}.rs", edition_mod, module);
-                create_file_with_content(&path, &content).unwrap();
-
-                let mut mod_file = std::fs::File::open("src/lib/card/{}/spell/mod.rs").unwrap();
-                let mut mod_content = String::new();
-                mod_file.read_to_string(&mut mod_content).unwrap();
-                let mod_line = format!("pub mod {};\n", module);
-                let use_line = format!("pub use {}::{};\n", module, variant,);
-                if !mod_content.contains(&mod_line) {
-                    mod_content = format!("{}{}{}", mod_line, use_line, mod_content);
-                    mod_file.write_all(mod_content.as_bytes()).unwrap();
-                }
-            }
-            _ => {
-                eprintln!("Unknown type: {}", args.card_type);
-            }
-        }
+    let mut mod_file = std::fs::File::open("src/lib/card/{}/spell/mod.rs").unwrap();
+    let mut mod_content = String::new();
+    mod_file.read_to_string(&mut mod_content).unwrap();
+    let mod_line = format!("pub mod {};\n", module);
+    let use_line = format!("pub use {}::{};\n", module, variant,);
+    if !mod_content.contains(&mod_line) {
+        mod_content = format!("{}{}{}", mod_line, use_line, mod_content);
+        mod_file.write_all(mod_content.as_bytes()).unwrap();
     }
 }

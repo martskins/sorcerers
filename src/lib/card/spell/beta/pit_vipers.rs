@@ -1,7 +1,7 @@
 use crate::{
     card::{
         spell::{Ability, SpellBase, SpellType},
-        CardBase, CardType, CardZone, Edition, Thresholds,
+        CardBase, CardType, CardZone, Combat, Edition, Interaction, Lifecycle, Thresholds,
     },
     effect::{Action, Effect},
     game::State,
@@ -91,8 +91,8 @@ impl PitVipers {
     pub fn on_select_in_realm_actions(&self, state: &State) -> Vec<Action> {
         vec![]
     }
-
-    pub fn deathrite(&self, state: &State) -> Vec<Effect> {
-        vec![]
-    }
 }
+
+impl Lifecycle for PitVipers {}
+impl Combat for PitVipers {}
+impl Interaction for PitVipers {}

@@ -2,7 +2,7 @@ mod beta;
 use beta::*;
 mod util;
 use crate::{
-    card::{site::SiteType, CardBase, CardType, CardZone, Edition, Element, Target, Thresholds},
+    card::{site::SiteType, CardBase, CardType, CardZone, Edition, Element, Lifecycle, Combat, Interaction, Target, Thresholds},
     effect::{Action, Effect, GameAction, PlayerAction},
     game::{Cell, Phase, Resources, State},
     spells,
@@ -71,41 +71,11 @@ pub enum Ability {
 #[rustfmt::skip]
 spells!(
     AccursedAlbatross, "Accursed Albatross",
-    AdeptIllusionist, "Adept Illusionist",
-    InfernalLegion, "Infernal Legion",
-    EscyllionCyclops, "Escyllion Cyclops",
-    AskelonPhoenix, "Askelon Phoenix",
-    SandWorm, "Sand Worm",
-    PetrosianCavalry, "Petrosian Cavalry",
-    HillockBasilisk, "Hillock Basilisk",
-    ClamorOfHarpies, "Clamor of Harpies",
-    QuarrelsomeKobolds, "Quarrelsome Kobolds",
-    OgreGoons, "Ogre Goons",
-    ColickyDragonettes, "Colicky Dragonettes",
-    WayfaringPilgrim, "Wayfaring Pilgrim",
-    SacredScarabs, "Sacred Scarabs",
-    RimlandNomads, "Rimland Nomads",
     LavaSalamander, "Lava Salamander",
-    RaalDromedary, "Raal Dromedary",
-    PitVipers, "Pit Vipers",
-    MajorExplosion, "Major Explosion",
-    ConeOfFlame, "Cone of Flame",
-    Incinerate, "Incinerate",
-    Fireball, "Fireball",
-    MinorExplosion, "Minor Explosion",
-    HeatRay, "Heat Ray",
-    Blaze, "Blaze",
-    MadDash, "Mad Dash",
-    Firebolts, "Firebolts",
-    Wildfire, "Wildfire"
+    PitVipers, "Pit Vipers"
 );
 
 impl Spell {
-    /// Returns the effects that occur when the spell is created (genesis).
-    pub fn genesis(&self) -> Vec<Effect> {
-        vec![]
-    }
-
     /// Returns the effects that occur at the start of a turn for this spell.
     pub fn on_turn_start(&self, _: &State) -> Vec<Effect> {
         vec![Effect::UntapCard {
@@ -199,16 +169,6 @@ impl Spell {
             from: from.clone(),
             amount,
         }]
-    }
-
-    pub fn on_damage_taken(&self, from: &uuid::Uuid, amount: u8, state: &State) -> Vec<Effect> {
-        let effects = match self {
-            Spell::AccursedAlbatross(c) => c.on_damage_taken(from, amount, state),
-            Spell::AdeptIllusionist(c) => c.on_damage_taken(from, amount, state),
-            _ => vec![],
-        };
-
-        effects
     }
 
     fn on_select_in_realm(&self, state: &State) -> Vec<Effect> {
@@ -329,7 +289,7 @@ impl Spell {
                         card_id: self.get_id().clone(),
                         to_zone: CardZone::Realm(cell_id),
                     });
-                    effects.extend(self.genesis());
+                    effects.extend(self.genesis(state));
                 }
                 _ => unreachable!(),
             }

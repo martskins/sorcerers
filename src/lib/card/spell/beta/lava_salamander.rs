@@ -1,7 +1,7 @@
 use crate::{
     card::{
         spell::{Ability, SpellBase, SpellType},
-        CardBase, CardType, CardZone, Edition, Element, Thresholds,
+        CardBase, CardType, CardZone, Combat, Edition, Element, Interaction, Lifecycle, Thresholds,
     },
     effect::{Action, Effect},
     game::State,
@@ -86,16 +86,8 @@ impl LavaSalamander {
     pub fn get_id(&self) -> &uuid::Uuid {
         &self.spell.card_base.id
     }
-
-    pub fn on_damage_taken(&self, from: &uuid::Uuid, _amount: u8, state: &State) -> Vec<Effect> {
-        vec![]
-    }
-
-    pub fn on_select_in_realm_actions(&self, state: &State) -> Vec<Action> {
-        vec![]
-    }
-
-    pub fn deathrite(&self, state: &State) -> Vec<Effect> {
-        vec![]
-    }
 }
+
+impl Lifecycle for LavaSalamander {}
+impl Combat for LavaSalamander {}
+impl Interaction for LavaSalamander {}
