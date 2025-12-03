@@ -23,9 +23,9 @@ impl Site {
         vec![]
     }
 
-    pub fn get_cell_id(&self) -> Option<u8> {
+    pub fn get_square(&self) -> Option<u8> {
         match self.get_zone() {
-            CardZone::Realm(cell_id) => Some(*cell_id),
+            CardZone::Realm(square) => Some(*square),
             _ => None,
         }
     }
@@ -77,11 +77,11 @@ impl Site {
             return vec![];
         }
 
-        let cell_ids = state.valid_play_cells(&Card::Site(self.clone()));
+        let squares = state.valid_play_cells(&Card::Site(self.clone()));
         vec![Effect::ChangePhase {
-            new_phase: Phase::SelectingCell {
+            new_phase: Phase::SelectingSquare {
                 player_id: self.get_owner_id().clone(),
-                cell_ids: cell_ids.clone(),
+                square: squares.clone(),
                 after_select: Some(Action::GameAction(GameAction::PlayCardOnSelectedTargets {
                     card_id: self.get_id().clone(),
                 })),
@@ -92,9 +92,9 @@ impl Site {
     pub fn on_cast(&self, state: &State, target: Target) -> Vec<Effect> {
         let mut effects = Vec::new();
         match target {
-            Target::Cell(cell_id) => effects.push(Effect::MoveCardToCell {
+            Target::Square(square) => effects.push(Effect::MoveCardToSquare {
                 card_id: self.get_id().clone(),
-                cell_id,
+                square,
             }),
             _ => {}
         }

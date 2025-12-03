@@ -22,9 +22,9 @@ impl Avatar {
         }]
     }
 
-    pub fn get_cell_id(&self) -> Option<u8> {
+    pub fn get_square(&self) -> Option<u8> {
         match self.get_zone() {
-            CardZone::Realm(cell_id) => Some(*cell_id),
+            CardZone::Realm(square) => Some(*square),
             _ => None,
         }
     }
@@ -50,7 +50,7 @@ impl Avatar {
                     },
                     Effect::DrawCard {
                         player_id: self.get_owner_id().clone(),
-                        card_type: CardType::Site,
+                        card_type: Some(CardType::Site),
                     },
                     Effect::ChangePhase {
                         new_phase: Phase::WaitingForPlay {

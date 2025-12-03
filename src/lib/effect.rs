@@ -15,9 +15,9 @@ pub enum Effect {
         player_id: uuid::Uuid,
         thresholds: Thresholds,
     },
-    MoveCardToCell {
+    MoveCardToSquare {
         card_id: uuid::Uuid,
-        cell_id: u8,
+        square: u8,
     },
     ChangePhase {
         new_phase: Phase,
@@ -43,7 +43,7 @@ pub enum Effect {
     },
     DrawCard {
         player_id: uuid::Uuid,
-        card_type: CardType,
+        card_type: Option<CardType>,
     },
     KillUnit {
         card_id: uuid::Uuid,
@@ -64,10 +64,10 @@ impl Effect {
                 entry.water_threshold += thresholds.water;
                 entry.earth_threshold += thresholds.earth;
             }
-            Effect::MoveCardToCell { card_id, cell_id } => {
+            Effect::MoveCardToSquare { card_id, square } => {
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id);
                 if let Some(card) = card {
-                    card.set_zone(CardZone::Realm(*cell_id));
+                    card.set_zone(CardZone::Realm(*square));
                 }
             }
             Effect::ChangePhase { new_phase } => {
@@ -116,9 +116,17 @@ impl Effect {
                     card.set_zone(to_zone.clone());
                 }
             }
-            Effect::DrawCard { player_id, card_type } => {
-                state.draw_card_for_player(player_id, card_type.clone()).await.unwrap();
-            }
+            Effect::DrawCard { player_id, card_type } => match card_type {
+                Some(ct) => state.draw_card_for_player(player_id, ct.clone()).await.unwrap(),
+                None => {
+                    let new_phase = Phase::WaitingForCardDraw {
+                        player_id: player_id.clone(),
+                        count: 1,
+                        types: vec![CardType::Spell, CardType::Site],
+                    };
+                    state.effects.push_back(Effect::ChangePhase { new_phase });
+                }
+            },
             Effect::KillUnit { card_id } => {
                 let card = state.cards.iter().find(|c| c.get_id() == card_id).unwrap();
                 let effects = card.deathrite(state);
@@ -144,14 +152,14 @@ pub enum PlayerAction {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum GameAction {
-    SelectCell { cell_ids: Vec<u8> },
+    SelectSquare { squares: Vec<u8> },
     SelectAction { actions: Vec<Action> },
     DrawCard { types: Vec<CardType> },
     PlayCardOnSelectedTargets { card_id: uuid::Uuid },
     PlaySelectedCard,
     AttackSelectedTarget { attacker_id: uuid::Uuid },
-    MoveCardToSelectedCell { card_id: uuid::Uuid },
-    SummonMinionToSelectedCell { card_id: uuid::Uuid },
+    MoveCardToSelectedSquare { card_id: uuid::Uuid },
+    SummonMinionToSelectedSquare { card_id: uuid::Uuid },
     SummonMinion { card_id: uuid::Uuid },
 }
 

@@ -23,9 +23,9 @@ pub enum Phase {
         count: u8,
         types: Vec<CardType>,
     },
-    SelectingCell {
+    SelectingSquare {
         player_id: uuid::Uuid,
-        cell_ids: Vec<u8>,
+        square: Vec<u8>,
         after_select: Option<Action>,
     },
     SelectingAction {
@@ -131,13 +131,13 @@ impl State {
         &self.current_player == player_id
     }
 
-    fn is_cell_empty(&self, cell_id: &u8) -> bool {
+    fn is_square_empty(&self, square: &u8) -> bool {
         !self
             .cards
             .iter()
             .filter(|c| c.get_type() != CardType::Avatar)
             .any(|card| match card.get_zone() {
-                CardZone::Realm(id) => id == cell_id,
+                CardZone::Realm(id) => id == square,
                 _ => false,
             })
     }
@@ -148,7 +148,7 @@ impl State {
             CardType::Site => {
                 let mut cells = vec![];
                 for cell in &adjacent_cells {
-                    if self.is_cell_empty(cell) {
+                    if self.is_square_empty(cell) {
                         cells.push(cell.clone());
                     }
                 }
@@ -173,11 +173,11 @@ impl State {
         &self.players[0] == player_id
     }
 
-    pub fn get_cards_in_cell(&self, cell_id: &u8) -> Vec<&Card> {
+    pub fn get_cards_in_cell(&self, square: &u8) -> Vec<&Card> {
         self.cards
             .iter()
             .filter(|card| match card.get_zone() {
-                CardZone::Realm(id) => id == cell_id,
+                CardZone::Realm(id) => id == square,
                 _ => false,
             })
             .collect()
@@ -190,18 +190,18 @@ impl State {
         }
 
         let mut adjacent_cells = Vec::new();
-        let site_cell_ids: Vec<u8> = self
+        let site_squares: Vec<u8> = self
             .cards
             .iter()
             .filter(|card| card.get_owner_id() == owner_id && card.is_site())
             .filter_map(|card| match card.get_zone() {
-                CardZone::Realm(cell_id) => Some(*cell_id),
+                CardZone::Realm(square) => Some(*square),
                 _ => None,
             })
             .collect();
 
-        for cell_id in site_cell_ids {
-            let neighbors = Self::get_adjacent_cell_ids(cell_id);
+        for square in site_squares {
+            let neighbors = Self::get_adjacent_squares(square);
             for neighbor in neighbors {
                 if !adjacent_cells.contains(&neighbor) {
                     adjacent_cells.push(neighbor);
@@ -214,7 +214,7 @@ impl State {
 
     /// Returns the ids of the cells that are directly above, below, left or right of the given
     /// cell id.
-    pub fn get_nearby_cell_ids(cell_id: u8) -> Vec<u8> {
+    pub fn get_nearby_squares(cell_id: u8) -> Vec<u8> {
         let mut nearby = Vec::new();
         let rows = 4;
         let cols = 5;
@@ -245,7 +245,7 @@ impl State {
         nearby
     }
 
-    pub fn get_adjacent_cell_ids(cell_id: u8) -> Vec<u8> {
+    pub fn get_adjacent_squares(cell_id: u8) -> Vec<u8> {
         let mut neighbors = Vec::new();
         let rows = 4;
         let cols = 5;
@@ -313,19 +313,19 @@ impl State {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Cell {
+pub struct Square {
     pub id: u8,
     pub occupied_by: Vec<Card>,
 }
 
-impl Cell {
+impl Square {
     pub fn are_adjacent(a: u8, b: u8) -> bool {
-        let adjacent_cells = State::get_adjacent_cell_ids(a);
+        let adjacent_cells = State::get_adjacent_squares(a);
         adjacent_cells.contains(&b)
     }
 
     pub fn are_nearby(a: u8, b: u8) -> bool {
-        let adjacent_cells = State::get_nearby_cell_ids(a);
+        let adjacent_cells = State::get_nearby_squares(a);
         adjacent_cells.contains(&b)
     }
 }
@@ -375,9 +375,9 @@ impl Game {
             Message::AttackTarget {
                 attacker_id, target_id, ..
             } => self.attack_target(&attacker_id, &target_id).await?,
-            Message::MoveCard { card_id, cell_id, .. } => self.move_card(&card_id, cell_id).await?,
-            Message::SummonMinion { card_id, cell_id, .. } => {
-                self.summon_minion(&card_id, cell_id, &self.state.clone()).await?
+            Message::MoveCard { card_id, square, .. } => self.move_card(&card_id, square).await?,
+            Message::SummonMinion { card_id, square, .. } => {
+                self.summon_minion(&card_id, square, &self.state.clone()).await?
             }
             _ => {}
         }
@@ -386,11 +386,11 @@ impl Game {
         Ok(())
     }
 
-    async fn summon_minion(&mut self, card_id: &uuid::Uuid, cell_id: u8, state: &State) -> anyhow::Result<()> {
+    async fn summon_minion(&mut self, card_id: &uuid::Uuid, square: u8, state: &State) -> anyhow::Result<()> {
         let mut effects = vec![
-            Effect::MoveCardToCell {
+            Effect::MoveCardToSquare {
                 card_id: card_id.clone(),
-                cell_id,
+                square,
             },
             Effect::ChangePhase {
                 new_phase: Phase::WaitingForPlay {
@@ -425,10 +425,10 @@ impl Game {
         Ok(())
     }
 
-    async fn move_card(&mut self, card_id: &uuid::Uuid, cell_id: u8) -> anyhow::Result<()> {
-        self.state.effects.push_back(Effect::MoveCardToCell {
+    async fn move_card(&mut self, card_id: &uuid::Uuid, square: u8) -> anyhow::Result<()> {
+        self.state.effects.push_back(Effect::MoveCardToSquare {
             card_id: card_id.clone(),
-            cell_id: cell_id,
+            square,
         });
         self.state.effects.push_back(Effect::ChangePhase {
             new_phase: Phase::WaitingForPlay {
@@ -467,14 +467,14 @@ impl Game {
     }
 
     async fn attack_target(&mut self, attacker_id: &uuid::Uuid, target_id: &uuid::Uuid) -> anyhow::Result<()> {
-        let target_cell_id = self.get_card_by_id(&target_id).unwrap().get_cell_id().unwrap();
+        let target_square = self.get_card_by_id(&target_id).unwrap().get_square().unwrap();
         let mut effects = vec![
             Effect::TapCard {
                 card_id: attacker_id.clone(),
             },
-            Effect::MoveCardToCell {
+            Effect::MoveCardToSquare {
                 card_id: attacker_id.clone(),
-                cell_id: target_cell_id,
+                square: target_square,
             },
         ];
 
@@ -539,8 +539,8 @@ impl Game {
         for player_id in &self.players {
             let deck = self.state.decks.get_mut(&player_id).unwrap();
             let mut avatar_card = Card::Avatar(deck.avatar.clone());
-            let cell_id = if self.state.is_player_one(player_id) { 3 } else { 18 };
-            avatar_card.set_zone(CardZone::Realm(cell_id));
+            let square = if self.state.is_player_one(player_id) { 3 } else { 18 };
+            avatar_card.set_zone(CardZone::Realm(square));
             self.state.cards.push(avatar_card);
         }
         Ok(())

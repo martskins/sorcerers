@@ -1,4 +1,3 @@
-use serde::{Deserialize, Serialize};
 use crate::{
     card::{
         spell::{Ability, SpellBase, SpellType},
@@ -7,10 +6,12 @@ use crate::{
     effect::{Action, Effect},
     game::State,
 };
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WayfaringPilgrim {
     pub spell: SpellBase,
+    pub corners_visited: Vec<u8>,
 }
 
 impl WayfaringPilgrim {
@@ -32,6 +33,7 @@ impl WayfaringPilgrim {
                 power: Some(1),
                 toughness: Some(1),
             },
+            corners_visited: Vec::new(),
         }
     }
 
@@ -67,9 +69,9 @@ impl WayfaringPilgrim {
         &mut self.spell
     }
 
-    pub fn get_cell_id(&self) -> Option<u8> {
+    pub fn get_square(&self) -> Option<u8> {
         match self.spell.card_base.zone {
-            CardZone::Realm(cell_id) => Some(cell_id),
+            CardZone::Realm(square) => Some(square),
             _ => None,
         }
     }
@@ -87,6 +89,18 @@ impl WayfaringPilgrim {
     }
 }
 
-impl Lifecycle for WayfaringPilgrim {}
+impl Lifecycle for WayfaringPilgrim {
+    fn on_enter_square(&mut self, square: u8, state: &State) -> Vec<Effect> {
+        let mut effects = Vec::new();
+        if [1, 5, 16, 20].contains(&square) && !self.corners_visited.contains(&square) {
+            effects.push(Effect::DrawCard {
+                player_id: *self.get_owner_id(),
+                card_type: None,
+            });
+            self.corners_visited.push(square);
+        }
+        effects
+    }
+}
 impl Combat for WayfaringPilgrim {}
 impl Interaction for WayfaringPilgrim {}

@@ -67,9 +67,9 @@ impl SacredScarabs {
         &mut self.spell
     }
 
-    pub fn get_cell_id(&self) -> Option<u8> {
+    pub fn get_square(&self) -> Option<u8> {
         match self.spell.card_base.zone {
-            CardZone::Realm(cell_id) => Some(cell_id),
+            CardZone::Realm(square) => Some(square),
             _ => None,
         }
     }
@@ -90,8 +90,8 @@ impl SacredScarabs {
 impl Lifecycle for SacredScarabs {
     fn deathrite(&self, state: &State) -> Vec<Effect> {
         let mut effects = Vec::new();
-        let cell_id = self.get_cell_id().unwrap();
-        for card in state.get_cards_in_cell(&cell_id) {
+        let square = self.get_square().unwrap();
+        for card in state.get_cards_in_cell(&square) {
             effects.push(Effect::DealDamage {
                 target_id: *card.get_id(),
                 from: *self.get_id(),

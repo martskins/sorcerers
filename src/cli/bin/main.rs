@@ -105,9 +105,9 @@ impl {Variant} {
         &mut self.spell
     }
 
-    pub fn get_cell_id(&self) -> Option<u8> {
+    pub fn get_square(&self) -> Option<u8> {
         match self.spell.card_base.zone {
-            CardZone::Realm(cell_id) => Some(cell_id),
+            CardZone::Realm(square) => Some(square),
             _ => None,
         }
     }

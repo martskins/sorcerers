@@ -86,7 +86,7 @@ pub enum Target {
     None,
     Cards(Vec<uuid::Uuid>),
     Card(uuid::Uuid),
-    Cell(u8),
+    Square(u8),
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -276,11 +276,11 @@ impl Card {
         }
     }
 
-    pub fn get_cell_id(&self) -> Option<u8> {
+    pub fn get_square(&self) -> Option<u8> {
         match self {
-            Card::Site(card) => card.get_cell_id(),
-            Card::Spell(card) => card.get_cell_id(),
-            Card::Avatar(card) => card.get_cell_id(),
+            Card::Site(card) => card.get_square(),
+            Card::Spell(card) => card.get_square(),
+            Card::Avatar(card) => card.get_square(),
         }
     }
 
@@ -432,6 +432,10 @@ pub trait Lifecycle {
     }
 
     fn deathrite(&self, state: &State) -> Vec<Effect> {
+        vec![]
+    }
+
+    fn on_enter_square(&mut self, square: u8, state: &State) -> Vec<Effect> {
         vec![]
     }
 }

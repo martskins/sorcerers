@@ -7,7 +7,7 @@ use crate::{
         Thresholds,
     },
     effect::{Action, Effect, GameAction, PlayerAction},
-    game::{Cell, Phase, Resources, State},
+    game::{Phase, Resources, Square, State},
     spells,
 };
 use serde::{Deserialize, Serialize};
@@ -142,9 +142,9 @@ impl Spell {
         }
     }
 
-    pub fn get_cell_id(&self) -> Option<u8> {
+    pub fn get_square(&self) -> Option<u8> {
         match self.get_zone() {
-            CardZone::Realm(cell_id) => Some(*cell_id),
+            CardZone::Realm(square) => Some(*square),
             _ => None,
         }
     }
@@ -156,13 +156,13 @@ impl Spell {
             .filter(|c| c.get_owner_id() != self.get_owner_id())
             .filter(|c| matches!(c.get_zone(), CardZone::Realm(_)))
             .filter(|c| {
-                let a = self.get_cell_id().unwrap();
-                let b = c.get_cell_id().unwrap();
+                let a = self.get_square().unwrap();
+                let b = c.get_square().unwrap();
                 if self.get_abilities().contains(&Ability::Airborne) {
-                    return Cell::are_nearby(a, b);
+                    return Square::are_nearby(a, b);
                 }
 
-                Cell::are_adjacent(a, b)
+                Square::are_adjacent(a, b)
             })
             .map(|c| c.get_id())
             .cloned()
@@ -175,16 +175,16 @@ impl Spell {
             .iter()
             .filter(|c| matches!(c.get_zone(), CardZone::Realm(_)))
             .filter(|c| {
-                let a = self.get_cell_id().unwrap();
-                let b = c.get_cell_id().unwrap();
+                let a = self.get_square().unwrap();
+                let b = c.get_square().unwrap();
                 if self.get_abilities().contains(&Ability::Airborne) {
-                    return Cell::are_nearby(a, b);
+                    return Square::are_nearby(a, b);
                 }
 
-                Cell::are_adjacent(a, b)
+                Square::are_adjacent(a, b)
             })
             .map(|c| match c.get_zone() {
-                CardZone::Realm(cell_id) => cell_id.clone(),
+                CardZone::Realm(square) => square.clone(),
                 _ => unreachable!(),
             })
             .collect::<Vec<u8>>()
@@ -219,10 +219,10 @@ impl Spell {
             }),
             Action::PlayerAction(PlayerAction::Move {
                 after_select: vec![Effect::ChangePhase {
-                    new_phase: Phase::SelectingCell {
+                    new_phase: Phase::SelectingSquare {
                         player_id: self.get_owner_id().clone(),
-                        cell_ids: self.valid_move_cells(state),
-                        after_select: Some(Action::GameAction(GameAction::MoveCardToSelectedCell {
+                        square: self.valid_move_cells(state),
+                        after_select: Some(Action::GameAction(GameAction::MoveCardToSelectedSquare {
                             card_id: self.get_id().clone(),
                         })),
                     },
@@ -258,16 +258,16 @@ impl Spell {
         match self.get_spell_type() {
             SpellType::Minion => {
                 effects.push(Effect::ChangePhase {
-                    new_phase: Phase::SelectingCell {
+                    new_phase: Phase::SelectingSquare {
                         player_id: self.get_owner_id().clone(),
-                        cell_ids: state
+                        square: state
                             .cards
                             .iter()
                             .filter(|c| c.get_owner_id() == owner_id)
                             .filter(|c| matches!(c.get_zone(), CardZone::Realm(_)))
                             .filter(|c| c.get_type() == CardType::Site)
                             .map(|c| match c.get_zone() {
-                                CardZone::Realm(cell_id) => cell_id.clone(),
+                                CardZone::Realm(square) => square.clone(),
                                 _ => unreachable!(),
                             })
                             .collect(),
@@ -311,10 +311,10 @@ impl Spell {
 
         if self.is_permanent() {
             match target {
-                Target::Cell(cell_id) => {
+                Target::Square(square) => {
                     effects.push(Effect::MoveCard {
                         card_id: self.get_id().clone(),
-                        to_zone: CardZone::Realm(cell_id),
+                        to_zone: CardZone::Realm(square),
                     });
                     effects.extend(self.genesis(state));
                 }

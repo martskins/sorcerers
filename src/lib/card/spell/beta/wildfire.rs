@@ -1,4 +1,3 @@
-use serde::{Deserialize, Serialize};
 use crate::{
     card::{
         spell::{Ability, SpellBase, SpellType},
@@ -7,6 +6,7 @@ use crate::{
     effect::{Action, Effect},
     game::State,
 };
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Wildfire {
@@ -67,9 +67,9 @@ impl Wildfire {
         &mut self.spell
     }
 
-    pub fn get_cell_id(&self) -> Option<u8> {
+    pub fn get_square(&self) -> Option<u8> {
         match self.spell.card_base.zone {
-            CardZone::Realm(cell_id) => Some(cell_id),
+            CardZone::Realm(square) => Some(square),
             _ => None,
         }
     }

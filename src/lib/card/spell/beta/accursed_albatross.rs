@@ -4,7 +4,7 @@ use crate::{
         CardBase, CardType, CardZone, Combat, Edition, Interaction, Lifecycle, Thresholds,
     },
     effect::Effect,
-    game::{Cell, State},
+    game::{Square, State},
 };
 use serde::{Deserialize, Serialize};
 
@@ -67,9 +67,9 @@ impl AccursedAlbatross {
         &mut self.spell
     }
 
-    pub fn get_cell_id(&self) -> Option<u8> {
+    pub fn get_square(&self) -> Option<u8> {
         match self.spell.card_base.zone {
-            CardZone::Realm(cell_id) => Some(cell_id),
+            CardZone::Realm(square) => Some(square),
             _ => None,
         }
     }
@@ -104,9 +104,9 @@ impl Combat for AccursedAlbatross {
             .filter(|c| c.get_id() != from)
             .filter(|c| matches!(c.get_zone(), CardZone::Realm(_)))
             .filter(|c| {
-                let a = self.get_cell_id().unwrap();
-                let b = c.get_cell_id().unwrap();
-                Cell::are_nearby(a, b)
+                let a = self.get_square().unwrap();
+                let b = c.get_square().unwrap();
+                Square::are_nearby(a, b)
             })
             .map(|c| c.get_id())
             .cloned()

@@ -351,7 +351,7 @@ impl Game {
                                         player_id: self.player_id.clone(),
                                         card_id: card.get_id().clone(),
                                         game_id: self.game_id.clone(),
-                                        cell_id: 0,
+                                        square: 0,
                                     })
                                     .unwrap();
                             }
@@ -559,8 +559,8 @@ impl Game {
     }
 
     fn handle_cell_click(&mut self, mouse_position: Vec2) {
-        if let Phase::SelectingCell {
-            cell_ids,
+        if let Phase::SelectingSquare {
+            square,
             player_id,
             after_select,
         } = &self.state.phase
@@ -571,12 +571,12 @@ impl Game {
 
             let mut played_card = false;
             for (idx, cell) in self.cells.iter().enumerate() {
-                if !cell_ids.contains(&cell.id) {
+                if !square.contains(&cell.id) {
                     continue;
                 }
 
                 if cell.rect.contains(mouse_position.into()) {
-                    let cell_id = self.cells[idx].id;
+                    let square = self.cells[idx].id;
                     if is_mouse_button_released(MouseButton::Left) {
                         match after_select {
                             Some(Action::GameAction(GameAction::PlayCardOnSelectedTargets { card_id })) => {
@@ -584,28 +584,27 @@ impl Game {
                                     .send(Message::PlayCard {
                                         player_id: self.player_id,
                                         card_id: card_id.clone(),
-                                        targets: Target::Cell(cell_id),
+                                        targets: Target::Square(square),
                                         game_id: self.game_id,
                                     })
                                     .unwrap();
                             }
-                            Some(Action::GameAction(GameAction::MoveCardToSelectedCell { card_id })) => {
+                            Some(Action::GameAction(GameAction::MoveCardToSelectedSquare { card_id })) => {
                                 self.client
                                     .send(Message::MoveCard {
                                         player_id: self.player_id,
                                         card_id: card_id.clone(),
-                                        cell_id,
+                                        square,
                                         game_id: self.game_id,
                                     })
                                     .unwrap();
                             }
-                            Some(Action::GameAction(GameAction::SummonMinionToSelectedCell { card_id })) => {
-                                println!("Summoning minion to cell {}", cell_id);
+                            Some(Action::GameAction(GameAction::SummonMinionToSelectedSquare { card_id })) => {
                                 self.client
                                     .send(Message::SummonMinion {
                                         player_id: self.player_id,
                                         card_id: card_id.clone(),
-                                        cell_id: cell_id,
+                                        square,
                                         game_id: self.game_id,
                                     })
                                     .unwrap();
@@ -650,15 +649,12 @@ impl Game {
                 WHITE,
             );
 
-            if let Phase::SelectingCell {
-                cell_ids, player_id, ..
-            } = &self.state.phase
-            {
+            if let Phase::SelectingSquare { square, player_id, .. } = &self.state.phase {
                 if &self.player_id != player_id {
                     continue;
                 }
 
-                if cell_ids.contains(&cell_display.id) {
+                if square.contains(&cell_display.id) {
                     draw_rectangle_lines(
                         cell_display.rect.x,
                         cell_display.rect.y,
@@ -773,8 +769,8 @@ impl Game {
 
     async fn update_cards_in_realm(&mut self, cards: &[Card]) -> anyhow::Result<()> {
         for card in cards {
-            if let CardZone::Realm(cell_id) = card.get_zone() {
-                let cell_rect = self.cells.iter().find(|c| c.id == *cell_id).unwrap().rect;
+            if let CardZone::Realm(square) = card.get_zone() {
+                let cell_rect = self.cells.iter().find(|c| c.id == *square).unwrap().rect;
                 let mut dimensions = spell_dimensions();
                 if card.is_site() {
                     dimensions = site_dimensions();

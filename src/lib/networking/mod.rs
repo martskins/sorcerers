@@ -76,14 +76,14 @@ pub enum Message {
     MoveCard {
         player_id: uuid::Uuid,
         card_id: uuid::Uuid,
-        cell_id: u8,
+        square: u8,
         game_id: uuid::Uuid,
     },
     SummonMinion {
         player_id: uuid::Uuid,
         card_id: uuid::Uuid,
         game_id: uuid::Uuid,
-        cell_id: u8,
+        square: u8,
     },
 }
 
