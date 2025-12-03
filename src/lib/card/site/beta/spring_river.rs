@@ -7,6 +7,8 @@ pub struct SpringRiver {
 }
 
 impl SpringRiver {
+    pub const NAME: &'static str = "Spring River";
+
     pub fn new(owner_id: uuid::Uuid, zone: CardZone) -> Self {
         Self {
             base: SiteBase {

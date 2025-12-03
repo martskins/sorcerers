@@ -1,12 +1,12 @@
 #[macro_export]
 macro_rules! spells {
-    ($($variant:ident, $card_name:literal),+) => {
+    ($($variant:ident),+) => {
         #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
         pub enum Spell {
             $($variant($variant),)+
         }
 
-        pub const ALL_SPELLS: &[&str] = &[$($card_name),+];
+        pub const ALL_SPELLS: &[&str] = &[$($variant::NAME),+];
 
         impl Spell {
             pub fn get_abilities(&self) -> Vec<Ability> {
@@ -21,6 +21,10 @@ macro_rules! spells {
                 }
             }
 
+            pub fn get_damage_taken(&self) -> u8 {
+                self.get_spell_base().damage_taken
+            }
+
             pub fn genesis(&self, state: &State) -> Vec<Effect> {
                 match self {
                     $(Spell::$variant(cb) => cb.genesis(state),)+
@@ -29,7 +33,7 @@ macro_rules! spells {
 
             pub fn from_name(name: &str, owner_id: uuid::Uuid) -> Option<Self> {
                 match name {
-                    $($card_name => Some(Spell::$variant($variant::new(owner_id, CardZone::Spellbook))),)+
+                    $($variant::NAME => Some(Spell::$variant($variant::new(owner_id, CardZone::Spellbook))),)+
                     _ => None,
                 }
             }

@@ -34,10 +34,11 @@ impl Server {
         }
     }
 
-    pub async fn process_effects(&mut self) -> anyhow::Result<()> {
+    pub async fn update(&mut self) -> anyhow::Result<()> {
         for game in self.active_games.values_mut() {
-            game.process_effects().await;
+            game.update().await?;
         }
+
         Ok(())
     }
 
@@ -134,8 +135,14 @@ impl Server {
         game.state.resources.get_mut(player1).unwrap().water_threshold = 1;
         game.state.resources.get_mut(player1).unwrap().earth_threshold = 1;
 
-        let mut adept_illusionist = Spell::from_name("Adept Illusionist", player1.clone()).unwrap();
+        let mut adept_illusionist = Spell::from_name("Lava Salamander", player1.clone()).unwrap();
         adept_illusionist.set_zone(CardZone::Realm(13));
+        game.state.cards.push(Card::Spell(adept_illusionist));
+        let mut adept_illusionist = Spell::from_name("Lava Salamander", player2.clone()).unwrap();
+        adept_illusionist.set_zone(CardZone::Realm(13));
+        game.state.cards.push(Card::Spell(adept_illusionist));
+        let mut adept_illusionist = Spell::from_name("Sacred Scarabs", player1.clone()).unwrap();
+        adept_illusionist.set_zone(CardZone::Realm(8));
         game.state.cards.push(Card::Spell(adept_illusionist));
 
         let game_id = game.id;

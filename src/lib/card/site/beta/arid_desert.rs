@@ -10,6 +10,8 @@ pub struct AridDesert {
 }
 
 impl AridDesert {
+    pub const NAME: &'static str = "Arid Desert";
+
     pub fn new(owner_id: uuid::Uuid, zone: CardZone) -> Self {
         Self {
             base: SiteBase {

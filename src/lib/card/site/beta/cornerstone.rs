@@ -7,6 +7,8 @@ pub struct Cornerstone {
 }
 
 impl Cornerstone {
+    pub const NAME: &'static str = "Cornerstone";
+
     pub fn new(owner_id: uuid::Uuid, zone: CardZone) -> Self {
         Self {
             base: SiteBase {

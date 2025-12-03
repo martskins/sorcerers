@@ -1,20 +1,20 @@
+use serde::{Deserialize, Serialize};
 use crate::{
     card::{
         spell::{Ability, SpellBase, SpellType},
         CardBase, CardType, CardZone, Combat, Edition, Interaction, Lifecycle, Thresholds,
     },
-    effect::Effect,
-    game::{Cell, State},
+    effect::{Action, Effect},
+    game::State,
 };
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct AccursedAlbatross {
+pub struct OgreGoons {
     pub spell: SpellBase,
 }
 
-impl AccursedAlbatross {
-    pub const NAME: &'static str = "Accursed Albatross";
+impl OgreGoons {
+    pub const NAME: &'static str = "Ogre Goons";
 
     pub fn new(owner_id: uuid::Uuid, zone: CardZone) -> Self {
         Self {
@@ -28,9 +28,9 @@ impl AccursedAlbatross {
                 },
                 damage_taken: 0,
                 mana_cost: 3,
-                thresholds: Thresholds::parse("W"),
-                power: Some(1),
-                toughness: Some(1),
+                thresholds: Thresholds::parse("F"),
+                power: Some(3),
+                toughness: Some(3),
             },
         }
     }
@@ -87,36 +87,6 @@ impl AccursedAlbatross {
     }
 }
 
-impl Lifecycle for AccursedAlbatross {}
-
-impl Combat for AccursedAlbatross {
-    fn on_damage_taken(&self, from: &uuid::Uuid, _amount: u8, state: &State) -> Vec<Effect> {
-        if self.spell.damage_taken < self.get_toughness().unwrap_or(0) {
-            return vec![];
-        }
-
-        let attacker_owner_id = state.cards.iter().find(|c| c.get_id() == from).unwrap().get_owner_id();
-        let nearby_minions = state
-            .cards
-            .iter()
-            .filter(|c| c.is_minion())
-            .filter(|c| c.get_owner_id() == attacker_owner_id)
-            .filter(|c| c.get_id() != from)
-            .filter(|c| matches!(c.get_zone(), CardZone::Realm(_)))
-            .filter(|c| {
-                let a = self.get_cell_id().unwrap();
-                let b = c.get_cell_id().unwrap();
-                Cell::are_nearby(a, b)
-            })
-            .map(|c| c.get_id())
-            .cloned()
-            .collect::<Vec<uuid::Uuid>>();
-        let mut effects = Vec::new();
-        for id in nearby_minions {
-            effects.push(Effect::KillUnit { card_id: id });
-        }
-        effects
-    }
-}
-
-impl Interaction for AccursedAlbatross {}
+impl Lifecycle for OgreGoons {}
+impl Combat for OgreGoons {}
+impl Interaction for OgreGoons {}

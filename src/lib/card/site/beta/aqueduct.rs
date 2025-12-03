@@ -7,6 +7,8 @@ pub struct Aqueduct {
 }
 
 impl Aqueduct {
+    pub const NAME: &'static str = "Aqueduct";
+
     pub fn new(owner_id: uuid::Uuid, zone: CardZone) -> Self {
         Self {
             base: SiteBase {

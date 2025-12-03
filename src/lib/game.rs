@@ -173,6 +173,16 @@ impl State {
         &self.players[0] == player_id
     }
 
+    pub fn get_cards_in_cell(&self, cell_id: &u8) -> Vec<&Card> {
+        self.cards
+            .iter()
+            .filter(|card| match card.get_zone() {
+                CardZone::Realm(id) => id == cell_id,
+                _ => false,
+            })
+            .collect()
+    }
+
     pub fn get_cells_adjacent_to_sites(&self, owner_id: &uuid::Uuid) -> Vec<u8> {
         if !self.has_played_site(owner_id) {
             let starting_cell = if self.is_player_one(owner_id) { 3 } else { 18 };
@@ -366,13 +376,13 @@ impl Game {
                 attacker_id, target_id, ..
             } => self.attack_target(&attacker_id, &target_id).await?,
             Message::MoveCard { card_id, cell_id, .. } => self.move_card(&card_id, cell_id).await?,
-            Message::SummonMinion { card_id, cell_id, .. } => self.summon_minion(&card_id, cell_id, &self.state.clone()).await?,
+            Message::SummonMinion { card_id, cell_id, .. } => {
+                self.summon_minion(&card_id, cell_id, &self.state.clone()).await?
+            }
             _ => {}
         }
 
-        self.process_effects().await;
-        self.check_damage();
-        self.send_sync().await?;
+        self.update().await?;
         Ok(())
     }
 
@@ -437,16 +447,23 @@ impl Game {
     }
 
     fn check_damage(&mut self) {
-        self.state
+        let card_ids: Vec<uuid::Uuid> = self
+            .state
             .cards
             .iter_mut()
-            .find(|c| match c {
+            .filter(|c| c.is_minion())
+            .filter(|c| c.is_in_realm())
+            .filter(|c| match c {
                 Card::Spell(spell) => spell.is_dead(),
                 Card::Site(_) => false,
                 Card::Avatar(_) => false,
             })
-            .iter_mut()
-            .for_each(|c| c.set_zone(CardZone::Cemetery));
+            .map(|c| c.get_id().clone())
+            .collect();
+
+        for card_id in card_ids {
+            self.state.effects.push_back(Effect::KillUnit { card_id });
+        }
     }
 
     async fn attack_target(&mut self, attacker_id: &uuid::Uuid, target_id: &uuid::Uuid) -> anyhow::Result<()> {
@@ -460,6 +477,7 @@ impl Game {
                 cell_id: target_cell_id,
             },
         ];
+
         match self.get_card_by_id(&attacker_id).unwrap() {
             Card::Spell(spell) => match spell.get_spell_type() {
                 SpellType::Minion => {
@@ -508,10 +526,13 @@ impl Game {
         Ok(())
     }
 
-    pub async fn process_effects(&mut self) {
+    pub async fn update(&mut self) -> anyhow::Result<()> {
         while let Some(effect) = self.state.effects.pop_front() {
             effect.apply(&mut self.state).await;
         }
+        self.check_damage();
+        self.send_sync().await?;
+        Ok(())
     }
 
     pub fn place_avatars(&mut self) -> anyhow::Result<()> {

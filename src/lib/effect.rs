@@ -124,7 +124,7 @@ impl Effect {
                 let effects = card.deathrite(state);
                 state.effects.extend(effects);
                 state.effects.push_back(Effect::MoveCard {
-                    card_id: card_id.clone(),
+                    card_id: *card_id,
                     to_zone: CardZone::Cemetery,
                 });
             }

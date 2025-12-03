@@ -14,6 +14,8 @@ pub struct LavaSalamander {
 }
 
 impl LavaSalamander {
+    pub const NAME: &'static str = "Lava Salamander";
+
     pub fn new(owner_id: uuid::Uuid, zone: CardZone) -> Self {
         Self {
             spell: SpellBase {
@@ -76,7 +78,7 @@ impl LavaSalamander {
     }
 
     pub fn get_name(&self) -> &str {
-        "Lava Salamander"
+        Self::NAME
     }
 
     pub fn get_owner_id(&self) -> &uuid::Uuid {

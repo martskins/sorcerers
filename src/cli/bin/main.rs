@@ -13,11 +13,11 @@ const SITE_TEMPLATE: &'static str = r#"use crate::card::{
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct {Name} {
+pub struct {Variant} {
     pub base: SiteBase,
 }
 
-impl {Name} {
+impl {Variant} {
     pub fn new(owner_id: uuid::Uuid, zone: CardZone) -> Self {
         Self {
             base: SiteBase {
@@ -45,14 +45,15 @@ use crate::{
     effect::{Action, Effect},
     game::State,
 };
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct {Name} {
+pub struct {Variant} {
     pub spell: SpellBase,
 }
 
-impl {Name} {
+impl {Variant} {
+    pub const NAME: &'static str = "{Name}";
+
     pub fn new(owner_id: uuid::Uuid, zone: CardZone) -> Self {
         Self {
             spell: SpellBase {
@@ -66,7 +67,7 @@ impl {Name} {
                 damage_taken: 0,
                 mana_cost: {ManaCost},
                 thresholds: Thresholds::parse("{Thresholds}"),
-                power: {Power}
+                power: {Power},
                 toughness: {Toughness},
             },
         }
@@ -112,7 +113,7 @@ impl {Name} {
     }
 
     pub fn get_name(&self) -> &str {
-        "{Name}"
+        Self::NAME
     }
 
     pub fn get_owner_id(&self) -> &uuid::Uuid {
@@ -124,9 +125,9 @@ impl {Name} {
     }
 }
 
-impl Lifecycle for {Name} {}
-impl Combat for {Name} {}
-impl Interaction for {Name} {}
+impl Lifecycle for {Variant} {}
+impl Combat for {Variant} {}
+impl Interaction for {Variant} {}
 "#;
 
 #[derive(Parser, Debug)]
@@ -136,15 +137,15 @@ struct Args {
     file_path: String,
 }
 
-fn create_file_with_content(path: &str, content: &str) -> anyhow::Result<()> {
+fn create_file_with_content(path: &str, content: &str) -> anyhow::Result<bool> {
     let path = std::path::Path::new(path);
-    if path.exists() {
-        return Ok(());
+    if std::fs::exists(path)? {
+        return Ok(false);
     }
 
-    let mut file = std::fs::File::create(path).unwrap();
+    let mut file = std::fs::File::create(path).expect(format!("Failed to create file: {}", path.display()).as_str());
     file.write_all(content.as_bytes()).unwrap();
-    Ok(())
+    Ok(true)
 }
 
 fn main() {
@@ -224,34 +225,68 @@ fn main() {
     for line in reader.lines().skip(1) {
         let line = line.unwrap();
         let parts = line.split(',').collect::<Vec<&str>>();
-        create_minion(parts[1], parts[2], parts[3], parts[4], parts[5], parts[6]);
+        create_spell(parts[0], parts[1], parts[2], parts[3], parts[4], parts[5], parts[6]);
     }
 }
 
-fn create_minion(name: &str, mana_cost: &str, thresholds: &str, power: &str, toughness: &str, edition: &str) {
+fn create_spell(
+    spell_type: &str,
+    name: &str,
+    mana_cost: &str,
+    thresholds: &str,
+    power: &str,
+    toughness: &str,
+    edition: &str,
+) {
+    let name = name.trim();
     let variant = name.to_case(Case::Pascal);
     let module = name.to_lowercase().to_case(Case::Snake);
     let edition_mod = edition.to_lowercase().to_case(Case::Snake);
     let edition_variant = edition.to_case(Case::Pascal);
 
+    let power = if power == "" {
+        "None".to_string()
+    } else {
+        format!("Some({})", power)
+    };
+    let toughness = if toughness == "" {
+        "None".to_string()
+    } else {
+        format!("Some({})", toughness)
+    };
     let content = SPELL_TEMPLATE
-        .replace("{Name}", &variant)
+        .replace("{Name}", &name)
+        .replace("{Variant}", &variant)
         .replace("{Edition}", &edition_variant)
-        .replace("{Power}", power)
-        .replace("{Toughness}", toughness)
+        .replace("{Power}", &power)
+        .replace("{Toughness}", &toughness)
         .replace("{Thresholds}", thresholds)
         .replace("{ManaCost}", mana_cost)
-        .replace("{SpellType}", "Minion");
-    let path = format!("src/lib/card/{}/spell/{}.rs", edition_mod, module);
-    create_file_with_content(&path, &content).unwrap();
+        .replace("{SpellType}", &spell_type.to_case(Case::Pascal));
+    let path = format!("src/lib/card/spell/{}/{}.rs", edition_mod, module);
+    match create_file_with_content(&path, &content) {
+        Ok(true) => {}
+        Ok(false) => {
+            println!("File already exists: {}", path);
+            return;
+        }
+        Err(e) => {
+            println!("Error creating file {}: {}", path, e);
+            return;
+        }
+    }
 
-    let mut mod_file = std::fs::File::open("src/lib/card/{}/spell/mod.rs").unwrap();
+    let mut mod_file = std::fs::File::options()
+        .read(true)
+        .write(true)
+        .open(format!("src/lib/card/spell/{}/mod.rs", edition_mod))
+        .unwrap();
     let mut mod_content = String::new();
     mod_file.read_to_string(&mut mod_content).unwrap();
     let mod_line = format!("pub mod {};\n", module);
     let use_line = format!("pub use {}::{};\n", module, variant,);
     if !mod_content.contains(&mod_line) {
-        mod_content = format!("{}{}{}", mod_line, use_line, mod_content);
+        mod_content = format!("{}{}", mod_line, use_line);
         mod_file.write_all(mod_content.as_bytes()).unwrap();
     }
 }

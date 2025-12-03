@@ -1,19 +1,19 @@
 #[macro_export]
 macro_rules! sites {
-    ($($variant:ident, $card_name:expr),+) => {
+    ($($variant:ident),+) => {
         #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
         pub enum Site {
             $($variant($variant),)+
         }
 
         pub const ALL_SITES: &[&str] = &[
-            $($card_name,)+
+            $($variant::NAME,)+
         ];
 
         impl Site {
             pub fn from_name(name: &str, owner_id: uuid::Uuid) -> Option<Self> {
                 match name {
-                    $($card_name => Some(Site::$variant($variant::new(owner_id, CardZone::Atlasbook))),)+
+                    $($variant::NAME => Some(Site::$variant($variant::new(owner_id, CardZone::Atlasbook))),)+
                     _ => None,
                 }
             }
@@ -38,7 +38,7 @@ macro_rules! sites {
 
             pub fn get_name(&self) -> &str {
                 match self {
-                    $(Site::$variant(_) => $card_name,)+
+                    $(Site::$variant(_) => $variant::NAME,)+
                 }
             }
 

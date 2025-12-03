@@ -13,13 +13,13 @@ pub use site::*;
 
 #[rustfmt::skip]
 sites! {
-    AridDesert, "Arid Desert",
-    SpringRiver, "Spring River",
-    Aqueduct, "Aqueduct",
-    AstralAlcazar, "Astral Alcazar",
-    Cornerstone, "Cornerstone",
-    RemoteDesert, "Remote Desert",
-    RedDesert, "Red Desert",
-    ShiftingSands, "Shifting Sands",
-    Vesuvius, "Vesuvius"
+    AridDesert,
+    SpringRiver,
+    Aqueduct,
+    AstralAlcazar,
+    Cornerstone,
+    RemoteDesert,
+    RedDesert,
+    ShiftingSands,
+    Vesuvius
 }

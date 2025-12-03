@@ -389,6 +389,10 @@ impl Card {
         }
     }
 
+    pub fn is_in_realm(&self) -> bool {
+        matches!(self.get_zone(), CardZone::Realm(_))
+    }
+
     pub fn is_minion(&self) -> bool {
         match self {
             Card::Site(_) => false,

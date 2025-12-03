@@ -7,6 +7,8 @@ pub struct AstralAlcazar {
 }
 
 impl AstralAlcazar {
+    pub const NAME: &'static str = "Astral Alcazar";
+
     pub fn new(owner_id: uuid::Uuid, zone: CardZone) -> Self {
         Self {
             base: SiteBase {

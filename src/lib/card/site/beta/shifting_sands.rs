@@ -7,6 +7,8 @@ pub struct ShiftingSands {
 }
 
 impl ShiftingSands {
+    pub const NAME: &'static str = "Shifting Sands";
+
     pub fn new(owner_id: uuid::Uuid, zone: CardZone) -> Self {
         Self {
             base: SiteBase {

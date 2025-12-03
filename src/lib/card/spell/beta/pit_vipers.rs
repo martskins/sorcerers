@@ -14,6 +14,8 @@ pub struct PitVipers {
 }
 
 impl PitVipers {
+    pub const NAME: &'static str = "Pit Vipers";
+
     pub fn new(owner_id: uuid::Uuid, zone: CardZone) -> Self {
         Self {
             spell: SpellBase {
@@ -73,7 +75,7 @@ impl PitVipers {
     }
 
     pub fn get_name(&self) -> &str {
-        "Pit Vipers"
+        Self::NAME
     }
 
     pub fn get_owner_id(&self) -> &uuid::Uuid {

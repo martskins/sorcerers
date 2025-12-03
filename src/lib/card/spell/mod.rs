@@ -2,7 +2,10 @@ mod beta;
 use beta::*;
 mod util;
 use crate::{
-    card::{site::SiteType, CardBase, CardType, CardZone, Edition, Element, Lifecycle, Combat, Interaction, Target, Thresholds},
+    card::{
+        site::SiteType, CardBase, CardType, CardZone, Combat, Edition, Element, Interaction, Lifecycle, Target,
+        Thresholds,
+    },
     effect::{Action, Effect, GameAction, PlayerAction},
     game::{Cell, Phase, Resources, State},
     spells,
@@ -70,9 +73,33 @@ pub enum Ability {
 
 #[rustfmt::skip]
 spells!(
-    AccursedAlbatross, "Accursed Albatross",
-    LavaSalamander, "Lava Salamander",
-    PitVipers, "Pit Vipers"
+    AccursedAlbatross,
+    LavaSalamander,
+    PitVipers,
+    RaalDromedary,
+    RimlandNomads,
+    SacredScarabs,
+    WayfaringPilgrim,
+    ColickyDragonettes,
+    OgreGoons,
+    QuarrelsomeKobolds,
+    ClamorOfHarpies,
+    HillockBasilisk,
+    PetrosianCavalry,
+    SandWorm,
+    AskelonPhoenix,
+    EscyllionCyclops,
+    InfernalLegion,
+    Firebolts,
+    Wildfire,
+    MadDash,
+    Blaze,
+    HeatRay,
+    MinorExplosion,
+    Fireball,
+    Incinerate,
+    ConeOfFlame,
+    MajorExplosion
 );
 
 impl Spell {
