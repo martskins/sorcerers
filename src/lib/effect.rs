@@ -1,190 +1,74 @@
-use serde::{Deserialize, Serialize};
-
 use crate::{
-    card::{Card, CardType, CardZone, Thresholds},
-    game::{Phase, Resources, State},
+    card::{CardType, Zone},
+    game::PlayerStatus,
+    state::State,
 };
+use std::fmt::Debug;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub trait CardStatus: Debug + Send + Sync {}
+
+#[derive(Debug)]
 pub enum Effect {
-    AddMana {
+    PromptDecision {
         player_id: uuid::Uuid,
-        amount: u8,
-    },
-    AddThresholds {
-        player_id: uuid::Uuid,
-        thresholds: Thresholds,
-    },
-    ChangePhase {
-        new_phase: Phase,
-    },
-    TapCard {
-        card_id: uuid::Uuid,
-    },
-    UntapCard {
-        card_id: uuid::Uuid,
-    },
-    DealDamage {
-        target_id: uuid::Uuid,
-        from: uuid::Uuid,
-        amount: u8,
-    },
-    SpendMana {
-        player_id: uuid::Uuid,
-        amount: u8,
+        options: Vec<String>,
     },
     MoveCard {
         card_id: uuid::Uuid,
-        dest: CardZone,
+        to: Zone,
     },
     DrawCard {
         player_id: uuid::Uuid,
-        card_type: Option<CardType>,
+        card_type: CardType,
     },
-    KillUnit {
+    SetCardStatus {
         card_id: uuid::Uuid,
+        status: Box<dyn CardStatus>,
     },
 }
 
 impl Effect {
-    pub async fn apply(&self, state: &mut State) {
+    pub fn apply(&self, state: &mut State) -> anyhow::Result<()> {
         match self {
-            Effect::AddMana { player_id, amount } => {
-                let entry = state.resources.entry(*player_id).or_insert(Resources::new());
-                entry.mana += *amount as u8;
-            }
-            Effect::AddThresholds { player_id, thresholds } => {
-                let entry = state.resources.entry(*player_id).or_insert(Resources::new());
-                entry.fire_threshold += thresholds.fire;
-                entry.air_threshold += thresholds.air;
-                entry.water_threshold += thresholds.water;
-                entry.earth_threshold += thresholds.earth;
-            }
-            Effect::ChangePhase { new_phase } => {
-                state.phase = new_phase.clone();
-                if let Phase::SelectingAction { player_id, actions } = new_phase {
-                    state.actions.insert(player_id.clone(), actions.clone());
-                }
-            }
-            Effect::UntapCard { card_id } => {
-                let card = state.cards.iter_mut().find(|c| c.get_id() == card_id);
-                if let Some(card) = card {
-                    card.untap();
-                }
-            }
-            Effect::TapCard { card_id } => {
-                let card = state.cards.iter_mut().find(|c| c.get_id() == card_id);
-                if let Some(card) = card {
-                    card.tap();
-                }
-            }
-            Effect::DealDamage {
-                from,
-                target_id,
-                amount,
-            } => {
-                let immutable_state = state.clone();
-                let card = state.cards.iter_mut().find(|c| c.get_id() == target_id).unwrap();
-                match card {
-                    Card::Spell(spell) => {
-                        spell.get_spell_base_mut().damage_taken += *amount;
-                        let effects = spell.on_damage_taken(from, *amount, &immutable_state);
-                        state.effects.extend(effects);
-                    }
-                    Card::Avatar(_) | Card::Site(_) => {
-                        state.resources.get_mut(card.get_owner_id()).unwrap().health -= amount;
-                    }
-                }
-            }
-            Effect::SpendMana { player_id, amount } => {
-                let entry = state.resources.entry(*player_id).or_insert(Resources::new());
-                entry.mana = entry.mana.saturating_sub(*amount);
-            }
-            Effect::MoveCard { card_id, dest } => {
-                let immutable_state = state.clone();
-                let card = state.cards.iter_mut().find(|c| c.get_id() == card_id);
-                let card = card.unwrap();
-                let enter_effects = match dest {
-                    CardZone::Realm(square) => card.on_enter_square(*square, &immutable_state),
-                    _ => vec![],
+            Effect::PromptDecision { player_id, options } => {
+                state.player_status = PlayerStatus::SelectingAction {
+                    player_id: player_id.clone(),
+                    actions: options.clone(),
                 };
-                state.effects.extend(enter_effects);
             }
-            Effect::DrawCard { player_id, card_type } => match card_type {
-                Some(ct) => state.draw_card_for_player(player_id, ct.clone()).await.unwrap(),
-                None => {
-                    let new_phase = Phase::WaitingForCardDraw {
-                        player_id: player_id.clone(),
-                        count: 1,
-                        types: vec![CardType::Spell, CardType::Site],
-                    };
-                    state.effects.push_back(Effect::ChangePhase { new_phase });
+            Effect::MoveCard { card_id, to } => {
+                let card = state.cards.iter_mut().find(|c| c.get_id() == *card_id).unwrap();
+                card.set_zone(to.clone());
+            }
+            Effect::DrawCard { player_id, card_type } => {
+                let deck = state.decks.get_mut(player_id).unwrap();
+                match card_type {
+                    CardType::Site => {
+                        let card_id = deck.sites.pop().unwrap();
+                        state
+                            .cards
+                            .iter_mut()
+                            .find(|c| c.get_id() == card_id)
+                            .unwrap()
+                            .set_zone(Zone::Hand);
+                    }
+                    CardType::Spell => {
+                        let card_id = deck.spells.pop().unwrap();
+                        state
+                            .cards
+                            .iter_mut()
+                            .find(|c| c.get_id() == card_id)
+                            .unwrap()
+                            .set_zone(Zone::Hand);
+                    }
+                    CardType::Avatar => unreachable!(),
                 }
-            },
-            Effect::KillUnit { card_id } => {
-                let card = state.cards.iter().find(|c| c.get_id() == card_id).unwrap();
-                let effects = card.deathrite(state);
-                state.effects.extend(effects);
-                state.effects.push_back(Effect::MoveCard {
-                    card_id: *card_id,
-                    dest: CardZone::Cemetery,
-                });
+            }
+            Effect::SetCardStatus { card_id, status } => {
+                let card = state.cards.iter_mut().find(|c| c.get_id() == *card_id).unwrap();
             }
         }
-    }
-}
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum PlayerAction {
-    DrawSite { after_select: Vec<Effect> },
-    PlaySite { after_select: Vec<Effect> },
-    Attack { after_select: Vec<Effect> },
-    Move { after_select: Vec<Effect> },
-    Defend { after_select: Vec<Effect> },
-    ActivateTapAbility { after_select: Vec<Effect> },
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum GameAction {
-    SelectSquare { squares: Vec<u8> },
-    SelectAction { actions: Vec<Action> },
-    DrawCard { types: Vec<CardType> },
-    PlayCardOnSelectedTargets { card_id: uuid::Uuid },
-    PlaySelectedCard,
-    AttackSelectedTarget { attacker_id: uuid::Uuid },
-    MoveCardToSelectedSquare { card_id: uuid::Uuid },
-    SummonMinionToSelectedSquare { card_id: uuid::Uuid },
-    SummonMinion { card_id: uuid::Uuid },
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum Action {
-    GameAction(GameAction),
-    PlayerAction(PlayerAction),
-}
-
-impl Action {
-    pub fn get_name(&self) -> &'static str {
-        match self {
-            Action::PlayerAction(PlayerAction::DrawSite { .. }) => "Draw Site",
-            Action::PlayerAction(PlayerAction::PlaySite { .. }) => "Play Site",
-            Action::PlayerAction(PlayerAction::Attack { .. }) => "Attack",
-            Action::PlayerAction(PlayerAction::Move { .. }) => "Move",
-            Action::PlayerAction(PlayerAction::Defend { .. }) => "Defend",
-            Action::PlayerAction(PlayerAction::ActivateTapAbility { .. }) => "Activate Tap Ability",
-            Action::GameAction(_) => "",
-        }
-    }
-
-    pub fn after_select_effects(&self) -> Vec<Effect> {
-        match self {
-            Action::PlayerAction(PlayerAction::DrawSite { after_select }) => after_select.clone(),
-            Action::PlayerAction(PlayerAction::PlaySite { after_select }) => after_select.clone(),
-            Action::PlayerAction(PlayerAction::Attack { after_select }) => after_select.clone(),
-            Action::PlayerAction(PlayerAction::Move { after_select }) => after_select.clone(),
-            Action::PlayerAction(PlayerAction::Defend { after_select }) => after_select.clone(),
-            Action::PlayerAction(PlayerAction::ActivateTapAbility { after_select }) => after_select.clone(),
-            _ => vec![],
-        }
+        Ok(())
     }
 }

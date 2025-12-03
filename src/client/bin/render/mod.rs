@@ -1,9 +1,14 @@
-use macroquad::math::Rect;
-use sorcerers::card::Card;
+use macroquad::{math::Rect, texture::Texture2D};
+use sorcerers::{card::Zone, game::PlayerId};
 
 #[derive(Debug, Clone)]
 pub struct CardDisplay {
-    pub card: Card,
+    pub id: uuid::Uuid,
+    pub name: String,
+    pub owner_id: PlayerId,
+    pub zone: Zone,
+    pub tapped: bool,
+    pub image: Texture2D,
     pub rect: Rect,
     pub rotation: f32,
     pub is_hovered: bool,

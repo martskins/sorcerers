@@ -1,4 +1,4 @@
-use sorcerers::networking;
+use sorcerers::networking::message::ServerMessage;
 
 pub mod game;
 pub mod menu;
@@ -24,7 +24,7 @@ impl Scene {
         }
     }
 
-    pub async fn process_message(&mut self, message: networking::Message) -> anyhow::Result<()> {
+    pub async fn process_message(&mut self, message: &ServerMessage) -> anyhow::Result<()> {
         match self {
             Scene::Menu(menu) => menu.process_message(message).await,
             Scene::Game(game) => game.process_message(message).await,

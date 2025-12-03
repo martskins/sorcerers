@@ -1,0 +1,96 @@
+use crate::{
+    card::{Card, CardBase, CardType, Edition, MessageHandler, UnitBase, Zone},
+    effect::Effect,
+    game::PlayerId,
+    networking::message::ClientMessage,
+    state::State,
+};
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Serialize, Deserialize)]
+enum Status {
+    None,
+    MinionPick,
+    StrikeDecision,
+}
+
+#[derive(Debug)]
+pub struct ClamorOfHarpies {
+    pub unit_base: UnitBase,
+    pub card_base: CardBase,
+    pub targeted_minion: uuid::Uuid,
+}
+
+impl ClamorOfHarpies {
+    pub const NAME: &'static str = "Clamor of Harpies";
+
+    pub fn new(owner_id: PlayerId) -> Self {
+        Self {
+            unit_base: UnitBase { power: 3, toughness: 3 },
+            card_base: CardBase {
+                id: uuid::Uuid::new_v4(),
+                owner_id,
+                tapped: false,
+                zone: Zone::Spellbook,
+                actions: Vec::new(),
+            },
+            targeted_minion: uuid::Uuid::nil(),
+        }
+    }
+}
+
+impl Card for ClamorOfHarpies {
+    fn get_name(&self) -> &str {
+        Self::NAME
+    }
+
+    fn get_base_mut(&mut self) -> &mut CardBase {
+        &mut self.card_base
+    }
+
+    fn get_base(&self) -> &CardBase {
+        &self.card_base
+    }
+
+    fn is_tapped(&self) -> bool {
+        self.card_base.tapped
+    }
+
+    fn get_owner_id(&self) -> PlayerId {
+        self.card_base.owner_id
+    }
+
+    fn get_edition(&self) -> Edition {
+        Edition::Beta
+    }
+
+    fn get_id(&self) -> uuid::Uuid {
+        self.card_base.id
+    }
+
+    fn get_card_type(&self) -> crate::card::CardType {
+        CardType::Spell
+    }
+
+    fn genesis(&mut self, state: &State) -> Vec<Effect> {
+        self.card_base.status = Status::MinionPick;
+        vec![]
+    }
+}
+
+impl MessageHandler for ClamorOfHarpies {
+    fn handle_message(&mut self, message: &ClientMessage) -> Vec<Effect> {
+        match (&self.card_base.status, message) {
+            (Status::MinionPick, ClientMessage::PickCard { card_id, .. }) => {
+                self.targeted_minion = card_id.clone();
+                self.card_base.status = Status::StrikeDecision;
+                vec![]
+            }
+            (Status::StrikeDecision, ClientMessage::PickAction { action_idx, .. }) => {
+                self.card_base.status = Status::None;
+                vec![]
+            }
+            _ => vec![],
+        }
+    }
+}

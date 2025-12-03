@@ -1,14 +1,12 @@
 use sorcerers::{
-    card::{
-        site::{
-            beta::{AridDesert, SpringRiver},
-            Site,
-        },
-        spell::Spell,
-        Card, CardZone,
+    card::{self, ClamorOfHarpies, Flamecaller, Zone},
+    deck::precon,
+    game::{Game, PlayerStatus, Resources},
+    networking::{
+        client::Socket,
+        message::{ClientMessage, Message, ServerMessage, ToMessage},
     },
-    game::{Game, Phase, Resources},
-    networking::{Message, Socket},
+    state::State,
 };
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 
@@ -23,7 +21,7 @@ pub struct Server {
 impl Server {
     pub fn new(socket: tokio::net::UdpSocket) -> Self {
         let sockets = HashMap::new();
-        let looking_for_match = vec![];
+        let looking_for_match = Vec::new();
 
         Self {
             socket: Arc::new(socket),
@@ -43,49 +41,45 @@ impl Server {
     }
 
     pub async fn process_message(&mut self, message: &[u8], addr: SocketAddr) -> anyhow::Result<()> {
-        let msg = rmp_serde::from_slice::<Message>(message).unwrap();
-        let game_id = msg.get_game_id();
-        match &msg {
-            Message::Connect => {
+        match &rmp_serde::from_slice::<Message>(message).unwrap() {
+            Message::ClientMessage(ClientMessage::Connect) => {
                 let player_id = uuid::Uuid::new_v4();
+                println!("Player {:?} connected from {:?}", player_id, addr);
                 self.looking_for_match.push(player_id);
                 self.sockets.insert(player_id, Socket::SocketAddr(addr));
-                self.send_to_addr(&Message::ConnectResponse { player_id }, &addr)
+                self.send_to_addr(ServerMessage::ConnectResponse { player_id }, &addr)
                     .await?;
 
                 match self.find_match() {
                     Some((player1, player2)) => {
                         let game = self.create_game(&player2, &player1);
-                        game.place_avatars()?;
-                        for player in &[player1, player2] {
-                            game.draw_initial_six(player).await?;
-                        }
-                        game.broadcast(&Message::MatchCreated {
+                        game.state.effects.extend(game.place_avatars());
+                        game.state.effects.extend(game.draw_initial_six());
+                        game.broadcast(&ServerMessage::GameStarted {
                             player1,
                             player2,
                             game_id: game.id.clone(),
                         })
                         .await?;
+                        game.process_effects()?;
                         game.send_sync().await?;
                     }
                     None => {}
                 }
             }
-            _ => {
-                if !game_id.is_some() {
-                    return Ok(());
-                }
-
-                let game = self.active_games.get_mut(&game_id.unwrap()).unwrap();
-                game.process_message(msg).await?;
+            Message::ClientMessage(msg) => {
+                let game_id = msg.game_id();
+                let game = self.active_games.get_mut(&game_id).unwrap();
+                game.process_message(&msg).await?;
             }
+            _ => {}
         }
 
         Ok(())
     }
 
-    pub async fn send_to_addr(&self, message: &Message, addr: &SocketAddr) -> anyhow::Result<()> {
-        let bytes = rmp_serde::to_vec(&message)?;
+    pub async fn send_to_addr<T: ToMessage>(&self, message: T, addr: &SocketAddr) -> anyhow::Result<()> {
+        let bytes = rmp_serde::to_vec(&message.to_message())?;
         self.socket.send_to(&bytes, addr).await?;
         Ok(())
     }
@@ -93,74 +87,90 @@ impl Server {
     fn create_game(&mut self, player1: &uuid::Uuid, player2: &uuid::Uuid) -> &mut Game {
         let addr1 = self.sockets.remove(player1).unwrap().clone();
         let addr2 = self.sockets.remove(player2).unwrap().clone();
-        let mut game = Game::new(player1.clone(), player2.clone(), self.socket.clone(), addr1, addr2);
-        game.state.current_player = player1.clone();
-        game.state.phase = Phase::WaitingForPlay {
+        let (deck1, cards1) = precon::beta::fire(player1.clone());
+        let (deck2, cards2) = precon::beta::fire(player2.clone());
+        let mut state = State::new(
+            Vec::new().into_iter().chain(cards1).chain(cards2).collect(),
+            HashMap::from([(player1.clone(), deck1), (player2.clone(), deck2)]),
+        );
+        state.current_player = player1.clone();
+        state.player_status = PlayerStatus::WaitingForPlay {
             player_id: player1.clone(),
         };
-        game.state.resources.insert(player1.clone(), Resources::new());
-        game.state.resources.insert(player2.clone(), Resources::new());
+        state.resources.insert(player1.clone(), Resources::new());
+        state.resources.insert(player2.clone(), Resources::new());
 
-        game.state.cards.push(Card::Site(Site::AridDesert(AridDesert::new(
+        state.cards.push(card::from_name_and_zone(
+            ClamorOfHarpies::NAME,
             player1.clone(),
-            CardZone::Realm(8),
-        ))));
-        game.state.cards.push(Card::Site(Site::SpringRiver(SpringRiver::new(
+            Zone::Realm(8),
+        ));
+        state.cards.push(card::from_name_and_zone(
+            ClamorOfHarpies::NAME,
             player1.clone(),
-            CardZone::Realm(9),
-        ))));
-        game.state.cards.push(Card::Site(Site::AridDesert(AridDesert::new(
-            player1.clone(),
-            CardZone::Realm(3),
-        ))));
-        game.state.cards.push(Card::Site(Site::AridDesert(AridDesert::new(
-            player1.clone(),
-            CardZone::Realm(2),
-        ))));
-        game.state.cards.push(Card::Site(Site::AridDesert(AridDesert::new(
-            player1.clone(),
-            CardZone::Realm(1),
-        ))));
-        let mut adept_illusionist = Spell::from_name("Wayfaring Pilgrim", player1.clone()).unwrap();
-        adept_illusionist.set_zone(CardZone::Realm(2));
-        game.state.cards.push(Card::Spell(adept_illusionist));
-        game.state.resources.get_mut(player1).unwrap().mana = 2;
-        game.state.resources.get_mut(player1).unwrap().fire_threshold = 2;
-        game.state.resources.get_mut(player1).unwrap().water_threshold = 1;
-        game.state.resources.get_mut(player1).unwrap().earth_threshold = 1;
+            Zone::Realm(9),
+        ));
+        // state.cards.push(Card::Site(Site::AridDesert(AridDesert::new(
+        //     player1.clone(),
+        //     CardZone::Realm(8),
+        // ))));
+        // state.cards.push(Card::Site(Site::SpringRiver(SpringRiver::new(
+        //     player1.clone(),
+        //     CardZone::Realm(9),
+        // ))));
+        // state.cards.push(Card::Site(Site::AridDesert(AridDesert::new(
+        //     player1.clone(),
+        //     CardZone::Realm(3),
+        // ))));
+        // state.cards.push(Card::Site(Site::AridDesert(AridDesert::new(
+        //     player1.clone(),
+        //     Zoneone::Realm(2),
+        // ))));
+        // state.cards.push(Card::Site(Site::AridDesert(AridDesert::new(
+        //     player1.clone(),
+        //     Zoneone::Realm(1),
+        // ))));
+        // let mut adept_illusionist = Spell::from_name("Quarrelsome Kobolds", player1.clone()).unwrap();
+        // adept_illusionist.set_zone(CardZone::Realm(2));
+        // state.cards.push(Card::Spell(adept_illusionist));
+        // state.resources.get_mut(player1).unwrap().mana = 2;
+        // state.resources.get_mut(player1).unwrap().fire_threshold = 2;
+        // state.resources.get_mut(player1).unwrap().water_threshold = 1;
+        // state.resources.get_mut(player1).unwrap().earth_threshold = 1;
+        //
+        // state.cards.push(Card::Site(Site::AridDesert(AridDesert::new(
+        //     player2.clone(),
+        //     Zoneone::Realm(13),
+        // ))));
+        // state.cards.push(Card::Site(Site::SpringRiver(SpringRiver::new(
+        //     player2.clone(),
+        //     CardZone::Realm(14),
+        // ))));
+        // state.cards.push(Card::Site(Site::AridDesert(AridDesert::new(
+        //     player2.clone(),
+        //     CardZone::Realm(18),
+        // ))));
+        // state.resources.get_mut(player2).unwrap().mana = 2;
+        // state.resources.get_mut(player2).unwrap().fire_threshold = 2;
+        // state.resources.get_mut(player1).unwrap().water_threshold = 1;
+        // state.resources.get_mut(player1).unwrap().earth_threshold = 1;
+        //
+        // let mut adept_illusionist = Spell::from_name("Lava Salamander", player1.clone()).unwrap();
+        // adept_illusionist.set_zone(CardZone::Realm(13));
+        // state.cards.push(Card::Spell(adept_illusionist));
+        // let mut adept_illusionist = Spell::from_name("Lava Salamander", player2.clone()).unwrap();
+        // adept_illusionist.set_zone(CardZone::Realm(13));
+        // state.cards.push(Card::Spell(adept_illusionist));
+        // let mut adept_illusionist = Spell::from_name("Sacred Scarabs", player1.clone()).unwrap();
+        // adept_illusionist.set_zone(CardZone::Realm(1));
+        // state.cards.push(Card::Spell(adept_illusionist));
 
-        game.state.cards.push(Card::Site(Site::AridDesert(AridDesert::new(
-            player2.clone(),
-            CardZone::Realm(13),
-        ))));
-        game.state.cards.push(Card::Site(Site::SpringRiver(SpringRiver::new(
-            player2.clone(),
-            CardZone::Realm(14),
-        ))));
-        game.state.cards.push(Card::Site(Site::AridDesert(AridDesert::new(
-            player2.clone(),
-            CardZone::Realm(18),
-        ))));
-        game.state.resources.get_mut(player2).unwrap().mana = 2;
-        game.state.resources.get_mut(player2).unwrap().fire_threshold = 2;
-        game.state.resources.get_mut(player1).unwrap().water_threshold = 1;
-        game.state.resources.get_mut(player1).unwrap().earth_threshold = 1;
-
-        let mut adept_illusionist = Spell::from_name("Lava Salamander", player1.clone()).unwrap();
-        adept_illusionist.set_zone(CardZone::Realm(13));
-        game.state.cards.push(Card::Spell(adept_illusionist));
-        let mut adept_illusionist = Spell::from_name("Lava Salamander", player2.clone()).unwrap();
-        adept_illusionist.set_zone(CardZone::Realm(13));
-        game.state.cards.push(Card::Spell(adept_illusionist));
-        let mut adept_illusionist = Spell::from_name("Sacred Scarabs", player1.clone()).unwrap();
-        adept_illusionist.set_zone(CardZone::Realm(8));
-        game.state.cards.push(Card::Spell(adept_illusionist));
-
+        let mut game = Game::new(player1.clone(), player2.clone(), self.socket.clone(), addr1, addr2);
+        game.state = state;
         let game_id = game.id;
         self.player_to_game.insert(player1.clone(), game.id);
         self.player_to_game.insert(player2.clone(), game.id);
-        self.active_games.insert(game.id, game);
-
+        self.active_games.insert(game_id, game);
         self.active_games.get_mut(&game_id).unwrap()
     }
 

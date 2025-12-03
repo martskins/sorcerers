@@ -1,5 +1,12 @@
-use crate::networking::Message;
 use std::net::UdpSocket;
+
+use crate::networking::message::{Message, ToMessage};
+
+#[derive(Debug, Clone)]
+pub enum Socket {
+    SocketAddr(std::net::SocketAddr),
+    Noop,
+}
 
 #[derive(Debug)]
 pub struct Client {
@@ -21,8 +28,8 @@ impl Client {
         Ok(Client { socket })
     }
 
-    pub fn send(&self, message: Message) -> anyhow::Result<()> {
-        let bytes = rmp_serde::to_vec(&message)?;
+    pub fn send<T: ToMessage>(&self, message: T) -> anyhow::Result<()> {
+        let bytes = rmp_serde::to_vec(&message.to_message())?;
         self.socket.send(&bytes)?;
         Ok(())
     }

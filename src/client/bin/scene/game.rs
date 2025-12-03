@@ -1,5 +1,9 @@
-use std::collections::HashMap;
-
+use crate::{
+    config::*,
+    render::{CardDisplay, CellDisplay},
+    scene::Scene,
+    texture_cache::TextureCache,
+};
 use macroquad::{
     color::{Color, BLUE, GREEN, RED, WHITE},
     input::{is_mouse_button_released, mouse_position, MouseButton},
@@ -7,22 +11,17 @@ use macroquad::{
     shapes::{draw_line, draw_rectangle, draw_rectangle_lines, draw_triangle_lines},
     text::draw_text,
     texture::{draw_texture_ex, DrawTextureParams},
-    ui::{self, widgets::Texture},
-    window::{screen_height, screen_width},
+    ui,
 };
 use sorcerers::{
-    card::{Card, CardType, CardZone, Element, Target},
-    effect::{Action, GameAction},
-    game::{Phase, Resources, State},
-    networking::{self, Message},
+    card::{CardInfo, CardType, Zone},
+    game::{Element, PlayerId, PlayerStatus, Resources},
+    networking::{
+        self,
+        message::{ClientMessage, ServerMessage},
+    },
 };
-
-use crate::{
-    config::*,
-    render::{CardDisplay, CellDisplay},
-    scene::Scene,
-    texture_cache::TextureCache,
-};
+use std::collections::HashMap;
 
 const FONT_SIZE: f32 = 24.0;
 const THRESHOLD_SYMBOL_SPACING: f32 = 18.0;
@@ -32,12 +31,16 @@ const CARD_SELECTION_WINDOW_ID: u64 = 2;
 
 #[derive(Debug)]
 pub struct Game {
-    pub player_id: uuid::Uuid,
+    pub player_id: PlayerId,
     pub game_id: uuid::Uuid,
-    pub cards: Vec<CardDisplay>,
+    pub card_displays: Vec<CardDisplay>,
     pub cells: Vec<CellDisplay>,
+    pub cards: Vec<CardInfo>,
+    pub resources: HashMap<PlayerId, Resources>,
     pub client: networking::client::Client,
-    pub state: State,
+    pub player_status: PlayerStatus,
+    pub current_player: PlayerId,
+    pub is_player_one: bool,
     action_window_position: Option<Vec2>,
     action_window_size: Option<Vec2>,
 }
@@ -52,32 +55,35 @@ impl Game {
             .collect();
         Self {
             player_id,
-            cards: vec![],
+            card_displays: Vec::new(),
+            cards: Vec::new(),
             game_id: uuid::Uuid::nil(),
             cells,
             client,
-            state: State::new(vec![]),
+            player_status: PlayerStatus::None,
+            current_player: uuid::Uuid::nil(),
+            is_player_one: false,
+            resources: HashMap::new(),
             action_window_position: None,
             action_window_size: None,
         }
     }
 
+    fn is_players_turn(&self, player_id: &PlayerId) -> bool {
+        self.current_player == *player_id
+    }
+
     pub async fn update(&mut self) -> anyhow::Result<()> {
         let mouse_position = mouse_position().into();
-        let state = self.state.clone();
         self.resize_cells().await?;
-        self.update_cards_in_hand(&state.cards)?;
-        self.update_cards_in_realm(&state.cards).await?;
+        self.update_cards_in_hand().await?;
+        self.update_cards_in_realm().await?;
         self.handle_click(mouse_position);
         Ok(())
     }
 
-    fn is_player_one(&self) -> bool {
-        self.state.is_player_one(&self.player_id)
-    }
-
     async fn resize_cells(&mut self) -> anyhow::Result<()> {
-        let mirror = self.is_player_one();
+        let mirror = self.is_player_one;
         for cell in &mut self.cells {
             cell.rect = cell_rect(cell.id - 1, mirror);
         }
@@ -112,23 +118,32 @@ impl Game {
         None
     }
 
-    pub async fn process_message(&mut self, message: networking::Message) -> anyhow::Result<()> {
+    pub async fn process_message(&mut self, message: &ServerMessage) -> anyhow::Result<()> {
         match message {
-            Message::MatchCreated { game_id, player1, .. } => {
+            ServerMessage::GameStarted { game_id, player1, .. } => {
                 // Flip the board for player 2. Use player1 instead of the is_player_one method
                 // because state is not set at this point.
-                if player1 != self.player_id {
+                self.is_player_one = player1 == &self.player_id;
+                if !self.is_player_one {
                     for cell in &mut self.cells {
                         let new_id: i8 = cell.id as i8 - 21;
                         cell.id = new_id.abs() as u8;
                     }
                 }
 
-                self.game_id = game_id;
+                self.game_id = game_id.clone();
                 Ok(())
             }
-            Message::Sync { state, .. } => {
-                self.state = state.clone();
+            ServerMessage::Sync {
+                cards,
+                current_player,
+                player_status,
+                resources,
+            } => {
+                self.cards = cards.clone();
+                self.current_player = current_player.clone();
+                self.resources = resources.clone();
+                self.player_status = player_status.clone();
                 Ok(())
             }
             _ => Ok(()),
@@ -137,7 +152,7 @@ impl Game {
 
     fn handle_click(&mut self, mouse_position: Vec2) {
         self.handle_card_click(mouse_position);
-        self.handle_cell_click(mouse_position);
+        self.handle_square_click(mouse_position);
     }
 
     fn render_threshold(x: f32, y: f32, value: u8, element: Element) {
@@ -188,40 +203,34 @@ impl Game {
         let thresholds_y: f32 = y + 10.0 + 20.0;
         let fire_x = x;
         let fire_y = thresholds_y;
-        Game::render_threshold(fire_x, fire_y, resources.fire_threshold, Element::Fire);
+        Game::render_threshold(fire_x, fire_y, resources.thresholds.fire, Element::Fire);
 
         let air_x = fire_x + SYMBOL_SIZE + THRESHOLD_SYMBOL_SPACING + 5.0;
         let air_y = thresholds_y;
-        Game::render_threshold(air_x, air_y, resources.air_threshold, Element::Air);
+        Game::render_threshold(air_x, air_y, resources.thresholds.air, Element::Air);
 
         let earth_x = air_x + SYMBOL_SIZE + THRESHOLD_SYMBOL_SPACING + 5.0;
         let earth_y = thresholds_y;
-        Game::render_threshold(earth_x, earth_y, resources.earth_threshold, Element::Earth);
+        Game::render_threshold(earth_x, earth_y, resources.thresholds.earth, Element::Earth);
 
         let water_x = earth_x + SYMBOL_SIZE + THRESHOLD_SYMBOL_SPACING + 5.0;
         let water_y = thresholds_y;
-        Game::render_threshold(water_x, water_y, resources.water_threshold, Element::Water);
+        Game::render_threshold(water_x, water_y, resources.thresholds.water, Element::Water);
     }
 
     async fn render_gui(&mut self) -> anyhow::Result<()> {
-        if self.state.phase == Phase::None {
+        if self.player_status == PlayerStatus::None {
             return Ok(());
         }
 
         let screen_rect = screen_rect();
         let base_x: f32 = 20.0;
         let player_y: f32 = screen_rect.h - 70.0;
-        let resources = self
-            .state
-            .resources
-            .get(&self.player_id)
-            .cloned()
-            .unwrap_or(Resources::new());
+        let resources = self.resources.get(&self.player_id).cloned().unwrap_or(Resources::new());
         Game::render_resources(base_x, player_y, &resources);
 
         const OPPONENT_Y: f32 = 25.0;
         let opponent_resources = self
-            .state
             .resources
             .iter()
             .find(|(player_id, _)| **player_id != self.player_id)
@@ -229,7 +238,7 @@ impl Game {
             .unwrap_or(Resources::new());
         Game::render_resources(base_x, OPPONENT_Y, &opponent_resources);
 
-        let turn_label = if self.state.is_players_turn(&self.player_id) {
+        let turn_label = if self.is_players_turn(&self.player_id) {
             "Your Turn"
         } else {
             "Opponent's Turn"
@@ -237,18 +246,18 @@ impl Game {
 
         draw_text(turn_label, screen_rect.w / 2.0 - 50.0, 30.0, FONT_SIZE, WHITE);
 
-        let is_in_turn = self.state.current_player == self.player_id;
+        let is_in_turn = self.is_players_turn(&self.player_id);
         if is_in_turn {
             if ui::root_ui().button(Vec2::new(screen_rect.w - 100.0, screen_rect.h - 40.0), "End Turn") {
-                self.client.send(Message::EndTurn {
+                self.client.send(ClientMessage::EndTurn {
                     player_id: self.player_id.clone(),
                     game_id: self.game_id.clone(),
                 })?;
             }
         }
 
-        match &self.state.phase {
-            Phase::SelectingAction { player_id, actions } if player_id == &self.player_id => {
+        match &self.player_status {
+            PlayerStatus::SelectingAction { player_id, actions } if player_id == &self.player_id => {
                 if self.action_window_position.is_none() {
                     self.action_window_position = Some(mouse_position().into());
                 }
@@ -263,9 +272,9 @@ impl Game {
                     self.action_window_size.unwrap(),
                     |ui| {
                         for (idx, action) in actions.iter().enumerate() {
-                            if ui.button(Vec2::new(0.0, 30.0 * idx as f32), action.get_name()) {
+                            if ui.button(Vec2::new(0.0, 30.0 * idx as f32), action.to_string()) {
                                 self.client
-                                    .send(Message::TriggerAction {
+                                    .send(ClientMessage::PickAction {
                                         action_idx: idx,
                                         player_id: self.player_id,
                                         game_id: self.game_id,
@@ -274,157 +283,161 @@ impl Game {
                             }
                         }
 
-                        if ui.button(Vec2::new(0.0, 30.0 * actions.len() as f32), "Cancel") {
-                            self.action_window_position = None;
-                            self.action_window_size = None;
-                            self.client
-                                .send(Message::CancelSelectAction {
-                                    player_id: self.player_id,
-                                    game_id: self.game_id,
-                                })
-                                .unwrap();
-                        }
+                        // if ui.button(Vec2::new(0.0, 30.0 * actions.len() as f32), "Cancel") {
+                        //     self.action_window_position = None;
+                        //     self.action_window_size = None;
+                        //     self.client
+                        //         .send(Message::CancelSelectAction {
+                        //             player_id: self.player_id,
+                        //             game_id: self.game_id,
+                        //         })
+                        //         .unwrap();
+                        // }
                     },
                 );
             }
-            Phase::SelectingCardOutsideRealm {
-                player_id,
-                owner,
-                spellbook,
-                cemetery,
-                hand,
-                after_select,
-            } => {
-                if player_id != &self.player_id {
-                    return Ok(());
-                }
-
-                let mut number_of_zones = 0;
-                if spellbook.is_some() {
-                    number_of_zones += 1;
-                }
-
-                if hand.is_some() {
-                    number_of_zones += 1;
-                }
-
-                if cemetery.is_some() {
-                    number_of_zones += 1;
-                }
-
-                let width = screen_width() - 20.0;
-                let height = screen_height() - 20.0;
-                let mut images = HashMap::new();
-                let cards_to_display: Vec<Card> = self
-                    .cards
-                    .iter()
-                    .filter(|c| {
-                        if owner.is_some() {
-                            return c.card.get_owner_id() == owner.as_ref().unwrap();
-                        }
-
-                        true
-                    })
-                    .map(|c| c.card.clone())
-                    .collect();
-
-                for card in &cards_to_display {
-                    images.insert(card.get_name(), TextureCache::get_card_texture(&card).await);
-                }
-
-                let mut all_valid_cards: Vec<uuid::Uuid> = spellbook.as_deref().unwrap_or_default().into();
-                all_valid_cards.extend(cemetery.as_deref().unwrap_or_default());
-                all_valid_cards.extend(hand.as_deref().unwrap_or_default());
-                ui::root_ui().window(
-                    CARD_SELECTION_WINDOW_ID,
-                    Vec2::new(10.0, 10.0),
-                    Vec2::new(width, height),
-                    |ui| {
-                        for (idx, card) in cards_to_display.iter().enumerate() {
-                            if Texture::new(images.get(card.get_name()).unwrap().clone())
-                                .position(Vec2::new(10.0, 30.0 * idx as f32))
-                                .size(card_width(), card_height())
-                                .ui(ui)
-                            {
-                                self.client
-                                    .send(Message::SummonMinion {
-                                        player_id: self.player_id.clone(),
-                                        card_id: card.get_id().clone(),
-                                        game_id: self.game_id.clone(),
-                                        square: 0,
-                                    })
-                                    .unwrap();
-                            }
-
-                            // if spellbook.as_deref().unwrap_or_default().contains(card.get_id()) {
-                            //     draw_rectangle_lines(10.0, 30.0 * idx as f32, card_width(), card_height(), 3.0, GREEN);
-                            // }
-                            //
-                            // if cemetery.as_deref().unwrap_or_default().contains(card.get_id()) {
-                            //     draw_rectangle_lines(10.0, 30.0 * idx as f32, card_width(), card_height(), 3.0, GREEN);
-                            // }
-                            //
-                            // if hand.as_deref().unwrap_or_default().contains(card.get_id()) {
-                            //     draw_rectangle_lines(10.0, 30.0 * idx as f32, card_width(), card_height(), 3.0, GREEN);
-                            // }
-                        }
-                    },
-                );
-            }
-            Phase::SelectingCard {
-                player_id, card_ids, ..
-            } if player_id == &self.player_id => {
-                let valid_cards: Vec<&CardDisplay> = self
-                    .cards
-                    .iter()
-                    .filter(|c| card_ids.contains(&c.card.get_id()))
-                    .collect();
-
-                let has_selected_card = valid_cards.iter().any(|c| c.is_selected);
-                let mut scale = 1.0;
-                for card in valid_cards {
-                    if card.is_hovered {
-                        scale = 1.2;
-                    }
-
-                    if !has_selected_card || card.is_selected {
-                        draw_rectangle_lines(
-                            card.rect.x,
-                            card.rect.y,
-                            card.rect.w * scale,
-                            card.rect.h * scale,
-                            3.0,
-                            WHITE,
-                        );
-                    }
-                }
-            }
-            _ => {}
+            _ => {} //
+                    // PlayerStatus::SelectingCardOutsideRealm {
+                    //     player_id,
+                    //     owner,
+                    //     spellbook,
+                    //     cemetery,
+                    //     hand,
+                    //     after_select,
+                    // } => {
+                    //     if player_id != &self.player_id {
+                    //         return Ok(());
+                    //     }
+                    //
+                    //     let mut number_of_zones = 0;
+                    //     if spellbook.is_some() {
+                    //         number_of_zones += 1;
+                    //     }
+                    //
+                    //     if hand.is_some() {
+                    //         number_of_zones += 1;
+                    //     }
+                    //
+                    //     if cemetery.is_some() {
+                    //         number_of_zones += 1;
+                    //     }
+                    //
+                    //     let width = screen_width() - 20.0;
+                    //     let height = screen_height() - 20.0;
+                    //     let mut images = HashMap::new();
+                    //     let cards_to_display: Vec<CardDisplay> = self
+                    //         .card_displays
+                    //         .iter()
+                    //         .filter(|c| {
+                    //             if owner.is_some() {
+                    //                 return c.owner_id == owner.as_ref().unwrap();
+                    //             }
+                    //
+                    //             true
+                    //         })
+                    //         .map(|c| c.card.clone())
+                    //         .collect();
+                    //
+                    //     for card in &cards_to_display {
+                    //         images.insert(card.name, card.image);
+                    //     }
+                    //
+                    //     let mut all_valid_cards: Vec<uuid::Uuid> = spellbook.as_deref().unwrap_or_default().into();
+                    //     all_valid_cards.extend(cemetery.as_deref().unwrap_or_default());
+                    //     all_valid_cards.extend(hand.as_deref().unwrap_or_default());
+                    //     ui::root_ui().window(
+                    //         CARD_SELECTION_WINDOW_ID,
+                    //         Vec2::new(10.0, 10.0),
+                    //         Vec2::new(width, height),
+                    //         |ui| {
+                    //             for (idx, card) in cards_to_display.iter().enumerate() {
+                    //                 if Texture::new(images.get(card.get_name()).unwrap().clone())
+                    //                     .position(Vec2::new(10.0, 30.0 * idx as f32))
+                    //                     .size(card_width(), card_height())
+                    //                     .ui(ui)
+                    //                 {
+                    //                     self.client
+                    //                         .send(Message::SummonMinion {
+                    //                             player_id: self.player_id.clone(),
+                    //                             card_id: card.get_id().clone(),
+                    //                             game_id: self.game_id.clone(),
+                    //                             square: 0,
+                    //                         })
+                    //                         .unwrap();
+                    //                 }
+                    //
+                    //                 // if spellbook.as_deref().unwrap_or_default().contains(card.get_id()) {
+                    //                 //     draw_rectangle_lines(10.0, 30.0 * idx as f32, card_width(), card_height(), 3.0, GREEN);
+                    //                 // }
+                    //                 //
+                    //                 // if cemetery.as_deref().unwrap_or_default().contains(card.get_id()) {
+                    //                 //     draw_rectangle_lines(10.0, 30.0 * idx as f32, card_width(), card_height(), 3.0, GREEN);
+                    //                 // }
+                    //                 //
+                    //                 // if hand.as_deref().unwrap_or_default().contains(card.get_id()) {
+                    //                 //     draw_rectangle_lines(10.0, 30.0 * idx as f32, card_width(), card_height(), 3.0, GREEN);
+                    //                 // }
+                    //             }
+                    //         },
+                    //     );
+                    // }
+                    // PlayerStatus::SelectingCard {
+                    //     player_id, card_ids, ..
+                    // } if player_id == &self.player_id => {
+                    //     let valid_cards: Vec<&CardDisplay> = self
+                    //         .card_displays
+                    //         .iter()
+                    //         .filter(|c| card_ids.contains(&c.card.get_id()))
+                    //         .collect();
+                    //
+                    //     let has_selected_card = valid_cards.iter().any(|c| c.is_selected);
+                    //     let mut scale = 1.0;
+                    //     for card in valid_cards {
+                    //         if card.is_hovered {
+                    //             scale = 1.2;
+                    //         }
+                    //
+                    //         if !has_selected_card || card.is_selected {
+                    //             draw_rectangle_lines(
+                    //                 card.rect.x,
+                    //                 card.rect.y,
+                    //                 card.rect.w * scale,
+                    //                 card.rect.h * scale,
+                    //                 3.0,
+                    //                 WHITE,
+                    //             );
+                    //         }
+                    //     }
+                    // }
+                    // _ => {}
         }
 
         Ok(())
     }
 
     async fn render_card_preview(&self) -> anyhow::Result<()> {
-        let selected_card = self.cards.iter().find(|card_display| card_display.is_hovered);
+        let selected_card = self.card_displays.iter().find(|card_display| card_display.is_hovered);
         let screen_rect = screen_rect();
 
         if let Some(card_display) = selected_card {
             const PREVIEW_SCALE: f32 = 2.7;
-            let mut dimensions = spell_dimensions() * PREVIEW_SCALE;
-            if card_display.card.is_site() {
-                dimensions = site_dimensions() * PREVIEW_SCALE;
-            }
+            let mut rect = card_display.rect;
+            rect.w *= PREVIEW_SCALE;
+            rect.h *= PREVIEW_SCALE;
+            // let mut dimensions = spell_dimensions() * PREVIEW_SCALE;
+            // if card_display.is_site {
+            //     dimensions = site_dimensions() * PREVIEW_SCALE;
+            // }
 
             let preview_x = 20.0;
-            let preview_y = screen_rect.h - dimensions.y - 20.0;
+            let preview_y = screen_rect.h - rect.w - 20.0;
             draw_texture_ex(
-                &TextureCache::get_card_texture(&card_display.card).await,
+                &card_display.image,
                 preview_x,
                 preview_y,
                 WHITE,
                 DrawTextureParams {
-                    dest_size: Some(dimensions),
+                    dest_size: Some(Vec2::new(rect.w, rect.h)),
                     ..Default::default()
                 },
             );
@@ -435,14 +448,14 @@ impl Game {
 
     async fn render_cemetery(&self) -> anyhow::Result<()> {
         let discarded_cards = self
-            .cards
+            .card_displays
             .iter()
-            .filter(|card_display| card_display.card.get_zone() == &CardZone::Cemetery)
+            .filter(|card_display| card_display.zone == Zone::Cemetery)
             .collect::<Vec<&CardDisplay>>();
         for card in discarded_cards {
             let cemetery_rect = cemetery_rect();
             draw_texture_ex(
-                &TextureCache::get_card_texture(&card.card).await,
+                &card.image,
                 cemetery_rect.x,
                 cemetery_rect.y,
                 WHITE,
@@ -458,37 +471,37 @@ impl Game {
 
     fn handle_card_click(&mut self, mouse_position: Vec2) {
         let mut hovered_card_index = None;
-        for (idx, card_display) in self.cards.iter().enumerate() {
+        for (idx, card_display) in self.card_displays.iter().enumerate() {
             if card_display.rect.contains(mouse_position.into()) {
                 hovered_card_index = Some(idx);
             };
         }
 
-        for card in &mut self.cards {
+        for card in &mut self.card_displays {
             card.is_hovered = false;
         }
 
         if let Some(idx) = hovered_card_index {
-            self.cards.get_mut(idx).unwrap().is_hovered = true;
+            self.card_displays.get_mut(idx).unwrap().is_hovered = true;
         }
 
-        match &self.state.phase {
-            Phase::WaitingForPlay { player_id } if player_id == &self.player_id => {
+        match &self.player_status {
+            PlayerStatus::WaitingForPlay { player_id } if player_id == &self.player_id => {
                 let mut card_selected = None;
                 for card_display in &mut self
-                    .cards
+                    .card_displays
                     .iter_mut()
-                    .filter(|c| matches!(c.card.get_zone(), CardZone::Realm(_)) || c.card.get_zone() == &CardZone::Hand)
+                    .filter(|c| matches!(c.zone, Zone::Realm(_)) || c.zone == Zone::Hand)
                 {
                     if card_display.is_hovered && is_mouse_button_released(MouseButton::Left) {
-                        card_selected = Some(card_display.card.get_id().clone());
+                        card_selected = Some(card_display.id.clone());
                         break;
                     };
                 }
 
                 if card_selected.is_some() {
                     self.client
-                        .send(Message::SelectCard {
+                        .send(ClientMessage::ClickCard {
                             card_id: card_selected.unwrap(),
                             player_id: self.player_id,
                             game_id: self.game_id,
@@ -496,74 +509,100 @@ impl Game {
                         .unwrap();
                 }
             }
-            Phase::SelectingCard {
-                player_id,
-                card_ids,
-                after_select,
-                ..
-            } if player_id == &self.player_id => {
-                let valid_cards: Vec<&CardDisplay> = self
-                    .cards
-                    .iter()
-                    .filter(|c| card_ids.contains(&c.card.get_id()))
-                    .collect();
-                let mut selected_id = None;
-                for card in valid_cards {
-                    if card.rect.contains(mouse_position.into()) && is_mouse_button_released(MouseButton::Left) {
-                        selected_id = Some(card.card.get_id().clone());
-                    }
-                }
-
-                if let Some(id) = selected_id {
-                    let card = self.cards.iter_mut().find(|c| c.card.get_id() == &id).unwrap();
-                    card.is_selected = !card.is_selected;
-
-                    if card.is_selected {
-                        match after_select {
-                            Some(Action::GameAction(GameAction::PlayCardOnSelectedTargets { card_id })) => {
-                                self.client
-                                    .send(Message::PlayCard {
-                                        player_id: self.player_id,
-                                        card_id: card_id.clone(),
-                                        game_id: self.game_id,
-                                        targets: Target::Card(id.clone()),
-                                    })
-                                    .unwrap();
-                            }
-                            Some(Action::GameAction(GameAction::PlaySelectedCard)) => {
-                                self.client
-                                    .send(Message::PrepareCardForPlay {
-                                        player_id: self.player_id,
-                                        card_id: card.card.get_id().clone(),
-                                        game_id: self.game_id,
-                                    })
-                                    .unwrap();
-                            }
-                            Some(Action::GameAction(GameAction::AttackSelectedTarget { attacker_id })) => {
-                                self.client
-                                    .send(Message::AttackTarget {
-                                        player_id: self.player_id,
-                                        attacker_id: attacker_id.clone(),
-                                        target_id: card.card.get_id().clone(),
-                                        game_id: self.game_id,
-                                    })
-                                    .unwrap();
-                            }
-                            _ => {}
-                        }
-                    }
-                }
-            }
-            _ => {}
+            _ => {} //
+                    // PlayerStatus::SelectingCard {
+                    //     player_id, card_ids, ..
+                    // } if player_id == &self.player_id => {
+                    //     let valid_cards: Vec<&CardDisplay> = self
+                    //         .card_displays
+                    //         .iter()
+                    //         .filter(|c| card_ids.contains(&c.card.get_id()))
+                    //         .collect();
+                    //     let mut selected_id = None;
+                    //     for card in valid_cards {
+                    //         if card.rect.contains(mouse_position.into()) && is_mouse_button_released(MouseButton::Left) {
+                    //             selected_id = Some(card.card.get_id().clone());
+                    //         }
+                    //     }
+                    //
+                    //     if let Some(id) = selected_id {
+                    //         let card = self.card_displays.iter_mut().find(|c| c.card.get_id() == &id).unwrap();
+                    //         card.is_selected = !card.is_selected;
+                    //
+                    //         if card.is_selected {
+                    //             println!("Selected card: {}", card.card.get_name());
+                    //             self.client
+                    //                 .send(Message::SelectCard {
+                    //                     player_id: self.player_id.clone(),
+                    //                     game_id: self.game_id.clone(),
+                    //                     card_id: id.clone(),
+                    //                 })
+                    //                 .unwrap();
+                    //             // if let Some(Action::GameAction(action)) = after_select {
+                    //             //     match action {
+                    //             //         GameAction::PlayCardOnSelectedTargets { card_id } => {
+                    //             //             self.client
+                    //             //                 .send(Message::PlayCard {
+                    //             //                     player_id: self.player_id,
+                    //             //                     card_id: card_id.clone(),
+                    //             //                     game_id: self.game_id,
+                    //             //                     targets: Target::Card(id.clone()),
+                    //             //                 })
+                    //             //                 .unwrap();
+                    //             //         }
+                    //             //         GameAction::PlaySelectedCard => {
+                    //             //             self.client
+                    //             //                 .send(Message::PrepareCardForPlay {
+                    //             //                     player_id: self.player_id,
+                    //             //                     card_id: card.card.get_id().clone(),
+                    //             //                     game_id: self.game_id,
+                    //             //                 })
+                    //             //                 .unwrap();
+                    //             //         }
+                    //             //         GameAction::AttackSelectedTarget { attacker_id } => {
+                    //             //             self.client
+                    //             //                 .send(Message::AttackTarget {
+                    //             //                     player_id: self.player_id,
+                    //             //                     attacker_id: attacker_id.clone(),
+                    //             //                     target_id: card.card.get_id().clone(),
+                    //             //                     game_id: self.game_id,
+                    //             //                 })
+                    //             //                 .unwrap();
+                    //             //         }
+                    //             //         GameAction::DealDamageToSelectedTarget { from, damage } => {
+                    //             //             self.client
+                    //             //                 .send(Message::DealDamageToTarget {
+                    //             //                     player_id: self.player_id,
+                    //             //                     from: from.clone(),
+                    //             //                     target_id: card.card.get_id().clone(),
+                    //             //                     game_id: self.game_id,
+                    //             //                     amount: *damage,
+                    //             //                 })
+                    //             //                 .unwrap();
+                    //             //         }
+                    //             //         GameAction::SelectSquare { .. } => unreachable!(),
+                    //             //         GameAction::SelectAction { .. } => unreachable!(),
+                    //             //         GameAction::DrawCard { .. } => unreachable!(),
+                    //             //         GameAction::MoveCardToSelectedSquare { .. } => unreachable!(),
+                    //             //         GameAction::SummonMinionToSelectedSquare { .. } => unreachable!(),
+                    //             //         GameAction::SummonMinion { .. } => unreachable!(),
+                    //             //         GameAction::MoveSelectedCard { to, after } => {}
+                    //             //         GameAction::StrikeSelectedTarget { from } => {}
+                    //             //     }
+                    //             // }
+                    //         }
+                    //     }
+                    // }
+                    // _ => {}
         }
     }
 
-    fn handle_cell_click(&mut self, mouse_position: Vec2) {
-        if let Phase::SelectingSquare {
-            square,
+    fn handle_square_click(&mut self, mouse_position: Vec2) {
+        if let PlayerStatus::SelectingSquare {
+            valid_squares: square,
             player_id,
-            after_select,
-        } = &self.state.phase
+            ..
+        } = &self.player_status
         {
             if player_id != &self.player_id {
                 return;
@@ -578,39 +617,46 @@ impl Game {
                 if cell.rect.contains(mouse_position.into()) {
                     let square = self.cells[idx].id;
                     if is_mouse_button_released(MouseButton::Left) {
-                        match after_select {
-                            Some(Action::GameAction(GameAction::PlayCardOnSelectedTargets { card_id })) => {
-                                self.client
-                                    .send(Message::PlayCard {
-                                        player_id: self.player_id,
-                                        card_id: card_id.clone(),
-                                        targets: Target::Square(square),
-                                        game_id: self.game_id,
-                                    })
-                                    .unwrap();
-                            }
-                            Some(Action::GameAction(GameAction::MoveCardToSelectedSquare { card_id })) => {
-                                self.client
-                                    .send(Message::MoveCard {
-                                        player_id: self.player_id,
-                                        card_id: card_id.clone(),
-                                        square,
-                                        game_id: self.game_id,
-                                    })
-                                    .unwrap();
-                            }
-                            Some(Action::GameAction(GameAction::SummonMinionToSelectedSquare { card_id })) => {
-                                self.client
-                                    .send(Message::SummonMinion {
-                                        player_id: self.player_id,
-                                        card_id: card_id.clone(),
-                                        square,
-                                        game_id: self.game_id,
-                                    })
-                                    .unwrap();
-                            }
-                            _ => {}
-                        }
+                        self.client
+                            .send(ClientMessage::PickSquare {
+                                player_id: self.player_id.clone(),
+                                game_id: self.game_id.clone(),
+                                square,
+                            })
+                            .unwrap();
+                        // match after_select {
+                        //     Some(Action::GameAction(GameAction::PlayCardOnSelectedTargets { card_id })) => {
+                        //         self.client
+                        //             .send(Message::PlayCard {
+                        //                 player_id: self.player_id,
+                        //                 card_id: card_id.clone(),
+                        //                 targets: Target::Square(square),
+                        //                 game_id: self.game_id,
+                        //             })
+                        //             .unwrap();
+                        //     }
+                        //     Some(Action::GameAction(GameAction::MoveCardToSelectedSquare { card_id })) => {
+                        //         self.client
+                        //             .send(Message::MoveCard {
+                        //                 player_id: self.player_id,
+                        //                 card_id: card_id.clone(),
+                        //                 square,
+                        //                 game_id: self.game_id,
+                        //             })
+                        //             .unwrap();
+                        //     }
+                        //     Some(Action::GameAction(GameAction::SummonMinionToSelectedSquare { card_id })) => {
+                        //         self.client
+                        //             .send(Message::SummonMinion {
+                        //                 player_id: self.player_id,
+                        //                 card_id: card_id.clone(),
+                        //                 square,
+                        //                 game_id: self.game_id,
+                        //             })
+                        //             .unwrap();
+                        //     }
+                        //     _ => {}
+                        // }
                         played_card = true;
                     }
                 }
@@ -623,7 +669,7 @@ impl Game {
     }
 
     fn clear_selected_cards(&mut self) {
-        for card_display in &mut self.cards {
+        for card_display in &mut self.card_displays {
             card_display.is_selected = false;
         }
     }
@@ -649,7 +695,12 @@ impl Game {
                 WHITE,
             );
 
-            if let Phase::SelectingSquare { square, player_id, .. } = &self.state.phase {
+            if let PlayerStatus::SelectingSquare {
+                valid_squares: square,
+                player_id,
+                ..
+            } = &self.player_status
+            {
                 if &self.player_id != player_id {
                     continue;
                 }
@@ -669,19 +720,18 @@ impl Game {
     }
 
     async fn render_realm(&self) {
-        for card_display in &self.cards {
-            if !matches!(card_display.card.get_zone(), CardZone::Realm(_)) {
+        for card_display in &self.card_displays {
+            if !matches!(card_display.zone, Zone::Realm(_)) {
                 continue;
             }
 
-            let img = TextureCache::get_card_texture(&card_display.card).await;
             let mut rotation = 0.0;
-            if card_display.card.is_tapped() {
+            if card_display.tapped {
                 rotation = std::f32::consts::FRAC_PI_2;
             }
 
             draw_texture_ex(
-                &img,
+                &card_display.image,
                 card_display.rect.x,
                 card_display.rect.y,
                 WHITE,
@@ -695,8 +745,8 @@ impl Game {
     }
 
     async fn render_player_hand(&self) {
-        for card_display in &self.cards {
-            if card_display.card.get_zone() != &CardZone::Hand {
+        for card_display in &self.card_displays {
+            if card_display.zone != Zone::Hand {
                 continue;
             }
 
@@ -705,9 +755,8 @@ impl Game {
                 scale = 1.2;
             }
 
-            let img = TextureCache::get_card_texture(&card_display.card).await;
             draw_texture_ex(
-                &img,
+                &card_display.image,
                 card_display.rect.x,
                 card_display.rect.y,
                 WHITE,
@@ -752,27 +801,28 @@ impl Game {
     }
 
     fn draw_card(&self, card_type: CardType) -> anyhow::Result<()> {
-        match self.state.phase {
-            Phase::WaitingForCardDraw {
-                player_id, ref types, ..
-            } if player_id == self.player_id && types.contains(&card_type) => {
-                let message = networking::Message::DrawCard {
-                    card_type,
-                    player_id: self.player_id,
-                    game_id: self.game_id,
-                };
-                self.client.send(message)
-            }
-            _ => Ok(()),
-        }
+        Ok(())
+        // match self.state.player_status {
+        //     PlayerStatus::WaitingForCardDraw {
+        //         player_id, ref types, ..
+        //     } if player_id == self.player_id && types.contains(&card_type) => {
+        //         let message = networking::Message::DrawCard(DrawCard {
+        //             card_type,
+        //             player_id: self.player_id,
+        //             game_id: self.game_id,
+        //         });
+        //         self.client.send(message)
+        //     }
+        //     _ => Ok(()),
+        // }
     }
 
-    async fn update_cards_in_realm(&mut self, cards: &[Card]) -> anyhow::Result<()> {
-        for card in cards {
-            if let CardZone::Realm(square) = card.get_zone() {
-                let cell_rect = self.cells.iter().find(|c| c.id == *square).unwrap().rect;
+    async fn update_cards_in_realm(&mut self) -> anyhow::Result<()> {
+        for card in &self.cards {
+            if let Zone::Realm(square) = card.zone {
+                let cell_rect = self.cells.iter().find(|c| c.id == square).unwrap().rect;
                 let mut dimensions = spell_dimensions();
-                if card.is_site() {
+                if card.card_type == CardType::Site {
                     dimensions = site_dimensions();
                 }
 
@@ -783,12 +833,18 @@ impl Game {
                     dimensions.y,
                 );
 
-                self.cards.push(CardDisplay {
-                    card: card.clone(),
+                self.card_displays.push(CardDisplay {
+                    id: card.id,
+                    name: card.name.clone(),
+                    owner_id: card.owner_id,
+                    zone: card.zone.clone(),
+                    tapped: card.tapped,
+                    image: TextureCache::get_card_texture(&card.name, card.card_type == CardType::Site, &card.edition)
+                        .await,
                     rect,
+                    rotation: 0.0,
                     is_hovered: false,
                     is_selected: false,
-                    rotation: 0.0,
                 });
             }
         }
@@ -796,18 +852,20 @@ impl Game {
         Ok(())
     }
 
-    fn update_cards_in_hand(&mut self, cards: &[Card]) -> anyhow::Result<()> {
-        let spells: Vec<&Card> = cards
+    async fn update_cards_in_hand(&mut self) -> anyhow::Result<()> {
+        let spells: Vec<&CardInfo> = self
+            .cards
             .iter()
-            .filter(|c| c.get_zone() == &CardZone::Hand)
-            .filter(|c| c.get_owner_id() == &self.player_id)
+            .filter(|c| c.zone == Zone::Hand)
+            .filter(|c| c.owner_id == self.player_id)
             .filter(|c| c.is_spell())
             .collect();
 
-        let sites: Vec<&Card> = cards
+        let sites: Vec<&CardInfo> = self
+            .cards
             .iter()
-            .filter(|c| c.get_zone() == &CardZone::Hand)
-            .filter(|c| c.get_owner_id() == &self.player_id)
+            .filter(|c| c.zone == Zone::Hand)
+            .filter(|c| c.owner_id == self.player_id)
             .filter(|c| c.is_site())
             .collect();
 
@@ -831,18 +889,23 @@ impl Game {
 
             let rect = Rect::new(x, y, dimensions.x, dimensions.y);
 
-            let current_card = self.cards.iter().find(|c| c.card.get_id() == card.get_id());
+            let current_card = self.cards.iter().find(|c| c.id == card.id);
             let mut is_hovered = false;
-            if let Some(c) = current_card {
-                is_hovered = c.is_hovered;
-            }
+            // if let Some(c) = current_card {
+            //     is_hovered = c.hovered;
+            // }
 
             displays.push(CardDisplay {
-                card: (*card).clone(),
                 rect,
                 is_hovered,
                 is_selected: false,
                 rotation: rad,
+                id: card.id,
+                name: card.name.clone(),
+                owner_id: card.owner_id,
+                zone: card.zone.clone(),
+                tapped: card.tapped,
+                image: TextureCache::get_card_texture(&card.name, card.is_site(), &card.edition).await,
             });
         }
 
@@ -854,22 +917,27 @@ impl Game {
 
             let rect = Rect::new(x, y, dimensions.x, dimensions.y);
 
-            let current_card = self.cards.iter().find(|c| c.card.get_id() == card.get_id());
+            let current_card = self.cards.iter().find(|c| c.id == card.id);
             let mut is_hovered = false;
-            if let Some(c) = current_card {
-                is_hovered = c.is_hovered;
-            }
+            // if let Some(c) = current_card {
+            //     is_hovered = c.hovered;
+            // }
 
             displays.push(CardDisplay {
-                card: (*card).clone(),
                 rect,
                 is_hovered,
                 is_selected: false,
                 rotation: 0.0,
+                id: card.id,
+                name: card.name.clone(),
+                owner_id: card.owner_id,
+                zone: card.zone.clone(),
+                tapped: card.tapped,
+                image: TextureCache::get_card_texture(&card.name, card.is_site(), &card.edition).await,
             });
         }
 
-        self.cards = displays;
+        self.card_displays = displays;
         Ok(())
     }
 }

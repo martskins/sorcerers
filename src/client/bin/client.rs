@@ -2,6 +2,7 @@ use crate::scene::Scene;
 use crate::{config::SCREEN_RECT, scene::menu::Menu};
 use macroquad::prelude::*;
 use sorcerers::networking;
+use sorcerers::networking::message::Message;
 use std::sync::{Arc, Mutex, RwLock};
 use tokio::runtime::Runtime;
 
@@ -29,11 +30,11 @@ impl Client {
             let rt = Runtime::new().unwrap();
             rt.block_on(async {
                 loop {
-                    let msg = receiver.recv().unwrap();
-                    match msg {
-                        _ => {
-                            scene.lock().unwrap().process_message(msg.clone()).await.unwrap();
+                    match receiver.recv().unwrap() {
+                        Message::ServerMessage(msg) => {
+                            scene.lock().unwrap().process_message(&msg).await.unwrap();
                         }
+                        _ => {}
                     }
                 }
             });

@@ -1,79 +1,32 @@
-pub mod precon_beta;
+pub mod precon;
 
-use crate::card::site::Site;
-use crate::card::spell::{Spell, ALL_SPELLS};
-use crate::card::CardBase;
-use crate::card::{avatar::Avatar, CardZone};
-use rand::prelude::*;
-use serde::{Deserialize, Serialize};
+use crate::{card::Zone, effect::Effect};
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct Deck {
-    pub id: uuid::Uuid,
-    pub name: String,
-    pub sites: Vec<Site>,
-    pub spells: Vec<Spell>,
-    pub avatar: Avatar,
+    pub sites: Vec<uuid::Uuid>,
+    pub spells: Vec<uuid::Uuid>,
+    pub avatar: uuid::Uuid,
 }
 
 impl Deck {
-    pub fn empty(player_id: uuid::Uuid) -> Self {
-        Deck {
-            id: uuid::Uuid::new_v4(),
-            name: "Empty Deck".to_string(),
-            sites: vec![],
-            spells: vec![],
-            avatar: Avatar::Sorcerer(CardBase {
-                id: uuid::Uuid::new_v4(),
-                owner_id: player_id,
-                zone: CardZone::Realm(3),
-                tapped: false,
-                edition: crate::card::Edition::Beta,
-            }),
-        }
+    pub fn new(sites: Vec<uuid::Uuid>, spells: Vec<uuid::Uuid>, avatar: uuid::Uuid) -> Self {
+        Deck { sites, spells, avatar }
     }
 
-    pub fn test_deck(player_id: uuid::Uuid) -> Self {
-        let mut spells = vec![];
-        for _i in 0..10 {
-            for spell in ALL_SPELLS {
-                spells.push(Spell::from_name(spell, player_id).unwrap());
-            }
-        }
-
-        let mut sites = vec![];
-        for _i in 0..10 {
-            for site in ["Arid Desert"] {
-                sites.push(Site::from_name(site, player_id).unwrap());
-            }
-        }
-
-        Deck {
-            id: uuid::Uuid::new_v4(),
-            name: "Test Deck".to_string(),
-            sites,
-            spells,
-            avatar: Avatar::Sorcerer(CardBase {
-                id: uuid::Uuid::new_v4(),
-                owner_id: player_id,
-                zone: CardZone::Realm(3),
-                tapped: false,
-                edition: crate::card::Edition::Beta,
-            }),
-        }
+    pub fn draw_site(&mut self) -> Vec<Effect> {
+        let card_id = self.sites.pop();
+        vec![Effect::MoveCard {
+            card_id: card_id.unwrap(),
+            to: Zone::Hand,
+        }]
     }
 
-    pub fn draw_site(&mut self) -> Option<Site> {
-        self.sites.pop()
-    }
-
-    pub fn draw_spell(&mut self) -> Option<Spell> {
-        self.spells.pop()
-    }
-
-    pub fn shuffle(&mut self) {
-        let mut rng = rand::rng();
-        self.sites.shuffle(&mut rng);
-        self.spells.shuffle(&mut rng);
+    pub fn draw_spell(&mut self) -> Vec<Effect> {
+        let card_id = self.spells.pop();
+        vec![Effect::MoveCard {
+            card_id: card_id.unwrap(),
+            to: Zone::Hand,
+        }]
     }
 }

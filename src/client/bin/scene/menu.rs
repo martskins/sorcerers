@@ -1,7 +1,10 @@
 use macroquad::{math::Vec2, ui::root_ui};
-use sorcerers::networking::{self, Message};
+use sorcerers::networking::{
+    self,
+    message::{ClientMessage, Message, ServerMessage},
+};
 
-use crate::scene::Scene;
+use crate::scene::{game::Game, Scene};
 
 #[derive(Debug)]
 pub struct Menu {
@@ -22,19 +25,16 @@ impl Menu {
         Ok(())
     }
 
-    pub async fn process_message(&mut self, _msg: networking::Message) -> anyhow::Result<()> {
+    pub async fn process_message(&mut self, _msg: &ServerMessage) -> anyhow::Result<()> {
         Ok(())
     }
 
     pub async fn process_input(&mut self) -> Option<Scene> {
         if root_ui().button(Vec2::new(100.0, 100.0), "Connect!") {
-            self.client.send(Message::Connect).unwrap();
+            self.client.send(ClientMessage::Connect).unwrap();
             let msg = self.client.recv().unwrap();
-            if let Message::ConnectResponse { player_id } = msg {
-                return Some(Scene::Game(crate::scene::game::Game::new(
-                    player_id,
-                    self.client.clone(),
-                )));
+            if let Message::ServerMessage(ServerMessage::ConnectResponse { player_id }) = msg {
+                return Some(Scene::Game(Game::new(player_id, self.client.clone())));
             }
         }
 

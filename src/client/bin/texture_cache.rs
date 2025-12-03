@@ -1,5 +1,5 @@
 use macroquad::texture::{Image, Texture2D};
-use sorcerers::card::Card;
+use sorcerers::card::Edition;
 use std::{
     collections::HashMap,
     path::Path,
@@ -23,10 +23,10 @@ impl TextureCache {
         TEXTURE_CACHE.get_or_init(|| RwLock::new(TextureCache::new()));
     }
 
-    pub async fn get_card_texture(card: &Card) -> Texture2D {
+    pub async fn get_card_texture(name: &str, is_site: bool, edition: &Edition) -> Texture2D {
         tokio::runtime::Runtime::new()
             .unwrap()
-            .block_on(async { TextureCache::texture_for_card(card).await })
+            .block_on(async { TextureCache::texture_for_card(name, is_site, edition).await })
     }
 
     pub async fn get_texture(path: &str, name: &str, rotate: bool) -> Texture2D {
@@ -44,46 +44,44 @@ impl TextureCache {
         texture
     }
 
-    pub async fn image_for_card(card: &Card) -> Image {
-        TextureCache::texture_for_card(card).await.get_texture_data()
+    pub async fn image_for_card(name: &str, is_site: bool, edition: &Edition) -> Image {
+        TextureCache::texture_for_card(name, is_site, edition)
+            .await
+            .get_texture_data()
     }
 
-    async fn texture_for_card(card: &Card) -> Texture2D {
-        if let Some(tex) = TEXTURE_CACHE.get().unwrap().read().unwrap().inner.get(card.get_name()) {
+    async fn texture_for_card(name: &str, is_site: bool, edition: &Edition) -> Texture2D {
+        if let Some(tex) = TEXTURE_CACHE.get().unwrap().read().unwrap().inner.get(name) {
             return tex.clone();
         }
 
-        let path = format!("assets/images/cache/{}.png", card.get_name());
+        let path = format!("assets/images/cache/{}.png", name);
         if Path::new(&path).exists() {
-            return TextureCache::get_card_image_from_disk(card, &path).await.unwrap();
+            return TextureCache::get_card_image_from_disk(name, is_site, &path)
+                .await
+                .unwrap();
         }
 
-        TextureCache::download_card_image(card).await.unwrap()
+        TextureCache::download_card_image(name, is_site, edition).await.unwrap()
     }
 
-    async fn get_card_image_from_disk(card: &Card, path: &str) -> anyhow::Result<Texture2D> {
+    async fn get_card_image_from_disk(name: &str, is_site: bool, path: &str) -> anyhow::Result<Texture2D> {
         let texture = macroquad::texture::load_texture(path).await?;
         let mut cache = TEXTURE_CACHE.get().unwrap().write().unwrap();
-        cache.inner.insert(card.get_name().to_string(), texture.clone());
+        cache.inner.insert(name.to_string(), texture.clone());
         Ok(texture)
     }
 
-    async fn download_card_image(card: &Card) -> anyhow::Result<Texture2D> {
-        let edition = card.get_edition();
+    async fn download_card_image(name: &str, is_site: bool, edition: &Edition) -> anyhow::Result<Texture2D> {
         let set = edition.url_name();
-        let name = card
-            .get_name()
-            .to_string()
-            .to_lowercase()
-            .replace(" ", "_")
-            .replace("-", "_");
+        let name = name.to_string().to_lowercase().replace(" ", "_").replace("-", "_");
         let path = format!("https://d27a44hjr9gen3.cloudfront.net/cards/{}-{}-b-s.png", set, name);
 
         let response = reqwest::get(&path).await?;
         if response.status() != reqwest::StatusCode::OK {
             return Err(anyhow::anyhow!(
                 "Failed to download image for {} on path {}: HTTP {}",
-                card.get_name(),
+                name,
                 path,
                 response.status()
             ));
@@ -91,7 +89,7 @@ impl TextureCache {
 
         let mut bytes = response.bytes().await.unwrap();
         let mut texture = macroquad::texture::Texture2D::from_file_with_format(&bytes, None);
-        if card.is_site() {
+        if is_site {
             TextureCache::rotate_texture_clockwise(&mut texture);
             let rotated_image = texture.get_texture_data();
             let dyn_img = image::DynamicImage::ImageRgba8(
@@ -109,9 +107,9 @@ impl TextureCache {
         }
 
         let mut cache = TEXTURE_CACHE.get().unwrap().write().unwrap();
-        cache.inner.insert(card.get_name().to_string(), texture.clone());
+        cache.inner.insert(name.to_string(), texture.clone());
 
-        let save_path = format!("assets/images/cache/{}.png", card.get_name());
+        let save_path = format!("assets/images/cache/{}.png", name);
         if let Err(e) = std::fs::write(&save_path, &bytes) {
             println!("Error saving image to disk: {}", e);
         }
