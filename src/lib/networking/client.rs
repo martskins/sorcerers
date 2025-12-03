@@ -29,8 +29,7 @@ impl Client {
 
     pub fn recv(&self) -> anyhow::Result<Message> {
         let mut res = [0; 32000];
-        let n = self.socket.recv(&mut res).unwrap();
-        println!("Received {} bytes", n);
+        let _ = self.socket.recv(&mut res).unwrap();
         let response: Message = rmp_serde::from_slice(&res).unwrap();
         Ok(response)
     }

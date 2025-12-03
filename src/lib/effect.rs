@@ -15,10 +15,6 @@ pub enum Effect {
         player_id: uuid::Uuid,
         thresholds: Thresholds,
     },
-    MoveCardToSquare {
-        card_id: uuid::Uuid,
-        square: u8,
-    },
     ChangePhase {
         new_phase: Phase,
     },
@@ -39,7 +35,7 @@ pub enum Effect {
     },
     MoveCard {
         card_id: uuid::Uuid,
-        to_zone: CardZone,
+        dest: CardZone,
     },
     DrawCard {
         player_id: uuid::Uuid,
@@ -63,12 +59,6 @@ impl Effect {
                 entry.air_threshold += thresholds.air;
                 entry.water_threshold += thresholds.water;
                 entry.earth_threshold += thresholds.earth;
-            }
-            Effect::MoveCardToSquare { card_id, square } => {
-                let card = state.cards.iter_mut().find(|c| c.get_id() == card_id);
-                if let Some(card) = card {
-                    card.set_zone(CardZone::Realm(*square));
-                }
             }
             Effect::ChangePhase { new_phase } => {
                 state.phase = new_phase.clone();
@@ -110,11 +100,15 @@ impl Effect {
                 let entry = state.resources.entry(*player_id).or_insert(Resources::new());
                 entry.mana = entry.mana.saturating_sub(*amount);
             }
-            Effect::MoveCard { card_id, to_zone } => {
+            Effect::MoveCard { card_id, dest } => {
+                let immutable_state = state.clone();
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id);
-                if let Some(card) = card {
-                    card.set_zone(to_zone.clone());
-                }
+                let card = card.unwrap();
+                let enter_effects = match dest {
+                    CardZone::Realm(square) => card.on_enter_square(*square, &immutable_state),
+                    _ => vec![],
+                };
+                state.effects.extend(enter_effects);
             }
             Effect::DrawCard { player_id, card_type } => match card_type {
                 Some(ct) => state.draw_card_for_player(player_id, ct.clone()).await.unwrap(),
@@ -133,7 +127,7 @@ impl Effect {
                 state.effects.extend(effects);
                 state.effects.push_back(Effect::MoveCard {
                     card_id: *card_id,
-                    to_zone: CardZone::Cemetery,
+                    dest: CardZone::Cemetery,
                 });
             }
         }

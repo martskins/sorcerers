@@ -185,6 +185,44 @@ impl std::fmt::Display for Thresholds {
     }
 }
 
+pub trait Lifecycle {
+    fn genesis(&self, state: &State) -> Vec<Effect> {
+        vec![]
+    }
+
+    fn on_cast(&self, state: &State, target: Target) -> Vec<Effect> {
+        vec![]
+    }
+
+    fn on_summon(&self, state: &State) -> Vec<Effect> {
+        vec![]
+    }
+
+    fn on_turn_start(&self, state: &State) -> Vec<Effect> {
+        vec![]
+    }
+
+    fn deathrite(&self, state: &State) -> Vec<Effect> {
+        vec![]
+    }
+
+    fn on_enter_square(&mut self, square: u8, state: &State) -> Vec<Effect> {
+        vec![]
+    }
+}
+
+pub trait Combat {
+    fn on_damage_taken(&self, from: &uuid::Uuid, amount: u8, state: &State) -> Vec<Effect> {
+        vec![]
+    }
+}
+
+pub trait Interaction {
+    fn on_select_in_realm_actions(&self, state: &State) -> Vec<Action> {
+        vec![]
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Card {
     Site(Site),
@@ -412,42 +450,12 @@ impl Card {
     pub fn get_edition(&self) -> Edition {
         self.get_base().edition.clone()
     }
-}
 
-pub trait Lifecycle {
-    fn genesis(&self, state: &State) -> Vec<Effect> {
-        vec![]
-    }
-
-    fn on_cast(&self, state: &State, target: Target) -> Vec<Effect> {
-        vec![]
-    }
-
-    fn on_summon(&self, state: &State) -> Vec<Effect> {
-        vec![]
-    }
-
-    fn on_turn_start(&self, state: &State) -> Vec<Effect> {
-        vec![]
-    }
-
-    fn deathrite(&self, state: &State) -> Vec<Effect> {
-        vec![]
-    }
-
-    fn on_enter_square(&mut self, square: u8, state: &State) -> Vec<Effect> {
-        vec![]
-    }
-}
-
-pub trait Combat {
-    fn on_damage_taken(&self, from: &uuid::Uuid, amount: u8, state: &State) -> Vec<Effect> {
-        vec![]
-    }
-}
-
-pub trait Interaction {
-    fn on_select_in_realm_actions(&self, state: &State) -> Vec<Action> {
-        vec![]
+    pub fn on_enter_square(&mut self, square: u8, state: &State) -> Vec<Effect> {
+        match self {
+            Card::Site(card) => vec![],
+            Card::Spell(card) => card.on_enter_square(square, state),
+            Card::Avatar(card) => vec![],
+        }
     }
 }

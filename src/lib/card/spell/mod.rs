@@ -314,7 +314,7 @@ impl Spell {
                 Target::Square(square) => {
                     effects.push(Effect::MoveCard {
                         card_id: self.get_id().clone(),
-                        to_zone: CardZone::Realm(square),
+                        dest: CardZone::Realm(square),
                     });
                     effects.extend(self.genesis(state));
                 }
@@ -358,7 +358,7 @@ impl Spell {
         if !self.is_permanent() {
             return vec![Effect::MoveCard {
                 card_id: self.get_id().clone(),
-                to_zone: CardZone::Cemetery,
+                dest: CardZone::Cemetery,
             }];
         }
 

@@ -1,6 +1,5 @@
 use clap::Parser;
 use convert_case::{Case, Casing};
-use sorcerers::card::Thresholds;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::io::Read;

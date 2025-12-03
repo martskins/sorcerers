@@ -108,7 +108,6 @@ impl State {
             let player1 = players[0];
             let player2 = players[1];
             let deck_one = precon_beta::fire(player1);
-            println!("{:?}", deck_one.avatar.get_edition());
             let deck_two = precon_beta::fire(player2);
             decks.insert(player1, deck_one);
             decks.insert(player2, deck_two);
@@ -388,9 +387,9 @@ impl Game {
 
     async fn summon_minion(&mut self, card_id: &uuid::Uuid, square: u8, state: &State) -> anyhow::Result<()> {
         let mut effects = vec![
-            Effect::MoveCardToSquare {
+            Effect::MoveCard {
                 card_id: card_id.clone(),
-                square,
+                dest: CardZone::Realm(square),
             },
             Effect::ChangePhase {
                 new_phase: Phase::WaitingForPlay {
@@ -426,9 +425,9 @@ impl Game {
     }
 
     async fn move_card(&mut self, card_id: &uuid::Uuid, square: u8) -> anyhow::Result<()> {
-        self.state.effects.push_back(Effect::MoveCardToSquare {
+        self.state.effects.push_back(Effect::MoveCard {
             card_id: card_id.clone(),
-            square,
+            dest: CardZone::Realm(square),
         });
         self.state.effects.push_back(Effect::ChangePhase {
             new_phase: Phase::WaitingForPlay {
@@ -472,9 +471,9 @@ impl Game {
             Effect::TapCard {
                 card_id: attacker_id.clone(),
             },
-            Effect::MoveCardToSquare {
+            Effect::MoveCard {
                 card_id: attacker_id.clone(),
-                square: target_square,
+                dest: CardZone::Realm(target_square),
             },
         ];
 

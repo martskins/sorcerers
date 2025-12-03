@@ -92,9 +92,9 @@ impl Site {
     pub fn on_cast(&self, state: &State, target: Target) -> Vec<Effect> {
         let mut effects = Vec::new();
         match target {
-            Target::Square(square) => effects.push(Effect::MoveCardToSquare {
+            Target::Square(square) => effects.push(Effect::MoveCard {
                 card_id: self.get_id().clone(),
-                square,
+                dest: CardZone::Realm(square),
             }),
             _ => {}
         }

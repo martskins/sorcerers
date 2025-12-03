@@ -140,6 +140,12 @@ macro_rules! spells {
                     $(Spell::$variant(c) => c.on_select_in_realm_actions(state),)+
                 }
             }
+
+            pub fn on_enter_square(&mut self, square: u8, state: &State) -> Vec<Effect> {
+                match self {
+                    $(Spell::$variant(c) => c.on_enter_square(square, state),)+
+                }
+            }
         }
     };
 }

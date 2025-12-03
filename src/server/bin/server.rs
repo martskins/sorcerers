@@ -113,6 +113,17 @@ impl Server {
             player1.clone(),
             CardZone::Realm(3),
         ))));
+        game.state.cards.push(Card::Site(Site::AridDesert(AridDesert::new(
+            player1.clone(),
+            CardZone::Realm(2),
+        ))));
+        game.state.cards.push(Card::Site(Site::AridDesert(AridDesert::new(
+            player1.clone(),
+            CardZone::Realm(1),
+        ))));
+        let mut adept_illusionist = Spell::from_name("Wayfaring Pilgrim", player1.clone()).unwrap();
+        adept_illusionist.set_zone(CardZone::Realm(2));
+        game.state.cards.push(Card::Spell(adept_illusionist));
         game.state.resources.get_mut(player1).unwrap().mana = 2;
         game.state.resources.get_mut(player1).unwrap().fire_threshold = 2;
         game.state.resources.get_mut(player1).unwrap().water_threshold = 1;
