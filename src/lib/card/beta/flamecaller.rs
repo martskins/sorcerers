@@ -1,11 +1,10 @@
 use crate::{
     card::{AvatarBase, AvatarStatus, Card, CardBase, CardType, Edition, MessageHandler, Zone},
-    effect::{CardStatus, Effect},
+    effect::Effect,
     game::PlayerId,
     networking::message::ClientMessage,
     state::State,
 };
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
 enum Status {
@@ -17,6 +16,7 @@ enum Status {
 pub struct Flamecaller {
     pub avatar_base: AvatarBase,
     pub targeted_minion: uuid::Uuid,
+    status: Status,
 }
 
 impl Flamecaller {
@@ -25,30 +25,30 @@ impl Flamecaller {
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
             avatar_base: AvatarBase {
-                card_base: CardBase::<Status> {
+                card_base: CardBase {
                     id: uuid::Uuid::new_v4(),
                     owner_id,
                     tapped: false,
                     zone: Zone::Spellbook,
                     actions: Vec::new(),
-                    status: Status::None,
                 },
             },
+            status: Status::None,
             targeted_minion: uuid::Uuid::nil(),
         }
     }
 }
 
-impl Card<Status> for Flamecaller {
+impl Card for Flamecaller {
     fn get_name(&self) -> &str {
         Self::NAME
     }
 
-    fn get_base_mut(&mut self) -> &mut CardBase<Status> {
+    fn get_base_mut(&mut self) -> &mut CardBase {
         &mut self.avatar_base.card_base
     }
 
-    fn get_base(&self) -> &CardBase<Status> {
+    fn get_base(&self) -> &CardBase {
         &self.avatar_base.card_base
     }
 
@@ -75,10 +75,14 @@ impl Card<Status> for Flamecaller {
     fn genesis(&mut self, state: &State) -> Vec<Effect> {
         vec![]
     }
+
+    fn set_status(&mut self, status: AvatarStatus) {
+        self.status = Status::AvatarStatus(status);
+    }
 }
 
 impl MessageHandler for Flamecaller {
-    fn handle_message(&mut self, message: &ClientMessage) -> Vec<Effect> {
-        self.avatar_base.handle_message(message)
+    fn handle_message(&mut self, message: &ClientMessage, state: &State) -> Vec<Effect> {
+        self.avatar_base.handle_message(message, state)
     }
 }

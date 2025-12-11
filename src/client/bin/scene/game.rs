@@ -257,7 +257,11 @@ impl Game {
         }
 
         match &self.player_status {
-            PlayerStatus::SelectingAction { player_id, actions } if player_id == &self.player_id => {
+            PlayerStatus::SelectingAction {
+                player_id,
+                actions,
+                source_id,
+            } if player_id == &self.player_id => {
                 if self.action_window_position.is_none() {
                     self.action_window_position = Some(mouse_position().into());
                 }
@@ -278,6 +282,7 @@ impl Game {
                                         action_idx: idx,
                                         player_id: self.player_id,
                                         game_id: self.game_id,
+                                        source_id: source_id.clone(),
                                     })
                                     .unwrap();
                             }

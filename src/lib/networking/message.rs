@@ -67,6 +67,7 @@ pub enum ClientMessage {
         game_id: uuid::Uuid,
         player_id: PlayerId,
         action_idx: usize,
+        source_id: Option<uuid::Uuid>,
     },
     EndTurn {
         game_id: uuid::Uuid,

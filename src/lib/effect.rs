@@ -1,5 +1,5 @@
 use crate::{
-    card::{CardType, Zone},
+    card::{AvatarStatus, CardType, Zone},
     game::PlayerStatus,
     state::State,
 };
@@ -9,8 +9,17 @@ pub trait CardStatus: Debug + Send + Sync {}
 
 #[derive(Debug)]
 pub enum Effect {
+    SetPlayerStatus {
+        status: PlayerStatus,
+    },
+    SetAvatarStatus {
+        player_id: uuid::Uuid,
+        card_id: uuid::Uuid,
+        status: AvatarStatus,
+    },
     PromptDecision {
         player_id: uuid::Uuid,
+        source_id: Option<uuid::Uuid>,
         options: Vec<String>,
     },
     MoveCard {
@@ -30,9 +39,14 @@ pub enum Effect {
 impl Effect {
     pub fn apply(&self, state: &mut State) -> anyhow::Result<()> {
         match self {
-            Effect::PromptDecision { player_id, options } => {
+            Effect::PromptDecision {
+                player_id,
+                options,
+                source_id,
+            } => {
                 state.player_status = PlayerStatus::SelectingAction {
                     player_id: player_id.clone(),
+                    source_id: source_id.clone(),
                     actions: options.clone(),
                 };
             }
@@ -66,6 +80,13 @@ impl Effect {
             }
             Effect::SetCardStatus { card_id, status } => {
                 let card = state.cards.iter_mut().find(|c| c.get_id() == *card_id).unwrap();
+            }
+            Effect::SetAvatarStatus { card_id, status, .. } => {
+                let card = state.cards.iter_mut().find(|c| c.get_id() == *card_id).unwrap();
+                card.set_status(status.clone());
+            }
+            Effect::SetPlayerStatus { status, .. } => {
+                state.player_status = status.clone();
             }
         }
 

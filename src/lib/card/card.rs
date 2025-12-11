@@ -1,7 +1,7 @@
 use crate::{
     card::{ClamorOfHarpies, Flamecaller},
-    effect::{CardStatus, Effect},
-    game::PlayerId,
+    effect::Effect,
+    game::{PlayerId, PlayerStatus},
     networking::message::ClientMessage,
     state::State,
 };
@@ -47,7 +47,7 @@ pub enum Zone {
 }
 
 pub trait MessageHandler {
-    fn handle_message(&mut self, message: &ClientMessage) -> Vec<Effect> {
+    fn handle_message(&mut self, message: &ClientMessage, state: &State) -> Vec<Effect> {
         Vec::new()
     }
 }
@@ -82,10 +82,9 @@ pub trait Card: Debug + Send + Sync + MessageHandler {
     fn get_id(&self) -> uuid::Uuid;
     fn get_base_mut(&mut self) -> &mut CardBase;
     fn get_base(&self) -> &CardBase;
-    // fn set_action(&mut self, status: T) {
-    //     let base = self.get_base_mut();
-    //     base.status = status;
-    // }
+    fn set_status(&mut self, status: AvatarStatus) {
+        assert_eq!(self.get_card_type(), CardType::Avatar);
+    }
 
     fn get_zone(&self) -> Zone {
         self.get_base().zone.clone()
@@ -125,12 +124,12 @@ pub struct CardBase {
 
 pub trait CardAction: Debug + Send + Sync {
     fn get_name(&self) -> &str;
-    fn on_pick(&self, _player_id: PlayerId) -> Vec<Effect> {
+    fn on_pick(&self, _player_id: PlayerId, _card_id: Option<uuid::Uuid>, state: &State) -> Vec<Effect> {
         vec![]
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum AvatarStatus {
     PlaySite,
 }
@@ -149,9 +148,26 @@ impl CardAction for BaseAvatarAction {
         }
     }
 
-    fn on_pick(&self, player_id: PlayerId) -> Vec<Effect> {
+    fn on_pick(&self, player_id: PlayerId, card_id: Option<uuid::Uuid>, state: &State) -> Vec<Effect> {
         match self {
-            BaseAvatarAction::PlaySite => vec![],
+            BaseAvatarAction::PlaySite => {
+                if let Some(card_id) = card_id {
+                    vec![
+                        Effect::SetPlayerStatus {
+                            status: PlayerStatus::WaitingForPlay {
+                                player_id: player_id.clone(),
+                            },
+                        },
+                        Effect::SetAvatarStatus {
+                            player_id: player_id.clone(),
+                            status: AvatarStatus::PlaySite,
+                            card_id: card_id,
+                        },
+                    ]
+                } else {
+                    vec![]
+                }
+            }
             BaseAvatarAction::DrawSite => vec![Effect::DrawCard {
                 player_id: player_id.clone(),
                 card_type: CardType::Site,
@@ -161,11 +177,11 @@ impl CardAction for BaseAvatarAction {
 }
 
 #[derive(Debug)]
-pub struct AvatarBase<T> {
-    pub card_base: CardBase<T>,
+pub struct AvatarBase {
+    pub card_base: CardBase,
 }
 
-impl<T> AvatarBase<T> {
+impl AvatarBase {
     pub fn base_actions() -> Vec<Box<dyn CardAction>> {
         vec![
             Box::new(BaseAvatarAction::PlaySite),
@@ -174,14 +190,15 @@ impl<T> AvatarBase<T> {
     }
 }
 
-impl<T> MessageHandler for AvatarBase<T> {
-    fn handle_message(&mut self, message: &ClientMessage) -> Vec<Effect> {
+impl MessageHandler for AvatarBase {
+    fn handle_message(&mut self, message: &ClientMessage, state: &State) -> Vec<Effect> {
         match message {
             ClientMessage::ClickCard { card_id, player_id, .. } if *card_id == self.card_base.id => {
-                let actions = AvatarBase::<T>::base_actions();
+                let actions = AvatarBase::base_actions();
                 self.card_base.actions = actions;
                 vec![Effect::PromptDecision {
                     player_id: player_id.clone(),
+                    source_id: Some(self.card_base.id),
                     options: self
                         .card_base
                         .actions
@@ -191,17 +208,20 @@ impl<T> MessageHandler for AvatarBase<T> {
                 }]
             }
             ClientMessage::PickAction {
-                action_idx, player_id, ..
+                action_idx,
+                source_id,
+                player_id,
+                ..
             } if *player_id == self.card_base.owner_id => {
                 let action = &self.card_base.actions[*action_idx];
-                action.on_pick(player_id.clone())
+                action.on_pick(player_id.clone(), source_id.clone(), state)
             }
             _ => vec![],
         }
     }
 }
 
-pub fn from_name<T>(name: &str, player_id: PlayerId) -> Box<dyn Card<T>> {
+pub fn from_name(name: &str, player_id: PlayerId) -> Box<dyn Card> {
     match name {
         Flamecaller::NAME => Box::new(Flamecaller::new(player_id)),
         ClamorOfHarpies::NAME => Box::new(ClamorOfHarpies::new(player_id)),

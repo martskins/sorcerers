@@ -19,6 +19,7 @@ pub struct ClamorOfHarpies {
     pub unit_base: UnitBase,
     pub card_base: CardBase,
     pub targeted_minion: uuid::Uuid,
+    status: Status,
 }
 
 impl ClamorOfHarpies {
@@ -34,6 +35,7 @@ impl ClamorOfHarpies {
                 zone: Zone::Spellbook,
                 actions: Vec::new(),
             },
+            status: Status::None,
             targeted_minion: uuid::Uuid::nil(),
         }
     }
@@ -73,21 +75,21 @@ impl Card for ClamorOfHarpies {
     }
 
     fn genesis(&mut self, state: &State) -> Vec<Effect> {
-        self.card_base.status = Status::MinionPick;
+        self.status = Status::MinionPick;
         vec![]
     }
 }
 
 impl MessageHandler for ClamorOfHarpies {
-    fn handle_message(&mut self, message: &ClientMessage) -> Vec<Effect> {
-        match (&self.card_base.status, message) {
+    fn handle_message(&mut self, message: &ClientMessage, state: &State) -> Vec<Effect> {
+        match (&self.status, message) {
             (Status::MinionPick, ClientMessage::PickCard { card_id, .. }) => {
                 self.targeted_minion = card_id.clone();
-                self.card_base.status = Status::StrikeDecision;
+                self.status = Status::StrikeDecision;
                 vec![]
             }
             (Status::StrikeDecision, ClientMessage::PickAction { action_idx, .. }) => {
-                self.card_base.status = Status::None;
+                self.status = Status::None;
                 vec![]
             }
             _ => vec![],

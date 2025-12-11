@@ -26,6 +26,7 @@ pub enum PlayerStatus {
     },
     SelectingAction {
         player_id: PlayerId,
+        source_id: Option<uuid::Uuid>,
         actions: Vec<String>,
     },
 }
@@ -107,12 +108,12 @@ impl Game {
         //     ClientMessage::ClickCard { game_id, .. } => {
         //     }
         // }
-        //
+
         let effects: Vec<Effect> = self
             .state
             .cards
             .iter_mut()
-            .flat_map(|c| c.handle_message(message))
+            .flat_map(|c| c.handle_message(message, &self.state))
             .collect();
         self.state.effects.extend(effects);
 
