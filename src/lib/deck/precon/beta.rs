@@ -23,9 +23,9 @@ pub fn fire(player_id: PlayerId) -> (Deck, Vec<Box<dyn Card>>) {
     let avatar = from_name("Flamecaller", player_id);
 
     let deck = Deck {
-        sites: sites.iter().map(|c| c.get_id()).collect(),
-        spells: spells.iter().map(|c| c.get_id()).collect(),
-        avatar: avatar.get_id(),
+        sites: sites.iter().map(|c| c.get_id().clone()).collect(),
+        spells: spells.iter().map(|c| c.get_id().clone()).collect(),
+        avatar: avatar.get_id().clone(),
     };
 
     (deck, vec![avatar].into_iter().chain(spells).chain(sites).collect())

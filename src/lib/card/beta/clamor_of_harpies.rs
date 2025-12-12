@@ -1,7 +1,7 @@
 use crate::{
     card::{Card, CardBase, CardType, Edition, MessageHandler, UnitBase, Zone},
     effect::Effect,
-    game::PlayerId,
+    game::{PlayerId, PlayerStatus},
     networking::message::ClientMessage,
     state::State,
 };
@@ -65,17 +65,40 @@ impl Card for ClamorOfHarpies {
         Edition::Beta
     }
 
-    fn get_id(&self) -> uuid::Uuid {
-        self.card_base.id
+    fn get_id(&self) -> &uuid::Uuid {
+        &self.card_base.id
     }
 
     fn get_card_type(&self) -> crate::card::CardType {
         CardType::Spell
     }
 
+    fn get_unit_base(&self) -> Option<&UnitBase> {
+        Some(&self.unit_base)
+    }
+
+    fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
+        Some(&mut self.unit_base)
+    }
+
     fn genesis(&mut self, state: &State) -> Vec<Effect> {
         self.status = Status::MinionPick;
-        vec![]
+        let valid_cards = state
+            .cards
+            .iter()
+            .filter(|c| c.is_unit())
+            .filter(|c| match c.get_unit_base() {
+                Some(ub) => ub.toughness < self.unit_base.power,
+                _ => false,
+            })
+            .map(|c| c.get_id().clone())
+            .collect();
+        vec![Effect::SetPlayerStatus {
+            status: PlayerStatus::SelectingCard {
+                player_id: self.get_owner_id().clone(),
+                valid_cards,
+            },
+        }]
     }
 }
 

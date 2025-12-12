@@ -86,6 +86,18 @@ impl ClientMessage {
             ClientMessage::ClickCard { game_id, .. } => game_id.clone(),
         }
     }
+
+    pub fn player_id(&self) -> PlayerId {
+        match self {
+            ClientMessage::Connect => PlayerId::nil(),
+            ClientMessage::PlayCard { player_id, .. } => player_id.clone(),
+            ClientMessage::PickCard { player_id, .. } => player_id.clone(),
+            ClientMessage::PickAction { player_id, .. } => player_id.clone(),
+            ClientMessage::EndTurn { player_id, .. } => player_id.clone(),
+            ClientMessage::PickSquare { player_id, .. } => player_id.clone(),
+            ClientMessage::ClickCard { player_id, .. } => player_id.clone(),
+        }
+    }
 }
 
 impl ToMessage for ClientMessage {

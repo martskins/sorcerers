@@ -24,6 +24,14 @@ pub enum Effect {
         player_id: uuid::Uuid,
         card_type: CardType,
     },
+    PlayCard {
+        player_id: uuid::Uuid,
+        card_id: uuid::Uuid,
+        square: u8,
+    },
+    TapCard {
+        card_id: uuid::Uuid,
+    },
 }
 
 impl Effect {
@@ -36,7 +44,7 @@ impl Effect {
                 };
             }
             Effect::MoveCard { card_id, to } => {
-                let card = state.cards.iter_mut().find(|c| c.get_id() == *card_id).unwrap();
+                let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
                 card.set_zone(to.clone());
             }
             Effect::DrawCard { player_id, card_type } => {
@@ -47,7 +55,7 @@ impl Effect {
                         state
                             .cards
                             .iter_mut()
-                            .find(|c| c.get_id() == card_id)
+                            .find(|c| c.get_id() == &card_id)
                             .unwrap()
                             .set_zone(Zone::Hand);
                     }
@@ -56,7 +64,7 @@ impl Effect {
                         state
                             .cards
                             .iter_mut()
-                            .find(|c| c.get_id() == card_id)
+                            .find(|c| c.get_id() == &card_id)
                             .unwrap()
                             .set_zone(Zone::Hand);
                     }
@@ -65,6 +73,17 @@ impl Effect {
             }
             Effect::SetPlayerStatus { status, .. } => {
                 state.player_status = status.clone();
+            }
+            Effect::PlayCard { card_id, square, .. } => {
+                let snapshot = state.snapshot();
+                let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
+                card.set_zone(Zone::Realm(*square));
+                let effects = card.genesis(&snapshot);
+                state.effects.extend(effects);
+            }
+            Effect::TapCard { card_id } => {
+                let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
+                card.get_base_mut().tapped = true;
             }
         }
 

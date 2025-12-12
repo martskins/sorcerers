@@ -92,6 +92,93 @@ impl Resources {
     }
 }
 
+pub fn are_adjacent(square1: u8, square2: u8) -> bool {
+    let row1 = square1 / 4;
+    let col1 = square1 % 4;
+    let row2 = square2 / 4;
+    let col2 = square2 % 4;
+
+    let row_diff = if row1 > row2 { row1 - row2 } else { row2 - row1 };
+    let col_diff = if col1 > col2 { col1 - col2 } else { col2 - col1 };
+
+    (row_diff == 1 && col_diff == 0) || (row_diff == 0 && col_diff == 1)
+}
+
+pub fn are_nearby(square1: u8, square2: u8) -> bool {
+    let row1 = square1 / 4;
+    let col1 = square1 % 4;
+    let row2 = square2 / 4;
+    let col2 = square2 % 4;
+
+    let row_diff = if row1 > row2 { row1 - row2 } else { row2 - row1 };
+    let col_diff = if col1 > col2 { col1 - col2 } else { col2 - col1 };
+
+    // Up, down, left, right, or any horizontal (same row, any col except itself)
+    (row_diff == 1 && col_diff == 0) || (row_diff == 0 && col_diff == 1) || (row_diff == 0 && col_diff != 0)
+}
+
+pub fn get_adjacent_squares(square: u8) -> Vec<u8> {
+    let mut squares = vec![square];
+    let row = square / 4;
+    let col = square % 4;
+
+    // Up
+    if row > 0 {
+        squares.push((row - 1) * 4 + col);
+    }
+    // Down
+    if row < 4 {
+        squares.push((row + 1) * 4 + col);
+    }
+    // Left
+    if col > 0 {
+        squares.push(row * 4 + (col - 1));
+    }
+    // Right
+    if col < 3 {
+        squares.push(row * 4 + (col + 1));
+    }
+    // Any horizontal in the same row
+    for c in 0..4 {
+        if c != col {
+            squares.push(row * 4 + c);
+        }
+    }
+
+    squares
+}
+
+pub fn get_nearby_squares(square: u8) -> Vec<u8> {
+    let mut squares = Vec::new();
+    let row = square / 4;
+    let col = square % 4;
+
+    // Up
+    if row > 0 {
+        squares.push((row - 1) * 4 + col);
+    }
+    // Down
+    if row < 4 {
+        squares.push((row + 1) * 4 + col);
+    }
+    // Left
+    if col > 0 {
+        squares.push(row * 4 + (col - 1));
+    }
+    // Right
+    if col < 3 {
+        squares.push(row * 4 + (col + 1));
+    }
+    // Any horizontal in the same row
+    for c in 0..4 {
+        if c != col {
+            squares.push(row * 4 + c);
+        }
+    }
+
+    squares
+}
+
 pub struct Game {
     pub id: uuid::Uuid,
     pub players: Vec<PlayerId>,
@@ -112,20 +199,6 @@ impl Game {
     }
 
     pub async fn process_message(&mut self, message: &ClientMessage) -> anyhow::Result<()> {
-        // match message {
-        //     ClientMessage::Connect => unreachable!(),
-        //     ClientMessage::PlayCard { card_id, .. } => {}
-        //     ClientMessage::PickCard { game_id, card_id, .. } => todo!(),
-        //     ClientMessage::PickAction {
-        //         game_id, action_idx, ..
-        //     } => {
-        //     }
-        //     ClientMessage::PickSquare { game_id, .. } => todo!(),
-        //     ClientMessage::EndTurn { game_id, .. } => todo!(),
-        //     ClientMessage::ClickCard { game_id, .. } => {
-        //     }
-        // }
-
         let snapshot = self.state.snapshot();
         let effects: Vec<Effect> = self
             .state
@@ -152,7 +225,7 @@ impl Game {
                 .cards
                 .iter()
                 .map(|c| CardInfo {
-                    id: c.get_id(),
+                    id: c.get_id().clone(),
                     name: c.get_name().to_string(),
                     owner_id: c.get_owner_id().clone(),
                     tapped: c.is_tapped(),

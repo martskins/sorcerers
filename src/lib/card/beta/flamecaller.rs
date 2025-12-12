@@ -9,6 +9,7 @@ use crate::{
 #[derive(Debug, Clone)]
 enum Status {
     None,
+    PickAction,
     PlaySite,
 }
 
@@ -31,7 +32,6 @@ impl Action {
 pub struct Flamecaller {
     pub card_base: CardBase,
     pub avatar_base: AvatarBase,
-    pub targeted_minion: uuid::Uuid,
     status: Status,
     actions: Vec<Action>,
 }
@@ -47,8 +47,7 @@ impl Flamecaller {
                 tapped: false,
                 zone: Zone::Spellbook,
             },
-            avatar_base: AvatarBase {},
-            targeted_minion: uuid::Uuid::nil(),
+            avatar_base: AvatarBase { playing_site: None },
             status: Status::None,
             actions: Vec::new(),
         }
@@ -80,8 +79,8 @@ impl Card for Flamecaller {
         Edition::Beta
     }
 
-    fn get_id(&self) -> uuid::Uuid {
-        self.card_base.id
+    fn get_id(&self) -> &uuid::Uuid {
+        &self.card_base.id
     }
 
     fn get_card_type(&self) -> crate::card::CardType {
@@ -95,17 +94,30 @@ impl Card for Flamecaller {
 
 impl MessageHandler for Flamecaller {
     fn handle_message(&mut self, message: &ClientMessage, state: &State) -> Vec<Effect> {
-        match message {
-            ClientMessage::ClickCard { card_id, player_id, .. } if *card_id == self.card_base.id => {
+        // TODO: Make this the default avatar behavior
+        if message.player_id() != self.card_base.owner_id {
+            return vec![];
+        }
+
+        match (&self.status, message) {
+            (Status::None, ClientMessage::ClickCard { card_id, player_id, .. }) if card_id == self.get_id() => {
+                if self.card_base.tapped {
+                    return vec![];
+                }
+
                 self.actions = vec![Action::PlaySite, Action::DrawSite];
+                self.status = Status::PickAction;
                 vec![Effect::PromptDecision {
                     player_id: player_id.clone(),
                     options: self.actions.iter().map(|a| a.get_name().to_string()).collect(),
                 }]
             }
-            ClientMessage::PickAction {
-                action_idx, player_id, ..
-            } if *player_id == self.card_base.owner_id => {
+            (
+                Status::PickAction,
+                ClientMessage::PickAction {
+                    action_idx, player_id, ..
+                },
+            ) => {
                 let action = &self.actions[*action_idx];
                 let valid_cards = state
                     .cards
@@ -113,7 +125,7 @@ impl MessageHandler for Flamecaller {
                     .filter(|c| c.is_site())
                     .filter(|c| c.get_zone() == Zone::Hand)
                     .filter(|c| c.get_owner_id() == player_id)
-                    .map(|c| c.get_id())
+                    .map(|c| c.get_id().clone())
                     .collect();
                 match action {
                     Action::PlaySite => {
@@ -131,6 +143,37 @@ impl MessageHandler for Flamecaller {
                     }],
                 }
             }
+            (Status::PlaySite, ClientMessage::PickCard { player_id, card_id, .. }) => {
+                let valid_squares = state.get_valid_site_squares(player_id);
+                self.avatar_base.playing_site = Some(card_id.clone());
+                vec![Effect::SetPlayerStatus {
+                    status: PlayerStatus::SelectingSquare {
+                        player_id: self.card_base.owner_id.clone(),
+                        valid_squares,
+                    },
+                }]
+            }
+            (Status::PlaySite, ClientMessage::PickSquare { player_id, square, .. }) => {
+                let card_id = self.avatar_base.playing_site.clone().unwrap();
+                self.avatar_base.playing_site = None;
+                self.status = Status::None;
+                vec![
+                    Effect::TapCard {
+                        card_id: self.card_base.id,
+                    },
+                    Effect::PlayCard {
+                        player_id: self.card_base.owner_id.clone(),
+                        card_id: card_id,
+                        square: *square,
+                    },
+                    Effect::SetPlayerStatus {
+                        status: PlayerStatus::WaitingForPlay {
+                            player_id: player_id.clone(),
+                        },
+                    },
+                ]
+            }
+
             _ => vec![],
         }
     }

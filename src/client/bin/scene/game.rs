@@ -508,91 +508,37 @@ impl Game {
                         .unwrap();
                 }
             }
-            _ => {} //
-                    // PlayerStatus::SelectingCard {
-                    //     player_id, card_ids, ..
-                    // } if player_id == &self.player_id => {
-                    //     let valid_cards: Vec<&CardDisplay> = self
-                    //         .card_displays
-                    //         .iter()
-                    //         .filter(|c| card_ids.contains(&c.card.get_id()))
-                    //         .collect();
-                    //     let mut selected_id = None;
-                    //     for card in valid_cards {
-                    //         if card.rect.contains(mouse_position.into()) && is_mouse_button_released(MouseButton::Left) {
-                    //             selected_id = Some(card.card.get_id().clone());
-                    //         }
-                    //     }
-                    //
-                    //     if let Some(id) = selected_id {
-                    //         let card = self.card_displays.iter_mut().find(|c| c.card.get_id() == &id).unwrap();
-                    //         card.is_selected = !card.is_selected;
-                    //
-                    //         if card.is_selected {
-                    //             println!("Selected card: {}", card.card.get_name());
-                    //             self.client
-                    //                 .send(Message::SelectCard {
-                    //                     player_id: self.player_id.clone(),
-                    //                     game_id: self.game_id.clone(),
-                    //                     card_id: id.clone(),
-                    //                 })
-                    //                 .unwrap();
-                    //             // if let Some(Action::GameAction(action)) = after_select {
-                    //             //     match action {
-                    //             //         GameAction::PlayCardOnSelectedTargets { card_id } => {
-                    //             //             self.client
-                    //             //                 .send(Message::PlayCard {
-                    //             //                     player_id: self.player_id,
-                    //             //                     card_id: card_id.clone(),
-                    //             //                     game_id: self.game_id,
-                    //             //                     targets: Target::Card(id.clone()),
-                    //             //                 })
-                    //             //                 .unwrap();
-                    //             //         }
-                    //             //         GameAction::PlaySelectedCard => {
-                    //             //             self.client
-                    //             //                 .send(Message::PrepareCardForPlay {
-                    //             //                     player_id: self.player_id,
-                    //             //                     card_id: card.card.get_id().clone(),
-                    //             //                     game_id: self.game_id,
-                    //             //                 })
-                    //             //                 .unwrap();
-                    //             //         }
-                    //             //         GameAction::AttackSelectedTarget { attacker_id } => {
-                    //             //             self.client
-                    //             //                 .send(Message::AttackTarget {
-                    //             //                     player_id: self.player_id,
-                    //             //                     attacker_id: attacker_id.clone(),
-                    //             //                     target_id: card.card.get_id().clone(),
-                    //             //                     game_id: self.game_id,
-                    //             //                 })
-                    //             //                 .unwrap();
-                    //             //         }
-                    //             //         GameAction::DealDamageToSelectedTarget { from, damage } => {
-                    //             //             self.client
-                    //             //                 .send(Message::DealDamageToTarget {
-                    //             //                     player_id: self.player_id,
-                    //             //                     from: from.clone(),
-                    //             //                     target_id: card.card.get_id().clone(),
-                    //             //                     game_id: self.game_id,
-                    //             //                     amount: *damage,
-                    //             //                 })
-                    //             //                 .unwrap();
-                    //             //         }
-                    //             //         GameAction::SelectSquare { .. } => unreachable!(),
-                    //             //         GameAction::SelectAction { .. } => unreachable!(),
-                    //             //         GameAction::DrawCard { .. } => unreachable!(),
-                    //             //         GameAction::MoveCardToSelectedSquare { .. } => unreachable!(),
-                    //             //         GameAction::SummonMinionToSelectedSquare { .. } => unreachable!(),
-                    //             //         GameAction::SummonMinion { .. } => unreachable!(),
-                    //             //         GameAction::MoveSelectedCard { to, after } => {}
-                    //             //         GameAction::StrikeSelectedTarget { from } => {}
-                    //             //     }
-                    //             // }
-                    //         }
-                    //     }
-                    // }
-                    // _ => {}
+            PlayerStatus::SelectingCard {
+                player_id, valid_cards, ..
+            } if player_id == &self.player_id => {
+                let valid_cards: Vec<&CardDisplay> = self
+                    .card_displays
+                    .iter()
+                    .filter(|c| valid_cards.contains(&c.id))
+                    .collect();
+                let mut selected_id = None;
+                for card in valid_cards {
+                    if card.rect.contains(mouse_position.into()) && is_mouse_button_released(MouseButton::Left) {
+                        selected_id = Some(card.id.clone());
+                    }
+                }
+
+                if let Some(id) = selected_id {
+                    let card = self.card_displays.iter_mut().find(|c| c.id == id).unwrap();
+                    card.is_selected = !card.is_selected;
+
+                    if card.is_selected {
+                        self.client
+                            .send(ClientMessage::PickCard {
+                                player_id: self.player_id.clone(),
+                                game_id: self.game_id.clone(),
+                                card_id: id.clone(),
+                            })
+                            .unwrap();
+                    }
+                }
+            }
+            _ => {}
         }
     }
 

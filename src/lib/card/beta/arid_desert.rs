@@ -55,8 +55,8 @@ impl Card for AridDesert {
         Edition::Beta
     }
 
-    fn get_id(&self) -> uuid::Uuid {
-        self.card_base.id
+    fn get_id(&self) -> &uuid::Uuid {
+        &self.card_base.id
     }
 
     fn get_card_type(&self) -> CardType {

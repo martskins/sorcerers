@@ -1,7 +1,7 @@
 use crate::{
     card::{AridDesert, ClamorOfHarpies, Flamecaller},
     effect::Effect,
-    game::{PlayerId, PlayerStatus, Thresholds},
+    game::{PlayerId, Thresholds},
     networking::message::ClientMessage,
     state::State,
 };
@@ -92,9 +92,22 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
     fn get_owner_id(&self) -> &PlayerId;
     fn is_tapped(&self) -> bool;
     fn get_card_type(&self) -> CardType;
-    fn get_id(&self) -> uuid::Uuid;
-    fn get_base_mut(&mut self) -> &mut CardBase;
+    fn get_id(&self) -> &uuid::Uuid;
     fn get_base(&self) -> &CardBase;
+    fn get_base_mut(&mut self) -> &mut CardBase;
+
+    fn get_avatar_base(&self) -> Option<&AvatarBase> {
+        None
+    }
+    fn get_avatar_base_mut(&mut self) -> Option<&mut AvatarBase> {
+        None
+    }
+    fn get_unit_base(&self) -> Option<&UnitBase> {
+        None
+    }
+    fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
+        None
+    }
 
     fn get_zone(&self) -> Zone {
         self.get_base().zone.clone()
@@ -114,6 +127,14 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
 
     fn is_site(&self) -> bool {
         self.get_card_type() == CardType::Site
+    }
+
+    fn is_avatar(&self) -> bool {
+        self.get_card_type() == CardType::Avatar
+    }
+
+    fn is_unit(&self) -> bool {
+        self.get_card_type() == CardType::Spell
     }
 }
 
@@ -138,7 +159,9 @@ pub struct CardBase {
 }
 
 #[derive(Debug, Clone)]
-pub struct AvatarBase {}
+pub struct AvatarBase {
+    pub playing_site: Option<uuid::Uuid>,
+}
 
 pub fn from_name(name: &str, player_id: PlayerId) -> Box<dyn Card> {
     match name {
