@@ -33,7 +33,6 @@ impl ClamorOfHarpies {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                actions: Vec::new(),
             },
             status: Status::None,
             targeted_minion: uuid::Uuid::nil(),

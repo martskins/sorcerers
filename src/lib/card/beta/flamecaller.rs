@@ -1,7 +1,7 @@
 use crate::{
-    card::{AvatarBase, AvatarStatus, Card, CardBase, CardType, Edition, MessageHandler, Zone},
+    card::{AvatarBase, Card, CardBase, CardType, Edition, MessageHandler, Zone},
     effect::Effect,
-    game::PlayerId,
+    game::{PlayerId, PlayerStatus},
     networking::message::ClientMessage,
     state::State,
 };
@@ -9,7 +9,22 @@ use crate::{
 #[derive(Debug)]
 enum Status {
     None,
-    AvatarStatus(AvatarStatus),
+    PlaySite,
+}
+
+#[derive(Debug)]
+enum Action {
+    PlaySite,
+    DrawSite,
+}
+
+impl Action {
+    pub fn get_name(&self) -> &str {
+        match self {
+            Action::PlaySite => "Play Site",
+            Action::DrawSite => "Draw Site",
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -17,6 +32,7 @@ pub struct Flamecaller {
     pub avatar_base: AvatarBase,
     pub targeted_minion: uuid::Uuid,
     status: Status,
+    actions: Vec<Action>,
 }
 
 impl Flamecaller {
@@ -30,11 +46,11 @@ impl Flamecaller {
                     owner_id,
                     tapped: false,
                     zone: Zone::Spellbook,
-                    actions: Vec::new(),
                 },
             },
-            status: Status::None,
             targeted_minion: uuid::Uuid::nil(),
+            status: Status::None,
+            actions: Vec::new(),
         }
     }
 }
@@ -75,14 +91,40 @@ impl Card for Flamecaller {
     fn genesis(&mut self, state: &State) -> Vec<Effect> {
         vec![]
     }
-
-    fn set_status(&mut self, status: AvatarStatus) {
-        self.status = Status::AvatarStatus(status);
-    }
 }
 
 impl MessageHandler for Flamecaller {
     fn handle_message(&mut self, message: &ClientMessage, state: &State) -> Vec<Effect> {
-        self.avatar_base.handle_message(message, state)
+        match message {
+            ClientMessage::ClickCard { card_id, player_id, .. } if *card_id == self.avatar_base.card_base.id => {
+                self.actions = vec![Action::PlaySite, Action::DrawSite];
+                vec![Effect::PromptDecision {
+                    player_id: player_id.clone(),
+                    options: self.actions.iter().map(|a| a.get_name().to_string()).collect(),
+                }]
+            }
+            ClientMessage::PickAction {
+                action_idx, player_id, ..
+            } if *player_id == self.avatar_base.card_base.owner_id => {
+                let action = &self.actions[*action_idx];
+                let valid_cards = vec![];
+                match action {
+                    Action::PlaySite => {
+                        self.status = Status::PlaySite;
+                        vec![Effect::SetPlayerStatus {
+                            status: PlayerStatus::SelectingCard {
+                                player_id: player_id.clone(),
+                                valid_cards,
+                            },
+                        }]
+                    }
+                    Action::DrawSite => vec![Effect::DrawCard {
+                        player_id: self.avatar_base.card_base.owner_id.clone(),
+                        card_type: CardType::Site,
+                    }],
+                }
+            }
+            _ => vec![],
+        }
     }
 }

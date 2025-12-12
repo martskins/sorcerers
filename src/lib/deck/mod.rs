@@ -2,7 +2,7 @@ pub mod precon;
 
 use crate::{card::Zone, effect::Effect};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Deck {
     pub sites: Vec<uuid::Uuid>,
     pub spells: Vec<uuid::Uuid>,

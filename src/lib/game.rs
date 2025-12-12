@@ -24,9 +24,12 @@ pub enum PlayerStatus {
         player_id: PlayerId,
         valid_squares: Vec<u8>,
     },
+    SelectingCard {
+        player_id: PlayerId,
+        valid_cards: Vec<uuid::Uuid>,
+    },
     SelectingAction {
         player_id: PlayerId,
-        source_id: Option<uuid::Uuid>,
         actions: Vec<String>,
     },
 }
