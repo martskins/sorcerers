@@ -1,7 +1,7 @@
 use crate::{
-    card::{ClamorOfHarpies, Flamecaller},
+    card::{AridDesert, ClamorOfHarpies, Flamecaller},
     effect::Effect,
-    game::{PlayerId, PlayerStatus},
+    game::{PlayerId, PlayerStatus, Thresholds},
     networking::message::ClientMessage,
     state::State,
 };
@@ -73,10 +73,23 @@ impl CardInfo {
     }
 }
 
-pub trait Card: Debug + Send + Sync + MessageHandler {
+pub trait CloneBox {
+    fn clone_box(&self) -> Box<dyn Card>;
+}
+
+impl<T> CloneBox for T
+where
+    T: 'static + Card + Clone,
+{
+    fn clone_box(&self) -> Box<dyn Card> {
+        Box::new(self.clone())
+    }
+}
+
+pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
     fn get_name(&self) -> &str;
     fn get_edition(&self) -> Edition;
-    fn get_owner_id(&self) -> PlayerId;
+    fn get_owner_id(&self) -> &PlayerId;
     fn is_tapped(&self) -> bool;
     fn get_card_type(&self) -> CardType;
     fn get_id(&self) -> uuid::Uuid;
@@ -100,8 +113,14 @@ pub trait Card: Debug + Send + Sync + MessageHandler {
     }
 
     fn is_site(&self) -> bool {
-        false
+        self.get_card_type() == CardType::Site
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct SiteBase {
+    pub provided_mana: u8,
+    pub provided_thresholds: Thresholds,
 }
 
 #[derive(Debug, Clone)]
@@ -119,14 +138,13 @@ pub struct CardBase {
 }
 
 #[derive(Debug, Clone)]
-pub struct AvatarBase {
-    pub card_base: CardBase,
-}
+pub struct AvatarBase {}
 
 pub fn from_name(name: &str, player_id: PlayerId) -> Box<dyn Card> {
     match name {
         Flamecaller::NAME => Box::new(Flamecaller::new(player_id)),
         ClamorOfHarpies::NAME => Box::new(ClamorOfHarpies::new(player_id)),
+        AridDesert::NAME => Box::new(AridDesert::new(player_id)),
         _ => panic!("Unknown card name: {}", name),
     }
 }

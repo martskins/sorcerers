@@ -7,7 +7,7 @@ use std::fmt::Debug;
 
 pub trait CardStatus: Debug + Send + Sync {}
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Effect {
     SetPlayerStatus {
         status: PlayerStatus,
@@ -23,10 +23,6 @@ pub enum Effect {
     DrawCard {
         player_id: uuid::Uuid,
         card_type: CardType,
-    },
-    SetCardStatus {
-        card_id: uuid::Uuid,
-        status: Box<dyn CardStatus>,
     },
 }
 
@@ -66,9 +62,6 @@ impl Effect {
                     }
                     CardType::Avatar => unreachable!(),
                 }
-            }
-            Effect::SetCardStatus { card_id, status } => {
-                let card = state.cards.iter_mut().find(|c| c.get_id() == *card_id).unwrap();
             }
             Effect::SetPlayerStatus { status, .. } => {
                 state.player_status = status.clone();

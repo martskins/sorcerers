@@ -59,6 +59,20 @@ impl Thresholds {
             water: 0,
         }
     }
+
+    pub fn parse(s: &str) -> Self {
+        let mut thresholds = Thresholds::new();
+        for c in s.chars() {
+            match c {
+                'F' => thresholds.fire += 1,
+                'A' => thresholds.air += 1,
+                'E' => thresholds.earth += 1,
+                'W' => thresholds.water += 1,
+                _ => {}
+            }
+        }
+        thresholds
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -112,11 +126,12 @@ impl Game {
         //     }
         // }
 
+        let snapshot = self.state.snapshot();
         let effects: Vec<Effect> = self
             .state
             .cards
             .iter_mut()
-            .flat_map(|c| c.handle_message(message, &self.state))
+            .flat_map(|c| c.handle_message(message, &snapshot))
             .collect();
         self.state.effects.extend(effects);
 
@@ -139,7 +154,7 @@ impl Game {
                 .map(|c| CardInfo {
                     id: c.get_id(),
                     name: c.get_name().to_string(),
-                    owner_id: c.get_owner_id(),
+                    owner_id: c.get_owner_id().clone(),
                     tapped: c.is_tapped(),
                     edition: c.get_edition().clone(),
                     zone: c.get_zone().clone(),

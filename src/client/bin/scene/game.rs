@@ -296,6 +296,32 @@ impl Game {
                     },
                 );
             }
+            PlayerStatus::SelectingCard {
+                player_id, valid_cards, ..
+            } if player_id == &self.player_id => {
+                println!("Selecting card: {:?}", valid_cards);
+                let valid_cards: Vec<&CardDisplay> = self
+                    .card_displays
+                    .iter()
+                    .filter(|c| valid_cards.contains(&c.id))
+                    .collect();
+
+                let mut scale = 1.0;
+                for card in valid_cards {
+                    if card.is_hovered {
+                        scale = 1.2;
+                    }
+
+                    draw_rectangle_lines(
+                        card.rect.x,
+                        card.rect.y,
+                        card.rect.w * scale,
+                        card.rect.h * scale,
+                        3.0,
+                        WHITE,
+                    );
+                }
+            }
             _ => {} //
                     // PlayerStatus::SelectingCardOutsideRealm {
                     //     player_id,
@@ -381,34 +407,7 @@ impl Game {
                     //         },
                     //     );
                     // }
-                    // PlayerStatus::SelectingCard {
-                    //     player_id, card_ids, ..
-                    // } if player_id == &self.player_id => {
-                    //     let valid_cards: Vec<&CardDisplay> = self
-                    //         .card_displays
-                    //         .iter()
-                    //         .filter(|c| card_ids.contains(&c.card.get_id()))
-                    //         .collect();
-                    //
-                    //     let has_selected_card = valid_cards.iter().any(|c| c.is_selected);
-                    //     let mut scale = 1.0;
-                    //     for card in valid_cards {
-                    //         if card.is_hovered {
-                    //             scale = 1.2;
-                    //         }
-                    //
-                    //         if !has_selected_card || card.is_selected {
-                    //             draw_rectangle_lines(
-                    //                 card.rect.x,
-                    //                 card.rect.y,
-                    //                 card.rect.w * scale,
-                    //                 card.rect.h * scale,
-                    //                 3.0,
-                    //                 WHITE,
-                    //             );
-                    //         }
-                    //     }
-                    // }
+
                     // _ => {}
         }
 

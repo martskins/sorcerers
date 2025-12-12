@@ -14,11 +14,11 @@ pub fn fire(player_id: PlayerId) -> (Deck, Vec<Box<dyn Card>>) {
         from_name("Clamor of Harpies", player_id),
     ];
     let sites = vec![
-        from_name("Clamor of Harpies", player_id),
-        from_name("Clamor of Harpies", player_id),
-        from_name("Clamor of Harpies", player_id),
-        from_name("Clamor of Harpies", player_id),
-        from_name("Clamor of Harpies", player_id),
+        from_name("Arid Desert", player_id),
+        from_name("Arid Desert", player_id),
+        from_name("Arid Desert", player_id),
+        from_name("Arid Desert", player_id),
+        from_name("Arid Desert", player_id),
     ];
     let avatar = from_name("Flamecaller", player_id);
 

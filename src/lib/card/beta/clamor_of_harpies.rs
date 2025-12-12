@@ -7,14 +7,14 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 enum Status {
     None,
     MinionPick,
     StrikeDecision,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ClamorOfHarpies {
     pub unit_base: UnitBase,
     pub card_base: CardBase,
@@ -57,8 +57,8 @@ impl Card for ClamorOfHarpies {
         self.card_base.tapped
     }
 
-    fn get_owner_id(&self) -> PlayerId {
-        self.card_base.owner_id
+    fn get_owner_id(&self) -> &PlayerId {
+        &self.card_base.owner_id
     }
 
     fn get_edition(&self) -> Edition {
