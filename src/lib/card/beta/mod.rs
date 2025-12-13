@@ -4,3 +4,5 @@ pub mod flamecaller;
 pub use flamecaller::*;
 pub mod arid_desert;
 pub use arid_desert::*;
+pub mod pit_vipers;
+pub use pit_vipers::*;

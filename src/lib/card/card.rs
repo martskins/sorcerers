@@ -1,5 +1,5 @@
 use crate::{
-    card::{AridDesert, ClamorOfHarpies, Flamecaller},
+    card::{AridDesert, ClamorOfHarpies, Flamecaller, PitVipers},
     effect::Effect,
     game::{PlayerId, Thresholds},
     networking::message::ClientMessage,
@@ -186,9 +186,19 @@ pub struct SiteBase {
 }
 
 #[derive(Debug, Clone)]
+pub enum Ability {
+    Airborne,
+    Lethal,
+    Movement(u8),
+    Burrowing,
+    Submerge,
+}
+
+#[derive(Debug, Default, Clone)]
 pub struct UnitBase {
     pub power: u8,
     pub toughness: u8,
+    pub abilities: Vec<Ability>,
 }
 
 #[derive(Debug, Clone)]
@@ -211,6 +221,7 @@ pub fn from_name(name: &str, player_id: PlayerId) -> Box<dyn Card> {
         Flamecaller::NAME => Box::new(Flamecaller::new(player_id)),
         ClamorOfHarpies::NAME => Box::new(ClamorOfHarpies::new(player_id)),
         AridDesert::NAME => Box::new(AridDesert::new(player_id)),
+        PitVipers::NAME => Box::new(PitVipers::new(player_id)),
         _ => panic!("Unknown card name: {}", name),
     }
 }

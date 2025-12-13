@@ -27,7 +27,11 @@ impl ClamorOfHarpies {
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
-            unit_base: UnitBase { power: 3, toughness: 3 },
+            unit_base: UnitBase {
+                power: 3,
+                toughness: 3,
+                ..Default::default()
+            },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,

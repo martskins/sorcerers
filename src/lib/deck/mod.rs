@@ -29,4 +29,13 @@ impl Deck {
             to: Zone::Hand,
         }]
     }
+
+    pub fn shuffle(&mut self) {
+        use rand::rng;
+        use rand::seq::SliceRandom;
+
+        let mut rng = rng();
+        self.sites.shuffle(&mut rng);
+        self.spells.shuffle(&mut rng);
+    }
 }

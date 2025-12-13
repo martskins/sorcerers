@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use crate::{
-    card::{CardInfo, CardType, Zone},
+    card::{Card, CardInfo, CardType, Zone},
     effect::Effect,
     networking::{
         client::Socket,
@@ -94,7 +94,9 @@ impl Resources {
         }
     }
 
-    pub fn can_afford(&self, cost: u8, required_thresholds: &Thresholds) -> bool {
+    pub fn can_afford(&self, card: &Box<dyn Card>, state: &State) -> bool {
+        let required_thresholds = card.get_required_thresholds(state);
+        let cost = card.get_mana_cost(state);
         self.mana >= cost
             && self.thresholds.fire >= required_thresholds.fire
             && self.thresholds.air >= required_thresholds.air
@@ -184,9 +186,7 @@ impl Game {
             ClientMessage::ClickCard { player_id, card_id, .. } => {
                 let resources = self.state.resources.get(player_id).unwrap();
                 let card = self.state.cards.iter().find(|c| c.get_id() == card_id).unwrap();
-                let mana_cost = card.get_mana_cost(&self.state);
-                let required_thresholds = card.get_required_thresholds(&self.state);
-                let can_afford = resources.can_afford(mana_cost, required_thresholds);
+                let can_afford = resources.can_afford(card, &self.state);
                 if !can_afford {
                     return Ok(());
                 }
