@@ -96,6 +96,13 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
     fn get_base(&self) -> &CardBase;
     fn get_base_mut(&mut self) -> &mut CardBase;
 
+    fn get_square(&self) -> Option<u8> {
+        match self.get_zone() {
+            Zone::Realm(sq) => Some(sq),
+            _ => None,
+        }
+    }
+
     fn get_valid_attack_targets(&self, state: &State) -> Vec<uuid::Uuid> {
         let square = match self.get_zone() {
             Zone::Realm(sq) => sq,

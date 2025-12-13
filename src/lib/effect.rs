@@ -1,6 +1,6 @@
 use crate::{
     card::{Ability, CardType, SiteBase, Zone},
-    game::{PlayerStatus, Thresholds},
+    game::{PlayerId, PlayerStatus, Thresholds},
     state::State,
 };
 use std::fmt::Debug;
@@ -11,10 +11,6 @@ pub trait CardStatus: Debug + Send + Sync {}
 pub enum Effect {
     SetPlayerStatus {
         status: PlayerStatus,
-    },
-    PromptDecision {
-        player_id: uuid::Uuid,
-        options: Vec<String>,
     },
     MoveCard {
         card_id: uuid::Uuid,
@@ -63,14 +59,49 @@ pub enum Effect {
 }
 
 impl Effect {
+    pub fn tap_card(card_id: &uuid::Uuid) -> Self {
+        Effect::TapCard {
+            card_id: card_id.clone(),
+        }
+    }
+
+    pub fn wait_for_play(player_id: &PlayerId) -> Self {
+        Effect::SetPlayerStatus {
+            status: PlayerStatus::WaitingForPlay {
+                player_id: player_id.clone(),
+            },
+        }
+    }
+
+    pub fn select_action(player_id: &PlayerId, actions: Vec<String>) -> Self {
+        Effect::SetPlayerStatus {
+            status: PlayerStatus::SelectingAction {
+                player_id: player_id.clone(),
+                actions: actions,
+            },
+        }
+    }
+
+    pub fn select_card(player_id: &PlayerId, valid_cards: Vec<uuid::Uuid>) -> Self {
+        Effect::SetPlayerStatus {
+            status: PlayerStatus::SelectingCard {
+                player_id: player_id.clone(),
+                valid_cards: valid_cards,
+            },
+        }
+    }
+
+    pub fn select_square(player_id: &PlayerId, valid_squares: Vec<u8>) -> Self {
+        Effect::SetPlayerStatus {
+            status: PlayerStatus::SelectingSquare {
+                player_id: player_id.clone(),
+                valid_squares: valid_squares,
+            },
+        }
+    }
+
     pub fn apply(&self, state: &mut State) -> anyhow::Result<()> {
         match self {
-            Effect::PromptDecision { player_id, options } => {
-                state.player_status = PlayerStatus::SelectingAction {
-                    player_id: player_id.clone(),
-                    actions: options.clone(),
-                };
-            }
             Effect::MoveCard { card_id, to } => {
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
                 card.set_zone(to.clone());

@@ -15,11 +15,27 @@ enum Status {
 }
 
 #[derive(Debug, Clone)]
+enum Action {
+    Strike,
+    DoNotStrike,
+}
+
+impl Action {
+    pub fn get_name(&self) -> &str {
+        match self {
+            Action::Strike => "Strike",
+            Action::DoNotStrike => "Do Not Strike",
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct ClamorOfHarpies {
     pub unit_base: UnitBase,
     pub card_base: CardBase,
     pub targeted_minion: uuid::Uuid,
     status: Status,
+    actions: Vec<Action>,
 }
 
 impl ClamorOfHarpies {
@@ -42,6 +58,7 @@ impl ClamorOfHarpies {
             },
             status: Status::None,
             targeted_minion: uuid::Uuid::nil(),
+            actions: Vec::new(),
         }
     }
 }
@@ -115,11 +132,33 @@ impl MessageHandler for ClamorOfHarpies {
             (Status::MinionPick, ClientMessage::PickCard { card_id, .. }) => {
                 self.targeted_minion = card_id.clone();
                 self.status = Status::StrikeDecision;
-                vec![]
+                self.actions = vec![Action::Strike, Action::DoNotStrike];
+                let actions = vec![
+                    Action::Strike.get_name().to_string(),
+                    Action::DoNotStrike.get_name().to_string(),
+                ];
+                vec![Effect::select_action(self.get_owner_id(), actions)]
             }
             (Status::StrikeDecision, ClientMessage::PickAction { action_idx, .. }) => {
+                let mut effects = vec![
+                    Effect::MoveCard {
+                        card_id: self.get_id().clone(),
+                        to: self.get_zone(),
+                    },
+                    Effect::wait_for_play(self.get_owner_id()),
+                ];
+
+                match self.actions[*action_idx] {
+                    Action::Strike => effects.push(Effect::TakeDamage {
+                        card_id: self.targeted_minion.clone(),
+                        from: self.get_id().clone(),
+                        damage: self.unit_base.power,
+                    }),
+                    Action::DoNotStrike => {}
+                }
+
                 self.status = Status::None;
-                vec![]
+                effects
             }
             _ => vec![],
         }
