@@ -18,6 +18,7 @@ impl PitVipers {
                 power: 1,
                 toughness: 1,
                 abilities: vec![Ability::Lethal, Ability::Burrowing],
+                ..Default::default()
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),

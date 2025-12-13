@@ -1,5 +1,5 @@
 use crate::{
-    card::{CardType, SiteBase, Zone},
+    card::{Ability, CardType, SiteBase, Zone},
     game::{PlayerStatus, Thresholds},
     state::State,
 };
@@ -47,6 +47,18 @@ pub enum Effect {
         player_id: uuid::Uuid,
         mana: u8,
         thresholds: Thresholds,
+    },
+    Attack {
+        attacker_id: uuid::Uuid,
+        defender_id: uuid::Uuid,
+    },
+    TakeDamage {
+        card_id: uuid::Uuid,
+        from: uuid::Uuid,
+        damage: u8,
+    },
+    KillUnit {
+        card_id: uuid::Uuid,
     },
 }
 
@@ -159,9 +171,58 @@ impl Effect {
                 player_resources.thresholds.fire += thresholds.fire;
                 player_resources.thresholds.earth += thresholds.earth;
             }
-            Effect::EndTurn { player_id } => {
-                let resources = state.resources.get_mut(player_id).unwrap();
-                resources.mana = 0;
+            Effect::Attack {
+                attacker_id,
+                defender_id,
+            } => {
+                let snapshot = state.snapshot();
+                let attacker = state.cards.iter().find(|c| c.get_id() == attacker_id).unwrap();
+                let defender = state.cards.iter().find(|c| c.get_id() == defender_id).unwrap();
+
+                let attacker_power = attacker.get_power(&snapshot).unwrap();
+                state.effects.push_back(Effect::TakeDamage {
+                    card_id: defender_id.clone(),
+                    from: attacker_id.clone(),
+                    damage: attacker_power,
+                });
+
+                // Sites do not strike back
+                if let Some(defender_power) = defender.get_power(&snapshot) {
+                    state.effects.push_back(Effect::TakeDamage {
+                        card_id: attacker_id.clone(),
+                        from: defender_id.clone(),
+                        damage: defender_power,
+                    });
+                }
+            }
+            Effect::TakeDamage { card_id, damage, from } => {
+                let attacker = state.cards.iter().find(|c| c.get_id() == from).unwrap();
+                let is_lethal = attacker.get_unit_base().unwrap().abilities.contains(&Ability::Lethal);
+                let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
+                let player_id = card.get_owner_id().clone();
+                match card.get_card_type() {
+                    CardType::Site => {
+                        let resources = state.resources.get_mut(&player_id).unwrap();
+                        resources.health -= damage;
+                    }
+                    CardType::Spell => {
+                        if is_lethal {
+                            state.effects.push_back(Effect::KillUnit {
+                                card_id: card_id.clone(),
+                            });
+                        } else {
+                            card.get_unit_base_mut().unwrap().damage += damage;
+                        }
+                    }
+                    CardType::Avatar => {
+                        let resources = state.resources.get_mut(&player_id).unwrap();
+                        resources.health -= damage;
+                    }
+                }
+            }
+            Effect::KillUnit { card_id } => {
+                let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
+                card.set_zone(Zone::Cemetery);
             }
         }
 

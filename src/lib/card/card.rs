@@ -1,7 +1,7 @@
 use crate::{
     card::{AridDesert, ClamorOfHarpies, Flamecaller, PitVipers},
     effect::Effect,
-    game::{PlayerId, Thresholds},
+    game::{are_adjacent, PlayerId, Thresholds},
     networking::message::ClientMessage,
     state::State,
 };
@@ -96,6 +96,31 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
     fn get_base(&self) -> &CardBase;
     fn get_base_mut(&mut self) -> &mut CardBase;
 
+    fn get_valid_attack_targets(&self, state: &State) -> Vec<uuid::Uuid> {
+        let square = match self.get_zone() {
+            Zone::Realm(sq) => sq,
+            _ => unreachable!(),
+        };
+
+        state
+            .cards
+            .iter()
+            .filter(|c| c.get_owner_id() != self.get_owner_id())
+            .filter(|c| c.is_unit() || c.is_site())
+            .filter_map(|c| match c.get_zone() {
+                Zone::Realm(s) => {
+                    if are_adjacent(s, square) {
+                        Some(c)
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            })
+            .map(|c| c.get_id().clone())
+            .collect()
+    }
+
     fn get_valid_play_squares(&self, state: &State) -> Vec<u8> {
         let site_squares = state
             .cards
@@ -185,7 +210,7 @@ pub struct SiteBase {
     pub provided_thresholds: Thresholds,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Ability {
     Airborne,
     Lethal,
@@ -199,6 +224,7 @@ pub struct UnitBase {
     pub power: u8,
     pub toughness: u8,
     pub abilities: Vec<Ability>,
+    pub damage: u8,
 }
 
 #[derive(Debug, Clone)]

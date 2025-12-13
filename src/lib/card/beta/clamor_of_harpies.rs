@@ -93,6 +93,7 @@ impl Card for ClamorOfHarpies {
             .cards
             .iter()
             .filter(|c| c.is_unit())
+            .filter(|c| matches!(c.get_zone(), Zone::Realm(_)))
             .filter(|c| match c.get_unit_base() {
                 Some(ub) => ub.toughness < self.unit_base.power,
                 _ => false,
