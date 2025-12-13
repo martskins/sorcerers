@@ -1,7 +1,7 @@
 use crate::{
     card::{AvatarBase, Card, CardBase, CardType, Edition, MessageHandler, Zone},
     effect::Effect,
-    game::{PlayerId, PlayerStatus},
+    game::{PlayerId, PlayerStatus, Thresholds},
     networking::message::ClientMessage,
     state::State,
 };
@@ -46,6 +46,8 @@ impl Flamecaller {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
+                mana_cost: 0,
+                required_thresholds: Thresholds::new(),
             },
             avatar_base: AvatarBase { playing_site: None },
             status: Status::None,

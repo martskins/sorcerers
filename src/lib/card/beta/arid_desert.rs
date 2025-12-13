@@ -25,6 +25,8 @@ impl AridDesert {
                 owner_id,
                 tapped: false,
                 zone: Zone::Atlasbook,
+                mana_cost: 0,
+                required_thresholds: Thresholds::new(),
             },
         }
     }

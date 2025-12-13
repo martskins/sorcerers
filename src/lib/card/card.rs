@@ -96,6 +96,22 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
     fn get_base(&self) -> &CardBase;
     fn get_base_mut(&mut self) -> &mut CardBase;
 
+    fn get_toughness(&self, state: &State) -> Option<u8> {
+        self.get_unit_base().map(|ub| ub.toughness)
+    }
+
+    fn get_power(&self, state: &State) -> Option<u8> {
+        self.get_unit_base().map(|ub| ub.power)
+    }
+
+    fn get_required_thresholds(&self, state: &State) -> &Thresholds {
+        &self.get_base().required_thresholds
+    }
+
+    fn get_mana_cost(&self, state: &State) -> u8 {
+        self.get_base().mana_cost
+    }
+
     fn get_avatar_base(&self) -> Option<&AvatarBase> {
         None
     }
@@ -167,6 +183,8 @@ pub struct CardBase {
     pub owner_id: PlayerId,
     pub tapped: bool,
     pub zone: Zone,
+    pub mana_cost: u8,
+    pub required_thresholds: Thresholds,
 }
 
 #[derive(Debug, Clone)]

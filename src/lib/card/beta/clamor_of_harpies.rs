@@ -1,7 +1,7 @@
 use crate::{
     card::{Card, CardBase, CardType, Edition, MessageHandler, UnitBase, Zone},
     effect::Effect,
-    game::{PlayerId, PlayerStatus},
+    game::{PlayerId, PlayerStatus, Thresholds},
     networking::message::ClientMessage,
     state::State,
 };
@@ -33,6 +33,8 @@ impl ClamorOfHarpies {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
+                mana_cost: 4,
+                required_thresholds: Thresholds::parse("F"),
             },
             status: Status::None,
             targeted_minion: uuid::Uuid::nil(),

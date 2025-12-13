@@ -38,6 +38,11 @@ pub enum Effect {
     StartTurn {
         player_id: uuid::Uuid,
     },
+    RemoveResources {
+        player_id: uuid::Uuid,
+        mana: u8,
+        thresholds: Thresholds,
+    },
     AddResources {
         player_id: uuid::Uuid,
         mana: u8,
@@ -89,7 +94,13 @@ impl Effect {
                 let snapshot = state.snapshot();
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
                 card.set_zone(Zone::Realm(*square));
-                let effects = card.genesis(&snapshot);
+                let mut effects = card.genesis(&snapshot);
+                let mana_cost = card.get_mana_cost(&snapshot);
+                effects.push(Effect::RemoveResources {
+                    player_id: card.get_owner_id().clone(),
+                    mana: mana_cost,
+                    thresholds: Thresholds::new(),
+                });
                 state.effects.extend(effects);
             }
             Effect::TapCard { card_id } => {
@@ -119,6 +130,22 @@ impl Effect {
                 for site in sites {
                     state.resources.get_mut(player_id).unwrap().mana += site.provided_mana;
                 }
+            }
+            Effect::RemoveResources {
+                player_id,
+                mana,
+                thresholds,
+            } => {
+                let player_resources = state.resources.get_mut(player_id).unwrap();
+                player_resources.mana -= mana;
+                player_resources.thresholds.air -= thresholds.air;
+                player_resources.thresholds.water -= thresholds.water;
+                player_resources.thresholds.fire -= thresholds.fire;
+                player_resources.thresholds.earth -= thresholds.earth;
+            }
+            Effect::EndTurn { player_id } => {
+                let resources = state.resources.get_mut(player_id).unwrap();
+                resources.mana = 0;
             }
             Effect::AddResources {
                 player_id,
