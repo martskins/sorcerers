@@ -93,6 +93,14 @@ impl Resources {
             thresholds: Thresholds::new(),
         }
     }
+
+    pub fn can_afford(&self, cost: u8, required_thresholds: &Thresholds) -> bool {
+        self.mana >= cost
+            && self.thresholds.fire >= required_thresholds.fire
+            && self.thresholds.air >= required_thresholds.air
+            && self.thresholds.earth >= required_thresholds.earth
+            && self.thresholds.water >= required_thresholds.water
+    }
 }
 
 pub fn are_adjacent(square1: u8, square2: u8) -> bool {
@@ -127,8 +135,14 @@ pub fn get_adjacent_squares(square: u8) -> Vec<u8> {
     (1..=20).filter(|&s| are_adjacent(square, s)).collect()
 }
 
+pub enum InputStatus {
+    None,
+    PlayingCard { player_id: PlayerId, card_id: uuid::Uuid },
+}
+
 pub struct Game {
     pub id: uuid::Uuid,
+    pub input_status: InputStatus,
     pub players: Vec<PlayerId>,
     pub state: State,
     pub addrs: HashMap<PlayerId, Socket>,
@@ -139,6 +153,7 @@ impl Game {
     pub fn new(player1: uuid::Uuid, player2: uuid::Uuid, socket: Arc<UdpSocket>, addr1: Socket, addr2: Socket) -> Self {
         Game {
             id: uuid::Uuid::new_v4(),
+            input_status: InputStatus::None,
             state: State::new(Vec::new(), HashMap::new()),
             players: vec![player1, player2],
             addrs: HashMap::from([(player1, addr1), (player2, addr2)]),
@@ -148,6 +163,49 @@ impl Game {
 
     pub async fn process_message(&mut self, message: &ClientMessage) -> anyhow::Result<()> {
         match message {
+            ClientMessage::PickSquare { square, .. } => {
+                if let InputStatus::PlayingCard { player_id, card_id } = &self.input_status {
+                    let effects = vec![
+                        Effect::PlayCard {
+                            player_id: player_id.clone(),
+                            card_id: card_id.clone(),
+                            square: *square,
+                        },
+                        Effect::SetPlayerStatus {
+                            status: PlayerStatus::WaitingForPlay {
+                                player_id: player_id.clone(),
+                            },
+                        },
+                    ];
+                    self.state.effects.extend(effects);
+                    self.input_status = InputStatus::None;
+                }
+            }
+            ClientMessage::ClickCard { player_id, card_id, .. } => {
+                let resources = self.state.resources.get(player_id).unwrap();
+                let card = self.state.cards.iter().find(|c| c.get_id() == card_id).unwrap();
+                let mana_cost = card.get_mana_cost(&self.state);
+                let required_thresholds = card.get_required_thresholds(&self.state);
+                let can_afford = resources.can_afford(mana_cost, required_thresholds);
+                if !can_afford {
+                    return Ok(());
+                }
+
+                if let Zone::Hand = card.get_zone() {
+                    let valid_squares = card.get_valid_play_squares(&self.state);
+                    self.input_status = InputStatus::PlayingCard {
+                        player_id: player_id.clone(),
+                        card_id: card_id.clone(),
+                    };
+                    let effects = vec![Effect::SetPlayerStatus {
+                        status: PlayerStatus::SelectingSquare {
+                            player_id: player_id.clone(),
+                            valid_squares: valid_squares.clone(),
+                        },
+                    }];
+                    self.state.effects.extend(effects);
+                }
+            }
             ClientMessage::EndTurn { player_id, .. } => {
                 let current_index = self.players.iter().position(|p| p == player_id).unwrap();
                 let next_player = self.players.iter().cycle().skip(current_index + 1).next();

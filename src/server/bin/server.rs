@@ -1,5 +1,5 @@
 use sorcerers::{
-    card::{self, ClamorOfHarpies, Flamecaller, Zone},
+    card::{self, AridDesert, ClamorOfHarpies, Flamecaller, Zone},
     deck::precon,
     game::{Game, PlayerStatus, Resources},
     networking::{
@@ -100,69 +100,33 @@ impl Server {
         state.resources.insert(player2.clone(), Resources::new());
 
         state.cards.push(card::from_name_and_zone(
-            ClamorOfHarpies::NAME,
-            player1.clone(),
+            AridDesert::NAME,
+            player2.clone(),
             Zone::Realm(8),
         ));
         state.cards.push(card::from_name_and_zone(
-            ClamorOfHarpies::NAME,
-            player1.clone(),
+            AridDesert::NAME,
+            player2.clone(),
             Zone::Realm(9),
         ));
-        // state.cards.push(Card::Site(Site::AridDesert(AridDesert::new(
-        //     player1.clone(),
-        //     CardZone::Realm(8),
-        // ))));
-        // state.cards.push(Card::Site(Site::SpringRiver(SpringRiver::new(
-        //     player1.clone(),
-        //     CardZone::Realm(9),
-        // ))));
-        // state.cards.push(Card::Site(Site::AridDesert(AridDesert::new(
-        //     player1.clone(),
-        //     CardZone::Realm(3),
-        // ))));
-        // state.cards.push(Card::Site(Site::AridDesert(AridDesert::new(
-        //     player1.clone(),
-        //     Zoneone::Realm(2),
-        // ))));
-        // state.cards.push(Card::Site(Site::AridDesert(AridDesert::new(
-        //     player1.clone(),
-        //     Zoneone::Realm(1),
-        // ))));
-        // let mut adept_illusionist = Spell::from_name("Quarrelsome Kobolds", player1.clone()).unwrap();
-        // adept_illusionist.set_zone(CardZone::Realm(2));
-        // state.cards.push(Card::Spell(adept_illusionist));
-        // state.resources.get_mut(player1).unwrap().mana = 2;
-        // state.resources.get_mut(player1).unwrap().fire_threshold = 2;
-        // state.resources.get_mut(player1).unwrap().water_threshold = 1;
-        // state.resources.get_mut(player1).unwrap().earth_threshold = 1;
-        //
-        // state.cards.push(Card::Site(Site::AridDesert(AridDesert::new(
-        //     player2.clone(),
-        //     Zoneone::Realm(13),
-        // ))));
-        // state.cards.push(Card::Site(Site::SpringRiver(SpringRiver::new(
-        //     player2.clone(),
-        //     CardZone::Realm(14),
-        // ))));
-        // state.cards.push(Card::Site(Site::AridDesert(AridDesert::new(
-        //     player2.clone(),
-        //     CardZone::Realm(18),
-        // ))));
-        // state.resources.get_mut(player2).unwrap().mana = 2;
-        // state.resources.get_mut(player2).unwrap().fire_threshold = 2;
-        // state.resources.get_mut(player1).unwrap().water_threshold = 1;
-        // state.resources.get_mut(player1).unwrap().earth_threshold = 1;
-        //
-        // let mut adept_illusionist = Spell::from_name("Lava Salamander", player1.clone()).unwrap();
-        // adept_illusionist.set_zone(CardZone::Realm(13));
-        // state.cards.push(Card::Spell(adept_illusionist));
-        // let mut adept_illusionist = Spell::from_name("Lava Salamander", player2.clone()).unwrap();
-        // adept_illusionist.set_zone(CardZone::Realm(13));
-        // state.cards.push(Card::Spell(adept_illusionist));
-        // let mut adept_illusionist = Spell::from_name("Sacred Scarabs", player1.clone()).unwrap();
-        // adept_illusionist.set_zone(CardZone::Realm(1));
-        // state.cards.push(Card::Spell(adept_illusionist));
+        state.cards.push(card::from_name_and_zone(
+            AridDesert::NAME,
+            player1.clone(),
+            Zone::Realm(14),
+        ));
+        state.cards.push(card::from_name_and_zone(
+            AridDesert::NAME,
+            player1.clone(),
+            Zone::Realm(13),
+        ));
+        state.resources.get_mut(player1).unwrap().mana = 4;
+        state.resources.get_mut(player1).unwrap().thresholds.fire = 2;
+        state.resources.get_mut(player1).unwrap().thresholds.water = 1;
+        state.resources.get_mut(player1).unwrap().thresholds.earth = 1;
+        state.resources.get_mut(player2).unwrap().mana = 4;
+        state.resources.get_mut(player2).unwrap().thresholds.fire = 2;
+        state.resources.get_mut(player2).unwrap().thresholds.water = 1;
+        state.resources.get_mut(player2).unwrap().thresholds.earth = 1;
 
         let mut game = Game::new(player1.clone(), player2.clone(), self.socket.clone(), addr1, addr2);
         game.state = state;

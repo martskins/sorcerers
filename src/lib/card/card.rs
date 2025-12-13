@@ -96,6 +96,20 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
     fn get_base(&self) -> &CardBase;
     fn get_base_mut(&mut self) -> &mut CardBase;
 
+    fn get_valid_play_squares(&self, state: &State) -> Vec<u8> {
+        let site_squares = state
+            .cards
+            .iter()
+            .filter(|c| c.get_owner_id() == self.get_owner_id())
+            .filter(|c| c.is_site())
+            .filter_map(|c| match c.get_zone() {
+                Zone::Realm(sq) => Some(sq),
+                _ => None,
+            })
+            .collect();
+        site_squares
+    }
+
     fn get_toughness(&self, state: &State) -> Option<u8> {
         self.get_unit_base().map(|ub| ub.toughness)
     }
