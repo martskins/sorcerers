@@ -8,6 +8,7 @@ use std::collections::{HashMap, VecDeque};
 
 #[derive(Debug)]
 pub struct State {
+    pub turns: usize,
     pub cards: Vec<Box<dyn Card>>,
     pub decks: HashMap<PlayerId, Deck>,
     pub resources: HashMap<PlayerId, Resources>,
@@ -21,6 +22,7 @@ impl State {
         State {
             cards,
             decks,
+            turns: 0,
             resources: HashMap::new(),
             player_status: PlayerStatus::None,
             current_player: uuid::Uuid::nil(),
@@ -32,6 +34,7 @@ impl State {
         State {
             cards: self.cards.iter().map(|c| c.clone_box()).collect(),
             decks: self.decks.clone(),
+            turns: 0,
             resources: self.resources.clone(),
             player_status: self.player_status.clone(),
             current_player: self.current_player,

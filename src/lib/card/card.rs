@@ -99,12 +99,23 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
     fn get_avatar_base(&self) -> Option<&AvatarBase> {
         None
     }
+
     fn get_avatar_base_mut(&mut self) -> Option<&mut AvatarBase> {
         None
     }
+
+    fn get_site_base(&self) -> Option<&SiteBase> {
+        None
+    }
+
+    fn get_site_base_mut(&mut self) -> Option<&mut SiteBase> {
+        None
+    }
+
     fn get_unit_base(&self) -> Option<&UnitBase> {
         None
     }
+
     fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
         None
     }

@@ -44,7 +44,6 @@ impl Server {
         match &rmp_serde::from_slice::<Message>(message).unwrap() {
             Message::ClientMessage(ClientMessage::Connect) => {
                 let player_id = uuid::Uuid::new_v4();
-                println!("Player {:?} connected from {:?}", player_id, addr);
                 self.looking_for_match.push(player_id);
                 self.sockets.insert(player_id, Socket::SocketAddr(addr));
                 self.send_to_addr(ServerMessage::ConnectResponse { player_id }, &addr)

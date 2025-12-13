@@ -17,6 +17,9 @@ pub type PlayerId = uuid::Uuid;
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PlayerStatus {
     None,
+    WaitingForCardDraw {
+        player_id: PlayerId,
+    },
     WaitingForPlay {
         player_id: PlayerId,
     },
@@ -93,10 +96,10 @@ impl Resources {
 }
 
 pub fn are_adjacent(square1: u8, square2: u8) -> bool {
-    let row1 = square1 / 4;
-    let col1 = square1 % 4;
-    let row2 = square2 / 4;
-    let col2 = square2 % 4;
+    let row1 = square1 / 5;
+    let col1 = square1 % 5;
+    let row2 = square2 / 5;
+    let col2 = square2 % 5;
 
     let row_diff = if row1 > row2 { row1 - row2 } else { row2 - row1 };
     let col_diff = if col1 > col2 { col1 - col2 } else { col2 - col1 };
@@ -105,78 +108,23 @@ pub fn are_adjacent(square1: u8, square2: u8) -> bool {
 }
 
 pub fn are_nearby(square1: u8, square2: u8) -> bool {
-    let row1 = square1 / 4;
-    let col1 = square1 % 4;
-    let row2 = square2 / 4;
-    let col2 = square2 % 4;
+    let row1 = square1 / 5;
+    let col1 = square1 % 5;
+    let row2 = square2 / 5;
+    let col2 = square2 % 5;
 
     let row_diff = if row1 > row2 { row1 - row2 } else { row2 - row1 };
     let col_diff = if col1 > col2 { col1 - col2 } else { col2 - col1 };
 
-    // Up, down, left, right, or any horizontal (same row, any col except itself)
-    (row_diff == 1 && col_diff == 0) || (row_diff == 0 && col_diff == 1) || (row_diff == 0 && col_diff != 0)
-}
-
-pub fn get_adjacent_squares(square: u8) -> Vec<u8> {
-    let mut squares = vec![square];
-    let row = square / 4;
-    let col = square % 4;
-
-    // Up
-    if row > 0 {
-        squares.push((row - 1) * 4 + col);
-    }
-    // Down
-    if row < 4 {
-        squares.push((row + 1) * 4 + col);
-    }
-    // Left
-    if col > 0 {
-        squares.push(row * 4 + (col - 1));
-    }
-    // Right
-    if col < 3 {
-        squares.push(row * 4 + (col + 1));
-    }
-    // Any horizontal in the same row
-    for c in 0..4 {
-        if c != col {
-            squares.push(row * 4 + c);
-        }
-    }
-
-    squares
+    (row_diff <= 1 && col_diff <= 1) && !(row_diff == 0 && col_diff == 0)
 }
 
 pub fn get_nearby_squares(square: u8) -> Vec<u8> {
-    let mut squares = Vec::new();
-    let row = square / 4;
-    let col = square % 4;
+    (1..=20).filter(|&s| are_nearby(square, s)).collect()
+}
 
-    // Up
-    if row > 0 {
-        squares.push((row - 1) * 4 + col);
-    }
-    // Down
-    if row < 4 {
-        squares.push((row + 1) * 4 + col);
-    }
-    // Left
-    if col > 0 {
-        squares.push(row * 4 + (col - 1));
-    }
-    // Right
-    if col < 3 {
-        squares.push(row * 4 + (col + 1));
-    }
-    // Any horizontal in the same row
-    for c in 0..4 {
-        if c != col {
-            squares.push(row * 4 + c);
-        }
-    }
-
-    squares
+pub fn get_adjacent_squares(square: u8) -> Vec<u8> {
+    (1..=20).filter(|&s| are_adjacent(square, s)).collect()
 }
 
 pub struct Game {
@@ -199,6 +147,50 @@ impl Game {
     }
 
     pub async fn process_message(&mut self, message: &ClientMessage) -> anyhow::Result<()> {
+        match message {
+            ClientMessage::EndTurn { player_id, .. } => {
+                let current_index = self.players.iter().position(|p| p == player_id).unwrap();
+                let next_player = self.players.iter().cycle().skip(current_index + 1).next();
+                self.state.current_player = next_player.unwrap().clone();
+                self.state.player_status = PlayerStatus::WaitingForPlay {
+                    player_id: self.state.current_player.clone(),
+                };
+                self.state.turns += 1;
+                let effects = vec![
+                    Effect::EndTurn {
+                        player_id: player_id.clone(),
+                    },
+                    Effect::StartTurn {
+                        player_id: self.state.current_player.clone(),
+                    },
+                    Effect::SetPlayerStatus {
+                        status: PlayerStatus::WaitingForCardDraw {
+                            player_id: self.state.current_player.clone(),
+                        },
+                    },
+                ];
+                self.state.effects.extend(effects);
+            }
+            ClientMessage::DrawCard {
+                player_id, card_type, ..
+            } => {
+                let effects = vec![
+                    Effect::DrawCard {
+                        player_id: player_id.clone(),
+                        card_type: card_type.clone(),
+                    },
+                    Effect::SetPlayerStatus {
+                        status: PlayerStatus::WaitingForPlay {
+                            player_id: player_id.clone(),
+                        },
+                    },
+                ];
+
+                self.state.effects.extend(effects);
+            }
+            _ => {}
+        }
+
         let snapshot = self.state.snapshot();
         let effects: Vec<Effect> = self
             .state
@@ -325,5 +317,41 @@ impl Game {
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    #[test]
+    fn test_are_adjacent() {
+        use crate::game::are_adjacent;
+
+        assert!(are_adjacent(1, 2));
+        assert!(are_adjacent(3, 2));
+        assert!(are_adjacent(3, 4));
+        assert!(!are_adjacent(3, 7));
+        assert!(!are_adjacent(3, 9));
+    }
+
+    #[test]
+    fn test_are_nearby() {
+        use crate::game::are_nearby;
+
+        assert!(are_nearby(1, 2));
+        assert!(are_nearby(3, 2));
+        assert!(are_nearby(3, 4));
+        assert!(are_nearby(3, 7));
+        assert!(are_nearby(3, 9));
+    }
+
+    #[test]
+    fn test_get_adjacent_squares() {
+        use crate::game::get_adjacent_squares;
+
+        let adj = get_adjacent_squares(8);
+        assert!(adj.contains(&3));
+        assert!(adj.contains(&7));
+        assert!(adj.contains(&9));
+        assert!(adj.contains(&13));
     }
 }

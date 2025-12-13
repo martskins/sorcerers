@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardType, Edition, MessageHandler, SiteBase, Zone},
+    card::{Card, CardBase, CardType, Edition, MessageHandler, SiteBase, UnitBase, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds},
     state::State,
@@ -64,7 +64,19 @@ impl Card for AridDesert {
     }
 
     fn genesis(&mut self, state: &State) -> Vec<Effect> {
-        vec![]
+        vec![Effect::AddResources {
+            player_id: self.get_owner_id().clone(),
+            mana: self.site_base.provided_mana,
+            thresholds: self.site_base.provided_thresholds.clone(),
+        }]
+    }
+
+    fn get_site_base(&self) -> Option<&SiteBase> {
+        Some(&self.site_base)
+    }
+
+    fn get_site_base_mut(&mut self) -> Option<&mut SiteBase> {
+        Some(&mut self.site_base)
     }
 }
 

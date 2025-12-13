@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    card::CardInfo,
+    card::{CardInfo, CardType},
     game::{PlayerId, PlayerStatus, Resources},
 };
 use serde::{Deserialize, Serialize};
@@ -43,6 +43,11 @@ impl ToMessage for ServerMessage {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ClientMessage {
     Connect,
+    DrawCard {
+        game_id: uuid::Uuid,
+        player_id: PlayerId,
+        card_type: CardType,
+    },
     ClickCard {
         game_id: uuid::Uuid,
         player_id: PlayerId,
@@ -84,6 +89,7 @@ impl ClientMessage {
             ClientMessage::EndTurn { game_id, .. } => game_id.clone(),
             ClientMessage::PickSquare { game_id, .. } => game_id.clone(),
             ClientMessage::ClickCard { game_id, .. } => game_id.clone(),
+            ClientMessage::DrawCard { game_id, .. } => game_id.clone(),
         }
     }
 
@@ -96,6 +102,7 @@ impl ClientMessage {
             ClientMessage::EndTurn { player_id, .. } => player_id.clone(),
             ClientMessage::PickSquare { player_id, .. } => player_id.clone(),
             ClientMessage::ClickCard { player_id, .. } => player_id.clone(),
+            ClientMessage::DrawCard { player_id, .. } => player_id.clone(),
         }
     }
 }

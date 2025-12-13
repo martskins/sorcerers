@@ -299,7 +299,6 @@ impl Game {
             PlayerStatus::SelectingCard {
                 player_id, valid_cards, ..
             } if player_id == &self.player_id => {
-                println!("Selecting card: {:?}", valid_cards);
                 let valid_cards: Vec<&CardDisplay> = self
                     .card_displays
                     .iter()
@@ -746,20 +745,21 @@ impl Game {
     }
 
     fn draw_card(&self, card_type: CardType) -> anyhow::Result<()> {
+        if let PlayerStatus::WaitingForCardDraw { player_id, .. } = &self.player_status {
+            if player_id != &self.player_id {
+                return Ok(());
+            }
+
+            self.client
+                .send(ClientMessage::DrawCard {
+                    card_type,
+                    player_id: self.player_id,
+                    game_id: self.game_id,
+                })
+                .unwrap();
+        }
+
         Ok(())
-        // match self.state.player_status {
-        //     PlayerStatus::WaitingForCardDraw {
-        //         player_id, ref types, ..
-        //     } if player_id == self.player_id && types.contains(&card_type) => {
-        //         let message = networking::Message::DrawCard(DrawCard {
-        //             card_type,
-        //             player_id: self.player_id,
-        //             game_id: self.game_id,
-        //         });
-        //         self.client.send(message)
-        //     }
-        //     _ => Ok(()),
-        // }
     }
 
     async fn update_cards_in_realm(&mut self) -> anyhow::Result<()> {
