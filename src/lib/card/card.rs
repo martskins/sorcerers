@@ -46,6 +46,22 @@ pub enum Zone {
     Cemetery,
 }
 
+impl Zone {
+    pub fn is_nearby(&self, other: &Zone) -> bool {
+        match (self, other) {
+            (Zone::Realm(sq1), Zone::Realm(sq2)) => are_nearby(*sq1, *sq2),
+            _ => false,
+        }
+    }
+
+    pub fn is_adjacent(&self, other: &Zone) -> bool {
+        match (self, other) {
+            (Zone::Realm(sq1), Zone::Realm(sq2)) => are_adjacent(*sq1, *sq2),
+            _ => false,
+        }
+    }
+}
+
 pub trait MessageHandler {
     fn handle_message(&mut self, message: &ClientMessage, state: &State) -> Vec<Effect> {
         Vec::new()
@@ -130,51 +146,32 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
     }
 
     fn get_valid_move_squares(&self, state: &State) -> Vec<u8> {
-        let square = match self.get_zone() {
-            Zone::Realm(sq) => sq,
-            _ => unreachable!(),
-        };
-
         state
             .cards
             .iter()
             .filter(|c| c.get_owner_id() == self.get_owner_id())
             .filter(|c| c.is_site())
-            .filter_map(|c| match c.get_zone() {
-                Zone::Realm(s) => {
-                    if self.has_modifier(state, Modifier::Airborne) && are_nearby(s, square) || are_adjacent(s, square)
-                    {
-                        Some(s)
-                    } else {
-                        None
-                    }
+            .filter(|c| {
+                if self.has_modifier(state, Modifier::Airborne) {
+                    self.get_zone().is_adjacent(&c.get_zone())
+                } else {
+                    self.get_zone().is_nearby(&c.get_zone())
                 }
-                _ => None,
+            })
+            .map(|c| match c.get_zone() {
+                Zone::Realm(sq) => sq,
+                _ => unreachable!(),
             })
             .collect()
     }
 
     fn get_valid_attack_targets(&self, state: &State) -> Vec<uuid::Uuid> {
-        let square = match self.get_zone() {
-            Zone::Realm(sq) => sq,
-            _ => unreachable!(),
-        };
-
         state
             .cards
             .iter()
             .filter(|c| c.get_owner_id() != self.get_owner_id())
             .filter(|c| c.is_unit() || c.is_site())
-            .filter_map(|c| match c.get_zone() {
-                Zone::Realm(s) => {
-                    if are_adjacent(s, square) {
-                        Some(c)
-                    } else {
-                        None
-                    }
-                }
-                _ => None,
-            })
+            .filter(|c| c.get_zone().is_adjacent(&self.get_zone()))
             .map(|c| c.get_id().clone())
             .collect()
     }
@@ -315,6 +312,10 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
         }
 
         effects
+    }
+
+    fn on_turn_end(&mut self, state: &State) -> Vec<Effect> {
+        vec![]
     }
 
     fn remove_modifier(&mut self, ability: Modifier) {

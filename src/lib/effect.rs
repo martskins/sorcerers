@@ -236,6 +236,10 @@ impl Effect {
                 let resources = state.resources.get_mut(player_id).unwrap();
                 resources.mana = 0;
 
+                let snapshot = state.snapshot();
+                let effects: Vec<Effect> = state.cards.iter_mut().flat_map(|c| c.on_turn_end(&snapshot)).collect();
+                state.effects.extend(effects);
+
                 // Clear any counters that expire at the end of the turn
                 let card_ids: Vec<uuid::Uuid> = state
                     .cards

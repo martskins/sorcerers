@@ -20,6 +20,8 @@ pub mod sand_worm;
 pub use sand_worm::*;
 pub mod askelon_phoenix;
 pub use askelon_phoenix::*;
+pub mod infernal_legion;
+pub use infernal_legion::*;
 
 use crate::{card::Card, game::PlayerId};
 
@@ -36,6 +38,7 @@ pub fn from_beta_name(name: &str, player_id: PlayerId) -> Option<Box<dyn Card>> 
         PetrosianCavalry::NAME => Some(Box::new(PetrosianCavalry::new(player_id))),
         SandWorm::NAME => Some(Box::new(SandWorm::new(player_id))),
         AskelonPhoenix::NAME => Some(Box::new(AskelonPhoenix::new(player_id))),
+        InfernalLegion::NAME => Some(Box::new(InfernalLegion::new(player_id))),
         _ => None,
     }
 }
