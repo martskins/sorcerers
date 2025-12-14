@@ -239,7 +239,11 @@ impl Game {
         Game::render_resources(base_x, OPPONENT_Y, &opponent_resources);
 
         let turn_label = if self.is_players_turn(&self.player_id) {
-            "Your Turn"
+            if let PlayerStatus::WaitingForCardDraw { player_id, .. } = self.player_status && player_id == self.player_id {
+                "Draw a Card"
+            } else {
+                "Your Turn"
+            }
         } else {
             "Opponent's Turn"
         };

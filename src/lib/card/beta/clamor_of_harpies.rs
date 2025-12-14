@@ -117,12 +117,7 @@ impl Card for ClamorOfHarpies {
             })
             .map(|c| c.get_id().clone())
             .collect();
-        vec![Effect::SetPlayerStatus {
-            status: PlayerStatus::SelectingCard {
-                player_id: self.get_owner_id().clone(),
-                valid_cards,
-            },
-        }]
+        vec![Effect::select_card(self.get_owner_id(), valid_cards)]
     }
 }
 
@@ -144,6 +139,7 @@ impl MessageHandler for ClamorOfHarpies {
                     Effect::MoveCard {
                         card_id: self.get_id().clone(),
                         to: self.get_zone(),
+                        tap: false,
                     },
                     Effect::wait_for_play(self.get_owner_id()),
                 ];

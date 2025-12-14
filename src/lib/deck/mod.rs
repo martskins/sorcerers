@@ -19,6 +19,7 @@ impl Deck {
         vec![Effect::MoveCard {
             card_id: card_id.unwrap(),
             to: Zone::Hand,
+            tap: false,
         }]
     }
 
@@ -27,6 +28,7 @@ impl Deck {
         vec![Effect::MoveCard {
             card_id: card_id.unwrap(),
             to: Zone::Hand,
+            tap: false,
         }]
     }
 

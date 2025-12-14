@@ -1,7 +1,7 @@
 use crate::{
-    card::{AridDesert, ClamorOfHarpies, Flamecaller, PitVipers},
+    card::{beta, AridDesert, ClamorOfHarpies, Flamecaller, PitVipers},
     effect::Effect,
-    game::{are_adjacent, PlayerId, Thresholds},
+    game::{are_adjacent, are_nearby, Element, PlayerId, Thresholds},
     networking::message::ClientMessage,
     state::State,
 };
@@ -96,11 +96,60 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
     fn get_base(&self) -> &CardBase;
     fn get_base_mut(&mut self) -> &mut CardBase;
 
+    fn has_ability(&self, state: &State, ability: Ability) -> bool {
+        match self.get_unit_base() {
+            Some(ub) => ub.abilities.contains(&ability),
+            None => false,
+        }
+    }
+
+    fn get_elements(&self, state: &State) -> Vec<Element> {
+        let mut elements = Vec::new();
+        let thresholds = self.get_required_thresholds(state);
+        if thresholds.fire > 0 {
+            elements.push(Element::Fire);
+        }
+        if thresholds.water > 0 {
+            elements.push(Element::Water);
+        }
+        if thresholds.earth > 0 {
+            elements.push(Element::Earth);
+        }
+        if thresholds.air > 0 {
+            elements.push(Element::Air);
+        }
+        elements
+    }
+
     fn get_square(&self) -> Option<u8> {
         match self.get_zone() {
             Zone::Realm(sq) => Some(sq),
             _ => None,
         }
+    }
+
+    fn get_valid_move_squares(&self, state: &State) -> Vec<u8> {
+        let square = match self.get_zone() {
+            Zone::Realm(sq) => sq,
+            _ => unreachable!(),
+        };
+
+        state
+            .cards
+            .iter()
+            .filter(|c| c.get_owner_id() == self.get_owner_id())
+            .filter(|c| c.is_site())
+            .filter_map(|c| match c.get_zone() {
+                Zone::Realm(s) => {
+                    if self.has_ability(state, Ability::Airborne) && are_nearby(s, square) || are_adjacent(s, square) {
+                        Some(s)
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            })
+            .collect()
     }
 
     fn get_valid_attack_targets(&self, state: &State) -> Vec<uuid::Uuid> {
@@ -209,6 +258,10 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
     fn is_unit(&self) -> bool {
         self.get_card_type() == CardType::Spell
     }
+
+    fn on_move(&mut self, state: &State, zone: &Zone) -> Vec<Effect> {
+        vec![]
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -224,6 +277,8 @@ pub enum Ability {
     Movement(u8),
     Burrowing,
     Submerge,
+    Spellcaster(Element),
+    TakesNoDamageFromElement(Element),
 }
 
 #[derive(Debug, Default, Clone)]
@@ -250,13 +305,11 @@ pub struct AvatarBase {
 }
 
 pub fn from_name(name: &str, player_id: PlayerId) -> Box<dyn Card> {
-    match name {
-        Flamecaller::NAME => Box::new(Flamecaller::new(player_id)),
-        ClamorOfHarpies::NAME => Box::new(ClamorOfHarpies::new(player_id)),
-        AridDesert::NAME => Box::new(AridDesert::new(player_id)),
-        PitVipers::NAME => Box::new(PitVipers::new(player_id)),
-        _ => panic!("Unknown card name: {}", name),
+    if let Some(card) = beta::from_beta_name(name, player_id) {
+        return card;
     }
+
+    panic!("Card with name '{}' not found", name);
 }
 
 pub fn from_name_and_zone(name: &str, player_id: PlayerId, zone: Zone) -> Box<dyn Card> {

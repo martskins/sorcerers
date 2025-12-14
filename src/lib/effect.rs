@@ -15,6 +15,7 @@ pub enum Effect {
     MoveCard {
         card_id: uuid::Uuid,
         to: Zone,
+        tap: bool,
     },
     DrawCard {
         player_id: uuid::Uuid,
@@ -53,7 +54,7 @@ pub enum Effect {
         from: uuid::Uuid,
         damage: u8,
     },
-    KillUnit {
+    BuryUnit {
         card_id: uuid::Uuid,
     },
 }
@@ -62,6 +63,14 @@ impl Effect {
     pub fn tap_card(card_id: &uuid::Uuid) -> Self {
         Effect::TapCard {
             card_id: card_id.clone(),
+        }
+    }
+
+    pub fn wait_for_card_draw(player_id: &PlayerId) -> Self {
+        Effect::SetPlayerStatus {
+            status: PlayerStatus::WaitingForCardDraw {
+                player_id: player_id.clone(),
+            },
         }
     }
 
@@ -102,9 +111,15 @@ impl Effect {
 
     pub fn apply(&self, state: &mut State) -> anyhow::Result<()> {
         match self {
-            Effect::MoveCard { card_id, to } => {
+            Effect::MoveCard { card_id, to, tap } => {
+                let snapshot = state.snapshot();
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
                 card.set_zone(to.clone());
+                let effects = card.on_move(&snapshot, to);
+                state.effects.extend(effects);
+                if *tap {
+                    card.get_base_mut().tapped = true;
+                }
             }
             Effect::DrawCard { player_id, card_type } => {
                 let deck = state.decks.get_mut(player_id).unwrap();
@@ -228,32 +243,48 @@ impl Effect {
             }
             Effect::TakeDamage { card_id, damage, from } => {
                 let attacker = state.cards.iter().find(|c| c.get_id() == from).unwrap();
-                let is_lethal = attacker.get_unit_base().unwrap().abilities.contains(&Ability::Lethal);
+                let is_lethal = attacker.has_ability(state, Ability::Lethal);
+                let snapshot = state.snapshot();
+                let dealer = snapshot.cards.iter().find(|c| c.get_id() == from).unwrap();
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
                 let player_id = card.get_owner_id().clone();
-                match card.get_card_type() {
-                    CardType::Site => {
+                match (dealer.get_card_type(), card.get_card_type()) {
+                    (CardType::Spell, CardType::Site) => {
                         let resources = state.resources.get_mut(&player_id).unwrap();
                         resources.health -= damage;
                     }
-                    CardType::Spell => {
+                    (CardType::Spell, CardType::Spell) => {
+                        let dealer_elements = dealer.get_elements(&snapshot);
+                        for element in dealer_elements {
+                            if dealer.has_ability(&snapshot, Ability::TakesNoDamageFromElement(element)) {
+                                return Ok(());
+                            }
+                        }
+
+                        card.get_unit_base_mut().unwrap().damage += damage;
                         if is_lethal {
-                            state.effects.push_back(Effect::KillUnit {
+                            state.effects.push_back(Effect::BuryUnit {
                                 card_id: card_id.clone(),
                             });
-                        } else {
-                            card.get_unit_base_mut().unwrap().damage += damage;
                         }
                     }
-                    CardType::Avatar => {
+                    (CardType::Spell, CardType::Avatar) => {
                         let resources = state.resources.get_mut(&player_id).unwrap();
                         resources.health -= damage;
                     }
+                    (CardType::Site, CardType::Avatar) => {
+                        let resources = state.resources.get_mut(&player_id).unwrap();
+                        resources.health -= damage;
+                    }
+                    _ => {}
                 }
             }
-            Effect::KillUnit { card_id } => {
+            Effect::BuryUnit { card_id } => {
+                let snapshot = state.snapshot();
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
                 card.set_zone(Zone::Cemetery);
+                let effects = card.deathrite(&snapshot);
+                state.effects.extend(effects);
             }
         }
 

@@ -37,7 +37,7 @@ pub enum PlayerStatus {
     },
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Element {
     Fire,
     Air,
@@ -139,6 +139,11 @@ pub fn get_adjacent_squares(square: u8) -> Vec<u8> {
 
 pub enum InputStatus {
     None,
+    SelectingAction {
+        player_id: PlayerId,
+        actions: Vec<Action>,
+        card_id: Option<uuid::Uuid>,
+    },
     PlayingCard {
         player_id: PlayerId,
         card_id: uuid::Uuid,
@@ -147,6 +152,27 @@ pub enum InputStatus {
         player_id: PlayerId,
         attacker_id: uuid::Uuid,
     },
+    Moving {
+        player_id: PlayerId,
+        card_id: uuid::Uuid,
+    },
+}
+
+#[derive(Debug, Clone)]
+enum Action {
+    Move,
+    Attack,
+    Defend,
+}
+
+impl Action {
+    pub fn get_name(&self) -> String {
+        match self {
+            Action::Move => "Move".to_string(),
+            Action::Attack => "Attack".to_string(),
+            Action::Defend => "Defend".to_string(),
+        }
+    }
 }
 
 pub struct Game {
@@ -214,12 +240,7 @@ impl Game {
                             player_id: player_id.clone(),
                             card_id: card_id.clone(),
                         };
-                        let effects = vec![Effect::SetPlayerStatus {
-                            status: PlayerStatus::SelectingSquare {
-                                player_id: player_id.clone(),
-                                valid_squares: valid_squares.clone(),
-                            },
-                        }];
+                        let effects = vec![Effect::select_square(player_id, valid_squares)];
                         self.state.effects.extend(effects);
                     }
                     (true, Zone::Realm(_)) => {
@@ -227,20 +248,68 @@ impl Game {
                             return Ok(());
                         }
 
-                        self.input_status = InputStatus::Attacking {
+                        let actions = vec![Action::Attack.get_name(), Action::Move.get_name()];
+                        self.input_status = InputStatus::SelectingAction {
                             player_id: player_id.clone(),
-                            attacker_id: card_id.clone(),
+                            actions: vec![Action::Attack, Action::Move],
+                            card_id: Some(card_id.clone()),
                         };
-                        let valid_cards = card.get_valid_attack_targets(&self.state);
-                        self.state.effects.push_back(Effect::SetPlayerStatus {
-                            status: PlayerStatus::SelectingCard {
-                                player_id: player_id.clone(),
-                                valid_cards,
-                            },
-                        });
+                        self.state.effects.push_back(Effect::select_action(player_id, actions));
                     }
                     _ => {}
                 }
+            }
+            (
+                InputStatus::SelectingAction {
+                    player_id,
+                    actions,
+                    card_id,
+                },
+                ClientMessage::PickAction { action_idx, .. },
+            ) => match actions[*action_idx] {
+                Action::Attack => {
+                    let card_id = card_id.unwrap();
+                    let player_id = player_id.clone();
+                    let card = self.state.cards.iter().find(|c| c.get_id() == &card_id).unwrap();
+                    let valid_cards = card.get_valid_attack_targets(&self.state);
+                    self.input_status = InputStatus::Attacking {
+                        player_id: player_id.clone(),
+                        attacker_id: card_id.clone(),
+                    };
+                    self.state
+                        .effects
+                        .push_back(Effect::select_card(&player_id, valid_cards));
+                }
+                Action::Move => {
+                    let card_id = card_id.unwrap();
+                    let player_id = player_id.clone();
+                    let card = self.state.cards.iter().find(|c| c.get_id() == &card_id).unwrap();
+                    let valid_squares = card.get_valid_move_squares(&self.state);
+                    self.input_status = InputStatus::Moving {
+                        player_id: player_id.clone(),
+                        card_id: card_id.clone(),
+                    };
+                    self.state
+                        .effects
+                        .push_back(Effect::select_square(&player_id, valid_squares));
+                }
+                Action::Defend => {}
+            },
+            (InputStatus::Moving { player_id, card_id }, ClientMessage::PickSquare { square, .. }) => {
+                let effects = vec![
+                    Effect::MoveCard {
+                        card_id: card_id.clone(),
+                        to: Zone::Realm(*square),
+                        tap: true,
+                    },
+                    Effect::SetPlayerStatus {
+                        status: PlayerStatus::WaitingForPlay {
+                            player_id: player_id.clone(),
+                        },
+                    },
+                ];
+                self.state.effects.extend(effects);
+                self.input_status = InputStatus::None;
             }
             (InputStatus::None, ClientMessage::EndTurn { player_id, .. }) => {
                 let current_index = self.players.iter().position(|p| p == player_id).unwrap();
@@ -330,7 +399,7 @@ impl Game {
 
         let mut effects = Vec::new();
         for card_id in card_ids {
-            effects.push(Effect::KillUnit { card_id });
+            effects.push(Effect::BuryUnit { card_id });
         }
         effects
     }
@@ -429,6 +498,7 @@ impl Game {
             effects.push(Effect::MoveCard {
                 card_id: avatar_id,
                 to: Zone::Realm(square),
+                tap: false,
             });
         }
         effects
