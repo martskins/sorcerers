@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use crate::{
-    card::{Card, CardInfo, CardType, Zone},
+    card::{Card, CardInfo, CardType, Modifier, Zone},
     effect::Effect,
     networking::{
         client::Socket,
@@ -244,7 +244,7 @@ impl Game {
                         self.state.effects.extend(effects);
                     }
                     (true, Zone::Realm(_)) => {
-                        if card.is_tapped() {
+                        if card.is_tapped() || card.has_modifier(&self.state, Modifier::SummoningSickness) {
                             return Ok(());
                         }
 

@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, CardType, Edition, MessageHandler, UnitBase, Zone},
+    card::{Card, CardBase, CardType, Edition, MessageHandler, Modifier, UnitBase, Zone},
     game::{Element, PlayerId, Thresholds},
 };
 
@@ -18,8 +18,8 @@ impl LavaSalamander {
                 power: 1,
                 toughness: 1,
                 abilities: vec![
-                    Ability::Spellcaster(Element::Fire),
-                    Ability::TakesNoDamageFromElement(Element::Fire),
+                    Modifier::Spellcaster(Element::Fire),
+                    Modifier::TakesNoDamageFromElement(Element::Fire),
                 ],
                 ..Default::default()
             },

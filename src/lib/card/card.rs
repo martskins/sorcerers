@@ -96,7 +96,7 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
     fn get_base(&self) -> &CardBase;
     fn get_base_mut(&mut self) -> &mut CardBase;
 
-    fn has_ability(&self, state: &State, ability: Ability) -> bool {
+    fn has_modifier(&self, state: &State, ability: Modifier) -> bool {
         match self.get_unit_base() {
             Some(ub) => ub.abilities.contains(&ability),
             None => false,
@@ -141,7 +141,8 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
             .filter(|c| c.is_site())
             .filter_map(|c| match c.get_zone() {
                 Zone::Realm(s) => {
-                    if self.has_ability(state, Ability::Airborne) && are_nearby(s, square) || are_adjacent(s, square) {
+                    if self.has_modifier(state, Modifier::Airborne) && are_nearby(s, square) || are_adjacent(s, square)
+                    {
                         Some(s)
                     } else {
                         None
@@ -262,6 +263,18 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
     fn on_move(&mut self, state: &State, zone: &Zone) -> Vec<Effect> {
         vec![]
     }
+
+    fn remove_modifier(&mut self, ability: Modifier) {
+        if let Some(ub) = self.get_unit_base_mut() {
+            ub.abilities.retain(|a| a != &ability);
+        }
+    }
+
+    fn add_modifier(&mut self, ability: Modifier) {
+        if let Some(ub) = self.get_unit_base_mut() {
+            ub.abilities.push(ability);
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -271,7 +284,7 @@ pub struct SiteBase {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum Ability {
+pub enum Modifier {
     Airborne,
     Lethal,
     Movement(u8),
@@ -279,13 +292,15 @@ pub enum Ability {
     Submerge,
     Spellcaster(Element),
     TakesNoDamageFromElement(Element),
+    Charge,
+    SummoningSickness,
 }
 
 #[derive(Debug, Default, Clone)]
 pub struct UnitBase {
     pub power: u8,
     pub toughness: u8,
-    pub abilities: Vec<Ability>,
+    pub abilities: Vec<Modifier>,
     pub damage: u8,
 }
 

@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, CardType, SiteBase, Zone},
+    card::{CardType, Modifier, SiteBase, Zone},
     game::{PlayerId, PlayerStatus, Thresholds},
     state::State,
 };
@@ -152,6 +152,9 @@ impl Effect {
                 let snapshot = state.snapshot();
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
                 card.set_zone(Zone::Realm(*square));
+                if !card.has_modifier(&snapshot, Modifier::Charge) {
+                    card.add_modifier(Modifier::SummoningSickness);
+                }
                 let mut effects = card.genesis(&snapshot);
                 let mana_cost = card.get_mana_cost(&snapshot);
                 effects.push(Effect::RemoveResources {
@@ -172,6 +175,7 @@ impl Effect {
                     .filter(|c| c.get_owner_id() == &state.current_player);
                 for card in cards {
                     card.get_base_mut().tapped = false;
+                    card.remove_modifier(Modifier::SummoningSickness);
                 }
 
                 let player_resources = state.resources.get_mut(player_id).unwrap();
@@ -224,13 +228,19 @@ impl Effect {
                 let snapshot = state.snapshot();
                 let attacker = state.cards.iter().find(|c| c.get_id() == attacker_id).unwrap();
                 let defender = state.cards.iter().find(|c| c.get_id() == defender_id).unwrap();
-
-                let attacker_power = attacker.get_power(&snapshot).unwrap();
-                state.effects.push_back(Effect::TakeDamage {
-                    card_id: defender_id.clone(),
-                    from: attacker_id.clone(),
-                    damage: attacker_power,
-                });
+                let effects = vec![
+                    Effect::MoveCard {
+                        card_id: attacker_id.clone(),
+                        to: defender.get_zone(),
+                        tap: true,
+                    },
+                    Effect::TakeDamage {
+                        card_id: defender_id.clone(),
+                        from: attacker_id.clone(),
+                        damage: attacker.get_power(&snapshot).unwrap(),
+                    },
+                ];
+                state.effects.extend(effects);
 
                 // Sites do not strike back
                 if let Some(defender_power) = defender.get_power(&snapshot) {
@@ -240,10 +250,12 @@ impl Effect {
                         damage: defender_power,
                     });
                 }
+
+                state.effects.push_back(Effect::wait_for_play(attacker.get_owner_id()));
             }
             Effect::TakeDamage { card_id, damage, from } => {
                 let attacker = state.cards.iter().find(|c| c.get_id() == from).unwrap();
-                let is_lethal = attacker.has_ability(state, Ability::Lethal);
+                let is_lethal = attacker.has_modifier(state, Modifier::Lethal);
                 let snapshot = state.snapshot();
                 let dealer = snapshot.cards.iter().find(|c| c.get_id() == from).unwrap();
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
@@ -256,7 +268,7 @@ impl Effect {
                     (CardType::Spell, CardType::Spell) => {
                         let dealer_elements = dealer.get_elements(&snapshot);
                         for element in dealer_elements {
-                            if dealer.has_ability(&snapshot, Ability::TakesNoDamageFromElement(element)) {
+                            if dealer.has_modifier(&snapshot, Modifier::TakesNoDamageFromElement(element)) {
                                 return Ok(());
                             }
                         }

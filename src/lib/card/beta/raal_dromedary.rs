@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, CardType, Edition, MessageHandler, UnitBase, Zone},
+    card::{Card, CardBase, CardType, Edition, MessageHandler, Modifier, UnitBase, Zone},
     game::{PlayerId, Thresholds},
 };
 

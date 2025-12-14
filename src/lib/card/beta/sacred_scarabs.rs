@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, CardType, Edition, MessageHandler, UnitBase, Zone},
+    card::{Card, CardBase, CardType, Edition, MessageHandler, Modifier, UnitBase, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds},
     state::State,
@@ -19,7 +19,7 @@ impl SacredScarabs {
             unit_base: UnitBase {
                 power: 1,
                 toughness: 1,
-                abilities: vec![Ability::Airborne],
+                abilities: vec![Modifier::Airborne],
                 ..Default::default()
             },
             card_base: CardBase {
