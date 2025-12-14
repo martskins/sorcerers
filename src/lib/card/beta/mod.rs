@@ -14,6 +14,12 @@ pub mod sacred_scarabs;
 pub use sacred_scarabs::*;
 pub mod wayfaring_pilgrim;
 pub use wayfaring_pilgrim::*;
+pub mod petrosian_cavalry;
+pub use petrosian_cavalry::*;
+pub mod sand_worm;
+pub use sand_worm::*;
+pub mod askelon_phoenix;
+pub use askelon_phoenix::*;
 
 use crate::{card::Card, game::PlayerId};
 
@@ -27,6 +33,9 @@ pub fn from_beta_name(name: &str, player_id: PlayerId) -> Option<Box<dyn Card>> 
         LavaSalamander::NAME => Some(Box::new(LavaSalamander::new(player_id))),
         SacredScarabs::NAME => Some(Box::new(SacredScarabs::new(player_id))),
         WayfaringPilgrim::NAME => Some(Box::new(WayfaringPilgrim::new(player_id))),
+        PetrosianCavalry::NAME => Some(Box::new(PetrosianCavalry::new(player_id))),
+        SandWorm::NAME => Some(Box::new(SandWorm::new(player_id))),
+        AskelonPhoenix::NAME => Some(Box::new(AskelonPhoenix::new(player_id))),
         _ => None,
     }
 }

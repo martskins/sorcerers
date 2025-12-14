@@ -70,6 +70,7 @@ impl Card for AridDesert {
             player_id: self.get_owner_id().clone(),
             mana: self.site_base.provided_mana,
             thresholds: self.site_base.provided_thresholds.clone(),
+            health: 0,
         }]
     }
 

@@ -111,10 +111,7 @@ impl Card for ClamorOfHarpies {
             .iter()
             .filter(|c| c.is_unit())
             .filter(|c| matches!(c.get_zone(), Zone::Realm(_)))
-            .filter(|c| match c.get_unit_base() {
-                Some(ub) => ub.toughness < self.unit_base.power,
-                _ => false,
-            })
+            .filter(|c| c.get_power(state).unwrap_or(0) < self.get_power(state).unwrap_or(0))
             .map(|c| c.get_id().clone())
             .collect();
         vec![Effect::select_card(self.get_owner_id(), valid_cards)]
@@ -154,7 +151,7 @@ impl MessageHandler for ClamorOfHarpies {
                     Action::Strike => effects.push(Effect::TakeDamage {
                         card_id: self.targeted_minion.clone(),
                         from: self.get_id().clone(),
-                        damage: self.unit_base.power,
+                        damage: self.get_power(state).unwrap_or(0),
                     }),
                     Action::DoNotStrike => {}
                 }

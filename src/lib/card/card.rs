@@ -1,7 +1,7 @@
 use crate::{
-    card::{beta, AridDesert, ClamorOfHarpies, Flamecaller, PitVipers},
-    effect::Effect,
-    game::{are_adjacent, are_nearby, Element, PlayerId, Thresholds},
+    card::{AridDesert, ClamorOfHarpies, Flamecaller, PitVipers, beta},
+    effect::{Counter, Effect},
+    game::{Element, PlayerId, Thresholds, are_adjacent, are_nearby},
     networking::message::ClientMessage,
     state::State,
 };
@@ -194,11 +194,31 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
     }
 
     fn get_toughness(&self, state: &State) -> Option<u8> {
-        self.get_unit_base().map(|ub| ub.toughness)
+        let base = self.get_unit_base();
+        if base.is_none() {
+            return None;
+        }
+
+        let base = base.unwrap();
+        let mut toughness = base.toughness;
+        for counter in &base.counters {
+            toughness = toughness.saturating_sub_signed(counter.toughness);
+        }
+        Some(toughness)
     }
 
     fn get_power(&self, state: &State) -> Option<u8> {
-        self.get_unit_base().map(|ub| ub.power)
+        let base = self.get_unit_base();
+        if base.is_none() {
+            return None;
+        }
+
+        let base = base.unwrap();
+        let mut power = base.power;
+        for counter in &base.counters {
+            power = power.saturating_sub_signed(counter.power);
+        }
+        Some(power)
     }
 
     fn get_required_thresholds(&self, state: &State) -> &Thresholds {
@@ -265,6 +285,38 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
         vec![]
     }
 
+    fn on_take_damage(&mut self, state: &State, from: &uuid::Uuid, damage: u8) -> Vec<Effect> {
+        let mut effects = Vec::new();
+        let attacker = state.cards.iter().find(|c| c.get_id() == from).unwrap();
+        if self.is_unit() {
+            if let Some(ub) = self.get_unit_base_mut() {
+                ub.damage += damage;
+            }
+
+            if attacker.has_modifier(state, Modifier::Lethal) {
+                effects.push(Effect::BuryUnit {
+                    card_id: self.get_id().clone(),
+                });
+            }
+        } else if self.is_site() {
+            effects.push(Effect::RemoveResources {
+                player_id: self.get_owner_id().clone(),
+                mana: 0,
+                thresholds: Thresholds::new(),
+                health: damage,
+            });
+        } else if self.is_avatar() {
+            effects.push(Effect::RemoveResources {
+                player_id: self.get_owner_id().clone(),
+                mana: 0,
+                thresholds: Thresholds::new(),
+                health: damage,
+            });
+        }
+
+        effects
+    }
+
     fn remove_modifier(&mut self, ability: Modifier) {
         if let Some(ub) = self.get_unit_base_mut() {
             ub.abilities.retain(|a| a != &ability);
@@ -290,6 +342,7 @@ pub enum Modifier {
     Lethal,
     Movement(u8),
     Burrowing,
+    Landbound,
     Submerge,
     Spellcaster(Element),
     TakesNoDamageFromElement(Element),
@@ -303,6 +356,7 @@ pub struct UnitBase {
     pub toughness: u8,
     pub abilities: Vec<Modifier>,
     pub damage: u8,
+    pub counters: Vec<Counter>,
 }
 
 #[derive(Debug, Clone)]

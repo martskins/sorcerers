@@ -1,5 +1,5 @@
 use crate::{
-    card::{CardType, Modifier, SiteBase, Zone},
+    card::{CardType, Modifier, SiteBase, UnitBase, Zone},
     game::{PlayerId, PlayerStatus, Thresholds},
     state::State,
 };
@@ -8,9 +8,30 @@ use std::fmt::Debug;
 pub trait CardStatus: Debug + Send + Sync {}
 
 #[derive(Debug, Clone)]
+pub struct Counter {
+    pub power: i8,
+    pub toughness: i8,
+    pub expires_in_turns: Option<u8>,
+}
+
+impl Counter {
+    pub fn new(power: i8, toughness: i8, expires_in_turns: Option<u8>) -> Self {
+        Self {
+            power,
+            toughness,
+            expires_in_turns,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum Effect {
     SetPlayerStatus {
         status: PlayerStatus,
+    },
+    AddCounter {
+        card_id: uuid::Uuid,
+        counter: Counter,
     },
     MoveCard {
         card_id: uuid::Uuid,
@@ -40,11 +61,13 @@ pub enum Effect {
         player_id: uuid::Uuid,
         mana: u8,
         thresholds: Thresholds,
+        health: u8,
     },
     AddResources {
         player_id: uuid::Uuid,
         mana: u8,
         thresholds: Thresholds,
+        health: u8,
     },
     Attack {
         attacker_id: uuid::Uuid,
@@ -116,7 +139,7 @@ impl Effect {
                 let snapshot = state.snapshot();
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
                 card.set_zone(to.clone());
-                let mut effects = card.on_move(&snapshot, to);
+                let effects = card.on_move(&snapshot, to);
                 state.effects.extend(effects);
                 if *tap {
                     card.get_base_mut().tapped = true;
@@ -162,6 +185,7 @@ impl Effect {
                     player_id: card.get_owner_id().clone(),
                     mana: mana_cost,
                     thresholds: Thresholds::new(),
+                    health: 0,
                 });
                 state.effects.extend(effects);
             }
@@ -198,6 +222,7 @@ impl Effect {
                 player_id,
                 mana,
                 thresholds,
+                health,
             } => {
                 let player_resources = state.resources.get_mut(player_id).unwrap();
                 player_resources.mana -= mana;
@@ -205,15 +230,40 @@ impl Effect {
                 player_resources.thresholds.water -= thresholds.water;
                 player_resources.thresholds.fire -= thresholds.fire;
                 player_resources.thresholds.earth -= thresholds.earth;
+                player_resources.health -= health;
             }
             Effect::EndTurn { player_id } => {
                 let resources = state.resources.get_mut(player_id).unwrap();
                 resources.mana = 0;
+
+                // Clear any counters that expire at the end of the turn
+                let card_ids: Vec<uuid::Uuid> = state
+                    .cards
+                    .iter()
+                    .filter(|c| c.is_unit())
+                    .filter(|c| !c.get_unit_base().unwrap_or(&UnitBase::default()).counters.is_empty())
+                    .map(|c| c.get_id().clone())
+                    .collect();
+                for card_id in card_ids {
+                    let card = state.get_card_mut(&card_id).unwrap();
+                    let base = card.get_unit_base_mut().unwrap();
+                    for counter in &mut base.counters {
+                        if counter.expires_in_turns.is_some() && counter.expires_in_turns.unwrap() > 0 {
+                            counter.expires_in_turns = Some(counter.expires_in_turns.unwrap() - 1);
+                        }
+                    }
+
+                    card.get_unit_base_mut()
+                        .unwrap()
+                        .counters
+                        .retain(|c| c.expires_in_turns.is_none() || c.expires_in_turns.unwrap() > 0);
+                }
             }
             Effect::AddResources {
                 player_id,
                 mana,
                 thresholds,
+                health,
             } => {
                 let player_resources = state.resources.get_mut(player_id).unwrap();
                 player_resources.mana += mana;
@@ -221,6 +271,7 @@ impl Effect {
                 player_resources.thresholds.water += thresholds.water;
                 player_resources.thresholds.fire += thresholds.fire;
                 player_resources.thresholds.earth += thresholds.earth;
+                player_resources.health += health;
             }
             Effect::Attack {
                 attacker_id,
@@ -256,42 +307,10 @@ impl Effect {
                 state.effects.push_back(Effect::wait_for_play(attacker.get_owner_id()));
             }
             Effect::TakeDamage { card_id, damage, from } => {
-                let attacker = state.cards.iter().find(|c| c.get_id() == from).unwrap();
-                let is_lethal = attacker.has_modifier(state, Modifier::Lethal);
                 let snapshot = state.snapshot();
-                let dealer = snapshot.cards.iter().find(|c| c.get_id() == from).unwrap();
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
-                let player_id = card.get_owner_id().clone();
-                match (dealer.get_card_type(), card.get_card_type()) {
-                    (CardType::Spell, CardType::Site) => {
-                        let resources = state.resources.get_mut(&player_id).unwrap();
-                        resources.health -= damage;
-                    }
-                    (CardType::Spell, CardType::Spell) => {
-                        let dealer_elements = dealer.get_elements(&snapshot);
-                        for element in dealer_elements {
-                            if dealer.has_modifier(&snapshot, Modifier::TakesNoDamageFromElement(element)) {
-                                return Ok(());
-                            }
-                        }
-
-                        card.get_unit_base_mut().unwrap().damage += damage;
-                        if is_lethal {
-                            state.effects.push_back(Effect::BuryUnit {
-                                card_id: card_id.clone(),
-                            });
-                        }
-                    }
-                    (CardType::Spell, CardType::Avatar) => {
-                        let resources = state.resources.get_mut(&player_id).unwrap();
-                        resources.health -= damage;
-                    }
-                    (CardType::Site, CardType::Avatar) => {
-                        let resources = state.resources.get_mut(&player_id).unwrap();
-                        resources.health -= damage;
-                    }
-                    _ => {}
-                }
+                let effects = card.on_take_damage(&snapshot, from, *damage);
+                state.effects.extend(effects);
             }
             Effect::BuryUnit { card_id } => {
                 let snapshot = state.snapshot();
@@ -299,6 +318,13 @@ impl Effect {
                 let effects = card.deathrite(&snapshot);
                 card.set_zone(Zone::Cemetery);
                 state.effects.extend(effects);
+            }
+            Effect::AddCounter { card_id, counter } => {
+                let card = state.get_card_mut(card_id).unwrap();
+                if card.is_unit() {
+                    let base = card.get_unit_base_mut().unwrap();
+                    base.counters.push(counter.clone());
+                }
             }
         }
 

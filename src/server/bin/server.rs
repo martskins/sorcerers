@@ -1,5 +1,5 @@
 use sorcerers::{
-    card::{self, AridDesert, ClamorOfHarpies, Flamecaller, SacredScarabs, Zone},
+    card::{self, AridDesert, AskelonPhoenix, ClamorOfHarpies, Flamecaller, SacredScarabs, Zone},
     deck::precon,
     game::{Game, PlayerStatus, Resources},
     networking::{
@@ -125,7 +125,7 @@ impl Server {
             Zone::Realm(8),
         ));
         state.cards.push(card::from_name_and_zone(
-            SacredScarabs::NAME,
+            AskelonPhoenix::NAME,
             player1.clone(),
             Zone::Realm(13),
         ));

@@ -2,7 +2,7 @@ use crate::{
     card::{Card, Zone},
     deck::Deck,
     effect::Effect,
-    game::{are_adjacent, get_adjacent_squares, get_nearby_squares, PlayerId, PlayerStatus, Resources},
+    game::{PlayerId, PlayerStatus, Resources, are_adjacent, get_adjacent_squares, get_nearby_squares},
 };
 use std::collections::{HashMap, VecDeque};
 
@@ -28,6 +28,14 @@ impl State {
             current_player: uuid::Uuid::nil(),
             effects: VecDeque::new(),
         }
+    }
+
+    pub fn get_card_mut(&mut self, card_id: &uuid::Uuid) -> Option<&mut Box<dyn Card>> {
+        self.cards.iter_mut().find(|c| c.get_id() == card_id)
+    }
+
+    pub fn get_card(&self, card_id: &uuid::Uuid) -> Option<&Box<dyn Card>> {
+        self.cards.iter().find(|c| c.get_id() == card_id)
     }
 
     pub fn snapshot(&self) -> State {
