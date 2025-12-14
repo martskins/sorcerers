@@ -5,12 +5,12 @@ use crate::{
     texture_cache::TextureCache,
 };
 use macroquad::{
-    color::{Color, BLUE, GREEN, RED, WHITE},
-    input::{is_mouse_button_released, mouse_position, MouseButton},
+    color::{BLUE, Color, GREEN, RED, WHITE},
+    input::{MouseButton, is_mouse_button_released, mouse_position},
     math::{Rect, Vec2},
     shapes::{draw_line, draw_rectangle, draw_rectangle_lines, draw_triangle_lines},
     text::draw_text,
-    texture::{draw_texture_ex, DrawTextureParams},
+    texture::{DrawTextureParams, draw_texture_ex},
     ui,
 };
 use sorcerers::{
@@ -28,6 +28,22 @@ const THRESHOLD_SYMBOL_SPACING: f32 = 18.0;
 const SYMBOL_SIZE: f32 = 20.0;
 const ACTION_SELECTION_WINDOW_ID: u64 = 1;
 const CARD_SELECTION_WINDOW_ID: u64 = 2;
+
+fn draw_vortex_icon(x: f32, y: f32, size: f32, color: Color) {
+    use macroquad::shapes::draw_line;
+    let turns = 2.0;
+    let segments = 24;
+    let mut prev = (x + size / 2.0, y + size / 2.0);
+    for i in 1..=segments {
+        let t = i as f32 / segments as f32;
+        let angle = turns * std::f32::consts::TAU * t;
+        let radius = (size / 2.0) * t;
+        let px = x + size / 2.0 + radius * angle.cos();
+        let py = y + size / 2.0 + radius * angle.sin();
+        draw_line(prev.0, prev.1, px, py, 2.0, color);
+        prev = (px, py);
+    }
+}
 
 #[derive(Debug)]
 pub struct Game {
@@ -239,7 +255,9 @@ impl Game {
         Game::render_resources(base_x, OPPONENT_Y, &opponent_resources);
 
         let turn_label = if self.is_players_turn(&self.player_id) {
-            if let PlayerStatus::WaitingForCardDraw { player_id, .. } = self.player_status && player_id == self.player_id {
+            if let PlayerStatus::WaitingForCardDraw { player_id, .. } = self.player_status
+                && player_id == self.player_id
+            {
                 "Draw a Card"
             } else {
                 "Your Turn"
@@ -432,7 +450,7 @@ impl Game {
             // }
 
             let preview_x = 20.0;
-            let preview_y = screen_rect.h - rect.w - 20.0;
+            let preview_y = screen_rect.h - rect.h - 20.0;
             draw_texture_ex(
                 &card_display.image,
                 preview_x,
@@ -689,6 +707,14 @@ impl Game {
                     ..Default::default()
                 },
             );
+
+            if card_display.summoning_sickness {
+                let icon_size = 22.0;
+                let scale = CARD_IN_PLAY_SCALE;
+                let x = card_display.rect.x + card_display.rect.w * scale - icon_size - 4.0;
+                let y = card_display.rect.y + 4.0;
+                draw_vortex_icon(x, y, icon_size, BLUE);
+            }
         }
     }
 
@@ -784,8 +810,6 @@ impl Game {
 
                 self.card_displays.push(CardDisplay {
                     id: card.id,
-                    name: card.name.clone(),
-                    owner_id: card.owner_id,
                     zone: card.zone.clone(),
                     tapped: card.tapped,
                     image: TextureCache::get_card_texture(&card.name, card.card_type == CardType::Site, &card.edition)
@@ -794,6 +818,7 @@ impl Game {
                     rotation: 0.0,
                     is_hovered: false,
                     is_selected: false,
+                    summoning_sickness: card.summoning_sickness,
                 });
             }
         }
@@ -850,11 +875,10 @@ impl Game {
                 is_selected: false,
                 rotation: rad,
                 id: card.id,
-                name: card.name.clone(),
-                owner_id: card.owner_id,
                 zone: card.zone.clone(),
                 tapped: card.tapped,
                 image: TextureCache::get_card_texture(&card.name, card.is_site(), &card.edition).await,
+                summoning_sickness: card.summoning_sickness,
             });
         }
 
@@ -878,11 +902,10 @@ impl Game {
                 is_selected: false,
                 rotation: 0.0,
                 id: card.id,
-                name: card.name.clone(),
-                owner_id: card.owner_id,
                 zone: card.zone.clone(),
                 tapped: card.tapped,
                 image: TextureCache::get_card_texture(&card.name, card.is_site(), &card.edition).await,
+                summoning_sickness: card.summoning_sickness,
             });
         }
 

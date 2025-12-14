@@ -14,6 +14,7 @@ pub enum Effect {
     },
     MoveCard {
         card_id: uuid::Uuid,
+        from: Zone,
         to: Zone,
         tap: bool,
     },
@@ -111,11 +112,11 @@ impl Effect {
 
     pub fn apply(&self, state: &mut State) -> anyhow::Result<()> {
         match self {
-            Effect::MoveCard { card_id, to, tap } => {
+            Effect::MoveCard { card_id, from, to, tap } => {
                 let snapshot = state.snapshot();
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
                 card.set_zone(to.clone());
-                let effects = card.on_move(&snapshot, to);
+                let mut effects = card.on_move(&snapshot, to);
                 state.effects.extend(effects);
                 if *tap {
                     card.get_base_mut().tapped = true;
@@ -231,6 +232,7 @@ impl Effect {
                 let effects = vec![
                     Effect::MoveCard {
                         card_id: attacker_id.clone(),
+                        from: attacker.get_zone(),
                         to: defender.get_zone(),
                         tap: true,
                     },
@@ -294,8 +296,8 @@ impl Effect {
             Effect::BuryUnit { card_id } => {
                 let snapshot = state.snapshot();
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
-                card.set_zone(Zone::Cemetery);
                 let effects = card.deathrite(&snapshot);
+                card.set_zone(Zone::Cemetery);
                 state.effects.extend(effects);
             }
         }

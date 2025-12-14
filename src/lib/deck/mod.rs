@@ -18,6 +18,7 @@ impl Deck {
         let card_id = self.sites.pop();
         vec![Effect::MoveCard {
             card_id: card_id.unwrap(),
+            from: Zone::Atlasbook,
             to: Zone::Hand,
             tap: false,
         }]
@@ -27,6 +28,7 @@ impl Deck {
         let card_id = self.spells.pop();
         vec![Effect::MoveCard {
             card_id: card_id.unwrap(),
+            from: Zone::Spellbook,
             to: Zone::Hand,
             tap: false,
         }]

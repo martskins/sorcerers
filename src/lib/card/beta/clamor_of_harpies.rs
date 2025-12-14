@@ -33,7 +33,7 @@ impl Action {
 pub struct ClamorOfHarpies {
     pub unit_base: UnitBase,
     pub card_base: CardBase,
-    pub targeted_minion: uuid::Uuid,
+    targeted_minion: uuid::Uuid,
     status: Status,
     actions: Vec<Action>,
 }
@@ -135,9 +135,15 @@ impl MessageHandler for ClamorOfHarpies {
                 vec![Effect::select_action(self.get_owner_id(), actions)]
             }
             (Status::StrikeDecision, ClientMessage::PickAction { action_idx, .. }) => {
+                let target_minion = state
+                    .cards
+                    .iter()
+                    .find(|c| c.get_id() == &self.targeted_minion)
+                    .unwrap();
                 let mut effects = vec![
                     Effect::MoveCard {
-                        card_id: self.get_id().clone(),
+                        card_id: self.targeted_minion.clone(),
+                        from: target_minion.get_zone().clone(),
                         to: self.get_zone(),
                         tap: false,
                     },

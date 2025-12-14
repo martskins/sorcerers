@@ -137,6 +137,7 @@ pub fn get_adjacent_squares(square: u8) -> Vec<u8> {
     (1..=20).filter(|&s| are_adjacent(square, s)).collect()
 }
 
+#[derive(Debug)]
 pub enum InputStatus {
     None,
     SelectingAction {
@@ -296,9 +297,11 @@ impl Game {
                 Action::Defend => {}
             },
             (InputStatus::Moving { player_id, card_id }, ClientMessage::PickSquare { square, .. }) => {
+                let card = self.state.cards.iter().find(|c| c.get_id() == card_id).unwrap();
                 let effects = vec![
                     Effect::MoveCard {
                         card_id: card_id.clone(),
+                        from: card.get_zone(),
                         to: Zone::Realm(*square),
                         tap: true,
                     },
@@ -389,6 +392,7 @@ impl Game {
             .cards
             .iter()
             .filter(|c| c.is_unit())
+            .filter(|c| matches!(c.get_zone(), Zone::Realm(_)))
             .filter(|c| {
                 let damage = c.get_unit_base().unwrap().damage;
                 let toughness = c.get_unit_base().unwrap().toughness;
@@ -418,6 +422,7 @@ impl Game {
                     edition: c.get_edition().clone(),
                     zone: c.get_zone().clone(),
                     card_type: c.get_card_type().clone(),
+                    summoning_sickness: c.has_modifier(&self.state, Modifier::SummoningSickness),
                 })
                 .collect(),
             resources: self.state.resources.clone(),
@@ -497,6 +502,7 @@ impl Game {
 
             effects.push(Effect::MoveCard {
                 card_id: avatar_id,
+                from: Zone::Spellbook,
                 to: Zone::Realm(square),
                 tap: false,
             });

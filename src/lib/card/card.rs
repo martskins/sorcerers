@@ -61,6 +61,7 @@ pub struct CardInfo {
     pub edition: Edition,
     pub zone: Zone,
     pub card_type: CardType,
+    pub summoning_sickness: bool,
 }
 
 impl CardInfo {
