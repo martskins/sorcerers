@@ -1,5 +1,5 @@
 use sorcerers::{
-    card::{self, AridDesert, AskelonPhoenix, ClamorOfHarpies, Flamecaller, SacredScarabs, Zone},
+    card::{self, AridDesert, AskelonPhoenix, ClamorOfHarpies, Flamecaller, MadDash, SacredScarabs, Zone},
     deck::precon,
     game::{Game, PlayerStatus, Resources},
     networking::{
@@ -129,6 +129,9 @@ impl Server {
             player1.clone(),
             Zone::Realm(13),
         ));
+        state
+            .cards
+            .push(card::from_name_and_zone(MadDash::NAME, player2.clone(), Zone::Hand));
         state.resources.get_mut(player1).unwrap().mana = 4;
         state.resources.get_mut(player1).unwrap().thresholds.fire = 2;
         state.resources.get_mut(player1).unwrap().thresholds.water = 1;

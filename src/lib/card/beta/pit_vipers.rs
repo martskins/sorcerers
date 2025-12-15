@@ -17,7 +17,7 @@ impl PitVipers {
             unit_base: UnitBase {
                 power: 1,
                 toughness: 1,
-                abilities: vec![Modifier::Lethal, Modifier::Burrowing],
+                modifiers: vec![Modifier::Lethal, Modifier::Burrowing],
                 ..Default::default()
             },
             card_base: CardBase {

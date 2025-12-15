@@ -145,6 +145,10 @@ pub enum InputStatus {
         actions: Vec<Action>,
         card_id: Option<uuid::Uuid>,
     },
+    PlayingSpell {
+        player_id: PlayerId,
+        card_id: uuid::Uuid,
+    },
     PlayingCard {
         player_id: PlayerId,
         card_id: uuid::Uuid,
@@ -215,7 +219,7 @@ impl Game {
                     Effect::PlayCard {
                         player_id: player_id.clone(),
                         card_id: card_id.clone(),
-                        square: *square,
+                        zone: Zone::Realm(*square),
                     },
                     Effect::SetPlayerStatus {
                         status: PlayerStatus::WaitingForPlay {
@@ -227,15 +231,19 @@ impl Game {
                 self.input_status = InputStatus::None;
             }
             (InputStatus::None, ClientMessage::ClickCard { player_id, card_id, .. }) => {
-                let resources = self.state.resources.get(player_id).unwrap();
                 let card = self.state.cards.iter().find(|c| c.get_id() == card_id).unwrap();
+                if !card.is_spell() {
+                    return Ok(());
+                }
+
+                let resources = self.state.resources.get(player_id).unwrap();
                 let can_afford = resources.can_afford(card, &self.state);
                 if !can_afford {
                     return Ok(());
                 }
 
                 match (card.is_unit(), card.get_zone()) {
-                    (_, Zone::Hand) => {
+                    (true, Zone::Hand) => {
                         let valid_squares = card.get_valid_play_squares(&self.state);
                         self.input_status = InputStatus::PlayingCard {
                             player_id: player_id.clone(),
@@ -243,6 +251,22 @@ impl Game {
                         };
                         let effects = vec![Effect::select_square(player_id, valid_squares)];
                         self.state.effects.extend(effects);
+                    }
+                    (false, Zone::Hand) => {
+                        let spellcasters = self
+                            .state
+                            .cards
+                            .iter()
+                            .filter(|c| c.can_cast(&self.state, card))
+                            .map(|c| c.get_id().clone())
+                            .collect();
+                        self.input_status = InputStatus::PlayingSpell {
+                            player_id: player_id.clone(),
+                            card_id: card_id.clone(),
+                        };
+                        self.state
+                            .effects
+                            .push_back(Effect::select_card(player_id, spellcasters));
                     }
                     (true, Zone::Realm(_)) => {
                         if card.is_tapped() || card.has_modifier(&self.state, Modifier::SummoningSickness) {
@@ -259,6 +283,20 @@ impl Game {
                     }
                     _ => {}
                 }
+            }
+            (InputStatus::PlayingSpell { player_id, card_id }, ClientMessage::PickCard { card_id: caster, .. }) => {
+                let player_id = player_id.clone();
+                let card_id = card_id.clone();
+                self.input_status = InputStatus::None;
+
+                let zone = self.state.get_card(caster).unwrap().get_zone();
+                self.state.effects.push_back(Effect::PlayMagic {
+                    player_id: player_id,
+                    caster_id: caster.clone(),
+                    card_id: card_id,
+                    from: zone,
+                });
+                self.state.effects.push_back(Effect::wait_for_play(&player_id));
             }
             (
                 InputStatus::SelectingAction {
@@ -403,7 +441,7 @@ impl Game {
 
         let mut effects = Vec::new();
         for card_id in card_ids {
-            effects.push(Effect::BuryUnit { card_id });
+            effects.push(Effect::BuryCard { card_id });
         }
         effects
     }

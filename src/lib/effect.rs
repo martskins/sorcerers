@@ -8,6 +8,12 @@ use std::fmt::Debug;
 pub trait CardStatus: Debug + Send + Sync {}
 
 #[derive(Debug, Clone)]
+pub struct ModifierCounter {
+    pub modifier: Modifier,
+    pub expires_in_turns: Option<u8>,
+}
+
+#[derive(Debug, Clone)]
 pub struct Counter {
     pub power: i8,
     pub toughness: i8,
@@ -29,6 +35,10 @@ pub enum Effect {
     SetPlayerStatus {
         status: PlayerStatus,
     },
+    AddModifier {
+        card_id: uuid::Uuid,
+        counter: ModifierCounter,
+    },
     AddCounter {
         card_id: uuid::Uuid,
         counter: Counter,
@@ -43,10 +53,16 @@ pub enum Effect {
         player_id: uuid::Uuid,
         card_type: CardType,
     },
+    PlayMagic {
+        player_id: uuid::Uuid,
+        card_id: uuid::Uuid,
+        caster_id: uuid::Uuid,
+        from: Zone,
+    },
     PlayCard {
         player_id: uuid::Uuid,
         card_id: uuid::Uuid,
-        square: u8,
+        zone: Zone,
     },
     TapCard {
         card_id: uuid::Uuid,
@@ -78,12 +94,18 @@ pub enum Effect {
         from: uuid::Uuid,
         damage: u8,
     },
-    BuryUnit {
+    BuryCard {
         card_id: uuid::Uuid,
     },
 }
 
 impl Effect {
+    pub fn bury_card(card_id: &uuid::Uuid) -> Self {
+        Effect::BuryCard {
+            card_id: card_id.clone(),
+        }
+    }
+
     pub fn tap_card(card_id: &uuid::Uuid) -> Self {
         Effect::TapCard {
             card_id: card_id.clone(),
@@ -124,6 +146,16 @@ impl Effect {
         }
     }
 
+    pub fn add_modifier(card_id: &uuid::Uuid, modifier: Modifier, expires_in_turns: Option<u8>) -> Self {
+        Effect::AddModifier {
+            card_id: card_id.clone(),
+            counter: ModifierCounter {
+                modifier,
+                expires_in_turns,
+            },
+        }
+    }
+
     pub fn select_square(player_id: &PlayerId, valid_squares: Vec<u8>) -> Self {
         Effect::SetPlayerStatus {
             status: PlayerStatus::SelectingSquare {
@@ -135,7 +167,7 @@ impl Effect {
 
     pub fn apply(&self, state: &mut State) -> anyhow::Result<()> {
         match self {
-            Effect::MoveCard { card_id, from, to, tap } => {
+            Effect::MoveCard { card_id, to, tap, .. } => {
                 let snapshot = state.snapshot();
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
                 card.set_zone(to.clone());
@@ -172,10 +204,25 @@ impl Effect {
             Effect::SetPlayerStatus { status, .. } => {
                 state.player_status = status.clone();
             }
-            Effect::PlayCard { card_id, square, .. } => {
+            Effect::PlayMagic { card_id, .. } => {
                 let snapshot = state.snapshot();
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
-                card.set_zone(Zone::Realm(*square));
+                let mut effects = card.on_cast(&snapshot);
+                let mana_cost = card.get_mana_cost(&snapshot);
+                println!("Playing magic card {}, mana cost {}", card.get_name(), mana_cost);
+                effects.push(Effect::RemoveResources {
+                    player_id: card.get_owner_id().clone(),
+                    mana: mana_cost,
+                    thresholds: Thresholds::new(),
+                    health: 0,
+                });
+                state.effects.extend(effects);
+            }
+            Effect::PlayCard { card_id, zone, .. } => {
+                let snapshot = state.snapshot();
+                let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
+                let cast_effects = card.on_cast(&snapshot);
+                card.set_zone(zone.clone());
                 if !card.has_modifier(&snapshot, Modifier::Charge) {
                     card.add_modifier(Modifier::SummoningSickness);
                 }
@@ -188,6 +235,7 @@ impl Effect {
                     health: 0,
                 });
                 state.effects.extend(effects);
+                state.effects.extend(cast_effects);
             }
             Effect::TapCard { card_id } => {
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
@@ -245,13 +293,18 @@ impl Effect {
                     .cards
                     .iter()
                     .filter(|c| c.is_unit())
-                    .filter(|c| !c.get_unit_base().unwrap_or(&UnitBase::default()).counters.is_empty())
+                    .filter(|c| {
+                        !c.get_unit_base()
+                            .unwrap_or(&UnitBase::default())
+                            .power_counters
+                            .is_empty()
+                    })
                     .map(|c| c.get_id().clone())
                     .collect();
                 for card_id in card_ids {
                     let card = state.get_card_mut(&card_id).unwrap();
                     let base = card.get_unit_base_mut().unwrap();
-                    for counter in &mut base.counters {
+                    for counter in &mut base.power_counters {
                         if counter.expires_in_turns.is_some() && counter.expires_in_turns.unwrap() > 0 {
                             counter.expires_in_turns = Some(counter.expires_in_turns.unwrap() - 1);
                         }
@@ -259,7 +312,7 @@ impl Effect {
 
                     card.get_unit_base_mut()
                         .unwrap()
-                        .counters
+                        .power_counters
                         .retain(|c| c.expires_in_turns.is_none() || c.expires_in_turns.unwrap() > 0);
                 }
             }
@@ -316,7 +369,7 @@ impl Effect {
                 let effects = card.on_take_damage(&snapshot, from, *damage);
                 state.effects.extend(effects);
             }
-            Effect::BuryUnit { card_id } => {
+            Effect::BuryCard { card_id } => {
                 let snapshot = state.snapshot();
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
                 let effects = card.deathrite(&snapshot);
@@ -327,7 +380,14 @@ impl Effect {
                 let card = state.get_card_mut(card_id).unwrap();
                 if card.is_unit() {
                     let base = card.get_unit_base_mut().unwrap();
-                    base.counters.push(counter.clone());
+                    base.power_counters.push(counter.clone());
+                }
+            }
+            Effect::AddModifier { card_id, counter } => {
+                let card = state.get_card_mut(card_id).unwrap();
+                if card.is_unit() {
+                    let base = card.get_unit_base_mut().unwrap();
+                    base.modifier_counters.push(counter.clone());
                 }
             }
         }

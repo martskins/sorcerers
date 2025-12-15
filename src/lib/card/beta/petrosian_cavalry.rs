@@ -17,7 +17,7 @@ impl PetrosianCavalry {
             unit_base: UnitBase {
                 power: 3,
                 toughness: 3,
-                abilities: vec![Modifier::Charge],
+                modifiers: vec![Modifier::Charge],
                 ..Default::default()
             },
             card_base: CardBase {

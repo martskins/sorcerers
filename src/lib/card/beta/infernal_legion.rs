@@ -19,7 +19,7 @@ impl InfernalLegion {
             unit_base: UnitBase {
                 power: 6,
                 toughness: 6,
-                abilities: vec![],
+                modifiers: vec![],
                 ..Default::default()
             },
             card_base: CardBase {

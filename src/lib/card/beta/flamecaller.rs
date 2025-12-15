@@ -69,6 +69,14 @@ impl Card for Flamecaller {
         &self.card_base
     }
 
+    fn get_avatar_base(&self) -> Option<&AvatarBase> {
+        Some(&self.avatar_base)
+    }
+
+    fn get_avatar_base_mut(&mut self) -> Option<&mut AvatarBase> {
+        Some(&mut self.avatar_base)
+    }
+
     fn is_tapped(&self) -> bool {
         self.card_base.tapped
     }
@@ -97,7 +105,7 @@ impl Card for Flamecaller {
 impl MessageHandler for Flamecaller {
     fn handle_message(&mut self, message: &ClientMessage, state: &State) -> Vec<Effect> {
         // TODO: Make this the default avatar behavior
-        if message.player_id() != self.card_base.owner_id {
+        if message.player_id() != &self.card_base.owner_id {
             return vec![];
         }
 
@@ -156,7 +164,7 @@ impl MessageHandler for Flamecaller {
                     Effect::PlayCard {
                         player_id: self.card_base.owner_id.clone(),
                         card_id: card_id,
-                        square: *square,
+                        zone: Zone::Realm(*square),
                     },
                     Effect::wait_for_play(self.get_owner_id()),
                 ]

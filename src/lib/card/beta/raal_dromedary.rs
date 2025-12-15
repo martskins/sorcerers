@@ -17,7 +17,7 @@ impl RaalDromedary {
             unit_base: UnitBase {
                 power: 2,
                 toughness: 2,
-                abilities: vec![],
+                modifiers: vec![],
                 ..Default::default()
             },
             card_base: CardBase {

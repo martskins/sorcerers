@@ -79,6 +79,8 @@ pub enum ClientMessage {
     },
 }
 
+const NIL: uuid::Uuid = PlayerId::nil();
+
 impl ClientMessage {
     pub fn game_id(&self) -> uuid::Uuid {
         match self {
@@ -93,16 +95,16 @@ impl ClientMessage {
         }
     }
 
-    pub fn player_id(&self) -> PlayerId {
+    pub fn player_id(&self) -> &PlayerId {
         match self {
-            ClientMessage::Connect => PlayerId::nil(),
-            ClientMessage::PlayCard { player_id, .. } => player_id.clone(),
-            ClientMessage::PickCard { player_id, .. } => player_id.clone(),
-            ClientMessage::PickAction { player_id, .. } => player_id.clone(),
-            ClientMessage::EndTurn { player_id, .. } => player_id.clone(),
-            ClientMessage::PickSquare { player_id, .. } => player_id.clone(),
-            ClientMessage::ClickCard { player_id, .. } => player_id.clone(),
-            ClientMessage::DrawCard { player_id, .. } => player_id.clone(),
+            ClientMessage::Connect => &NIL,
+            ClientMessage::PlayCard { player_id, .. } => player_id,
+            ClientMessage::PickCard { player_id, .. } => player_id,
+            ClientMessage::PickAction { player_id, .. } => player_id,
+            ClientMessage::EndTurn { player_id, .. } => player_id,
+            ClientMessage::PickSquare { player_id, .. } => player_id,
+            ClientMessage::ClickCard { player_id, .. } => player_id,
+            ClientMessage::DrawCard { player_id, .. } => player_id,
         }
     }
 }

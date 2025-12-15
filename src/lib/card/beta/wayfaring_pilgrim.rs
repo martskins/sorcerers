@@ -20,7 +20,7 @@ impl WayfaringPilgrim {
             unit_base: UnitBase {
                 power: 1,
                 toughness: 1,
-                abilities: vec![Modifier::Airborne],
+                modifiers: vec![Modifier::Airborne],
                 ..Default::default()
             },
             card_base: CardBase {

@@ -17,7 +17,7 @@ impl SandWorm {
             unit_base: UnitBase {
                 power: 4,
                 toughness: 4,
-                abilities: vec![Modifier::Burrowing, Modifier::Landbound],
+                modifiers: vec![Modifier::Burrowing, Modifier::Landbound],
                 ..Default::default()
             },
             card_base: CardBase {

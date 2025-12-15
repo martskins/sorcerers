@@ -1,6 +1,6 @@
 use crate::{
     card::{AridDesert, ClamorOfHarpies, Flamecaller, PitVipers, beta},
-    effect::{Counter, Effect},
+    effect::{Counter, Effect, ModifierCounter},
     game::{Element, PlayerId, Thresholds, are_adjacent, are_nearby},
     networking::message::ClientMessage,
     state::State,
@@ -113,11 +113,22 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
     fn get_base(&self) -> &CardBase;
     fn get_base_mut(&mut self) -> &mut CardBase;
 
-    fn has_modifier(&self, state: &State, ability: Modifier) -> bool {
-        match self.get_unit_base() {
-            Some(ub) => ub.abilities.contains(&ability),
-            None => false,
+    fn has_modifier(&self, state: &State, modifier: Modifier) -> bool {
+        if self
+            .get_unit_base()
+            .unwrap_or(&UnitBase::default())
+            .modifiers
+            .contains(&modifier)
+        {
+            return true;
         }
+
+        self.get_unit_base()
+            .unwrap_or(&UnitBase::default())
+            .modifier_counters
+            .iter()
+            .find(|c| c.modifier == modifier)
+            .is_some()
     }
 
     fn get_elements(&self, state: &State) -> Vec<Element> {
@@ -198,7 +209,7 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
 
         let base = base.unwrap();
         let mut toughness = base.toughness;
-        for counter in &base.counters {
+        for counter in &base.power_counters {
             toughness = toughness.saturating_sub_signed(counter.toughness);
         }
         Some(toughness)
@@ -212,7 +223,7 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
 
         let base = base.unwrap();
         let mut power = base.power;
-        for counter in &base.counters {
+        for counter in &base.power_counters {
             power = power.saturating_sub_signed(counter.power);
         }
         Some(power)
@@ -267,15 +278,42 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
     }
 
     fn is_site(&self) -> bool {
-        self.get_card_type() == CardType::Site
+        self.get_site_base().is_some()
     }
 
     fn is_avatar(&self) -> bool {
-        self.get_card_type() == CardType::Avatar
+        self.get_avatar_base().is_some()
     }
 
     fn is_unit(&self) -> bool {
+        self.get_unit_base().is_some()
+    }
+
+    fn is_spell(&self) -> bool {
         self.get_card_type() == CardType::Spell
+    }
+
+    fn can_cast(&self, state: &State, spell: &Box<dyn Card>) -> bool {
+        if !matches!(self.get_zone(), Zone::Realm(_)) {
+            return false;
+        }
+
+        if self.get_owner_id() != spell.get_owner_id() {
+            return false;
+        }
+
+        if self.is_avatar() {
+            return true;
+        }
+
+        let elements = spell.get_elements(state);
+        for element in elements {
+            if self.has_modifier(state, Modifier::Spellcaster(element)) {
+                return true;
+            }
+        }
+
+        false
     }
 
     fn on_move(&mut self, state: &State, zone: &Zone) -> Vec<Effect> {
@@ -291,7 +329,7 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
             }
 
             if attacker.has_modifier(state, Modifier::Lethal) {
-                effects.push(Effect::BuryUnit {
+                effects.push(Effect::BuryCard {
                     card_id: self.get_id().clone(),
                 });
             }
@@ -318,16 +356,20 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
         vec![]
     }
 
-    fn remove_modifier(&mut self, ability: Modifier) {
+    fn remove_modifier(&mut self, modifier: Modifier) {
         if let Some(ub) = self.get_unit_base_mut() {
-            ub.abilities.retain(|a| a != &ability);
+            ub.modifiers.retain(|a| a != &modifier);
         }
     }
 
-    fn add_modifier(&mut self, ability: Modifier) {
+    fn add_modifier(&mut self, modifier: Modifier) {
         if let Some(ub) = self.get_unit_base_mut() {
-            ub.abilities.push(ability);
+            ub.modifiers.push(modifier);
         }
+    }
+
+    fn on_cast(&mut self, state: &State) -> Vec<Effect> {
+        vec![]
     }
 }
 
@@ -355,9 +397,10 @@ pub enum Modifier {
 pub struct UnitBase {
     pub power: u8,
     pub toughness: u8,
-    pub abilities: Vec<Modifier>,
+    pub modifiers: Vec<Modifier>,
     pub damage: u8,
-    pub counters: Vec<Counter>,
+    pub power_counters: Vec<Counter>,
+    pub modifier_counters: Vec<ModifierCounter>,
 }
 
 #[derive(Debug, Clone)]

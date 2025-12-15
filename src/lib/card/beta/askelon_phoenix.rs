@@ -19,7 +19,7 @@ impl AskelonPhoenix {
             unit_base: UnitBase {
                 power: 4,
                 toughness: 4,
-                abilities: vec![Modifier::Airborne],
+                modifiers: vec![Modifier::Airborne],
                 ..Default::default()
             },
             card_base: CardBase {
@@ -90,7 +90,7 @@ impl Card for AskelonPhoenix {
 
         let mut effects = vec![];
         if attacker.has_modifier(state, Modifier::Lethal) {
-            effects.push(Effect::BuryUnit {
+            effects.push(Effect::BuryCard {
                 card_id: self.get_id().clone(),
             });
         }
