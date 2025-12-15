@@ -102,6 +102,11 @@ impl Server {
         state.cards.push(card::from_name_and_zone(
             AridDesert::NAME,
             player2.clone(),
+            Zone::Realm(3),
+        ));
+        state.cards.push(card::from_name_and_zone(
+            AridDesert::NAME,
+            player2.clone(),
             Zone::Realm(8),
         ));
         state.cards.push(card::from_name_and_zone(
@@ -128,6 +133,11 @@ impl Server {
             AskelonPhoenix::NAME,
             player1.clone(),
             Zone::Realm(13),
+        ));
+        state.cards.push(card::from_name_and_zone(
+            AridDesert::NAME,
+            player1.clone(),
+            Zone::Realm(18),
         ));
         state
             .cards

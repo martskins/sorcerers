@@ -106,15 +106,7 @@ impl Resources {
 }
 
 pub fn are_adjacent(square1: u8, square2: u8) -> bool {
-    let row1 = square1 / 5;
-    let col1 = square1 % 5;
-    let row2 = square2 / 5;
-    let col2 = square2 % 5;
-
-    let row_diff = if row1 > row2 { row1 - row2 } else { row2 - row1 };
-    let col_diff = if col1 > col2 { col1 - col2 } else { col2 - col1 };
-
-    (row_diff == 1 && col_diff == 0) || (row_diff == 0 && col_diff == 1)
+    get_nearby_squares(square1).contains(&square2)
 }
 
 pub fn are_nearby(square1: u8, square2: u8) -> bool {
@@ -130,11 +122,47 @@ pub fn are_nearby(square1: u8, square2: u8) -> bool {
 }
 
 pub fn get_nearby_squares(square: u8) -> Vec<u8> {
-    (1..=20).filter(|&s| are_nearby(square, s)).collect()
+    let mut adjacent = get_adjacent_squares(square);
+    let diagonals = match square % 5 {
+        0 => vec![square.saturating_add(4), square.saturating_sub(6)],
+        1 => vec![square.saturating_sub(4), square.saturating_add(6)],
+        _ => vec![
+            square.saturating_sub(4),
+            square.saturating_add(6),
+            square.saturating_add(4),
+            square.saturating_sub(6),
+        ],
+    };
+    adjacent.extend(diagonals);
+    adjacent.retain(|&s| s <= 20);
+    adjacent
+    // (1..=20).filter(|&s| are_nearby(square, s)).collect()
 }
 
 pub fn get_adjacent_squares(square: u8) -> Vec<u8> {
-    (1..=20).filter(|&s| are_adjacent(square, s)).collect()
+    let mut adjacent = match square % 5 {
+        0 => vec![
+            square.saturating_add(5),
+            square.saturating_sub(5),
+            square.saturating_sub(1),
+            square,
+        ],
+        1 => vec![
+            square.saturating_add(5),
+            square.saturating_sub(5),
+            square.saturating_add(1),
+            square,
+        ],
+        _ => vec![
+            square.saturating_add(5),
+            square.saturating_sub(5),
+            square.saturating_add(1),
+            square.saturating_sub(1),
+            square,
+        ],
+    };
+    adjacent.retain(|&s| s <= 20);
+    adjacent
 }
 
 #[derive(Debug)]
