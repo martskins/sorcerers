@@ -27,7 +27,6 @@ const FONT_SIZE: f32 = 24.0;
 const THRESHOLD_SYMBOL_SPACING: f32 = 18.0;
 const SYMBOL_SIZE: f32 = 20.0;
 const ACTION_SELECTION_WINDOW_ID: u64 = 1;
-const CARD_SELECTION_WINDOW_ID: u64 = 2;
 
 fn draw_vortex_icon(x: f32, y: f32, size: f32, color: Color) {
     use macroquad::shapes::draw_line;
@@ -70,7 +69,7 @@ impl Game {
             })
             .collect();
         Self {
-            player_id,
+            player_id: dbg!(player_id),
             card_displays: Vec::new(),
             cards: Vec::new(),
             game_id: uuid::Uuid::nil(),
@@ -268,7 +267,10 @@ impl Game {
 
         draw_text(turn_label, screen_rect.w / 2.0 - 50.0, 30.0, FONT_SIZE, WHITE);
 
-        let is_in_turn = self.is_players_turn(&self.player_id);
+        let is_in_turn = self.player_status
+            == PlayerStatus::WaitingForPlay {
+                player_id: self.player_id,
+            };
         if is_in_turn {
             if ui::root_ui().button(Vec2::new(screen_rect.w - 100.0, screen_rect.h - 40.0), "End Turn") {
                 self.client.send(ClientMessage::EndTurn {
@@ -279,6 +281,34 @@ impl Game {
         }
 
         match &self.player_status {
+            PlayerStatus::SelectingDirection { player_id, directions } if player_id == &self.player_id => {
+                if self.action_window_position.is_none() {
+                    self.action_window_position = Some(mouse_position().into());
+                }
+
+                if self.action_window_size.is_none() {
+                    self.action_window_size = Some(Vec2::new(100.0, 30.0 * directions.len() as f32 + 20.0));
+                }
+
+                ui::root_ui().window(
+                    ACTION_SELECTION_WINDOW_ID,
+                    self.action_window_position.unwrap(),
+                    self.action_window_size.unwrap(),
+                    |ui| {
+                        for (idx, direction) in directions.iter().enumerate() {
+                            if ui.button(Vec2::new(0.0, 30.0 * idx as f32), direction.get_name()) {
+                                self.client
+                                    .send(ClientMessage::PickDirection {
+                                        player_id: self.player_id,
+                                        game_id: self.game_id,
+                                        direction: directions[idx].normalise(!self.is_player_one),
+                                    })
+                                    .unwrap();
+                            }
+                        }
+                    },
+                );
+            }
             PlayerStatus::SelectingAction { player_id, actions } if player_id == &self.player_id => {
                 if self.action_window_position.is_none() {
                     self.action_window_position = Some(mouse_position().into());
@@ -564,10 +594,8 @@ impl Game {
     }
 
     fn handle_square_click(&mut self, mouse_position: Vec2) {
-        if let PlayerStatus::SelectingSquare {
-            valid_squares: square,
-            player_id,
-            ..
+        if let PlayerStatus::SelectingZone {
+            valid_zones, player_id, ..
         } = &self.player_status
         {
             if player_id != &self.player_id {
@@ -576,7 +604,7 @@ impl Game {
 
             let mut played_card = false;
             for (idx, cell) in self.cells.iter().enumerate() {
-                if !square.contains(&cell.id) {
+                if valid_zones.iter().find(|i| i == &&Zone::Realm(cell.id)).is_none() {
                     continue;
                 }
 
@@ -661,17 +689,19 @@ impl Game {
                 WHITE,
             );
 
-            if let PlayerStatus::SelectingSquare {
-                valid_squares: square,
-                player_id,
-                ..
+            if let PlayerStatus::SelectingZone {
+                valid_zones, player_id, ..
             } = &self.player_status
             {
                 if &self.player_id != player_id {
                     continue;
                 }
 
-                if square.contains(&cell_display.id) {
+                if valid_zones
+                    .iter()
+                    .find(|i| i == &&Zone::Realm(cell_display.id))
+                    .is_some()
+                {
                     draw_rectangle_lines(
                         cell_display.rect.x,
                         cell_display.rect.y,
@@ -863,15 +893,9 @@ impl Game {
 
             let rect = Rect::new(x, y, dimensions.x, dimensions.y);
 
-            let current_card = self.cards.iter().find(|c| c.id == card.id);
-            let mut is_hovered = false;
-            // if let Some(c) = current_card {
-            //     is_hovered = c.hovered;
-            // }
-
             displays.push(CardDisplay {
                 rect,
-                is_hovered,
+                is_hovered: false,
                 is_selected: false,
                 rotation: rad,
                 id: card.id,
@@ -890,15 +914,9 @@ impl Game {
 
             let rect = Rect::new(x, y, dimensions.x, dimensions.y);
 
-            let current_card = self.cards.iter().find(|c| c.id == card.id);
-            let mut is_hovered = false;
-            // if let Some(c) = current_card {
-            //     is_hovered = c.hovered;
-            // }
-
             displays.push(CardDisplay {
                 rect,
-                is_hovered,
+                is_hovered: false,
                 is_selected: false,
                 rotation: 0.0,
                 id: card.id,

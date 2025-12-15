@@ -44,12 +44,6 @@ impl TextureCache {
         texture
     }
 
-    pub async fn image_for_card(name: &str, is_site: bool, edition: &Edition) -> Image {
-        TextureCache::texture_for_card(name, is_site, edition)
-            .await
-            .get_texture_data()
-    }
-
     async fn texture_for_card(name: &str, is_site: bool, edition: &Edition) -> Texture2D {
         if let Some(tex) = TEXTURE_CACHE.get().unwrap().read().unwrap().inner.get(name) {
             return tex.clone();
@@ -57,15 +51,13 @@ impl TextureCache {
 
         let path = format!("assets/images/cache/{}.png", name);
         if Path::new(&path).exists() {
-            return TextureCache::get_card_image_from_disk(name, is_site, &path)
-                .await
-                .unwrap();
+            return TextureCache::get_card_image_from_disk(name, &path).await.unwrap();
         }
 
         TextureCache::download_card_image(name, is_site, edition).await.unwrap()
     }
 
-    async fn get_card_image_from_disk(name: &str, is_site: bool, path: &str) -> anyhow::Result<Texture2D> {
+    async fn get_card_image_from_disk(name: &str, path: &str) -> anyhow::Result<Texture2D> {
         let texture = macroquad::texture::load_texture(path).await?;
         let mut cache = TEXTURE_CACHE.get().unwrap().write().unwrap();
         cache.inner.insert(name.to_string(), texture.clone());

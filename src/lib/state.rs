@@ -2,7 +2,7 @@ use crate::{
     card::{Card, Zone},
     deck::Deck,
     effect::Effect,
-    game::{PlayerId, PlayerStatus, Resources, are_adjacent, get_adjacent_squares, get_nearby_squares},
+    game::{PlayerId, PlayerStatus, Resources},
 };
 use std::collections::{HashMap, VecDeque};
 
@@ -15,6 +15,7 @@ pub struct State {
     pub player_status: PlayerStatus,
     pub current_player: PlayerId,
     pub effects: VecDeque<Effect>,
+    pub player_one: PlayerId,
 }
 
 impl State {
@@ -27,6 +28,7 @@ impl State {
             player_status: PlayerStatus::None,
             current_player: uuid::Uuid::nil(),
             effects: VecDeque::new(),
+            player_one: uuid::Uuid::nil(),
         }
     }
 
@@ -38,6 +40,10 @@ impl State {
         self.cards.iter().find(|c| c.get_id() == card_id)
     }
 
+    pub fn get_cards_in_zone(&self, zone: &Zone) -> Vec<&Box<dyn Card>> {
+        self.cards.iter().filter(|c| c.get_zone() == zone).collect()
+    }
+
     pub fn snapshot(&self) -> State {
         State {
             cards: self.cards.iter().map(|c| c.clone_box()).collect(),
@@ -47,42 +53,7 @@ impl State {
             player_status: self.player_status.clone(),
             current_player: self.current_player,
             effects: self.effects.clone(),
+            player_one: self.player_one,
         }
-    }
-
-    pub fn get_valid_site_squares(&self, player_id: &PlayerId) -> Vec<u8> {
-        let has_played_site = self
-            .cards
-            .iter()
-            .any(|c| c.get_owner_id() == player_id && c.is_site() && matches!(c.get_zone(), Zone::Realm(_)));
-        if !has_played_site {
-            let avatar = self
-                .cards
-                .iter()
-                .find(|c| c.get_owner_id() == player_id && c.is_avatar())
-                .unwrap();
-            match avatar.get_zone() {
-                Zone::Realm(s) => return vec![s],
-                _ => panic!("Avatar not in realm"),
-            }
-        }
-
-        let occupied_squares: Vec<u8> = self
-            .cards
-            .iter()
-            .filter(|c| c.get_owner_id() == player_id)
-            .filter(|c| c.is_site() || c.is_avatar())
-            .filter(|c| matches!(c.get_zone(), Zone::Realm(_)))
-            .flat_map(|c| match c.get_zone() {
-                Zone::Realm(s) => vec![s],
-                _ => vec![],
-            })
-            .collect();
-
-        dbg!(&occupied_squares)
-            .iter()
-            .flat_map(|c| get_adjacent_squares(*c))
-            .filter(|c| !occupied_squares.contains(c))
-            .collect()
     }
 }

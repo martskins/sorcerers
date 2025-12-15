@@ -1,5 +1,5 @@
 use macroquad::{math::Rect, texture::Texture2D};
-use sorcerers::{card::Zone, game::PlayerId};
+use sorcerers::card::Zone;
 
 #[derive(Debug, Clone)]
 pub struct CardDisplay {

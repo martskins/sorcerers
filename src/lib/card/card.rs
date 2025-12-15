@@ -1,7 +1,7 @@
 use crate::{
-    card::{AridDesert, ClamorOfHarpies, Flamecaller, PitVipers, beta},
+    card::beta,
     effect::{Counter, Effect, ModifierCounter},
-    game::{Element, PlayerId, Thresholds, are_adjacent, are_nearby},
+    game::{Element, PlayerId, Thresholds, are_adjacent, are_nearby, get_adjacent_zones, get_nearby_zones},
     networking::message::ClientMessage,
     state::State,
 };
@@ -47,23 +47,54 @@ pub enum Zone {
 }
 
 impl Zone {
-    pub fn is_nearby(&self, other: &Zone) -> bool {
-        match (self, other) {
-            (Zone::Realm(sq1), Zone::Realm(sq2)) => are_nearby(*sq1, *sq2),
-            _ => false,
+    pub fn get_square(&self) -> Option<u8> {
+        match self {
+            Zone::Realm(sq) => Some(*sq),
+            _ => None,
         }
     }
 
+    pub fn is_nearby(&self, other: &Zone) -> bool {
+        are_nearby(self, other)
+    }
+
     pub fn is_adjacent(&self, other: &Zone) -> bool {
-        match (self, other) {
-            (Zone::Realm(sq1), Zone::Realm(sq2)) => are_adjacent(*sq1, *sq2),
-            _ => false,
-        }
+        are_adjacent(self, other)
+    }
+
+    pub fn get_nearby(&self) -> Vec<Zone> {
+        get_nearby_zones(self)
+    }
+
+    pub fn get_nearby_site_ids(&self, state: &State, owner_id: Option<&uuid::Uuid>) -> Vec<uuid::Uuid> {
+        get_nearby_zones(self)
+            .iter()
+            .flat_map(|z| {
+                state
+                    .get_cards_in_zone(z)
+                    .iter()
+                    .filter(|c| c.is_site())
+                    .filter(|c| {
+                        if let Some(owner_id) = owner_id {
+                            c.get_owner_id() == owner_id
+                        } else {
+                            true
+                        }
+                    })
+                    .cloned()
+                    .collect::<Vec<&Box<dyn Card>>>()
+            })
+            .map(|c: &Box<dyn Card>| c.get_id().clone())
+            .collect()
+    }
+
+    pub fn get_adjacent(&self) -> Vec<Zone> {
+        get_adjacent_zones(self)
     }
 }
 
 pub trait MessageHandler {
-    fn handle_message(&mut self, message: &ClientMessage, state: &State) -> Vec<Effect> {
+    fn handle_message(&mut self, _message: &ClientMessage, _state: &State) -> Vec<Effect> {
         Vec::new()
     }
 }
@@ -108,12 +139,101 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
     fn get_edition(&self) -> Edition;
     fn get_owner_id(&self) -> &PlayerId;
     fn is_tapped(&self) -> bool;
-    fn get_card_type(&self) -> CardType;
     fn get_id(&self) -> &uuid::Uuid;
     fn get_base(&self) -> &CardBase;
     fn get_base_mut(&mut self) -> &mut CardBase;
 
-    fn has_modifier(&self, state: &State, modifier: Modifier) -> bool {
+    fn default_site_genesis(&self, _state: &State) -> Vec<Effect> {
+        vec![Effect::AddResources {
+            player_id: self.get_owner_id().clone(),
+            mana: self.get_site_base().unwrap().provided_mana,
+            thresholds: self.get_site_base().unwrap().provided_thresholds.clone(),
+            health: 0,
+        }]
+    }
+
+    fn default_get_valid_play_zones(&self, state: &State) -> Vec<Zone> {
+        if self.is_unit() {
+            let site_squares = state
+                .cards
+                .iter()
+                .filter(|c| c.get_owner_id() == self.get_owner_id())
+                .filter(|c| c.is_site())
+                .filter_map(|c| match c.get_zone() {
+                    z @ Zone::Realm(_) => Some(z),
+                    _ => None,
+                })
+                .cloned()
+                .collect();
+            return site_squares;
+        }
+
+        let player_id = self.get_owner_id();
+        if self.is_site() {
+            let has_played_site = state
+                .cards
+                .iter()
+                .any(|c| c.get_owner_id() == player_id && c.is_site() && matches!(c.get_zone(), Zone::Realm(_)));
+            if !has_played_site {
+                let avatar = state
+                    .cards
+                    .iter()
+                    .find(|c| c.get_owner_id() == player_id && c.is_avatar())
+                    .unwrap();
+                match avatar.get_zone() {
+                    z @ Zone::Realm(_) => return vec![z.clone()],
+                    _ => panic!("Avatar not in realm"),
+                }
+            }
+
+            let sites: Vec<&Zone> = state
+                .cards
+                .iter()
+                .filter(|c| c.is_site())
+                .filter_map(|c| match c.get_zone() {
+                    z @ Zone::Realm(_) => Some(z),
+                    _ => None,
+                })
+                .collect();
+
+            let occupied_squares: Vec<&Zone> = state
+                .cards
+                .iter()
+                .filter(|c| c.get_owner_id() == player_id)
+                .filter(|c| c.is_site())
+                .filter(|c| matches!(c.get_zone(), Zone::Realm(_)))
+                .flat_map(|c| match c.get_zone() {
+                    z @ Zone::Realm(_) => vec![z],
+                    _ => vec![],
+                })
+                .collect();
+
+            return occupied_squares
+                .iter()
+                .flat_map(|c| get_adjacent_zones(c))
+                .filter(|c| !occupied_squares.contains(&c))
+                .filter(|c| !sites.contains(&c))
+                .collect();
+        }
+
+        vec![]
+    }
+
+    fn get_card_type(&self) -> CardType {
+        if self.is_site() {
+            CardType::Site
+        } else if self.is_avatar() {
+            CardType::Avatar
+        } else {
+            CardType::Spell
+        }
+    }
+
+    fn get_valid_play_zones(&self, state: &State) -> Vec<Zone> {
+        self.default_get_valid_play_zones(state)
+    }
+
+    fn has_modifier(&self, _state: &State, modifier: Modifier) -> bool {
         if self
             .get_unit_base()
             .unwrap_or(&UnitBase::default())
@@ -151,12 +271,12 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
 
     fn get_square(&self) -> Option<u8> {
         match self.get_zone() {
-            Zone::Realm(sq) => Some(sq),
+            Zone::Realm(sq) => Some(*sq),
             _ => None,
         }
     }
 
-    fn get_valid_move_squares(&self, state: &State) -> Vec<u8> {
+    fn get_valid_move_zones(&self, state: &State) -> Vec<Zone> {
         state
             .cards
             .iter()
@@ -164,13 +284,13 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
             .filter(|c| c.is_site())
             .filter(|c| {
                 if self.has_modifier(state, Modifier::Airborne) {
-                    self.get_zone().is_adjacent(&c.get_zone())
-                } else {
                     self.get_zone().is_nearby(&c.get_zone())
+                } else {
+                    self.get_zone().is_adjacent(&c.get_zone())
                 }
             })
             .map(|c| match c.get_zone() {
-                Zone::Realm(sq) => sq,
+                z @ Zone::Realm(_) => z.clone(),
                 _ => unreachable!(),
             })
             .collect()
@@ -187,21 +307,7 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
             .collect()
     }
 
-    fn get_valid_play_squares(&self, state: &State) -> Vec<u8> {
-        let site_squares = state
-            .cards
-            .iter()
-            .filter(|c| c.get_owner_id() == self.get_owner_id())
-            .filter(|c| c.is_site())
-            .filter_map(|c| match c.get_zone() {
-                Zone::Realm(sq) => Some(sq),
-                _ => None,
-            })
-            .collect();
-        site_squares
-    }
-
-    fn get_toughness(&self, state: &State) -> Option<u8> {
+    fn get_toughness(&self, _state: &State) -> Option<u8> {
         let base = self.get_unit_base();
         if base.is_none() {
             return None;
@@ -210,12 +316,12 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
         let base = base.unwrap();
         let mut toughness = base.toughness;
         for counter in &base.power_counters {
-            toughness = toughness.saturating_sub_signed(counter.toughness);
+            toughness = toughness.saturating_add_signed(counter.toughness);
         }
         Some(toughness)
     }
 
-    fn get_power(&self, state: &State) -> Option<u8> {
+    fn get_power(&self, _state: &State) -> Option<u8> {
         let base = self.get_unit_base();
         if base.is_none() {
             return None;
@@ -224,16 +330,16 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
         let base = base.unwrap();
         let mut power = base.power;
         for counter in &base.power_counters {
-            power = power.saturating_sub_signed(counter.power);
+            power = power.saturating_add_signed(counter.power);
         }
         Some(power)
     }
 
-    fn get_required_thresholds(&self, state: &State) -> &Thresholds {
+    fn get_required_thresholds(&self, _state: &State) -> &Thresholds {
         &self.get_base().required_thresholds
     }
 
-    fn get_mana_cost(&self, state: &State) -> u8 {
+    fn get_mana_cost(&self, _state: &State) -> u8 {
         self.get_base().mana_cost
     }
 
@@ -261,19 +367,19 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
         None
     }
 
-    fn get_zone(&self) -> Zone {
-        self.get_base().zone.clone()
+    fn get_zone(&self) -> &Zone {
+        &self.get_base().zone
     }
 
     fn set_zone(&mut self, zone: Zone) {
         self.get_base_mut().zone = zone;
     }
 
-    fn genesis(&mut self, state: &State) -> Vec<Effect> {
+    fn genesis(&mut self, _state: &State) -> Vec<Effect> {
         vec![]
     }
 
-    fn deathrite(&self, state: &State) -> Vec<Effect> {
+    fn deathrite(&self, _state: &State) -> Vec<Effect> {
         vec![]
     }
 
@@ -316,43 +422,49 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
         false
     }
 
-    fn on_move(&mut self, state: &State, zone: &Zone) -> Vec<Effect> {
+    fn on_move(&mut self, _state: &State, _zone: &Zone) -> Vec<Effect> {
         vec![]
     }
 
     fn on_take_damage(&mut self, state: &State, from: &uuid::Uuid, damage: u8) -> Vec<Effect> {
-        let mut effects = Vec::new();
-        let attacker = state.cards.iter().find(|c| c.get_id() == from).unwrap();
         if self.is_unit() {
+            println!("Unit {:?} takes {} damage from {:?}", self.get_name(), damage, from);
+            // Avatar is a sub-type of unit
+            if self.is_avatar() {
+                println!("Avatar {:?} takes {} damage", self.get_name(), damage);
+                return vec![Effect::RemoveResources {
+                    player_id: self.get_owner_id().clone(),
+                    mana: 0,
+                    thresholds: Thresholds::new(),
+                    health: damage,
+                }];
+            }
+
             if let Some(ub) = self.get_unit_base_mut() {
                 ub.damage += damage;
             }
 
+            let attacker = state.cards.iter().find(|c| c.get_id() == from).unwrap();
             if attacker.has_modifier(state, Modifier::Lethal) {
-                effects.push(Effect::BuryCard {
+                return vec![Effect::BuryCard {
                     card_id: self.get_id().clone(),
-                });
+                }];
             }
+
+            return vec![];
         } else if self.is_site() {
-            effects.push(Effect::RemoveResources {
+            return vec![Effect::RemoveResources {
                 player_id: self.get_owner_id().clone(),
                 mana: 0,
                 thresholds: Thresholds::new(),
                 health: damage,
-            });
-        } else if self.is_avatar() {
-            effects.push(Effect::RemoveResources {
-                player_id: self.get_owner_id().clone(),
-                mana: 0,
-                thresholds: Thresholds::new(),
-                health: damage,
-            });
+            }];
         }
 
-        effects
+        vec![]
     }
 
-    fn on_turn_end(&mut self, state: &State) -> Vec<Effect> {
+    fn on_turn_end(&mut self, _state: &State) -> Vec<Effect> {
         vec![]
     }
 
@@ -368,15 +480,25 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
         }
     }
 
-    fn on_cast(&mut self, state: &State) -> Vec<Effect> {
+    fn on_summon(&mut self, _state: &State) -> Vec<Effect> {
+        vec![]
+    }
+
+    fn on_cast(&mut self, _state: &State, _caster_id: &uuid::Uuid) -> Vec<Effect> {
         vec![]
     }
 }
 
 #[derive(Debug, Clone)]
+pub enum SiteType {
+    Desert,
+}
+
+#[derive(Debug, Default, Clone)]
 pub struct SiteBase {
     pub provided_mana: u8,
     pub provided_thresholds: Thresholds,
+    pub types: Vec<SiteType>,
 }
 
 #[derive(Debug, PartialEq, Clone)]

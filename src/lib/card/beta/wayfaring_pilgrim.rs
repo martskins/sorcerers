@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardType, Edition, MessageHandler, Modifier, UnitBase, Zone},
+    card::{Card, CardBase, Edition, MessageHandler, Modifier, UnitBase, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds},
     state::State,
@@ -65,10 +65,6 @@ impl Card for WayfaringPilgrim {
         &self.card_base.id
     }
 
-    fn get_card_type(&self) -> crate::card::CardType {
-        CardType::Spell
-    }
-
     fn get_unit_base(&self) -> Option<&UnitBase> {
         Some(&self.unit_base)
     }
@@ -77,7 +73,7 @@ impl Card for WayfaringPilgrim {
         Some(&mut self.unit_base)
     }
 
-    fn on_move(&mut self, state: &State, zone: &Zone) -> Vec<Effect> {
+    fn on_move(&mut self, _state: &State, zone: &Zone) -> Vec<Effect> {
         let mut effects = Vec::new();
         match zone {
             Zone::Realm(s) => {

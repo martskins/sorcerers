@@ -15,6 +15,40 @@ use tokio::net::UdpSocket;
 pub type PlayerId = uuid::Uuid;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum Direction {
+    Up,
+    Down,
+    Left,
+    Right,
+}
+
+pub const CARDINAL_DIRECTIONS: [Direction; 4] = [Direction::Up, Direction::Down, Direction::Left, Direction::Right];
+
+impl Direction {
+    pub fn get_name(&self) -> String {
+        match self {
+            Direction::Up => "Up".to_string(),
+            Direction::Down => "Down".to_string(),
+            Direction::Left => "Left".to_string(),
+            Direction::Right => "Right".to_string(),
+        }
+    }
+
+    pub fn normalise(&self, board_flipped: bool) -> Direction {
+        if board_flipped {
+            match self {
+                Direction::Up => Direction::Down,
+                Direction::Down => Direction::Up,
+                Direction::Left => Direction::Right,
+                Direction::Right => Direction::Left,
+            }
+        } else {
+            self.clone()
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PlayerStatus {
     None,
     WaitingForCardDraw {
@@ -23,13 +57,17 @@ pub enum PlayerStatus {
     WaitingForPlay {
         player_id: PlayerId,
     },
-    SelectingSquare {
+    SelectingZone {
         player_id: PlayerId,
-        valid_squares: Vec<u8>,
+        valid_zones: Vec<Zone>,
     },
     SelectingCard {
         player_id: PlayerId,
         valid_cards: Vec<uuid::Uuid>,
+    },
+    SelectingDirection {
+        player_id: PlayerId,
+        directions: Vec<Direction>,
     },
     SelectingAction {
         player_id: PlayerId,
@@ -45,7 +83,7 @@ pub enum Element {
     Water,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct Thresholds {
     pub fire: u8,
     pub air: u8,
@@ -105,64 +143,71 @@ impl Resources {
     }
 }
 
-pub fn are_adjacent(square1: u8, square2: u8) -> bool {
-    get_nearby_squares(square1).contains(&square2)
+pub fn are_adjacent(square1: &Zone, square2: &Zone) -> bool {
+    get_adjacent_zones(square1).contains(&square2)
 }
 
-pub fn are_nearby(square1: u8, square2: u8) -> bool {
-    let row1 = square1 / 5;
-    let col1 = square1 % 5;
-    let row2 = square2 / 5;
-    let col2 = square2 % 5;
-
-    let row_diff = if row1 > row2 { row1 - row2 } else { row2 - row1 };
-    let col_diff = if col1 > col2 { col1 - col2 } else { col2 - col1 };
-
-    (row_diff <= 1 && col_diff <= 1) && !(row_diff == 0 && col_diff == 0)
+pub fn are_nearby(square1: &Zone, square2: &Zone) -> bool {
+    get_nearby_zones(square1).contains(&square2)
 }
 
-pub fn get_nearby_squares(square: u8) -> Vec<u8> {
-    let mut adjacent = get_adjacent_squares(square);
-    let diagonals = match square % 5 {
-        0 => vec![square.saturating_add(4), square.saturating_sub(6)],
-        1 => vec![square.saturating_sub(4), square.saturating_add(6)],
-        _ => vec![
-            square.saturating_sub(4),
-            square.saturating_add(6),
-            square.saturating_add(4),
-            square.saturating_sub(6),
-        ],
-    };
-    adjacent.extend(diagonals);
-    adjacent.retain(|&s| s <= 20);
-    adjacent
-    // (1..=20).filter(|&s| are_nearby(square, s)).collect()
+pub fn get_nearby_zones(zone: &Zone) -> Vec<Zone> {
+    let mut adjacent = get_adjacent_zones(zone);
+    match zone {
+        Zone::Realm(square) => {
+            let diagonals = match square % 5 {
+                0 => vec![
+                    Zone::Realm(square.saturating_add(4)),
+                    Zone::Realm(square.saturating_sub(6)),
+                ],
+                1 => vec![
+                    Zone::Realm(square.saturating_sub(4)),
+                    Zone::Realm(square.saturating_add(6)),
+                ],
+                _ => vec![
+                    Zone::Realm(square.saturating_sub(4)),
+                    Zone::Realm(square.saturating_add(6)),
+                    Zone::Realm(square.saturating_add(4)),
+                    Zone::Realm(square.saturating_sub(6)),
+                ],
+            };
+            adjacent.extend(diagonals);
+            adjacent.retain(|s| s.get_square().unwrap() <= 20);
+            adjacent
+        }
+        _ => vec![],
+    }
 }
 
-pub fn get_adjacent_squares(square: u8) -> Vec<u8> {
-    let mut adjacent = match square % 5 {
-        0 => vec![
-            square.saturating_add(5),
-            square.saturating_sub(5),
-            square.saturating_sub(1),
-            square,
-        ],
-        1 => vec![
-            square.saturating_add(5),
-            square.saturating_sub(5),
-            square.saturating_add(1),
-            square,
-        ],
-        _ => vec![
-            square.saturating_add(5),
-            square.saturating_sub(5),
-            square.saturating_add(1),
-            square.saturating_sub(1),
-            square,
-        ],
-    };
-    adjacent.retain(|&s| s <= 20);
-    adjacent
+pub fn get_adjacent_zones(zone: &Zone) -> Vec<Zone> {
+    match zone {
+        &Zone::Realm(square) => {
+            let mut adjacent = match square % 5 {
+                0 => vec![
+                    Zone::Realm(square.saturating_add(5)),
+                    Zone::Realm(square.saturating_sub(5)),
+                    Zone::Realm(square.saturating_sub(1)),
+                    Zone::Realm(square),
+                ],
+                1 => vec![
+                    Zone::Realm(square.saturating_add(5)),
+                    Zone::Realm(square.saturating_sub(5)),
+                    Zone::Realm(square.saturating_add(1)),
+                    Zone::Realm(square),
+                ],
+                _ => vec![
+                    Zone::Realm(square.saturating_add(5)),
+                    Zone::Realm(square.saturating_sub(5)),
+                    Zone::Realm(square.saturating_add(1)),
+                    Zone::Realm(square.saturating_sub(1)),
+                    Zone::Realm(square),
+                ],
+            };
+            adjacent.retain(|s| s.get_square().unwrap() <= 20);
+            adjacent
+        }
+        _ => vec![],
+    }
 }
 
 #[derive(Debug)]
@@ -192,7 +237,7 @@ pub enum InputStatus {
 }
 
 #[derive(Debug, Clone)]
-enum Action {
+pub enum Action {
     Move,
     Attack,
     Defend,
@@ -260,19 +305,23 @@ impl Game {
             }
             (InputStatus::None, ClientMessage::ClickCard { player_id, card_id, .. }) => {
                 let card = self.state.cards.iter().find(|c| c.get_id() == card_id).unwrap();
-                if !card.is_spell() {
+                if card.get_owner_id() != player_id {
                     return Ok(());
                 }
 
-                let resources = self.state.resources.get(player_id).unwrap();
-                let can_afford = resources.can_afford(card, &self.state);
-                if !can_afford {
+                if !card.is_spell() {
                     return Ok(());
                 }
 
                 match (card.is_unit(), card.get_zone()) {
                     (true, Zone::Hand) => {
-                        let valid_squares = card.get_valid_play_squares(&self.state);
+                        let resources = self.state.resources.get(player_id).unwrap();
+                        let can_afford = resources.can_afford(card, &self.state);
+                        if !can_afford {
+                            return Ok(());
+                        }
+
+                        let valid_squares = card.get_valid_play_zones(&self.state);
                         self.input_status = InputStatus::PlayingCard {
                             player_id: player_id.clone(),
                             card_id: card_id.clone(),
@@ -281,6 +330,12 @@ impl Game {
                         self.state.effects.extend(effects);
                     }
                     (false, Zone::Hand) => {
+                        let resources = self.state.resources.get(player_id).unwrap();
+                        let can_afford = resources.can_afford(card, &self.state);
+                        if !can_afford {
+                            return Ok(());
+                        }
+
                         let spellcasters = self
                             .state
                             .cards
@@ -322,7 +377,7 @@ impl Game {
                     player_id: player_id,
                     caster_id: caster.clone(),
                     card_id: card_id,
-                    from: zone,
+                    from: zone.clone(),
                 });
                 self.state.effects.push_back(Effect::wait_for_play(&player_id));
             }
@@ -351,7 +406,7 @@ impl Game {
                     let card_id = card_id.unwrap();
                     let player_id = player_id.clone();
                     let card = self.state.cards.iter().find(|c| c.get_id() == &card_id).unwrap();
-                    let valid_squares = card.get_valid_move_squares(&self.state);
+                    let valid_squares = card.get_valid_move_zones(&self.state);
                     self.input_status = InputStatus::Moving {
                         player_id: player_id.clone(),
                         card_id: card_id.clone(),
@@ -367,7 +422,7 @@ impl Game {
                 let effects = vec![
                     Effect::MoveCard {
                         card_id: card_id.clone(),
-                        from: card.get_zone(),
+                        from: card.get_zone().clone(),
                         to: Zone::Realm(*square),
                         tap: true,
                     },
@@ -562,7 +617,7 @@ impl Game {
         for (player_id, deck) in &self.state.decks {
             let avatar_id = deck.avatar;
             let mut square = 3;
-            if player_id == &self.players[0] {
+            if player_id != &self.state.player_one {
                 square = 18;
             }
 
@@ -589,36 +644,38 @@ impl Game {
 
 #[cfg(test)]
 mod test {
+    use crate::card::Zone;
+
     #[test]
     fn test_are_adjacent() {
         use crate::game::are_adjacent;
 
-        assert!(are_adjacent(1, 2));
-        assert!(are_adjacent(3, 2));
-        assert!(are_adjacent(3, 4));
-        assert!(!are_adjacent(3, 7));
-        assert!(!are_adjacent(3, 9));
+        assert!(are_adjacent(&Zone::Realm(1), &Zone::Realm(2)));
+        assert!(are_adjacent(&Zone::Realm(3), &Zone::Realm(2)));
+        assert!(are_adjacent(&Zone::Realm(3), &Zone::Realm(4)));
+        assert!(!are_adjacent(&Zone::Realm(3), &Zone::Realm(7)));
+        assert!(!are_adjacent(&Zone::Realm(3), &Zone::Realm(9)));
     }
 
     #[test]
     fn test_are_nearby() {
         use crate::game::are_nearby;
 
-        assert!(are_nearby(1, 2));
-        assert!(are_nearby(3, 2));
-        assert!(are_nearby(3, 4));
-        assert!(are_nearby(3, 7));
-        assert!(are_nearby(3, 9));
+        assert!(are_nearby(&Zone::Realm(1), &Zone::Realm(2)));
+        assert!(are_nearby(&Zone::Realm(3), &Zone::Realm(2)));
+        assert!(are_nearby(&Zone::Realm(3), &Zone::Realm(4)));
+        assert!(are_nearby(&Zone::Realm(3), &Zone::Realm(7)));
+        assert!(are_nearby(&Zone::Realm(3), &Zone::Realm(9)));
     }
 
     #[test]
     fn test_get_adjacent_squares() {
-        use crate::game::get_adjacent_squares;
+        use crate::game::get_adjacent_zones;
 
-        let adj = get_adjacent_squares(8);
-        assert!(adj.contains(&3));
-        assert!(adj.contains(&7));
-        assert!(adj.contains(&9));
-        assert!(adj.contains(&13));
+        let adj = get_adjacent_zones(&Zone::Realm(8));
+        assert!(adj.contains(&Zone::Realm(3)));
+        assert!(adj.contains(&Zone::Realm(7)));
+        assert!(adj.contains(&Zone::Realm(9)));
+        assert!(adj.contains(&Zone::Realm(13)));
     }
 }

@@ -1,22 +1,23 @@
 use crate::{
-    card::{Card, CardBase, CardType, Edition, MessageHandler, SiteBase, Zone},
+    card::{Card, CardBase, Edition, MessageHandler, SiteBase, Zone},
     game::{PlayerId, Thresholds},
+    state::State,
 };
 
 #[derive(Debug, Clone)]
-pub struct AridDesert {
+pub struct Cornerstone {
     pub site_base: SiteBase,
     pub card_base: CardBase,
 }
 
-impl AridDesert {
-    pub const NAME: &'static str = "Arid Desert";
+impl Cornerstone {
+    pub const NAME: &'static str = "Cornerstone";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
             site_base: SiteBase {
                 provided_mana: 1,
-                provided_thresholds: Thresholds::parse("F"),
+                provided_thresholds: Thresholds::parse(""),
                 ..Default::default()
             },
             card_base: CardBase {
@@ -31,7 +32,7 @@ impl AridDesert {
     }
 }
 
-impl Card for AridDesert {
+impl Card for Cornerstone {
     fn get_name(&self) -> &str {
         Self::NAME
     }
@@ -60,10 +61,6 @@ impl Card for AridDesert {
         &self.card_base.id
     }
 
-    fn get_card_type(&self) -> CardType {
-        CardType::Site
-    }
-
     fn get_site_base(&self) -> Option<&SiteBase> {
         Some(&self.site_base)
     }
@@ -71,6 +68,19 @@ impl Card for AridDesert {
     fn get_site_base_mut(&mut self) -> Option<&mut SiteBase> {
         Some(&mut self.site_base)
     }
+
+    fn get_valid_play_zones(&self, state: &State) -> Vec<Zone> {
+        let mut valid_zones = self.default_get_valid_play_zones(state);
+        let corners = vec![1, 5, 16, 20];
+        let valid_corners = corners.iter().filter_map(|c| {
+            match state.get_cards_in_zone(&Zone::Realm(*c)).iter().find(|c| c.is_site()) {
+                Some(_) => None,
+                None => Some(Zone::Realm(*c)),
+            }
+        });
+        valid_zones.extend(valid_corners);
+        valid_zones
+    }
 }
 
-impl MessageHandler for AridDesert {}
+impl MessageHandler for Cornerstone {}

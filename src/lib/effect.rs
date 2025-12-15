@@ -1,11 +1,9 @@
 use crate::{
     card::{CardType, Modifier, SiteBase, UnitBase, Zone},
-    game::{PlayerId, PlayerStatus, Thresholds},
+    game::{Direction, PlayerId, PlayerStatus, Thresholds},
     state::State,
 };
 use std::fmt::Debug;
-
-pub trait CardStatus: Debug + Send + Sync {}
 
 #[derive(Debug, Clone)]
 pub struct ModifierCounter {
@@ -128,12 +126,29 @@ impl Effect {
         }
     }
 
+    pub fn select_direction(player_id: &PlayerId, directions: &[Direction]) -> Self {
+        Effect::SetPlayerStatus {
+            status: PlayerStatus::SelectingDirection {
+                player_id: player_id.clone(),
+                directions: directions.to_vec(),
+            },
+        }
+    }
+
     pub fn select_action(player_id: &PlayerId, actions: Vec<String>) -> Self {
         Effect::SetPlayerStatus {
             status: PlayerStatus::SelectingAction {
                 player_id: player_id.clone(),
                 actions: actions,
             },
+        }
+    }
+
+    pub fn take_damage(card_id: &uuid::Uuid, from: &uuid::Uuid, damage: u8) -> Self {
+        Effect::TakeDamage {
+            card_id: card_id.clone(),
+            from: from.clone(),
+            damage,
         }
     }
 
@@ -156,11 +171,11 @@ impl Effect {
         }
     }
 
-    pub fn select_square(player_id: &PlayerId, valid_squares: Vec<u8>) -> Self {
+    pub fn select_square(player_id: &PlayerId, zones: Vec<Zone>) -> Self {
         Effect::SetPlayerStatus {
-            status: PlayerStatus::SelectingSquare {
+            status: PlayerStatus::SelectingZone {
                 player_id: player_id.clone(),
-                valid_squares: valid_squares,
+                valid_zones: zones,
             },
         }
     }
@@ -204,12 +219,11 @@ impl Effect {
             Effect::SetPlayerStatus { status, .. } => {
                 state.player_status = status.clone();
             }
-            Effect::PlayMagic { card_id, .. } => {
+            Effect::PlayMagic { card_id, caster_id, .. } => {
                 let snapshot = state.snapshot();
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
-                let mut effects = card.on_cast(&snapshot);
+                let mut effects = card.on_cast(&snapshot, caster_id);
                 let mana_cost = card.get_mana_cost(&snapshot);
-                println!("Playing magic card {}, mana cost {}", card.get_name(), mana_cost);
                 effects.push(Effect::RemoveResources {
                     player_id: card.get_owner_id().clone(),
                     mana: mana_cost,
@@ -221,7 +235,7 @@ impl Effect {
             Effect::PlayCard { card_id, zone, .. } => {
                 let snapshot = state.snapshot();
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
-                let cast_effects = card.on_cast(&snapshot);
+                let cast_effects = card.on_summon(&snapshot);
                 card.set_zone(zone.clone());
                 if !card.has_modifier(&snapshot, Modifier::Charge) {
                     card.add_modifier(Modifier::SummoningSickness);
@@ -234,8 +248,12 @@ impl Effect {
                     thresholds: Thresholds::new(),
                     health: 0,
                 });
-                state.effects.extend(effects);
-                state.effects.extend(cast_effects);
+                for effect in cast_effects {
+                    state.effects.push_front(effect);
+                }
+                for effect in effects {
+                    state.effects.push_front(effect);
+                }
             }
             Effect::TapCard { card_id } => {
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
@@ -340,8 +358,8 @@ impl Effect {
                 let effects = vec![
                     Effect::MoveCard {
                         card_id: attacker_id.clone(),
-                        from: attacker.get_zone(),
-                        to: defender.get_zone(),
+                        from: attacker.get_zone().clone(),
+                        to: defender.get_zone().clone(),
                         tap: true,
                     },
                     Effect::TakeDamage {
@@ -365,7 +383,14 @@ impl Effect {
             }
             Effect::TakeDamage { card_id, damage, from } => {
                 let snapshot = state.snapshot();
+                let dealer = snapshot.get_card(from).unwrap();
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
+                println!(
+                    "Card {} takes {} damage from {}",
+                    card.get_name(),
+                    damage,
+                    dealer.get_name()
+                );
                 let effects = card.on_take_damage(&snapshot, from, *damage);
                 state.effects.extend(effects);
             }

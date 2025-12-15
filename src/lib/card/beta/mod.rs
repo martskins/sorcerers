@@ -24,6 +24,16 @@ pub mod infernal_legion;
 pub use infernal_legion::*;
 pub mod mad_dash;
 pub use mad_dash::*;
+pub mod heat_ray;
+pub use heat_ray::*;
+pub mod cornerstone;
+pub use cornerstone::*;
+pub mod red_desert;
+pub use red_desert::*;
+pub mod remote_desert;
+pub use remote_desert::*;
+pub mod shifting_sands;
+pub use shifting_sands::*;
 
 use crate::{card::Card, game::PlayerId};
 
@@ -42,6 +52,11 @@ pub fn from_beta_name(name: &str, player_id: PlayerId) -> Option<Box<dyn Card>> 
         AskelonPhoenix::NAME => Some(Box::new(AskelonPhoenix::new(player_id))),
         InfernalLegion::NAME => Some(Box::new(InfernalLegion::new(player_id))),
         MadDash::NAME => Some(Box::new(MadDash::new(player_id))),
+        HeatRay::NAME => Some(Box::new(HeatRay::new(player_id))),
+        Cornerstone::NAME => Some(Box::new(Cornerstone::new(player_id))),
+        RedDesert::NAME => Some(Box::new(RedDesert::new(player_id))),
+        RemoteDesert::NAME => Some(Box::new(RemoteDesert::new(player_id))),
+        ShiftingSands::NAME => Some(Box::new(ShiftingSands::new(player_id))),
         _ => None,
     }
 }

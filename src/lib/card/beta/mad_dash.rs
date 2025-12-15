@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardType, Edition, MessageHandler, Modifier, UnitBase, Zone},
+    card::{Card, CardBase, Edition, MessageHandler, Modifier, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds},
     networking::message::ClientMessage,
@@ -7,7 +7,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub enum Status {
+enum Status {
     None,
     DrawingCard,
     PickingAlly,
@@ -66,11 +66,7 @@ impl Card for MadDash {
         &self.card_base.id
     }
 
-    fn get_card_type(&self) -> crate::card::CardType {
-        CardType::Spell
-    }
-
-    fn on_cast(&mut self, state: &State) -> Vec<Effect> {
+    fn on_cast(&mut self, _state: &State, _caster_id: &uuid::Uuid) -> Vec<Effect> {
         self.status = Status::DrawingCard;
         vec![Effect::wait_for_card_draw(&self.get_owner_id())]
     }

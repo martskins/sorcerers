@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardType, Edition, MessageHandler, Modifier, UnitBase, Zone},
+    card::{Card, CardBase, Edition, MessageHandler, Modifier, UnitBase, Zone},
     game::{PlayerId, Thresholds},
 };
 
@@ -59,10 +59,6 @@ impl Card for SandWorm {
 
     fn get_id(&self) -> &uuid::Uuid {
         &self.card_base.id
-    }
-
-    fn get_card_type(&self) -> crate::card::CardType {
-        CardType::Spell
     }
 
     fn get_unit_base(&self) -> Option<&UnitBase> {

@@ -30,9 +30,9 @@ path = "src/server/bin/main.rs"
 name = "client"
 path = "src/client/bin/main.rs"
 
-[[bin]]
-name = "add-card"
-path = "src/cli/bin/main.rs"
+# [[bin]]
+# name = "add-card"
+# path = "src/cli/bin/main.rs"
 
 [lib]
 name = "sorcerers"

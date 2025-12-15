@@ -1,7 +1,7 @@
 use crate::{
-    card::{AvatarBase, Card, CardBase, CardType, Edition, MessageHandler, Zone},
+    card::{AvatarBase, Card, CardBase, CardType, Edition, MessageHandler, UnitBase, Zone},
     effect::Effect,
-    game::{PlayerId, PlayerStatus, Thresholds},
+    game::{PlayerId, Thresholds},
     networking::message::ClientMessage,
     state::State,
 };
@@ -31,6 +31,7 @@ impl Action {
 #[derive(Debug, Clone)]
 pub struct Flamecaller {
     pub card_base: CardBase,
+    pub unit_base: UnitBase,
     pub avatar_base: AvatarBase,
     status: Status,
     actions: Vec<Action>,
@@ -41,6 +42,11 @@ impl Flamecaller {
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
+            unit_base: UnitBase {
+                power: 1,
+                toughness: 1,
+                ..Default::default()
+            },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
@@ -69,6 +75,14 @@ impl Card for Flamecaller {
         &self.card_base
     }
 
+    fn get_unit_base(&self) -> Option<&UnitBase> {
+        Some(&self.unit_base)
+    }
+
+    fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
+        Some(&mut self.unit_base)
+    }
+
     fn get_avatar_base(&self) -> Option<&AvatarBase> {
         Some(&self.avatar_base)
     }
@@ -91,14 +105,6 @@ impl Card for Flamecaller {
 
     fn get_id(&self) -> &uuid::Uuid {
         &self.card_base.id
-    }
-
-    fn get_card_type(&self) -> crate::card::CardType {
-        CardType::Avatar
-    }
-
-    fn genesis(&mut self, state: &State) -> Vec<Effect> {
-        vec![]
     }
 }
 
@@ -131,7 +137,7 @@ impl MessageHandler for Flamecaller {
                     .cards
                     .iter()
                     .filter(|c| c.is_site())
-                    .filter(|c| c.get_zone() == Zone::Hand)
+                    .filter(|c| c.get_zone() == &Zone::Hand)
                     .filter(|c| c.get_owner_id() == player_id)
                     .map(|c| c.get_id().clone())
                     .collect();
@@ -151,7 +157,16 @@ impl MessageHandler for Flamecaller {
                 }
             }
             (Status::PlaySite, ClientMessage::PickCard { player_id, card_id, .. }) => {
-                let valid_squares = state.get_valid_site_squares(player_id);
+                let card = state.get_card(card_id).unwrap();
+                let valid_squares = card
+                    .get_valid_play_zones(state)
+                    .iter()
+                    .map(|c| match c {
+                        z @ Zone::Realm(_) => z.clone(),
+                        _ => panic!("Invalid zone for playing site"),
+                    })
+                    .collect();
+
                 self.avatar_base.playing_site = Some(card_id.clone());
                 vec![Effect::select_square(player_id, valid_squares)]
             }

@@ -1,23 +1,25 @@
 use crate::{
-    card::{Card, CardBase, CardType, Edition, MessageHandler, SiteBase, Zone},
+    card::{Card, CardBase, Edition, MessageHandler, SiteBase, SiteType, Zone},
+    effect::Effect,
     game::{PlayerId, Thresholds},
+    state::State,
 };
 
 #[derive(Debug, Clone)]
-pub struct AridDesert {
+pub struct ShiftingSands {
     pub site_base: SiteBase,
     pub card_base: CardBase,
 }
 
-impl AridDesert {
-    pub const NAME: &'static str = "Arid Desert";
+impl ShiftingSands {
+    pub const NAME: &'static str = "Shifting Sands";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
             site_base: SiteBase {
                 provided_mana: 1,
                 provided_thresholds: Thresholds::parse("F"),
-                ..Default::default()
+                types: vec![SiteType::Desert],
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
@@ -31,7 +33,7 @@ impl AridDesert {
     }
 }
 
-impl Card for AridDesert {
+impl Card for ShiftingSands {
     fn get_name(&self) -> &str {
         Self::NAME
     }
@@ -60,8 +62,16 @@ impl Card for AridDesert {
         &self.card_base.id
     }
 
-    fn get_card_type(&self) -> CardType {
-        CardType::Site
+    fn genesis(&mut self, state: &State) -> Vec<Effect> {
+        let mut effects = self.default_site_genesis(state);
+        let nearby_sites = self.get_zone().get_nearby_site_ids(state, Some(self.get_owner_id()));
+        let mut snapshot = state.snapshot();
+        for site_id in nearby_sites {
+            // TODO: Not sure if snapshoting here is good enough
+            let site = snapshot.get_card_mut(&site_id).unwrap();
+            effects.extend(site.genesis(state));
+        }
+        effects
     }
 
     fn get_site_base(&self) -> Option<&SiteBase> {
@@ -73,4 +83,4 @@ impl Card for AridDesert {
     }
 }
 
-impl MessageHandler for AridDesert {}
+impl MessageHandler for ShiftingSands {}

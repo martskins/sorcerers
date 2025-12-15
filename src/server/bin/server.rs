@@ -1,5 +1,5 @@
 use sorcerers::{
-    card::{self, AridDesert, AskelonPhoenix, ClamorOfHarpies, Flamecaller, MadDash, SacredScarabs, Zone},
+    card::{self, *},
     deck::precon,
     game::{Game, PlayerStatus, Resources},
     networking::{
@@ -51,7 +51,7 @@ impl Server {
 
                 match self.find_match() {
                     Some((player1, player2)) => {
-                        let game = self.create_game(&player2, &player1);
+                        let game = self.create_game(&player1, &player2);
                         game.state.effects.extend(game.place_avatars());
                         game.state.effects.extend(game.draw_initial_six());
                         game.broadcast(&ServerMessage::GameStarted {
@@ -93,6 +93,7 @@ impl Server {
             HashMap::from([(player1.clone(), deck1), (player2.clone(), deck2)]),
         );
         state.current_player = player1.clone();
+        state.player_one = player1.clone();
         state.player_status = PlayerStatus::WaitingForPlay {
             player_id: player1.clone(),
         };
@@ -100,27 +101,27 @@ impl Server {
         state.resources.insert(player2.clone(), Resources::new());
 
         state.cards.push(card::from_name_and_zone(
-            AridDesert::NAME,
+            RedDesert::NAME,
             player2.clone(),
             Zone::Realm(3),
         ));
         state.cards.push(card::from_name_and_zone(
-            AridDesert::NAME,
+            RedDesert::NAME,
             player2.clone(),
             Zone::Realm(8),
         ));
         state.cards.push(card::from_name_and_zone(
-            AridDesert::NAME,
+            RedDesert::NAME,
             player2.clone(),
             Zone::Realm(9),
         ));
         state.cards.push(card::from_name_and_zone(
-            AridDesert::NAME,
+            RedDesert::NAME,
             player1.clone(),
             Zone::Realm(14),
         ));
         state.cards.push(card::from_name_and_zone(
-            AridDesert::NAME,
+            RedDesert::NAME,
             player1.clone(),
             Zone::Realm(13),
         ));
@@ -135,13 +136,15 @@ impl Server {
             Zone::Realm(13),
         ));
         state.cards.push(card::from_name_and_zone(
-            AridDesert::NAME,
+            RedDesert::NAME,
             player1.clone(),
             Zone::Realm(18),
         ));
-        state
-            .cards
-            .push(card::from_name_and_zone(MadDash::NAME, player2.clone(), Zone::Hand));
+        state.cards.push(card::from_name_and_zone(
+            ShiftingSands::NAME,
+            player2.clone(),
+            Zone::Hand,
+        ));
         state.resources.get_mut(player1).unwrap().mana = 4;
         state.resources.get_mut(player1).unwrap().thresholds.fire = 2;
         state.resources.get_mut(player1).unwrap().thresholds.water = 1;

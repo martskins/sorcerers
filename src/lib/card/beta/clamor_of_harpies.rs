@@ -1,7 +1,7 @@
 use crate::{
-    card::{Card, CardBase, CardType, Edition, MessageHandler, UnitBase, Zone},
+    card::{Card, CardBase, Edition, MessageHandler, UnitBase, Zone},
     effect::Effect,
-    game::{PlayerId, PlayerStatus, Thresholds},
+    game::{PlayerId, Thresholds},
     networking::message::ClientMessage,
     state::State,
 };
@@ -92,10 +92,6 @@ impl Card for ClamorOfHarpies {
         &self.card_base.id
     }
 
-    fn get_card_type(&self) -> crate::card::CardType {
-        CardType::Spell
-    }
-
     fn get_unit_base(&self) -> Option<&UnitBase> {
         Some(&self.unit_base)
     }
@@ -141,7 +137,7 @@ impl MessageHandler for ClamorOfHarpies {
                     Effect::MoveCard {
                         card_id: self.targeted_minion.clone(),
                         from: target_minion.get_zone().clone(),
-                        to: self.get_zone(),
+                        to: self.get_zone().clone(),
                         tap: false,
                     },
                     Effect::wait_for_play(self.get_owner_id()),

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     card::{CardInfo, CardType},
-    game::{PlayerId, PlayerStatus, Resources},
+    game::{Direction, PlayerId, PlayerStatus, Resources},
 };
 use serde::{Deserialize, Serialize};
 
@@ -58,6 +58,11 @@ pub enum ClientMessage {
         player_id: PlayerId,
         card_id: uuid::Uuid,
     },
+    PickDirection {
+        game_id: uuid::Uuid,
+        player_id: PlayerId,
+        direction: Direction,
+    },
     PickCard {
         game_id: uuid::Uuid,
         player_id: PlayerId,
@@ -92,6 +97,7 @@ impl ClientMessage {
             ClientMessage::PickSquare { game_id, .. } => game_id.clone(),
             ClientMessage::ClickCard { game_id, .. } => game_id.clone(),
             ClientMessage::DrawCard { game_id, .. } => game_id.clone(),
+            ClientMessage::PickDirection { game_id, .. } => game_id.clone(),
         }
     }
 
@@ -105,6 +111,7 @@ impl ClientMessage {
             ClientMessage::PickSquare { player_id, .. } => player_id,
             ClientMessage::ClickCard { player_id, .. } => player_id,
             ClientMessage::DrawCard { player_id, .. } => player_id,
+            ClientMessage::PickDirection { player_id, .. } => player_id,
         }
     }
 }
