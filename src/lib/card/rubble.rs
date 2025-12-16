@@ -1,25 +1,23 @@
 use crate::{
-    card::{Card, CardBase, Edition, MessageHandler, SiteBase, SiteType, Zone},
-    effect::Effect,
+    card::{Card, CardBase, CardType, Edition, MessageHandler, SiteBase, Zone},
     game::{PlayerId, Thresholds},
-    state::State,
 };
 
 #[derive(Debug, Clone)]
-pub struct ShiftingSands {
+pub struct Rubble {
     pub site_base: SiteBase,
     pub card_base: CardBase,
 }
 
-impl ShiftingSands {
-    pub const NAME: &'static str = "Shifting Sands";
+impl Rubble {
+    pub const NAME: &'static str = "Rubble";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
             site_base: SiteBase {
-                provided_mana: 1,
-                provided_thresholds: Thresholds::parse("F"),
-                types: vec![SiteType::Desert],
+                provided_mana: 0,
+                provided_thresholds: Thresholds::parse(""),
+                ..Default::default()
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
@@ -33,7 +31,7 @@ impl ShiftingSands {
     }
 }
 
-impl Card for ShiftingSands {
+impl Card for Rubble {
     fn get_name(&self) -> &str {
         Self::NAME
     }
@@ -55,26 +53,15 @@ impl Card for ShiftingSands {
     }
 
     fn get_edition(&self) -> Edition {
-        Edition::Beta
+        Edition::Alpha
     }
 
     fn get_id(&self) -> &uuid::Uuid {
         &self.card_base.id
     }
 
-    fn genesis(&self, state: &State) -> Vec<Effect> {
-        let mut effects = vec![];
-        let nearby_sites: Vec<&Box<dyn Card>> = self
-            .get_zone()
-            .get_nearby_sites(state, Some(self.get_owner_id()))
-            .iter()
-            .cloned()
-            .filter(|c| c.get_site_base().unwrap().types.contains(&SiteType::Desert))
-            .collect();
-        for site in nearby_sites {
-            effects.extend(site.genesis(state));
-        }
-        effects
+    fn get_card_type(&self) -> CardType {
+        CardType::Site
     }
 
     fn get_site_base(&self) -> Option<&SiteBase> {
@@ -86,4 +73,4 @@ impl Card for ShiftingSands {
     }
 }
 
-impl MessageHandler for ShiftingSands {}
+impl MessageHandler for Rubble {}

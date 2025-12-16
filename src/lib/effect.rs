@@ -28,10 +28,14 @@ impl Counter {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum Effect {
     SetPlayerStatus {
         status: PlayerStatus,
+    },
+    SetCardStatus {
+        card_id: uuid::Uuid,
+        status: Box<dyn std::any::Any>,
     },
     AddModifier {
         card_id: uuid::Uuid,
@@ -56,6 +60,9 @@ pub enum Effect {
         card_id: uuid::Uuid,
         caster_id: uuid::Uuid,
         from: Zone,
+    },
+    AddCard {
+        card: Box<dyn crate::card::Card>,
     },
     PlayCard {
         player_id: uuid::Uuid,
@@ -152,12 +159,20 @@ impl Effect {
         }
     }
 
-    pub fn select_card(player_id: &PlayerId, valid_cards: Vec<uuid::Uuid>) -> Self {
+    pub fn select_card(player_id: &PlayerId, valid_cards: Vec<uuid::Uuid>, for_card: Option<&uuid::Uuid>) -> Self {
         Effect::SetPlayerStatus {
             status: PlayerStatus::SelectingCard {
                 player_id: player_id.clone(),
                 valid_cards: valid_cards,
+                for_card: for_card.cloned(),
             },
+        }
+    }
+
+    pub fn set_card_status(card_id: &uuid::Uuid, status: impl std::any::Any) -> Self {
+        Effect::SetCardStatus {
+            card_id: card_id.clone(),
+            status: Box::new(status),
         }
     }
 
@@ -180,8 +195,42 @@ impl Effect {
         }
     }
 
-    pub fn apply(&self, state: &mut State) -> anyhow::Result<()> {
+    pub fn name(&self) -> &'static str {
         match self {
+            Effect::SetPlayerStatus { status } => match status {
+                PlayerStatus::WaitingForCardDraw { .. } => "SetPlayerStatus::WaitingForCardDraw",
+                PlayerStatus::WaitingForPlay { .. } => "SetPlayerStatus::WaitingForPlay",
+                PlayerStatus::SelectingAction { .. } => "SetPlayerStatus::SelectingAction",
+                PlayerStatus::SelectingCard { .. } => "SetPlayerStatus::SelectingCard",
+                PlayerStatus::SelectingDirection { .. } => "SetPlayerStatus::SelectingDirection",
+                PlayerStatus::SelectingZone { .. } => "SetPlayerStatus::SelectingZone",
+                _ => "SetPlayerStatus",
+            },
+            Effect::AddCard { .. } => "AddCard",
+            Effect::SetCardStatus { .. } => "SetCardStatus",
+            Effect::AddModifier { .. } => "AddModifier",
+            Effect::AddCounter { .. } => "AddCounter",
+            Effect::MoveCard { .. } => "MoveCard",
+            Effect::DrawCard { .. } => "DrawCard",
+            Effect::PlayMagic { .. } => "PlayMagic",
+            Effect::PlayCard { .. } => "PlayCard",
+            Effect::TapCard { .. } => "TapCard",
+            Effect::EndTurn { .. } => "EndTurn",
+            Effect::StartTurn { .. } => "StartTurn",
+            Effect::RemoveResources { .. } => "RemoveResources",
+            Effect::AddResources { .. } => "AddResources",
+            Effect::Attack { .. } => "Attack",
+            Effect::TakeDamage { .. } => "TakeDamage",
+            Effect::BuryCard { .. } => "BuryCard",
+        }
+    }
+
+    pub fn apply(&self, state: &mut State) -> anyhow::Result<()> {
+        println!("Applying effect: {}", self.name());
+        match self {
+            Effect::AddCard { card } => {
+                state.cards.push(card.clone_box());
+            }
             Effect::MoveCard { card_id, to, tap, .. } => {
                 let snapshot = state.snapshot();
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
@@ -218,6 +267,15 @@ impl Effect {
             }
             Effect::SetPlayerStatus { status, .. } => {
                 state.player_status = status.clone();
+                let waiting_for_input = matches!(
+                    status,
+                    PlayerStatus::WaitingForCardDraw { .. }
+                        | PlayerStatus::SelectingAction { .. }
+                        | PlayerStatus::SelectingCard { .. }
+                        | PlayerStatus::SelectingDirection { .. }
+                        | PlayerStatus::SelectingZone { .. }
+                );
+                state.waiting_for_input = waiting_for_input;
             }
             Effect::PlayMagic { card_id, caster_id, .. } => {
                 let snapshot = state.snapshot();
@@ -248,12 +306,8 @@ impl Effect {
                     thresholds: Thresholds::new(),
                     health: 0,
                 });
-                for effect in cast_effects {
-                    state.effects.push_front(effect);
-                }
-                for effect in effects {
-                    state.effects.push_front(effect);
-                }
+                state.effects.extend(effects);
+                state.effects.extend(cast_effects);
             }
             Effect::TapCard { card_id } => {
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
@@ -383,14 +437,7 @@ impl Effect {
             }
             Effect::TakeDamage { card_id, damage, from } => {
                 let snapshot = state.snapshot();
-                let dealer = snapshot.get_card(from).unwrap();
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
-                println!(
-                    "Card {} takes {} damage from {}",
-                    card.get_name(),
-                    damage,
-                    dealer.get_name()
-                );
                 let effects = card.on_take_damage(&snapshot, from, *damage);
                 state.effects.extend(effects);
             }
@@ -414,6 +461,10 @@ impl Effect {
                     let base = card.get_unit_base_mut().unwrap();
                     base.modifier_counters.push(counter.clone());
                 }
+            }
+            Effect::SetCardStatus { card_id, status } => {
+                let card = state.get_card_mut(card_id).unwrap();
+                card.set_status(status).unwrap();
             }
         }
 

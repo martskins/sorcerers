@@ -100,8 +100,7 @@ impl Card for ClamorOfHarpies {
         Some(&mut self.unit_base)
     }
 
-    fn genesis(&mut self, state: &State) -> Vec<Effect> {
-        self.status = Status::MinionPick;
+    fn genesis(&self, state: &State) -> Vec<Effect> {
         let valid_cards = state
             .cards
             .iter()
@@ -110,7 +109,18 @@ impl Card for ClamorOfHarpies {
             .filter(|c| c.get_power(state).unwrap_or(0) < self.get_power(state).unwrap_or(0))
             .map(|c| c.get_id().clone())
             .collect();
-        vec![Effect::select_card(self.get_owner_id(), valid_cards)]
+        vec![
+            Effect::set_card_status(&self.get_id().clone(), Status::MinionPick.clone()),
+            Effect::select_card(self.get_owner_id(), valid_cards, Some(self.get_id())),
+        ]
+    }
+
+    fn set_status(&mut self, status: &Box<dyn std::any::Any>) -> anyhow::Result<()> {
+        let status = status
+            .downcast_ref::<Status>()
+            .ok_or_else(|| anyhow::anyhow!("Failed to downcast status for {}", Self::NAME))?;
+        self.status = status.clone();
+        Ok(())
     }
 }
 

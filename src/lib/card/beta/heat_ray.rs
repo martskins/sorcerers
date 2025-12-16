@@ -96,7 +96,11 @@ impl MessageHandler for HeatRay {
                     .map(|c| c.get_id().clone())
                     .collect();
                 self.status = Status::ChoosingFirstUnit(zone, direction.clone());
-                vec![Effect::select_card(self.get_owner_id(), valid_cards)]
+                vec![Effect::select_card(
+                    self.get_owner_id(),
+                    valid_cards,
+                    Some(self.get_id()),
+                )]
             }
             (Status::ChoosingFirstUnit(zone, direction), ClientMessage::PickCard { card_id, .. }) => {
                 let square = zone.get_square().unwrap();
@@ -115,7 +119,7 @@ impl MessageHandler for HeatRay {
                 self.status = Status::ChoosingSecondUnit;
                 vec![
                     Effect::take_damage(card_id, self.get_id(), 2),
-                    Effect::select_card(self.get_owner_id(), valid_cards),
+                    Effect::select_card(self.get_owner_id(), valid_cards, Some(self.get_id())),
                 ]
             }
             (Status::ChoosingSecondUnit, ClientMessage::PickCard { card_id, .. }) => {

@@ -144,7 +144,7 @@ impl MessageHandler for Flamecaller {
                 match action {
                     Action::PlaySite => {
                         self.status = Status::PlaySite;
-                        vec![Effect::select_card(player_id, valid_cards)]
+                        vec![Effect::select_card(player_id, valid_cards, None)]
                     }
                     Action::DrawSite => vec![
                         Effect::DrawCard {

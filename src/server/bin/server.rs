@@ -121,7 +121,7 @@ impl Server {
             Zone::Realm(14),
         ));
         state.cards.push(card::from_name_and_zone(
-            RedDesert::NAME,
+            Vesuvius::NAME,
             player1.clone(),
             Zone::Realm(13),
         ));
@@ -146,11 +146,11 @@ impl Server {
             Zone::Hand,
         ));
         state.resources.get_mut(player1).unwrap().mana = 4;
-        state.resources.get_mut(player1).unwrap().thresholds.fire = 2;
+        state.resources.get_mut(player1).unwrap().thresholds.fire = 4;
         state.resources.get_mut(player1).unwrap().thresholds.water = 1;
         state.resources.get_mut(player1).unwrap().thresholds.earth = 1;
         state.resources.get_mut(player2).unwrap().mana = 4;
-        state.resources.get_mut(player2).unwrap().thresholds.fire = 2;
+        state.resources.get_mut(player2).unwrap().thresholds.fire = 4;
         state.resources.get_mut(player2).unwrap().thresholds.water = 1;
         state.resources.get_mut(player2).unwrap().thresholds.earth = 1;
 

@@ -334,17 +334,6 @@ impl Game {
                                     .unwrap();
                             }
                         }
-
-                        // if ui.button(Vec2::new(0.0, 30.0 * actions.len() as f32), "Cancel") {
-                        //     self.action_window_position = None;
-                        //     self.action_window_size = None;
-                        //     self.client
-                        //         .send(Message::CancelSelectAction {
-                        //             player_id: self.player_id,
-                        //             game_id: self.game_id,
-                        //         })
-                        //         .unwrap();
-                        // }
                     },
                 );
             }
@@ -618,39 +607,6 @@ impl Game {
                                 square,
                             })
                             .unwrap();
-                        // match after_select {
-                        //     Some(Action::GameAction(GameAction::PlayCardOnSelectedTargets { card_id })) => {
-                        //         self.client
-                        //             .send(Message::PlayCard {
-                        //                 player_id: self.player_id,
-                        //                 card_id: card_id.clone(),
-                        //                 targets: Target::Square(square),
-                        //                 game_id: self.game_id,
-                        //             })
-                        //             .unwrap();
-                        //     }
-                        //     Some(Action::GameAction(GameAction::MoveCardToSelectedSquare { card_id })) => {
-                        //         self.client
-                        //             .send(Message::MoveCard {
-                        //                 player_id: self.player_id,
-                        //                 card_id: card_id.clone(),
-                        //                 square,
-                        //                 game_id: self.game_id,
-                        //             })
-                        //             .unwrap();
-                        //     }
-                        //     Some(Action::GameAction(GameAction::SummonMinionToSelectedSquare { card_id })) => {
-                        //         self.client
-                        //             .send(Message::SummonMinion {
-                        //                 player_id: self.player_id,
-                        //                 card_id: card_id.clone(),
-                        //                 square,
-                        //                 game_id: self.game_id,
-                        //             })
-                        //             .unwrap();
-                        //     }
-                        //     _ => {}
-                        // }
                         played_card = true;
                     }
                 }

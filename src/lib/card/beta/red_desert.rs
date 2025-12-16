@@ -71,9 +71,9 @@ impl Card for RedDesert {
         &self.card_base.id
     }
 
-    fn genesis(&mut self, state: &State) -> Vec<Effect> {
-        let mut effects = self.default_site_genesis(state);
-        self.status = Status::PickingSite;
+    fn genesis(&self, state: &State) -> Vec<Effect> {
+        let mut effects = vec![];
+        effects.push(Effect::set_card_status(self.get_id(), Status::PickingSite));
         let units = self
             .get_zone()
             .get_nearby()
@@ -88,7 +88,7 @@ impl Card for RedDesert {
             })
             .collect();
 
-        effects.push(Effect::select_card(self.get_owner_id(), units));
+        effects.push(Effect::select_card(self.get_owner_id(), units, Some(self.get_id())));
         effects
     }
 
@@ -98,6 +98,14 @@ impl Card for RedDesert {
 
     fn get_site_base_mut(&mut self) -> Option<&mut SiteBase> {
         Some(&mut self.site_base)
+    }
+
+    fn set_status(&mut self, status: &Box<dyn std::any::Any>) -> anyhow::Result<()> {
+        let status = status
+            .downcast_ref::<Status>()
+            .ok_or_else(|| anyhow::anyhow!("Failed to downcast status for {}", Self::NAME))?;
+        self.status = status.clone();
+        Ok(())
     }
 }
 

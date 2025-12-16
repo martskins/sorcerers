@@ -89,7 +89,11 @@ impl MessageHandler for MadDash {
                     .filter(|c| matches!(c.get_zone(), Zone::Realm(_)))
                     .map(|c| c.get_id().clone())
                     .collect();
-                vec![Effect::select_card(self.get_owner_id(), valid_cards)]
+                vec![Effect::select_card(
+                    self.get_owner_id(),
+                    valid_cards,
+                    Some(self.get_id()),
+                )]
             }
             (Status::PickingAlly, ClientMessage::PickCard { card_id, .. }) => {
                 self.status = Status::None;

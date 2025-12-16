@@ -66,7 +66,7 @@ impl Zone {
         get_nearby_zones(self)
     }
 
-    pub fn get_nearby_site_ids(&self, state: &State, owner_id: Option<&uuid::Uuid>) -> Vec<uuid::Uuid> {
+    pub fn get_nearby_sites<'a>(&self, state: &'a State, owner_id: Option<&uuid::Uuid>) -> Vec<&'a Box<dyn Card>> {
         get_nearby_zones(self)
             .iter()
             .flat_map(|z| {
@@ -84,7 +84,6 @@ impl Zone {
                     .cloned()
                     .collect::<Vec<&Box<dyn Card>>>()
             })
-            .map(|c: &Box<dyn Card>| c.get_id().clone())
             .collect()
     }
 
@@ -121,11 +120,11 @@ impl CardInfo {
     }
 }
 
-pub trait CloneBox {
+pub trait CloneBoxedCard {
     fn clone_box(&self) -> Box<dyn Card>;
 }
 
-impl<T> CloneBox for T
+impl<T> CloneBoxedCard for T
 where
     T: 'static + Card + Clone,
 {
@@ -134,7 +133,7 @@ where
     }
 }
 
-pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
+pub trait Card: Debug + Send + Sync + MessageHandler + CloneBoxedCard {
     fn get_name(&self) -> &str;
     fn get_edition(&self) -> Edition;
     fn get_owner_id(&self) -> &PlayerId;
@@ -143,7 +142,11 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
     fn get_base(&self) -> &CardBase;
     fn get_base_mut(&mut self) -> &mut CardBase;
 
-    fn default_site_genesis(&self, _state: &State) -> Vec<Effect> {
+    fn set_status(&mut self, _status: &Box<dyn std::any::Any>) -> anyhow::Result<()> {
+        Err(anyhow::anyhow!("set_status not implemented for {}", self.get_name()))
+    }
+
+    fn default_site_on_cast(&self, _state: &State) -> Vec<Effect> {
         vec![Effect::AddResources {
             player_id: self.get_owner_id().clone(),
             mana: self.get_site_base().unwrap().provided_mana,
@@ -375,11 +378,20 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
         self.get_base_mut().zone = zone;
     }
 
-    fn genesis(&mut self, _state: &State) -> Vec<Effect> {
+    fn genesis(&self, _state: &State) -> Vec<Effect> {
         vec![]
     }
 
     fn deathrite(&self, _state: &State) -> Vec<Effect> {
+        if self.is_site() {
+            return vec![Effect::RemoveResources {
+                player_id: self.get_owner_id().clone(),
+                mana: 0,
+                thresholds: self.get_site_base().unwrap().provided_thresholds.clone(),
+                health: 0,
+            }];
+        }
+
         vec![]
     }
 
@@ -428,10 +440,8 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
 
     fn on_take_damage(&mut self, state: &State, from: &uuid::Uuid, damage: u8) -> Vec<Effect> {
         if self.is_unit() {
-            println!("Unit {:?} takes {} damage from {:?}", self.get_name(), damage, from);
             // Avatar is a sub-type of unit
             if self.is_avatar() {
-                println!("Avatar {:?} takes {} damage", self.get_name(), damage);
                 return vec![Effect::RemoveResources {
                     player_id: self.get_owner_id().clone(),
                     mana: 0,
@@ -481,6 +491,10 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
     }
 
     fn on_summon(&mut self, _state: &State) -> Vec<Effect> {
+        if self.is_site() {
+            return self.default_site_on_cast(_state);
+        }
+
         vec![]
     }
 
@@ -489,7 +503,7 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBox {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum SiteType {
     Desert,
 }
@@ -525,7 +539,7 @@ pub struct UnitBase {
     pub modifier_counters: Vec<ModifierCounter>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct CardBase {
     pub id: uuid::Uuid,
     pub owner_id: PlayerId,
@@ -533,6 +547,19 @@ pub struct CardBase {
     pub zone: Zone,
     pub mana_cost: u8,
     pub required_thresholds: Thresholds,
+}
+
+impl Clone for CardBase {
+    fn clone(&self) -> Self {
+        Self {
+            id: self.id,
+            owner_id: self.owner_id.clone(),
+            tapped: self.tapped,
+            zone: self.zone.clone(),
+            mana_cost: self.mana_cost,
+            required_thresholds: self.required_thresholds.clone(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

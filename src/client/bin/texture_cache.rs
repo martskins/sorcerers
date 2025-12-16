@@ -36,10 +36,10 @@ impl TextureCache {
 
         let mut cache = TEXTURE_CACHE.get().unwrap().write().unwrap();
         let new_path = path.to_string();
-        let mut texture = macroquad::texture::load_texture(&new_path).await.unwrap();
-        if rotate {
-            TextureCache::rotate_texture_clockwise(&mut texture);
-        }
+        let texture = macroquad::texture::load_texture(&new_path).await.unwrap();
+        // if rotate {
+        //     TextureCache::rotate_texture_clockwise(&mut texture);
+        // }
         cache.inner.insert(name.to_string(), texture.clone());
         texture
     }
@@ -67,8 +67,18 @@ impl TextureCache {
     async fn download_card_image(name: &str, is_site: bool, edition: &Edition) -> anyhow::Result<Texture2D> {
         let set = edition.url_name();
         let name = name.to_string().to_lowercase().replace(" ", "_").replace("-", "_");
-        let path = format!("https://d27a44hjr9gen3.cloudfront.net/cards/{}-{}-b-s.png", set, name);
+        let mut folder = "cards";
+        if is_site {
+            folder = "rotated";
+        }
 
+        let mut path = format!(
+            "https://d27a44hjr9gen3.cloudfront.net/{}/{}-{}-b-s.png",
+            folder, set, name
+        );
+        if name == "rubble" {
+            path = "https://d27a44hjr9gen3.cloudfront.net/rotated/alp-rubble-bt-s.png".to_string();
+        }
         let response = reqwest::get(&path).await?;
         if response.status() != reqwest::StatusCode::OK {
             return Err(anyhow::anyhow!(
@@ -79,24 +89,24 @@ impl TextureCache {
             ));
         }
 
-        let mut bytes = response.bytes().await.unwrap();
-        let mut texture = macroquad::texture::Texture2D::from_file_with_format(&bytes, None);
-        if is_site {
-            TextureCache::rotate_texture_clockwise(&mut texture);
-            let rotated_image = texture.get_texture_data();
-            let dyn_img = image::DynamicImage::ImageRgba8(
-                image::RgbaImage::from_raw(
-                    rotated_image.width() as u32,
-                    rotated_image.height() as u32,
-                    rotated_image.bytes.to_vec(),
-                )
-                .unwrap(),
-            );
-
-            let mut png_bytes: Vec<u8> = Vec::new();
-            dyn_img.write_to(&mut std::io::Cursor::new(&mut png_bytes), image::ImageOutputFormat::Png)?;
-            bytes = Bytes::copy_from_slice(&png_bytes);
-        }
+        let bytes = response.bytes().await.unwrap();
+        let texture = macroquad::texture::Texture2D::from_file_with_format(&bytes, None);
+        // if is_site {
+        //     TextureCache::rotate_texture_clockwise(&mut texture);
+        //     let rotated_image = texture.get_texture_data();
+        //     let dyn_img = image::DynamicImage::ImageRgba8(
+        //         image::RgbaImage::from_raw(
+        //             rotated_image.width() as u32,
+        //             rotated_image.height() as u32,
+        //             rotated_image.bytes.to_vec(),
+        //         )
+        //         .unwrap(),
+        //     );
+        //
+        //     let mut png_bytes: Vec<u8> = Vec::new();
+        //     dyn_img.write_to(&mut std::io::Cursor::new(&mut png_bytes), image::ImageOutputFormat::Png)?;
+        //     bytes = Bytes::copy_from_slice(&png_bytes);
+        // }
 
         let mut cache = TEXTURE_CACHE.get().unwrap().write().unwrap();
         cache.inner.insert(name.to_string(), texture.clone());
@@ -109,18 +119,18 @@ impl TextureCache {
         Ok(texture)
     }
 
-    fn rotate_texture_clockwise(texture: &mut Texture2D) {
-        let image = texture.get_texture_data();
-        let (w, h) = (image.width() as u32, image.height() as u32);
-        let mut rotated = Image::gen_image_color(h.try_into().unwrap(), w.try_into().unwrap(), macroquad::color::WHITE);
-
-        for y in 0..h {
-            for x in 0..w {
-                let pixel = image.get_pixel(x, y);
-                rotated.set_pixel(h - y - 1, x, pixel);
-            }
-        }
-
-        *texture = Texture2D::from_image(&rotated);
-    }
+    // fn rotate_texture_clockwise(texture: &mut Texture2D) {
+    //     let image = texture.get_texture_data();
+    //     let (w, h) = (image.width() as u32, image.height() as u32);
+    //     let mut rotated = Image::gen_image_color(h.try_into().unwrap(), w.try_into().unwrap(), macroquad::color::WHITE);
+    //
+    //     for y in 0..h {
+    //         for x in 0..w {
+    //             let pixel = image.get_pixel(x, y);
+    //             rotated.set_pixel(h - y - 1, x, pixel);
+    //         }
+    //     }
+    //
+    //     *texture = Texture2D::from_image(&rotated);
+    // }
 }

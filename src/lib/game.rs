@@ -1,5 +1,3 @@
-use std::{collections::HashMap, sync::Arc};
-
 use crate::{
     card::{Card, CardInfo, CardType, Modifier, Zone},
     effect::Effect,
@@ -10,6 +8,7 @@ use crate::{
     state::State,
 };
 use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, sync::Arc};
 use tokio::net::UdpSocket;
 
 pub type PlayerId = uuid::Uuid;
@@ -64,6 +63,7 @@ pub enum PlayerStatus {
     SelectingCard {
         player_id: PlayerId,
         valid_cards: Vec<uuid::Uuid>,
+        for_card: Option<uuid::Uuid>, // TODO: add this to the other statuses
     },
     SelectingDirection {
         player_id: PlayerId,
@@ -130,6 +130,14 @@ impl Resources {
             health: 20,
             thresholds: Thresholds::new(),
         }
+    }
+
+    pub fn has_resources(&self, mana: u8, threshold: Thresholds) -> bool {
+        self.mana >= mana
+            && self.thresholds.fire >= threshold.fire
+            && self.thresholds.air >= threshold.air
+            && self.thresholds.earth >= threshold.earth
+            && self.thresholds.water >= threshold.water
     }
 
     pub fn can_afford(&self, card: &Box<dyn Card>, state: &State) -> bool {
@@ -274,7 +282,24 @@ impl Game {
         }
     }
 
+    fn maybe_unblock_effects(&mut self, message: &ClientMessage) {
+        if !self.state.waiting_for_input {
+            return;
+        }
+
+        match message {
+            ClientMessage::DrawCard { .. }
+            | ClientMessage::PickAction { .. }
+            | ClientMessage::PickDirection { .. }
+            | ClientMessage::PickCard { .. }
+            | ClientMessage::PickSquare { .. } => {
+                self.state.waiting_for_input = false;
+            }
+            _ => {}
+        }
+    }
     async fn handle_message(&mut self, message: &ClientMessage) -> anyhow::Result<()> {
+        self.maybe_unblock_effects(message);
         match (&self.input_status, message) {
             (InputStatus::Attacking { attacker_id, .. }, ClientMessage::PickCard { card_id, .. }) => {
                 let effects = vec![Effect::Attack {
@@ -329,6 +354,22 @@ impl Game {
                         let effects = vec![Effect::select_square(player_id, valid_squares)];
                         self.state.effects.extend(effects);
                     }
+                    (true, Zone::Realm(_)) => {
+                        if card.is_tapped() || card.has_modifier(&self.state, Modifier::SummoningSickness) {
+                            return Ok(());
+                        }
+
+                        let actions = vec![Action::Attack.get_name(), Action::Move.get_name()];
+                        self.input_status = InputStatus::SelectingAction {
+                            player_id: player_id.clone(),
+                            actions: vec![Action::Attack, Action::Move],
+                            card_id: Some(card_id.clone()),
+                        };
+                        self.state.effects.push_back(Effect::select_action(player_id, actions));
+                    }
+                    (false, Zone::Realm(_)) => {
+                        println!("Clicked a site maybe?");
+                    }
                     (false, Zone::Hand) => {
                         let resources = self.state.resources.get(player_id).unwrap();
                         let can_afford = resources.can_afford(card, &self.state);
@@ -349,20 +390,7 @@ impl Game {
                         };
                         self.state
                             .effects
-                            .push_back(Effect::select_card(player_id, spellcasters));
-                    }
-                    (true, Zone::Realm(_)) => {
-                        if card.is_tapped() || card.has_modifier(&self.state, Modifier::SummoningSickness) {
-                            return Ok(());
-                        }
-
-                        let actions = vec![Action::Attack.get_name(), Action::Move.get_name()];
-                        self.input_status = InputStatus::SelectingAction {
-                            player_id: player_id.clone(),
-                            actions: vec![Action::Attack, Action::Move],
-                            card_id: Some(card_id.clone()),
-                        };
-                        self.state.effects.push_back(Effect::select_action(player_id, actions));
+                            .push_back(Effect::select_card(player_id, spellcasters, None));
                     }
                     _ => {}
                 }
@@ -400,7 +428,7 @@ impl Game {
                     };
                     self.state
                         .effects
-                        .push_back(Effect::select_card(&player_id, valid_cards));
+                        .push_back(Effect::select_card(&player_id, valid_cards, None));
                 }
                 Action::Move => {
                     let card_id = card_id.unwrap();
@@ -633,6 +661,10 @@ impl Game {
 
     pub fn process_effects(&mut self) -> anyhow::Result<()> {
         while !self.state.effects.is_empty() {
+            if self.state.waiting_for_input {
+                return Ok(());
+            }
+
             let effect = self.state.effects.remove(0);
             if let Some(effect) = effect {
                 effect.apply(&mut self.state)?;

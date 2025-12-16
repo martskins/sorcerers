@@ -13,6 +13,7 @@ pub struct State {
     pub decks: HashMap<PlayerId, Deck>,
     pub resources: HashMap<PlayerId, Resources>,
     pub player_status: PlayerStatus,
+    pub waiting_for_input: bool,
     pub current_player: PlayerId,
     pub effects: VecDeque<Effect>,
     pub player_one: PlayerId,
@@ -27,6 +28,7 @@ impl State {
             resources: HashMap::new(),
             player_status: PlayerStatus::None,
             current_player: uuid::Uuid::nil(),
+            waiting_for_input: false,
             effects: VecDeque::new(),
             player_one: uuid::Uuid::nil(),
         }
@@ -44,6 +46,12 @@ impl State {
         self.cards.iter().filter(|c| c.get_zone() == zone).collect()
     }
 
+    pub fn get_player_resources(&self, player_id: &PlayerId) -> &Resources {
+        self.resources
+            .get(player_id)
+            .unwrap()
+    }
+
     pub fn snapshot(&self) -> State {
         State {
             cards: self.cards.iter().map(|c| c.clone_box()).collect(),
@@ -52,7 +60,8 @@ impl State {
             resources: self.resources.clone(),
             player_status: self.player_status.clone(),
             current_player: self.current_player,
-            effects: self.effects.clone(),
+            waiting_for_input: self.waiting_for_input,
+            effects: VecDeque::new(), // Effects are not needed in the snapshot
             player_one: self.player_one,
         }
     }
