@@ -36,6 +36,8 @@ pub mod shifting_sands;
 pub use shifting_sands::*;
 pub mod vesuvius;
 pub use vesuvius::*;
+pub mod colicky_dragonettes;
+pub use colicky_dragonettes::*;
 
 use crate::{card::Card, game::PlayerId};
 
@@ -60,6 +62,7 @@ pub fn from_beta_name(name: &str, player_id: PlayerId) -> Option<Box<dyn Card>> 
         RemoteDesert::NAME => Some(Box::new(RemoteDesert::new(player_id))),
         ShiftingSands::NAME => Some(Box::new(ShiftingSands::new(player_id))),
         Vesuvius::NAME => Some(Box::new(Vesuvius::new(player_id))),
+        ColickyDragonettes::NAME => Some(Box::new(ColickyDragonettes::new(player_id))),
         _ => None,
     }
 }

@@ -82,13 +82,7 @@ impl MessageHandler for HeatRay {
         match (&self.status, message) {
             (Status::ChoosingDirection(caster_id), ClientMessage::PickDirection { direction, .. }) => {
                 let caster = state.get_card(caster_id).unwrap();
-                let square = caster.get_square().unwrap();
-                let zone = match direction {
-                    Direction::Up => Zone::Realm(square.saturating_add(5)),
-                    Direction::Down => Zone::Realm(square.saturating_sub(5)),
-                    Direction::Left => Zone::Realm(square.saturating_sub(1)),
-                    Direction::Right => Zone::Realm(square.saturating_add(1)),
-                };
+                let zone = caster.get_zone().zone_in_direction(direction);
                 let valid_cards = state
                     .get_cards_in_zone(&zone)
                     .iter()
@@ -103,13 +97,7 @@ impl MessageHandler for HeatRay {
                 )]
             }
             (Status::ChoosingFirstUnit(zone, direction), ClientMessage::PickCard { card_id, .. }) => {
-                let square = zone.get_square().unwrap();
-                let zone = match direction {
-                    Direction::Up => Zone::Realm(square.saturating_add(5)),
-                    Direction::Down => Zone::Realm(square.saturating_sub(5)),
-                    Direction::Left => Zone::Realm(square.saturating_sub(1)),
-                    Direction::Right => Zone::Realm(square.saturating_add(1)),
-                };
+                let zone = zone.zone_in_direction(direction);
                 let valid_cards = state
                     .get_cards_in_zone(&zone)
                     .iter()

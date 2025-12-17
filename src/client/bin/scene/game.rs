@@ -15,7 +15,7 @@ use macroquad::{
 };
 use sorcerers::{
     card::{CardInfo, CardType, Zone},
-    game::{Element, PlayerId, PlayerStatus, Resources},
+    game::{Element, PlayerId, Resources, Status},
     networking::{
         self,
         message::{ClientMessage, ServerMessage},
@@ -53,7 +53,7 @@ pub struct Game {
     pub cards: Vec<CardInfo>,
     pub resources: HashMap<PlayerId, Resources>,
     pub client: networking::client::Client,
-    pub player_status: PlayerStatus,
+    pub player_status: Status,
     pub current_player: PlayerId,
     pub is_player_one: bool,
     action_window_position: Option<Vec2>,
@@ -64,18 +64,18 @@ impl Game {
     pub fn new(player_id: uuid::Uuid, client: networking::client::Client) -> Self {
         let cells = (0..20)
             .map(|i| {
-                let rect = cell_rect(i, true);
+                let rect = cell_rect(i + 1, false);
                 CellDisplay { id: i as u8 + 1, rect }
             })
             .collect();
         Self {
-            player_id: dbg!(player_id),
+            player_id: player_id,
             card_displays: Vec::new(),
             cards: Vec::new(),
             game_id: uuid::Uuid::nil(),
             cells,
             client,
-            player_status: PlayerStatus::None,
+            player_status: Status::None,
             current_player: uuid::Uuid::nil(),
             is_player_one: false,
             resources: HashMap::new(),
@@ -98,9 +98,9 @@ impl Game {
     }
 
     async fn resize_cells(&mut self) -> anyhow::Result<()> {
-        let mirror = self.is_player_one;
+        let mirror = !self.is_player_one;
         for cell in &mut self.cells {
-            cell.rect = cell_rect(cell.id - 1, mirror);
+            cell.rect = cell_rect(cell.id, mirror);
         }
 
         Ok(())
@@ -234,7 +234,7 @@ impl Game {
     }
 
     async fn render_gui(&mut self) -> anyhow::Result<()> {
-        if self.player_status == PlayerStatus::None {
+        if self.player_status == Status::None {
             return Ok(());
         }
 
@@ -254,7 +254,7 @@ impl Game {
         Game::render_resources(base_x, OPPONENT_Y, &opponent_resources);
 
         let turn_label = if self.is_players_turn(&self.player_id) {
-            if let PlayerStatus::WaitingForCardDraw { player_id, .. } = self.player_status
+            if let Status::WaitingForCardDraw { player_id, .. } = self.player_status
                 && player_id == self.player_id
             {
                 "Draw a Card"
@@ -265,10 +265,12 @@ impl Game {
             "Opponent's Turn"
         };
 
+        let player1 = if self.is_player_one { "Player 1" } else { "Player 2" };
+        draw_text(player1, screen_rect.w / 2.0 - 150.0, 30.0, FONT_SIZE, WHITE);
         draw_text(turn_label, screen_rect.w / 2.0 - 50.0, 30.0, FONT_SIZE, WHITE);
 
         let is_in_turn = self.player_status
-            == PlayerStatus::WaitingForPlay {
+            == Status::WaitingForPlay {
                 player_id: self.player_id,
             };
         if is_in_turn {
@@ -281,9 +283,10 @@ impl Game {
         }
 
         match &self.player_status {
-            PlayerStatus::SelectingDirection { player_id, directions } if player_id == &self.player_id => {
+            Status::SelectingDirection { player_id, directions } if player_id == &self.player_id => {
                 if self.action_window_position.is_none() {
-                    self.action_window_position = Some(mouse_position().into());
+                    // self.action_window_position = Some(mouse_position().into());
+                    self.action_window_position = Some(Vec2::new(0.0, 0.0).into());
                 }
 
                 if self.action_window_size.is_none() {
@@ -297,11 +300,14 @@ impl Game {
                     |ui| {
                         for (idx, direction) in directions.iter().enumerate() {
                             if ui.button(Vec2::new(0.0, 30.0 * idx as f32), direction.get_name()) {
+                                println!("Picked direction: {:?}", direction);
+                                let direction = directions[idx].normalise(!self.is_player_one);
+                                println!("Normalised direction: {:?}", direction);
                                 self.client
                                     .send(ClientMessage::PickDirection {
                                         player_id: self.player_id,
                                         game_id: self.game_id,
-                                        direction: directions[idx].normalise(!self.is_player_one),
+                                        direction,
                                     })
                                     .unwrap();
                             }
@@ -309,9 +315,10 @@ impl Game {
                     },
                 );
             }
-            PlayerStatus::SelectingAction { player_id, actions } if player_id == &self.player_id => {
+            Status::SelectingAction { player_id, actions } if player_id == &self.player_id => {
                 if self.action_window_position.is_none() {
-                    self.action_window_position = Some(mouse_position().into());
+                    // self.action_window_position = Some(mouse_position().into());
+                    self.action_window_position = Some(Vec2::new(0.0, 0.0).into());
                 }
 
                 if self.action_window_size.is_none() {
@@ -337,7 +344,7 @@ impl Game {
                     },
                 );
             }
-            PlayerStatus::SelectingCard {
+            Status::SelectingCard {
                 player_id, valid_cards, ..
             } if player_id == &self.player_id => {
                 let valid_cards: Vec<&CardDisplay> = self
@@ -525,7 +532,7 @@ impl Game {
         }
 
         match &self.player_status {
-            PlayerStatus::WaitingForPlay { player_id } if player_id == &self.player_id => {
+            Status::WaitingForPlay { player_id } if player_id == &self.player_id => {
                 let mut card_selected = None;
                 for card_display in &mut self
                     .card_displays
@@ -548,7 +555,7 @@ impl Game {
                         .unwrap();
                 }
             }
-            PlayerStatus::SelectingCard {
+            Status::SelectingCard {
                 player_id, valid_cards, ..
             } if player_id == &self.player_id => {
                 let valid_cards: Vec<&CardDisplay> = self
@@ -583,7 +590,7 @@ impl Game {
     }
 
     fn handle_square_click(&mut self, mouse_position: Vec2) {
-        if let PlayerStatus::SelectingZone {
+        if let Status::SelectingZone {
             valid_zones, player_id, ..
         } = &self.player_status
         {
@@ -645,7 +652,7 @@ impl Game {
                 WHITE,
             );
 
-            if let PlayerStatus::SelectingZone {
+            if let Status::SelectingZone {
                 valid_zones, player_id, ..
             } = &self.player_status
             {
@@ -761,7 +768,7 @@ impl Game {
     }
 
     fn draw_card(&self, card_type: CardType) -> anyhow::Result<()> {
-        if let PlayerStatus::WaitingForCardDraw { player_id, .. } = &self.player_status {
+        if let Status::WaitingForCardDraw { player_id, .. } = &self.player_status {
             if player_id != &self.player_id {
                 return Ok(());
             }

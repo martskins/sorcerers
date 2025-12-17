@@ -1,7 +1,7 @@
 use sorcerers::{
     card::{self, *},
     deck::precon,
-    game::{Game, PlayerStatus, Resources},
+    game::{Game, Resources, Status},
     networking::{
         client::Socket,
         message::{ClientMessage, Message, ServerMessage, ToMessage},
@@ -94,7 +94,7 @@ impl Server {
         );
         state.current_player = player1.clone();
         state.player_one = player1.clone();
-        state.player_status = PlayerStatus::WaitingForPlay {
+        state.player_status = Status::WaitingForPlay {
             player_id: player1.clone(),
         };
         state.resources.insert(player1.clone(), Resources::new());
@@ -103,45 +103,50 @@ impl Server {
         state.cards.push(card::from_name_and_zone(
             RedDesert::NAME,
             player2.clone(),
-            Zone::Realm(3),
+            Zone::Realm(18),
         ));
         state.cards.push(card::from_name_and_zone(
             RedDesert::NAME,
             player2.clone(),
-            Zone::Realm(8),
+            Zone::Realm(13),
         ));
         state.cards.push(card::from_name_and_zone(
             RedDesert::NAME,
             player2.clone(),
-            Zone::Realm(9),
+            Zone::Realm(12),
         ));
         state.cards.push(card::from_name_and_zone(
             RedDesert::NAME,
             player1.clone(),
-            Zone::Realm(14),
+            Zone::Realm(8),
         ));
         state.cards.push(card::from_name_and_zone(
             Vesuvius::NAME,
             player1.clone(),
-            Zone::Realm(13),
+            Zone::Realm(7),
         ));
         state.cards.push(card::from_name_and_zone(
             SacredScarabs::NAME,
             player2.clone(),
-            Zone::Realm(8),
+            Zone::Realm(13),
         ));
         state.cards.push(card::from_name_and_zone(
             AskelonPhoenix::NAME,
             player1.clone(),
-            Zone::Realm(13),
+            Zone::Realm(8),
+        ));
+        state.cards.push(card::from_name_and_zone(
+            ColickyDragonettes::NAME,
+            player2.clone(),
+            Zone::Realm(12),
         ));
         state.cards.push(card::from_name_and_zone(
             RedDesert::NAME,
             player1.clone(),
-            Zone::Realm(18),
+            Zone::Realm(3),
         ));
         state.cards.push(card::from_name_and_zone(
-            ShiftingSands::NAME,
+            ColickyDragonettes::NAME,
             player2.clone(),
             Zone::Hand,
         ));

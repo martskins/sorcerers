@@ -71,12 +71,12 @@ impl Card for SacredScarabs {
         Some(&mut self.unit_base)
     }
 
-    fn deathrite(&self, state: &State) -> Vec<Effect> {
+    fn deathrite(&self, state: &State, from: &Zone) -> Vec<Effect> {
         let units_here: Vec<uuid::Uuid> = state
             .cards
             .iter()
             .filter(|c| c.is_unit())
-            .filter(|c| c.get_zone() == self.get_zone())
+            .filter(|c| c.get_zone() == from)
             .map(|c| c.get_id().clone())
             .collect();
         let mut effects = Vec::new();

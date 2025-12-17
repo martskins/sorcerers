@@ -79,14 +79,18 @@ pub fn atlasbook_rect() -> Rect {
 
 pub fn cell_rect(id: u8, mirror: bool) -> Rect {
     let realm_rect = realm_rect();
-    let mut col = id % 5;
+    // id 1 is bottom left, id 5 is bottom right, id 16 is top right
+    let idx = id - 1;
+    let mut col = idx % 5;
+    let mut row = 3 - (idx / 5); // invert row for bottom-up indexing
+
     if mirror {
-        col = 4 - col;
+        col = 4 - col; // mirror horizontally
     }
-    let mut row = id / 5;
     if mirror {
-        row = 3 - row;
+        row = 3 - row; // mirror vertically
     }
+
     Rect::new(
         realm_rect.x + col as f32 * (realm_rect.w / 5.0),
         realm_rect.y + row as f32 * (realm_rect.h / 4.0),

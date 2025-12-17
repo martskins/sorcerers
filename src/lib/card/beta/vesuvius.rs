@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardType, Edition, MessageHandler, Rubble, SiteBase, Zone},
+    card::{Card, CardBase, Edition, MessageHandler, Rubble, SiteBase, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds},
     networking::message::ClientMessage,
@@ -89,10 +89,6 @@ impl Card for Vesuvius {
         &self.card_base.id
     }
 
-    fn get_card_type(&self) -> CardType {
-        CardType::Site
-    }
-
     fn get_site_base(&self) -> Option<&SiteBase> {
         Some(&self.site_base)
     }
@@ -123,10 +119,10 @@ impl MessageHandler for Vesuvius {
 
                 vec![
                     Effect::set_card_status(self.get_id(), Status::ChoosingAction),
-                    dbg!(Effect::select_action(
+                    Effect::select_action(
                         self.get_owner_id(),
                         self.actions.iter().map(|c| c.get_name().to_string()).collect(),
-                    )),
+                    ),
                 ]
             }
             (Status::ChoosingAction, ClientMessage::PickAction { action_idx, .. }) => {
@@ -169,7 +165,7 @@ impl MessageHandler for Vesuvius {
                         card_id: rubble_id,
                         zone: self.get_zone().clone(),
                     },
-                    Effect::bury_card(self.get_id()),
+                    Effect::bury_card(self.get_id(), self.get_zone()),
                 ];
                 for unit_id in unit_ids {
                     effects.push(Effect::take_damage(unit_id, self.get_id(), 3));

@@ -1,7 +1,7 @@
 use crate::{
     card::{CardType, Modifier, SiteBase, UnitBase, Zone},
-    game::{Direction, PlayerId, PlayerStatus, Thresholds},
-    state::State,
+    game::{Direction, PlayerId, Status, Thresholds},
+    state::{Phase, State},
 };
 use std::fmt::Debug;
 
@@ -31,7 +31,7 @@ impl Counter {
 #[derive(Debug)]
 pub enum Effect {
     SetPlayerStatus {
-        status: PlayerStatus,
+        status: Status,
     },
     SetCardStatus {
         card_id: uuid::Uuid,
@@ -72,6 +72,9 @@ pub enum Effect {
     TapCard {
         card_id: uuid::Uuid,
     },
+    PreEndTurn {
+        player_id: uuid::Uuid,
+    },
     EndTurn {
         player_id: uuid::Uuid,
     },
@@ -101,13 +104,15 @@ pub enum Effect {
     },
     BuryCard {
         card_id: uuid::Uuid,
+        from: Zone,
     },
 }
 
 impl Effect {
-    pub fn bury_card(card_id: &uuid::Uuid) -> Self {
+    pub fn bury_card(card_id: &uuid::Uuid, zone: &Zone) -> Self {
         Effect::BuryCard {
             card_id: card_id.clone(),
+            from: zone.clone(),
         }
     }
 
@@ -119,7 +124,7 @@ impl Effect {
 
     pub fn wait_for_card_draw(player_id: &PlayerId) -> Self {
         Effect::SetPlayerStatus {
-            status: PlayerStatus::WaitingForCardDraw {
+            status: Status::WaitingForCardDraw {
                 player_id: player_id.clone(),
             },
         }
@@ -127,7 +132,7 @@ impl Effect {
 
     pub fn wait_for_play(player_id: &PlayerId) -> Self {
         Effect::SetPlayerStatus {
-            status: PlayerStatus::WaitingForPlay {
+            status: Status::WaitingForPlay {
                 player_id: player_id.clone(),
             },
         }
@@ -135,7 +140,7 @@ impl Effect {
 
     pub fn select_direction(player_id: &PlayerId, directions: &[Direction]) -> Self {
         Effect::SetPlayerStatus {
-            status: PlayerStatus::SelectingDirection {
+            status: Status::SelectingDirection {
                 player_id: player_id.clone(),
                 directions: directions.to_vec(),
             },
@@ -144,7 +149,7 @@ impl Effect {
 
     pub fn select_action(player_id: &PlayerId, actions: Vec<String>) -> Self {
         Effect::SetPlayerStatus {
-            status: PlayerStatus::SelectingAction {
+            status: Status::SelectingAction {
                 player_id: player_id.clone(),
                 actions: actions,
             },
@@ -161,7 +166,7 @@ impl Effect {
 
     pub fn select_card(player_id: &PlayerId, valid_cards: Vec<uuid::Uuid>, for_card: Option<&uuid::Uuid>) -> Self {
         Effect::SetPlayerStatus {
-            status: PlayerStatus::SelectingCard {
+            status: Status::SelectingCard {
                 player_id: player_id.clone(),
                 valid_cards: valid_cards,
                 for_card: for_card.cloned(),
@@ -188,45 +193,50 @@ impl Effect {
 
     pub fn select_square(player_id: &PlayerId, zones: Vec<Zone>) -> Self {
         Effect::SetPlayerStatus {
-            status: PlayerStatus::SelectingZone {
+            status: Status::SelectingZone {
                 player_id: player_id.clone(),
                 valid_zones: zones,
             },
         }
     }
 
-    pub fn name(&self) -> &'static str {
+    pub fn name(&self, state: &State) -> String {
         match self {
             Effect::SetPlayerStatus { status } => match status {
-                PlayerStatus::WaitingForCardDraw { .. } => "SetPlayerStatus::WaitingForCardDraw",
-                PlayerStatus::WaitingForPlay { .. } => "SetPlayerStatus::WaitingForPlay",
-                PlayerStatus::SelectingAction { .. } => "SetPlayerStatus::SelectingAction",
-                PlayerStatus::SelectingCard { .. } => "SetPlayerStatus::SelectingCard",
-                PlayerStatus::SelectingDirection { .. } => "SetPlayerStatus::SelectingDirection",
-                PlayerStatus::SelectingZone { .. } => "SetPlayerStatus::SelectingZone",
-                _ => "SetPlayerStatus",
+                Status::WaitingForCardDraw { .. } => "SetPlayerStatus::WaitingForCardDraw".to_string(),
+                Status::WaitingForPlay { .. } => "SetPlayerStatus::WaitingForPlay".to_string(),
+                Status::SelectingAction { .. } => "SetPlayerStatus::SelectingAction".to_string(),
+                Status::SelectingCard { .. } => "SetPlayerStatus::SelectingCard".to_string(),
+                Status::SelectingDirection { .. } => "SetPlayerStatus::SelectingDirection".to_string(),
+                Status::SelectingZone { .. } => "SetPlayerStatus::SelectingZone".to_string(),
+                _ => "SetPlayerStatus".to_string(),
             },
-            Effect::AddCard { .. } => "AddCard",
-            Effect::SetCardStatus { .. } => "SetCardStatus",
-            Effect::AddModifier { .. } => "AddModifier",
-            Effect::AddCounter { .. } => "AddCounter",
-            Effect::MoveCard { .. } => "MoveCard",
-            Effect::DrawCard { .. } => "DrawCard",
-            Effect::PlayMagic { .. } => "PlayMagic",
-            Effect::PlayCard { .. } => "PlayCard",
-            Effect::TapCard { .. } => "TapCard",
-            Effect::EndTurn { .. } => "EndTurn",
-            Effect::StartTurn { .. } => "StartTurn",
-            Effect::RemoveResources { .. } => "RemoveResources",
-            Effect::AddResources { .. } => "AddResources",
-            Effect::Attack { .. } => "Attack",
-            Effect::TakeDamage { .. } => "TakeDamage",
-            Effect::BuryCard { .. } => "BuryCard",
+            Effect::AddCard { .. } => "AddCard".to_string(),
+            Effect::SetCardStatus { .. } => "SetCardStatus".to_string(),
+            Effect::AddModifier { .. } => "AddModifier".to_string(),
+            Effect::AddCounter { .. } => "AddCounter".to_string(),
+            Effect::MoveCard { .. } => "MoveCard".to_string(),
+            Effect::DrawCard { .. } => "DrawCard".to_string(),
+            Effect::PlayMagic { .. } => "PlayMagic".to_string(),
+            Effect::PlayCard { .. } => "PlayCard".to_string(),
+            Effect::TapCard { .. } => "TapCard".to_string(),
+            Effect::PreEndTurn { .. } => "PrepareEndTurn".to_string(),
+            Effect::EndTurn { .. } => "EndTurn".to_string(),
+            Effect::StartTurn { .. } => "StartTurn".to_string(),
+            Effect::RemoveResources { .. } => "RemoveResources".to_string(),
+            Effect::AddResources { .. } => "AddResources".to_string(),
+            Effect::Attack { .. } => "Attack".to_string(),
+            Effect::TakeDamage { card_id, from, damage } => {
+                let attacker = state.get_card(from).map_or("Unknown", |c| c.get_name());
+                let defender = state.get_card(card_id).map_or("Unknown", |c| c.get_name());
+                format!("TakeDamage: {} deals {} damage to {}", attacker, damage, defender)
+            }
+            Effect::BuryCard { .. } => "BuryCard".to_string(),
         }
     }
 
     pub fn apply(&self, state: &mut State) -> anyhow::Result<()> {
-        println!("Applying effect: {}", self.name());
+        println!("Applying effect: {}", self.name(state));
         match self {
             Effect::AddCard { card } => {
                 state.cards.push(card.clone_box());
@@ -270,11 +280,11 @@ impl Effect {
                 state.player_status = status.clone();
                 let waiting_for_input = matches!(
                     status,
-                    PlayerStatus::WaitingForCardDraw { .. }
-                        | PlayerStatus::SelectingAction { .. }
-                        | PlayerStatus::SelectingCard { .. }
-                        | PlayerStatus::SelectingDirection { .. }
-                        | PlayerStatus::SelectingZone { .. }
+                    Status::WaitingForCardDraw { .. }
+                        | Status::SelectingAction { .. }
+                        | Status::SelectingCard { .. }
+                        | Status::SelectingDirection { .. }
+                        | Status::SelectingZone { .. }
                 );
                 state.waiting_for_input = waiting_for_input;
             }
@@ -353,13 +363,21 @@ impl Effect {
                 player_resources.thresholds.earth -= thresholds.earth;
                 player_resources.health -= health;
             }
+            Effect::PreEndTurn { player_id } => {
+                state.phase = Phase::PreEndTurn {
+                    player_id: player_id.clone(),
+                };
+                let effects: Vec<Effect> = state
+                    .cards
+                    .iter()
+                    .filter(|c| matches!(c.get_zone(), Zone::Realm(_)))
+                    .flat_map(|c| c.on_turn_end(&state))
+                    .collect();
+                state.effects.extend(effects);
+            }
             Effect::EndTurn { player_id } => {
                 let resources = state.resources.get_mut(player_id).unwrap();
                 resources.mana = 0;
-
-                let snapshot = state.snapshot();
-                let effects: Vec<Effect> = state.cards.iter_mut().flat_map(|c| c.on_turn_end(&snapshot)).collect();
-                state.effects.extend(effects);
 
                 // Clear any counters that expire at the end of the turn
                 let card_ids: Vec<uuid::Uuid> = state
@@ -388,6 +406,7 @@ impl Effect {
                         .power_counters
                         .retain(|c| c.expires_in_turns.is_none() || c.expires_in_turns.unwrap() > 0);
                 }
+                state.phase = Phase::Main;
             }
             Effect::AddResources {
                 player_id,
@@ -442,11 +461,15 @@ impl Effect {
                 let effects = card.on_take_damage(&snapshot, from, *damage);
                 state.effects.extend(effects);
             }
-            Effect::BuryCard { card_id } => {
+            Effect::BuryCard { card_id, from } => {
+                {
+                    let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
+                    card.set_zone(Zone::Cemetery);
+                }
+
                 let snapshot = state.snapshot();
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
-                let effects = card.deathrite(&snapshot);
-                card.set_zone(Zone::Cemetery);
+                let effects = card.deathrite(&snapshot, from);
                 state.effects.extend(effects);
             }
             Effect::AddCounter { card_id, counter } => {

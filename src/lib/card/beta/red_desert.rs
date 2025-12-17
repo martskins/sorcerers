@@ -121,7 +121,7 @@ impl MessageHandler for RedDesert {
                     .map(|c| c.get_id().clone())
                     .collect();
                 let mut effects = vec![];
-                for unit_id in dbg!(units) {
+                for unit_id in units {
                     effects.push(Effect::take_damage(&unit_id, site.get_id(), 1));
                 }
                 effects.push(Effect::wait_for_play(self.get_owner_id()));

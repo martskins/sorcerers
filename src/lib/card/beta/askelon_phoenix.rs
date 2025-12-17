@@ -80,15 +80,12 @@ impl Card for AskelonPhoenix {
             }];
         }
 
-        if let Some(ub) = self.get_unit_base_mut() {
-            ub.damage += damage;
-        }
+        let ub = self.get_unit_base_mut().unwrap();
+        ub.damage += damage;
 
         let mut effects = vec![];
-        if attacker.has_modifier(state, Modifier::Lethal) {
-            effects.push(Effect::BuryCard {
-                card_id: self.get_id().clone(),
-            });
+        if ub.damage >= self.get_toughness(state).unwrap_or(0) || attacker.has_modifier(state, Modifier::Lethal) {
+            effects.push(Effect::bury_card(self.get_id(), self.get_zone()));
         }
         effects
     }

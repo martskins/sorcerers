@@ -2,9 +2,15 @@ use crate::{
     card::{Card, Zone},
     deck::Deck,
     effect::Effect,
-    game::{PlayerId, PlayerStatus, Resources},
+    game::{PlayerId, Resources, Status},
 };
 use std::collections::{HashMap, VecDeque};
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Phase {
+    Main,
+    PreEndTurn { player_id: PlayerId },
+}
 
 #[derive(Debug)]
 pub struct State {
@@ -12,7 +18,8 @@ pub struct State {
     pub cards: Vec<Box<dyn Card>>,
     pub decks: HashMap<PlayerId, Deck>,
     pub resources: HashMap<PlayerId, Resources>,
-    pub player_status: PlayerStatus,
+    pub player_status: Status,
+    pub phase: Phase,
     pub waiting_for_input: bool,
     pub current_player: PlayerId,
     pub effects: VecDeque<Effect>,
@@ -26,7 +33,8 @@ impl State {
             decks,
             turns: 0,
             resources: HashMap::new(),
-            player_status: PlayerStatus::None,
+            player_status: Status::None,
+            phase: Phase::Main,
             current_player: uuid::Uuid::nil(),
             waiting_for_input: false,
             effects: VecDeque::new(),
@@ -47,9 +55,7 @@ impl State {
     }
 
     pub fn get_player_resources(&self, player_id: &PlayerId) -> &Resources {
-        self.resources
-            .get(player_id)
-            .unwrap()
+        self.resources.get(player_id).unwrap()
     }
 
     pub fn snapshot(&self) -> State {
@@ -59,6 +65,7 @@ impl State {
             turns: 0,
             resources: self.resources.clone(),
             player_status: self.player_status.clone(),
+            phase: self.phase.clone(),
             current_player: self.current_player,
             waiting_for_input: self.waiting_for_input,
             effects: VecDeque::new(), // Effects are not needed in the snapshot

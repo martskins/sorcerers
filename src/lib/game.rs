@@ -5,7 +5,7 @@ use crate::{
         client::Socket,
         message::{ClientMessage, ServerMessage, ToMessage},
     },
-    state::State,
+    state::{Phase, State},
 };
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, sync::Arc};
@@ -48,7 +48,7 @@ impl Direction {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum PlayerStatus {
+pub enum Status {
     None,
     WaitingForCardDraw {
         player_id: PlayerId,
@@ -308,7 +308,7 @@ impl Game {
                 }];
                 self.state.effects.extend(effects);
                 self.input_status = InputStatus::None;
-                self.state.player_status = PlayerStatus::WaitingForPlay {
+                self.state.player_status = Status::WaitingForPlay {
                     player_id: self.state.current_player.clone(),
                 };
             }
@@ -320,7 +320,7 @@ impl Game {
                         zone: Zone::Realm(*square),
                     },
                     Effect::SetPlayerStatus {
-                        status: PlayerStatus::WaitingForPlay {
+                        status: Status::WaitingForPlay {
                             player_id: player_id.clone(),
                         },
                     },
@@ -455,7 +455,7 @@ impl Game {
                         tap: true,
                     },
                     Effect::SetPlayerStatus {
-                        status: PlayerStatus::WaitingForPlay {
+                        status: Status::WaitingForPlay {
                             player_id: player_id.clone(),
                         },
                     },
@@ -464,27 +464,9 @@ impl Game {
                 self.input_status = InputStatus::None;
             }
             (InputStatus::None, ClientMessage::EndTurn { player_id, .. }) => {
-                let current_index = self.players.iter().position(|p| p == player_id).unwrap();
-                let next_player = self.players.iter().cycle().skip(current_index + 1).next();
-                self.state.current_player = next_player.unwrap().clone();
-                self.state.player_status = PlayerStatus::WaitingForPlay {
-                    player_id: self.state.current_player.clone(),
-                };
-                self.state.turns += 1;
-                let effects = vec![
-                    Effect::EndTurn {
-                        player_id: player_id.clone(),
-                    },
-                    Effect::StartTurn {
-                        player_id: self.state.current_player.clone(),
-                    },
-                    Effect::SetPlayerStatus {
-                        status: PlayerStatus::WaitingForCardDraw {
-                            player_id: self.state.current_player.clone(),
-                        },
-                    },
-                ];
-                self.state.effects.extend(effects);
+                self.state.effects.push_back(Effect::PreEndTurn {
+                    player_id: player_id.clone(),
+                });
             }
             (
                 InputStatus::None,
@@ -498,7 +480,7 @@ impl Game {
                         card_type: card_type.clone(),
                     },
                     Effect::SetPlayerStatus {
-                        status: PlayerStatus::WaitingForPlay {
+                        status: Status::WaitingForPlay {
                             player_id: player_id.clone(),
                         },
                     },
@@ -531,30 +513,66 @@ impl Game {
         let effects = self.check_damage();
         self.state.effects.extend(effects);
         self.process_effects()?;
+
+        if let Phase::PreEndTurn { player_id } = self.state.phase {
+            // If the current player is not the one ending their turn, it means we've already
+            // actioned the pre-end turn changes, so no action is needed.
+            if self.state.current_player == player_id && !self.state.waiting_for_input {
+                println!("Processing end turn for player {}", player_id);
+                let current_index = self
+                    .players
+                    .iter()
+                    .position(|p| p == &self.state.current_player)
+                    .unwrap();
+                let current_player = self.state.current_player.clone();
+                let next_player = self.players.iter().cycle().skip(current_index + 1).next().unwrap();
+                self.state.current_player = next_player.clone();
+                self.state.player_status = Status::WaitingForPlay {
+                    player_id: self.state.current_player.clone(),
+                };
+                self.state.turns += 1;
+                let effects = vec![
+                    Effect::EndTurn {
+                        player_id: current_player,
+                    },
+                    Effect::StartTurn {
+                        player_id: next_player.clone(),
+                    },
+                    Effect::SetPlayerStatus {
+                        status: Status::WaitingForCardDraw {
+                            player_id: next_player.clone(),
+                        },
+                    },
+                ];
+                self.state.effects.extend(effects);
+            }
+        }
+
         self.send_sync().await?;
         Ok(())
     }
 
     fn check_damage(&self) -> Vec<Effect> {
-        let card_ids: Vec<uuid::Uuid> = self
-            .state
-            .cards
-            .iter()
-            .filter(|c| c.is_unit())
-            .filter(|c| matches!(c.get_zone(), Zone::Realm(_)))
-            .filter(|c| {
-                let damage = c.get_unit_base().unwrap().damage;
-                let toughness = c.get_unit_base().unwrap().toughness;
-                damage >= toughness
-            })
-            .map(|c| c.get_id().clone())
-            .collect();
-
-        let mut effects = Vec::new();
-        for card_id in card_ids {
-            effects.push(Effect::BuryCard { card_id });
-        }
-        effects
+        vec![]
+        // let card_ids: Vec<uuid::Uuid> = self
+        //     .state
+        //     .cards
+        //     .iter()
+        //     .filter(|c| c.is_unit())
+        //     .filter(|c| matches!(c.get_zone(), Zone::Realm(_)))
+        //     .filter(|c| {
+        //         let damage = c.get_unit_base().unwrap().damage;
+        //         let toughness = c.get_unit_base().unwrap().toughness;
+        //         damage >= toughness
+        //     })
+        //     .map(|c| c.get_id().clone())
+        //     .collect();
+        //
+        // let mut effects = Vec::new();
+        // for card_id in card_ids {
+        //     effects.push(Effect::bury_card(card_id, zone));
+        // }
+        // effects
     }
 
     pub async fn send_sync(&self) -> anyhow::Result<()> {
@@ -670,6 +688,7 @@ impl Game {
                 effect.apply(&mut self.state)?;
             }
         }
+
         Ok(())
     }
 }

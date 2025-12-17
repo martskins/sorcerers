@@ -1,7 +1,7 @@
 use crate::{
     card::beta,
     effect::{Counter, Effect, ModifierCounter},
-    game::{Element, PlayerId, Thresholds, are_adjacent, are_nearby, get_adjacent_zones, get_nearby_zones},
+    game::{Direction, Element, PlayerId, Thresholds, are_adjacent, are_nearby, get_adjacent_zones, get_nearby_zones},
     networking::message::ClientMessage,
     state::State,
 };
@@ -86,6 +86,16 @@ impl Zone {
                     .collect::<Vec<&Box<dyn Card>>>()
             })
             .collect()
+    }
+
+    pub fn zone_in_direction(&self, direction: &Direction) -> Self {
+        let square = self.get_square().unwrap();
+        match direction {
+            Direction::Up => Zone::Realm(square.saturating_add(5)),
+            Direction::Down => Zone::Realm(square.saturating_sub(5)),
+            Direction::Left => Zone::Realm(square.saturating_sub(1)),
+            Direction::Right => Zone::Realm(square.saturating_add(1)),
+        }
     }
 
     pub fn get_adjacent(&self) -> Vec<Zone> {
@@ -383,7 +393,7 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBoxedCard {
         vec![]
     }
 
-    fn deathrite(&self, _state: &State) -> Vec<Effect> {
+    fn deathrite(&self, _state: &State, _from: &Zone) -> Vec<Effect> {
         if self.is_site() {
             return vec![Effect::RemoveResources {
                 player_id: self.get_owner_id().clone(),
@@ -455,15 +465,12 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBoxedCard {
                 }];
             }
 
-            if let Some(ub) = self.get_unit_base_mut() {
-                ub.damage += damage;
-            }
+            let ub = self.get_unit_base_mut().unwrap();
+            ub.damage += damage;
 
             let attacker = state.cards.iter().find(|c| c.get_id() == from).unwrap();
-            if attacker.has_modifier(state, Modifier::Lethal) {
-                return vec![Effect::BuryCard {
-                    card_id: self.get_id().clone(),
-                }];
+            if ub.damage >= self.get_toughness(state).unwrap_or(0) || attacker.has_modifier(state, Modifier::Lethal) {
+                return vec![Effect::bury_card(self.get_id(), self.get_zone())];
             }
 
             return vec![];
@@ -479,7 +486,7 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBoxedCard {
         vec![]
     }
 
-    fn on_turn_end(&mut self, _state: &State) -> Vec<Effect> {
+    fn on_turn_end(&self, _state: &State) -> Vec<Effect> {
         vec![]
     }
 

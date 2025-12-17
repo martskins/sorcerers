@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardType, Edition, MessageHandler, SiteBase, Zone},
+    card::{Card, CardBase, Edition, MessageHandler, SiteBase, Zone},
     game::{PlayerId, Thresholds},
 };
 
@@ -58,10 +58,6 @@ impl Card for AridDesert {
 
     fn get_id(&self) -> &uuid::Uuid {
         &self.card_base.id
-    }
-
-    fn get_card_type(&self) -> CardType {
-        CardType::Site
     }
 
     fn get_site_base(&self) -> Option<&SiteBase> {

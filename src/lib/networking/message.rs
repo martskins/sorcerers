@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     card::{CardInfo, CardType},
-    game::{Direction, PlayerId, PlayerStatus, Resources},
+    game::{Direction, PlayerId, Resources, Status},
 };
 use serde::{Deserialize, Serialize};
 
@@ -29,7 +29,7 @@ pub enum ServerMessage {
     Sync {
         cards: Vec<CardInfo>,
         resources: HashMap<PlayerId, Resources>,
-        player_status: PlayerStatus,
+        player_status: Status,
         current_player: PlayerId,
     },
 }
