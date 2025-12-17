@@ -263,6 +263,7 @@ impl Effect {
                             .set_zone(Zone::Hand);
                     }
                     CardType::Avatar => unreachable!(),
+                    CardType::Token => unreachable!(),
                 }
             }
             Effect::SetPlayerStatus { status, .. } => {

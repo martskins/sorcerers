@@ -13,6 +13,7 @@ pub enum CardType {
     Site,
     Spell,
     Avatar,
+    Token,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -393,6 +394,10 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBoxedCard {
         }
 
         vec![]
+    }
+
+    fn is_token(&self) -> bool {
+        false
     }
 
     fn is_site(&self) -> bool {

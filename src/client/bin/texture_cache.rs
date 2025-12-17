@@ -1,17 +1,41 @@
-use macroquad::texture::{Image, Texture2D};
-use sorcerers::card::Edition;
+use macroquad::texture::Texture2D;
+use sorcerers::card::{CardInfo, CardType, Edition};
 use std::{
     collections::HashMap,
     path::Path,
     sync::{OnceLock, RwLock},
 };
-use tokio_util::bytes::Bytes;
 
 static TEXTURE_CACHE: OnceLock<RwLock<TextureCache>> = OnceLock::new();
 
 #[derive(Debug)]
 pub struct TextureCache {
     inner: HashMap<String, macroquad::texture::Texture2D>,
+}
+
+pub trait RenderableCard {
+    fn get_name(&self) -> &str;
+    fn is_token(&self) -> bool;
+    fn is_site(&self) -> bool;
+    fn get_edition(&self) -> &Edition;
+}
+
+impl RenderableCard for &CardInfo {
+    fn get_name(&self) -> &str {
+        &self.name
+    }
+
+    fn is_token(&self) -> bool {
+        self.card_type == CardType::Token
+    }
+
+    fn is_site(&self) -> bool {
+        self.card_type == CardType::Site
+    }
+
+    fn get_edition(&self) -> &Edition {
+        &self.edition
+    }
 }
 
 impl TextureCache {
@@ -23,13 +47,13 @@ impl TextureCache {
         TEXTURE_CACHE.get_or_init(|| RwLock::new(TextureCache::new()));
     }
 
-    pub async fn get_card_texture(name: &str, is_site: bool, edition: &Edition) -> Texture2D {
+    pub async fn get_card_texture(card: &impl RenderableCard) -> Texture2D {
         tokio::runtime::Runtime::new()
             .unwrap()
-            .block_on(async { TextureCache::texture_for_card(name, is_site, edition).await })
+            .block_on(async { TextureCache::texture_for_card(card).await })
     }
 
-    pub async fn get_texture(path: &str, name: &str, rotate: bool) -> Texture2D {
+    pub async fn get_texture(path: &str, name: &str) -> Texture2D {
         if let Some(tex) = TEXTURE_CACHE.get().unwrap().read().unwrap().inner.get(name) {
             return tex.clone();
         }
@@ -37,24 +61,23 @@ impl TextureCache {
         let mut cache = TEXTURE_CACHE.get().unwrap().write().unwrap();
         let new_path = path.to_string();
         let texture = macroquad::texture::load_texture(&new_path).await.unwrap();
-        // if rotate {
-        //     TextureCache::rotate_texture_clockwise(&mut texture);
-        // }
         cache.inner.insert(name.to_string(), texture.clone());
         texture
     }
 
-    async fn texture_for_card(name: &str, is_site: bool, edition: &Edition) -> Texture2D {
-        if let Some(tex) = TEXTURE_CACHE.get().unwrap().read().unwrap().inner.get(name) {
+    async fn texture_for_card(card: &impl RenderableCard) -> Texture2D {
+        if let Some(tex) = TEXTURE_CACHE.get().unwrap().read().unwrap().inner.get(card.get_name()) {
             return tex.clone();
         }
 
-        let path = format!("assets/images/cache/{}.png", name);
+        let path = format!("assets/images/cache/{}.png", card.get_name());
         if Path::new(&path).exists() {
-            return TextureCache::get_card_image_from_disk(name, &path).await.unwrap();
+            return TextureCache::get_card_image_from_disk(card.get_name(), &path)
+                .await
+                .unwrap();
         }
 
-        TextureCache::download_card_image(name, is_site, edition).await.unwrap()
+        TextureCache::download_card_image(card).await.unwrap()
     }
 
     async fn get_card_image_from_disk(name: &str, path: &str) -> anyhow::Result<Texture2D> {
@@ -64,21 +87,27 @@ impl TextureCache {
         Ok(texture)
     }
 
-    async fn download_card_image(name: &str, is_site: bool, edition: &Edition) -> anyhow::Result<Texture2D> {
-        let set = edition.url_name();
-        let name = name.to_string().to_lowercase().replace(" ", "_").replace("-", "_");
+    async fn download_card_image(card: &impl RenderableCard) -> anyhow::Result<Texture2D> {
+        let set = card.get_edition().url_name();
+        let name = card
+            .get_name()
+            .to_string()
+            .to_lowercase()
+            .replace(" ", "_")
+            .replace("-", "_");
         let mut folder = "cards";
-        if is_site {
+        if card.is_site() {
             folder = "rotated";
         }
-
-        let mut path = format!(
-            "https://d27a44hjr9gen3.cloudfront.net/{}/{}-{}-b-s.png",
-            folder, set, name
-        );
-        if name == "rubble" {
-            path = "https://d27a44hjr9gen3.cloudfront.net/rotated/alp-rubble-bt-s.png".to_string();
+        let mut after_card_name = "b";
+        if card.is_token() {
+            after_card_name = "bt";
         }
+
+        let path = format!(
+            "https://d27a44hjr9gen3.cloudfront.net/{}/{}-{}-{}-s.png",
+            folder, set, name, after_card_name
+        );
         let response = reqwest::get(&path).await?;
         if response.status() != reqwest::StatusCode::OK {
             return Err(anyhow::anyhow!(
@@ -91,23 +120,6 @@ impl TextureCache {
 
         let bytes = response.bytes().await.unwrap();
         let texture = macroquad::texture::Texture2D::from_file_with_format(&bytes, None);
-        // if is_site {
-        //     TextureCache::rotate_texture_clockwise(&mut texture);
-        //     let rotated_image = texture.get_texture_data();
-        //     let dyn_img = image::DynamicImage::ImageRgba8(
-        //         image::RgbaImage::from_raw(
-        //             rotated_image.width() as u32,
-        //             rotated_image.height() as u32,
-        //             rotated_image.bytes.to_vec(),
-        //         )
-        //         .unwrap(),
-        //     );
-        //
-        //     let mut png_bytes: Vec<u8> = Vec::new();
-        //     dyn_img.write_to(&mut std::io::Cursor::new(&mut png_bytes), image::ImageOutputFormat::Png)?;
-        //     bytes = Bytes::copy_from_slice(&png_bytes);
-        // }
-
         let mut cache = TEXTURE_CACHE.get().unwrap().write().unwrap();
         cache.inner.insert(name.to_string(), texture.clone());
 

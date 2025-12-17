@@ -71,6 +71,10 @@ impl Card for Rubble {
     fn get_site_base_mut(&mut self) -> Option<&mut SiteBase> {
         Some(&mut self.site_base)
     }
+
+    fn is_token(&self) -> bool {
+        true
+    }
 }
 
 impl MessageHandler for Rubble {}

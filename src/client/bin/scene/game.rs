@@ -737,7 +737,7 @@ impl Game {
     async fn render_deck(&self) {
         let spellbook_rect = spellbook_rect();
         draw_texture_ex(
-            &TextureCache::get_texture(SPELLBOOK_IMAGE, "spellbook", false).await,
+            &TextureCache::get_texture(SPELLBOOK_IMAGE, "spellbook").await,
             spellbook_rect.x,
             spellbook_rect.y,
             WHITE,
@@ -749,7 +749,7 @@ impl Game {
 
         let atlasbook_rect = atlasbook_rect();
         draw_texture_ex(
-            &TextureCache::get_texture(ATLASBOOK_IMAGE, "atlas", false).await,
+            &TextureCache::get_texture(ATLASBOOK_IMAGE, "atlas").await,
             atlasbook_rect.x,
             atlasbook_rect.y,
             WHITE,
@@ -798,8 +798,7 @@ impl Game {
                     id: card.id,
                     zone: card.zone.clone(),
                     tapped: card.tapped,
-                    image: TextureCache::get_card_texture(&card.name, card.card_type == CardType::Site, &card.edition)
-                        .await,
+                    image: TextureCache::get_card_texture(&card).await,
                     rect,
                     rotation: 0.0,
                     is_hovered: false,
@@ -857,7 +856,7 @@ impl Game {
                 id: card.id,
                 zone: card.zone.clone(),
                 tapped: card.tapped,
-                image: TextureCache::get_card_texture(&card.name, card.is_site(), &card.edition).await,
+                image: TextureCache::get_card_texture(card).await,
                 summoning_sickness: card.summoning_sickness,
             });
         }
@@ -878,7 +877,7 @@ impl Game {
                 id: card.id,
                 zone: card.zone.clone(),
                 tapped: card.tapped,
-                image: TextureCache::get_card_texture(&card.name, card.is_site(), &card.edition).await,
+                image: TextureCache::get_card_texture(card).await,
                 summoning_sickness: card.summoning_sickness,
             });
         }
