@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, MessageHandler, Modifier, Zone},
+    card::{Card, CardBase, Edition, MessageHandler, Modifier, Plane, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds},
     networking::message::ClientMessage,
@@ -31,6 +31,7 @@ impl MadDash {
                 zone: Zone::Spellbook,
                 mana_cost: 2,
                 required_thresholds: Thresholds::parse("F"),
+                plane: Plane::Surface,
             },
             status: Status::None,
         }

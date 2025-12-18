@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, MessageHandler, Modifier, UnitBase, Zone},
+    card::{Card, CardBase, Edition, MessageHandler, Modifier, Plane, UnitBase, Zone},
     game::{Element, PlayerId, Thresholds},
 };
 
@@ -30,6 +30,7 @@ impl LavaSalamander {
                 zone: Zone::Spellbook,
                 mana_cost: 2,
                 required_thresholds: Thresholds::parse("FF"),
+                plane: Plane::Surface,
             },
         }
     }

@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, MessageHandler, Modifier, UnitBase, Zone},
+    card::{Card, CardBase, Edition, MessageHandler, Modifier, Plane, UnitBase, Zone},
     effect::{Counter, Effect},
     game::{Element, PlayerId, Thresholds},
     state::State,
@@ -29,6 +29,7 @@ impl AskelonPhoenix {
                 zone: Zone::Spellbook,
                 mana_cost: 5,
                 required_thresholds: Thresholds::parse("FF"),
+                plane: Plane::Air,
             },
         }
     }

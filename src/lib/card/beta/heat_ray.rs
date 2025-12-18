@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, MessageHandler, Zone},
+    card::{Card, CardBase, Edition, MessageHandler, Plane, Zone},
     effect::Effect,
     game::{CARDINAL_DIRECTIONS, Direction, PlayerId, Thresholds},
     networking::message::ClientMessage,
@@ -32,6 +32,7 @@ impl HeatRay {
                 zone: Zone::Spellbook,
                 mana_cost: 2,
                 required_thresholds: Thresholds::parse("F"),
+                plane: Plane::Surface,
             },
             status: Status::None,
         }

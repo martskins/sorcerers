@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, MessageHandler, UnitBase, Zone},
+    card::{Card, CardBase, Edition, MessageHandler, Plane, UnitBase, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds},
     state::State,
@@ -29,6 +29,7 @@ impl InfernalLegion {
                 zone: Zone::Spellbook,
                 mana_cost: 6,
                 required_thresholds: Thresholds::parse("FFF"),
+                plane: Plane::Surface,
             },
         }
     }

@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, MessageHandler, Modifier, UnitBase, Zone},
+    card::{Card, CardBase, Edition, MessageHandler, Modifier, Plane, UnitBase, Zone},
     game::{PlayerId, Thresholds},
 };
 
@@ -27,6 +27,7 @@ impl SandWorm {
                 zone: Zone::Spellbook,
                 mana_cost: 4,
                 required_thresholds: Thresholds::parse("F"),
+                plane: Plane::Surface,
             },
         }
     }

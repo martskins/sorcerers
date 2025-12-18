@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, MessageHandler, UnitBase, Zone},
+    card::{Card, CardBase, Edition, MessageHandler, Plane, UnitBase, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds},
     networking::message::ClientMessage,
@@ -55,6 +55,7 @@ impl ClamorOfHarpies {
                 zone: Zone::Spellbook,
                 mana_cost: 4,
                 required_thresholds: Thresholds::parse("F"),
+                plane: Plane::Surface,
             },
             status: Status::None,
             targeted_minion: uuid::Uuid::nil(),

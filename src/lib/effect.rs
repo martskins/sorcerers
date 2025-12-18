@@ -130,6 +130,14 @@ impl Effect {
         }
     }
 
+    pub fn play_card(player_id: &PlayerId, card_id: &uuid::Uuid, zone: &Zone) -> Self {
+        Effect::PlayCard {
+            player_id: player_id.clone(),
+            card_id: card_id.clone(),
+            zone: zone.clone(),
+        }
+    }
+
     pub fn wait_for_play(player_id: &PlayerId) -> Self {
         Effect::SetPlayerStatus {
             status: Status::WaitingForPlay {

@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, MessageHandler, UnitBase, Zone},
+    card::{Card, CardBase, Edition, MessageHandler, Plane, UnitBase, Zone},
     effect::Effect,
     game::{CARDINAL_DIRECTIONS, PlayerId, Thresholds},
     networking::message::ClientMessage,
@@ -38,6 +38,7 @@ impl ColickyDragonettes {
                 zone: Zone::Spellbook,
                 mana_cost: 3,
                 required_thresholds: Thresholds::parse("FF"),
+                plane: Plane::Surface,
             },
             status: Status::None,
         }

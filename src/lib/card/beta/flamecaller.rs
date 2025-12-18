@@ -1,5 +1,5 @@
 use crate::{
-    card::{AvatarBase, Card, CardBase, CardType, Edition, MessageHandler, UnitBase, Zone},
+    card::{AvatarBase, Card, CardBase, CardType, Edition, MessageHandler, Plane, UnitBase, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds},
     networking::message::ClientMessage,
@@ -54,6 +54,7 @@ impl Flamecaller {
                 zone: Zone::Spellbook,
                 mana_cost: 0,
                 required_thresholds: Thresholds::new(),
+                plane: Plane::Surface,
             },
             avatar_base: AvatarBase { playing_site: None },
             status: Status::None,
@@ -176,11 +177,7 @@ impl MessageHandler for Flamecaller {
                 self.status = Status::None;
                 vec![
                     Effect::tap_card(&self.get_id()),
-                    Effect::PlayCard {
-                        player_id: self.card_base.owner_id.clone(),
-                        card_id: card_id,
-                        zone: Zone::Realm(*square),
-                    },
+                    Effect::play_card(self.get_owner_id(), &card_id, &Zone::Realm(*square)),
                     Effect::wait_for_play(self.get_owner_id()),
                 ]
             }

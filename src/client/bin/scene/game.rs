@@ -14,7 +14,7 @@ use macroquad::{
     ui,
 };
 use sorcerers::{
-    card::{CardInfo, CardType, Zone},
+    card::{CardInfo, CardType, Plane, Zone},
     game::{Element, PlayerId, Resources, Status},
     networking::{
         self,
@@ -679,7 +679,26 @@ impl Game {
     }
 
     async fn render_realm(&self) {
-        for card_display in &self.card_displays {
+        // Sort so that cards that are submerged or burrowed are drawn first, then sites, then
+        // cards on the surface and then cards in the air.
+        let mut displays = self.card_displays.clone();
+        displays.sort_by(|a, b| match (&a.plane, &b.plane) {
+            (Plane::Air, Plane::Air) | (Plane::Burrowed, Plane::Burrowed) | (Plane::Submerged, Plane::Submerged) => {
+                std::cmp::Ordering::Equal
+            }
+            (Plane::Surface, Plane::Surface) => match (&a.card_type, &b.card_type) {
+                (CardType::Site, _) => std::cmp::Ordering::Less,
+                (_, _) => std::cmp::Ordering::Equal,
+            },
+            (Plane::Air, _) => std::cmp::Ordering::Greater,
+            (Plane::Surface, Plane::Air) => std::cmp::Ordering::Less,
+            (Plane::Surface, _) => std::cmp::Ordering::Greater,
+            (Plane::Burrowed, Plane::Air) => std::cmp::Ordering::Less,
+            (Plane::Burrowed, Plane::Surface) => std::cmp::Ordering::Less,
+            (_, _) => std::cmp::Ordering::Equal,
+        });
+
+        for card_display in displays {
             if !matches!(card_display.zone, Zone::Realm(_)) {
                 continue;
             }
@@ -811,6 +830,8 @@ impl Game {
                     is_hovered: false,
                     is_selected: false,
                     summoning_sickness: card.summoning_sickness,
+                    plane: card.plane.clone(),
+                    card_type: card.card_type.clone(),
                 });
             }
         }
@@ -865,6 +886,8 @@ impl Game {
                 tapped: card.tapped,
                 image: TextureCache::get_card_texture(card).await,
                 summoning_sickness: card.summoning_sickness,
+                plane: card.plane.clone(),
+                card_type: card.card_type.clone(),
             });
         }
 
@@ -886,6 +909,8 @@ impl Game {
                 tapped: card.tapped,
                 image: TextureCache::get_card_texture(card).await,
                 summoning_sickness: card.summoning_sickness,
+                plane: card.plane.clone(),
+                card_type: card.card_type.clone(),
             });
         }
 

@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardType, Edition, MessageHandler, SiteBase, Zone},
+    card::{Card, CardBase, CardType, Edition, MessageHandler, Plane, SiteBase, Zone},
     game::{PlayerId, Thresholds},
 };
 
@@ -26,6 +26,7 @@ impl Rubble {
                 zone: Zone::Atlasbook,
                 mana_cost: 0,
                 required_thresholds: Thresholds::new(),
+                plane: Plane::Surface,
             },
         }
     }

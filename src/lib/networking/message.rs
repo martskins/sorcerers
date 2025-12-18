@@ -53,11 +53,6 @@ pub enum ClientMessage {
         player_id: PlayerId,
         card_id: uuid::Uuid,
     },
-    PlayCard {
-        game_id: uuid::Uuid,
-        player_id: PlayerId,
-        card_id: uuid::Uuid,
-    },
     PickDirection {
         game_id: uuid::Uuid,
         player_id: PlayerId,
@@ -90,7 +85,6 @@ impl ClientMessage {
     pub fn game_id(&self) -> uuid::Uuid {
         match self {
             ClientMessage::Connect => uuid::Uuid::nil(),
-            ClientMessage::PlayCard { game_id, .. } => game_id.clone(),
             ClientMessage::PickCard { game_id, .. } => game_id.clone(),
             ClientMessage::PickAction { game_id, .. } => game_id.clone(),
             ClientMessage::EndTurn { game_id, .. } => game_id.clone(),
@@ -104,7 +98,6 @@ impl ClientMessage {
     pub fn player_id(&self) -> &PlayerId {
         match self {
             ClientMessage::Connect => &NIL,
-            ClientMessage::PlayCard { player_id, .. } => player_id,
             ClientMessage::PickCard { player_id, .. } => player_id,
             ClientMessage::PickAction { player_id, .. } => player_id,
             ClientMessage::EndTurn { player_id, .. } => player_id,

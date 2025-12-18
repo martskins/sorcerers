@@ -1,10 +1,12 @@
 use macroquad::{math::Rect, texture::Texture2D};
-use sorcerers::card::Zone;
+use sorcerers::card::{CardType, Plane, Zone};
 
 #[derive(Debug, Clone)]
 pub struct CardDisplay {
     pub id: uuid::Uuid,
     pub zone: Zone,
+    pub plane: Plane,
+    pub card_type: CardType,
     pub tapped: bool,
     pub image: Texture2D,
     pub rect: Rect,

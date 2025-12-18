@@ -38,6 +38,15 @@ impl Edition {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum Plane {
+    None,
+    Air,
+    Surface,
+    Burrowed,
+    Submerged,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Zone {
     None,
     Hand,
@@ -117,6 +126,7 @@ pub struct CardInfo {
     pub tapped: bool,
     pub edition: Edition,
     pub zone: Zone,
+    pub plane: Plane,
     pub card_type: CardType,
     pub summoning_sickness: bool,
 }
@@ -231,6 +241,10 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBoxedCard {
         }
 
         vec![]
+    }
+
+    fn get_plane(&self) -> &Plane {
+        &self.get_base().plane
     }
 
     fn get_card_type(&self) -> CardType {
@@ -559,6 +573,7 @@ pub struct CardBase {
     pub zone: Zone,
     pub mana_cost: u8,
     pub required_thresholds: Thresholds,
+    pub plane: Plane,
 }
 
 impl Clone for CardBase {
@@ -570,6 +585,7 @@ impl Clone for CardBase {
             zone: self.zone.clone(),
             mana_cost: self.mana_cost,
             required_thresholds: self.required_thresholds.clone(),
+            plane: self.plane.clone(),
         }
     }
 }

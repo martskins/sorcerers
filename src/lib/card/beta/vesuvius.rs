@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, MessageHandler, Rubble, SiteBase, Zone},
+    card::{Card, CardBase, Edition, MessageHandler, Plane, Rubble, SiteBase, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds},
     networking::message::ClientMessage,
@@ -53,6 +53,7 @@ impl Vesuvius {
                 zone: Zone::Atlasbook,
                 mana_cost: 0,
                 required_thresholds: Thresholds::new(),
+                plane: Plane::Surface,
             },
             status: Status::None,
             actions: vec![Action::UseAbility, Action::Cancel],
@@ -160,11 +161,7 @@ impl MessageHandler for Vesuvius {
                 let mut effects = vec![
                     Effect::set_card_status(self.get_id(), Status::None),
                     Effect::AddCard { card: Box::new(rubble) },
-                    Effect::PlayCard {
-                        player_id: self.get_owner_id().clone(),
-                        card_id: rubble_id,
-                        zone: self.get_zone().clone(),
-                    },
+                    Effect::play_card(self.get_owner_id(), &rubble_id, self.get_zone()),
                     Effect::bury_card(self.get_id(), self.get_zone()),
                 ];
                 for unit_id in unit_ids {

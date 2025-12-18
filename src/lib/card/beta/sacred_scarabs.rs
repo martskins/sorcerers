@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, MessageHandler, Modifier, UnitBase, Zone},
+    card::{Card, CardBase, Edition, MessageHandler, Modifier, Plane, UnitBase, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds},
     state::State,
@@ -29,6 +29,7 @@ impl SacredScarabs {
                 zone: Zone::Spellbook,
                 mana_cost: 2,
                 required_thresholds: Thresholds::parse("F"),
+                plane: Plane::Air,
             },
         }
     }

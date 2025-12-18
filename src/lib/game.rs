@@ -314,16 +314,8 @@ impl Game {
             }
             (InputStatus::PlayingCard { player_id, card_id }, ClientMessage::PickSquare { square, .. }) => {
                 let effects = vec![
-                    Effect::PlayCard {
-                        player_id: player_id.clone(),
-                        card_id: card_id.clone(),
-                        zone: Zone::Realm(*square),
-                    },
-                    Effect::SetPlayerStatus {
-                        status: Status::WaitingForPlay {
-                            player_id: player_id.clone(),
-                        },
-                    },
+                    Effect::play_card(player_id, &card_id, &Zone::Realm(*square)),
+                    Effect::wait_for_play(&player_id),
                 ];
                 self.state.effects.extend(effects);
                 self.input_status = InputStatus::None;
@@ -366,9 +358,6 @@ impl Game {
                             card_id: Some(card_id.clone()),
                         };
                         self.state.effects.push_back(Effect::select_action(player_id, actions));
-                    }
-                    (false, Zone::Realm(_)) => {
-                        println!("Clicked a site maybe?");
                     }
                     (false, Zone::Hand) => {
                         let resources = self.state.resources.get(player_id).unwrap();
@@ -590,6 +579,7 @@ impl Game {
                     zone: c.get_zone().clone(),
                     card_type: c.get_card_type().clone(),
                     summoning_sickness: c.has_modifier(&self.state, Modifier::SummoningSickness),
+                    plane: c.get_plane().clone(),
                 })
                 .collect(),
             resources: self.state.resources.clone(),
