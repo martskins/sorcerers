@@ -57,6 +57,7 @@ pub enum Zone {
     Atlasbook,
     Realm(u8),
     Cemetery,
+    Banish,
 }
 
 impl Zone {
@@ -100,13 +101,24 @@ impl Zone {
             .collect()
     }
 
-    pub fn zone_in_direction(&self, direction: &Direction) -> Self {
+    pub fn zone_in_direction(&self, direction: &Direction) -> Option<Self> {
         let square = self.get_square().unwrap();
-        match direction {
+        let zone = match direction {
             Direction::Up => Zone::Realm(square.saturating_add(5)),
             Direction::Down => Zone::Realm(square.saturating_sub(5)),
             Direction::Left => Zone::Realm(square.saturating_sub(1)),
             Direction::Right => Zone::Realm(square.saturating_add(1)),
+        };
+
+        match direction {
+            Direction::Up | Direction::Down => {
+                if zone.get_square() > Some(20) || zone.get_square() < Some(1) {
+                    return None;
+                }
+
+                Some(zone)
+            }
+            Direction::Left | Direction::Right => Some(zone),
         }
     }
 

@@ -1,23 +1,14 @@
 use crate::{
     card::{Card, CardBase, Edition, MessageHandler, Plane, UnitBase, Zone},
     effect::Effect,
-    game::{CARDINAL_DIRECTIONS, PlayerId, Thresholds},
-    networking::message::ClientMessage,
+    game::{CARDINAL_DIRECTIONS, InputStatus, PlayerId, Thresholds},
     state::State,
 };
-
-#[derive(Debug, Clone)]
-enum Status {
-    None,
-    ChoosingDirection,
-    ChoosingUnit,
-}
 
 #[derive(Debug, Clone)]
 pub struct ColickyDragonettes {
     pub unit_base: UnitBase,
     pub card_base: CardBase,
-    status: Status,
 }
 
 impl ColickyDragonettes {
@@ -40,7 +31,6 @@ impl ColickyDragonettes {
                 required_thresholds: Thresholds::parse("FF"),
                 plane: Plane::Surface,
             },
-            status: Status::None,
         }
     }
 }
@@ -89,59 +79,18 @@ impl Card for ColickyDragonettes {
         }
 
         vec![
-            Effect::set_card_status(self.get_id(), Status::ChoosingDirection),
+            Effect::set_input_status(InputStatus::ShootingProjectile {
+                player_id: self.get_owner_id().clone(),
+                card_id: self.get_id().clone(),
+                caster_id: Some(self.get_id().clone()),
+                from: self.get_zone().clone(),
+                direction: None,
+                damage: 1,
+                piercing: false,
+            }),
             Effect::select_direction(self.get_owner_id(), &CARDINAL_DIRECTIONS),
         ]
     }
-
-    fn set_status(&mut self, status: &Box<dyn std::any::Any>) -> anyhow::Result<()> {
-        let status = status
-            .downcast_ref::<Status>()
-            .ok_or_else(|| anyhow::anyhow!("Failed to downcast status for {}", Self::NAME))?;
-        self.status = status.clone();
-        Ok(())
-    }
 }
 
-impl MessageHandler for ColickyDragonettes {
-    fn handle_message(&mut self, message: &ClientMessage, state: &State) -> Vec<Effect> {
-        match (&self.status, message) {
-            (Status::ChoosingDirection, ClientMessage::PickDirection { direction, .. }) => {
-                let mut zone = self.get_zone().clone();
-                loop {
-                    zone = zone.zone_in_direction(&direction);
-                    let units: Vec<uuid::Uuid> = state
-                        .get_cards_in_zone(&zone)
-                        .iter()
-                        .filter(|c| c.is_unit())
-                        .map(|c| c.get_id().clone())
-                        .collect();
-                    if units.is_empty() {
-                        continue;
-                    }
-
-                    if units.len() == 1 {
-                        return vec![
-                            Effect::set_card_status(self.get_id(), Status::None),
-                            Effect::take_damage(&units[0], self.get_id(), 1),
-                            Effect::wait_for_play(self.get_owner_id()),
-                        ];
-                    }
-
-                    return vec![
-                        Effect::set_card_status(self.get_id(), Status::ChoosingUnit),
-                        Effect::select_card(self.get_owner_id(), units, Some(self.get_id())),
-                    ];
-                }
-            }
-            (Status::ChoosingUnit, ClientMessage::PickCard { card_id, .. }) => {
-                vec![
-                    Effect::set_card_status(self.get_id(), Status::None),
-                    Effect::take_damage(card_id, self.get_id(), 1),
-                    Effect::wait_for_play(self.get_owner_id()),
-                ]
-            }
-            _ => vec![],
-        }
-    }
-}
+impl MessageHandler for ColickyDragonettes {}

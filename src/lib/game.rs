@@ -8,7 +8,7 @@ use crate::{
     state::{Phase, State},
 };
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, iter::Sum, sync::Arc};
 use tokio::net::UdpSocket;
 
 pub type PlayerId = uuid::Uuid;
@@ -89,6 +89,19 @@ pub struct Thresholds {
     pub air: u8,
     pub earth: u8,
     pub water: u8,
+}
+
+impl Sum for Thresholds {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        let mut total = Thresholds::new();
+        for t in iter {
+            total.fire += t.fire;
+            total.air += t.air;
+            total.earth += t.earth;
+            total.water += t.water;
+        }
+        total
+    }
 }
 
 impl Thresholds {
@@ -245,12 +258,22 @@ impl Clone for Box<dyn Action> {
 #[derive(Debug, Clone)]
 pub enum InputStatus {
     None,
+    ShootingProjectile {
+        player_id: PlayerId,
+        card_id: uuid::Uuid,
+        caster_id: Option<uuid::Uuid>,
+        from: Zone,
+        direction: Option<Direction>,
+        damage: u8,
+        piercing: bool,
+    },
     SelectingAction {
         player_id: PlayerId,
         actions: Vec<Box<dyn Action>>,
         card_id: Option<uuid::Uuid>,
     },
     PlayingSite {
+        player_id: PlayerId,
         site_id: Option<uuid::Uuid>,
     },
     PlayingSpell {
@@ -317,7 +340,10 @@ impl Action for AvatarAction {
                     .map(|c| c.get_id().clone())
                     .collect();
                 vec![
-                    Effect::set_input_status(InputStatus::PlayingSite { site_id: None }),
+                    Effect::set_input_status(InputStatus::PlayingSite {
+                        player_id: player_id.clone(),
+                        site_id: None,
+                    }),
                     Effect::select_card(player_id, valid_cards, None),
                     Effect::tap_card(card_id.unwrap()),
                 ]
@@ -434,11 +460,12 @@ impl Game {
                     player_id: self.state.current_player.clone(),
                 };
             }
-            (InputStatus::PlayingSite { site_id: None }, ClientMessage::PickCard { player_id, card_id, .. }) => {
+            (InputStatus::PlayingSite { site_id: None, .. }, ClientMessage::PickCard { player_id, card_id, .. }) => {
                 let card = self.state.get_card(card_id).unwrap();
                 let valid_zones = card.get_valid_play_zones(&self.state);
                 let effects = vec![
                     Effect::set_input_status(InputStatus::PlayingSite {
+                        player_id: player_id.clone(),
                         site_id: Some(card_id.clone()),
                     }),
                     Effect::select_square(player_id, valid_zones),
@@ -446,7 +473,7 @@ impl Game {
                 self.state.effects.extend(effects);
                 self.state.input_status = InputStatus::None;
             }
-            (InputStatus::PlayingSite { site_id }, ClientMessage::PickSquare { player_id, square, .. }) => {
+            (InputStatus::PlayingSite { site_id, .. }, ClientMessage::PickSquare { player_id, square, .. }) => {
                 let effects = vec![
                     Effect::set_input_status(InputStatus::None),
                     Effect::play_card(&player_id, &site_id.unwrap(), &Zone::Realm(*square)),
@@ -463,8 +490,113 @@ impl Game {
                 self.state.effects.extend(effects);
                 self.state.input_status = InputStatus::None;
             }
+            (
+                InputStatus::ShootingProjectile {
+                    player_id,
+                    caster_id,
+                    from,
+                    damage,
+                    direction: Some(direction),
+                    piercing,
+                    ..
+                },
+                ClientMessage::PickCard { card_id, .. },
+            ) => {
+                let mut valid_cards: Vec<uuid::Uuid>;
+                let mut from = Some(from.clone());
+                loop {
+                    from = from.unwrap().zone_in_direction(direction);
+                    if from.is_none() {
+                        self.state.effects.push_back(Effect::wait_for_play(player_id));
+                        self.state.input_status = InputStatus::None;
+                        return Ok(());
+                    }
+
+                    valid_cards = self
+                        .state
+                        .get_cards_in_zone(from.as_ref().unwrap())
+                        .iter()
+                        .filter(|c| c.is_unit())
+                        .map(|c| c.get_id().clone())
+                        .collect();
+
+                    if valid_cards.is_empty() {
+                        continue;
+                    }
+
+                    break;
+                }
+
+                let mut effects = vec![Effect::take_damage(card_id, caster_id.as_ref().unwrap(), *damage)];
+                if *piercing {
+                    effects.push(Effect::set_input_status(InputStatus::ShootingProjectile {
+                        player_id: player_id.clone(),
+                        card_id: card_id.clone(),
+                        caster_id: caster_id.clone(),
+                        from: from.unwrap(),
+                        damage: *damage,
+                        direction: Some(direction.clone()),
+                        piercing: *piercing,
+                    }));
+                    effects.push(Effect::select_card(player_id, valid_cards, Some(card_id)));
+                } else {
+                    effects.push(Effect::set_input_status(InputStatus::None));
+                    effects.push(Effect::wait_for_play(player_id));
+                }
+
+                self.state.effects.extend(effects);
+            }
+            (
+                InputStatus::ShootingProjectile {
+                    player_id,
+                    card_id,
+                    caster_id,
+                    damage,
+                    from,
+                    direction: None,
+                    piercing,
+                },
+                ClientMessage::PickDirection { direction, .. },
+            ) => {
+                let mut valid_cards: Vec<uuid::Uuid>;
+                let mut from = Some(from.clone());
+                loop {
+                    from = from.unwrap().zone_in_direction(direction);
+                    if from.is_none() {
+                        self.state.effects.push_back(Effect::wait_for_play(player_id));
+                        self.state.input_status = InputStatus::None;
+                        return Ok(());
+                    }
+
+                    valid_cards = self
+                        .state
+                        .get_cards_in_zone(from.as_ref().unwrap())
+                        .iter()
+                        .filter(|c| c.is_unit())
+                        .map(|c| c.get_id().clone())
+                        .collect();
+
+                    if valid_cards.is_empty() {
+                        continue;
+                    }
+
+                    break;
+                }
+
+                self.state
+                    .effects
+                    .push_back(Effect::select_card(player_id, valid_cards, Some(card_id)));
+                self.state.input_status = InputStatus::ShootingProjectile {
+                    player_id: player_id.clone(),
+                    card_id: card_id.clone(),
+                    caster_id: caster_id.clone(),
+                    damage: *damage,
+                    from: from.unwrap().clone(),
+                    direction: Some(direction.clone()),
+                    piercing: *piercing,
+                };
+            }
             (InputStatus::None, ClientMessage::ClickCard { player_id, card_id, .. }) => {
-                println!("Player {} clicked card {}", player_id, card_id);
                 let card = self.state.cards.iter().find(|c| c.get_id() == card_id).unwrap();
                 if card.get_owner_id() != player_id {
                     return Ok(());

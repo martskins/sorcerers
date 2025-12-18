@@ -102,6 +102,10 @@ pub enum Effect {
         from: uuid::Uuid,
         damage: u8,
     },
+    BanishCard {
+        card_id: uuid::Uuid,
+        from: Zone,
+    },
     BuryCard {
         card_id: uuid::Uuid,
         from: Zone,
@@ -112,6 +116,12 @@ pub enum Effect {
 }
 
 impl Effect {
+    pub fn banish_card(card_id: &uuid::Uuid, from: &Zone) -> Self {
+        Effect::BanishCard {
+            card_id: card_id.clone(),
+            from: from.clone(),
+        }
+    }
     pub fn bury_card(card_id: &uuid::Uuid, zone: &Zone) -> Self {
         Effect::BuryCard {
             card_id: card_id.clone(),
@@ -248,6 +258,7 @@ impl Effect {
                 format!("TakeDamage: {} deals {} damage to {}", attacker, damage, defender)
             }
             Effect::BuryCard { .. } => "BuryCard".to_string(),
+            Effect::BanishCard { .. } => "BanishCard".to_string(),
         }
     }
 
@@ -476,6 +487,10 @@ impl Effect {
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
                 let effects = card.on_take_damage(&snapshot, from, *damage);
                 state.effects.extend(effects);
+            }
+            Effect::BanishCard { card_id, .. } => {
+                let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
+                card.set_zone(Zone::Banish);
             }
             Effect::BuryCard { card_id, from } => {
                 {

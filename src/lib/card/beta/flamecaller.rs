@@ -1,7 +1,68 @@
 use crate::{
     card::{AvatarBase, Card, CardBase, Edition, MessageHandler, Plane, UnitBase, Zone},
-    game::{PlayerId, Thresholds},
+    effect::Effect,
+    game::{Action, CARDINAL_DIRECTIONS, Element, InputStatus, PlayerId, Thresholds},
+    state::State,
 };
+
+#[derive(Debug, Clone)]
+enum FlamecallerAction {
+    ShootProjectile,
+}
+
+impl Action for FlamecallerAction {
+    fn get_name(&self) -> &str {
+        match self {
+            FlamecallerAction::ShootProjectile => "Shoot Projectile",
+        }
+    }
+
+    fn on_select(
+        &self,
+        card_id: Option<&uuid::Uuid>,
+        player_id: &PlayerId,
+        state: &State,
+    ) -> Vec<crate::effect::Effect> {
+        match self {
+            FlamecallerAction::ShootProjectile => {
+                let fire_minions = state
+                    .cards
+                    .iter()
+                    .filter(|c| c.get_zone() == &Zone::Cemetery)
+                    .filter(|c| c.get_elements(state).contains(&Element::Fire))
+                    .map(|c| c.get_id().clone())
+                    .collect::<Vec<_>>();
+                let damage = state
+                    .cards
+                    .iter()
+                    .filter(|c| c.get_zone() == &Zone::Cemetery)
+                    .filter(|c| c.get_elements(state).contains(&Element::Fire))
+                    .map(|c| c.get_required_thresholds(state).clone())
+                    .sum::<Thresholds>()
+                    .fire;
+                let avatar = state.get_card(card_id.unwrap()).unwrap();
+                let mut effects = vec![
+                    Effect::set_input_status(InputStatus::ShootingProjectile {
+                        player_id: player_id.clone(),
+                        card_id: card_id.unwrap().clone(),
+                        from: avatar.get_zone().clone(),
+                        caster_id: Some(card_id.unwrap().clone()),
+                        direction: None,
+                        damage,
+                        piercing: false,
+                    }),
+                    Effect::select_direction(player_id, &CARDINAL_DIRECTIONS),
+                    Effect::tap_card(card_id.unwrap()),
+                ];
+                for minion_id in fire_minions {
+                    effects.push(Effect::banish_card(&minion_id, &Zone::Cemetery));
+                }
+
+                effects
+            }
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct Flamecaller {
@@ -77,6 +138,12 @@ impl Card for Flamecaller {
 
     fn get_id(&self) -> &uuid::Uuid {
         &self.card_base.id
+    }
+
+    fn get_actions(&self, _: &State) -> Vec<Box<dyn Action>> {
+        let mut actions = self.base_avatar_actions();
+        actions.push(Box::new(FlamecallerAction::ShootProjectile));
+        actions
     }
 }
 

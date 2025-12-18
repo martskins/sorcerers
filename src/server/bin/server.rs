@@ -87,7 +87,7 @@ impl Server {
         let addr1 = self.sockets.remove(player1).unwrap().clone();
         let addr2 = self.sockets.remove(player2).unwrap().clone();
         let (deck1, cards1) = precon::beta::fire(player1.clone());
-        let (deck2, cards2) = precon::beta::fire(player2.clone());
+        let (deck2, cards2) = precon::beta::air(player2.clone());
         let mut state = State::new(
             Vec::new().into_iter().chain(cards1).chain(cards2).collect(),
             HashMap::from([(player1.clone(), deck1), (player2.clone(), deck2)]),
@@ -145,6 +145,9 @@ impl Server {
             player1.clone(),
             Zone::Realm(3),
         ));
+        state
+            .cards
+            .push(card::from_name_and_zone(HeatRay::NAME, player1.clone(), Zone::Hand));
         state.cards.push(card::from_name_and_zone(
             ColickyDragonettes::NAME,
             player2.clone(),
