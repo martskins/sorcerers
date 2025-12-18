@@ -1,7 +1,7 @@
 use crate::{
     card::{Card, CardBase, Edition, MessageHandler, Plane, Rubble, SiteBase, Zone},
     effect::Effect,
-    game::{PlayerId, Thresholds},
+    game::{Action, PlayerId, Thresholds},
     networking::message::ClientMessage,
     state::State,
 };
@@ -9,21 +9,36 @@ use crate::{
 #[derive(Debug, Clone)]
 enum Status {
     None,
-    ChoosingAction,
     ChoosingSite,
 }
 
 #[derive(Debug, Clone)]
-enum Action {
+enum VesuviusAction {
     UseAbility,
-    Cancel,
 }
 
-impl Action {
-    pub fn get_name(&self) -> &str {
+impl Action for VesuviusAction {
+    fn get_name(&self) -> &str {
         match self {
-            Action::UseAbility => "Use Vesuvius Ability",
-            Action::Cancel => "Cancel",
+            VesuviusAction::UseAbility => "Use Vesuvius Ability",
+        }
+    }
+
+    fn on_select(&self, card_id: Option<&uuid::Uuid>, _: &PlayerId, state: &State) -> Vec<Effect> {
+        match self {
+            VesuviusAction::UseAbility => {
+                let card = state.get_card(card_id.unwrap()).unwrap();
+                let site_ids = card
+                    .get_zone()
+                    .get_nearby_sites(state, None)
+                    .iter()
+                    .map(|c| c.get_id().clone())
+                    .collect();
+                vec![
+                    Effect::set_card_status(card.get_id(), Status::ChoosingSite),
+                    Effect::select_card(card.get_owner_id(), site_ids, Some(card.get_id())),
+                ]
+            }
         }
     }
 }
@@ -33,7 +48,6 @@ pub struct Vesuvius {
     pub site_base: SiteBase,
     pub card_base: CardBase,
     status: Status,
-    actions: Vec<Action>,
 }
 
 impl Vesuvius {
@@ -56,7 +70,6 @@ impl Vesuvius {
                 plane: Plane::Surface,
             },
             status: Status::None,
-            actions: vec![Action::UseAbility, Action::Cancel],
         }
     }
 }
@@ -105,49 +118,31 @@ impl Card for Vesuvius {
         self.status = status.clone();
         Ok(())
     }
+
+    fn get_actions(&self, _: &State) -> Vec<Box<dyn Action>> {
+        vec![Box::new(VesuviusAction::UseAbility)]
+    }
 }
 
 impl MessageHandler for Vesuvius {
     fn handle_message(&mut self, message: &ClientMessage, state: &State) -> Vec<Effect> {
         match (&self.status, message) {
-            (Status::None, ClientMessage::ClickCard { card_id, .. }) if card_id == self.get_id() => {
-                if !state
-                    .get_player_resources(self.get_owner_id())
-                    .has_resources(0, Thresholds::parse("FFF"))
-                {
-                    return vec![];
-                }
-
-                vec![
-                    Effect::set_card_status(self.get_id(), Status::ChoosingAction),
-                    Effect::select_action(
-                        self.get_owner_id(),
-                        self.actions.iter().map(|c| c.get_name().to_string()).collect(),
-                    ),
-                ]
-            }
-            (Status::ChoosingAction, ClientMessage::PickAction { action_idx, .. }) => {
-                let action = &self.actions[*action_idx];
-                match action {
-                    Action::UseAbility => {
-                        self.status = Status::ChoosingSite;
-                        let site_ids = self
-                            .get_zone()
-                            .get_nearby_sites(state, None)
-                            .iter()
-                            .map(|c| c.get_id().clone())
-                            .collect();
-                        vec![
-                            Effect::set_card_status(self.get_id(), Status::ChoosingSite),
-                            Effect::select_card(self.get_owner_id(), site_ids, Some(self.get_id())),
-                        ]
-                    }
-                    Action::Cancel => {
-                        self.status = Status::None;
-                        vec![Effect::wait_for_play(self.get_owner_id())]
-                    }
-                }
-            }
+            // (Status::None, ClientMessage::ClickCard { card_id, .. }) if card_id == self.get_id() => {
+            //     if !state
+            //         .get_player_resources(self.get_owner_id())
+            //         .has_resources(0, Thresholds::parse("FFF"))
+            //     {
+            //         return vec![];
+            //     }
+            //
+            //     vec![
+            //         Effect::set_card_status(self.get_id(), Status::ChoosingAction),
+            //         Effect::select_action(
+            //             self.get_owner_id(),
+            //             self.actions.iter().map(|c| c.get_name().to_string()).collect(),
+            //         ),
+            //     ]
+            // }
             (Status::ChoosingSite, ClientMessage::PickCard { card_id, .. }) => {
                 let site = state.get_card(card_id).unwrap();
                 let unit_ids: Vec<&uuid::Uuid> = state

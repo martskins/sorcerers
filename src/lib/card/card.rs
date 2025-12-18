@@ -1,7 +1,10 @@
 use crate::{
     card::beta,
     effect::{Counter, Effect, ModifierCounter},
-    game::{Direction, Element, PlayerId, Thresholds, are_adjacent, are_nearby, get_adjacent_zones, get_nearby_zones},
+    game::{
+        Action, AvatarAction, Direction, Element, PlayerId, Thresholds, UnitAction, are_adjacent, are_nearby,
+        get_adjacent_zones, get_nearby_zones,
+    },
     networking::message::ClientMessage,
     state::State,
 };
@@ -524,7 +527,30 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBoxedCard {
         vec![]
     }
 
-    fn on_cast(&mut self, _state: &State, _caster_id: &uuid::Uuid) -> Vec<Effect> {
+    fn on_cast(&mut self, _: &State, _caster_id: &uuid::Uuid) -> Vec<Effect> {
+        vec![]
+    }
+
+    fn base_avatar_actions(&self) -> Vec<Box<dyn Action>> {
+        vec![Box::new(AvatarAction::PlaySite), Box::new(AvatarAction::DrawSite)]
+    }
+
+    fn base_unit_actions(&self) -> Vec<Box<dyn Action>> {
+        vec![Box::new(UnitAction::Attack), Box::new(UnitAction::Move)]
+    }
+
+    fn get_actions(&self, _: &State) -> Vec<Box<dyn Action>> {
+        if self.is_avatar() {
+            let unit_actions = self.base_unit_actions();
+            let avatar_actions = self.base_avatar_actions();
+            let mut actions = Vec::new();
+            actions.extend(unit_actions);
+            actions.extend(avatar_actions);
+            return actions;
+        } else if self.is_unit() {
+            return self.base_unit_actions();
+        }
+
         vec![]
     }
 }

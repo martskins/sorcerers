@@ -232,8 +232,8 @@ where
 }
 
 pub trait Action: std::fmt::Debug + CloneBoxedAction {
-    fn get_name(&self) -> String;
-    fn on_select(&self, card_id: Option<&uuid::Uuid>, player_id: &uuid::Uuid, state: &State) -> Vec<Effect>;
+    fn get_name(&self) -> &str;
+    fn on_select(&self, card_id: Option<&uuid::Uuid>, player_id: &PlayerId, state: &State) -> Vec<Effect>;
 }
 
 impl Clone for Box<dyn Action> {
@@ -249,6 +249,9 @@ pub enum InputStatus {
         player_id: PlayerId,
         actions: Vec<Box<dyn Action>>,
         card_id: Option<uuid::Uuid>,
+    },
+    PlayingSite {
+        site_id: Option<uuid::Uuid>,
     },
     PlayingSpell {
         player_id: PlayerId,
@@ -269,6 +272,71 @@ pub enum InputStatus {
 }
 
 #[derive(Debug, Clone)]
+pub enum BaseAction {
+    Cancel,
+}
+
+impl Action for BaseAction {
+    fn get_name(&self) -> &str {
+        match self {
+            BaseAction::Cancel => "Cancel",
+        }
+    }
+
+    fn on_select(&self, _: Option<&uuid::Uuid>, player_id: &PlayerId, _: &State) -> Vec<Effect> {
+        vec![
+            Effect::set_input_status(InputStatus::None),
+            Effect::wait_for_play(player_id),
+        ]
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum AvatarAction {
+    PlaySite,
+    DrawSite,
+}
+
+impl Action for AvatarAction {
+    fn get_name(&self) -> &str {
+        match self {
+            AvatarAction::PlaySite => "Play Site",
+            AvatarAction::DrawSite => "Draw Site",
+        }
+    }
+
+    fn on_select(&self, card_id: Option<&uuid::Uuid>, player_id: &PlayerId, state: &State) -> Vec<Effect> {
+        match self {
+            AvatarAction::PlaySite => {
+                let valid_cards: Vec<uuid::Uuid> = state
+                    .cards
+                    .iter()
+                    .filter(|c| c.is_site())
+                    .filter(|c| c.get_zone() == &Zone::Hand)
+                    .filter(|c| c.get_owner_id() == player_id)
+                    .map(|c| c.get_id().clone())
+                    .collect();
+                vec![
+                    Effect::set_input_status(InputStatus::PlayingSite { site_id: None }),
+                    Effect::select_card(player_id, valid_cards, None),
+                    Effect::tap_card(card_id.unwrap()),
+                ]
+            }
+            AvatarAction::DrawSite => {
+                vec![
+                    Effect::DrawCard {
+                        player_id: player_id.clone(),
+                        card_type: CardType::Site,
+                    },
+                    Effect::wait_for_play(player_id),
+                    Effect::tap_card(card_id.unwrap()),
+                ]
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum UnitAction {
     Move,
     Attack,
@@ -276,15 +344,15 @@ pub enum UnitAction {
 }
 
 impl Action for UnitAction {
-    fn get_name(&self) -> String {
+    fn get_name(&self) -> &str {
         match self {
-            UnitAction::Move => "Move".to_string(),
-            UnitAction::Attack => "Attack".to_string(),
-            UnitAction::Defend => "Defend".to_string(),
+            UnitAction::Move => "Move",
+            UnitAction::Attack => "Attack",
+            UnitAction::Defend => "Defend",
         }
     }
 
-    fn on_select(&self, card_id: Option<&uuid::Uuid>, player_id: &uuid::Uuid, state: &State) -> Vec<Effect> {
+    fn on_select(&self, card_id: Option<&uuid::Uuid>, player_id: &PlayerId, state: &State) -> Vec<Effect> {
         match self {
             UnitAction::Attack => {
                 let card_id = card_id.unwrap();
@@ -352,6 +420,8 @@ impl Game {
     }
     async fn handle_message(&mut self, message: &ClientMessage) -> anyhow::Result<()> {
         self.maybe_unblock_effects(message);
+        println!("Handling message: {:?}", message);
+        println!("Current input status: {:?}", self.state.input_status);
         match (&self.state.input_status, message) {
             (InputStatus::Attacking { attacker_id, .. }, ClientMessage::PickCard { card_id, .. }) => {
                 let effects = vec![Effect::Attack {
@@ -364,6 +434,27 @@ impl Game {
                     player_id: self.state.current_player.clone(),
                 };
             }
+            (InputStatus::PlayingSite { site_id: None }, ClientMessage::PickCard { player_id, card_id, .. }) => {
+                let card = self.state.get_card(card_id).unwrap();
+                let valid_zones = card.get_valid_play_zones(&self.state);
+                let effects = vec![
+                    Effect::set_input_status(InputStatus::PlayingSite {
+                        site_id: Some(card_id.clone()),
+                    }),
+                    Effect::select_square(player_id, valid_zones),
+                ];
+                self.state.effects.extend(effects);
+                self.state.input_status = InputStatus::None;
+            }
+            (InputStatus::PlayingSite { site_id }, ClientMessage::PickSquare { player_id, square, .. }) => {
+                let effects = vec![
+                    Effect::set_input_status(InputStatus::None),
+                    Effect::play_card(&player_id, &site_id.unwrap(), &Zone::Realm(*square)),
+                    Effect::wait_for_play(player_id),
+                ];
+                self.state.effects.extend(effects);
+                self.state.input_status = InputStatus::None;
+            }
             (InputStatus::PlayingCard { player_id, card_id }, ClientMessage::PickSquare { square, .. }) => {
                 let effects = vec![
                     Effect::play_card(&player_id, &card_id, &Zone::Realm(*square)),
@@ -373,12 +464,9 @@ impl Game {
                 self.state.input_status = InputStatus::None;
             }
             (InputStatus::None, ClientMessage::ClickCard { player_id, card_id, .. }) => {
+                println!("Player {} clicked card {}", player_id, card_id);
                 let card = self.state.cards.iter().find(|c| c.get_id() == card_id).unwrap();
                 if card.get_owner_id() != player_id {
-                    return Ok(());
-                }
-
-                if !card.is_spell() {
                     return Ok(());
                 }
 
@@ -398,18 +486,28 @@ impl Game {
                         let effects = vec![Effect::select_square(&player_id, valid_squares)];
                         self.state.effects.extend(effects);
                     }
-                    (true, Zone::Realm(_)) => {
-                        if card.is_tapped() || card.has_modifier(&self.state, Modifier::SummoningSickness) {
+                    (_, Zone::Realm(_)) => {
+                        let unit_disabled =
+                            card.is_tapped() || card.has_modifier(&self.state, Modifier::SummoningSickness);
+                        if card.is_unit() && unit_disabled {
                             return Ok(());
                         }
 
-                        let actions = vec![UnitAction::Attack.get_name(), UnitAction::Move.get_name()];
+                        let mut actions = card.get_actions(&self.state);
+                        if actions.is_empty() {
+                            return Ok(());
+                        }
+
+                        actions.push(Box::new(BaseAction::Cancel));
+                        let action_names = actions.iter().map(|a| a.get_name().to_string()).collect();
                         self.state.input_status = InputStatus::SelectingAction {
                             player_id: player_id.clone(),
-                            actions: vec![Box::new(UnitAction::Attack), Box::new(UnitAction::Move)],
+                            actions,
                             card_id: Some(card_id.clone()),
                         };
-                        self.state.effects.push_back(Effect::select_action(&player_id, actions));
+                        self.state
+                            .effects
+                            .push_back(Effect::select_action(&player_id, action_names));
                     }
                     (false, Zone::Hand) => {
                         let resources = self.state.resources.get(&player_id).unwrap();
@@ -458,6 +556,9 @@ impl Game {
                 },
                 ClientMessage::PickAction { action_idx, .. },
             ) => {
+                self.state
+                    .effects
+                    .push_back(Effect::set_input_status(InputStatus::None));
                 let effects = actions[*action_idx].on_select(card_id.as_ref(), &player_id, &self.state);
                 self.state.effects.extend(effects);
             }
