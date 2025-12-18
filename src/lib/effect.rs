@@ -1,6 +1,6 @@
 use crate::{
     card::{CardType, Modifier, SiteBase, UnitBase, Zone},
-    game::{Direction, PlayerId, Status, Thresholds},
+    game::{Direction, InputStatus, PlayerId, Status, Thresholds},
     state::{Phase, State},
 };
 use std::fmt::Debug;
@@ -106,6 +106,9 @@ pub enum Effect {
         card_id: uuid::Uuid,
         from: Zone,
     },
+    SetInputStatus {
+        status: InputStatus,
+    },
 }
 
 impl Effect {
@@ -172,6 +175,10 @@ impl Effect {
         }
     }
 
+    pub fn set_input_status(status: InputStatus) -> Self {
+        Effect::SetInputStatus { status: status }
+    }
+
     pub fn select_card(player_id: &PlayerId, valid_cards: Vec<uuid::Uuid>, for_card: Option<&uuid::Uuid>) -> Self {
         Effect::SetPlayerStatus {
             status: Status::SelectingCard {
@@ -219,6 +226,7 @@ impl Effect {
                 Status::SelectingZone { .. } => "SetPlayerStatus::SelectingZone".to_string(),
                 _ => "SetPlayerStatus".to_string(),
             },
+            Effect::SetInputStatus { .. } => "SetInputStatus".to_string(),
             Effect::AddCard { .. } => "AddCard".to_string(),
             Effect::SetCardStatus { .. } => "SetCardStatus".to_string(),
             Effect::AddModifier { .. } => "AddModifier".to_string(),
@@ -497,6 +505,9 @@ impl Effect {
             Effect::SetCardStatus { card_id, status } => {
                 let card = state.get_card_mut(card_id).unwrap();
                 card.set_status(status).unwrap();
+            }
+            Effect::SetInputStatus { status } => {
+                state.input_status = status.clone();
             }
         }
 

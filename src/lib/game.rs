@@ -218,12 +218,36 @@ pub fn get_adjacent_zones(zone: &Zone) -> Vec<Zone> {
     }
 }
 
-#[derive(Debug)]
+pub trait CloneBoxedAction {
+    fn clone_boxed_action(&self) -> Box<dyn Action>;
+}
+
+impl<T> CloneBoxedAction for T
+where
+    T: 'static + Action + Clone,
+{
+    fn clone_boxed_action(&self) -> Box<dyn Action> {
+        Box::new(self.clone())
+    }
+}
+
+pub trait Action: std::fmt::Debug + CloneBoxedAction {
+    fn get_name(&self) -> String;
+    fn on_select(&self, card_id: Option<&uuid::Uuid>, player_id: &uuid::Uuid, state: &State) -> Vec<Effect>;
+}
+
+impl Clone for Box<dyn Action> {
+    fn clone(&self) -> Box<dyn Action> {
+        self.clone_boxed_action()
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum InputStatus {
     None,
     SelectingAction {
         player_id: PlayerId,
-        actions: Vec<Action>,
+        actions: Vec<Box<dyn Action>>,
         card_id: Option<uuid::Uuid>,
     },
     PlayingSpell {
@@ -245,25 +269,54 @@ pub enum InputStatus {
 }
 
 #[derive(Debug, Clone)]
-pub enum Action {
+pub enum UnitAction {
     Move,
     Attack,
     Defend,
 }
 
-impl Action {
-    pub fn get_name(&self) -> String {
+impl Action for UnitAction {
+    fn get_name(&self) -> String {
         match self {
-            Action::Move => "Move".to_string(),
-            Action::Attack => "Attack".to_string(),
-            Action::Defend => "Defend".to_string(),
+            UnitAction::Move => "Move".to_string(),
+            UnitAction::Attack => "Attack".to_string(),
+            UnitAction::Defend => "Defend".to_string(),
+        }
+    }
+
+    fn on_select(&self, card_id: Option<&uuid::Uuid>, player_id: &uuid::Uuid, state: &State) -> Vec<Effect> {
+        match self {
+            UnitAction::Attack => {
+                let card_id = card_id.unwrap();
+                let card = state.cards.iter().find(|c| c.get_id() == card_id).unwrap();
+                let valid_cards = card.get_valid_attack_targets(state);
+                vec![
+                    Effect::set_input_status(InputStatus::Attacking {
+                        player_id: player_id.clone(),
+                        attacker_id: card_id.clone(),
+                    }),
+                    Effect::select_card(&player_id, valid_cards, None),
+                ]
+            }
+            UnitAction::Move => {
+                let card_id = card_id.unwrap();
+                let card = state.cards.iter().find(|c| c.get_id() == card_id).unwrap();
+                let valid_squares = card.get_valid_move_zones(state);
+                vec![
+                    Effect::set_input_status(InputStatus::Moving {
+                        player_id: player_id.clone(),
+                        card_id: card_id.clone(),
+                    }),
+                    Effect::select_square(&player_id, valid_squares),
+                ]
+            }
+            UnitAction::Defend => vec![],
         }
     }
 }
 
 pub struct Game {
     pub id: uuid::Uuid,
-    pub input_status: InputStatus,
     pub players: Vec<PlayerId>,
     pub state: State,
     pub addrs: HashMap<PlayerId, Socket>,
@@ -274,7 +327,6 @@ impl Game {
     pub fn new(player1: uuid::Uuid, player2: uuid::Uuid, socket: Arc<UdpSocket>, addr1: Socket, addr2: Socket) -> Self {
         Game {
             id: uuid::Uuid::new_v4(),
-            input_status: InputStatus::None,
             state: State::new(Vec::new(), HashMap::new()),
             players: vec![player1, player2],
             addrs: HashMap::from([(player1, addr1), (player2, addr2)]),
@@ -300,25 +352,25 @@ impl Game {
     }
     async fn handle_message(&mut self, message: &ClientMessage) -> anyhow::Result<()> {
         self.maybe_unblock_effects(message);
-        match (&self.input_status, message) {
+        match (&self.state.input_status, message) {
             (InputStatus::Attacking { attacker_id, .. }, ClientMessage::PickCard { card_id, .. }) => {
                 let effects = vec![Effect::Attack {
                     attacker_id: attacker_id.clone(),
-                    defender_id: *card_id,
+                    defender_id: card_id.clone(),
                 }];
                 self.state.effects.extend(effects);
-                self.input_status = InputStatus::None;
+                self.state.input_status = InputStatus::None;
                 self.state.player_status = Status::WaitingForPlay {
                     player_id: self.state.current_player.clone(),
                 };
             }
             (InputStatus::PlayingCard { player_id, card_id }, ClientMessage::PickSquare { square, .. }) => {
                 let effects = vec![
-                    Effect::play_card(player_id, &card_id, &Zone::Realm(*square)),
+                    Effect::play_card(&player_id, &card_id, &Zone::Realm(*square)),
                     Effect::wait_for_play(&player_id),
                 ];
                 self.state.effects.extend(effects);
-                self.input_status = InputStatus::None;
+                self.state.input_status = InputStatus::None;
             }
             (InputStatus::None, ClientMessage::ClickCard { player_id, card_id, .. }) => {
                 let card = self.state.cards.iter().find(|c| c.get_id() == card_id).unwrap();
@@ -332,18 +384,18 @@ impl Game {
 
                 match (card.is_unit(), card.get_zone()) {
                     (true, Zone::Hand) => {
-                        let resources = self.state.resources.get(player_id).unwrap();
+                        let resources = self.state.resources.get(&player_id).unwrap();
                         let can_afford = resources.can_afford(card, &self.state);
                         if !can_afford {
                             return Ok(());
                         }
 
                         let valid_squares = card.get_valid_play_zones(&self.state);
-                        self.input_status = InputStatus::PlayingCard {
+                        self.state.input_status = InputStatus::PlayingCard {
                             player_id: player_id.clone(),
                             card_id: card_id.clone(),
                         };
-                        let effects = vec![Effect::select_square(player_id, valid_squares)];
+                        let effects = vec![Effect::select_square(&player_id, valid_squares)];
                         self.state.effects.extend(effects);
                     }
                     (true, Zone::Realm(_)) => {
@@ -351,16 +403,16 @@ impl Game {
                             return Ok(());
                         }
 
-                        let actions = vec![Action::Attack.get_name(), Action::Move.get_name()];
-                        self.input_status = InputStatus::SelectingAction {
+                        let actions = vec![UnitAction::Attack.get_name(), UnitAction::Move.get_name()];
+                        self.state.input_status = InputStatus::SelectingAction {
                             player_id: player_id.clone(),
-                            actions: vec![Action::Attack, Action::Move],
+                            actions: vec![Box::new(UnitAction::Attack), Box::new(UnitAction::Move)],
                             card_id: Some(card_id.clone()),
                         };
-                        self.state.effects.push_back(Effect::select_action(player_id, actions));
+                        self.state.effects.push_back(Effect::select_action(&player_id, actions));
                     }
                     (false, Zone::Hand) => {
-                        let resources = self.state.resources.get(player_id).unwrap();
+                        let resources = self.state.resources.get(&player_id).unwrap();
                         let can_afford = resources.can_afford(card, &self.state);
                         if !can_afford {
                             return Ok(());
@@ -373,13 +425,13 @@ impl Game {
                             .filter(|c| c.can_cast(&self.state, card))
                             .map(|c| c.get_id().clone())
                             .collect();
-                        self.input_status = InputStatus::PlayingSpell {
+                        self.state.input_status = InputStatus::PlayingSpell {
                             player_id: player_id.clone(),
                             card_id: card_id.clone(),
                         };
                         self.state
                             .effects
-                            .push_back(Effect::select_card(player_id, spellcasters, None));
+                            .push_back(Effect::select_card(&player_id, spellcasters, None));
                     }
                     _ => {}
                 }
@@ -387,9 +439,9 @@ impl Game {
             (InputStatus::PlayingSpell { player_id, card_id }, ClientMessage::PickCard { card_id: caster, .. }) => {
                 let player_id = player_id.clone();
                 let card_id = card_id.clone();
-                self.input_status = InputStatus::None;
+                self.state.input_status = InputStatus::None;
 
-                let zone = self.state.get_card(caster).unwrap().get_zone();
+                let zone = self.state.get_card(&caster).unwrap().get_zone();
                 self.state.effects.push_back(Effect::PlayMagic {
                     player_id: player_id,
                     caster_id: caster.clone(),
@@ -405,35 +457,10 @@ impl Game {
                     card_id,
                 },
                 ClientMessage::PickAction { action_idx, .. },
-            ) => match actions[*action_idx] {
-                Action::Attack => {
-                    let card_id = card_id.unwrap();
-                    let player_id = player_id.clone();
-                    let card = self.state.cards.iter().find(|c| c.get_id() == &card_id).unwrap();
-                    let valid_cards = card.get_valid_attack_targets(&self.state);
-                    self.input_status = InputStatus::Attacking {
-                        player_id: player_id.clone(),
-                        attacker_id: card_id.clone(),
-                    };
-                    self.state
-                        .effects
-                        .push_back(Effect::select_card(&player_id, valid_cards, None));
-                }
-                Action::Move => {
-                    let card_id = card_id.unwrap();
-                    let player_id = player_id.clone();
-                    let card = self.state.cards.iter().find(|c| c.get_id() == &card_id).unwrap();
-                    let valid_squares = card.get_valid_move_zones(&self.state);
-                    self.input_status = InputStatus::Moving {
-                        player_id: player_id.clone(),
-                        card_id: card_id.clone(),
-                    };
-                    self.state
-                        .effects
-                        .push_back(Effect::select_square(&player_id, valid_squares));
-                }
-                Action::Defend => {}
-            },
+            ) => {
+                let effects = actions[*action_idx].on_select(card_id.as_ref(), &player_id, &self.state);
+                self.state.effects.extend(effects);
+            }
             (InputStatus::Moving { player_id, card_id }, ClientMessage::PickSquare { square, .. }) => {
                 let card = self.state.cards.iter().find(|c| c.get_id() == card_id).unwrap();
                 let effects = vec![
@@ -450,7 +477,7 @@ impl Game {
                     },
                 ];
                 self.state.effects.extend(effects);
-                self.input_status = InputStatus::None;
+                self.state.input_status = InputStatus::None;
             }
             (InputStatus::None, ClientMessage::EndTurn { player_id, .. }) => {
                 self.state.effects.push_back(Effect::PreEndTurn {

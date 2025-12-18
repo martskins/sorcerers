@@ -2,7 +2,7 @@ use crate::{
     card::{Card, Zone},
     deck::Deck,
     effect::Effect,
-    game::{PlayerId, Resources, Status},
+    game::{InputStatus, PlayerId, Resources, Status},
 };
 use std::collections::{HashMap, VecDeque};
 
@@ -18,6 +18,7 @@ pub struct State {
     pub cards: Vec<Box<dyn Card>>,
     pub decks: HashMap<PlayerId, Deck>,
     pub resources: HashMap<PlayerId, Resources>,
+    pub input_status: InputStatus,
     pub player_status: Status,
     pub phase: Phase,
     pub waiting_for_input: bool,
@@ -33,6 +34,7 @@ impl State {
             decks,
             turns: 0,
             resources: HashMap::new(),
+            input_status: InputStatus::None,
             player_status: Status::None,
             phase: Phase::Main,
             current_player: uuid::Uuid::nil(),
@@ -65,6 +67,7 @@ impl State {
             turns: 0,
             resources: self.resources.clone(),
             player_status: self.player_status.clone(),
+            input_status: self.input_status.clone(),
             phase: self.phase.clone(),
             current_player: self.current_player,
             waiting_for_input: self.waiting_for_input,
