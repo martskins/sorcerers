@@ -155,6 +155,25 @@ impl Game {
                 player_status,
                 resources,
             } => {
+                // Sort so that cards that are submerged or burrowed are drawn first, then sites, then
+                // cards on the surface and then cards in the air.
+                let mut cards = cards.clone();
+                cards.sort_by(|a, b| match (&a.plane, &b.plane) {
+                    (Plane::Air, Plane::Air)
+                    | (Plane::Burrowed, Plane::Burrowed)
+                    | (Plane::Submerged, Plane::Submerged) => std::cmp::Ordering::Equal,
+                    (Plane::Surface, Plane::Surface) => match (&a.card_type, &b.card_type) {
+                        (CardType::Site, _) => std::cmp::Ordering::Less,
+                        (_, _) => std::cmp::Ordering::Equal,
+                    },
+                    (Plane::Air, _) => std::cmp::Ordering::Greater,
+                    (Plane::Surface, Plane::Air) => std::cmp::Ordering::Less,
+                    (Plane::Surface, _) => std::cmp::Ordering::Greater,
+                    (Plane::Burrowed, Plane::Air) => std::cmp::Ordering::Less,
+                    (Plane::Burrowed, Plane::Surface) => std::cmp::Ordering::Less,
+                    (_, _) => std::cmp::Ordering::Equal,
+                });
+
                 self.cards = cards.clone();
                 self.current_player = current_player.clone();
                 self.resources = resources.clone();
@@ -679,26 +698,7 @@ impl Game {
     }
 
     async fn render_realm(&self) {
-        // Sort so that cards that are submerged or burrowed are drawn first, then sites, then
-        // cards on the surface and then cards in the air.
-        let mut displays = self.card_displays.clone();
-        displays.sort_by(|a, b| match (&a.plane, &b.plane) {
-            (Plane::Air, Plane::Air) | (Plane::Burrowed, Plane::Burrowed) | (Plane::Submerged, Plane::Submerged) => {
-                std::cmp::Ordering::Equal
-            }
-            (Plane::Surface, Plane::Surface) => match (&a.card_type, &b.card_type) {
-                (CardType::Site, _) => std::cmp::Ordering::Less,
-                (_, _) => std::cmp::Ordering::Equal,
-            },
-            (Plane::Air, _) => std::cmp::Ordering::Greater,
-            (Plane::Surface, Plane::Air) => std::cmp::Ordering::Less,
-            (Plane::Surface, _) => std::cmp::Ordering::Greater,
-            (Plane::Burrowed, Plane::Air) => std::cmp::Ordering::Less,
-            (Plane::Burrowed, Plane::Surface) => std::cmp::Ordering::Less,
-            (_, _) => std::cmp::Ordering::Equal,
-        });
-
-        for card_display in displays {
+        for card_display in &self.card_displays {
             if !matches!(card_display.zone, Zone::Realm(_)) {
                 continue;
             }
