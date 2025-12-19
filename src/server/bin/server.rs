@@ -145,19 +145,21 @@ impl Server {
             player1.clone(),
             Zone::Realm(3),
         ));
-        state
-            .cards
-            .push(card::from_name_and_zone(HeatRay::NAME, player1.clone(), Zone::Hand));
+        state.cards.push(card::from_name_and_zone(
+            MajorExplosion::NAME,
+            player1.clone(),
+            Zone::Hand,
+        ));
         state.cards.push(card::from_name_and_zone(
             ColickyDragonettes::NAME,
             player2.clone(),
             Zone::Hand,
         ));
-        state.resources.get_mut(player1).unwrap().mana = 4;
+        state.resources.get_mut(player1).unwrap().mana = 8;
         state.resources.get_mut(player1).unwrap().thresholds.fire = 4;
         state.resources.get_mut(player1).unwrap().thresholds.water = 1;
         state.resources.get_mut(player1).unwrap().thresholds.earth = 1;
-        state.resources.get_mut(player2).unwrap().mana = 4;
+        state.resources.get_mut(player2).unwrap().mana = 9;
         state.resources.get_mut(player2).unwrap().thresholds.fire = 4;
         state.resources.get_mut(player2).unwrap().thresholds.water = 1;
         state.resources.get_mut(player2).unwrap().thresholds.earth = 1;

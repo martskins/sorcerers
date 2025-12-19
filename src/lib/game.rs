@@ -19,6 +19,10 @@ pub enum Direction {
     Down,
     Left,
     Right,
+    TopLeft,
+    TopRight,
+    BottomLeft,
+    BottomRight,
 }
 
 pub const CARDINAL_DIRECTIONS: [Direction; 4] = [Direction::Up, Direction::Down, Direction::Left, Direction::Right];
@@ -30,6 +34,10 @@ impl Direction {
             Direction::Down => "Down".to_string(),
             Direction::Left => "Left".to_string(),
             Direction::Right => "Right".to_string(),
+            Direction::TopLeft => "Top Left".to_string(),
+            Direction::TopRight => "Top Right".to_string(),
+            Direction::BottomLeft => "Bottom Left".to_string(),
+            Direction::BottomRight => "Bottom Right".to_string(),
         }
     }
 
@@ -40,6 +48,10 @@ impl Direction {
                 Direction::Down => Direction::Up,
                 Direction::Left => Direction::Right,
                 Direction::Right => Direction::Left,
+                Direction::TopLeft => Direction::BottomRight,
+                Direction::TopRight => Direction::BottomLeft,
+                Direction::BottomLeft => Direction::TopRight,
+                Direction::BottomRight => Direction::TopLeft,
             }
         } else {
             self.clone()
@@ -401,7 +413,7 @@ impl Action for UnitAction {
                         player_id: player_id.clone(),
                         card_id: card_id.clone(),
                     }),
-                    Effect::select_square(&player_id, valid_squares),
+                    Effect::select_zone(&player_id, valid_squares),
                 ]
             }
             UnitAction::Defend => vec![],
@@ -468,7 +480,7 @@ impl Game {
                         player_id: player_id.clone(),
                         site_id: Some(card_id.clone()),
                     }),
-                    Effect::select_square(player_id, valid_zones),
+                    Effect::select_zone(player_id, valid_zones),
                 ];
                 self.state.effects.extend(effects);
                 self.state.input_status = InputStatus::None;
@@ -615,7 +627,7 @@ impl Game {
                             player_id: player_id.clone(),
                             card_id: card_id.clone(),
                         };
-                        let effects = vec![Effect::select_square(&player_id, valid_squares)];
+                        let effects = vec![Effect::select_zone(&player_id, valid_squares)];
                         self.state.effects.extend(effects);
                     }
                     (_, Zone::Realm(_)) => {

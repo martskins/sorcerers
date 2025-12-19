@@ -108,6 +108,10 @@ impl Zone {
             Direction::Down => Zone::Realm(square.saturating_sub(5)),
             Direction::Left => Zone::Realm(square.saturating_sub(1)),
             Direction::Right => Zone::Realm(square.saturating_add(1)),
+            Direction::TopLeft => Zone::Realm(square.saturating_add(4)),
+            Direction::TopRight => Zone::Realm(square.saturating_add(6)),
+            Direction::BottomLeft => Zone::Realm(square.saturating_sub(6)),
+            Direction::BottomRight => Zone::Realm(square.saturating_sub(4)),
         };
 
         match direction {
@@ -118,7 +122,7 @@ impl Zone {
 
                 Some(zone)
             }
-            Direction::Left | Direction::Right => Some(zone),
+            _ => Some(zone),
         }
     }
 
@@ -177,6 +181,33 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBoxedCard {
     fn get_id(&self) -> &uuid::Uuid;
     fn get_base(&self) -> &CardBase;
     fn get_base_mut(&mut self) -> &mut CardBase;
+
+    fn get_zones_within_steps(&self, state: &State, steps: u8) -> Vec<Zone> {
+        let mut visited = Vec::new();
+        let mut to_visit = vec![(self.get_zone().clone(), 0)];
+
+        while let Some((current_zone, current_step)) = to_visit.pop() {
+            if current_step > steps {
+                continue;
+            }
+
+            if !visited.contains(&current_zone) {
+                visited.push(current_zone.clone());
+
+                if self.has_modifier(state, Modifier::Airborne) {
+                    for nearby in current_zone.get_nearby() {
+                        to_visit.push((nearby, current_step + 1));
+                    }
+                } else {
+                    for adjacent in current_zone.get_adjacent() {
+                        to_visit.push((adjacent, current_step + 1));
+                    }
+                }
+            }
+        }
+
+        visited
+    }
 
     fn set_status(&mut self, _status: &Box<dyn std::any::Any>) -> anyhow::Result<()> {
         Err(anyhow::anyhow!("set_status not implemented for {}", self.get_name()))

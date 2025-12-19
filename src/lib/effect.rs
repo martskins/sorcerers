@@ -216,7 +216,7 @@ impl Effect {
         }
     }
 
-    pub fn select_square(player_id: &PlayerId, zones: Vec<Zone>) -> Self {
+    pub fn select_zone(player_id: &PlayerId, zones: Vec<Zone>) -> Self {
         Effect::SetPlayerStatus {
             status: Status::SelectingZone {
                 player_id: player_id.clone(),

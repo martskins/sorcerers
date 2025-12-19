@@ -42,6 +42,10 @@ pub mod battlemage;
 pub use battlemage::*;
 pub mod sparkmage;
 pub use sparkmage::*;
+pub mod minor_explosion;
+pub use minor_explosion::*;
+pub mod major_explosion;
+pub use major_explosion::*;
 
 use crate::{card::Card, game::PlayerId};
 
@@ -69,6 +73,8 @@ pub fn from_beta_name(name: &str, player_id: PlayerId) -> Option<Box<dyn Card>> 
         ShiftingSands::NAME => Some(Box::new(ShiftingSands::new(player_id))),
         Vesuvius::NAME => Some(Box::new(Vesuvius::new(player_id))),
         ColickyDragonettes::NAME => Some(Box::new(ColickyDragonettes::new(player_id))),
+        MinorExplosion::NAME => Some(Box::new(MinorExplosion::new(player_id))),
+        MajorExplosion::NAME => Some(Box::new(MajorExplosion::new(player_id))),
         _ => None,
     }
 }
