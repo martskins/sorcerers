@@ -35,7 +35,7 @@ pub enum Effect {
     },
     SetCardStatus {
         card_id: uuid::Uuid,
-        status: Box<dyn std::any::Any>,
+        status: Box<dyn std::any::Any + Send + Sync>,
     },
     AddModifier {
         card_id: uuid::Uuid,
@@ -199,7 +199,7 @@ impl Effect {
         }
     }
 
-    pub fn set_card_status(card_id: &uuid::Uuid, status: impl std::any::Any) -> Self {
+    pub fn set_card_status(card_id: &uuid::Uuid, status: impl std::any::Any + Send + Sync) -> Self {
         Effect::SetCardStatus {
             card_id: card_id.clone(),
             status: Box::new(status),

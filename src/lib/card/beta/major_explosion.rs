@@ -75,7 +75,7 @@ impl Card for MajorExplosion {
         ]
     }
 
-    fn set_status(&mut self, _status: &Box<dyn std::any::Any>) -> anyhow::Result<()> {
+    fn set_status(&mut self, _status: &Box<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
         let status = _status
             .downcast_ref::<Status>()
             .ok_or_else(|| anyhow::anyhow!("Failed to downcast status"))?;

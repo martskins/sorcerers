@@ -7,9 +7,10 @@ use crate::{
     },
     state::{Phase, State},
 };
+use async_channel::{Receiver, Sender};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, iter::Sum, sync::Arc};
-use tokio::net::UdpSocket;
+use tokio::{net::UdpSocket, sync::mpsc::UnboundedReceiver};
 
 pub type PlayerId = uuid::Uuid;
 
@@ -256,7 +257,7 @@ where
     }
 }
 
-pub trait Action: std::fmt::Debug + CloneBoxedAction {
+pub trait Action: std::fmt::Debug + Send + Sync + CloneBoxedAction {
     fn get_name(&self) -> &str;
     fn on_select(&self, card_id: Option<&uuid::Uuid>, player_id: &PlayerId, state: &State) -> Vec<Effect>;
 }
@@ -427,16 +428,54 @@ pub struct Game {
     pub state: State,
     pub addrs: HashMap<PlayerId, Socket>,
     pub socket: Arc<UdpSocket>,
+    client_receiver: Receiver<ClientMessage>,
+    effects_sender: Sender<Effect>,
+    effects_receiver: Receiver<Effect>,
 }
 
 impl Game {
-    pub fn new(player1: uuid::Uuid, player2: uuid::Uuid, socket: Arc<UdpSocket>, addr1: Socket, addr2: Socket) -> Self {
+    pub fn new(
+        player1: uuid::Uuid,
+        player2: uuid::Uuid,
+        socket: Arc<UdpSocket>,
+        addr1: Socket,
+        addr2: Socket,
+        receiver: Receiver<ClientMessage>,
+    ) -> Self {
+        let (tx, rx) = async_channel::unbounded();
         Game {
             id: uuid::Uuid::new_v4(),
             state: State::new(Vec::new(), HashMap::new()),
             players: vec![player1, player2],
             addrs: HashMap::from([(player1, addr1), (player2, addr2)]),
             socket,
+            client_receiver: receiver,
+            effects_receiver: rx,
+            effects_sender: tx,
+        }
+    }
+
+    pub async fn start(&mut self) -> anyhow::Result<()> {
+        self.state.effects.extend(self.place_avatars());
+        self.state.effects.extend(self.draw_initial_six());
+        self.broadcast(&ServerMessage::GameStarted {
+            player1: self.players[0].clone(),
+            player2: self.players[1].clone(),
+            game_id: self.id.clone(),
+        })
+        .await?;
+        self.process_effects()?;
+        self.send_sync().await?;
+
+        loop {
+            tokio::select! {
+                Ok(message) = self.client_receiver.recv() => {
+                    self.process_message(&message).await?;
+                }
+                Ok(effect) = self.effects_receiver.recv() => {
+                    effect.apply(&mut self.state)?;
+                }
+            }
         }
     }
 
@@ -873,11 +912,6 @@ impl Game {
         }
 
         Ok(())
-    }
-
-    pub async fn send_to_player(&self, message: &ServerMessage, player_id: &PlayerId) -> anyhow::Result<()> {
-        let addr = self.addrs.get(player_id).unwrap();
-        self.send_message(message, addr).await
     }
 
     pub async fn broadcast(&self, message: &ServerMessage) -> anyhow::Result<()> {

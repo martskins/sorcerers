@@ -1,3 +1,4 @@
+use async_channel::Sender;
 use sorcerers::{
     card::{self, *},
     deck::precon,
@@ -12,9 +13,8 @@ use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 
 pub struct Server {
     pub socket: Arc<tokio::net::UdpSocket>,
-    pub active_games: HashMap<uuid::Uuid, Game>,
+    pub games: HashMap<uuid::Uuid, Sender<ClientMessage>>,
     pub looking_for_match: Vec<uuid::Uuid>,
-    pub player_to_game: HashMap<uuid::Uuid, uuid::Uuid>,
     pub sockets: HashMap<uuid::Uuid, Socket>,
 }
 
@@ -25,19 +25,10 @@ impl Server {
 
         Self {
             socket: Arc::new(socket),
-            active_games: HashMap::new(),
-            player_to_game: HashMap::new(),
             looking_for_match,
             sockets,
+            games: HashMap::new(),
         }
-    }
-
-    pub async fn update(&mut self) -> anyhow::Result<()> {
-        for game in self.active_games.values_mut() {
-            game.update().await?;
-        }
-
-        Ok(())
     }
 
     pub async fn process_message(&mut self, message: &[u8], addr: SocketAddr) -> anyhow::Result<()> {
@@ -51,25 +42,14 @@ impl Server {
 
                 match self.find_match() {
                     Some((player1, player2)) => {
-                        let game = self.create_game(&player1, &player2);
-                        game.state.effects.extend(game.place_avatars());
-                        game.state.effects.extend(game.draw_initial_six());
-                        game.broadcast(&ServerMessage::GameStarted {
-                            player1,
-                            player2,
-                            game_id: game.id.clone(),
-                        })
-                        .await?;
-                        game.process_effects()?;
-                        game.send_sync().await?;
+                        self.create_game(&player1, &player2).await?;
                     }
                     None => {}
                 }
             }
             Message::ClientMessage(msg) => {
                 let game_id = msg.game_id();
-                let game = self.active_games.get_mut(&game_id).unwrap();
-                game.process_message(&msg).await?;
+                self.games.get_mut(&game_id).unwrap().send(msg.clone()).await?;
             }
             _ => {}
         }
@@ -83,7 +63,7 @@ impl Server {
         Ok(())
     }
 
-    fn create_game(&mut self, player1: &uuid::Uuid, player2: &uuid::Uuid) -> &mut Game {
+    async fn create_game(&mut self, player1: &uuid::Uuid, player2: &uuid::Uuid) -> anyhow::Result<()> {
         let addr1 = self.sockets.remove(player1).unwrap().clone();
         let addr2 = self.sockets.remove(player2).unwrap().clone();
         let (deck1, cards1) = precon::beta::fire(player1.clone());
@@ -164,13 +144,15 @@ impl Server {
         state.resources.get_mut(player2).unwrap().thresholds.water = 1;
         state.resources.get_mut(player2).unwrap().thresholds.earth = 1;
 
-        let mut game = Game::new(player1.clone(), player2.clone(), self.socket.clone(), addr1, addr2);
+        let (tx, rx) = async_channel::unbounded::<ClientMessage>();
+        let mut game = Game::new(player1.clone(), player2.clone(), self.socket.clone(), addr1, addr2, rx);
         game.state = state;
         let game_id = game.id;
-        self.player_to_game.insert(player1.clone(), game.id);
-        self.player_to_game.insert(player2.clone(), game.id);
-        self.active_games.insert(game_id, game);
-        self.active_games.get_mut(&game_id).unwrap()
+        self.games.insert(game_id, tx);
+        tokio::spawn(async move {
+            game.start().await.unwrap();
+        });
+        Ok(())
     }
 
     fn find_match(&mut self) -> Option<(uuid::Uuid, uuid::Uuid)> {

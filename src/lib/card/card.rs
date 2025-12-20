@@ -209,7 +209,7 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBoxedCard {
         visited
     }
 
-    fn set_status(&mut self, _status: &Box<dyn std::any::Any>) -> anyhow::Result<()> {
+    fn set_status(&mut self, _status: &Box<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
         Err(anyhow::anyhow!("set_status not implemented for {}", self.get_name()))
     }
 

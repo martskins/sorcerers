@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+async-channel = "2.5.0"
+crossbeam = "0.8.4"
+oneshot = "0.1.11"
 typetag = "0.2.21"
 erased-serde = "0.4.9"
 clap = { version = "4.5.53", features = ["derive"] }

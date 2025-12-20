@@ -15,11 +15,11 @@ async fn main() -> anyhow::Result<()> {
             res = server.socket.recv_from(&mut buf) => {
                 let (len, addr) = res.unwrap();
                 server.process_message(&buf[..len], addr).await.unwrap();
-                server.update().await.unwrap();
+                // server.update().await.unwrap();
             }
-            _ = interval.tick() => {
-                server.update().await.unwrap();
-            }
+            // _ = interval.tick() => {
+            //     server.update().await.unwrap();
+            // }
         }
     }
 }
