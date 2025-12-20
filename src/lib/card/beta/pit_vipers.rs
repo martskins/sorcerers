@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, MessageHandler, Modifier, Plane, UnitBase, Zone},
+    card::{Card, CardBase, Edition, Modifier, Plane, UnitBase, Zone},
     game::{PlayerId, Thresholds},
 };
 
@@ -70,5 +70,3 @@ impl Card for PitVipers {
         Some(&mut self.unit_base)
     }
 }
-
-impl MessageHandler for PitVipers {}

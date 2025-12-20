@@ -15,7 +15,7 @@ use macroquad::{
 };
 use sorcerers::{
     card::{CardInfo, CardType, Plane, Zone},
-    game::{Element, PlayerId, Resources, Status},
+    game::{Element, PlayerId, Resources},
     networking::{
         self,
         message::{ClientMessage, ServerMessage},
@@ -44,6 +44,15 @@ fn draw_vortex_icon(x: f32, y: f32, size: f32, color: Color) {
     }
 }
 
+#[derive(Debug, PartialEq)]
+pub enum Status {
+    None,
+    SelectingAction,
+    DrawCard,
+    SelectingCard { cards: Vec<uuid::Uuid> },
+    SelectingZone { zones: Vec<Zone> },
+}
+
 #[derive(Debug)]
 pub struct Game {
     pub player_id: PlayerId,
@@ -53,11 +62,12 @@ pub struct Game {
     pub cards: Vec<CardInfo>,
     pub resources: HashMap<PlayerId, Resources>,
     pub client: networking::client::Client,
-    pub player_status: Status,
     pub current_player: PlayerId,
     pub is_player_one: bool,
     action_window_position: Option<Vec2>,
     action_window_size: Option<Vec2>,
+    actions: Vec<String>,
+    status: Status,
 }
 
 impl Game {
@@ -75,12 +85,13 @@ impl Game {
             game_id: uuid::Uuid::nil(),
             cells,
             client,
-            player_status: Status::None,
             current_player: uuid::Uuid::nil(),
             is_player_one: false,
             resources: HashMap::new(),
             action_window_position: None,
             action_window_size: None,
+            actions: Vec::new(),
+            status: Status::None,
         }
     }
 
@@ -135,6 +146,19 @@ impl Game {
 
     pub async fn process_message(&mut self, message: &ServerMessage) -> anyhow::Result<()> {
         match message {
+            ServerMessage::PickZone { zones, .. } => {
+                self.status = Status::SelectingZone { zones: zones.clone() };
+                Ok(())
+            }
+            ServerMessage::PickCard { cards, .. } => {
+                self.status = Status::SelectingCard { cards: cards.clone() };
+                Ok(())
+            }
+            ServerMessage::PickAction { actions, .. } => {
+                self.actions = actions.clone();
+                self.status = Status::SelectingAction;
+                Ok(())
+            }
             ServerMessage::GameStarted { game_id, player1, .. } => {
                 // Flip the board for player 2. Use player1 instead of the is_player_one method
                 // because state is not set at this point.
@@ -152,7 +176,6 @@ impl Game {
             ServerMessage::Sync {
                 cards,
                 current_player,
-                player_status,
                 resources,
             } => {
                 // Sort so that cards that are submerged or burrowed are drawn first, then sites, then
@@ -177,7 +200,6 @@ impl Game {
                 self.cards = cards.clone();
                 self.current_player = current_player.clone();
                 self.resources = resources.clone();
-                self.player_status = player_status.clone();
                 Ok(())
             }
             _ => Ok(()),
@@ -253,10 +275,6 @@ impl Game {
     }
 
     async fn render_gui(&mut self) -> anyhow::Result<()> {
-        if self.player_status == Status::None {
-            return Ok(());
-        }
-
         let screen_rect = screen_rect();
         let base_x: f32 = 20.0;
         let player_y: f32 = screen_rect.h - 70.0;
@@ -273,9 +291,7 @@ impl Game {
         Game::render_resources(base_x, OPPONENT_Y, &opponent_resources);
 
         let turn_label = if self.is_players_turn(&self.player_id) {
-            if let Status::WaitingForCardDraw { player_id, .. } = self.player_status
-                && player_id == self.player_id
-            {
+            if let Status::DrawCard { .. } = self.status {
                 "Draw a Card"
             } else {
                 "Your Turn"
@@ -288,10 +304,7 @@ impl Game {
         draw_text(player1, screen_rect.w / 2.0 - 150.0, 30.0, FONT_SIZE, WHITE);
         draw_text(turn_label, screen_rect.w / 2.0 - 50.0, 30.0, FONT_SIZE, WHITE);
 
-        let is_in_turn = self.player_status
-            == Status::WaitingForPlay {
-                player_id: self.player_id,
-            };
+        let is_in_turn = self.current_player == self.player_id;
         if is_in_turn {
             if ui::root_ui().button(Vec2::new(screen_rect.w - 100.0, screen_rect.h - 40.0), "End Turn") {
                 self.client.send(ClientMessage::EndTurn {
@@ -301,47 +314,22 @@ impl Game {
             }
         }
 
-        match &self.player_status {
-            Status::SelectingDirection { player_id, directions } if player_id == &self.player_id => {
-                if self.action_window_position.is_none() {
-                    // self.action_window_position = Some(mouse_position().into());
-                    self.action_window_position = Some(Vec2::new(0.0, 0.0).into());
-                }
+        match self.status {
+            Status::SelectingCard { ref cards } => {
+                let valid_cards: Vec<&CardDisplay> =
+                    self.card_displays.iter().filter(|c| cards.contains(&c.id)).collect();
 
-                if self.action_window_size.is_none() {
-                    self.action_window_size = Some(Vec2::new(100.0, 30.0 * directions.len() as f32 + 20.0));
+                for card in valid_cards {
+                    draw_rectangle_lines(card.rect.x, card.rect.y, card.rect.w, card.rect.h, 3.0, WHITE);
                 }
-
-                ui::root_ui().window(
-                    ACTION_SELECTION_WINDOW_ID,
-                    self.action_window_position.unwrap(),
-                    self.action_window_size.unwrap(),
-                    |ui| {
-                        for (idx, direction) in directions.iter().enumerate() {
-                            if ui.button(Vec2::new(0.0, 30.0 * idx as f32), direction.get_name()) {
-                                println!("Picked direction: {:?}", direction);
-                                let direction = directions[idx].normalise(!self.is_player_one);
-                                println!("Normalised direction: {:?}", direction);
-                                self.client
-                                    .send(ClientMessage::PickDirection {
-                                        player_id: self.player_id,
-                                        game_id: self.game_id,
-                                        direction,
-                                    })
-                                    .unwrap();
-                            }
-                        }
-                    },
-                );
             }
-            Status::SelectingAction { player_id, actions } if player_id == &self.player_id => {
+            Status::SelectingAction => {
                 if self.action_window_position.is_none() {
-                    // self.action_window_position = Some(mouse_position().into());
                     self.action_window_position = Some(Vec2::new(0.0, 0.0).into());
                 }
 
                 if self.action_window_size.is_none() {
-                    self.action_window_size = Some(Vec2::new(100.0, 30.0 * actions.len() as f32 + 20.0));
+                    self.action_window_size = Some(Vec2::new(100.0, 30.0 * self.actions.len() as f32 + 20.0));
                 }
 
                 ui::root_ui().window(
@@ -349,133 +337,199 @@ impl Game {
                     self.action_window_position.unwrap(),
                     self.action_window_size.unwrap(),
                     |ui| {
-                        for (idx, action) in actions.iter().enumerate() {
-                            if ui.button(Vec2::new(0.0, 30.0 * idx as f32), action.to_string()) {
+                        for (idx, action) in self.actions.iter().enumerate() {
+                            if ui.button(Vec2::new(0.0, 30.0 * idx as f32), action.as_str()) {
                                 self.client
                                     .send(ClientMessage::PickAction {
-                                        action_idx: idx,
-                                        player_id: self.player_id,
                                         game_id: self.game_id,
+                                        player_id: self.player_id,
+                                        action_idx: idx,
                                     })
                                     .unwrap();
+                                self.status = Status::None;
                             }
                         }
                     },
                 );
             }
-            Status::SelectingCard {
-                player_id, valid_cards, ..
-            } if player_id == &self.player_id => {
-                let valid_cards: Vec<&CardDisplay> = self
-                    .card_displays
-                    .iter()
-                    .filter(|c| valid_cards.contains(&c.id))
-                    .collect();
-
-                let mut scale = 1.0;
-                for card in valid_cards {
-                    if card.is_hovered {
-                        scale = 1.2;
-                    }
-
-                    draw_rectangle_lines(
-                        card.rect.x,
-                        card.rect.y,
-                        card.rect.w * scale,
-                        card.rect.h * scale,
-                        3.0,
-                        WHITE,
-                    );
-                }
-            }
-            _ => {} //
-                    // PlayerStatus::SelectingCardOutsideRealm {
-                    //     player_id,
-                    //     owner,
-                    //     spellbook,
-                    //     cemetery,
-                    //     hand,
-                    //     after_select,
-                    // } => {
-                    //     if player_id != &self.player_id {
-                    //         return Ok(());
-                    //     }
-                    //
-                    //     let mut number_of_zones = 0;
-                    //     if spellbook.is_some() {
-                    //         number_of_zones += 1;
-                    //     }
-                    //
-                    //     if hand.is_some() {
-                    //         number_of_zones += 1;
-                    //     }
-                    //
-                    //     if cemetery.is_some() {
-                    //         number_of_zones += 1;
-                    //     }
-                    //
-                    //     let width = screen_width() - 20.0;
-                    //     let height = screen_height() - 20.0;
-                    //     let mut images = HashMap::new();
-                    //     let cards_to_display: Vec<CardDisplay> = self
-                    //         .card_displays
-                    //         .iter()
-                    //         .filter(|c| {
-                    //             if owner.is_some() {
-                    //                 return c.owner_id == owner.as_ref().unwrap();
-                    //             }
-                    //
-                    //             true
-                    //         })
-                    //         .map(|c| c.card.clone())
-                    //         .collect();
-                    //
-                    //     for card in &cards_to_display {
-                    //         images.insert(card.name, card.image);
-                    //     }
-                    //
-                    //     let mut all_valid_cards: Vec<uuid::Uuid> = spellbook.as_deref().unwrap_or_default().into();
-                    //     all_valid_cards.extend(cemetery.as_deref().unwrap_or_default());
-                    //     all_valid_cards.extend(hand.as_deref().unwrap_or_default());
-                    //     ui::root_ui().window(
-                    //         CARD_SELECTION_WINDOW_ID,
-                    //         Vec2::new(10.0, 10.0),
-                    //         Vec2::new(width, height),
-                    //         |ui| {
-                    //             for (idx, card) in cards_to_display.iter().enumerate() {
-                    //                 if Texture::new(images.get(card.get_name()).unwrap().clone())
-                    //                     .position(Vec2::new(10.0, 30.0 * idx as f32))
-                    //                     .size(card_width(), card_height())
-                    //                     .ui(ui)
-                    //                 {
-                    //                     self.client
-                    //                         .send(Message::SummonMinion {
-                    //                             player_id: self.player_id.clone(),
-                    //                             card_id: card.get_id().clone(),
-                    //                             game_id: self.game_id.clone(),
-                    //                             square: 0,
-                    //                         })
-                    //                         .unwrap();
-                    //                 }
-                    //
-                    //                 // if spellbook.as_deref().unwrap_or_default().contains(card.get_id()) {
-                    //                 //     draw_rectangle_lines(10.0, 30.0 * idx as f32, card_width(), card_height(), 3.0, GREEN);
-                    //                 // }
-                    //                 //
-                    //                 // if cemetery.as_deref().unwrap_or_default().contains(card.get_id()) {
-                    //                 //     draw_rectangle_lines(10.0, 30.0 * idx as f32, card_width(), card_height(), 3.0, GREEN);
-                    //                 // }
-                    //                 //
-                    //                 // if hand.as_deref().unwrap_or_default().contains(card.get_id()) {
-                    //                 //     draw_rectangle_lines(10.0, 30.0 * idx as f32, card_width(), card_height(), 3.0, GREEN);
-                    //                 // }
-                    //             }
-                    //         },
-                    //     );
-                    // }
-
-                    // _ => {}
+            _ => {}
         }
+
+        // match &self.player_status {
+        //     Status::SelectingDirection { player_id, directions } if player_id == &self.player_id => {
+        //         if self.action_window_position.is_none() {
+        //             // self.action_window_position = Some(mouse_position().into());
+        //             self.action_window_position = Some(Vec2::new(0.0, 0.0).into());
+        //         }
+        //
+        //         if self.action_window_size.is_none() {
+        //             self.action_window_size = Some(Vec2::new(100.0, 30.0 * directions.len() as f32 + 20.0));
+        //         }
+        //
+        //         ui::root_ui().window(
+        //             ACTION_SELECTION_WINDOW_ID,
+        //             self.action_window_position.unwrap(),
+        //             self.action_window_size.unwrap(),
+        //             |ui| {
+        //                 for (idx, direction) in directions.iter().enumerate() {
+        //                     if ui.button(Vec2::new(0.0, 30.0 * idx as f32), direction.get_name()) {
+        //                         println!("Picked direction: {:?}", direction);
+        //                         let direction = directions[idx].normalise(!self.is_player_one);
+        //                         println!("Normalised direction: {:?}", direction);
+        //                         self.client
+        //                             .send(ClientMessage::PickDirection {
+        //                                 player_id: self.player_id,
+        //                                 game_id: self.game_id,
+        //                                 direction,
+        //                             })
+        //                             .unwrap();
+        //                     }
+        //                 }
+        //             },
+        //         );
+        //     }
+        //     Status::SelectingAction { player_id, actions } if player_id == &self.player_id => {
+        //         if self.action_window_position.is_none() {
+        //             // self.action_window_position = Some(mouse_position().into());
+        //             self.action_window_position = Some(Vec2::new(0.0, 0.0).into());
+        //         }
+        //
+        //         if self.action_window_size.is_none() {
+        //             self.action_window_size = Some(Vec2::new(100.0, 30.0 * actions.len() as f32 + 20.0));
+        //         }
+        //
+        //         ui::root_ui().window(
+        //             ACTION_SELECTION_WINDOW_ID,
+        //             self.action_window_position.unwrap(),
+        //             self.action_window_size.unwrap(),
+        //             |ui| {
+        //                 for (idx, action) in actions.iter().enumerate() {
+        //                     if ui.button(Vec2::new(0.0, 30.0 * idx as f32), action.to_string()) {
+        //                         self.client
+        //                             .send(ClientMessage::PickAction {
+        //                                 action_idx: idx,
+        //                                 player_id: self.player_id,
+        //                                 game_id: self.game_id,
+        //                             })
+        //                             .unwrap();
+        //                     }
+        //                 }
+        //             },
+        //         );
+        //     }
+        //     Status::SelectingCard {
+        //         player_id, valid_cards, ..
+        //     } if player_id == &self.player_id => {
+        //         let valid_cards: Vec<&CardDisplay> = self
+        //             .card_displays
+        //             .iter()
+        //             .filter(|c| valid_cards.contains(&c.id))
+        //             .collect();
+        //
+        //         let mut scale = 1.0;
+        //         for card in valid_cards {
+        //             if card.is_hovered {
+        //                 scale = 1.2;
+        //             }
+        //
+        //             draw_rectangle_lines(
+        //                 card.rect.x,
+        //                 card.rect.y,
+        //                 card.rect.w * scale,
+        //                 card.rect.h * scale,
+        //                 3.0,
+        //                 WHITE,
+        //             );
+        //         }
+        //     }
+        //     _ => {} //
+        //             // PlayerStatus::SelectingCardOutsideRealm {
+        //             //     player_id,
+        //             //     owner,
+        //             //     spellbook,
+        //             //     cemetery,
+        //             //     hand,
+        //             //     after_select,
+        //             // } => {
+        //             //     if player_id != &self.player_id {
+        //             //         return Ok(());
+        //             //     }
+        //             //
+        //             //     let mut number_of_zones = 0;
+        //             //     if spellbook.is_some() {
+        //             //         number_of_zones += 1;
+        //             //     }
+        //             //
+        //             //     if hand.is_some() {
+        //             //         number_of_zones += 1;
+        //             //     }
+        //             //
+        //             //     if cemetery.is_some() {
+        //             //         number_of_zones += 1;
+        //             //     }
+        //             //
+        //             //     let width = screen_width() - 20.0;
+        //             //     let height = screen_height() - 20.0;
+        //             //     let mut images = HashMap::new();
+        //             //     let cards_to_display: Vec<CardDisplay> = self
+        //             //         .card_displays
+        //             //         .iter()
+        //             //         .filter(|c| {
+        //             //             if owner.is_some() {
+        //             //                 return c.owner_id == owner.as_ref().unwrap();
+        //             //             }
+        //             //
+        //             //             true
+        //             //         })
+        //             //         .map(|c| c.card.clone())
+        //             //         .collect();
+        //             //
+        //             //     for card in &cards_to_display {
+        //             //         images.insert(card.name, card.image);
+        //             //     }
+        //             //
+        //             //     let mut all_valid_cards: Vec<uuid::Uuid> = spellbook.as_deref().unwrap_or_default().into();
+        //             //     all_valid_cards.extend(cemetery.as_deref().unwrap_or_default());
+        //             //     all_valid_cards.extend(hand.as_deref().unwrap_or_default());
+        //             //     ui::root_ui().window(
+        //             //         CARD_SELECTION_WINDOW_ID,
+        //             //         Vec2::new(10.0, 10.0),
+        //             //         Vec2::new(width, height),
+        //             //         |ui| {
+        //             //             for (idx, card) in cards_to_display.iter().enumerate() {
+        //             //                 if Texture::new(images.get(card.get_name()).unwrap().clone())
+        //             //                     .position(Vec2::new(10.0, 30.0 * idx as f32))
+        //             //                     .size(card_width(), card_height())
+        //             //                     .ui(ui)
+        //             //                 {
+        //             //                     self.client
+        //             //                         .send(Message::SummonMinion {
+        //             //                             player_id: self.player_id.clone(),
+        //             //                             card_id: card.get_id().clone(),
+        //             //                             game_id: self.game_id.clone(),
+        //             //                             square: 0,
+        //             //                         })
+        //             //                         .unwrap();
+        //             //                 }
+        //             //
+        //             //                 // if spellbook.as_deref().unwrap_or_default().contains(card.get_id()) {
+        //             //                 //     draw_rectangle_lines(10.0, 30.0 * idx as f32, card_width(), card_height(), 3.0, GREEN);
+        //             //                 // }
+        //             //                 //
+        //             //                 // if cemetery.as_deref().unwrap_or_default().contains(card.get_id()) {
+        //             //                 //     draw_rectangle_lines(10.0, 30.0 * idx as f32, card_width(), card_height(), 3.0, GREEN);
+        //             //                 // }
+        //             //                 //
+        //             //                 // if hand.as_deref().unwrap_or_default().contains(card.get_id()) {
+        //             //                 //     draw_rectangle_lines(10.0, 30.0 * idx as f32, card_width(), card_height(), 3.0, GREEN);
+        //             //                 // }
+        //             //             }
+        //             //         },
+        //             //     );
+        //             // }
+        //
+        //             // _ => {}
+        // }
 
         Ok(())
     }
@@ -550,8 +604,8 @@ impl Game {
             self.card_displays.get_mut(idx).unwrap().is_hovered = true;
         }
 
-        match &self.player_status {
-            Status::WaitingForPlay { player_id } if player_id == &self.player_id => {
+        match &self.status {
+            Status::None => {
                 let mut card_selected = None;
                 for card_display in &mut self
                     .card_displays
@@ -574,14 +628,9 @@ impl Game {
                         .unwrap();
                 }
             }
-            Status::SelectingCard {
-                player_id, valid_cards, ..
-            } if player_id == &self.player_id => {
-                let valid_cards: Vec<&CardDisplay> = self
-                    .card_displays
-                    .iter()
-                    .filter(|c| valid_cards.contains(&c.id))
-                    .collect();
+            Status::SelectingCard { cards, .. } => {
+                let valid_cards: Vec<&CardDisplay> =
+                    self.card_displays.iter().filter(|c| cards.contains(&c.id)).collect();
                 let mut selected_id = None;
                 for card in valid_cards {
                     if card.rect.contains(mouse_position.into()) && is_mouse_button_released(MouseButton::Left) {
@@ -593,6 +642,7 @@ impl Game {
                     let card = self.card_displays.iter_mut().find(|c| c.id == id).unwrap();
                     card.is_selected = !card.is_selected;
 
+                    println!("Card selected: {:?}", card.is_selected);
                     if card.is_selected {
                         self.client
                             .send(ClientMessage::PickCard {
@@ -601,6 +651,8 @@ impl Game {
                                 card_id: id.clone(),
                             })
                             .unwrap();
+
+                        self.status = Status::None;
                     }
                 }
             }
@@ -609,44 +661,31 @@ impl Game {
     }
 
     fn handle_square_click(&mut self, mouse_position: Vec2) {
-        if let Status::SelectingZone {
-            valid_zones, player_id, ..
-        } = &self.player_status
-        {
-            if player_id != &self.player_id {
-                return;
-            }
+        match &self.status {
+            Status::SelectingZone { zones } => {
+                let zones = zones.clone();
+                for (idx, cell) in self.cells.iter().enumerate() {
+                    if zones.iter().find(|i| i == &&Zone::Realm(cell.id)).is_none() {
+                        continue;
+                    }
 
-            let mut played_card = false;
-            for (idx, cell) in self.cells.iter().enumerate() {
-                if valid_zones.iter().find(|i| i == &&Zone::Realm(cell.id)).is_none() {
-                    continue;
-                }
+                    if cell.rect.contains(mouse_position.into()) {
+                        let square = self.cells[idx].id;
+                        if is_mouse_button_released(MouseButton::Left) {
+                            self.client
+                                .send(ClientMessage::PickSquare {
+                                    player_id: self.player_id.clone(),
+                                    game_id: self.game_id.clone(),
+                                    square,
+                                })
+                                .unwrap();
 
-                if cell.rect.contains(mouse_position.into()) {
-                    let square = self.cells[idx].id;
-                    if is_mouse_button_released(MouseButton::Left) {
-                        self.client
-                            .send(ClientMessage::PickSquare {
-                                player_id: self.player_id.clone(),
-                                game_id: self.game_id.clone(),
-                                square,
-                            })
-                            .unwrap();
-                        played_card = true;
+                            self.status = Status::None;
+                        }
                     }
                 }
             }
-
-            if played_card {
-                self.clear_selected_cards();
-            }
-        }
-    }
-
-    fn clear_selected_cards(&mut self) {
-        for card_display in &mut self.card_displays {
-            card_display.is_selected = false;
+            _ => {}
         }
     }
 
@@ -671,19 +710,8 @@ impl Game {
                 WHITE,
             );
 
-            if let Status::SelectingZone {
-                valid_zones, player_id, ..
-            } = &self.player_status
-            {
-                if &self.player_id != player_id {
-                    continue;
-                }
-
-                if valid_zones
-                    .iter()
-                    .find(|i| i == &&Zone::Realm(cell_display.id))
-                    .is_some()
-                {
+            if let Status::SelectingZone { zones } = &self.status {
+                if zones.iter().find(|i| i == &&Zone::Realm(cell_display.id)).is_some() {
                     draw_rectangle_lines(
                         cell_display.rect.x,
                         cell_display.rect.y,
@@ -787,11 +815,7 @@ impl Game {
     }
 
     fn draw_card(&self, card_type: CardType) -> anyhow::Result<()> {
-        if let Status::WaitingForCardDraw { player_id, .. } = &self.player_status {
-            if player_id != &self.player_id {
-                return Ok(());
-            }
-
+        if Status::DrawCard == self.status {
             self.client
                 .send(ClientMessage::DrawCard {
                     card_type,

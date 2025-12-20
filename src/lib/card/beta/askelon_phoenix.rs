@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, MessageHandler, Modifier, Plane, UnitBase, Zone},
+    card::{Card, CardBase, Edition, Modifier, Plane, UnitBase, Zone},
     effect::{Counter, Effect},
     game::{Element, PlayerId, Thresholds},
     state::State,
@@ -91,5 +91,3 @@ impl Card for AskelonPhoenix {
         effects
     }
 }
-
-impl MessageHandler for AskelonPhoenix {}

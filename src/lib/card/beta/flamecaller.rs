@@ -1,7 +1,7 @@
 use crate::{
-    card::{AvatarBase, Card, CardBase, Edition, MessageHandler, Plane, UnitBase, Zone},
+    card::{AvatarBase, Card, CardBase, Edition, Plane, UnitBase, Zone},
     effect::Effect,
-    game::{Action, CARDINAL_DIRECTIONS, Element, InputStatus, PlayerId, Thresholds},
+    game::{Action, CARDINAL_DIRECTIONS, Element, PlayerId, Thresholds, pick_direction},
     state::State,
 };
 
@@ -10,6 +10,7 @@ enum FlamecallerAction {
     ShootProjectile,
 }
 
+#[async_trait::async_trait]
 impl Action for FlamecallerAction {
     fn get_name(&self) -> &str {
         match self {
@@ -17,10 +18,10 @@ impl Action for FlamecallerAction {
         }
     }
 
-    fn on_select(
+    async fn on_select(
         &self,
         card_id: Option<&uuid::Uuid>,
-        player_id: &PlayerId,
+        _player_id: &PlayerId,
         state: &State,
     ) -> Vec<crate::effect::Effect> {
         match self {
@@ -41,17 +42,16 @@ impl Action for FlamecallerAction {
                     .sum::<Thresholds>()
                     .fire;
                 let avatar = state.get_card(card_id.unwrap()).unwrap();
+                let direction = pick_direction(avatar.get_owner_id(), &CARDINAL_DIRECTIONS, state).await;
                 let mut effects = vec![
-                    Effect::set_input_status(InputStatus::ShootingProjectile {
-                        player_id: player_id.clone(),
-                        card_id: card_id.unwrap().clone(),
-                        from: avatar.get_zone().clone(),
-                        caster_id: Some(card_id.unwrap().clone()),
-                        direction: None,
+                    Effect::ShootProjectile {
+                        player_id: avatar.get_owner_id().clone(),
+                        from_zone: avatar.get_zone().clone(),
+                        shooter: card_id.unwrap().clone(),
+                        direction,
                         damage,
                         piercing: false,
-                    }),
-                    Effect::select_direction(player_id, &CARDINAL_DIRECTIONS),
+                    },
                     Effect::tap_card(card_id.unwrap()),
                 ];
                 for minion_id in fire_minions {
@@ -146,5 +146,3 @@ impl Card for Flamecaller {
         actions
     }
 }
-
-impl MessageHandler for Flamecaller {}

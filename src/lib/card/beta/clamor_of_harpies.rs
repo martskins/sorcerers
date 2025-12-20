@@ -1,30 +1,36 @@
 use crate::{
-    card::{Card, CardBase, Edition, MessageHandler, Plane, UnitBase, Zone},
+    card::{Card, CardBase, Edition, Plane, UnitBase, Zone},
     effect::Effect,
-    game::{PlayerId, Thresholds},
-    networking::message::ClientMessage,
+    game::{Action, PlayerId, Thresholds, pick_action, pick_card},
     state::State,
 };
-use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-enum Status {
-    None,
-    MinionPick,
-    StrikeDecision,
-}
-
-#[derive(Debug, Clone)]
-enum Action {
+#[derive(Debug, Clone, PartialEq)]
+enum ClamorOfHarpiesAction {
     Strike,
     DoNotStrike,
 }
 
-impl Action {
-    pub fn get_name(&self) -> &str {
+#[async_trait::async_trait]
+impl Action for ClamorOfHarpiesAction {
+    fn get_name(&self) -> &str {
         match self {
-            Action::Strike => "Strike",
-            Action::DoNotStrike => "Do Not Strike",
+            ClamorOfHarpiesAction::Strike => "Strike",
+            ClamorOfHarpiesAction::DoNotStrike => "Do Not Strike",
+        }
+    }
+
+    async fn on_select(&self, card_id: Option<&uuid::Uuid>, _player_id: &PlayerId, state: &State) -> Vec<Effect> {
+        match self {
+            ClamorOfHarpiesAction::Strike => {
+                let target_card = state.get_card(card_id.unwrap()).unwrap();
+                vec![Effect::take_damage(
+                    &target_card.get_id(),
+                    card_id.unwrap(),
+                    state.get_card(card_id.unwrap()).unwrap().get_power(state).unwrap(),
+                )]
+            }
+            ClamorOfHarpiesAction::DoNotStrike => vec![],
         }
     }
 }
@@ -33,9 +39,6 @@ impl Action {
 pub struct ClamorOfHarpies {
     pub unit_base: UnitBase,
     pub card_base: CardBase,
-    targeted_minion: uuid::Uuid,
-    status: Status,
-    actions: Vec<Action>,
 }
 
 impl ClamorOfHarpies {
@@ -57,13 +60,11 @@ impl ClamorOfHarpies {
                 required_thresholds: Thresholds::parse("F"),
                 plane: Plane::Surface,
             },
-            status: Status::None,
-            targeted_minion: uuid::Uuid::nil(),
-            actions: Vec::new(),
         }
     }
 }
 
+#[async_trait::async_trait]
 impl Card for ClamorOfHarpies {
     fn get_name(&self) -> &str {
         Self::NAME
@@ -101,8 +102,8 @@ impl Card for ClamorOfHarpies {
         Some(&mut self.unit_base)
     }
 
-    fn genesis(&self, state: &State) -> Vec<Effect> {
-        let valid_cards = state
+    async fn genesis(&self, state: &State) -> Vec<Effect> {
+        let valid_cards: Vec<uuid::Uuid> = state
             .cards
             .iter()
             .filter(|c| c.is_unit())
@@ -110,63 +111,26 @@ impl Card for ClamorOfHarpies {
             .filter(|c| c.get_power(state).unwrap_or(0) < self.get_power(state).unwrap_or(0))
             .map(|c| c.get_id().clone())
             .collect();
-        vec![
-            Effect::set_card_status(&self.get_id().clone(), Status::MinionPick.clone()),
-            Effect::select_card(self.get_owner_id(), valid_cards, Some(self.get_id())),
-        ]
-    }
-
-    fn set_status(&mut self, status: &Box<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
-        let status = status
-            .downcast_ref::<Status>()
-            .ok_or_else(|| anyhow::anyhow!("Failed to downcast status for {}", Self::NAME))?;
-        self.status = status.clone();
-        Ok(())
-    }
-}
-
-impl MessageHandler for ClamorOfHarpies {
-    fn handle_message(&mut self, message: &ClientMessage, state: &State) -> Vec<Effect> {
-        match (&self.status, message) {
-            (Status::MinionPick, ClientMessage::PickCard { card_id, .. }) => {
-                self.targeted_minion = card_id.clone();
-                self.status = Status::StrikeDecision;
-                self.actions = vec![Action::Strike, Action::DoNotStrike];
-                let actions = vec![
-                    Action::Strike.get_name().to_string(),
-                    Action::DoNotStrike.get_name().to_string(),
-                ];
-                vec![Effect::select_action(self.get_owner_id(), actions)]
-            }
-            (Status::StrikeDecision, ClientMessage::PickAction { action_idx, .. }) => {
-                let target_minion = state
-                    .cards
-                    .iter()
-                    .find(|c| c.get_id() == &self.targeted_minion)
-                    .unwrap();
-                let mut effects = vec![
-                    Effect::MoveCard {
-                        card_id: self.targeted_minion.clone(),
-                        from: target_minion.get_zone().clone(),
-                        to: self.get_zone().clone(),
-                        tap: false,
-                    },
-                    Effect::wait_for_play(self.get_owner_id()),
-                ];
-
-                match self.actions[*action_idx] {
-                    Action::Strike => effects.push(Effect::TakeDamage {
-                        card_id: self.targeted_minion.clone(),
-                        from: self.get_id().clone(),
-                        damage: self.get_power(state).unwrap_or(0),
-                    }),
-                    Action::DoNotStrike => {}
-                }
-
-                self.status = Status::None;
-                effects
-            }
-            _ => vec![],
-        }
+        let card_id = pick_card(
+            self.get_owner_id(),
+            &valid_cards,
+            state.get_sender(),
+            state.get_receiver(),
+        )
+        .await;
+        let card = state.get_card(&card_id).unwrap();
+        let actions: Vec<Box<dyn Action>> = vec![
+            Box::new(ClamorOfHarpiesAction::Strike),
+            Box::new(ClamorOfHarpiesAction::DoNotStrike),
+        ];
+        let action = pick_action(self.get_owner_id(), &actions, state.get_sender(), state.get_receiver()).await;
+        let mut effects = vec![Effect::MoveCard {
+            card_id,
+            from: card.get_zone().clone(),
+            to: self.get_zone().clone(),
+            tap: false,
+        }];
+        effects.extend(action.on_select(Some(card.get_id()), self.get_owner_id(), state).await);
+        effects
     }
 }

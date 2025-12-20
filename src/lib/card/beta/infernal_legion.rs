@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, MessageHandler, Plane, UnitBase, Zone},
+    card::{Card, CardBase, Edition, Plane, UnitBase, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds},
     state::State,
@@ -35,6 +35,7 @@ impl InfernalLegion {
     }
 }
 
+#[async_trait::async_trait]
 impl Card for InfernalLegion {
     fn get_name(&self) -> &str {
         Self::NAME
@@ -91,7 +92,7 @@ impl Card for InfernalLegion {
         effects
     }
 
-    fn on_turn_end(&self, state: &State) -> Vec<Effect> {
+    async fn on_turn_end(&self, state: &State) -> Vec<Effect> {
         let adjacent_units = state
             .cards
             .iter()
@@ -110,5 +111,3 @@ impl Card for InfernalLegion {
         effects
     }
 }
-
-impl MessageHandler for InfernalLegion {}

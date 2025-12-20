@@ -1,8 +1,11 @@
+use async_channel::{Receiver, Sender};
+
 use crate::{
     card::{Card, Zone},
     deck::Deck,
     effect::Effect,
-    game::{InputStatus, PlayerId, Resources, Status},
+    game::{InputStatus, PlayerId, Resources},
+    networking::message::{ClientMessage, ServerMessage},
 };
 use std::collections::{HashMap, VecDeque};
 
@@ -19,29 +22,44 @@ pub struct State {
     pub decks: HashMap<PlayerId, Deck>,
     pub resources: HashMap<PlayerId, Resources>,
     pub input_status: InputStatus,
-    pub player_status: Status,
     pub phase: Phase,
     pub waiting_for_input: bool,
     pub current_player: PlayerId,
     pub effects: VecDeque<Effect>,
     pub player_one: PlayerId,
+    pub server_tx: Sender<ServerMessage>,
+    pub client_rx: Receiver<ClientMessage>,
 }
 
 impl State {
-    pub fn new(cards: Vec<Box<dyn Card>>, decks: HashMap<PlayerId, Deck>) -> Self {
+    pub fn new(
+        cards: Vec<Box<dyn Card>>,
+        decks: HashMap<PlayerId, Deck>,
+        server_tx: Sender<ServerMessage>,
+        client_rx: Receiver<ClientMessage>,
+    ) -> Self {
         State {
             cards,
             decks,
             turns: 0,
             resources: HashMap::new(),
             input_status: InputStatus::None,
-            player_status: Status::None,
             phase: Phase::Main,
             current_player: uuid::Uuid::nil(),
             waiting_for_input: false,
             effects: VecDeque::new(),
             player_one: uuid::Uuid::nil(),
+            server_tx,
+            client_rx,
         }
+    }
+
+    pub fn get_receiver(&self) -> Receiver<ClientMessage> {
+        self.client_rx.clone()
+    }
+
+    pub fn get_sender(&self) -> Sender<ServerMessage> {
+        self.server_tx.clone()
     }
 
     pub fn get_card_mut(&mut self, card_id: &uuid::Uuid) -> Option<&mut Box<dyn Card>> {
@@ -74,13 +92,14 @@ impl State {
             decks: self.decks.clone(),
             turns: 0,
             resources: self.resources.clone(),
-            player_status: self.player_status.clone(),
             input_status: self.input_status.clone(),
             phase: self.phase.clone(),
             current_player: self.current_player,
             waiting_for_input: self.waiting_for_input,
             effects: VecDeque::new(), // Effects are not needed in the snapshot
             player_one: self.player_one,
+            server_tx: self.server_tx.clone(),
+            client_rx: self.client_rx.clone(),
         }
     }
 }

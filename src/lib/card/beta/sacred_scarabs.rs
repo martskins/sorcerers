@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, MessageHandler, Modifier, Plane, UnitBase, Zone},
+    card::{Card, CardBase, Edition, Modifier, Plane, UnitBase, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds},
     state::State,
@@ -35,6 +35,7 @@ impl SacredScarabs {
     }
 }
 
+#[async_trait::async_trait]
 impl Card for SacredScarabs {
     fn get_name(&self) -> &str {
         Self::NAME
@@ -91,5 +92,3 @@ impl Card for SacredScarabs {
         effects
     }
 }
-
-impl MessageHandler for SacredScarabs {}

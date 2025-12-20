@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, MessageHandler, Modifier, Plane, UnitBase, Zone},
+    card::{Card, CardBase, Edition, Modifier, Plane, UnitBase, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds},
     state::State,
@@ -75,18 +75,14 @@ impl Card for WayfaringPilgrim {
     }
 
     fn on_move(&mut self, _state: &State, zone: &Zone) -> Vec<Effect> {
-        let mut effects = Vec::new();
         match zone {
             Zone::Realm(s) => {
                 if !self.corners_entered.contains(&s) {
                     self.corners_entered.push(*s);
-                    effects.push(Effect::wait_for_card_draw(self.get_owner_id()));
                 }
             }
             _ => {}
         }
-        effects
+        vec![]
     }
 }
-
-impl MessageHandler for WayfaringPilgrim {}

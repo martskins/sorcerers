@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use crate::{
-    card::{CardInfo, CardType},
-    game::{Direction, PlayerId, Resources, Status},
+    card::{CardInfo, CardType, Zone},
+    game::{Direction, PlayerId, Resources},
 };
 use serde::{Deserialize, Serialize};
 
@@ -29,9 +29,38 @@ pub enum ServerMessage {
     Sync {
         cards: Vec<CardInfo>,
         resources: HashMap<PlayerId, Resources>,
-        player_status: Status,
         current_player: PlayerId,
     },
+    PickCard {
+        player_id: PlayerId,
+        cards: Vec<uuid::Uuid>,
+    },
+    PickAction {
+        player_id: PlayerId,
+        actions: Vec<String>,
+    },
+    PickZone {
+        player_id: PlayerId,
+        zones: Vec<Zone>,
+    },
+    PickDirection {
+        player_id: PlayerId,
+        directions: Vec<Direction>,
+    },
+}
+
+impl ServerMessage {
+    pub fn player_id(&self) -> uuid::Uuid {
+        match self {
+            ServerMessage::PickDirection { player_id, .. } => player_id.clone(),
+            ServerMessage::PickCard { player_id, .. } => player_id.clone(),
+            ServerMessage::PickZone { player_id, .. } => player_id.clone(),
+            ServerMessage::PickAction { player_id, .. } => player_id.clone(),
+            ServerMessage::ConnectResponse { player_id } => player_id.clone(),
+            ServerMessage::GameStarted { .. } => uuid::Uuid::nil(),
+            ServerMessage::Sync { .. } => uuid::Uuid::nil(),
+        }
+    }
 }
 
 impl ToMessage for ServerMessage {

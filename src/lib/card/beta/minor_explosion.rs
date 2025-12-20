@@ -1,21 +1,13 @@
 use crate::{
-    card::{Card, CardBase, Edition, MessageHandler, Plane, Zone},
+    card::{Card, CardBase, Edition, Plane, Zone},
     effect::Effect,
-    game::{PlayerId, Thresholds},
-    networking::message::ClientMessage,
+    game::{PlayerId, Thresholds, pick_zone},
     state::State,
 };
 
 #[derive(Debug, Clone)]
-enum Status {
-    None,
-    SelectingZone,
-}
-
-#[derive(Debug, Clone)]
 pub struct MinorExplosion {
     pub card_base: CardBase,
-    status: Status,
 }
 
 impl MinorExplosion {
@@ -32,11 +24,11 @@ impl MinorExplosion {
                 required_thresholds: Thresholds::parse("FF"),
                 plane: Plane::Surface,
             },
-            status: Status::None,
         }
     }
 }
 
+#[async_trait::async_trait]
 impl Card for MinorExplosion {
     fn get_name(&self) -> &str {
         Self::NAME
@@ -66,42 +58,20 @@ impl Card for MinorExplosion {
         &self.card_base.id
     }
 
-    fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> Vec<Effect> {
+    async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> Vec<Effect> {
         let caster = state.get_card(caster_id).unwrap();
         let valid_zones = caster.get_zones_within_steps(state, 2);
-        vec![
-            Effect::set_card_status(self.get_id(), Status::SelectingZone),
-            Effect::select_zone(&self.get_owner_id(), valid_zones),
-        ]
-    }
-
-    fn set_status(&mut self, _status: &Box<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
-        let status = _status
-            .downcast_ref::<Status>()
-            .ok_or_else(|| anyhow::anyhow!("Failed to downcast status"))?;
-        self.status = status.clone();
-        Ok(())
-    }
-}
-
-impl MessageHandler for MinorExplosion {
-    fn handle_message(&mut self, message: &ClientMessage, state: &State) -> Vec<Effect> {
-        if message.player_id() != self.get_owner_id() {
-            return vec![];
-        }
-
-        match (&self.status, message) {
-            (Status::SelectingZone, ClientMessage::PickSquare { square, .. }) => {
-                let units = state.get_units_in_zone(&Zone::Realm(*square));
-                let mut effects: Vec<Effect> = units
-                    .iter()
-                    .map(|c| Effect::take_damage(c.get_id(), self.get_id(), 3))
-                    .collect();
-                effects.push(Effect::set_card_status(self.get_id(), Status::None));
-                effects.push(Effect::wait_for_play(self.get_id()));
-                effects
-            }
-            _ => vec![],
-        }
+        let zone = pick_zone(
+            self.get_owner_id(),
+            &valid_zones,
+            state.get_sender(),
+            state.get_receiver(),
+        )
+        .await;
+        let units = state.get_units_in_zone(&zone);
+        units
+            .iter()
+            .map(|c| Effect::take_damage(c.get_id(), self.get_id(), 3))
+            .collect()
     }
 }

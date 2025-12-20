@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+async-trait = "0.1.89"
 async-channel = "2.5.0"
 crossbeam = "0.8.4"
 oneshot = "0.1.11"

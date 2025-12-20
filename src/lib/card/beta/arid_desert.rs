@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, MessageHandler, Plane, SiteBase, Zone},
+    card::{Card, CardBase, Edition, Plane, SiteBase, Zone},
     game::{PlayerId, Thresholds},
 };
 
@@ -69,5 +69,3 @@ impl Card for AridDesert {
         Some(&mut self.site_base)
     }
 }
-
-impl MessageHandler for AridDesert {}

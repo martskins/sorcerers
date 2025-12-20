@@ -2,7 +2,7 @@ use async_channel::Sender;
 use sorcerers::{
     card::{self, *},
     deck::precon,
-    game::{Game, Resources, Status},
+    game::{Game, Resources},
     networking::{
         client::Socket,
         message::{ClientMessage, Message, ServerMessage, ToMessage},
@@ -64,6 +64,9 @@ impl Server {
     }
 
     async fn create_game(&mut self, player1: &uuid::Uuid, player2: &uuid::Uuid) -> anyhow::Result<()> {
+        let (server_tx, server_rx) = async_channel::unbounded();
+        let (client_tx, client_rx) = async_channel::unbounded::<ClientMessage>();
+
         let addr1 = self.sockets.remove(player1).unwrap().clone();
         let addr2 = self.sockets.remove(player2).unwrap().clone();
         let (deck1, cards1) = precon::beta::fire(player1.clone());
@@ -71,12 +74,11 @@ impl Server {
         let mut state = State::new(
             Vec::new().into_iter().chain(cards1).chain(cards2).collect(),
             HashMap::from([(player1.clone(), deck1), (player2.clone(), deck2)]),
+            server_tx.clone(),
+            client_rx.clone(),
         );
         state.current_player = player1.clone();
         state.player_one = player1.clone();
-        state.player_status = Status::WaitingForPlay {
-            player_id: player1.clone(),
-        };
         state.resources.insert(player1.clone(), Resources::new());
         state.resources.insert(player2.clone(), Resources::new());
 
@@ -131,24 +133,35 @@ impl Server {
             Zone::Hand,
         ));
         state.cards.push(card::from_name_and_zone(
-            ColickyDragonettes::NAME,
-            player2.clone(),
+            MinorExplosion::NAME,
+            player1.clone(),
             Zone::Hand,
         ));
-        state.resources.get_mut(player1).unwrap().mana = 8;
+        state
+            .cards
+            .push(card::from_name_and_zone(MadDash::NAME, player1.clone(), Zone::Hand));
+        state.resources.get_mut(player1).unwrap().mana = 15;
         state.resources.get_mut(player1).unwrap().thresholds.fire = 4;
         state.resources.get_mut(player1).unwrap().thresholds.water = 1;
         state.resources.get_mut(player1).unwrap().thresholds.earth = 1;
-        state.resources.get_mut(player2).unwrap().mana = 9;
+        state.resources.get_mut(player2).unwrap().mana = 15;
         state.resources.get_mut(player2).unwrap().thresholds.fire = 4;
         state.resources.get_mut(player2).unwrap().thresholds.water = 1;
         state.resources.get_mut(player2).unwrap().thresholds.earth = 1;
 
-        let (tx, rx) = async_channel::unbounded::<ClientMessage>();
-        let mut game = Game::new(player1.clone(), player2.clone(), self.socket.clone(), addr1, addr2, rx);
+        let mut game = Game::new(
+            player1.clone(),
+            player2.clone(),
+            self.socket.clone(),
+            addr1,
+            addr2,
+            client_rx,
+            server_tx,
+            server_rx,
+        );
         game.state = state;
         let game_id = game.id;
-        self.games.insert(game_id, tx);
+        self.games.insert(game_id, client_tx);
         tokio::spawn(async move {
             game.start().await.unwrap();
         });

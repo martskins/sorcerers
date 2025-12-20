@@ -10,7 +10,7 @@ async fn main() -> anyhow::Result<()> {
     let mut server = Server::new(sock);
     let mut buf = [0; 32000];
     loop {
-        let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(100));
+        // let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(100));
         tokio::select! {
             res = server.socket.recv_from(&mut buf) => {
                 let (len, addr) = res.unwrap();

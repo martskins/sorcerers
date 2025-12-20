@@ -1,5 +1,5 @@
 use crate::{
-    card::{AvatarBase, Card, CardBase, Edition, MessageHandler, Plane, UnitBase, Zone},
+    card::{AvatarBase, Card, CardBase, Edition, Plane, UnitBase, Zone},
     game::{PlayerId, Thresholds},
 };
 
@@ -79,5 +79,3 @@ impl Card for Battlemage {
         &self.card_base.id
     }
 }
-
-impl MessageHandler for Battlemage {}

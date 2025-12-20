@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardType, Edition, MessageHandler, Plane, SiteBase, Zone},
+    card::{Card, CardBase, CardType, Edition, Plane, SiteBase, Zone},
     game::{PlayerId, Thresholds},
 };
 
@@ -77,5 +77,3 @@ impl Card for Rubble {
         true
     }
 }
-
-impl MessageHandler for Rubble {}

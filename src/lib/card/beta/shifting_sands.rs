@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, MessageHandler, Plane, SiteBase, SiteType, Zone},
+    card::{Card, CardBase, Edition, Plane, SiteBase, SiteType, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds},
     state::State,
@@ -34,6 +34,7 @@ impl ShiftingSands {
     }
 }
 
+#[async_trait::async_trait]
 impl Card for ShiftingSands {
     fn get_name(&self) -> &str {
         Self::NAME
@@ -63,7 +64,7 @@ impl Card for ShiftingSands {
         &self.card_base.id
     }
 
-    fn genesis(&self, state: &State) -> Vec<Effect> {
+    async fn genesis(&self, state: &State) -> Vec<Effect> {
         let mut effects = vec![];
         let nearby_sites: Vec<&Box<dyn Card>> = self
             .get_zone()
@@ -73,7 +74,7 @@ impl Card for ShiftingSands {
             .filter(|c| c.get_site_base().unwrap().types.contains(&SiteType::Desert))
             .collect();
         for site in nearby_sites {
-            effects.extend(site.genesis(state));
+            effects.extend(site.genesis(state).await);
         }
         effects
     }
@@ -86,5 +87,3 @@ impl Card for ShiftingSands {
         Some(&mut self.site_base)
     }
 }
-
-impl MessageHandler for ShiftingSands {}

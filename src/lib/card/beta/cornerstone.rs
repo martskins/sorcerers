@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, MessageHandler, Plane, SiteBase, Zone},
+    card::{Card, CardBase, Edition, Plane, SiteBase, Zone},
     game::{PlayerId, Thresholds},
     state::State,
 };
@@ -83,5 +83,3 @@ impl Card for Cornerstone {
         valid_zones
     }
 }
-
-impl MessageHandler for Cornerstone {}

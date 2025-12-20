@@ -1,8 +1,10 @@
 use crate::{
     card::{CardType, Modifier, SiteBase, UnitBase, Zone},
-    game::{Direction, InputStatus, PlayerId, Status, Thresholds},
+    game::{Action, BaseAction, Direction, InputStatus, PlayerId, Thresholds, pick_action, pick_card},
+    networking::message::{ClientMessage, ServerMessage},
     state::{Phase, State},
 };
+use async_channel::{Receiver, Sender};
 use std::fmt::Debug;
 
 #[derive(Debug, Clone)]
@@ -30,8 +32,13 @@ impl Counter {
 
 #[derive(Debug)]
 pub enum Effect {
-    SetPlayerStatus {
-        status: Status,
+    ShootProjectile {
+        player_id: uuid::Uuid,
+        shooter: uuid::Uuid,
+        from_zone: Zone,
+        direction: Direction,
+        damage: u8,
+        piercing: bool,
     },
     SetCardStatus {
         card_id: uuid::Uuid,
@@ -122,24 +129,16 @@ impl Effect {
             from: from.clone(),
         }
     }
-    pub fn bury_card(card_id: &uuid::Uuid, zone: &Zone) -> Self {
+    pub fn bury_card(card_id: &uuid::Uuid, from: &Zone) -> Self {
         Effect::BuryCard {
             card_id: card_id.clone(),
-            from: zone.clone(),
+            from: from.clone(),
         }
     }
 
     pub fn tap_card(card_id: &uuid::Uuid) -> Self {
         Effect::TapCard {
             card_id: card_id.clone(),
-        }
-    }
-
-    pub fn wait_for_card_draw(player_id: &PlayerId) -> Self {
-        Effect::SetPlayerStatus {
-            status: Status::WaitingForCardDraw {
-                player_id: player_id.clone(),
-            },
         }
     }
 
@@ -151,58 +150,11 @@ impl Effect {
         }
     }
 
-    pub fn wait_for_play(player_id: &PlayerId) -> Self {
-        Effect::SetPlayerStatus {
-            status: Status::WaitingForPlay {
-                player_id: player_id.clone(),
-            },
-        }
-    }
-
-    pub fn select_direction(player_id: &PlayerId, directions: &[Direction]) -> Self {
-        Effect::SetPlayerStatus {
-            status: Status::SelectingDirection {
-                player_id: player_id.clone(),
-                directions: directions.to_vec(),
-            },
-        }
-    }
-
-    pub fn select_action(player_id: &PlayerId, actions: Vec<String>) -> Self {
-        Effect::SetPlayerStatus {
-            status: Status::SelectingAction {
-                player_id: player_id.clone(),
-                actions: actions,
-            },
-        }
-    }
-
     pub fn take_damage(card_id: &uuid::Uuid, from: &uuid::Uuid, damage: u8) -> Self {
         Effect::TakeDamage {
             card_id: card_id.clone(),
             from: from.clone(),
             damage,
-        }
-    }
-
-    pub fn set_input_status(status: InputStatus) -> Self {
-        Effect::SetInputStatus { status: status }
-    }
-
-    pub fn select_card(player_id: &PlayerId, valid_cards: Vec<uuid::Uuid>, for_card: Option<&uuid::Uuid>) -> Self {
-        Effect::SetPlayerStatus {
-            status: Status::SelectingCard {
-                player_id: player_id.clone(),
-                valid_cards: valid_cards,
-                for_card: for_card.cloned(),
-            },
-        }
-    }
-
-    pub fn set_card_status(card_id: &uuid::Uuid, status: impl std::any::Any + Send + Sync) -> Self {
-        Effect::SetCardStatus {
-            card_id: card_id.clone(),
-            status: Box::new(status),
         }
     }
 
@@ -216,26 +168,9 @@ impl Effect {
         }
     }
 
-    pub fn select_zone(player_id: &PlayerId, zones: Vec<Zone>) -> Self {
-        Effect::SetPlayerStatus {
-            status: Status::SelectingZone {
-                player_id: player_id.clone(),
-                valid_zones: zones,
-            },
-        }
-    }
-
     pub fn name(&self, state: &State) -> String {
         match self {
-            Effect::SetPlayerStatus { status } => match status {
-                Status::WaitingForCardDraw { .. } => "SetPlayerStatus::WaitingForCardDraw".to_string(),
-                Status::WaitingForPlay { .. } => "SetPlayerStatus::WaitingForPlay".to_string(),
-                Status::SelectingAction { .. } => "SetPlayerStatus::SelectingAction".to_string(),
-                Status::SelectingCard { .. } => "SetPlayerStatus::SelectingCard".to_string(),
-                Status::SelectingDirection { .. } => "SetPlayerStatus::SelectingDirection".to_string(),
-                Status::SelectingZone { .. } => "SetPlayerStatus::SelectingZone".to_string(),
-                _ => "SetPlayerStatus".to_string(),
-            },
+            Effect::ShootProjectile { .. } => "ShootProjectile".to_string(),
             Effect::SetInputStatus { .. } => "SetInputStatus".to_string(),
             Effect::AddCard { .. } => "AddCard".to_string(),
             Effect::SetCardStatus { .. } => "SetCardStatus".to_string(),
@@ -262,9 +197,60 @@ impl Effect {
         }
     }
 
-    pub fn apply(&self, state: &mut State) -> anyhow::Result<()> {
-        println!("Applying effect: {}", self.name(state));
+    pub async fn apply(
+        &self,
+        state: &mut State,
+        sender: Sender<ServerMessage>,
+        receiver: Receiver<ClientMessage>,
+    ) -> anyhow::Result<()> {
         match self {
+            Effect::ShootProjectile {
+                player_id,
+                shooter,
+                from_zone,
+                direction,
+                damage,
+                piercing,
+            } => {
+                let mut effects = vec![];
+                println!(
+                    "Shooting projectile from zone {:?} in direction {:?}",
+                    from_zone, direction
+                );
+                let mut next_zone = from_zone.zone_in_direction(direction);
+                println!("Next zone: {:?}", next_zone);
+                while next_zone.is_some() {
+                    let zone = next_zone.unwrap();
+                    let units = state
+                        .get_units_in_zone(&zone)
+                        .iter()
+                        .map(|c| c.get_id().clone())
+                        .collect::<Vec<_>>();
+                    if units.is_empty() {
+                        next_zone = zone.zone_in_direction(direction);
+                        continue;
+                    }
+
+                    if units.len() == 1 {
+                        effects.push(Effect::take_damage(&units[0], shooter, *damage));
+                    } else {
+                        let picked_unit_id =
+                            pick_card(player_id, &units, state.get_sender(), state.get_receiver()).await;
+                        effects.push(Effect::take_damage(&picked_unit_id, shooter, *damage));
+                    }
+
+                    if !piercing {
+                        break;
+                    }
+                    next_zone = zone.zone_in_direction(direction);
+                }
+
+                println!(
+                    "Effects {:?}",
+                    effects.iter().map(|c| c.name(state)).collect::<Vec<_>>()
+                );
+                state.effects.extend(effects);
+            }
             Effect::AddCard { card } => {
                 state.cards.push(card.clone_box());
             }
@@ -303,28 +289,22 @@ impl Effect {
                     CardType::Token => unreachable!(),
                 }
             }
-            Effect::SetPlayerStatus { status, .. } => {
-                state.player_status = status.clone();
-                let waiting_for_input = matches!(
-                    status,
-                    Status::WaitingForCardDraw { .. }
-                        | Status::SelectingAction { .. }
-                        | Status::SelectingCard { .. }
-                        | Status::SelectingDirection { .. }
-                        | Status::SelectingZone { .. }
-                );
-                state.waiting_for_input = waiting_for_input;
-            }
             Effect::PlayMagic { card_id, caster_id, .. } => {
                 let snapshot = state.snapshot();
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
-                let mut effects = card.on_cast(&snapshot, caster_id);
+                let mut effects = card.on_cast(&snapshot, caster_id).await;
                 let mana_cost = card.get_mana_cost(&snapshot);
                 effects.push(Effect::RemoveResources {
                     player_id: card.get_owner_id().clone(),
                     mana: mana_cost,
                     thresholds: Thresholds::new(),
                     health: 0,
+                });
+                effects.push(Effect::MoveCard {
+                    card_id: card.get_id().clone(),
+                    from: card.get_zone().clone(),
+                    to: Zone::Cemetery,
+                    tap: false,
                 });
                 state.effects.extend(effects);
             }
@@ -336,7 +316,8 @@ impl Effect {
                 if !card.has_modifier(&snapshot, Modifier::Charge) {
                     card.add_modifier(Modifier::SummoningSickness);
                 }
-                let mut effects = card.genesis(&snapshot);
+                // TODO: MOve genesis to an on-enter
+                let mut effects = card.genesis(&snapshot).await;
                 let mana_cost = card.get_mana_cost(&snapshot);
                 effects.push(Effect::RemoveResources {
                     player_id: card.get_owner_id().clone(),
@@ -352,6 +333,7 @@ impl Effect {
                 card.get_base_mut().tapped = true;
             }
             Effect::StartTurn { player_id } => {
+                println!("Starting turn for player: {}", player_id);
                 let cards = state
                     .cards
                     .iter_mut()
@@ -375,6 +357,13 @@ impl Effect {
                 for site in sites {
                     state.resources.get_mut(player_id).unwrap().mana += site.provided_mana;
                 }
+
+                println!("Player is picking draw action at start of turn");
+                let actions: Vec<Box<dyn Action>> =
+                    vec![Box::new(BaseAction::DrawSite), Box::new(BaseAction::DrawSpell)];
+                let action = pick_action(player_id, &actions, sender, receiver).await;
+                let effects = action.on_select(None, player_id, state).await;
+                state.effects.extend(effects);
             }
             Effect::RemoveResources {
                 player_id,
@@ -394,15 +383,13 @@ impl Effect {
                 state.phase = Phase::PreEndTurn {
                     player_id: player_id.clone(),
                 };
-                let effects: Vec<Effect> = state
-                    .cards
-                    .iter()
-                    .filter(|c| matches!(c.get_zone(), Zone::Realm(_)))
-                    .flat_map(|c| c.on_turn_end(&state))
-                    .collect();
-                state.effects.extend(effects);
+                for card in state.cards.iter().filter(|c| matches!(c.get_zone(), Zone::Realm(_))) {
+                    let effects = card.on_turn_end(state).await;
+                    state.effects.extend(effects);
+                }
             }
             Effect::EndTurn { player_id } => {
+                println!("Ending turn for player: {}", player_id);
                 let resources = state.resources.get_mut(player_id).unwrap();
                 resources.mana = 0;
 
@@ -433,6 +420,7 @@ impl Effect {
                         .power_counters
                         .retain(|c| c.expires_in_turns.is_none() || c.expires_in_turns.unwrap() > 0);
                 }
+                println!("Ending turn for player: {}", player_id);
                 state.phase = Phase::Main;
             }
             Effect::AddResources {
@@ -479,8 +467,6 @@ impl Effect {
                         damage: defender_power,
                     });
                 }
-
-                state.effects.push_back(Effect::wait_for_play(attacker.get_owner_id()));
             }
             Effect::TakeDamage { card_id, damage, from } => {
                 let snapshot = state.snapshot();

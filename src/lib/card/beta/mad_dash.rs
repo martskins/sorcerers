@@ -1,22 +1,13 @@
 use crate::{
-    card::{Card, CardBase, Edition, MessageHandler, Modifier, Plane, Zone},
+    card::{Card, CardBase, Edition, Modifier, Plane, Zone},
     effect::Effect,
-    game::{PlayerId, Thresholds},
-    networking::message::ClientMessage,
+    game::{Action, BaseAction, PlayerId, Thresholds, pick_action, pick_card},
     state::State,
 };
 
 #[derive(Debug, Clone)]
-enum Status {
-    None,
-    DrawingCard,
-    PickingAlly,
-}
-
-#[derive(Debug, Clone)]
 pub struct MadDash {
     pub card_base: CardBase,
-    status: Status,
 }
 
 impl MadDash {
@@ -33,11 +24,11 @@ impl MadDash {
                 required_thresholds: Thresholds::parse("F"),
                 plane: Plane::Surface,
             },
-            status: Status::None,
         }
     }
 }
 
+#[async_trait::async_trait]
 impl Card for MadDash {
     fn get_name(&self) -> &str {
         Self::NAME
@@ -67,43 +58,19 @@ impl Card for MadDash {
         &self.card_base.id
     }
 
-    fn on_cast(&mut self, _state: &State, _caster_id: &uuid::Uuid) -> Vec<Effect> {
-        self.status = Status::DrawingCard;
-        vec![Effect::wait_for_card_draw(&self.get_owner_id())]
-    }
-}
-
-impl MessageHandler for MadDash {
-    fn handle_message(&mut self, message: &ClientMessage, state: &State) -> Vec<Effect> {
-        if message.player_id() != self.get_owner_id() {
-            return vec![];
-        }
-
-        match (&self.status, message) {
-            (Status::DrawingCard, ClientMessage::DrawCard { .. }) => {
-                self.status = Status::PickingAlly;
-                let valid_cards = state
-                    .cards
-                    .iter()
-                    .filter(|c| c.get_owner_id() == self.get_owner_id())
-                    .filter(|c| c.is_unit())
-                    .filter(|c| matches!(c.get_zone(), Zone::Realm(_)))
-                    .map(|c| c.get_id().clone())
-                    .collect();
-                vec![Effect::select_card(
-                    self.get_owner_id(),
-                    valid_cards,
-                    Some(self.get_id()),
-                )]
-            }
-            (Status::PickingAlly, ClientMessage::PickCard { card_id, .. }) => {
-                self.status = Status::None;
-                vec![
-                    Effect::add_modifier(card_id, Modifier::Movement(1), Some(1)),
-                    Effect::wait_for_play(self.get_owner_id()),
-                ]
-            }
-            _ => vec![],
-        }
+    async fn on_cast(&mut self, state: &State, _caster_id: &uuid::Uuid) -> Vec<Effect> {
+        let actions: Vec<Box<dyn Action>> = vec![Box::new(BaseAction::DrawSite), Box::new(BaseAction::DrawSpell)];
+        let action = pick_action(self.get_owner_id(), &actions, state.get_sender(), state.get_receiver()).await;
+        let cards = state
+            .cards
+            .iter()
+            .filter(|c| c.is_unit())
+            .filter(|c| c.get_owner_id() == self.get_owner_id())
+            .map(|c| c.get_id().clone())
+            .collect::<Vec<uuid::Uuid>>();
+        let picked_card_id = pick_card(self.get_owner_id(), &cards, state.get_sender(), state.get_receiver()).await;
+        let mut effects = action.on_select(Some(self.get_id()), self.get_owner_id(), state).await;
+        effects.push(Effect::add_modifier(&picked_card_id, Modifier::Movement(1), Some(1)));
+        effects
     }
 }

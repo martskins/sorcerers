@@ -5,7 +5,6 @@ use crate::{
         Action, AvatarAction, Direction, Element, PlayerId, Thresholds, UnitAction, are_adjacent, are_nearby,
         get_adjacent_zones, get_nearby_zones,
     },
-    networking::message::ClientMessage,
     state::State,
 };
 use serde::{Deserialize, Serialize};
@@ -131,12 +130,6 @@ impl Zone {
     }
 }
 
-pub trait MessageHandler {
-    fn handle_message(&mut self, _message: &ClientMessage, _state: &State) -> Vec<Effect> {
-        Vec::new()
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CardInfo {
     pub id: uuid::Uuid,
@@ -173,7 +166,8 @@ where
     }
 }
 
-pub trait Card: Debug + Send + Sync + MessageHandler + CloneBoxedCard {
+#[async_trait::async_trait]
+pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     fn get_name(&self) -> &str;
     fn get_edition(&self) -> Edition;
     fn get_owner_id(&self) -> &PlayerId;
@@ -213,7 +207,7 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBoxedCard {
         Err(anyhow::anyhow!("set_status not implemented for {}", self.get_name()))
     }
 
-    fn default_site_on_cast(&self, _state: &State) -> Vec<Effect> {
+    fn base_site_on_summon(&self, _state: &State) -> Vec<Effect> {
         vec![Effect::AddResources {
             player_id: self.get_owner_id().clone(),
             mana: self.get_site_base().unwrap().provided_mana,
@@ -351,23 +345,20 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBoxedCard {
     }
 
     fn get_valid_move_zones(&self, state: &State) -> Vec<Zone> {
-        state
-            .cards
-            .iter()
-            .filter(|c| c.get_owner_id() == self.get_owner_id())
-            .filter(|c| c.is_site())
-            .filter(|c| {
-                if self.has_modifier(state, Modifier::Airborne) {
-                    self.get_zone().is_nearby(&c.get_zone())
-                } else {
-                    self.get_zone().is_adjacent(&c.get_zone())
+        let mut steps = 0;
+        let movement_mods = self
+            .get_modifiers(state)
+            .into_iter()
+            .filter(|m| matches!(m, Modifier::Movement(_)));
+        for mov in movement_mods {
+            if let Modifier::Movement(s) = mov {
+                if s > steps {
+                    steps = s;
                 }
-            })
-            .map(|c| match c.get_zone() {
-                z @ Zone::Realm(_) => z.clone(),
-                _ => unreachable!(),
-            })
-            .collect()
+            }
+        }
+
+        self.get_zones_within_steps(state, steps + 1)
     }
 
     fn get_valid_attack_targets(&self, state: &State) -> Vec<uuid::Uuid> {
@@ -393,6 +384,20 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBoxedCard {
             toughness = toughness.saturating_add_signed(counter.toughness);
         }
         Some(toughness)
+    }
+
+    fn get_modifiers(&self, _state: &State) -> Vec<Modifier> {
+        let base = self.get_unit_base();
+        if base.is_none() {
+            return vec![];
+        }
+
+        let base = base.unwrap();
+        let mut modifiers = base.modifiers.clone();
+        for counter in &base.modifier_counters {
+            modifiers.push(counter.modifier.clone());
+        }
+        modifiers
     }
 
     fn get_power(&self, _state: &State) -> Option<u8> {
@@ -449,7 +454,7 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBoxedCard {
         self.get_base_mut().zone = zone;
     }
 
-    fn genesis(&self, _state: &State) -> Vec<Effect> {
+    async fn genesis(&self, _state: &State) -> Vec<Effect> {
         vec![]
     }
 
@@ -546,7 +551,7 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBoxedCard {
         vec![]
     }
 
-    fn on_turn_end(&self, _state: &State) -> Vec<Effect> {
+    async fn on_turn_end(&self, _state: &State) -> Vec<Effect> {
         vec![]
     }
 
@@ -564,13 +569,13 @@ pub trait Card: Debug + Send + Sync + MessageHandler + CloneBoxedCard {
 
     fn on_summon(&mut self, _state: &State) -> Vec<Effect> {
         if self.is_site() {
-            return self.default_site_on_cast(_state);
+            return self.base_site_on_summon(_state);
         }
 
         vec![]
     }
 
-    fn on_cast(&mut self, _: &State, _caster_id: &uuid::Uuid) -> Vec<Effect> {
+    async fn on_cast(&mut self, _state: &State, _caster_id: &uuid::Uuid) -> Vec<Effect> {
         vec![]
     }
 

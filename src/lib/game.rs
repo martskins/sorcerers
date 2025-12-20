@@ -10,7 +10,7 @@ use crate::{
 use async_channel::{Receiver, Sender};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, iter::Sum, sync::Arc};
-use tokio::{net::UdpSocket, sync::mpsc::UnboundedReceiver};
+use tokio::net::UdpSocket;
 
 pub type PlayerId = uuid::Uuid;
 
@@ -28,8 +28,124 @@ pub enum Direction {
 
 pub const CARDINAL_DIRECTIONS: [Direction; 4] = [Direction::Up, Direction::Down, Direction::Left, Direction::Right];
 
-impl Direction {
-    pub fn get_name(&self) -> String {
+pub async fn pick_card(
+    player_id: &PlayerId,
+    card_ids: &[uuid::Uuid],
+    sender: Sender<ServerMessage>,
+    receiver: Receiver<ClientMessage>,
+) -> uuid::Uuid {
+    sender
+        .send(ServerMessage::PickCard {
+            player_id: player_id.clone(),
+            cards: card_ids.to_vec(),
+        })
+        .await
+        .unwrap();
+
+    loop {
+        let msg = receiver.recv().await.unwrap();
+        match msg {
+            ClientMessage::PickCard { card_id, .. } => break card_id,
+            _ => unreachable!(),
+        }
+    }
+}
+
+pub async fn pick_action<'a>(
+    player_id: &PlayerId,
+    actions: &'a [Box<dyn Action>],
+    sender: Sender<ServerMessage>,
+    receiver: Receiver<ClientMessage>,
+) -> &'a Box<dyn Action> {
+    sender
+        .send(ServerMessage::PickAction {
+            player_id: player_id.clone(),
+            actions: actions.iter().map(|c| c.get_name().to_string()).collect(),
+        })
+        .await
+        .unwrap();
+
+    loop {
+        let msg = receiver.recv().await.unwrap();
+        match msg {
+            ClientMessage::PickAction { action_idx, .. } => break &actions[action_idx],
+            _ => unreachable!(),
+        }
+    }
+}
+
+pub async fn pick_option(
+    player_id: &PlayerId,
+    actions: &[String],
+    sender: Sender<ServerMessage>,
+    receiver: Receiver<ClientMessage>,
+) -> usize {
+    sender
+        .send(ServerMessage::PickAction {
+            player_id: player_id.clone(),
+            actions: actions.to_vec(),
+        })
+        .await
+        .unwrap();
+
+    loop {
+        let msg = receiver.recv().await.unwrap();
+        match msg {
+            ClientMessage::PickAction { action_idx, .. } => break action_idx,
+            _ => unreachable!(),
+        }
+    }
+}
+
+pub async fn pick_zone(
+    player_id: &PlayerId,
+    zones: &[Zone],
+    sender: Sender<ServerMessage>,
+    receiver: Receiver<ClientMessage>,
+) -> Zone {
+    sender
+        .send(ServerMessage::PickZone {
+            player_id: player_id.clone(),
+            zones: zones.to_vec(),
+        })
+        .await
+        .unwrap();
+
+    loop {
+        let msg = receiver.recv().await.unwrap();
+        match msg {
+            ClientMessage::PickSquare { square, .. } => break Zone::Realm(square),
+            _ => unreachable!(),
+        }
+    }
+}
+
+pub async fn pick_direction(player_id: &PlayerId, directions: &[Direction], state: &State) -> Direction {
+    state
+        .get_sender()
+        .send(ServerMessage::PickAction {
+            player_id: player_id.clone(),
+            actions: directions.iter().map(|c| c.get_name()).collect(),
+        })
+        .await
+        .unwrap();
+
+    let board_flipped = &state.player_one != player_id;
+    loop {
+        let msg = state.get_receiver().recv().await.unwrap();
+        match msg {
+            ClientMessage::PickAction { action_idx, .. } => break directions[action_idx].normalise(board_flipped),
+            _ => unreachable!(),
+        }
+    }
+}
+
+pub trait PlayerAction: std::fmt::Debug {
+    fn get_name(&self) -> String;
+}
+
+impl PlayerAction for Direction {
+    fn get_name(&self) -> String {
         match self {
             Direction::Up => "Up".to_string(),
             Direction::Down => "Down".to_string(),
@@ -41,7 +157,9 @@ impl Direction {
             Direction::BottomRight => "Bottom Right".to_string(),
         }
     }
+}
 
+impl Direction {
     pub fn normalise(&self, board_flipped: bool) -> Direction {
         if board_flipped {
             match self {
@@ -58,34 +176,6 @@ impl Direction {
             self.clone()
         }
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum Status {
-    None,
-    WaitingForCardDraw {
-        player_id: PlayerId,
-    },
-    WaitingForPlay {
-        player_id: PlayerId,
-    },
-    SelectingZone {
-        player_id: PlayerId,
-        valid_zones: Vec<Zone>,
-    },
-    SelectingCard {
-        player_id: PlayerId,
-        valid_cards: Vec<uuid::Uuid>,
-        for_card: Option<uuid::Uuid>, // TODO: add this to the other statuses
-    },
-    SelectingDirection {
-        player_id: PlayerId,
-        directions: Vec<Direction>,
-    },
-    SelectingAction {
-        player_id: PlayerId,
-        actions: Vec<String>,
-    },
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -257,9 +347,10 @@ where
     }
 }
 
+#[async_trait::async_trait]
 pub trait Action: std::fmt::Debug + Send + Sync + CloneBoxedAction {
     fn get_name(&self) -> &str;
-    fn on_select(&self, card_id: Option<&uuid::Uuid>, player_id: &PlayerId, state: &State) -> Vec<Effect>;
+    async fn on_select(&self, card_id: Option<&uuid::Uuid>, player_id: &PlayerId, state: &State) -> Vec<Effect>;
 }
 
 impl Clone for Box<dyn Action> {
@@ -309,21 +400,33 @@ pub enum InputStatus {
 
 #[derive(Debug, Clone)]
 pub enum BaseAction {
+    DrawSite,
+    DrawSpell,
     Cancel,
 }
 
+#[async_trait::async_trait]
 impl Action for BaseAction {
     fn get_name(&self) -> &str {
         match self {
             BaseAction::Cancel => "Cancel",
+            BaseAction::DrawSite => "Draw Site",
+            BaseAction::DrawSpell => "Draw Spell",
         }
     }
 
-    fn on_select(&self, _: Option<&uuid::Uuid>, player_id: &PlayerId, _: &State) -> Vec<Effect> {
-        vec![
-            Effect::set_input_status(InputStatus::None),
-            Effect::wait_for_play(player_id),
-        ]
+    async fn on_select(&self, _: Option<&uuid::Uuid>, player_id: &PlayerId, _: &State) -> Vec<Effect> {
+        match self {
+            BaseAction::DrawSite => vec![Effect::DrawCard {
+                player_id: player_id.clone(),
+                card_type: CardType::Site,
+            }],
+            BaseAction::DrawSpell => vec![Effect::DrawCard {
+                player_id: player_id.clone(),
+                card_type: CardType::Spell,
+            }],
+            BaseAction::Cancel => vec![],
+        }
     }
 }
 
@@ -333,6 +436,7 @@ pub enum AvatarAction {
     DrawSite,
 }
 
+#[async_trait::async_trait]
 impl Action for AvatarAction {
     fn get_name(&self) -> &str {
         match self {
@@ -341,10 +445,10 @@ impl Action for AvatarAction {
         }
     }
 
-    fn on_select(&self, card_id: Option<&uuid::Uuid>, player_id: &PlayerId, state: &State) -> Vec<Effect> {
+    async fn on_select(&self, card_id: Option<&uuid::Uuid>, player_id: &PlayerId, state: &State) -> Vec<Effect> {
         match self {
             AvatarAction::PlaySite => {
-                let valid_cards: Vec<uuid::Uuid> = state
+                let cards: Vec<uuid::Uuid> = state
                     .cards
                     .iter()
                     .filter(|c| c.is_site())
@@ -352,12 +456,12 @@ impl Action for AvatarAction {
                     .filter(|c| c.get_owner_id() == player_id)
                     .map(|c| c.get_id().clone())
                     .collect();
+                let picked_card_id = pick_card(player_id, &cards, state.get_sender(), state.get_receiver()).await;
+                let picked_card = state.get_card(&picked_card_id).unwrap();
+                let zones = picked_card.get_valid_play_zones(state);
+                let zone = pick_zone(player_id, &zones, state.get_sender(), state.get_receiver()).await;
                 vec![
-                    Effect::set_input_status(InputStatus::PlayingSite {
-                        player_id: player_id.clone(),
-                        site_id: None,
-                    }),
-                    Effect::select_card(player_id, valid_cards, None),
+                    Effect::play_card(player_id, &picked_card_id, &zone),
                     Effect::tap_card(card_id.unwrap()),
                 ]
             }
@@ -367,7 +471,6 @@ impl Action for AvatarAction {
                         player_id: player_id.clone(),
                         card_type: CardType::Site,
                     },
-                    Effect::wait_for_play(player_id),
                     Effect::tap_card(card_id.unwrap()),
                 ]
             }
@@ -382,6 +485,7 @@ pub enum UnitAction {
     Defend,
 }
 
+#[async_trait::async_trait]
 impl Action for UnitAction {
     fn get_name(&self) -> &str {
         match self {
@@ -391,31 +495,35 @@ impl Action for UnitAction {
         }
     }
 
-    fn on_select(&self, card_id: Option<&uuid::Uuid>, player_id: &PlayerId, state: &State) -> Vec<Effect> {
+    async fn on_select(&self, card_id: Option<&uuid::Uuid>, player_id: &PlayerId, state: &State) -> Vec<Effect> {
         match self {
             UnitAction::Attack => {
                 let card_id = card_id.unwrap();
-                let card = state.cards.iter().find(|c| c.get_id() == card_id).unwrap();
-                let valid_cards = card.get_valid_attack_targets(state);
+                let card = state.get_card(card_id).unwrap();
+                let cards = card.get_valid_attack_targets(state);
+                let picked_card_id = pick_card(player_id, &cards, state.get_sender(), state.get_receiver()).await;
+                let picked_card = state.get_card(&picked_card_id).unwrap();
                 vec![
-                    Effect::set_input_status(InputStatus::Attacking {
-                        player_id: player_id.clone(),
-                        attacker_id: card_id.clone(),
-                    }),
-                    Effect::select_card(&player_id, valid_cards, None),
+                    Effect::MoveCard {
+                        card_id: card_id.clone(),
+                        from: card.get_zone().clone(),
+                        to: picked_card.get_zone().clone(),
+                        tap: true,
+                    },
+                    Effect::take_damage(&picked_card_id, card_id, card.get_power(state).unwrap()),
                 ]
             }
             UnitAction::Move => {
                 let card_id = card_id.unwrap();
-                let card = state.cards.iter().find(|c| c.get_id() == card_id).unwrap();
-                let valid_squares = card.get_valid_move_zones(state);
-                vec![
-                    Effect::set_input_status(InputStatus::Moving {
-                        player_id: player_id.clone(),
-                        card_id: card_id.clone(),
-                    }),
-                    Effect::select_zone(&player_id, valid_squares),
-                ]
+                let card = state.get_card(card_id).unwrap();
+                let zones = card.get_valid_move_zones(state);
+                let zone = pick_zone(player_id, &zones, state.get_sender(), state.get_receiver()).await;
+                vec![Effect::MoveCard {
+                    card_id: card_id.clone(),
+                    from: card.get_zone().clone(),
+                    to: zone,
+                    tap: true,
+                }]
             }
             UnitAction::Defend => vec![],
         }
@@ -429,8 +537,8 @@ pub struct Game {
     pub addrs: HashMap<PlayerId, Socket>,
     pub socket: Arc<UdpSocket>,
     client_receiver: Receiver<ClientMessage>,
-    effects_sender: Sender<Effect>,
-    effects_receiver: Receiver<Effect>,
+    server_sender: Sender<ServerMessage>,
+    server_receiver: Receiver<ServerMessage>,
 }
 
 impl Game {
@@ -441,17 +549,18 @@ impl Game {
         addr1: Socket,
         addr2: Socket,
         receiver: Receiver<ClientMessage>,
+        server_sender: Sender<ServerMessage>,
+        server_receiver: Receiver<ServerMessage>,
     ) -> Self {
-        let (tx, rx) = async_channel::unbounded();
         Game {
             id: uuid::Uuid::new_v4(),
-            state: State::new(Vec::new(), HashMap::new()),
+            state: State::new(Vec::new(), HashMap::new(), server_sender.clone(), receiver.clone()),
             players: vec![player1, player2],
             addrs: HashMap::from([(player1, addr1), (player2, addr2)]),
             socket,
             client_receiver: receiver,
-            effects_receiver: rx,
-            effects_sender: tx,
+            server_receiver,
+            server_sender,
         }
     }
 
@@ -464,18 +573,33 @@ impl Game {
             game_id: self.id.clone(),
         })
         .await?;
-        self.process_effects()?;
+        self.process_effects().await?;
         self.send_sync().await?;
 
+        let addrs = self.addrs.clone();
+        let socket = self.socket.clone();
+        let receiver = self.server_receiver.clone();
+        tokio::spawn(async move {
+            loop {
+                let socket = socket.clone();
+                let message = receiver.recv().await.unwrap();
+                let addr = addrs.get(&message.player_id()).unwrap();
+                Self::send(socket, &message, addr).await.unwrap();
+            }
+        });
+
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(100));
         loop {
             tokio::select! {
                 Ok(message) = self.client_receiver.recv() => {
                     self.process_message(&message).await?;
                 }
-                Ok(effect) = self.effects_receiver.recv() => {
-                    effect.apply(&mut self.state)?;
+                _ = interval.tick() => {
+                    self.update().await?;
                 }
             }
+            let message = self.client_receiver.recv().await?;
+            self.process_message(&message).await?;
         }
     }
 
@@ -497,157 +621,8 @@ impl Game {
     }
     async fn handle_message(&mut self, message: &ClientMessage) -> anyhow::Result<()> {
         self.maybe_unblock_effects(message);
-        println!("Handling message: {:?}", message);
-        println!("Current input status: {:?}", self.state.input_status);
-        match (&self.state.input_status, message) {
-            (InputStatus::Attacking { attacker_id, .. }, ClientMessage::PickCard { card_id, .. }) => {
-                let effects = vec![Effect::Attack {
-                    attacker_id: attacker_id.clone(),
-                    defender_id: card_id.clone(),
-                }];
-                self.state.effects.extend(effects);
-                self.state.input_status = InputStatus::None;
-                self.state.player_status = Status::WaitingForPlay {
-                    player_id: self.state.current_player.clone(),
-                };
-            }
-            (InputStatus::PlayingSite { site_id: None, .. }, ClientMessage::PickCard { player_id, card_id, .. }) => {
-                let card = self.state.get_card(card_id).unwrap();
-                let valid_zones = card.get_valid_play_zones(&self.state);
-                let effects = vec![
-                    Effect::set_input_status(InputStatus::PlayingSite {
-                        player_id: player_id.clone(),
-                        site_id: Some(card_id.clone()),
-                    }),
-                    Effect::select_zone(player_id, valid_zones),
-                ];
-                self.state.effects.extend(effects);
-                self.state.input_status = InputStatus::None;
-            }
-            (InputStatus::PlayingSite { site_id, .. }, ClientMessage::PickSquare { player_id, square, .. }) => {
-                let effects = vec![
-                    Effect::set_input_status(InputStatus::None),
-                    Effect::play_card(&player_id, &site_id.unwrap(), &Zone::Realm(*square)),
-                    Effect::wait_for_play(player_id),
-                ];
-                self.state.effects.extend(effects);
-                self.state.input_status = InputStatus::None;
-            }
-            (InputStatus::PlayingCard { player_id, card_id }, ClientMessage::PickSquare { square, .. }) => {
-                let effects = vec![
-                    Effect::play_card(&player_id, &card_id, &Zone::Realm(*square)),
-                    Effect::wait_for_play(&player_id),
-                ];
-                self.state.effects.extend(effects);
-                self.state.input_status = InputStatus::None;
-            }
-            (
-                InputStatus::ShootingProjectile {
-                    player_id,
-                    caster_id,
-                    from,
-                    damage,
-                    direction: Some(direction),
-                    piercing,
-                    ..
-                },
-                ClientMessage::PickCard { card_id, .. },
-            ) => {
-                let mut valid_cards: Vec<uuid::Uuid>;
-                let mut from = Some(from.clone());
-                loop {
-                    from = from.unwrap().zone_in_direction(direction);
-                    if from.is_none() {
-                        self.state.effects.push_back(Effect::wait_for_play(player_id));
-                        self.state.input_status = InputStatus::None;
-                        return Ok(());
-                    }
-
-                    valid_cards = self
-                        .state
-                        .get_cards_in_zone(from.as_ref().unwrap())
-                        .iter()
-                        .filter(|c| c.is_unit())
-                        .map(|c| c.get_id().clone())
-                        .collect();
-
-                    if valid_cards.is_empty() {
-                        continue;
-                    }
-
-                    break;
-                }
-
-                let mut effects = vec![Effect::take_damage(card_id, caster_id.as_ref().unwrap(), *damage)];
-                if *piercing {
-                    effects.push(Effect::set_input_status(InputStatus::ShootingProjectile {
-                        player_id: player_id.clone(),
-                        card_id: card_id.clone(),
-                        caster_id: caster_id.clone(),
-                        from: from.unwrap(),
-                        damage: *damage,
-                        direction: Some(direction.clone()),
-                        piercing: *piercing,
-                    }));
-                    effects.push(Effect::select_card(player_id, valid_cards, Some(card_id)));
-                } else {
-                    effects.push(Effect::set_input_status(InputStatus::None));
-                    effects.push(Effect::wait_for_play(player_id));
-                }
-
-                self.state.effects.extend(effects);
-            }
-            (
-                InputStatus::ShootingProjectile {
-                    player_id,
-                    card_id,
-                    caster_id,
-                    damage,
-                    from,
-                    direction: None,
-                    piercing,
-                },
-                ClientMessage::PickDirection { direction, .. },
-            ) => {
-                let mut valid_cards: Vec<uuid::Uuid>;
-                let mut from = Some(from.clone());
-                loop {
-                    from = from.unwrap().zone_in_direction(direction);
-                    if from.is_none() {
-                        self.state.effects.push_back(Effect::wait_for_play(player_id));
-                        self.state.input_status = InputStatus::None;
-                        return Ok(());
-                    }
-
-                    valid_cards = self
-                        .state
-                        .get_cards_in_zone(from.as_ref().unwrap())
-                        .iter()
-                        .filter(|c| c.is_unit())
-                        .map(|c| c.get_id().clone())
-                        .collect();
-
-                    if valid_cards.is_empty() {
-                        continue;
-                    }
-
-                    break;
-                }
-
-                self.state
-                    .effects
-                    .push_back(Effect::select_card(player_id, valid_cards, Some(card_id)));
-                self.state.input_status = InputStatus::ShootingProjectile {
-                    player_id: player_id.clone(),
-                    card_id: card_id.clone(),
-                    caster_id: caster_id.clone(),
-                    damage: *damage,
-                    from: from.unwrap().clone(),
-                    direction: Some(direction.clone()),
-                    piercing: *piercing,
-                };
-            }
-            (InputStatus::None, ClientMessage::ClickCard { player_id, card_id, .. }) => {
+        match message {
+            ClientMessage::ClickCard { player_id, card_id, .. } => {
                 let card = self.state.cards.iter().find(|c| c.get_id() == card_id).unwrap();
                 if card.get_owner_id() != player_id {
                     return Ok(());
@@ -661,13 +636,17 @@ impl Game {
                             return Ok(());
                         }
 
-                        let valid_squares = card.get_valid_play_zones(&self.state);
-                        self.state.input_status = InputStatus::PlayingCard {
-                            player_id: player_id.clone(),
-                            card_id: card_id.clone(),
-                        };
-                        let effects = vec![Effect::select_zone(&player_id, valid_squares)];
-                        self.state.effects.extend(effects);
+                        let zones = card.get_valid_play_zones(&self.state);
+                        let zone = pick_zone(
+                            player_id,
+                            &zones,
+                            self.server_sender.clone(),
+                            self.client_receiver.clone(),
+                        )
+                        .await;
+                        self.state
+                            .effects
+                            .push_back(Effect::play_card(player_id, card_id, &zone));
                     }
                     (_, Zone::Realm(_)) => {
                         let unit_disabled =
@@ -682,15 +661,15 @@ impl Game {
                         }
 
                         actions.push(Box::new(BaseAction::Cancel));
-                        let action_names = actions.iter().map(|a| a.get_name().to_string()).collect();
-                        self.state.input_status = InputStatus::SelectingAction {
-                            player_id: player_id.clone(),
-                            actions,
-                            card_id: Some(card_id.clone()),
-                        };
-                        self.state
-                            .effects
-                            .push_back(Effect::select_action(&player_id, action_names));
+                        let action = pick_action(
+                            player_id,
+                            &actions,
+                            self.server_sender.clone(),
+                            self.client_receiver.clone(),
+                        )
+                        .await;
+                        let effects = action.on_select(Some(card.get_id()), player_id, &self.state).await;
+                        self.state.effects.extend(effects);
                     }
                     (false, Zone::Hand) => {
                         let resources = self.state.resources.get(&player_id).unwrap();
@@ -699,94 +678,43 @@ impl Game {
                             return Ok(());
                         }
 
-                        let spellcasters = self
+                        let spellcasters: Vec<uuid::Uuid> = self
                             .state
                             .cards
                             .iter()
                             .filter(|c| c.can_cast(&self.state, card))
                             .map(|c| c.get_id().clone())
                             .collect();
-                        self.state.input_status = InputStatus::PlayingSpell {
+                        let caster_id = pick_card(
+                            player_id,
+                            &spellcasters,
+                            self.server_sender.clone(),
+                            self.client_receiver.clone(),
+                        )
+                        .await;
+                        let caster = self.state.get_card(&caster_id).unwrap();
+                        self.state.effects.push_back(Effect::PlayMagic {
                             player_id: player_id.clone(),
                             card_id: card_id.clone(),
-                        };
-                        self.state
-                            .effects
-                            .push_back(Effect::select_card(&player_id, spellcasters, None));
+                            caster_id,
+                            from: caster.get_zone().clone(),
+                        });
                     }
                     _ => {}
                 }
             }
-            (InputStatus::PlayingSpell { player_id, card_id }, ClientMessage::PickCard { card_id: caster, .. }) => {
-                let player_id = player_id.clone();
-                let card_id = card_id.clone();
-                self.state.input_status = InputStatus::None;
-
-                let zone = self.state.get_card(&caster).unwrap().get_zone();
-                self.state.effects.push_back(Effect::PlayMagic {
-                    player_id: player_id,
-                    caster_id: caster.clone(),
-                    card_id: card_id,
-                    from: zone.clone(),
-                });
-                self.state.effects.push_back(Effect::wait_for_play(&player_id));
-            }
-            (
-                InputStatus::SelectingAction {
-                    player_id,
-                    actions,
-                    card_id,
-                },
-                ClientMessage::PickAction { action_idx, .. },
-            ) => {
-                self.state
-                    .effects
-                    .push_back(Effect::set_input_status(InputStatus::None));
-                let effects = actions[*action_idx].on_select(card_id.as_ref(), &player_id, &self.state);
-                self.state.effects.extend(effects);
-            }
-            (InputStatus::Moving { player_id, card_id }, ClientMessage::PickSquare { square, .. }) => {
-                let card = self.state.cards.iter().find(|c| c.get_id() == card_id).unwrap();
-                let effects = vec![
-                    Effect::MoveCard {
-                        card_id: card_id.clone(),
-                        from: card.get_zone().clone(),
-                        to: Zone::Realm(*square),
-                        tap: true,
-                    },
-                    Effect::SetPlayerStatus {
-                        status: Status::WaitingForPlay {
-                            player_id: player_id.clone(),
-                        },
-                    },
-                ];
-                self.state.effects.extend(effects);
-                self.state.input_status = InputStatus::None;
-            }
-            (InputStatus::None, ClientMessage::EndTurn { player_id, .. }) => {
+            ClientMessage::EndTurn { player_id, .. } => {
                 self.state.effects.push_back(Effect::PreEndTurn {
                     player_id: player_id.clone(),
                 });
             }
-            (
-                InputStatus::None,
-                ClientMessage::DrawCard {
-                    player_id, card_type, ..
-                },
-            ) => {
-                let effects = vec![
-                    Effect::DrawCard {
-                        player_id: player_id.clone(),
-                        card_type: card_type.clone(),
-                    },
-                    Effect::SetPlayerStatus {
-                        status: Status::WaitingForPlay {
-                            player_id: player_id.clone(),
-                        },
-                    },
-                ];
-
-                self.state.effects.extend(effects);
+            ClientMessage::DrawCard {
+                player_id, card_type, ..
+            } => {
+                self.state.effects.push_back(Effect::DrawCard {
+                    player_id: player_id.clone(),
+                    card_type: card_type.clone(),
+                });
             }
             _ => {}
         }
@@ -796,23 +724,12 @@ impl Game {
 
     pub async fn process_message(&mut self, message: &ClientMessage) -> anyhow::Result<()> {
         self.handle_message(message).await?;
-        let snapshot = self.state.snapshot();
-        let effects: Vec<Effect> = self
-            .state
-            .cards
-            .iter_mut()
-            .flat_map(|c| c.handle_message(message, &snapshot))
-            .collect();
-        self.state.effects.extend(effects);
-
         self.update().await?;
         Ok(())
     }
 
     pub async fn update(&mut self) -> anyhow::Result<()> {
-        let effects = self.check_damage();
-        self.state.effects.extend(effects);
-        self.process_effects()?;
+        self.process_effects().await?;
 
         if let Phase::PreEndTurn { player_id } = self.state.phase {
             // If the current player is not the one ending their turn, it means we've already
@@ -827,10 +744,8 @@ impl Game {
                 let current_player = self.state.current_player.clone();
                 let next_player = self.players.iter().cycle().skip(current_index + 1).next().unwrap();
                 self.state.current_player = next_player.clone();
-                self.state.player_status = Status::WaitingForPlay {
-                    player_id: self.state.current_player.clone(),
-                };
                 self.state.turns += 1;
+                println!("Extending effects for next turn: {}", next_player);
                 let effects = vec![
                     Effect::EndTurn {
                         player_id: current_player,
@@ -838,11 +753,11 @@ impl Game {
                     Effect::StartTurn {
                         player_id: next_player.clone(),
                     },
-                    Effect::SetPlayerStatus {
-                        status: Status::WaitingForCardDraw {
-                            player_id: next_player.clone(),
-                        },
-                    },
+                    // Effect::SetPlayerStatus {
+                    //     status: Status::WaitingForCardDraw {
+                    //         player_id: next_player.clone(),
+                    //     },
+                    // },
                 ];
                 self.state.effects.extend(effects);
             }
@@ -850,29 +765,6 @@ impl Game {
 
         self.send_sync().await?;
         Ok(())
-    }
-
-    fn check_damage(&self) -> Vec<Effect> {
-        vec![]
-        // let card_ids: Vec<uuid::Uuid> = self
-        //     .state
-        //     .cards
-        //     .iter()
-        //     .filter(|c| c.is_unit())
-        //     .filter(|c| matches!(c.get_zone(), Zone::Realm(_)))
-        //     .filter(|c| {
-        //         let damage = c.get_unit_base().unwrap().damage;
-        //         let toughness = c.get_unit_base().unwrap().toughness;
-        //         damage >= toughness
-        //     })
-        //     .map(|c| c.get_id().clone())
-        //     .collect();
-        //
-        // let mut effects = Vec::new();
-        // for card_id in card_ids {
-        //     effects.push(Effect::bury_card(card_id, zone));
-        // }
-        // effects
     }
 
     pub async fn send_sync(&self) -> anyhow::Result<()> {
@@ -894,11 +786,22 @@ impl Game {
                 })
                 .collect(),
             resources: self.state.resources.clone(),
-            player_status: self.state.player_status.clone(),
             current_player: self.state.current_player.clone(),
         };
 
         self.broadcast(&msg).await?;
+        Ok(())
+    }
+
+    async fn send(socket: Arc<UdpSocket>, message: &ServerMessage, addr: &Socket) -> anyhow::Result<()> {
+        match addr {
+            Socket::SocketAddr(addr) => {
+                let bytes = rmp_serde::to_vec(&message.to_message())?;
+                socket.send_to(&bytes, addr).await?;
+            }
+            Socket::Noop => {}
+        }
+
         Ok(())
     }
 
@@ -973,7 +876,7 @@ impl Game {
         effects
     }
 
-    pub fn process_effects(&mut self) -> anyhow::Result<()> {
+    pub async fn process_effects(&mut self) -> anyhow::Result<()> {
         while !self.state.effects.is_empty() {
             if self.state.waiting_for_input {
                 return Ok(());
@@ -981,7 +884,13 @@ impl Game {
 
             let effect = self.state.effects.remove(0);
             if let Some(effect) = effect {
-                effect.apply(&mut self.state)?;
+                effect
+                    .apply(
+                        &mut self.state,
+                        self.server_sender.clone(),
+                        self.client_receiver.clone(),
+                    )
+                    .await?;
             }
         }
 

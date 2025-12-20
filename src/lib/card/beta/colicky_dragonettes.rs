@@ -1,7 +1,7 @@
 use crate::{
-    card::{Card, CardBase, Edition, MessageHandler, Plane, UnitBase, Zone},
+    card::{Card, CardBase, Edition, Plane, UnitBase, Zone},
     effect::Effect,
-    game::{CARDINAL_DIRECTIONS, InputStatus, PlayerId, Thresholds},
+    game::{CARDINAL_DIRECTIONS, PlayerId, Thresholds, pick_direction},
     state::State,
 };
 
@@ -35,6 +35,7 @@ impl ColickyDragonettes {
     }
 }
 
+#[async_trait::async_trait]
 impl Card for ColickyDragonettes {
     fn get_name(&self) -> &str {
         Self::NAME
@@ -72,25 +73,20 @@ impl Card for ColickyDragonettes {
         Some(&mut self.unit_base)
     }
 
-    fn on_turn_end(&self, state: &State) -> Vec<Effect> {
+    async fn on_turn_end(&self, state: &State) -> Vec<Effect> {
         let is_current_player = &state.current_player == self.get_owner_id();
         if !is_current_player {
             return vec![];
         }
 
-        vec![
-            Effect::set_input_status(InputStatus::ShootingProjectile {
-                player_id: self.get_owner_id().clone(),
-                card_id: self.get_id().clone(),
-                caster_id: Some(self.get_id().clone()),
-                from: self.get_zone().clone(),
-                direction: None,
-                damage: 1,
-                piercing: false,
-            }),
-            Effect::select_direction(self.get_owner_id(), &CARDINAL_DIRECTIONS),
-        ]
+        let direction = pick_direction(self.get_owner_id(), &CARDINAL_DIRECTIONS, state).await;
+        vec![Effect::ShootProjectile {
+            player_id: self.get_owner_id().clone(),
+            shooter: self.get_id().clone(),
+            from_zone: self.get_zone().clone(),
+            direction,
+            damage: 1,
+            piercing: false,
+        }]
     }
 }
-
-impl MessageHandler for ColickyDragonettes {}

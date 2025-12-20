@@ -1,7 +1,7 @@
 use crate::{
-    card::{Card, CardBase, Edition, MessageHandler, Plane, Zone},
+    card::{Card, CardBase, Edition, Plane, Zone},
     effect::Effect,
-    game::{CARDINAL_DIRECTIONS, InputStatus, PlayerId, Thresholds},
+    game::{CARDINAL_DIRECTIONS, PlayerId, Thresholds, pick_direction},
     state::State,
 };
 
@@ -28,6 +28,7 @@ impl HeatRay {
     }
 }
 
+#[async_trait::async_trait]
 impl Card for HeatRay {
     fn get_name(&self) -> &str {
         Self::NAME
@@ -57,22 +58,16 @@ impl Card for HeatRay {
         &self.card_base.id
     }
 
-    fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> Vec<Effect> {
+    async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> Vec<Effect> {
         let caster = state.get_card(caster_id).unwrap();
-        let from = caster.get_zone();
-        vec![
-            Effect::set_input_status(InputStatus::ShootingProjectile {
-                player_id: self.get_owner_id().clone(),
-                card_id: self.get_id().clone(),
-                caster_id: Some(caster_id.clone()),
-                from: from.clone(),
-                direction: None,
-                damage: 2,
-                piercing: true,
-            }),
-            Effect::select_direction(&self.get_owner_id(), &CARDINAL_DIRECTIONS),
-        ]
+        let direction = pick_direction(self.get_owner_id(), &CARDINAL_DIRECTIONS, state).await;
+        vec![Effect::ShootProjectile {
+            player_id: self.get_owner_id().clone(),
+            shooter: caster.get_id().clone(),
+            from_zone: caster.get_zone().clone(),
+            direction,
+            damage: 2,
+            piercing: true,
+        }]
     }
 }
-
-impl MessageHandler for HeatRay {}

@@ -4,6 +4,10 @@ pub mod flamecaller;
 pub use flamecaller::*;
 pub mod arid_desert;
 pub use arid_desert::*;
+pub mod askelon_phoenix;
+pub use askelon_phoenix::*;
+pub mod heat_ray;
+pub use heat_ray::*;
 pub mod pit_vipers;
 pub use pit_vipers::*;
 pub mod raal_dromedary;
@@ -18,14 +22,10 @@ pub mod petrosian_cavalry;
 pub use petrosian_cavalry::*;
 pub mod sand_worm;
 pub use sand_worm::*;
-pub mod askelon_phoenix;
-pub use askelon_phoenix::*;
 pub mod infernal_legion;
 pub use infernal_legion::*;
 pub mod mad_dash;
 pub use mad_dash::*;
-pub mod heat_ray;
-pub use heat_ray::*;
 pub mod cornerstone;
 pub use cornerstone::*;
 pub mod red_desert;
@@ -54,8 +54,10 @@ pub fn from_beta_name(name: &str, player_id: PlayerId) -> Option<Box<dyn Card>> 
         Flamecaller::NAME => Some(Box::new(Flamecaller::new(player_id))),
         ClamorOfHarpies::NAME => Some(Box::new(ClamorOfHarpies::new(player_id))),
         Battlemage::NAME => Some(Box::new(Battlemage::new(player_id))),
-        Sparkmage::NAME => Some(Box::new(Sparkmage::new(player_id))),
         AridDesert::NAME => Some(Box::new(AridDesert::new(player_id))),
+        Sparkmage::NAME => Some(Box::new(Sparkmage::new(player_id))),
+        AskelonPhoenix::NAME => Some(Box::new(AskelonPhoenix::new(player_id))),
+        HeatRay::NAME => Some(Box::new(HeatRay::new(player_id))),
         PitVipers::NAME => Some(Box::new(PitVipers::new(player_id))),
         RaalDromedary::NAME => Some(Box::new(RaalDromedary::new(player_id))),
         LavaSalamander::NAME => Some(Box::new(LavaSalamander::new(player_id))),
@@ -63,10 +65,8 @@ pub fn from_beta_name(name: &str, player_id: PlayerId) -> Option<Box<dyn Card>> 
         WayfaringPilgrim::NAME => Some(Box::new(WayfaringPilgrim::new(player_id))),
         PetrosianCavalry::NAME => Some(Box::new(PetrosianCavalry::new(player_id))),
         SandWorm::NAME => Some(Box::new(SandWorm::new(player_id))),
-        AskelonPhoenix::NAME => Some(Box::new(AskelonPhoenix::new(player_id))),
         InfernalLegion::NAME => Some(Box::new(InfernalLegion::new(player_id))),
         MadDash::NAME => Some(Box::new(MadDash::new(player_id))),
-        HeatRay::NAME => Some(Box::new(HeatRay::new(player_id))),
         Cornerstone::NAME => Some(Box::new(Cornerstone::new(player_id))),
         RedDesert::NAME => Some(Box::new(RedDesert::new(player_id))),
         RemoteDesert::NAME => Some(Box::new(RemoteDesert::new(player_id))),
