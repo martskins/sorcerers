@@ -104,10 +104,10 @@ pub async fn pick_card(
 pub async fn pick_action<'a>(
     player_id: &PlayerId,
     actions: &'a [Box<dyn Action>],
-    sender: Sender<ServerMessage>,
-    receiver: Receiver<ClientMessage>,
+    state: &State,
 ) -> &'a Box<dyn Action> {
-    sender
+    state
+        .get_sender()
         .send(ServerMessage::PickAction {
             player_id: player_id.clone(),
             actions: actions.iter().map(|c| c.get_name().to_string()).collect(),
@@ -116,7 +116,7 @@ pub async fn pick_action<'a>(
         .unwrap();
 
     loop {
-        let msg = receiver.recv().await.unwrap();
+        let msg = state.get_receiver().recv().await.unwrap();
         match msg {
             ClientMessage::PickAction { action_idx, .. } => break &actions[action_idx],
             _ => unreachable!(),
@@ -677,13 +677,7 @@ impl Game {
                         }
 
                         actions.push(Box::new(BaseAction::Cancel));
-                        let action = pick_action(
-                            player_id,
-                            &actions,
-                            self.server_sender.clone(),
-                            self.client_receiver.clone(),
-                        )
-                        .await;
+                        let action = pick_action(player_id, &actions, &self.state).await;
                         let effects = action.on_select(Some(card.get_id()), player_id, &self.state).await;
                         self.state.effects.extend(effects);
                     }

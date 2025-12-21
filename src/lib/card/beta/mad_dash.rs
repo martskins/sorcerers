@@ -60,7 +60,7 @@ impl Card for MadDash {
 
     async fn on_cast(&mut self, state: &State, _caster_id: &uuid::Uuid) -> Vec<Effect> {
         let actions: Vec<Box<dyn Action>> = vec![Box::new(BaseAction::DrawSite), Box::new(BaseAction::DrawSpell)];
-        let action = pick_action(self.get_owner_id(), &actions, state.get_sender(), state.get_receiver()).await;
+        let action = pick_action(self.get_owner_id(), &actions, state).await;
         let cards = state
             .cards
             .iter()

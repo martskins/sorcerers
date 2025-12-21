@@ -346,10 +346,9 @@ impl Effect {
                     state.resources.get_mut(player_id).unwrap().mana += site.provided_mana;
                 }
 
-                println!("Player is picking draw action at start of turn");
                 let actions: Vec<Box<dyn Action>> =
                     vec![Box::new(BaseAction::DrawSite), Box::new(BaseAction::DrawSpell)];
-                let action = pick_action(player_id, &actions, sender, receiver).await;
+                let action = pick_action(player_id, &actions, state).await;
                 let effects = action.on_select(None, player_id, state).await;
                 state.effects.extend(effects);
             }

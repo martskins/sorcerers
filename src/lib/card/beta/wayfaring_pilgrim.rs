@@ -82,8 +82,7 @@ impl Card for WayfaringPilgrim {
                     self.corners_entered.push(*s);
                     let actions: Vec<Box<dyn Action>> =
                         vec![Box::new(BaseAction::DrawSite), Box::new(BaseAction::DrawSpell)];
-                    let picked_action =
-                        pick_action(self.get_owner_id(), &actions, state.get_sender(), state.get_receiver()).await;
+                    let picked_action = pick_action(self.get_owner_id(), &actions, state).await;
                     return picked_action
                         .on_select(Some(self.get_id()), self.get_owner_id(), state)
                         .await;

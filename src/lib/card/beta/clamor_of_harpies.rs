@@ -123,7 +123,7 @@ impl Card for ClamorOfHarpies {
             Box::new(ClamorOfHarpiesAction::Strike),
             Box::new(ClamorOfHarpiesAction::DoNotStrike),
         ];
-        let action = pick_action(self.get_owner_id(), &actions, state.get_sender(), state.get_receiver()).await;
+        let action = pick_action(self.get_owner_id(), &actions, state).await;
         let mut effects = vec![Effect::MoveCard {
             card_id,
             from: card.get_zone().clone(),
