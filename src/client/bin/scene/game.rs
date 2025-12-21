@@ -8,13 +8,13 @@ use macroquad::{
     color::{BLUE, Color, GREEN, RED, WHITE},
     input::{MouseButton, is_mouse_button_released, mouse_position},
     math::{Rect, Vec2},
-    shapes::{draw_line, draw_rectangle, draw_rectangle_lines, draw_triangle_lines},
+    shapes::{draw_circle_lines, draw_line, draw_rectangle, draw_rectangle_lines, draw_triangle_lines},
     text::draw_text,
     texture::{DrawTextureParams, draw_texture_ex},
     ui,
 };
 use sorcerers::{
-    card::{CardInfo, CardType, Plane, Zone},
+    card::{CardInfo, CardType, Modifier, Plane, Zone},
     game::{Element, PlayerId, Resources},
     networking::{
         self,
@@ -748,12 +748,22 @@ impl Game {
                 },
             );
 
-            if card_display.summoning_sickness {
+            if card_display.modifiers.contains(&Modifier::SummoningSickness) {
                 let icon_size = 22.0;
                 let scale = CARD_IN_PLAY_SCALE;
                 let x = card_display.rect.x + card_display.rect.w * scale - icon_size - 4.0;
                 let y = card_display.rect.y + 4.0;
                 draw_vortex_icon(x, y, icon_size, BLUE);
+            }
+
+            if card_display.modifiers.contains(&Modifier::Disabled) {
+                let icon_size = 15.0;
+                let x = card_display.rect.x + card_display.rect.w - 15.0 - 5.0;
+                let y = card_display.rect.y + 4.0;
+                let cx = x + icon_size / 2.0;
+                let cy = y + icon_size / 2.0;
+                draw_circle_lines(cx, cy, icon_size / 2.0, 3.0, WHITE);
+                draw_line(x + 4.0, y + icon_size - 4.0, x + icon_size - 4.0, y + 4.0, 3.0, WHITE);
             }
         }
     }
@@ -853,7 +863,7 @@ impl Game {
                     rotation: 0.0,
                     is_hovered: false,
                     is_selected: false,
-                    summoning_sickness: card.summoning_sickness,
+                    modifiers: card.modifiers.clone(),
                     plane: card.plane.clone(),
                     card_type: card.card_type.clone(),
                 });
@@ -909,7 +919,7 @@ impl Game {
                 zone: card.zone.clone(),
                 tapped: card.tapped,
                 image: TextureCache::get_card_texture(card).await,
-                summoning_sickness: card.summoning_sickness,
+                modifiers: card.modifiers.clone(),
                 plane: card.plane.clone(),
                 card_type: card.card_type.clone(),
             });
@@ -932,7 +942,7 @@ impl Game {
                 zone: card.zone.clone(),
                 tapped: card.tapped,
                 image: TextureCache::get_card_texture(card).await,
-                summoning_sickness: card.summoning_sickness,
+                modifiers: card.modifiers.clone(),
                 plane: card.plane.clone(),
                 card_type: card.card_type.clone(),
             });

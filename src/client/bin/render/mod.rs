@@ -1,5 +1,5 @@
 use macroquad::{math::Rect, texture::Texture2D};
-use sorcerers::card::{CardType, Plane, Zone};
+use sorcerers::card::{CardType, Modifier, Plane, Zone};
 
 #[derive(Debug, Clone)]
 pub struct CardDisplay {
@@ -13,7 +13,7 @@ pub struct CardDisplay {
     pub rotation: f32,
     pub is_hovered: bool,
     pub is_selected: bool,
-    pub summoning_sickness: bool,
+    pub modifiers: Vec<Modifier>,
 }
 
 #[derive(Debug, Clone)]

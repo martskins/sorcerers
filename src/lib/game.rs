@@ -194,7 +194,7 @@ pub trait PlayerAction: std::fmt::Debug {
     fn get_name(&self) -> String;
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum Element {
     Fire,
     Air,
@@ -763,11 +763,6 @@ impl Game {
                     Effect::StartTurn {
                         player_id: next_player.clone(),
                     },
-                    // Effect::SetPlayerStatus {
-                    //     status: Status::WaitingForCardDraw {
-                    //         player_id: next_player.clone(),
-                    //     },
-                    // },
                 ];
                 self.state.effects.extend(effects);
             }
@@ -791,7 +786,7 @@ impl Game {
                     edition: c.get_edition().clone(),
                     zone: c.get_zone().clone(),
                     card_type: c.get_card_type().clone(),
-                    summoning_sickness: c.has_modifier(&self.state, Modifier::SummoningSickness),
+                    modifiers: c.get_modifiers(&self.state),
                     plane: c.get_plane().clone(),
                 })
                 .collect(),

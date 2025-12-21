@@ -151,7 +151,7 @@ pub struct CardInfo {
     pub zone: Zone,
     pub plane: Plane,
     pub card_type: CardType,
-    pub summoning_sickness: bool,
+    pub modifiers: Vec<Modifier>,
 }
 
 impl CardInfo {
@@ -654,7 +654,7 @@ pub struct SiteBase {
     pub types: Vec<SiteType>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum Modifier {
     Disabled,
     Airborne,

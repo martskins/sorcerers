@@ -1,7 +1,7 @@
 use crate::{
     card::{Card, CardBase, Edition, Modifier, Plane, UnitBase, Zone},
     effect::{Counter, Effect},
-    game::{Element, PlayerId, Thresholds},
+    game::{Direction, Element, PlayerId, Thresholds},
     state::State,
 };
 
@@ -73,8 +73,16 @@ impl Card for HillockBasilisk {
     }
 
     fn area_modifiers(&self, state: &State) -> Vec<(Modifier, Vec<uuid::Uuid>)> {
-        let nearby = self.get_zone().get_nearby();
-        let units = nearby
+        let mut zones = vec![self.get_zone().clone()];
+        let board_flipped = self.get_owner_id() != &state.player_one;
+        let zone_in_front = self
+            .get_zone()
+            .zone_in_direction(&Direction::Up.normalise(board_flipped));
+        if let Some(zone) = zone_in_front {
+            zones.push(zone);
+        }
+
+        let units = zones
             .iter()
             .flat_map(|z| state.get_units_in_zone(z))
             .map(|c| c.get_id().clone())

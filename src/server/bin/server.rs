@@ -108,6 +108,11 @@ impl Server {
             Zone::Realm(7),
         ));
         state.cards.push(card::from_name_and_zone(
+            HillockBasilisk::NAME,
+            player2.clone(),
+            Zone::Realm(7),
+        ));
+        state.cards.push(card::from_name_and_zone(
             SacredScarabs::NAME,
             player2.clone(),
             Zone::Realm(13),
