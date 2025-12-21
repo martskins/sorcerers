@@ -56,6 +56,8 @@ pub mod rimland_nomads;
 pub use rimland_nomads::*;
 pub mod ogre_goons;
 pub use ogre_goons::*;
+pub mod quarrelsome_kobolds;
+pub use quarrelsome_kobolds::*;
 
 use crate::{card::Card, game::PlayerId};
 
@@ -90,6 +92,7 @@ pub fn from_beta_name(name: &str, player_id: PlayerId) -> Option<Box<dyn Card>> 
         ConeOfFlame::NAME => Some(Box::new(ConeOfFlame::new(player_id))),
         RimlandNomads::NAME => Some(Box::new(RimlandNomads::new(player_id))),
         OgreGoons::NAME => Some(Box::new(OgreGoons::new(player_id))),
+        QuarrelsomeKobolds::NAME => Some(Box::new(QuarrelsomeKobolds::new(player_id))),
         _ => None,
     }
 }
