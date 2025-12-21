@@ -40,10 +40,6 @@ pub enum Effect {
         damage: u8,
         piercing: bool,
     },
-    SetCardStatus {
-        card_id: uuid::Uuid,
-        status: Box<dyn std::any::Any + Send + Sync>,
-    },
     AddModifier {
         card_id: uuid::Uuid,
         counter: ModifierCounter,
@@ -173,7 +169,6 @@ impl Effect {
             Effect::ShootProjectile { .. } => "ShootProjectile".to_string(),
             Effect::SetInputStatus { .. } => "SetInputStatus".to_string(),
             Effect::AddCard { .. } => "AddCard".to_string(),
-            Effect::SetCardStatus { .. } => "SetCardStatus".to_string(),
             Effect::AddModifier { .. } => "AddModifier".to_string(),
             Effect::AddCounter { .. } => "AddCounter".to_string(),
             Effect::MoveCard { .. } => "MoveCard".to_string(),
@@ -213,12 +208,7 @@ impl Effect {
                 piercing,
             } => {
                 let mut effects = vec![];
-                println!(
-                    "Shooting projectile from zone {:?} in direction {:?}",
-                    from_zone, direction
-                );
                 let mut next_zone = from_zone.zone_in_direction(direction);
-                println!("Next zone: {:?}", next_zone);
                 while next_zone.is_some() {
                     let zone = next_zone.unwrap();
                     let units = state
@@ -246,10 +236,12 @@ impl Effect {
                 }
 
                 println!(
-                    "Effects {:?}",
-                    effects.iter().map(|c| c.name(state)).collect::<Vec<_>>()
+                    "Projectile effects: {:?}",
+                    effects.iter().map(|e| e.name(state)).collect::<Vec<_>>()
                 );
-                state.effects.extend(effects);
+                for effect in effects {
+                    state.effects.push_front(effect);
+                }
             }
             Effect::AddCard { card } => {
                 state.cards.push(card.clone_box());
@@ -472,7 +464,9 @@ impl Effect {
                 let snapshot = state.snapshot();
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
                 let effects = card.on_take_damage(&snapshot, from, *damage);
-                state.effects.extend(effects);
+                for effect in effects {
+                    state.effects.push_front(effect);
+                }
             }
             Effect::BanishCard { card_id, .. } => {
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
@@ -502,10 +496,6 @@ impl Effect {
                     let base = card.get_unit_base_mut().unwrap();
                     base.modifier_counters.push(counter.clone());
                 }
-            }
-            Effect::SetCardStatus { card_id, status } => {
-                let card = state.get_card_mut(card_id).unwrap();
-                card.set_status(status).unwrap();
             }
             Effect::SetInputStatus { status } => {
                 state.input_status = status.clone();

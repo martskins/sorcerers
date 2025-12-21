@@ -113,7 +113,7 @@ impl Server {
             Zone::Realm(13),
         ));
         state.cards.push(card::from_name_and_zone(
-            AskelonPhoenix::NAME,
+            PitVipers::NAME,
             player1.clone(),
             Zone::Realm(8),
         ));
@@ -132,11 +132,9 @@ impl Server {
             player1.clone(),
             Zone::Hand,
         ));
-        state.cards.push(card::from_name_and_zone(
-            MinorExplosion::NAME,
-            player1.clone(),
-            Zone::Hand,
-        ));
+        state
+            .cards
+            .push(card::from_name_and_zone(Firebolts::NAME, player1.clone(), Zone::Hand));
         state
             .cards
             .push(card::from_name_and_zone(MadDash::NAME, player1.clone(), Zone::Hand));

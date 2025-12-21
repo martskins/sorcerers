@@ -46,6 +46,8 @@ pub mod minor_explosion;
 pub use minor_explosion::*;
 pub mod major_explosion;
 pub use major_explosion::*;
+pub mod firebolts;
+pub use firebolts::*;
 
 use crate::{card::Card, game::PlayerId};
 
@@ -75,6 +77,7 @@ pub fn from_beta_name(name: &str, player_id: PlayerId) -> Option<Box<dyn Card>> 
         ColickyDragonettes::NAME => Some(Box::new(ColickyDragonettes::new(player_id))),
         MinorExplosion::NAME => Some(Box::new(MinorExplosion::new(player_id))),
         MajorExplosion::NAME => Some(Box::new(MajorExplosion::new(player_id))),
+        Firebolts::NAME => Some(Box::new(Firebolts::new(player_id))),
         _ => None,
     }
 }
