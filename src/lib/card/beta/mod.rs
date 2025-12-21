@@ -54,6 +54,8 @@ pub mod cone_of_flame;
 pub use cone_of_flame::*;
 pub mod rimland_nomads;
 pub use rimland_nomads::*;
+pub mod ogre_goons;
+pub use ogre_goons::*;
 
 use crate::{card::Card, game::PlayerId};
 
@@ -87,6 +89,7 @@ pub fn from_beta_name(name: &str, player_id: PlayerId) -> Option<Box<dyn Card>> 
         Incinerate::NAME => Some(Box::new(Incinerate::new(player_id))),
         ConeOfFlame::NAME => Some(Box::new(ConeOfFlame::new(player_id))),
         RimlandNomads::NAME => Some(Box::new(RimlandNomads::new(player_id))),
+        OgreGoons::NAME => Some(Box::new(OgreGoons::new(player_id))),
         _ => None,
     }
 }
