@@ -430,7 +430,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Some(toughness)
     }
 
-    fn get_modifiers(&self, _state: &State) -> Vec<Modifier> {
+    fn get_modifiers(&self, state: &State) -> Vec<Modifier> {
         let base = self.get_unit_base();
         if base.is_none() {
             return vec![];
@@ -441,6 +441,21 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         for counter in &base.modifier_counters {
             modifiers.push(counter.modifier.clone());
         }
+
+        let area_mods: Vec<Modifier> = state
+            .cards
+            .iter()
+            .flat_map(|c| c.area_modifiers(state))
+            .filter_map(|(modif, units)| {
+                if units.contains(self.get_id()) {
+                    Some(modif)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        modifiers.extend(area_mods);
         modifiers
     }
 
@@ -616,6 +631,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
         vec![]
     }
+
+    fn area_modifiers(&self, state: &State) -> Vec<(Modifier, Vec<uuid::Uuid>)> {
+        vec![]
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -637,6 +656,7 @@ pub struct SiteBase {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Modifier {
+    Disabled,
     Airborne,
     Lethal,
     Movement(u8),
