@@ -100,6 +100,17 @@ impl Zone {
             .collect()
     }
 
+    pub fn zone_in_direction_and_steps(&self, direction: &Direction, steps: u8) -> Option<Self> {
+        let mut current_zone = self.clone();
+        for _ in 0..steps {
+            match current_zone.zone_in_direction(direction) {
+                Some(z) => current_zone = z,
+                None => return None,
+            }
+        }
+        Some(current_zone)
+    }
+
     pub fn zone_in_direction(&self, direction: &Direction) -> Option<Self> {
         let square = self.get_square().unwrap();
         let zone = match direction {
@@ -604,6 +615,11 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+pub enum MinionType {
+    Dragon,
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum SiteType {
     Desert,
 }
@@ -637,6 +653,7 @@ pub struct UnitBase {
     pub damage: u8,
     pub power_counters: Vec<Counter>,
     pub modifier_counters: Vec<ModifierCounter>,
+    pub types: Vec<MinionType>,
 }
 
 #[derive(Debug)]

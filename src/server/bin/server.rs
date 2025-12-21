@@ -127,11 +127,9 @@ impl Server {
             player1.clone(),
             Zone::Realm(3),
         ));
-        state.cards.push(card::from_name_and_zone(
-            MajorExplosion::NAME,
-            player1.clone(),
-            Zone::Hand,
-        ));
+        state
+            .cards
+            .push(card::from_name_and_zone(Incinerate::NAME, player1.clone(), Zone::Hand));
         state
             .cards
             .push(card::from_name_and_zone(Firebolts::NAME, player1.clone(), Zone::Hand));

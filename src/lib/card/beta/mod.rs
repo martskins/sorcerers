@@ -48,6 +48,10 @@ pub mod major_explosion;
 pub use major_explosion::*;
 pub mod firebolts;
 pub use firebolts::*;
+pub mod incinerate;
+pub use incinerate::*;
+pub mod cone_of_flame;
+pub use cone_of_flame::*;
 
 use crate::{card::Card, game::PlayerId};
 
@@ -78,6 +82,8 @@ pub fn from_beta_name(name: &str, player_id: PlayerId) -> Option<Box<dyn Card>> 
         MinorExplosion::NAME => Some(Box::new(MinorExplosion::new(player_id))),
         MajorExplosion::NAME => Some(Box::new(MajorExplosion::new(player_id))),
         Firebolts::NAME => Some(Box::new(Firebolts::new(player_id))),
+        Incinerate::NAME => Some(Box::new(Incinerate::new(player_id))),
+        ConeOfFlame::NAME => Some(Box::new(ConeOfFlame::new(player_id))),
         _ => None,
     }
 }

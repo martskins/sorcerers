@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, Plane, UnitBase, Zone},
+    card::{Card, CardBase, Edition, MinionType, Plane, UnitBase, Zone},
     effect::Effect,
     game::{CARDINAL_DIRECTIONS, PlayerId, Thresholds, pick_direction},
     state::State,
@@ -20,6 +20,7 @@ impl ColickyDragonettes {
                 power: 3,
                 toughness: 3,
                 modifiers: vec![],
+                types: vec![MinionType::Dragon],
                 ..Default::default()
             },
             card_base: CardBase {

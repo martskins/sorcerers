@@ -26,6 +26,56 @@ pub enum Direction {
     BottomRight,
 }
 
+impl PlayerAction for Direction {
+    fn get_name(&self) -> String {
+        match self {
+            Direction::Up => "Up".to_string(),
+            Direction::Down => "Down".to_string(),
+            Direction::Left => "Left".to_string(),
+            Direction::Right => "Right".to_string(),
+            Direction::TopLeft => "Top Left".to_string(),
+            Direction::TopRight => "Top Right".to_string(),
+            Direction::BottomLeft => "Bottom Left".to_string(),
+            Direction::BottomRight => "Bottom Right".to_string(),
+        }
+    }
+}
+
+impl Direction {
+    pub fn normalise(&self, board_flipped: bool) -> Direction {
+        if board_flipped {
+            match self {
+                Direction::Up => Direction::Down,
+                Direction::Down => Direction::Up,
+                Direction::Left => Direction::Right,
+                Direction::Right => Direction::Left,
+                Direction::TopLeft => Direction::BottomRight,
+                Direction::TopRight => Direction::BottomLeft,
+                Direction::BottomLeft => Direction::TopRight,
+                Direction::BottomRight => Direction::TopLeft,
+            }
+        } else {
+            self.clone()
+        }
+    }
+
+    pub fn rotate(&self, times: u8) -> Direction {
+        let directions = [
+            Direction::Up,
+            Direction::TopRight,
+            Direction::Right,
+            Direction::BottomRight,
+            Direction::Down,
+            Direction::BottomLeft,
+            Direction::Left,
+            Direction::TopLeft,
+        ];
+        let idx = directions.iter().position(|d| d == self).unwrap();
+        let new_idx = (idx + times as usize) % directions.len();
+        directions[new_idx].clone()
+    }
+}
+
 pub const CARDINAL_DIRECTIONS: [Direction; 4] = [Direction::Up, Direction::Down, Direction::Left, Direction::Right];
 
 pub async fn pick_card(
@@ -142,40 +192,6 @@ pub async fn pick_direction(player_id: &PlayerId, directions: &[Direction], stat
 
 pub trait PlayerAction: std::fmt::Debug {
     fn get_name(&self) -> String;
-}
-
-impl PlayerAction for Direction {
-    fn get_name(&self) -> String {
-        match self {
-            Direction::Up => "Up".to_string(),
-            Direction::Down => "Down".to_string(),
-            Direction::Left => "Left".to_string(),
-            Direction::Right => "Right".to_string(),
-            Direction::TopLeft => "Top Left".to_string(),
-            Direction::TopRight => "Top Right".to_string(),
-            Direction::BottomLeft => "Bottom Left".to_string(),
-            Direction::BottomRight => "Bottom Right".to_string(),
-        }
-    }
-}
-
-impl Direction {
-    pub fn normalise(&self, board_flipped: bool) -> Direction {
-        if board_flipped {
-            match self {
-                Direction::Up => Direction::Down,
-                Direction::Down => Direction::Up,
-                Direction::Left => Direction::Right,
-                Direction::Right => Direction::Left,
-                Direction::TopLeft => Direction::BottomRight,
-                Direction::TopRight => Direction::BottomLeft,
-                Direction::BottomLeft => Direction::TopRight,
-                Direction::BottomRight => Direction::TopLeft,
-            }
-        } else {
-            self.clone()
-        }
-    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
