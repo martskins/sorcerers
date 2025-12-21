@@ -558,7 +558,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         false
     }
 
-    fn on_move(&mut self, _state: &State, _zone: &Zone) -> Vec<Effect> {
+    async fn on_move(&mut self, _state: &State, _zone: &Zone) -> Vec<Effect> {
         vec![]
     }
 

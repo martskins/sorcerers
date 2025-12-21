@@ -235,10 +235,6 @@ impl Effect {
                     next_zone = zone.zone_in_direction(direction);
                 }
 
-                println!(
-                    "Projectile effects: {:?}",
-                    effects.iter().map(|e| e.name(state)).collect::<Vec<_>>()
-                );
                 for effect in effects {
                     state.effects.push_front(effect);
                 }
@@ -250,7 +246,7 @@ impl Effect {
                 let snapshot = state.snapshot();
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
                 card.set_zone(to.clone());
-                let effects = card.on_move(&snapshot, to);
+                let effects = card.on_move(&snapshot, to).await;
                 state.effects.extend(effects);
                 if *tap {
                     card.get_base_mut().tapped = true;

@@ -1,7 +1,7 @@
 use crate::{
     card::{Card, CardBase, Edition, Modifier, Plane, UnitBase, Zone},
     effect::Effect,
-    game::{PlayerId, Thresholds},
+    game::{Action, BaseAction, PlayerId, Thresholds, pick_action},
     state::State,
 };
 
@@ -37,6 +37,7 @@ impl WayfaringPilgrim {
     }
 }
 
+#[async_trait::async_trait]
 impl Card for WayfaringPilgrim {
     fn get_name(&self) -> &str {
         Self::NAME
@@ -74,11 +75,18 @@ impl Card for WayfaringPilgrim {
         Some(&mut self.unit_base)
     }
 
-    fn on_move(&mut self, _state: &State, zone: &Zone) -> Vec<Effect> {
+    async fn on_move(&mut self, state: &State, zone: &Zone) -> Vec<Effect> {
         match zone {
             Zone::Realm(s) => {
                 if !self.corners_entered.contains(&s) {
                     self.corners_entered.push(*s);
+                    let actions: Vec<Box<dyn Action>> =
+                        vec![Box::new(BaseAction::DrawSite), Box::new(BaseAction::DrawSpell)];
+                    let picked_action =
+                        pick_action(self.get_owner_id(), &actions, state.get_sender(), state.get_receiver()).await;
+                    return picked_action
+                        .on_select(Some(self.get_id()), self.get_owner_id(), state)
+                        .await;
                 }
             }
             _ => {}

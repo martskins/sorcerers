@@ -125,6 +125,21 @@ impl Server {
         state.cards.push(card::from_name_and_zone(
             RedDesert::NAME,
             player1.clone(),
+            Zone::Realm(1),
+        ));
+        state.cards.push(card::from_name_and_zone(
+            RedDesert::NAME,
+            player1.clone(),
+            Zone::Realm(2),
+        ));
+        state.cards.push(card::from_name_and_zone(
+            WayfaringPilgrim::NAME,
+            player1.clone(),
+            Zone::Realm(2),
+        ));
+        state.cards.push(card::from_name_and_zone(
+            RedDesert::NAME,
+            player1.clone(),
             Zone::Realm(3),
         ));
         state
