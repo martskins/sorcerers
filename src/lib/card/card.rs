@@ -218,6 +218,39 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Err(anyhow::anyhow!("set_status not implemented for {}", self.get_name()))
     }
 
+    fn base_take_damage(&mut self, state: &State, from: &uuid::Uuid, damage: u8) -> Vec<Effect> {
+        if self.is_unit() {
+            // Avatar is a sub-type of unit
+            if self.is_avatar() {
+                return vec![Effect::RemoveResources {
+                    player_id: self.get_owner_id().clone(),
+                    mana: 0,
+                    thresholds: Thresholds::new(),
+                    health: damage,
+                }];
+            }
+
+            let ub = self.get_unit_base_mut().unwrap();
+            ub.damage += damage;
+
+            let attacker = state.cards.iter().find(|c| c.get_id() == from).unwrap();
+            if ub.damage >= self.get_toughness(state).unwrap_or(0) || attacker.has_modifier(state, Modifier::Lethal) {
+                return vec![Effect::bury_card(self.get_id(), self.get_zone())];
+            }
+
+            return vec![];
+        } else if self.is_site() {
+            return vec![Effect::RemoveResources {
+                player_id: self.get_owner_id().clone(),
+                mana: 0,
+                thresholds: Thresholds::new(),
+                health: damage,
+            }];
+        }
+
+        vec![]
+    }
+
     fn base_site_on_summon(&self, _state: &State) -> Vec<Effect> {
         vec![Effect::AddResources {
             player_id: self.get_owner_id().clone(),
@@ -530,36 +563,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     fn on_take_damage(&mut self, state: &State, from: &uuid::Uuid, damage: u8) -> Vec<Effect> {
-        if self.is_unit() {
-            // Avatar is a sub-type of unit
-            if self.is_avatar() {
-                return vec![Effect::RemoveResources {
-                    player_id: self.get_owner_id().clone(),
-                    mana: 0,
-                    thresholds: Thresholds::new(),
-                    health: damage,
-                }];
-            }
-
-            let ub = self.get_unit_base_mut().unwrap();
-            ub.damage += damage;
-
-            let attacker = state.cards.iter().find(|c| c.get_id() == from).unwrap();
-            if ub.damage >= self.get_toughness(state).unwrap_or(0) || attacker.has_modifier(state, Modifier::Lethal) {
-                return vec![Effect::bury_card(self.get_id(), self.get_zone())];
-            }
-
-            return vec![];
-        } else if self.is_site() {
-            return vec![Effect::RemoveResources {
-                player_id: self.get_owner_id().clone(),
-                mana: 0,
-                thresholds: Thresholds::new(),
-                health: damage,
-            }];
-        }
-
-        vec![]
+        self.base_take_damage(state, from, damage)
     }
 
     async fn on_turn_end(&self, _state: &State) -> Vec<Effect> {
