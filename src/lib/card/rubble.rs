@@ -61,10 +61,6 @@ impl Card for Rubble {
         &self.card_base.id
     }
 
-    fn get_card_type(&self) -> CardType {
-        CardType::Site
-    }
-
     fn get_site_base(&self) -> Option<&SiteBase> {
         Some(&self.site_base)
     }

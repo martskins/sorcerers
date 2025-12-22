@@ -29,7 +29,7 @@ impl Sparkmage {
                 required_thresholds: Thresholds::new(),
                 plane: Plane::Surface,
             },
-            avatar_base: AvatarBase { playing_site: None },
+            avatar_base: AvatarBase {},
         }
     }
 }

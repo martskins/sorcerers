@@ -111,13 +111,7 @@ impl Card for ClamorOfHarpies {
             .filter(|c| c.get_power(state).unwrap_or(0) < self.get_power(state).unwrap_or(0))
             .map(|c| c.get_id().clone())
             .collect();
-        let card_id = pick_card(
-            self.get_owner_id(),
-            &valid_cards,
-            state.get_sender(),
-            state.get_receiver(),
-        )
-        .await;
+        let card_id = pick_card(self.get_owner_id(), &valid_cards, state).await;
         let card = state.get_card(&card_id).unwrap();
         let actions: Vec<Box<dyn Action>> = vec![
             Box::new(ClamorOfHarpiesAction::Strike),

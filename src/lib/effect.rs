@@ -54,7 +54,7 @@ pub enum Effect {
     },
     DrawCard {
         player_id: uuid::Uuid,
-        card_type: CardType,
+        from: Zone,
     },
     PlayMagic {
         player_id: uuid::Uuid,
@@ -111,8 +111,9 @@ pub enum Effect {
         card_id: uuid::Uuid,
         from: Zone,
     },
-    SetInputStatus {
-        status: InputStatus,
+    SetCardData {
+        card_id: uuid::Uuid,
+        data: Box<dyn std::any::Any + Send + Sync>,
     },
 }
 
@@ -165,7 +166,6 @@ impl Effect {
     pub fn name(&self, state: &State) -> String {
         match self {
             Effect::ShootProjectile { .. } => "ShootProjectile".to_string(),
-            Effect::SetInputStatus { .. } => "SetInputStatus".to_string(),
             Effect::AddCard { .. } => "AddCard".to_string(),
             Effect::AddModifier { .. } => "AddModifier".to_string(),
             Effect::AddCounter { .. } => "AddCounter".to_string(),
@@ -187,6 +187,7 @@ impl Effect {
             }
             Effect::BuryCard { .. } => "BuryCard".to_string(),
             Effect::BanishCard { .. } => "BanishCard".to_string(),
+            Effect::SetCardData { .. } => "SetCardData".to_string(),
         }
     }
 
@@ -217,8 +218,7 @@ impl Effect {
                     if units.len() == 1 {
                         effects.push(Effect::take_damage(&units[0], shooter, *damage));
                     } else {
-                        let picked_unit_id =
-                            pick_card(player_id, &units, state.get_sender(), state.get_receiver()).await;
+                        let picked_unit_id = pick_card(player_id, &units, state).await;
                         effects.push(Effect::take_damage(&picked_unit_id, shooter, *damage));
                     }
 
@@ -239,16 +239,17 @@ impl Effect {
                 let snapshot = state.snapshot();
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
                 card.set_zone(to.clone());
-                let effects = card.on_move(&snapshot, to).await;
+                let mut effects = card.on_move(&snapshot, to).await;
+                effects.extend(card.on_visit_zone(&snapshot, to).await);
                 state.effects.extend(effects);
                 if *tap {
                     card.get_base_mut().tapped = true;
                 }
             }
-            Effect::DrawCard { player_id, card_type } => {
+            Effect::DrawCard { player_id, from } => {
                 let deck = state.decks.get_mut(player_id).unwrap();
-                match card_type {
-                    CardType::Site => {
+                match from {
+                    Zone::Atlasbook => {
                         let card_id = deck.sites.pop().unwrap();
                         state
                             .cards
@@ -257,7 +258,7 @@ impl Effect {
                             .unwrap()
                             .set_zone(Zone::Hand);
                     }
-                    CardType::Spell => {
+                    Zone::Spellbook => {
                         let card_id = deck.spells.pop().unwrap();
                         state
                             .cards
@@ -266,8 +267,7 @@ impl Effect {
                             .unwrap()
                             .set_zone(Zone::Hand);
                     }
-                    CardType::Avatar => unreachable!(),
-                    CardType::Token => unreachable!(),
+                    _ => unreachable!(),
                 }
             }
             Effect::PlayMagic { card_id, caster_id, .. } => {
@@ -297,8 +297,9 @@ impl Effect {
                 if !card.has_modifier(&snapshot, Modifier::Charge) {
                     card.add_modifier(Modifier::SummoningSickness);
                 }
-                // TODO: MOve genesis to an on-enter
+
                 let mut effects = card.genesis(&snapshot).await;
+                effects.extend(card.on_visit_zone(&snapshot, zone).await);
                 let mana_cost = card.get_mana_cost(&snapshot);
                 effects.push(Effect::RemoveResources {
                     player_id: card.get_owner_id().clone(),
@@ -474,8 +475,9 @@ impl Effect {
                     base.modifier_counters.push(counter.clone());
                 }
             }
-            Effect::SetInputStatus { status } => {
-                state.input_status = status.clone();
+            Effect::SetCardData { card_id, data } => {
+                let card = state.get_card_mut(card_id).unwrap();
+                card.set_data(data)?;
             }
         }
 

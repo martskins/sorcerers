@@ -71,7 +71,7 @@ impl Card for Incinerate {
             .collect();
         zones.push(caster.get_zone().clone());
 
-        let picked_zone = pick_zone(self.get_owner_id(), &zones, state.get_sender(), state.get_receiver()).await;
+        let picked_zone = pick_zone(self.get_owner_id(), &zones, state).await;
         let units = state.get_units_in_zone(&picked_zone);
         let mut effects = vec![];
         for unit in units {

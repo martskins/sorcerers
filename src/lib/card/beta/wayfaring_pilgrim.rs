@@ -9,7 +9,7 @@ use crate::{
 pub struct WayfaringPilgrim {
     pub unit_base: UnitBase,
     pub card_base: CardBase,
-    corners_entered: Vec<u8>,
+    corners_visited: Vec<Zone>,
 }
 
 impl WayfaringPilgrim {
@@ -32,7 +32,7 @@ impl WayfaringPilgrim {
                 required_thresholds: Thresholds::parse("F"),
                 plane: Plane::Air,
             },
-            corners_entered: Vec::new(),
+            corners_visited: Vec::new(),
         }
     }
 }
@@ -75,21 +75,40 @@ impl Card for WayfaringPilgrim {
         Some(&mut self.unit_base)
     }
 
-    async fn on_move(&mut self, state: &State, zone: &Zone) -> Vec<Effect> {
-        match zone {
-            Zone::Realm(s) => {
-                if !self.corners_entered.contains(&s) {
-                    self.corners_entered.push(*s);
-                    let actions: Vec<Box<dyn Action>> =
-                        vec![Box::new(BaseAction::DrawSite), Box::new(BaseAction::DrawSpell)];
-                    let picked_action = pick_action(self.get_owner_id(), &actions, state).await;
-                    return picked_action
-                        .on_select(Some(self.get_id()), self.get_owner_id(), state)
-                        .await;
-                }
-            }
-            _ => {}
+    fn set_data(&mut self, data: &Box<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
+        if let Some(corners_visited) = data.downcast_ref::<Vec<Zone>>() {
+            self.corners_visited = corners_visited.clone();
         }
-        vec![]
+
+        Ok(())
+    }
+
+    async fn on_visit_zone(&self, state: &State, to: &Zone) -> Vec<Effect> {
+        if !matches!(to, Zone::Realm(_)) {
+            return vec![];
+        }
+
+        let is_corner = [1, 5, 16, 20].contains(&to.get_square().unwrap());
+        if !is_corner {
+            return vec![];
+        }
+
+        let mut corners_visited = self.corners_visited.clone();
+        if corners_visited.contains(to) {
+            return vec![];
+        }
+
+        corners_visited.push(to.clone());
+        let actions: Vec<Box<dyn Action>> = vec![Box::new(BaseAction::DrawSite), Box::new(BaseAction::DrawSpell)];
+        let picked_action = pick_action(self.get_owner_id(), &actions, state).await;
+        let mut effects = picked_action
+            .on_select(Some(self.get_id()), self.get_owner_id(), state)
+            .await;
+
+        effects.push(Effect::SetCardData {
+            card_id: self.get_id().clone(),
+            data: Box::new(corners_visited),
+        });
+        effects
     }
 }

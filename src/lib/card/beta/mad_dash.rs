@@ -68,7 +68,7 @@ impl Card for MadDash {
             .filter(|c| c.get_owner_id() == self.get_owner_id())
             .map(|c| c.get_id().clone())
             .collect::<Vec<uuid::Uuid>>();
-        let picked_card_id = pick_card(self.get_owner_id(), &cards, state.get_sender(), state.get_receiver()).await;
+        let picked_card_id = pick_card(self.get_owner_id(), &cards, state).await;
         let mut effects = action.on_select(Some(self.get_id()), self.get_owner_id(), state).await;
         effects.push(Effect::add_modifier(&picked_card_id, Modifier::Movement(1), Some(1)));
         effects

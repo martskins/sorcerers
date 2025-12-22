@@ -129,20 +129,20 @@ impl Game {
         Ok(())
     }
 
-    pub async fn process_input(&mut self) -> Option<Scene> {
-        if is_mouse_button_released(MouseButton::Left) {
-            let mouse_position = mouse_position();
-            if atlasbook_rect().contains(mouse_position.into()) {
-                self.draw_card(CardType::Site).unwrap();
-            }
-
-            if spellbook_rect().contains(mouse_position.into()) {
-                self.draw_card(CardType::Spell).unwrap();
-            }
-        }
-
-        None
-    }
+    // pub async fn process_input(&mut self) -> Option<Scene> {
+    //     if is_mouse_button_released(MouseButton::Left) {
+    //         let mouse_position = mouse_position();
+    //         if atlasbook_rect().contains(mouse_position.into()) {
+    //             self.draw_card(CardType::Site).unwrap();
+    //         }
+    //
+    //         if spellbook_rect().contains(mouse_position.into()) {
+    //             self.draw_card(CardType::Spell).unwrap();
+    //         }
+    //     }
+    //
+    //     None
+    // }
 
     pub async fn process_message(&mut self, message: &ServerMessage) -> anyhow::Result<Option<Scene>> {
         match message {
@@ -641,20 +641,6 @@ impl Game {
                 ..Default::default()
             },
         );
-    }
-
-    fn draw_card(&self, card_type: CardType) -> anyhow::Result<()> {
-        if Status::DrawCard == self.status {
-            self.client
-                .send(ClientMessage::DrawCard {
-                    card_type,
-                    player_id: self.player_id,
-                    game_id: self.game_id,
-                })
-                .unwrap();
-        }
-
-        Ok(())
     }
 
     async fn update_cards_in_realm(&mut self) -> anyhow::Result<()> {

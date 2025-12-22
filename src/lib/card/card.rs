@@ -13,9 +13,11 @@ use std::fmt::Debug;
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum CardType {
     Site,
-    Spell,
     Avatar,
     Token,
+    Minion,
+    Magic,
+    Aura,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -160,7 +162,7 @@ impl CardInfo {
     }
 
     pub fn is_spell(&self) -> bool {
-        self.card_type == CardType::Spell
+        self.card_type == CardType::Minion || self.card_type == CardType::Aura || self.card_type == CardType::Magic
     }
 }
 
@@ -186,6 +188,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     fn get_id(&self) -> &uuid::Uuid;
     fn get_base(&self) -> &CardBase;
     fn get_base_mut(&mut self) -> &mut CardBase;
+
+    fn set_data(&mut self, _data: &Box<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
+        Err(anyhow::anyhow!("set_data not implemented for {}", self.get_name()))
+    }
 
     fn on_defend(&self, state: &State, attacker_id: &uuid::Uuid) -> Vec<Effect> {
         // Only units can retaliate
@@ -274,8 +280,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     fn default_get_valid_play_zones(&self, state: &State) -> Vec<Zone> {
-        if self.is_unit() {
-            let site_squares = state
+        match self.get_card_type() {
+            CardType::Minion | CardType::Aura => state
                 .cards
                 .iter()
                 .filter(|c| c.get_owner_id() == self.get_owner_id())
@@ -285,59 +291,56 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     _ => None,
                 })
                 .cloned()
-                .collect();
-            return site_squares;
-        }
-
-        let player_id = self.get_owner_id();
-        if self.is_site() {
-            let has_played_site = state
-                .cards
-                .iter()
-                .any(|c| c.get_owner_id() == player_id && c.is_site() && matches!(c.get_zone(), Zone::Realm(_)));
-            if !has_played_site {
-                let avatar = state
+                .collect(),
+            CardType::Site => {
+                let player_id = self.get_owner_id();
+                let has_played_site = state
                     .cards
                     .iter()
-                    .find(|c| c.get_owner_id() == player_id && c.is_avatar())
-                    .unwrap();
-                match avatar.get_zone() {
-                    z @ Zone::Realm(_) => return vec![z.clone()],
-                    _ => panic!("Avatar not in realm"),
+                    .any(|c| c.get_owner_id() == player_id && c.is_site() && matches!(c.get_zone(), Zone::Realm(_)));
+                if !has_played_site {
+                    let avatar = state
+                        .cards
+                        .iter()
+                        .find(|c| c.get_owner_id() == player_id && c.is_avatar())
+                        .unwrap();
+                    match avatar.get_zone() {
+                        z @ Zone::Realm(_) => return vec![z.clone()],
+                        _ => panic!("Avatar not in realm"),
+                    }
                 }
+
+                let sites: Vec<&Zone> = state
+                    .cards
+                    .iter()
+                    .filter(|c| c.is_site())
+                    .filter_map(|c| match c.get_zone() {
+                        z @ Zone::Realm(_) => Some(z),
+                        _ => None,
+                    })
+                    .collect();
+
+                let occupied_squares: Vec<&Zone> = state
+                    .cards
+                    .iter()
+                    .filter(|c| c.get_owner_id() == player_id)
+                    .filter(|c| c.is_site())
+                    .filter(|c| matches!(c.get_zone(), Zone::Realm(_)))
+                    .flat_map(|c| match c.get_zone() {
+                        z @ Zone::Realm(_) => vec![z],
+                        _ => vec![],
+                    })
+                    .collect();
+
+                occupied_squares
+                    .iter()
+                    .flat_map(|c| get_adjacent_zones(c))
+                    .filter(|c| !occupied_squares.contains(&c))
+                    .filter(|c| !sites.contains(&c))
+                    .collect()
             }
-
-            let sites: Vec<&Zone> = state
-                .cards
-                .iter()
-                .filter(|c| c.is_site())
-                .filter_map(|c| match c.get_zone() {
-                    z @ Zone::Realm(_) => Some(z),
-                    _ => None,
-                })
-                .collect();
-
-            let occupied_squares: Vec<&Zone> = state
-                .cards
-                .iter()
-                .filter(|c| c.get_owner_id() == player_id)
-                .filter(|c| c.is_site())
-                .filter(|c| matches!(c.get_zone(), Zone::Realm(_)))
-                .flat_map(|c| match c.get_zone() {
-                    z @ Zone::Realm(_) => vec![z],
-                    _ => vec![],
-                })
-                .collect();
-
-            return occupied_squares
-                .iter()
-                .flat_map(|c| get_adjacent_zones(c))
-                .filter(|c| !occupied_squares.contains(&c))
-                .filter(|c| !sites.contains(&c))
-                .collect();
+            _ => vec![],
         }
-
-        vec![]
     }
 
     fn get_plane(&self) -> &Plane {
@@ -349,8 +352,12 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             CardType::Site
         } else if self.is_avatar() {
             CardType::Avatar
+        } else if self.is_aura() {
+            CardType::Aura
+        } else if self.is_unit() {
+            CardType::Minion
         } else {
-            CardType::Spell
+            CardType::Magic
         }
     }
 
@@ -458,6 +465,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         let area_mods: Vec<Modifier> = state
             .cards
             .iter()
+            .filter(|c| matches!(c.get_zone(), Zone::Realm(_)))
             .flat_map(|c| c.area_modifiers(state))
             .filter_map(|(modif, units)| {
                 if units.contains(self.get_id()) {
@@ -510,6 +518,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         None
     }
 
+    fn get_aura_base(&self) -> Option<&AuraBase> {
+        None
+    }
+
     fn get_unit_base(&self) -> Option<&UnitBase> {
         None
     }
@@ -559,8 +571,12 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         self.get_unit_base().is_some()
     }
 
-    fn is_spell(&self) -> bool {
-        self.get_card_type() == CardType::Spell
+    fn is_minion(&self) -> bool {
+        self.is_unit() && !self.is_avatar()
+    }
+
+    fn is_aura(&self) -> bool {
+        self.get_aura_base().is_some()
     }
 
     fn can_cast(&self, state: &State, spell: &Box<dyn Card>) -> bool {
@@ -586,7 +602,11 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         false
     }
 
-    async fn on_move(&mut self, _state: &State, _zone: &Zone) -> Vec<Effect> {
+    async fn on_move(&mut self, _state: &State, _to: &Zone) -> Vec<Effect> {
+        vec![]
+    }
+
+    async fn on_visit_zone(&self, _state: &State, _to: &Zone) -> Vec<Effect> {
         vec![]
     }
 
@@ -719,9 +739,10 @@ impl Clone for CardBase {
 }
 
 #[derive(Debug, Clone)]
-pub struct AvatarBase {
-    pub playing_site: Option<uuid::Uuid>,
-}
+pub struct AuraBase {}
+
+#[derive(Debug, Clone)]
+pub struct AvatarBase {}
 
 pub fn from_name(name: &str, player_id: PlayerId) -> Box<dyn Card> {
     if let Some(card) = beta::from_beta_name(name, player_id) {

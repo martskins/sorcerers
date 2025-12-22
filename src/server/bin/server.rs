@@ -148,7 +148,7 @@ impl Server {
         ));
         state
             .cards
-            .push(card::from_name_and_zone(Incinerate::NAME, player1.clone(), Zone::Hand));
+            .push(card::from_name_and_zone(Wildfire::NAME, player1.clone(), Zone::Hand));
         state
             .cards
             .push(card::from_name_and_zone(Firebolts::NAME, player1.clone(), Zone::Hand));

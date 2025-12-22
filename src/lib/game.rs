@@ -75,13 +75,9 @@ impl Direction {
 
 pub const CARDINAL_DIRECTIONS: [Direction; 4] = [Direction::Up, Direction::Down, Direction::Left, Direction::Right];
 
-pub async fn pick_card(
-    player_id: &PlayerId,
-    card_ids: &[uuid::Uuid],
-    sender: Sender<ServerMessage>,
-    receiver: Receiver<ClientMessage>,
-) -> uuid::Uuid {
-    sender
+pub async fn pick_card(player_id: &PlayerId, card_ids: &[uuid::Uuid], state: &State) -> uuid::Uuid {
+    state
+        .get_sender()
         .send(ServerMessage::PickCard {
             player_id: player_id.clone(),
             cards: card_ids.to_vec(),
@@ -90,7 +86,7 @@ pub async fn pick_card(
         .unwrap();
 
     loop {
-        let msg = receiver.recv().await.unwrap();
+        let msg = state.get_receiver().recv().await.unwrap();
         match msg {
             ClientMessage::PickCard { card_id, .. } => break card_id,
             _ => unreachable!(),
@@ -116,18 +112,14 @@ pub async fn pick_action<'a>(
         let msg = state.get_receiver().recv().await.unwrap();
         match msg {
             ClientMessage::PickAction { action_idx, .. } => break &actions[action_idx],
-            _ => unreachable!(),
+            _ => panic!("expected PickAction, got {:?}", msg),
         }
     }
 }
 
-pub async fn pick_option(
-    player_id: &PlayerId,
-    actions: &[String],
-    sender: Sender<ServerMessage>,
-    receiver: Receiver<ClientMessage>,
-) -> usize {
-    sender
+pub async fn pick_option(player_id: &PlayerId, actions: &[String], state: &State) -> usize {
+    state
+        .get_sender()
         .send(ServerMessage::PickAction {
             player_id: player_id.clone(),
             actions: actions.to_vec(),
@@ -136,21 +128,17 @@ pub async fn pick_option(
         .unwrap();
 
     loop {
-        let msg = receiver.recv().await.unwrap();
+        let msg = state.get_receiver().recv().await.unwrap();
         match msg {
             ClientMessage::PickAction { action_idx, .. } => break action_idx,
-            _ => unreachable!(),
+            _ => panic!("expected PickAction, got {:?}", msg),
         }
     }
 }
 
-pub async fn pick_zone(
-    player_id: &PlayerId,
-    zones: &[Zone],
-    sender: Sender<ServerMessage>,
-    receiver: Receiver<ClientMessage>,
-) -> Zone {
-    sender
+pub async fn pick_zone(player_id: &PlayerId, zones: &[Zone], state: &State) -> Zone {
+    state
+        .get_sender()
         .send(ServerMessage::PickZone {
             player_id: player_id.clone(),
             zones: zones.to_vec(),
@@ -159,10 +147,10 @@ pub async fn pick_zone(
         .unwrap();
 
     loop {
-        let msg = receiver.recv().await.unwrap();
+        let msg = state.get_receiver().recv().await.unwrap();
         match msg {
             ClientMessage::PickSquare { square, .. } => break Zone::Realm(square),
-            _ => unreachable!(),
+            _ => panic!("expected PickSquare, got {:?}", msg),
         }
     }
 }
@@ -182,7 +170,7 @@ pub async fn pick_direction(player_id: &PlayerId, directions: &[Direction], stat
         let msg = state.get_receiver().recv().await.unwrap();
         match msg {
             ClientMessage::PickAction { action_idx, .. } => break directions[action_idx].normalise(board_flipped),
-            _ => unreachable!(),
+            _ => panic!("expected PickAction, got {:?}", msg),
         }
     }
 }
@@ -432,11 +420,11 @@ impl Action for BaseAction {
         match self {
             BaseAction::DrawSite => vec![Effect::DrawCard {
                 player_id: player_id.clone(),
-                card_type: CardType::Site,
+                from: Zone::Atlasbook,
             }],
             BaseAction::DrawSpell => vec![Effect::DrawCard {
                 player_id: player_id.clone(),
-                card_type: CardType::Spell,
+                from: Zone::Spellbook,
             }],
             BaseAction::Cancel => vec![],
         }
@@ -469,10 +457,10 @@ impl Action for AvatarAction {
                     .filter(|c| c.get_owner_id() == player_id)
                     .map(|c| c.get_id().clone())
                     .collect();
-                let picked_card_id = pick_card(player_id, &cards, state.get_sender(), state.get_receiver()).await;
+                let picked_card_id = pick_card(player_id, &cards, state).await;
                 let picked_card = state.get_card(&picked_card_id).unwrap();
                 let zones = picked_card.get_valid_play_zones(state);
-                let zone = pick_zone(player_id, &zones, state.get_sender(), state.get_receiver()).await;
+                let zone = pick_zone(player_id, &zones, state).await;
                 vec![
                     Effect::play_card(player_id, &picked_card_id, &zone),
                     Effect::tap_card(card_id.unwrap()),
@@ -482,7 +470,7 @@ impl Action for AvatarAction {
                 vec![
                     Effect::DrawCard {
                         player_id: player_id.clone(),
-                        card_type: CardType::Site,
+                        from: Zone::Atlasbook,
                     },
                     Effect::tap_card(card_id.unwrap()),
                 ]
@@ -514,7 +502,7 @@ impl Action for UnitAction {
                 let card_id = card_id.unwrap();
                 let card = state.get_card(card_id).unwrap();
                 let cards = card.get_valid_attack_targets(state);
-                let picked_card_id = pick_card(player_id, &cards, state.get_sender(), state.get_receiver()).await;
+                let picked_card_id = pick_card(player_id, &cards, state).await;
                 let picked_card = state.get_card(&picked_card_id).unwrap();
                 vec![
                     Effect::MoveCard {
@@ -530,7 +518,7 @@ impl Action for UnitAction {
                 let card_id = card_id.unwrap();
                 let card = state.get_card(card_id).unwrap();
                 let zones = card.get_valid_move_zones(state);
-                let zone = pick_zone(player_id, &zones, state.get_sender(), state.get_receiver()).await;
+                let zone = pick_zone(player_id, &zones, state).await;
                 vec![Effect::MoveCard {
                     card_id: card_id.clone(),
                     from: card.get_zone().clone(),
@@ -636,8 +624,8 @@ impl Game {
                     return Ok(());
                 }
 
-                match (card.is_unit(), card.get_zone()) {
-                    (true, Zone::Hand) => {
+                match (card.get_card_type(), card.get_zone()) {
+                    (CardType::Minion, Zone::Hand) | (CardType::Aura, Zone::Hand) => {
                         let resources = self.state.resources.get(&player_id).unwrap();
                         let can_afford = resources.can_afford(card, &self.state);
                         if !can_afford {
@@ -645,16 +633,33 @@ impl Game {
                         }
 
                         let zones = card.get_valid_play_zones(&self.state);
-                        let zone = pick_zone(
-                            player_id,
-                            &zones,
-                            self.server_sender.clone(),
-                            self.client_receiver.clone(),
-                        )
-                        .await;
+                        let zone = pick_zone(player_id, &zones, &self.state).await;
                         self.state
                             .effects
                             .push_back(Effect::play_card(player_id, card_id, &zone));
+                    }
+                    (CardType::Magic, Zone::Hand) => {
+                        let resources = self.state.resources.get(&player_id).unwrap();
+                        let can_afford = resources.can_afford(card, &self.state);
+                        if !can_afford {
+                            return Ok(());
+                        }
+
+                        let spellcasters: Vec<uuid::Uuid> = self
+                            .state
+                            .cards
+                            .iter()
+                            .filter(|c| c.can_cast(&self.state, card))
+                            .map(|c| c.get_id().clone())
+                            .collect();
+                        let caster_id = pick_card(player_id, &spellcasters, &self.state).await;
+                        let caster = self.state.get_card(&caster_id).unwrap();
+                        self.state.effects.push_back(Effect::PlayMagic {
+                            player_id: player_id.clone(),
+                            card_id: card_id.clone(),
+                            caster_id,
+                            from: caster.get_zone().clone(),
+                        });
                     }
                     (_, Zone::Realm(_)) => {
                         let unit_disabled =
@@ -673,49 +678,12 @@ impl Game {
                         let effects = action.on_select(Some(card.get_id()), player_id, &self.state).await;
                         self.state.effects.extend(effects);
                     }
-                    (false, Zone::Hand) => {
-                        let resources = self.state.resources.get(&player_id).unwrap();
-                        let can_afford = resources.can_afford(card, &self.state);
-                        if !can_afford {
-                            return Ok(());
-                        }
-
-                        let spellcasters: Vec<uuid::Uuid> = self
-                            .state
-                            .cards
-                            .iter()
-                            .filter(|c| c.can_cast(&self.state, card))
-                            .map(|c| c.get_id().clone())
-                            .collect();
-                        let caster_id = pick_card(
-                            player_id,
-                            &spellcasters,
-                            self.server_sender.clone(),
-                            self.client_receiver.clone(),
-                        )
-                        .await;
-                        let caster = self.state.get_card(&caster_id).unwrap();
-                        self.state.effects.push_back(Effect::PlayMagic {
-                            player_id: player_id.clone(),
-                            card_id: card_id.clone(),
-                            caster_id,
-                            from: caster.get_zone().clone(),
-                        });
-                    }
                     _ => {}
                 }
             }
             ClientMessage::EndTurn { player_id, .. } => {
                 self.state.effects.push_back(Effect::PreEndTurn {
                     player_id: player_id.clone(),
-                });
-            }
-            ClientMessage::DrawCard {
-                player_id, card_type, ..
-            } => {
-                self.state.effects.push_back(Effect::DrawCard {
-                    player_id: player_id.clone(),
-                    card_type: card_type.clone(),
                 });
             }
             _ => {}
@@ -816,28 +784,28 @@ impl Game {
         for player_id in &self.players {
             effects.push(Effect::DrawCard {
                 player_id: player_id.clone(),
-                card_type: CardType::Site,
+                from: Zone::Atlasbook,
             });
             effects.push(Effect::DrawCard {
                 player_id: player_id.clone(),
-                card_type: CardType::Site,
+                from: Zone::Atlasbook,
             });
             effects.push(Effect::DrawCard {
                 player_id: player_id.clone(),
-                card_type: CardType::Site,
+                from: Zone::Atlasbook,
             });
 
             effects.push(Effect::DrawCard {
                 player_id: player_id.clone(),
-                card_type: CardType::Spell,
+                from: Zone::Spellbook,
             });
             effects.push(Effect::DrawCard {
                 player_id: player_id.clone(),
-                card_type: CardType::Spell,
+                from: Zone::Spellbook,
             });
             effects.push(Effect::DrawCard {
                 player_id: player_id.clone(),
-                card_type: CardType::Spell,
+                from: Zone::Spellbook,
             });
         }
 
