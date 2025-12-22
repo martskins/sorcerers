@@ -1,16 +1,13 @@
 use crate::{
     card::{Card, CardInfo, CardType, Modifier, Zone},
     effect::Effect,
-    networking::{
-        client::Socket,
-        message::{ClientMessage, ServerMessage, ToMessage},
-    },
+    networking::message::{ClientMessage, ServerMessage, ToMessage},
     state::{Phase, State},
 };
 use async_channel::{Receiver, Sender};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, iter::Sum, sync::Arc};
-use tokio::net::UdpSocket;
+use tokio::{io::AsyncWriteExt, net::tcp::OwnedWriteHalf, sync::Mutex};
 
 pub type PlayerId = uuid::Uuid;
 
@@ -550,8 +547,7 @@ pub struct Game {
     pub id: uuid::Uuid,
     pub players: Vec<PlayerId>,
     pub state: State,
-    pub addrs: HashMap<PlayerId, Socket>,
-    pub socket: Arc<UdpSocket>,
+    pub streams: HashMap<PlayerId, Arc<Mutex<OwnedWriteHalf>>>,
     client_receiver: Receiver<ClientMessage>,
     server_sender: Sender<ServerMessage>,
     server_receiver: Receiver<ServerMessage>,
@@ -561,9 +557,8 @@ impl Game {
     pub fn new(
         player1: uuid::Uuid,
         player2: uuid::Uuid,
-        socket: Arc<UdpSocket>,
-        addr1: Socket,
-        addr2: Socket,
+        addr1: Arc<Mutex<OwnedWriteHalf>>,
+        addr2: Arc<Mutex<OwnedWriteHalf>>,
         receiver: Receiver<ClientMessage>,
         server_sender: Sender<ServerMessage>,
         server_receiver: Receiver<ServerMessage>,
@@ -572,8 +567,7 @@ impl Game {
             id: uuid::Uuid::new_v4(),
             state: State::new(Vec::new(), HashMap::new(), server_sender.clone(), receiver.clone()),
             players: vec![player1, player2],
-            addrs: HashMap::from([(player1, addr1), (player2, addr2)]),
-            socket,
+            streams: HashMap::from([(player1, addr1), (player2, addr2)]),
             client_receiver: receiver,
             server_receiver,
             server_sender,
@@ -589,18 +583,17 @@ impl Game {
             game_id: self.id.clone(),
         })
         .await?;
+        println!("Sent game started message");
         self.process_effects().await?;
         self.send_sync().await?;
 
-        let addrs = self.addrs.clone();
-        let socket = self.socket.clone();
+        let streams = self.streams.clone();
         let receiver = self.server_receiver.clone();
         tokio::spawn(async move {
             loop {
-                let socket = socket.clone();
                 let message = receiver.recv().await.unwrap();
-                let addr = addrs.get(&message.player_id()).unwrap();
-                Self::send(socket, &message, addr).await.unwrap();
+                let stream = streams.get(&message.player_id()).unwrap();
+                Self::send(Arc::clone(stream), &message).await.unwrap();
             }
         });
 
@@ -636,9 +629,11 @@ impl Game {
         }
     }
     async fn handle_message(&mut self, message: &ClientMessage) -> anyhow::Result<()> {
+        println!("Handling message: {:?}", message);
         self.maybe_unblock_effects(message);
         match message {
             ClientMessage::ClickCard { player_id, card_id, .. } => {
+                println!("Player {} clicked card {}", player_id, card_id);
                 let card = self.state.cards.iter().find(|c| c.get_id() == card_id).unwrap();
                 if card.get_owner_id() != player_id {
                     return Ok(());
@@ -798,33 +793,25 @@ impl Game {
         Ok(())
     }
 
-    async fn send(socket: Arc<UdpSocket>, message: &ServerMessage, addr: &Socket) -> anyhow::Result<()> {
-        match addr {
-            Socket::SocketAddr(addr) => {
-                let bytes = rmp_serde::to_vec(&message.to_message())?;
-                socket.send_to(&bytes, addr).await?;
-            }
-            Socket::Noop => {}
-        }
+    async fn send(stream: Arc<Mutex<OwnedWriteHalf>>, message: &ServerMessage) -> anyhow::Result<()> {
+        let bytes = rmp_serde::to_vec(&message.to_message())?;
+        let mut stream = stream.lock().await;
+        stream.write_all(&bytes).await.unwrap();
 
         Ok(())
     }
 
-    async fn send_message(&self, message: &ServerMessage, addr: &Socket) -> anyhow::Result<()> {
-        match addr {
-            Socket::SocketAddr(addr) => {
-                let bytes = rmp_serde::to_vec(&message.to_message())?;
-                self.socket.send_to(&bytes, addr).await?;
-            }
-            Socket::Noop => {}
-        }
+    async fn send_message(&self, message: &ServerMessage, stream: Arc<Mutex<OwnedWriteHalf>>) -> anyhow::Result<()> {
+        let bytes = rmp_serde::to_vec(&message.to_message())?;
+        let mut stream = stream.lock().await;
+        stream.write_all(&bytes).await?;
 
         Ok(())
     }
 
     pub async fn broadcast(&self, message: &ServerMessage) -> anyhow::Result<()> {
-        for addr in self.addrs.values() {
-            self.send_message(message, addr).await?;
+        for stream in self.streams.values() {
+            self.send_message(message, Arc::clone(stream)).await?;
         }
         Ok(())
     }
@@ -889,13 +876,7 @@ impl Game {
 
             let effect = self.state.effects.remove(0);
             if let Some(effect) = effect {
-                effect
-                    .apply(
-                        &mut self.state,
-                        self.server_sender.clone(),
-                        self.client_receiver.clone(),
-                    )
-                    .await?;
+                effect.apply(&mut self.state).await?;
             }
         }
 

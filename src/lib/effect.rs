@@ -1,10 +1,8 @@
 use crate::{
     card::{CardType, Modifier, SiteBase, UnitBase, Zone},
     game::{Action, BaseAction, Direction, InputStatus, PlayerId, Thresholds, pick_action, pick_card},
-    networking::message::{ClientMessage, ServerMessage},
     state::{Phase, State},
 };
-use async_channel::{Receiver, Sender};
 use std::fmt::Debug;
 
 #[derive(Debug, Clone)]
@@ -192,12 +190,7 @@ impl Effect {
         }
     }
 
-    pub async fn apply(
-        &self,
-        state: &mut State,
-        sender: Sender<ServerMessage>,
-        receiver: Receiver<ClientMessage>,
-    ) -> anyhow::Result<()> {
+    pub async fn apply(&self, state: &mut State) -> anyhow::Result<()> {
         match self {
             Effect::ShootProjectile {
                 player_id,

@@ -144,20 +144,20 @@ impl Game {
         None
     }
 
-    pub async fn process_message(&mut self, message: &ServerMessage) -> anyhow::Result<()> {
+    pub async fn process_message(&mut self, message: &ServerMessage) -> anyhow::Result<Option<Scene>> {
         match message {
             ServerMessage::PickZone { zones, .. } => {
                 self.status = Status::SelectingZone { zones: zones.clone() };
-                Ok(())
+                Ok(None)
             }
             ServerMessage::PickCard { cards, .. } => {
                 self.status = Status::SelectingCard { cards: cards.clone() };
-                Ok(())
+                Ok(None)
             }
             ServerMessage::PickAction { actions, .. } => {
                 self.actions = actions.clone();
                 self.status = Status::SelectingAction;
-                Ok(())
+                Ok(None)
             }
             ServerMessage::GameStarted { game_id, player1, .. } => {
                 // Flip the board for player 2. Use player1 instead of the is_player_one method
@@ -171,7 +171,7 @@ impl Game {
                 }
 
                 self.game_id = game_id.clone();
-                Ok(())
+                Ok(None)
             }
             ServerMessage::Sync {
                 cards,
@@ -200,9 +200,9 @@ impl Game {
                 self.cards = cards.clone();
                 self.current_player = current_player.clone();
                 self.resources = resources.clone();
-                Ok(())
+                Ok(None)
             }
-            _ => Ok(()),
+            _ => Ok(None),
         }
     }
 
@@ -758,7 +758,7 @@ impl Game {
 
             if card_display.modifiers.contains(&Modifier::Disabled) {
                 let icon_size = 15.0;
-                let x = card_display.rect.x + card_display.rect.w - 15.0 - 5.0;
+                let x = card_display.rect.x + card_display.rect.w - 30.0 - 5.0;
                 let y = card_display.rect.y + 4.0;
                 let cx = x + icon_size / 2.0;
                 let cy = y + icon_size / 2.0;

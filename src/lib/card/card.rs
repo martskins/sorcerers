@@ -632,7 +632,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         vec![]
     }
 
-    fn area_modifiers(&self, state: &State) -> Vec<(Modifier, Vec<uuid::Uuid>)> {
+    fn area_modifiers(&self, _state: &State) -> Vec<(Modifier, Vec<uuid::Uuid>)> {
         vec![]
     }
 }

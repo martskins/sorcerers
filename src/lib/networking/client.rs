@@ -1,6 +1,9 @@
-use std::net::UdpSocket;
-
 use crate::networking::message::{Message, ToMessage};
+use std::net::TcpStream;
+use std::{
+    io::{Read, Write},
+    sync::{Arc, Mutex},
+};
 
 #[derive(Debug, Clone)]
 pub enum Socket {
@@ -10,34 +13,42 @@ pub enum Socket {
 
 #[derive(Debug)]
 pub struct Client {
-    socket: std::net::UdpSocket,
+    reader: Arc<Mutex<TcpStream>>,
+    writer: Arc<Mutex<TcpStream>>,
 }
 
 impl Clone for Client {
     fn clone(&self) -> Self {
         Client {
-            socket: self.socket.try_clone().unwrap(),
+            reader: Arc::clone(&self.reader),
+            writer: Arc::clone(&self.writer),
         }
     }
 }
 
 impl Client {
     pub fn new(addr: &str) -> anyhow::Result<Self> {
-        let socket = UdpSocket::bind("127.0.0.1:0")?;
-        socket.connect(addr)?;
-        Ok(Client { socket })
+        let stream = std::net::TcpStream::connect(addr).unwrap();
+        Ok(Client {
+            reader: Arc::new(Mutex::new(stream.try_clone().unwrap())),
+            writer: Arc::new(Mutex::new(stream)),
+        })
     }
 
     pub fn send<T: ToMessage>(&self, message: T) -> anyhow::Result<()> {
-        let bytes = rmp_serde::to_vec(&message.to_message())?;
-        self.socket.send(&bytes)?;
+        let bytes = rmp_serde::to_vec(&message.to_message()).unwrap();
+        let mut stream = self.writer.lock().unwrap();
+        println!("Sending message: {:?}", message.to_message());
+        stream.write_all(&bytes).unwrap();
+        println!("Message sent.");
         Ok(())
     }
 
-    pub fn recv(&self) -> anyhow::Result<Message> {
+    pub fn recv(&self) -> anyhow::Result<Option<Message>> {
         let mut res = [0; 32000];
-        let _ = self.socket.recv(&mut res).unwrap();
+        let mut stream = self.reader.lock().unwrap();
+        let _ = stream.read(&mut res)?;
         let response: Message = rmp_serde::from_slice(&res).unwrap();
-        Ok(response)
+        Ok(Some(response))
     }
 }

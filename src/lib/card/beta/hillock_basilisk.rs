@@ -1,7 +1,6 @@
 use crate::{
     card::{Card, CardBase, Edition, Modifier, Plane, UnitBase, Zone},
-    effect::{Counter, Effect},
-    game::{Direction, Element, PlayerId, Thresholds},
+    game::{Direction, PlayerId, Thresholds},
     state::State,
 };
 

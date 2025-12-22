@@ -1,7 +1,7 @@
 use crate::{
     card::{Card, CardBase, Edition, MinionType, Plane, Zone},
     effect::Effect,
-    game::{CARDINAL_DIRECTIONS, PlayerId, Thresholds, pick_direction, pick_zone},
+    game::{PlayerId, Thresholds, pick_zone},
     state::State,
 };
 

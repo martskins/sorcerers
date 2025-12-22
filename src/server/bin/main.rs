@@ -1,25 +1,52 @@
 mod server;
 
 use crate::server::Server;
-use std::net::SocketAddr;
-use tokio::net::UdpSocket;
+use sorcerers::networking::message::Message;
+use std::{net::SocketAddr, sync::Arc};
+use tokio::{io::AsyncReadExt, net::TcpListener, sync::Mutex};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let sock = UdpSocket::bind("0.0.0.0:8080".parse::<SocketAddr>().unwrap()).await?;
-    let mut server = Server::new(sock);
-    let mut buf = [0; 32000];
+    let socket = TcpListener::bind("0.0.0.0:8080".parse::<SocketAddr>().unwrap()).await?;
+    let server = Arc::new(Mutex::new(Server::new()));
     loop {
-        // let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(100));
-        tokio::select! {
-            res = server.socket.recv_from(&mut buf) => {
-                let (len, addr) = res.unwrap();
-                server.process_message(&buf[..len], addr).await.unwrap();
-                // server.update().await.unwrap();
+        let (stream, _) = socket.accept().await?;
+        let server_clone = Arc::clone(&server);
+        tokio::spawn(async move {
+            let (mut reader, writer) = stream.into_split();
+            let writer = Arc::new(Mutex::new(writer));
+            loop {
+                let mut buf = vec![0; 32000];
+                let msg: Message = loop {
+                    if let Ok(n) = reader.read(&mut buf).await {
+                        if n == 0 {
+                            continue;
+                        }
+
+                        break rmp_serde::from_slice(&buf).unwrap();
+                    }
+                };
+
+                let mut server = server_clone.lock().await;
+                server.process_message(&msg, Arc::clone(&writer)).await.unwrap();
             }
-            // _ = interval.tick() => {
-            //     server.update().await.unwrap();
-            // }
-        }
+            // process_stream(server_clone, stream, addr).await;
+        });
     }
 }
+//
+// async fn process_stream(server: Arc<Mutex<Server>>, mut stream: TcpStream, addr: SocketAddr) {
+//     let mut buf = vec![0; 32000];
+//     let msg: Message = loop {
+//         if let Ok(n) = stream.read(&mut buf).await {
+//             if n == 0 {
+//                 continue;
+//             }
+//
+//             break rmp_serde::from_slice(&buf).unwrap();
+//         }
+//     };
+//     println!("Received message from {}: {:?}", addr, msg);
+//     // let mut server = server.lock().await;
+//     // server.process_message(&msg, stream, addr).await.unwrap();
+// }

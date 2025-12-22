@@ -31,8 +31,12 @@ impl Client {
             rt.block_on(async {
                 loop {
                     match receiver.recv().unwrap() {
-                        Message::ServerMessage(msg) => {
-                            scene.lock().unwrap().process_message(&msg).await.unwrap();
+                        Some(Message::ServerMessage(msg)) => {
+                            let mut scene = scene.lock().unwrap();
+                            let new_scene = scene.process_message(&msg).await.unwrap();
+                            if let Some(new_scene) = new_scene {
+                                *scene = new_scene;
+                            }
                         }
                         _ => {}
                     }

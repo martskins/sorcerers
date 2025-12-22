@@ -24,7 +24,7 @@ impl Scene {
         }
     }
 
-    pub async fn process_message(&mut self, message: &ServerMessage) -> anyhow::Result<()> {
+    pub async fn process_message(&mut self, message: &ServerMessage) -> anyhow::Result<Option<Scene>> {
         match self {
             Scene::Menu(menu) => menu.process_message(message).await,
             Scene::Game(game) => game.process_message(message).await,
