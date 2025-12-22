@@ -17,16 +17,13 @@ async fn main() -> anyhow::Result<()> {
             let writer = Arc::new(Mutex::new(writer));
             loop {
                 let mut buf = vec![0; 32000];
-                let msg: Message = loop {
-                    if let Ok(n) = reader.read(&mut buf).await {
-                        if n == 0 {
-                            continue;
-                        }
+                let read_bytes = reader.read(&mut buf).await.unwrap();
+                if read_bytes == 0 {
+                    // TODO: Hnndle disconnection properly
+                    break;
+                }
 
-                        break rmp_serde::from_slice(&buf).unwrap();
-                    }
-                };
-
+                let msg: Message = rmp_serde::from_slice(&buf).unwrap();
                 let mut server = server_clone.lock().await;
                 server.process_message(&msg, Arc::clone(&writer)).await.unwrap();
             }
