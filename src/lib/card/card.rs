@@ -187,6 +187,19 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     fn get_base(&self) -> &CardBase;
     fn get_base_mut(&mut self) -> &mut CardBase;
 
+    fn on_defend(&self, state: &State, attacker_id: &uuid::Uuid) -> Vec<Effect> {
+        // Only units can retaliate
+        if let Some(power) = self.get_power(&state) {
+            return vec![Effect::TakeDamage {
+                card_id: attacker_id.clone(),
+                from: self.get_id().clone(),
+                damage: power,
+            }];
+        }
+
+        vec![]
+    }
+
     fn get_zones_within_steps(&self, state: &State, steps: u8) -> Vec<Zone> {
         let mut visited = Vec::new();
         let mut to_visit = vec![(self.get_zone().clone(), 0)];

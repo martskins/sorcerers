@@ -435,15 +435,7 @@ impl Effect {
                     },
                 ];
                 state.effects.extend(effects);
-
-                // Sites do not strike back
-                if let Some(defender_power) = defender.get_power(&snapshot) {
-                    state.effects.push_back(Effect::TakeDamage {
-                        card_id: attacker_id.clone(),
-                        from: defender_id.clone(),
-                        damage: defender_power,
-                    });
-                }
+                state.effects.extend(defender.on_defend(state, attacker_id));
             }
             Effect::TakeDamage { card_id, damage, from } => {
                 let snapshot = state.snapshot();

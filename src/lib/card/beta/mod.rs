@@ -60,6 +60,8 @@ pub mod quarrelsome_kobolds;
 pub use quarrelsome_kobolds::*;
 pub mod hillock_basilisk;
 pub use hillock_basilisk::*;
+pub mod escyllion_cyclops;
+pub use escyllion_cyclops::*;
 
 use crate::{card::Card, game::PlayerId};
 
@@ -96,6 +98,7 @@ pub fn from_beta_name(name: &str, player_id: PlayerId) -> Option<Box<dyn Card>> 
         OgreGoons::NAME => Some(Box::new(OgreGoons::new(player_id))),
         QuarrelsomeKobolds::NAME => Some(Box::new(QuarrelsomeKobolds::new(player_id))),
         HillockBasilisk::NAME => Some(Box::new(HillockBasilisk::new(player_id))),
+        EscyllionCyclops::NAME => Some(Box::new(EscyllionCyclops::new(player_id))),
         _ => None,
     }
 }
