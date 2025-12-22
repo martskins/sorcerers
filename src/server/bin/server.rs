@@ -7,11 +7,7 @@ use sorcerers::{
     state::State,
 };
 use std::{collections::HashMap, sync::Arc};
-use tokio::{
-    io::AsyncWriteExt,
-    net::tcp::OwnedWriteHalf,
-    sync::Mutex,
-};
+use tokio::{io::AsyncWriteExt, net::tcp::OwnedWriteHalf, sync::Mutex};
 
 pub struct Server {
     pub games: HashMap<uuid::Uuid, Sender<ClientMessage>>,
@@ -49,7 +45,6 @@ impl Server {
                 }
             }
             Message::ClientMessage(msg) => {
-                println!("Received client message: {:?}", msg);
                 let game_id = msg.game_id();
                 self.games.get_mut(&game_id).unwrap().send(msg.clone()).await?;
             }

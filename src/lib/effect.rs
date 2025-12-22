@@ -314,7 +314,6 @@ impl Effect {
                 card.get_base_mut().tapped = true;
             }
             Effect::StartTurn { player_id } => {
-                println!("Starting turn for player: {}", player_id);
                 let cards = state
                     .cards
                     .iter_mut()
@@ -369,7 +368,6 @@ impl Effect {
                 }
             }
             Effect::EndTurn { player_id } => {
-                println!("Ending turn for player: {}", player_id);
                 let resources = state.resources.get_mut(player_id).unwrap();
                 resources.mana = 0;
 
@@ -400,7 +398,6 @@ impl Effect {
                         .power_counters
                         .retain(|c| c.expires_in_turns.is_none() || c.expires_in_turns.unwrap() > 0);
                 }
-                println!("Ending turn for player: {}", player_id);
                 state.phase = Phase::Main;
             }
             Effect::AddResources {

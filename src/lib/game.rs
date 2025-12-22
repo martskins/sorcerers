@@ -628,11 +628,9 @@ impl Game {
         }
     }
     async fn handle_message(&mut self, message: &ClientMessage) -> anyhow::Result<()> {
-        println!("Handling message: {:?}", message);
         self.maybe_unblock_effects(message);
         match message {
             ClientMessage::ClickCard { player_id, card_id, .. } => {
-                println!("Player {} clicked card {}", player_id, card_id);
                 let card = self.state.cards.iter().find(|c| c.get_id() == card_id).unwrap();
                 if card.get_owner_id() != player_id {
                     return Ok(());
@@ -739,7 +737,6 @@ impl Game {
             // If the current player is not the one ending their turn, it means we've already
             // actioned the pre-end turn changes, so no action is needed.
             if self.state.current_player == player_id && !self.state.waiting_for_input {
-                println!("Processing end turn for player {}", player_id);
                 let current_index = self
                     .players
                     .iter()
@@ -749,7 +746,6 @@ impl Game {
                 let next_player = self.players.iter().cycle().skip(current_index + 1).next().unwrap();
                 self.state.current_player = next_player.clone();
                 self.state.turns += 1;
-                println!("Extending effects for next turn: {}", next_player);
                 let effects = vec![
                     Effect::EndTurn {
                         player_id: current_player,

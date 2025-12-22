@@ -130,19 +130,4 @@ impl TextureCache {
 
         Ok(texture)
     }
-
-    // fn rotate_texture_clockwise(texture: &mut Texture2D) {
-    //     let image = texture.get_texture_data();
-    //     let (w, h) = (image.width() as u32, image.height() as u32);
-    //     let mut rotated = Image::gen_image_color(h.try_into().unwrap(), w.try_into().unwrap(), macroquad::color::WHITE);
-    //
-    //     for y in 0..h {
-    //         for x in 0..w {
-    //             let pixel = image.get_pixel(x, y);
-    //             rotated.set_pixel(h - y - 1, x, pixel);
-    //         }
-    //     }
-    //
-    //     *texture = Texture2D::from_image(&rotated);
-    // }
 }

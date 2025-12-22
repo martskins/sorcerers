@@ -355,182 +355,6 @@ impl Game {
             _ => {}
         }
 
-        // match &self.player_status {
-        //     Status::SelectingDirection { player_id, directions } if player_id == &self.player_id => {
-        //         if self.action_window_position.is_none() {
-        //             // self.action_window_position = Some(mouse_position().into());
-        //             self.action_window_position = Some(Vec2::new(0.0, 0.0).into());
-        //         }
-        //
-        //         if self.action_window_size.is_none() {
-        //             self.action_window_size = Some(Vec2::new(100.0, 30.0 * directions.len() as f32 + 20.0));
-        //         }
-        //
-        //         ui::root_ui().window(
-        //             ACTION_SELECTION_WINDOW_ID,
-        //             self.action_window_position.unwrap(),
-        //             self.action_window_size.unwrap(),
-        //             |ui| {
-        //                 for (idx, direction) in directions.iter().enumerate() {
-        //                     if ui.button(Vec2::new(0.0, 30.0 * idx as f32), direction.get_name()) {
-        //                         println!("Picked direction: {:?}", direction);
-        //                         let direction = directions[idx].normalise(!self.is_player_one);
-        //                         println!("Normalised direction: {:?}", direction);
-        //                         self.client
-        //                             .send(ClientMessage::PickDirection {
-        //                                 player_id: self.player_id,
-        //                                 game_id: self.game_id,
-        //                                 direction,
-        //                             })
-        //                             .unwrap();
-        //                     }
-        //                 }
-        //             },
-        //         );
-        //     }
-        //     Status::SelectingAction { player_id, actions } if player_id == &self.player_id => {
-        //         if self.action_window_position.is_none() {
-        //             // self.action_window_position = Some(mouse_position().into());
-        //             self.action_window_position = Some(Vec2::new(0.0, 0.0).into());
-        //         }
-        //
-        //         if self.action_window_size.is_none() {
-        //             self.action_window_size = Some(Vec2::new(100.0, 30.0 * actions.len() as f32 + 20.0));
-        //         }
-        //
-        //         ui::root_ui().window(
-        //             ACTION_SELECTION_WINDOW_ID,
-        //             self.action_window_position.unwrap(),
-        //             self.action_window_size.unwrap(),
-        //             |ui| {
-        //                 for (idx, action) in actions.iter().enumerate() {
-        //                     if ui.button(Vec2::new(0.0, 30.0 * idx as f32), action.to_string()) {
-        //                         self.client
-        //                             .send(ClientMessage::PickAction {
-        //                                 action_idx: idx,
-        //                                 player_id: self.player_id,
-        //                                 game_id: self.game_id,
-        //                             })
-        //                             .unwrap();
-        //                     }
-        //                 }
-        //             },
-        //         );
-        //     }
-        //     Status::SelectingCard {
-        //         player_id, valid_cards, ..
-        //     } if player_id == &self.player_id => {
-        //         let valid_cards: Vec<&CardDisplay> = self
-        //             .card_displays
-        //             .iter()
-        //             .filter(|c| valid_cards.contains(&c.id))
-        //             .collect();
-        //
-        //         let mut scale = 1.0;
-        //         for card in valid_cards {
-        //             if card.is_hovered {
-        //                 scale = 1.2;
-        //             }
-        //
-        //             draw_rectangle_lines(
-        //                 card.rect.x,
-        //                 card.rect.y,
-        //                 card.rect.w * scale,
-        //                 card.rect.h * scale,
-        //                 3.0,
-        //                 WHITE,
-        //             );
-        //         }
-        //     }
-        //     _ => {} //
-        //             // PlayerStatus::SelectingCardOutsideRealm {
-        //             //     player_id,
-        //             //     owner,
-        //             //     spellbook,
-        //             //     cemetery,
-        //             //     hand,
-        //             //     after_select,
-        //             // } => {
-        //             //     if player_id != &self.player_id {
-        //             //         return Ok(());
-        //             //     }
-        //             //
-        //             //     let mut number_of_zones = 0;
-        //             //     if spellbook.is_some() {
-        //             //         number_of_zones += 1;
-        //             //     }
-        //             //
-        //             //     if hand.is_some() {
-        //             //         number_of_zones += 1;
-        //             //     }
-        //             //
-        //             //     if cemetery.is_some() {
-        //             //         number_of_zones += 1;
-        //             //     }
-        //             //
-        //             //     let width = screen_width() - 20.0;
-        //             //     let height = screen_height() - 20.0;
-        //             //     let mut images = HashMap::new();
-        //             //     let cards_to_display: Vec<CardDisplay> = self
-        //             //         .card_displays
-        //             //         .iter()
-        //             //         .filter(|c| {
-        //             //             if owner.is_some() {
-        //             //                 return c.owner_id == owner.as_ref().unwrap();
-        //             //             }
-        //             //
-        //             //             true
-        //             //         })
-        //             //         .map(|c| c.card.clone())
-        //             //         .collect();
-        //             //
-        //             //     for card in &cards_to_display {
-        //             //         images.insert(card.name, card.image);
-        //             //     }
-        //             //
-        //             //     let mut all_valid_cards: Vec<uuid::Uuid> = spellbook.as_deref().unwrap_or_default().into();
-        //             //     all_valid_cards.extend(cemetery.as_deref().unwrap_or_default());
-        //             //     all_valid_cards.extend(hand.as_deref().unwrap_or_default());
-        //             //     ui::root_ui().window(
-        //             //         CARD_SELECTION_WINDOW_ID,
-        //             //         Vec2::new(10.0, 10.0),
-        //             //         Vec2::new(width, height),
-        //             //         |ui| {
-        //             //             for (idx, card) in cards_to_display.iter().enumerate() {
-        //             //                 if Texture::new(images.get(card.get_name()).unwrap().clone())
-        //             //                     .position(Vec2::new(10.0, 30.0 * idx as f32))
-        //             //                     .size(card_width(), card_height())
-        //             //                     .ui(ui)
-        //             //                 {
-        //             //                     self.client
-        //             //                         .send(Message::SummonMinion {
-        //             //                             player_id: self.player_id.clone(),
-        //             //                             card_id: card.get_id().clone(),
-        //             //                             game_id: self.game_id.clone(),
-        //             //                             square: 0,
-        //             //                         })
-        //             //                         .unwrap();
-        //             //                 }
-        //             //
-        //             //                 // if spellbook.as_deref().unwrap_or_default().contains(card.get_id()) {
-        //             //                 //     draw_rectangle_lines(10.0, 30.0 * idx as f32, card_width(), card_height(), 3.0, GREEN);
-        //             //                 // }
-        //             //                 //
-        //             //                 // if cemetery.as_deref().unwrap_or_default().contains(card.get_id()) {
-        //             //                 //     draw_rectangle_lines(10.0, 30.0 * idx as f32, card_width(), card_height(), 3.0, GREEN);
-        //             //                 // }
-        //             //                 //
-        //             //                 // if hand.as_deref().unwrap_or_default().contains(card.get_id()) {
-        //             //                 //     draw_rectangle_lines(10.0, 30.0 * idx as f32, card_width(), card_height(), 3.0, GREEN);
-        //             //                 // }
-        //             //             }
-        //             //         },
-        //             //     );
-        //             // }
-        //
-        //             // _ => {}
-        // }
-
         Ok(())
     }
 
@@ -543,10 +367,6 @@ impl Game {
             let mut rect = card_display.rect;
             rect.w *= PREVIEW_SCALE;
             rect.h *= PREVIEW_SCALE;
-            // let mut dimensions = spell_dimensions() * PREVIEW_SCALE;
-            // if card_display.is_site {
-            //     dimensions = site_dimensions() * PREVIEW_SCALE;
-            // }
 
             let preview_x = 20.0;
             let preview_y = screen_rect.h - rect.h - 20.0;
@@ -642,7 +462,6 @@ impl Game {
                     let card = self.card_displays.iter_mut().find(|c| c.id == id).unwrap();
                     card.is_selected = !card.is_selected;
 
-                    println!("Card selected: {:?}", card.is_selected);
                     if card.is_selected {
                         self.client
                             .send(ClientMessage::PickCard {
