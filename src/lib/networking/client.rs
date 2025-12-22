@@ -38,9 +38,7 @@ impl Client {
     pub fn send<T: ToMessage>(&self, message: T) -> anyhow::Result<()> {
         let bytes = rmp_serde::to_vec(&message.to_message()).unwrap();
         let mut stream = self.writer.lock().unwrap();
-        println!("Sending message: {:?}", message.to_message());
         stream.write_all(&bytes).unwrap();
-        println!("Message sent.");
         Ok(())
     }
 

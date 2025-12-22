@@ -583,7 +583,6 @@ impl Game {
             game_id: self.id.clone(),
         })
         .await?;
-        println!("Sent game started message");
         self.process_effects().await?;
         self.send_sync().await?;
 
