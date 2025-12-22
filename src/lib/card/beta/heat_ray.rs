@@ -68,6 +68,7 @@ impl Card for HeatRay {
             direction,
             damage: 2,
             piercing: true,
+            splash_damage: None,
         }]
     }
 }

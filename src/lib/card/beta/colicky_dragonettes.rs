@@ -88,6 +88,7 @@ impl Card for ColickyDragonettes {
             direction,
             damage: 1,
             piercing: false,
+            splash_damage: None,
         }]
     }
 }

@@ -37,6 +37,7 @@ pub enum Effect {
         direction: Direction,
         damage: u8,
         piercing: bool,
+        splash_damage: Option<u8>,
     },
     AddModifier {
         card_id: uuid::Uuid,
@@ -200,6 +201,7 @@ impl Effect {
                 direction,
                 damage,
                 piercing,
+                splash_damage,
             } => {
                 let mut effects = vec![];
                 let mut next_zone = from_zone.zone_in_direction(direction);
@@ -215,11 +217,20 @@ impl Effect {
                         continue;
                     }
 
-                    if units.len() == 1 {
-                        effects.push(Effect::take_damage(&units[0], shooter, *damage));
-                    } else {
-                        let picked_unit_id = pick_card(player_id, &units, state).await;
-                        effects.push(Effect::take_damage(&picked_unit_id, shooter, *damage));
+                    let mut picked_unit_id = units[0];
+                    if units.len() >= 1 {
+                        picked_unit_id = pick_card(player_id, &units, state).await;
+                    }
+
+                    effects.push(Effect::take_damage(&picked_unit_id, shooter, *damage));
+                    if splash_damage.is_some() {
+                        let splash_effects = state
+                            .get_units_in_zone(&zone)
+                            .iter()
+                            .filter(|c| c.get_id() != &picked_unit_id)
+                            .map(|c| Effect::take_damage(c.get_id(), shooter, splash_damage.unwrap()))
+                            .collect::<Vec<_>>();
+                        effects.extend(splash_effects);
                     }
 
                     if !piercing {

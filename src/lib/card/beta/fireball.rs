@@ -6,12 +6,12 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub struct Firebolts {
+pub struct Fireball {
     pub card_base: CardBase,
 }
 
-impl Firebolts {
-    pub const NAME: &'static str = "Firebolts";
+impl Fireball {
+    pub const NAME: &'static str = "Fireball";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -20,8 +20,8 @@ impl Firebolts {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 2,
-                required_thresholds: Thresholds::parse("F"),
+                mana_cost: 4,
+                required_thresholds: Thresholds::parse("FF"),
                 plane: Plane::Surface,
             },
         }
@@ -29,7 +29,7 @@ impl Firebolts {
 }
 
 #[async_trait::async_trait]
-impl Card for Firebolts {
+impl Card for Fireball {
     fn get_name(&self) -> &str {
         Self::NAME
     }
@@ -61,34 +61,14 @@ impl Card for Firebolts {
     async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> Vec<Effect> {
         let caster = state.get_card(caster_id).unwrap();
         let direction = pick_direction(self.get_owner_id(), &CARDINAL_DIRECTIONS, state).await;
-        vec![
-            Effect::ShootProjectile {
-                player_id: self.get_owner_id().clone(),
-                shooter: caster.get_id().clone(),
-                from_zone: caster.get_zone().clone(),
-                direction: direction.clone(),
-                damage: 1,
-                piercing: false,
-                splash_damage: None,
-            },
-            Effect::ShootProjectile {
-                player_id: self.get_owner_id().clone(),
-                shooter: caster.get_id().clone(),
-                from_zone: caster.get_zone().clone(),
-                direction: direction.clone(),
-                damage: 1,
-                piercing: false,
-                splash_damage: None,
-            },
-            Effect::ShootProjectile {
-                player_id: self.get_owner_id().clone(),
-                shooter: caster.get_id().clone(),
-                from_zone: caster.get_zone().clone(),
-                direction,
-                damage: 1,
-                piercing: false,
-                splash_damage: None,
-            },
-        ]
+        vec![Effect::ShootProjectile {
+            player_id: self.get_owner_id().clone(),
+            shooter: caster.get_id().clone(),
+            from_zone: caster.get_zone().clone(),
+            direction: direction.clone(),
+            damage: 4,
+            piercing: false,
+            splash_damage: Some(2),
+        }]
     }
 }

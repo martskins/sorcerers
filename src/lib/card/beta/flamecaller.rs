@@ -51,6 +51,7 @@ impl Action for FlamecallerAction {
                         direction,
                         damage,
                         piercing: false,
+                        splash_damage: None,
                     },
                     Effect::tap_card(card_id.unwrap()),
                 ];

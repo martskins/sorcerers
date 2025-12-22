@@ -64,6 +64,8 @@ pub mod escyllion_cyclops;
 pub use escyllion_cyclops::*;
 pub mod wildfire;
 pub use wildfire::*;
+pub mod fireball;
+pub use fireball::*;
 
 use crate::{card::Card, game::PlayerId};
 
@@ -102,6 +104,7 @@ pub fn from_beta_name(name: &str, player_id: PlayerId) -> Option<Box<dyn Card>> 
         HillockBasilisk::NAME => Some(Box::new(HillockBasilisk::new(player_id))),
         EscyllionCyclops::NAME => Some(Box::new(EscyllionCyclops::new(player_id))),
         Wildfire::NAME => Some(Box::new(Wildfire::new(player_id))),
+        Fireball::NAME => Some(Box::new(Fireball::new(player_id))),
         _ => None,
     }
 }
