@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    card::{CardInfo, CardType, Zone},
+    card::{CardType, RenderableCard, Zone},
     game::{Direction, PlayerId, Resources},
 };
 use serde::{Deserialize, Serialize};
@@ -27,7 +27,7 @@ pub enum ServerMessage {
         player2: PlayerId,
     },
     Sync {
-        cards: Vec<CardInfo>,
+        cards: Vec<RenderableCard>,
         resources: HashMap<PlayerId, Resources>,
         current_player: PlayerId,
     },

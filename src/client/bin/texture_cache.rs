@@ -1,5 +1,5 @@
 use macroquad::texture::Texture2D;
-use sorcerers::card::{CardInfo, CardType, Edition};
+use sorcerers::card::RenderableCard;
 use std::{
     collections::HashMap,
     path::Path,
@@ -13,31 +13,6 @@ pub struct TextureCache {
     inner: HashMap<String, macroquad::texture::Texture2D>,
 }
 
-pub trait RenderableCard {
-    fn get_name(&self) -> &str;
-    fn is_token(&self) -> bool;
-    fn is_site(&self) -> bool;
-    fn get_edition(&self) -> &Edition;
-}
-
-impl RenderableCard for &CardInfo {
-    fn get_name(&self) -> &str {
-        &self.name
-    }
-
-    fn is_token(&self) -> bool {
-        self.card_type == CardType::Token
-    }
-
-    fn is_site(&self) -> bool {
-        self.card_type == CardType::Site
-    }
-
-    fn get_edition(&self) -> &Edition {
-        &self.edition
-    }
-}
-
 impl TextureCache {
     fn new() -> Self {
         Self { inner: HashMap::new() }
@@ -47,7 +22,7 @@ impl TextureCache {
         TEXTURE_CACHE.get_or_init(|| RwLock::new(TextureCache::new()));
     }
 
-    pub async fn get_card_texture(card: &impl RenderableCard) -> Texture2D {
+    pub async fn get_card_texture(card: &RenderableCard) -> Texture2D {
         tokio::runtime::Runtime::new()
             .unwrap()
             .block_on(async { TextureCache::texture_for_card(card).await })
@@ -65,7 +40,7 @@ impl TextureCache {
         texture
     }
 
-    async fn texture_for_card(card: &impl RenderableCard) -> Texture2D {
+    async fn texture_for_card(card: &RenderableCard) -> Texture2D {
         if let Some(tex) = TEXTURE_CACHE.get().unwrap().read().unwrap().inner.get(card.get_name()) {
             return tex.clone();
         }
@@ -87,7 +62,7 @@ impl TextureCache {
         Ok(texture)
     }
 
-    async fn download_card_image(card: &impl RenderableCard) -> anyhow::Result<Texture2D> {
+    async fn download_card_image(card: &RenderableCard) -> anyhow::Result<Texture2D> {
         let set = card.get_edition().url_name();
         let name = card
             .get_name()

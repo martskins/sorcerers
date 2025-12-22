@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardInfo, CardType, Modifier, Zone},
+    card::{Card, CardType, Modifier, RenderableCard, Zone},
     effect::Effect,
     networking::message::{ClientMessage, ServerMessage, ToMessage},
     state::{Phase, State},
@@ -734,7 +734,7 @@ impl Game {
                 .state
                 .cards
                 .iter()
-                .map(|c| CardInfo {
+                .map(|c| RenderableCard {
                     id: c.get_id().clone(),
                     name: c.get_name().to_string(),
                     owner_id: c.get_owner_id().clone(),

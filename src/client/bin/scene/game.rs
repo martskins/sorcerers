@@ -1,6 +1,6 @@
 use crate::{
     config::*,
-    render::{CardDisplay, CellDisplay},
+    render::{CardRect, CellRect},
     scene::Scene,
     texture_cache::TextureCache,
 };
@@ -14,7 +14,7 @@ use macroquad::{
     ui,
 };
 use sorcerers::{
-    card::{CardInfo, CardType, Modifier, Plane, Zone},
+    card::{CardType, Modifier, Plane, RenderableCard, Zone},
     game::{Element, PlayerId, Resources},
     networking::{
         self,
@@ -46,9 +46,8 @@ fn draw_vortex_icon(x: f32, y: f32, size: f32, color: Color) {
 
 #[derive(Debug, PartialEq)]
 pub enum Status {
-    None,
+    Idle,
     SelectingAction,
-    DrawCard,
     SelectingCard { cards: Vec<uuid::Uuid> },
     SelectingZone { zones: Vec<Zone> },
 }
@@ -57,9 +56,9 @@ pub enum Status {
 pub struct Game {
     pub player_id: PlayerId,
     pub game_id: uuid::Uuid,
-    pub card_displays: Vec<CardDisplay>,
-    pub cells: Vec<CellDisplay>,
-    pub cards: Vec<CardInfo>,
+    pub card_rects: Vec<CardRect>,
+    pub cell_rects: Vec<CellRect>,
+    pub cards: Vec<RenderableCard>,
     pub resources: HashMap<PlayerId, Resources>,
     pub client: networking::client::Client,
     pub current_player: PlayerId,
@@ -75,15 +74,15 @@ impl Game {
         let cells = (0..20)
             .map(|i| {
                 let rect = cell_rect(i + 1, false);
-                CellDisplay { id: i as u8 + 1, rect }
+                CellRect { id: i as u8 + 1, rect }
             })
             .collect();
         Self {
             player_id: player_id,
-            card_displays: Vec::new(),
+            card_rects: Vec::new(),
             cards: Vec::new(),
             game_id: uuid::Uuid::nil(),
-            cells,
+            cell_rects: cells,
             client,
             current_player: uuid::Uuid::nil(),
             is_player_one: false,
@@ -91,7 +90,7 @@ impl Game {
             action_window_position: None,
             action_window_size: None,
             actions: Vec::new(),
-            status: Status::None,
+            status: Status::Idle,
         }
     }
 
@@ -110,7 +109,7 @@ impl Game {
 
     async fn resize_cells(&mut self) -> anyhow::Result<()> {
         let mirror = !self.is_player_one;
-        for cell in &mut self.cells {
+        for cell in &mut self.cell_rects {
             cell.rect = cell_rect(cell.id, mirror);
         }
 
@@ -149,7 +148,7 @@ impl Game {
                 // because state is not set at this point.
                 self.is_player_one = player1 == &self.player_id;
                 if !self.is_player_one {
-                    for cell in &mut self.cells {
+                    for cell in &mut self.cell_rects {
                         let new_id: i8 = cell.id as i8 - 21;
                         cell.id = new_id.abs() as u8;
                     }
@@ -276,11 +275,7 @@ impl Game {
         Game::render_resources(base_x, OPPONENT_Y, &opponent_resources);
 
         let turn_label = if self.is_players_turn(&self.player_id) {
-            if let Status::DrawCard { .. } = self.status {
-                "Draw a Card"
-            } else {
-                "Your Turn"
-            }
+            "Your Turn"
         } else {
             "Opponent's Turn"
         };
@@ -301,8 +296,7 @@ impl Game {
 
         match self.status {
             Status::SelectingCard { ref cards } => {
-                let valid_cards: Vec<&CardDisplay> =
-                    self.card_displays.iter().filter(|c| cards.contains(&c.id)).collect();
+                let valid_cards: Vec<&CardRect> = self.card_rects.iter().filter(|c| cards.contains(&c.id)).collect();
 
                 for card in valid_cards {
                     draw_rectangle_lines(card.rect.x, card.rect.y, card.rect.w, card.rect.h, 3.0, WHITE);
@@ -331,7 +325,7 @@ impl Game {
                                         action_idx: idx,
                                     })
                                     .unwrap();
-                                self.status = Status::None;
+                                self.status = Status::Idle;
                             }
                         }
                     },
@@ -344,7 +338,7 @@ impl Game {
     }
 
     async fn render_card_preview(&self) -> anyhow::Result<()> {
-        let selected_card = self.card_displays.iter().find(|card_display| card_display.is_hovered);
+        let selected_card = self.card_rects.iter().find(|card_display| card_display.is_hovered);
         let screen_rect = screen_rect();
 
         if let Some(card_display) = selected_card {
@@ -372,10 +366,10 @@ impl Game {
 
     async fn render_cemetery(&self) -> anyhow::Result<()> {
         let discarded_cards = self
-            .card_displays
+            .card_rects
             .iter()
             .filter(|card_display| card_display.zone == Zone::Cemetery)
-            .collect::<Vec<&CardDisplay>>();
+            .collect::<Vec<&CardRect>>();
         for card in discarded_cards {
             let cemetery_rect = cemetery_rect();
             draw_texture_ex(
@@ -395,25 +389,25 @@ impl Game {
 
     fn handle_card_click(&mut self, mouse_position: Vec2) {
         let mut hovered_card_index = None;
-        for (idx, card_display) in self.card_displays.iter().enumerate() {
+        for (idx, card_display) in self.card_rects.iter().enumerate() {
             if card_display.rect.contains(mouse_position.into()) {
                 hovered_card_index = Some(idx);
             };
         }
 
-        for card in &mut self.card_displays {
+        for card in &mut self.card_rects {
             card.is_hovered = false;
         }
 
         if let Some(idx) = hovered_card_index {
-            self.card_displays.get_mut(idx).unwrap().is_hovered = true;
+            self.card_rects.get_mut(idx).unwrap().is_hovered = true;
         }
 
         match &self.status {
-            Status::None => {
+            Status::Idle => {
                 let mut card_selected = None;
                 for card_display in &mut self
-                    .card_displays
+                    .card_rects
                     .iter_mut()
                     .filter(|c| matches!(c.zone, Zone::Realm(_)) || c.zone == Zone::Hand)
                 {
@@ -434,8 +428,7 @@ impl Game {
                 }
             }
             Status::SelectingCard { cards, .. } => {
-                let valid_cards: Vec<&CardDisplay> =
-                    self.card_displays.iter().filter(|c| cards.contains(&c.id)).collect();
+                let valid_cards: Vec<&CardRect> = self.card_rects.iter().filter(|c| cards.contains(&c.id)).collect();
                 let mut selected_id = None;
                 for card in valid_cards {
                     if card.rect.contains(mouse_position.into()) && is_mouse_button_released(MouseButton::Left) {
@@ -444,7 +437,7 @@ impl Game {
                 }
 
                 if let Some(id) = selected_id {
-                    let card = self.card_displays.iter_mut().find(|c| c.id == id).unwrap();
+                    let card = self.card_rects.iter_mut().find(|c| c.id == id).unwrap();
                     card.is_selected = !card.is_selected;
 
                     if card.is_selected {
@@ -456,7 +449,7 @@ impl Game {
                             })
                             .unwrap();
 
-                        self.status = Status::None;
+                        self.status = Status::Idle;
                     }
                 }
             }
@@ -468,13 +461,13 @@ impl Game {
         match &self.status {
             Status::SelectingZone { zones } => {
                 let zones = zones.clone();
-                for (idx, cell) in self.cells.iter().enumerate() {
+                for (idx, cell) in self.cell_rects.iter().enumerate() {
                     if zones.iter().find(|i| i == &&Zone::Realm(cell.id)).is_none() {
                         continue;
                     }
 
                     if cell.rect.contains(mouse_position.into()) {
-                        let square = self.cells[idx].id;
+                        let square = self.cell_rects[idx].id;
                         if is_mouse_button_released(MouseButton::Left) {
                             self.client
                                 .send(ClientMessage::PickSquare {
@@ -484,7 +477,7 @@ impl Game {
                                 })
                                 .unwrap();
 
-                            self.status = Status::None;
+                            self.status = Status::Idle;
                         }
                     }
                 }
@@ -496,7 +489,7 @@ impl Game {
     async fn render_grid(&self) {
         let grid_color = WHITE;
         let grid_thickness = 1.0;
-        for cell_display in &self.cells {
+        for cell_display in &self.cell_rects {
             draw_rectangle_lines(
                 cell_display.rect.x,
                 cell_display.rect.y,
@@ -530,7 +523,7 @@ impl Game {
     }
 
     async fn render_realm(&self) {
-        for card_display in &self.card_displays {
+        for card_display in &self.card_rects {
             if !matches!(card_display.zone, Zone::Realm(_)) {
                 continue;
             }
@@ -573,7 +566,7 @@ impl Game {
     }
 
     async fn render_player_hand(&self) {
-        for card_display in &self.card_displays {
+        for card_display in &self.card_rects {
             if card_display.zone != Zone::Hand {
                 continue;
             }
@@ -631,7 +624,7 @@ impl Game {
     async fn update_cards_in_realm(&mut self) -> anyhow::Result<()> {
         for card in &self.cards {
             if let Zone::Realm(square) = card.zone {
-                let cell_rect = self.cells.iter().find(|c| c.id == square).unwrap().rect;
+                let cell_rect = self.cell_rects.iter().find(|c| c.id == square).unwrap().rect;
                 let mut dimensions = spell_dimensions();
                 if card.card_type == CardType::Site {
                     dimensions = site_dimensions();
@@ -644,7 +637,7 @@ impl Game {
                     dimensions.y,
                 );
 
-                self.card_displays.push(CardDisplay {
+                self.card_rects.push(CardRect {
                     id: card.id,
                     zone: card.zone.clone(),
                     tapped: card.tapped,
@@ -654,8 +647,6 @@ impl Game {
                     is_hovered: false,
                     is_selected: false,
                     modifiers: card.modifiers.clone(),
-                    plane: card.plane.clone(),
-                    card_type: card.card_type.clone(),
                 });
             }
         }
@@ -664,7 +655,7 @@ impl Game {
     }
 
     async fn update_cards_in_hand(&mut self) -> anyhow::Result<()> {
-        let spells: Vec<&CardInfo> = self
+        let spells: Vec<&RenderableCard> = self
             .cards
             .iter()
             .filter(|c| c.zone == Zone::Hand)
@@ -672,7 +663,7 @@ impl Game {
             .filter(|c| c.is_spell())
             .collect();
 
-        let sites: Vec<&CardInfo> = self
+        let sites: Vec<&RenderableCard> = self
             .cards
             .iter()
             .filter(|c| c.zone == Zone::Hand)
@@ -685,7 +676,7 @@ impl Game {
         let center = spell_hand_size as f32 / 2.0;
         let radius = 40.0;
 
-        let mut displays: Vec<CardDisplay> = Vec::new();
+        let mut displays: Vec<CardRect> = Vec::new();
         let hand_rect = hand_rect();
         for (idx, card) in spells.iter().enumerate() {
             let dimensions = spell_dimensions();
@@ -700,7 +691,7 @@ impl Game {
 
             let rect = Rect::new(x, y, dimensions.x, dimensions.y);
 
-            displays.push(CardDisplay {
+            displays.push(CardRect {
                 rect,
                 is_hovered: false,
                 is_selected: false,
@@ -710,8 +701,6 @@ impl Game {
                 tapped: card.tapped,
                 image: TextureCache::get_card_texture(card).await,
                 modifiers: card.modifiers.clone(),
-                plane: card.plane.clone(),
-                card_type: card.card_type.clone(),
             });
         }
 
@@ -723,7 +712,7 @@ impl Game {
 
             let rect = Rect::new(x, y, dimensions.x, dimensions.y);
 
-            displays.push(CardDisplay {
+            displays.push(CardRect {
                 rect,
                 is_hovered: false,
                 is_selected: false,
@@ -733,12 +722,10 @@ impl Game {
                 tapped: card.tapped,
                 image: TextureCache::get_card_texture(card).await,
                 modifiers: card.modifiers.clone(),
-                plane: card.plane.clone(),
-                card_type: card.card_type.clone(),
             });
         }
 
-        self.card_displays = displays;
+        self.card_rects = displays;
         Ok(())
     }
 }

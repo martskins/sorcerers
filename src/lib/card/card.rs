@@ -144,7 +144,7 @@ impl Zone {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CardInfo {
+pub struct RenderableCard {
     pub id: uuid::Uuid,
     pub name: String,
     pub owner_id: PlayerId,
@@ -156,13 +156,25 @@ pub struct CardInfo {
     pub modifiers: Vec<Modifier>,
 }
 
-impl CardInfo {
+impl RenderableCard {
     pub fn is_site(&self) -> bool {
         self.card_type == CardType::Site
     }
 
     pub fn is_spell(&self) -> bool {
         self.card_type == CardType::Minion || self.card_type == CardType::Aura || self.card_type == CardType::Magic
+    }
+
+    pub fn get_name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn is_token(&self) -> bool {
+        self.card_type == CardType::Token
+    }
+
+    pub fn get_edition(&self) -> &Edition {
+        &self.edition
     }
 }
 

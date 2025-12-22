@@ -1,12 +1,10 @@
 use macroquad::{math::Rect, texture::Texture2D};
-use sorcerers::card::{CardType, Modifier, Plane, Zone};
+use sorcerers::card::{Modifier, Zone};
 
 #[derive(Debug, Clone)]
-pub struct CardDisplay {
+pub struct CardRect {
     pub id: uuid::Uuid,
     pub zone: Zone,
-    pub plane: Plane,
-    pub card_type: CardType,
     pub tapped: bool,
     pub image: Texture2D,
     pub rect: Rect,
@@ -17,7 +15,7 @@ pub struct CardDisplay {
 }
 
 #[derive(Debug, Clone)]
-pub struct CellDisplay {
+pub struct CellRect {
     pub id: u8,
     pub rect: Rect,
 }
