@@ -537,7 +537,6 @@ pub struct Game {
     pub state: State,
     pub streams: HashMap<PlayerId, Arc<Mutex<OwnedWriteHalf>>>,
     client_receiver: Receiver<ClientMessage>,
-    server_sender: Sender<ServerMessage>,
     server_receiver: Receiver<ServerMessage>,
 }
 
@@ -558,7 +557,6 @@ impl Game {
             streams: HashMap::from([(player1, addr1), (player2, addr2)]),
             client_receiver: receiver,
             server_receiver,
-            server_sender,
         }
     }
 

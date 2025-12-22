@@ -602,8 +602,13 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         false
     }
 
-    async fn on_move(&mut self, _state: &State, _to: &Zone) -> Vec<Effect> {
-        vec![]
+    async fn on_move(&self, state: &State, from: &Zone, to: &Zone) -> Vec<Effect> {
+        state
+            .cards
+            .iter()
+            .flat_map(|c| c.get_modifiers(state))
+            .flat_map(|m| m.on_move(self.get_id(), state, from, to))
+            .collect()
     }
 
     async fn on_visit_zone(&self, _state: &State, _to: &Zone) -> Vec<Effect> {
@@ -700,6 +705,25 @@ pub enum Modifier {
     TakesNoDamageFromElement(Element),
     Charge,
     SummoningSickness,
+    Blaze(u8), // Specific modifier for the Blaze magic
+}
+
+impl Modifier {
+    fn on_move(&self, card_id: &uuid::Uuid, state: &State, from: &Zone, _to: &Zone) -> Vec<Effect> {
+        match self {
+            Modifier::Blaze(burn) => {
+                let mut effects = vec![];
+                let units = state.get_units_in_zone(from);
+                for unit in units {
+                    let card = state.get_card(card_id).unwrap();
+                    effects.push(Effect::take_damage(unit.get_id(), card.get_id(), *burn));
+                }
+
+                effects
+            }
+            _ => vec![],
+        }
+    }
 }
 
 #[derive(Debug, Default, Clone)]

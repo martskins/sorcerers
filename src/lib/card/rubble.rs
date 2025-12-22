@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardType, Edition, Plane, SiteBase, Zone},
+    card::{Card, CardBase, Edition, Plane, SiteBase, Zone},
     game::{PlayerId, Thresholds},
 };
 

@@ -1,6 +1,6 @@
 use crate::{
-    card::{CardType, Modifier, SiteBase, UnitBase, Zone},
-    game::{Action, BaseAction, Direction, InputStatus, PlayerId, Thresholds, pick_action, pick_card},
+    card::{Modifier, SiteBase, UnitBase, Zone},
+    game::{Action, BaseAction, Direction, PlayerId, Thresholds, pick_action, pick_card},
     state::{Phase, State},
 };
 use std::fmt::Debug;
@@ -246,11 +246,13 @@ impl Effect {
             Effect::AddCard { card } => {
                 state.cards.push(card.clone_box());
             }
-            Effect::MoveCard { card_id, to, tap, .. } => {
+            Effect::MoveCard {
+                card_id, from, to, tap, ..
+            } => {
                 let snapshot = state.snapshot();
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
                 card.set_zone(to.clone());
-                let mut effects = card.on_move(&snapshot, to).await;
+                let mut effects = card.on_move(&snapshot, from, to).await;
                 effects.extend(card.on_visit_zone(&snapshot, to).await);
                 state.effects.extend(effects);
                 if *tap {

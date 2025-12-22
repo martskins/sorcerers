@@ -129,21 +129,6 @@ impl Game {
         Ok(())
     }
 
-    // pub async fn process_input(&mut self) -> Option<Scene> {
-    //     if is_mouse_button_released(MouseButton::Left) {
-    //         let mouse_position = mouse_position();
-    //         if atlasbook_rect().contains(mouse_position.into()) {
-    //             self.draw_card(CardType::Site).unwrap();
-    //         }
-    //
-    //         if spellbook_rect().contains(mouse_position.into()) {
-    //             self.draw_card(CardType::Spell).unwrap();
-    //         }
-    //     }
-    //
-    //     None
-    // }
-
     pub async fn process_message(&mut self, message: &ServerMessage) -> anyhow::Result<Option<Scene>> {
         match message {
             ServerMessage::PickZone { zones, .. } => {
