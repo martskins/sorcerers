@@ -84,6 +84,7 @@ impl Card for HillockBasilisk {
         let units = zones
             .iter()
             .flat_map(|z| state.get_units_in_zone(z))
+            .filter(|c| c.get_id() != self.get_id())
             .map(|c| c.get_id().clone())
             .collect();
         vec![(Modifier::Disabled, units)]
