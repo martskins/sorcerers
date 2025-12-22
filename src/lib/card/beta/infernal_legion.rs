@@ -73,33 +73,14 @@ impl Card for InfernalLegion {
         Some(&mut self.unit_base)
     }
 
-    fn deathrite(&self, state: &State, from: &Zone) -> Vec<Effect> {
-        let units_here: Vec<uuid::Uuid> = state
-            .cards
+    async fn on_turn_end(&self, state: &State) -> Vec<Effect> {
+        let adjacent_units: Vec<uuid::Uuid> = self
+            .get_zone()
+            .get_adjacent()
             .iter()
-            .filter(|c| c.is_unit())
-            .filter(|c| c.get_zone() == from)
+            .flat_map(|z| state.get_units_in_zone(z))
             .map(|c| c.get_id().clone())
             .collect();
-        let mut effects = Vec::new();
-        for unit in units_here {
-            effects.push(Effect::TakeDamage {
-                card_id: unit,
-                from: self.get_id().clone(),
-                damage: 3,
-            });
-        }
-        effects
-    }
-
-    async fn on_turn_end(&self, state: &State) -> Vec<Effect> {
-        let adjacent_units = state
-            .cards
-            .iter()
-            .filter(|c| c.is_unit())
-            .filter(|c| self.get_zone().is_adjacent(&c.get_zone()))
-            .map(|c| c.get_id().clone())
-            .collect::<Vec<_>>();
         let mut effects = Vec::new();
         for unit in adjacent_units {
             effects.push(Effect::TakeDamage {
