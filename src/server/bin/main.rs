@@ -30,23 +30,6 @@ async fn main() -> anyhow::Result<()> {
                 let mut server = server_clone.lock().await;
                 server.process_message(&msg, Arc::clone(&writer)).await.unwrap();
             }
-            // process_stream(server_clone, stream, addr).await;
         });
     }
 }
-//
-// async fn process_stream(server: Arc<Mutex<Server>>, mut stream: TcpStream, addr: SocketAddr) {
-//     let mut buf = vec![0; 32000];
-//     let msg: Message = loop {
-//         if let Ok(n) = stream.read(&mut buf).await {
-//             if n == 0 {
-//                 continue;
-//             }
-//
-//             break rmp_serde::from_slice(&buf).unwrap();
-//         }
-//     };
-//     println!("Received message from {}: {:?}", addr, msg);
-//     // let mut server = server.lock().await;
-//     // server.process_message(&msg, stream, addr).await.unwrap();
-// }
