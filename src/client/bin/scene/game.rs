@@ -116,7 +116,8 @@ impl Game {
         if self.game_id.is_nil() {
             let time = macroquad::time::get_time();
             let dot_count = ((time * 2.0) as usize % 3) + 1;
-            let dots = ".".repeat(dot_count);
+            let mut dots = ".".repeat(dot_count);
+            dots += &" ".repeat(3 - dot_count);
             let message = format!("Looking for match{}", dots);
 
             let screen_rect = screen_rect();
@@ -556,6 +557,21 @@ impl Game {
                 12.0,
                 WHITE,
             );
+
+            // Draw a UI button at the top right corner as a placeholder for an icon
+            let button_size = 18.0;
+            let button_x = cell_display.rect.x + cell_display.rect.w - button_size - 4.0;
+            let button_y = cell_display.rect.y + 4.0;
+            let button_pos = Vec2::new(button_x, button_y);
+            let button_dim = Vec2::new(button_size, button_size);
+            let button = ui::widgets::Button::new("+")
+                .position(button_pos)
+                .size(button_dim)
+                .ui(&mut ui::root_ui());
+
+            if button {
+                println!("Clicked cell {}", cell_display.id);
+            }
 
             if let Status::SelectingZone { zones } = &self.status {
                 if zones.iter().find(|i| i == &&Zone::Realm(cell_display.id)).is_some() {
