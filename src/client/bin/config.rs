@@ -6,12 +6,10 @@ use macroquad::{
 };
 
 pub static SCREEN_RECT: OnceLock<RwLock<Rect>> = OnceLock::new();
-
 pub const CARD_OFFSET_X: f32 = 50.0;
 pub const CARD_IN_PLAY_SCALE: f32 = 0.6;
-pub const SPELLBOOK_IMAGE: &str = "assets/images/cards/Spell Back.webp";
-pub const ATLASBOOK_IMAGE: &str = "assets/images/cards/Site Back.webp";
 pub const CARD_ASPECT_RATIO: f32 = 384.0 / 537.0;
+pub const HAND_SPACE_HEIGHT: f32 = 150.0;
 
 pub fn card_width() -> f32 {
     realm_rect().w / 10.0
@@ -38,13 +36,12 @@ pub fn screen_rect() -> Rect {
 }
 
 pub fn hand_rect() -> Rect {
-    let screen_rect = screen_rect();
-    Rect::new((screen_rect.w / 2.0) - 150.0, screen_rect.h - 200.0, 300.0, 200.0)
+    Rect::new(realm_rect().x, realm_rect().h, realm_rect().w, HAND_SPACE_HEIGHT)
 }
 
 pub fn realm_rect() -> Rect {
     let screen_rect = screen_rect();
-    Rect::new(100.0, 0.0, screen_rect.w - 200.0, screen_rect.h - hand_rect().h)
+    Rect::new(200.0, 0.0, screen_rect.w - 200.0, screen_rect.h - HAND_SPACE_HEIGHT) // Last parame is the hand's area height
 }
 
 pub fn spellbook_rect() -> Rect {

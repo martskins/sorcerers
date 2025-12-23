@@ -97,8 +97,8 @@ impl Game {
     pub async fn update(&mut self) -> anyhow::Result<()> {
         let mouse_position = mouse_position().into();
         self.resize_cells().await?;
-        self.update_cards_in_hand().await?;
-        self.update_cards_in_realm().await?;
+        self.compute_hand_rects().await?;
+        self.compute_realm_rects().await?;
         self.handle_click(mouse_position);
         Ok(())
     }
@@ -131,11 +131,11 @@ impl Game {
 
         self.render_background().await;
         self.render_grid().await;
-        self.render_deck().await;
-        self.render_player_hand().await;
         self.render_realm().await;
-        self.render_cemetery().await?;
+        // self.render_deck().await;
+        // self.render_cemetery().await?;
         self.render_gui().await?;
+        self.render_player_hand().await;
         self.render_card_preview().await?;
         Ok(())
     }
@@ -247,14 +247,16 @@ impl Game {
         }
     }
 
-    fn render_resources(x: f32, y: f32, resources: &Resources) {
+    fn render_player_card(x: f32, y: f32, resources: &Resources, player_name: &str) {
+        draw_text(player_name, x, y, FONT_SIZE, WHITE);
+
         let health = format!("Health: {}", resources.health);
-        draw_text(&health, x, y, FONT_SIZE, WHITE);
+        draw_text(&health, x, y + 20.0, FONT_SIZE, WHITE);
 
         let mana_text = format!("Mana: {}", resources.mana);
-        draw_text(&mana_text, x, y + 20.0, FONT_SIZE, WHITE);
+        draw_text(&mana_text, x, y + 40.0, FONT_SIZE, WHITE);
 
-        let thresholds_y: f32 = y + 10.0 + 20.0;
+        let thresholds_y: f32 = y + 10.0 + 20.0 + 20.0;
         let fire_x = x;
         let fire_y = thresholds_y;
         Game::render_threshold(fire_x, fire_y, resources.thresholds.fire, Element::Fire);
@@ -275,9 +277,11 @@ impl Game {
     async fn render_gui(&mut self) -> anyhow::Result<()> {
         let screen_rect = screen_rect();
         let base_x: f32 = 20.0;
-        let player_y: f32 = screen_rect.h - 70.0;
+        let player_y: f32 = screen_rect.h - 90.0;
         let resources = self.resources.get(&self.player_id).cloned().unwrap_or(Resources::new());
-        Game::render_resources(base_x, player_y, &resources);
+        let player1 = if self.is_player_one { "Player 1" } else { "Player 2" };
+        let player2 = if self.is_player_one { "Player 2" } else { "Player 1" };
+        Game::render_player_card(base_x, player_y, &resources, player1);
 
         const OPPONENT_Y: f32 = 25.0;
         let opponent_resources = self
@@ -286,7 +290,7 @@ impl Game {
             .find(|(player_id, _)| **player_id != self.player_id)
             .map(|(_, resources)| resources.clone())
             .unwrap_or(Resources::new());
-        Game::render_resources(base_x, OPPONENT_Y, &opponent_resources);
+        Game::render_player_card(base_x, OPPONENT_Y, &opponent_resources, player2);
 
         let turn_label = if self.is_players_turn(&self.player_id) {
             "Your Turn"
@@ -294,8 +298,6 @@ impl Game {
             "Opponent's Turn"
         };
 
-        let player1 = if self.is_player_one { "Player 1" } else { "Player 2" };
-        draw_text(player1, screen_rect.w / 2.0 - 150.0, 30.0, FONT_SIZE, WHITE);
         draw_text(turn_label, screen_rect.w / 2.0 - 50.0, 30.0, FONT_SIZE, WHITE);
 
         let is_in_turn = self.current_player == self.player_id;
@@ -632,24 +634,28 @@ impl Game {
     }
 
     async fn render_player_hand(&self) {
-        for card_display in &self.card_rects {
-            if card_display.zone != Zone::Hand {
+        let hand_rect = hand_rect();
+        let bg_color = Color::new(0.15, 0.18, 0.22, 0.85);
+        draw_rectangle(hand_rect.x, hand_rect.y, hand_rect.w, hand_rect.h, bg_color);
+
+        for card_rect in &self.card_rects {
+            if card_rect.zone != Zone::Hand {
                 continue;
             }
 
             let mut scale = 1.0;
-            if card_display.is_selected || card_display.is_hovered {
+            if card_rect.is_selected || card_rect.is_hovered {
                 scale = 1.2;
             }
 
             draw_texture_ex(
-                &card_display.image,
-                card_display.rect.x,
-                card_display.rect.y,
+                &card_rect.image,
+                card_rect.rect.x,
+                card_rect.rect.y,
                 WHITE,
                 DrawTextureParams {
-                    dest_size: Some(Vec2::new(card_display.rect.w, card_display.rect.h) * scale),
-                    rotation: card_display.rotation,
+                    dest_size: Some(Vec2::new(card_rect.rect.w, card_rect.rect.h) * scale),
+                    rotation: card_rect.rotation,
                     ..Default::default()
                 },
             );
@@ -661,33 +667,7 @@ impl Game {
         draw_rectangle(rect.x, rect.y, rect.w, rect.h, Color::new(0.08, 0.12, 0.18, 1.0));
     }
 
-    async fn render_deck(&self) {
-        let spellbook_rect = spellbook_rect();
-        draw_texture_ex(
-            &TextureCache::get_texture(SPELLBOOK_IMAGE, "spellbook").await,
-            spellbook_rect.x,
-            spellbook_rect.y,
-            WHITE,
-            DrawTextureParams {
-                dest_size: Some(spellbook_rect.size() * CARD_IN_PLAY_SCALE),
-                ..Default::default()
-            },
-        );
-
-        let atlasbook_rect = atlasbook_rect();
-        draw_texture_ex(
-            &TextureCache::get_texture(ATLASBOOK_IMAGE, "atlas").await,
-            atlasbook_rect.x,
-            atlasbook_rect.y,
-            WHITE,
-            DrawTextureParams {
-                dest_size: Some(atlasbook_rect.size() * CARD_IN_PLAY_SCALE),
-                ..Default::default()
-            },
-        );
-    }
-
-    async fn update_cards_in_realm(&mut self) -> anyhow::Result<()> {
+    async fn compute_realm_rects(&mut self) -> anyhow::Result<()> {
         for card in &self.cards {
             if let Zone::Realm(square) = card.zone {
                 let cell_rect = self.cell_rects.iter().find(|c| c.id == square).unwrap().rect;
@@ -720,7 +700,7 @@ impl Game {
         Ok(())
     }
 
-    async fn update_cards_in_hand(&mut self) -> anyhow::Result<()> {
+    async fn compute_hand_rects(&mut self) -> anyhow::Result<()> {
         let spells: Vec<&RenderableCard> = self
             .cards
             .iter()
@@ -738,22 +718,12 @@ impl Game {
             .collect();
 
         let spell_hand_size = spells.len();
-        let fan_angle = 30.0;
-        let center = spell_hand_size as f32 / 2.0;
-        let radius = 40.0;
-
         let mut displays: Vec<CardRect> = Vec::new();
         let hand_rect = hand_rect();
         for (idx, card) in spells.iter().enumerate() {
             let dimensions = spell_dimensions();
-            let angle = if spell_hand_size > 1 {
-                ((idx as f32 - center) / center) * (fan_angle / 2.0)
-            } else {
-                0.0
-            };
-            let rad = angle.to_radians();
             let x = hand_rect.x + idx as f32 * CARD_OFFSET_X + 20.0;
-            let y = hand_rect.y + 20.0 + radius * rad.sin();
+            let y = hand_rect.y + 20.0;
 
             let rect = Rect::new(x, y, dimensions.x, dimensions.y);
 
@@ -761,7 +731,7 @@ impl Game {
                 rect,
                 is_hovered: false,
                 is_selected: false,
-                rotation: rad,
+                rotation: 0.0,
                 id: card.id,
                 zone: card.zone.clone(),
                 tapped: card.tapped,
