@@ -61,7 +61,8 @@ impl Card for MinorExplosion {
     async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> Vec<Effect> {
         let caster = state.get_card(caster_id).unwrap();
         let valid_zones = caster.get_zones_within_steps(state, 2);
-        let zone = pick_zone(self.get_owner_id(), &valid_zones, state).await;
+        let prompt = "Pick a zone to center Minor Explosion:";
+        let zone = pick_zone(self.get_owner_id(), &valid_zones, state, prompt).await;
         let units = state.get_units_in_zone(&zone);
         units
             .iter()

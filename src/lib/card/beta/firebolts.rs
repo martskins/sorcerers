@@ -60,7 +60,8 @@ impl Card for Firebolts {
 
     async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> Vec<Effect> {
         let caster = state.get_card(caster_id).unwrap();
-        let direction = pick_direction(self.get_owner_id(), &CARDINAL_DIRECTIONS, state).await;
+        let prompt = "Firebolts: Pick a direction to cast the spell:";
+        let direction = pick_direction(self.get_owner_id(), &CARDINAL_DIRECTIONS, state, prompt).await;
         vec![
             Effect::ShootProjectile {
                 player_id: self.get_owner_id().clone(),

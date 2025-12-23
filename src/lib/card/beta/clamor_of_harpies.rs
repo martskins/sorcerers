@@ -111,13 +111,15 @@ impl Card for ClamorOfHarpies {
             .filter(|c| c.get_power(state).unwrap_or(0) < self.get_power(state).unwrap_or(0))
             .map(|c| c.get_id().clone())
             .collect();
-        let card_id = pick_card(self.get_owner_id(), &valid_cards, state).await;
+        let prompt = "Clamor of Harpies: Pick a unit to bring here";
+        let card_id = pick_card(self.get_owner_id(), &valid_cards, state, prompt).await;
         let card = state.get_card(&card_id).unwrap();
         let actions: Vec<Box<dyn Action>> = vec![
             Box::new(ClamorOfHarpiesAction::Strike),
             Box::new(ClamorOfHarpiesAction::DoNotStrike),
         ];
-        let action = pick_action(self.get_owner_id(), &actions, state).await;
+        let prompt = "Clamor of Harpies: Strike selected unit?";
+        let action = pick_action(self.get_owner_id(), &actions, state, prompt).await;
         let mut effects = vec![Effect::MoveCard {
             card_id,
             from: card.get_zone().clone(),

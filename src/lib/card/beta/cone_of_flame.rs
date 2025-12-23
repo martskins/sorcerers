@@ -59,7 +59,8 @@ impl Card for ConeOfFlame {
     }
 
     async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> Vec<Effect> {
-        let dir = pick_direction(self.get_owner_id(), &CARDINAL_DIRECTIONS, state).await;
+        let prompt = "Cone of Flame: Pick a direction to cast the spell:";
+        let dir = pick_direction(self.get_owner_id(), &CARDINAL_DIRECTIONS, state, prompt).await;
         let caster = state.get_card(caster_id).unwrap();
         let zone = caster.get_zone();
         let zone_dmg = vec![

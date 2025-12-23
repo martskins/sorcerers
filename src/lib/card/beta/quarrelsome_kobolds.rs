@@ -90,7 +90,8 @@ impl Card for QuarrelsomeKobolds {
             units.extend(units_in_zone);
         }
 
-        let picked_unit = pick_card(self.get_owner_id(), &units, state).await;
+        let prompt = "Quarrelsome Kobolds: Pick a unit to deal damage to";
+        let picked_unit = pick_card(self.get_owner_id(), &units, state, prompt).await;
         vec![Effect::take_damage(
             &picked_unit,
             self.get_id(),

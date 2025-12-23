@@ -1,6 +1,5 @@
 use async_channel::Sender;
 use sorcerers::{
-    card::{self, *},
     deck::precon,
     game::{Game, Resources},
     networking::message::{ClientMessage, Message, ServerMessage, ToMessage},
@@ -81,88 +80,88 @@ impl Server {
         state.resources.insert(player1.clone(), Resources::new());
         state.resources.insert(player2.clone(), Resources::new());
 
-        state.cards.push(card::from_name_and_zone(
-            RedDesert::NAME,
-            player2.clone(),
-            Zone::Realm(18),
-        ));
-        state.cards.push(card::from_name_and_zone(
-            RedDesert::NAME,
-            player2.clone(),
-            Zone::Realm(13),
-        ));
-        state.cards.push(card::from_name_and_zone(
-            RedDesert::NAME,
-            player2.clone(),
-            Zone::Realm(12),
-        ));
-        state.cards.push(card::from_name_and_zone(
-            RedDesert::NAME,
-            player1.clone(),
-            Zone::Realm(8),
-        ));
-        state.cards.push(card::from_name_and_zone(
-            Vesuvius::NAME,
-            player1.clone(),
-            Zone::Realm(7),
-        ));
-        state.cards.push(card::from_name_and_zone(
-            HillockBasilisk::NAME,
-            player2.clone(),
-            Zone::Realm(7),
-        ));
-        state.cards.push(card::from_name_and_zone(
-            SacredScarabs::NAME,
-            player2.clone(),
-            Zone::Realm(13),
-        ));
-        state.cards.push(card::from_name_and_zone(
-            PitVipers::NAME,
-            player1.clone(),
-            Zone::Realm(8),
-        ));
-        state.cards.push(card::from_name_and_zone(
-            ColickyDragonettes::NAME,
-            player2.clone(),
-            Zone::Realm(12),
-        ));
-        state.cards.push(card::from_name_and_zone(
-            RedDesert::NAME,
-            player1.clone(),
-            Zone::Realm(1),
-        ));
-        state.cards.push(card::from_name_and_zone(
-            RedDesert::NAME,
-            player1.clone(),
-            Zone::Realm(2),
-        ));
-        state.cards.push(card::from_name_and_zone(
-            WayfaringPilgrim::NAME,
-            player1.clone(),
-            Zone::Realm(2),
-        ));
-        state.cards.push(card::from_name_and_zone(
-            RedDesert::NAME,
-            player1.clone(),
-            Zone::Realm(3),
-        ));
-        state
-            .cards
-            .push(card::from_name_and_zone(Wildfire::NAME, player1.clone(), Zone::Hand));
-        state
-            .cards
-            .push(card::from_name_and_zone(Firebolts::NAME, player1.clone(), Zone::Hand));
-        state
-            .cards
-            .push(card::from_name_and_zone(MadDash::NAME, player1.clone(), Zone::Hand));
-        state.resources.get_mut(player1).unwrap().mana = 15;
-        state.resources.get_mut(player1).unwrap().thresholds.fire = 4;
-        state.resources.get_mut(player1).unwrap().thresholds.water = 1;
-        state.resources.get_mut(player1).unwrap().thresholds.earth = 1;
-        state.resources.get_mut(player2).unwrap().mana = 15;
-        state.resources.get_mut(player2).unwrap().thresholds.fire = 4;
-        state.resources.get_mut(player2).unwrap().thresholds.water = 1;
-        state.resources.get_mut(player2).unwrap().thresholds.earth = 1;
+        // state.cards.push(card::from_name_and_zone(
+        //     RedDesert::NAME,
+        //     player2.clone(),
+        //     Zone::Realm(18),
+        // ));
+        // state.cards.push(card::from_name_and_zone(
+        //     RedDesert::NAME,
+        //     player2.clone(),
+        //     Zone::Realm(13),
+        // ));
+        // state.cards.push(card::from_name_and_zone(
+        //     RedDesert::NAME,
+        //     player2.clone(),
+        //     Zone::Realm(12),
+        // ));
+        // state.cards.push(card::from_name_and_zone(
+        //     RedDesert::NAME,
+        //     player1.clone(),
+        //     Zone::Realm(8),
+        // ));
+        // state.cards.push(card::from_name_and_zone(
+        //     Vesuvius::NAME,
+        //     player1.clone(),
+        //     Zone::Realm(7),
+        // ));
+        // state.cards.push(card::from_name_and_zone(
+        //     HillockBasilisk::NAME,
+        //     player2.clone(),
+        //     Zone::Realm(7),
+        // ));
+        // state.cards.push(card::from_name_and_zone(
+        //     SacredScarabs::NAME,
+        //     player2.clone(),
+        //     Zone::Realm(13),
+        // ));
+        // state.cards.push(card::from_name_and_zone(
+        //     PitVipers::NAME,
+        //     player1.clone(),
+        //     Zone::Realm(8),
+        // ));
+        // state.cards.push(card::from_name_and_zone(
+        //     ColickyDragonettes::NAME,
+        //     player2.clone(),
+        //     Zone::Realm(12),
+        // ));
+        // state.cards.push(card::from_name_and_zone(
+        //     RedDesert::NAME,
+        //     player1.clone(),
+        //     Zone::Realm(1),
+        // ));
+        // state.cards.push(card::from_name_and_zone(
+        //     RedDesert::NAME,
+        //     player1.clone(),
+        //     Zone::Realm(2),
+        // ));
+        // state.cards.push(card::from_name_and_zone(
+        //     WayfaringPilgrim::NAME,
+        //     player1.clone(),
+        //     Zone::Realm(2),
+        // ));
+        // state.cards.push(card::from_name_and_zone(
+        //     RedDesert::NAME,
+        //     player1.clone(),
+        //     Zone::Realm(3),
+        // ));
+        // state
+        //     .cards
+        //     .push(card::from_name_and_zone(Wildfire::NAME, player1.clone(), Zone::Hand));
+        // state
+        //     .cards
+        //     .push(card::from_name_and_zone(Firebolts::NAME, player1.clone(), Zone::Hand));
+        // state
+        //     .cards
+        //     .push(card::from_name_and_zone(MadDash::NAME, player1.clone(), Zone::Hand));
+        // state.resources.get_mut(player1).unwrap().mana = 15;
+        // state.resources.get_mut(player1).unwrap().thresholds.fire = 4;
+        // state.resources.get_mut(player1).unwrap().thresholds.water = 1;
+        // state.resources.get_mut(player1).unwrap().thresholds.earth = 1;
+        // state.resources.get_mut(player2).unwrap().mana = 15;
+        // state.resources.get_mut(player2).unwrap().thresholds.fire = 4;
+        // state.resources.get_mut(player2).unwrap().thresholds.water = 1;
+        // state.resources.get_mut(player2).unwrap().thresholds.earth = 1;
 
         let stream1 = self.streams.remove(player1).unwrap().clone();
         let stream2 = self.streams.remove(player2).unwrap().clone();

@@ -60,7 +60,8 @@ impl Card for MadDash {
 
     async fn on_cast(&mut self, state: &State, _caster_id: &uuid::Uuid) -> Vec<Effect> {
         let actions: Vec<Box<dyn Action>> = vec![Box::new(BaseAction::DrawSite), Box::new(BaseAction::DrawSpell)];
-        let action = pick_action(self.get_owner_id(), &actions, state).await;
+        let prompt = "Mad Dash: Pick card to draw";
+        let action = pick_action(self.get_owner_id(), &actions, state, prompt).await;
         let cards = state
             .cards
             .iter()
@@ -68,7 +69,8 @@ impl Card for MadDash {
             .filter(|c| c.get_owner_id() == self.get_owner_id())
             .map(|c| c.get_id().clone())
             .collect::<Vec<uuid::Uuid>>();
-        let picked_card_id = pick_card(self.get_owner_id(), &cards, state).await;
+        let prompt = "Mad Dash: Pick a unit to gain Movement +1";
+        let picked_card_id = pick_card(self.get_owner_id(), &cards, state, prompt).await;
         let mut effects = action.on_select(Some(self.get_id()), self.get_owner_id(), state).await;
         effects.push(Effect::add_modifier(&picked_card_id, Modifier::Movement(1), Some(1)));
         effects

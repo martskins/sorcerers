@@ -32,18 +32,22 @@ pub enum ServerMessage {
         current_player: PlayerId,
     },
     PickCard {
+        prompt: String,
         player_id: PlayerId,
         cards: Vec<uuid::Uuid>,
     },
     PickAction {
+        prompt: String,
         player_id: PlayerId,
         actions: Vec<String>,
     },
     PickZone {
+        prompt: String,
         player_id: PlayerId,
         zones: Vec<Zone>,
     },
     PickDirection {
+        prompt: String,
         player_id: PlayerId,
         directions: Vec<Direction>,
     },

@@ -79,7 +79,8 @@ impl Card for RedDesert {
             })
             .collect();
 
-        let picked_card_id = pick_card(self.get_owner_id(), &site_ids, state).await;
+        let prompt = "Red Desert: Pick a site to deal 1 damage to all atop units";
+        let picked_card_id = pick_card(self.get_owner_id(), &site_ids, state, prompt).await;
         let site = state.get_card(&picked_card_id).unwrap();
         // TODO: filter atop units only
         let units = state.get_units_in_zone(site.get_zone());

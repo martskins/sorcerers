@@ -42,7 +42,8 @@ impl Action for FlamecallerAction {
                     .sum::<Thresholds>()
                     .fire;
                 let avatar = state.get_card(card_id.unwrap()).unwrap();
-                let direction = pick_direction(avatar.get_owner_id(), &CARDINAL_DIRECTIONS, state).await;
+                let prompt = "Flamecaller: Pick a direction to shoot the projectile:";
+                let direction = pick_direction(avatar.get_owner_id(), &CARDINAL_DIRECTIONS, state, prompt).await;
                 let mut effects = vec![
                     Effect::ShootProjectile {
                         player_id: avatar.get_owner_id().clone(),

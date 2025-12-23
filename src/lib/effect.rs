@@ -219,7 +219,8 @@ impl Effect {
 
                     let mut picked_unit_id = units[0];
                     if units.len() >= 1 {
-                        picked_unit_id = pick_card(player_id, &units, state).await;
+                        let prompt = "Pick a unit to shoot";
+                        picked_unit_id = pick_card(player_id, &units, state, prompt).await;
                     }
 
                     effects.push(Effect::take_damage(&picked_unit_id, shooter, *damage));
@@ -354,7 +355,8 @@ impl Effect {
 
                 let actions: Vec<Box<dyn Action>> =
                     vec![Box::new(BaseAction::DrawSite), Box::new(BaseAction::DrawSpell)];
-                let action = pick_action(player_id, &actions, state).await;
+                let prompt = "Start Turn: Pick card to draw";
+                let action = pick_action(player_id, &actions, state, prompt).await;
                 let effects = action.on_select(None, player_id, state).await;
                 state.effects.extend(effects);
             }

@@ -65,7 +65,8 @@ impl Card for Blaze {
             .filter(|c| c.is_unit())
             .map(|c| c.get_id().clone())
             .collect::<Vec<uuid::Uuid>>();
-        let picked_card = pick_card(self.get_owner_id(), &units, state).await;
+        let prompt = "Blaze: Pick an ally";
+        let picked_card = pick_card(self.get_owner_id(), &units, state, prompt).await;
         vec![
             Effect::AddModifier {
                 card_id: picked_card.clone(),

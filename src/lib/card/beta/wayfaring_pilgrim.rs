@@ -100,7 +100,8 @@ impl Card for WayfaringPilgrim {
 
         corners_visited.push(to.clone());
         let actions: Vec<Box<dyn Action>> = vec![Box::new(BaseAction::DrawSite), Box::new(BaseAction::DrawSpell)];
-        let picked_action = pick_action(self.get_owner_id(), &actions, state).await;
+        let prompt = "Wayfaring Pilgrim: Draw a card";
+        let picked_action = pick_action(self.get_owner_id(), &actions, state, prompt).await;
         let mut effects = picked_action
             .on_select(Some(self.get_id()), self.get_owner_id(), state)
             .await;

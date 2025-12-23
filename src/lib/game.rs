@@ -75,10 +75,11 @@ impl Direction {
 
 pub const CARDINAL_DIRECTIONS: [Direction; 4] = [Direction::Up, Direction::Down, Direction::Left, Direction::Right];
 
-pub async fn pick_card(player_id: &PlayerId, card_ids: &[uuid::Uuid], state: &State) -> uuid::Uuid {
+pub async fn pick_card(player_id: &PlayerId, card_ids: &[uuid::Uuid], state: &State, prompt: &str) -> uuid::Uuid {
     state
         .get_sender()
         .send(ServerMessage::PickCard {
+            prompt: prompt.to_string(),
             player_id: player_id.clone(),
             cards: card_ids.to_vec(),
         })
@@ -98,10 +99,12 @@ pub async fn pick_action<'a>(
     player_id: &PlayerId,
     actions: &'a [Box<dyn Action>],
     state: &State,
+    prompt: &str,
 ) -> &'a Box<dyn Action> {
     state
         .get_sender()
         .send(ServerMessage::PickAction {
+            prompt: prompt.to_string(),
             player_id: player_id.clone(),
             actions: actions.iter().map(|c| c.get_name().to_string()).collect(),
         })
@@ -117,10 +120,11 @@ pub async fn pick_action<'a>(
     }
 }
 
-pub async fn pick_option(player_id: &PlayerId, actions: &[String], state: &State) -> usize {
+pub async fn pick_option(player_id: &PlayerId, actions: &[String], state: &State, prompt: &str) -> usize {
     state
         .get_sender()
         .send(ServerMessage::PickAction {
+            prompt: prompt.to_string(),
             player_id: player_id.clone(),
             actions: actions.to_vec(),
         })
@@ -136,10 +140,11 @@ pub async fn pick_option(player_id: &PlayerId, actions: &[String], state: &State
     }
 }
 
-pub async fn pick_zone(player_id: &PlayerId, zones: &[Zone], state: &State) -> Zone {
+pub async fn pick_zone(player_id: &PlayerId, zones: &[Zone], state: &State, prompt: &str) -> Zone {
     state
         .get_sender()
         .send(ServerMessage::PickZone {
+            prompt: prompt.to_string(),
             player_id: player_id.clone(),
             zones: zones.to_vec(),
         })
@@ -155,10 +160,11 @@ pub async fn pick_zone(player_id: &PlayerId, zones: &[Zone], state: &State) -> Z
     }
 }
 
-pub async fn pick_direction(player_id: &PlayerId, directions: &[Direction], state: &State) -> Direction {
+pub async fn pick_direction(player_id: &PlayerId, directions: &[Direction], state: &State, prompt: &str) -> Direction {
     state
         .get_sender()
         .send(ServerMessage::PickAction {
+            prompt: prompt.to_string(),
             player_id: player_id.clone(),
             actions: directions.iter().map(|c| c.get_name()).collect(),
         })
@@ -457,10 +463,12 @@ impl Action for AvatarAction {
                     .filter(|c| c.get_owner_id() == player_id)
                     .map(|c| c.get_id().clone())
                     .collect();
-                let picked_card_id = pick_card(player_id, &cards, state).await;
+                let prompt = "Pick a site to play";
+                let picked_card_id = pick_card(player_id, &cards, state, prompt).await;
                 let picked_card = state.get_card(&picked_card_id).unwrap();
                 let zones = picked_card.get_valid_play_zones(state);
-                let zone = pick_zone(player_id, &zones, state).await;
+                let prompt = "Pick a zone to play the site";
+                let zone = pick_zone(player_id, &zones, state, prompt).await;
                 vec![
                     Effect::play_card(player_id, &picked_card_id, &zone),
                     Effect::tap_card(card_id.unwrap()),
@@ -502,7 +510,8 @@ impl Action for UnitAction {
                 let card_id = card_id.unwrap();
                 let card = state.get_card(card_id).unwrap();
                 let cards = card.get_valid_attack_targets(state);
-                let picked_card_id = pick_card(player_id, &cards, state).await;
+                let prompt = "Pick a unit to attack";
+                let picked_card_id = pick_card(player_id, &cards, state, prompt).await;
                 let picked_card = state.get_card(&picked_card_id).unwrap();
                 vec![
                     Effect::MoveCard {
@@ -518,7 +527,8 @@ impl Action for UnitAction {
                 let card_id = card_id.unwrap();
                 let card = state.get_card(card_id).unwrap();
                 let zones = card.get_valid_move_zones(state);
-                let zone = pick_zone(player_id, &zones, state).await;
+                let prompt = "Pick a zone to move to";
+                let zone = pick_zone(player_id, &zones, state, prompt).await;
                 vec![Effect::MoveCard {
                     card_id: card_id.clone(),
                     from: card.get_zone().clone(),
@@ -631,7 +641,8 @@ impl Game {
                         }
 
                         let zones = card.get_valid_play_zones(&self.state);
-                        let zone = pick_zone(player_id, &zones, &self.state).await;
+                        let prompt = "Pick a zone to play the card";
+                        let zone = pick_zone(player_id, &zones, &self.state, prompt).await;
                         self.state
                             .effects
                             .push_back(Effect::play_card(player_id, card_id, &zone));
@@ -650,7 +661,8 @@ impl Game {
                             .filter(|c| c.can_cast(&self.state, card))
                             .map(|c| c.get_id().clone())
                             .collect();
-                        let caster_id = pick_card(player_id, &spellcasters, &self.state).await;
+                        let prompt = "Pick a spellcaster to cast the spell";
+                        let caster_id = pick_card(player_id, &spellcasters, &self.state, prompt).await;
                         let caster = self.state.get_card(&caster_id).unwrap();
                         self.state.effects.push_back(Effect::PlayMagic {
                             player_id: player_id.clone(),
@@ -672,7 +684,8 @@ impl Game {
                         }
 
                         actions.push(Box::new(BaseAction::Cancel));
-                        let action = pick_action(player_id, &actions, &self.state).await;
+                        let prompt = format!("{}: Pick action", card.get_name());
+                        let action = pick_action(player_id, &actions, &self.state, &prompt).await;
                         let effects = action.on_select(Some(card.get_id()), player_id, &self.state).await;
                         self.state.effects.extend(effects);
                     }
