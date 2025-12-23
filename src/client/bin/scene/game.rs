@@ -7,11 +7,12 @@ use crate::{
 use macroquad::{
     color::{BLUE, Color, GREEN, RED, WHITE},
     input::{MouseButton, is_mouse_button_released, mouse_position},
-    math::{Rect, Vec2},
+    math::{Rect, RectOffset, Vec2},
     shapes::{draw_circle_lines, draw_line, draw_rectangle, draw_rectangle_lines, draw_triangle_lines},
     text::draw_text,
     texture::{DrawTextureParams, draw_texture_ex},
-    ui,
+    ui::{self, hash},
+    window::{screen_height, screen_width},
 };
 use sorcerers::{
     card::{CardType, Modifier, Plane, RenderableCard, Zone},
@@ -47,7 +48,7 @@ fn draw_vortex_icon(x: f32, y: f32, size: f32, color: Color) {
 #[derive(Debug, PartialEq)]
 pub enum Status {
     Idle,
-    SelectingAction,
+    SelectingAction { prompt: String },
     SelectingCard { cards: Vec<uuid::Uuid> },
     SelectingZone { zones: Vec<Zone> },
 }
@@ -138,9 +139,11 @@ impl Game {
                 self.status = Status::SelectingCard { cards: cards.clone() };
                 Ok(None)
             }
-            ServerMessage::PickAction { actions, .. } => {
+            ServerMessage::PickAction { prompt, actions, .. } => {
                 self.actions = actions.clone();
-                self.status = Status::SelectingAction;
+                self.status = Status::SelectingAction {
+                    prompt: prompt.to_string(),
+                };
                 Ok(None)
             }
             ServerMessage::GameStarted { game_id, player1, .. } => {
@@ -302,22 +305,43 @@ impl Game {
                     draw_rectangle_lines(card.rect.x, card.rect.y, card.rect.w, card.rect.h, 3.0, WHITE);
                 }
             }
-            Status::SelectingAction => {
-                if self.action_window_position.is_none() {
-                    self.action_window_position = Some(Vec2::new(0.0, 0.0).into());
-                }
+            Status::SelectingAction { ref prompt } => {
+                // Draw semi-transparent overlay behind the action selection window
+                draw_rectangle(
+                    0.0,
+                    0.0,
+                    screen_width(),
+                    screen_height(),
+                    Color::new(0.0, 0.0, 0.0, 0.6),
+                );
 
-                if self.action_window_size.is_none() {
-                    self.action_window_size = Some(Vec2::new(100.0, 30.0 * self.actions.len() as f32 + 20.0));
-                }
+                let window_style = ui::root_ui()
+                    .style_builder()
+                    .background_margin(RectOffset::new(10.0, 10.0, 10.0, 10.0))
+                    .build();
+                let skin = ui::Skin {
+                    window_style,
+                    ..ui::root_ui().default_skin()
+                };
+                ui::root_ui().push_skin(&skin);
 
+                let prompt = prompt.clone();
+                let window_size = Vec2::new(400.0, 30.0 * self.actions.len() as f32 + 20.0 + 50.0);
                 ui::root_ui().window(
-                    ACTION_SELECTION_WINDOW_ID,
-                    self.action_window_position.unwrap(),
-                    self.action_window_size.unwrap(),
+                    hash!(),
+                    Vec2::new(
+                        screen_width() / 2.0 - window_size.x / 2.0,
+                        screen_height() / 2.0 - window_size.y / 2.0,
+                    ),
+                    window_size,
                     |ui| {
+                        macroquad::ui::widgets::Label::new(&prompt)
+                            .position(Vec2::new(5.0, 5.0))
+                            .multiline(10.0)
+                            .ui(ui);
                         for (idx, action) in self.actions.iter().enumerate() {
-                            if ui.button(Vec2::new(0.0, 30.0 * idx as f32), action.as_str()) {
+                            let button_pos = Vec2::new(0.0, 30.0 * (idx as f32 + 1.0));
+                            if ui.button(button_pos, action.as_str()) {
                                 self.client
                                     .send(ClientMessage::PickAction {
                                         game_id: self.game_id,
@@ -388,6 +412,10 @@ impl Game {
     }
 
     fn handle_card_click(&mut self, mouse_position: Vec2) {
+        if let Status::SelectingAction { .. } = &self.status {
+            return;
+        }
+
         let mut hovered_card_index = None;
         for (idx, card_display) in self.card_rects.iter().enumerate() {
             if card_display.rect.contains(mouse_position.into()) {
@@ -458,6 +486,10 @@ impl Game {
     }
 
     fn handle_square_click(&mut self, mouse_position: Vec2) {
+        if let Status::SelectingAction { .. } = &self.status {
+            return;
+        }
+
         match &self.status {
             Status::SelectingZone { zones } => {
                 let zones = zones.clone();
