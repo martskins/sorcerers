@@ -6,17 +6,16 @@ use macroquad::{
 };
 
 pub static SCREEN_RECT: OnceLock<RwLock<Rect>> = OnceLock::new();
-pub const CARD_OFFSET_X: f32 = 50.0;
 pub const CARD_IN_PLAY_SCALE: f32 = 0.6;
 pub const CARD_ASPECT_RATIO: f32 = 384.0 / 537.0;
-pub const HAND_SPACE_HEIGHT: f32 = 150.0;
 
 pub fn card_width() -> f32 {
     realm_rect().w / 10.0
 }
 
 pub fn card_height() -> f32 {
-    realm_rect().w / 10.0 / CARD_ASPECT_RATIO
+    let height = (screen_rect().w - 200.0) / 10.0 / CARD_ASPECT_RATIO;
+    if height > 200.0 { 200.0 } else { height }
 }
 
 pub fn spell_dimensions() -> Vec2 {
@@ -25,6 +24,10 @@ pub fn spell_dimensions() -> Vec2 {
 
 pub fn site_dimensions() -> Vec2 {
     Vec2::new(card_height(), card_width())
+}
+
+fn hand_space_height() -> f32 {
+    card_height() + 20.0
 }
 
 pub fn screen_rect() -> Rect {
@@ -36,12 +39,12 @@ pub fn screen_rect() -> Rect {
 }
 
 pub fn hand_rect() -> Rect {
-    Rect::new(realm_rect().x, realm_rect().h, realm_rect().w, HAND_SPACE_HEIGHT)
+    Rect::new(realm_rect().x, realm_rect().h, realm_rect().w, hand_space_height())
 }
 
 pub fn realm_rect() -> Rect {
     let screen_rect = screen_rect();
-    Rect::new(200.0, 0.0, screen_rect.w - 200.0, screen_rect.h - HAND_SPACE_HEIGHT) // Last parame is the hand's area height
+    Rect::new(200.0, 0.0, screen_rect.w - 200.0, screen_rect.h - hand_space_height()) // Last parame is the hand's area height
 }
 
 pub fn spellbook_rect() -> Rect {

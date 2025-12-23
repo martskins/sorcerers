@@ -632,6 +632,10 @@ impl Game {
                     return Ok(());
                 }
 
+                if player_id != &self.state.current_player {
+                    return Ok(());
+                }
+
                 match (card.get_card_type(), card.get_zone()) {
                     (CardType::Minion, Zone::Hand) | (CardType::Aura, Zone::Hand) => {
                         let resources = self.state.resources.get(&player_id).unwrap();

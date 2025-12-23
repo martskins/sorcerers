@@ -5,10 +5,13 @@ use crate::{
     texture_cache::TextureCache,
 };
 use macroquad::{
-    color::{BLUE, Color, GREEN, RED, WHITE},
+    color::{BLUE, Color, DARKGRAY, DARKGREEN, GRAY, GREEN, RED, WHITE},
     input::{MouseButton, is_mouse_button_released, mouse_position},
     math::{Rect, RectOffset, Vec2},
-    shapes::{draw_circle_lines, draw_line, draw_rectangle, draw_rectangle_lines, draw_triangle_lines},
+    shapes::{
+        DrawRectangleParams, draw_circle_lines, draw_line, draw_rectangle, draw_rectangle_ex, draw_rectangle_lines,
+        draw_rectangle_lines_ex, draw_triangle_lines,
+    },
     text::draw_text,
     texture::{DrawTextureParams, draw_texture_ex},
     ui::{self, hash},
@@ -311,12 +314,12 @@ impl Game {
         }
 
         match self.status {
-            Status::SelectingCard { ref cards } => {
-                let valid_cards: Vec<&CardRect> = self.card_rects.iter().filter(|c| cards.contains(&c.id)).collect();
-                for card in valid_cards {
-                    draw_rectangle_lines(card.rect.x, card.rect.y, card.rect.w, card.rect.h, 3.0, WHITE);
-                }
-            }
+            // Status::SelectingCard { ref cards } => {
+            //     let valid_cards: Vec<&CardRect> = self.card_rects.iter().filter(|c| cards.contains(&c.id)).collect();
+            //     for card in valid_cards {
+            //         draw_rectangle_lines(card.rect.x, card.rect.y, card.rect.w, card.rect.h, 3.0, WHITE);
+            //     }
+            // }
             Status::SelectingAction { ref prompt } => {
                 // Draw semi-transparent overlay behind the action selection window
                 draw_rectangle(
@@ -434,6 +437,10 @@ impl Game {
 
     fn handle_card_click(&mut self, mouse_position: Vec2) {
         if let Status::SelectingAction { .. } = &self.status {
+            return;
+        }
+
+        if self.current_player != self.player_id {
             return;
         }
 
@@ -557,7 +564,7 @@ impl Game {
                 cell_display.rect.x + 5.0,
                 cell_display.rect.y + 15.0,
                 12.0,
-                WHITE,
+                GRAY,
             );
 
             // Draw a UI button at the top right corner as a placeholder for an icon
@@ -591,40 +598,94 @@ impl Game {
     }
 
     async fn render_realm(&self) {
-        for card_display in &self.card_rects {
-            if !matches!(card_display.zone, Zone::Realm(_)) {
+        for card_rect in &self.card_rects {
+            if !matches!(card_rect.zone, Zone::Realm(_)) {
                 continue;
             }
 
             let mut rotation = 0.0;
-            if card_display.tapped {
+            if card_rect.tapped {
                 rotation = std::f32::consts::FRAC_PI_2;
             }
 
+            let rect = card_rect.rect;
             draw_texture_ex(
-                &card_display.image,
-                card_display.rect.x,
-                card_display.rect.y,
+                &card_rect.image,
+                rect.x,
+                rect.y,
                 WHITE,
                 DrawTextureParams {
-                    dest_size: Some(Vec2::new(card_display.rect.w, card_display.rect.h) * CARD_IN_PLAY_SCALE),
+                    dest_size: Some(Vec2::new(rect.w, rect.h) * CARD_IN_PLAY_SCALE),
                     rotation,
                     ..Default::default()
                 },
             );
 
-            if card_display.modifiers.contains(&Modifier::SummoningSickness) {
+            let mut sleeve_color = DARKGREEN;
+            if card_rect.owner_id != self.player_id {
+                sleeve_color = RED;
+            }
+
+            // Draw rectangle border rotated around the center
+            let w = rect.w * CARD_IN_PLAY_SCALE;
+            let h = rect.h * CARD_IN_PLAY_SCALE;
+            let cx = rect.x + w / 2.0;
+            let cy = rect.y + h / 2.0;
+            let corners = [
+                Vec2::new(-w / 2.0, -h / 2.0),
+                Vec2::new(w / 2.0, -h / 2.0),
+                Vec2::new(w / 2.0, h / 2.0),
+                Vec2::new(-w / 2.0, h / 2.0),
+            ];
+            let rotated: Vec<Vec2> = corners
+                .iter()
+                .map(|corner| {
+                    let (sin, cos) = rotation.sin_cos();
+                    Vec2::new(
+                        cos * corner.x - sin * corner.y + cx,
+                        sin * corner.x + cos * corner.y + cy,
+                    )
+                })
+                .collect();
+            for i in 0..4 {
+                draw_line(
+                    rotated[i].x,
+                    rotated[i].y,
+                    rotated[(i + 1) % 4].x,
+                    rotated[(i + 1) % 4].y,
+                    2.0,
+                    sleeve_color,
+                );
+            }
+
+            if let Status::SelectingCard { cards } = &self.status {
+                if !cards.contains(&card_rect.id) {
+                    draw_rectangle_ex(
+                        rect.x,
+                        rect.y,
+                        rect.w * CARD_IN_PLAY_SCALE,
+                        rect.h * CARD_IN_PLAY_SCALE,
+                        DrawRectangleParams {
+                            color: Color::new(100.0, 100.0, 100.0, 0.6),
+                            rotation,
+                            ..Default::default()
+                        },
+                    );
+                }
+            }
+
+            if card_rect.modifiers.contains(&Modifier::SummoningSickness) {
                 let icon_size = 22.0;
                 let scale = CARD_IN_PLAY_SCALE;
-                let x = card_display.rect.x + card_display.rect.w * scale - icon_size - 4.0;
-                let y = card_display.rect.y + 4.0;
+                let x = card_rect.rect.x + card_rect.rect.w * scale - icon_size - 4.0;
+                let y = card_rect.rect.y + 4.0;
                 draw_vortex_icon(x, y, icon_size, BLUE);
             }
 
-            if card_display.modifiers.contains(&Modifier::Disabled) {
+            if card_rect.modifiers.contains(&Modifier::Disabled) {
                 let icon_size = 15.0;
-                let x = card_display.rect.x + card_display.rect.w - 30.0 - 5.0;
-                let y = card_display.rect.y + 4.0;
+                let x = card_rect.rect.x + card_rect.rect.w - 30.0 - 5.0;
+                let y = card_rect.rect.y + 4.0;
                 let cx = x + icon_size / 2.0;
                 let cy = y + icon_size / 2.0;
                 draw_circle_lines(cx, cy, icon_size / 2.0, 3.0, WHITE);
@@ -648,17 +709,36 @@ impl Game {
                 scale = 1.2;
             }
 
+            let rect = card_rect.rect;
             draw_texture_ex(
                 &card_rect.image,
-                card_rect.rect.x,
-                card_rect.rect.y,
+                rect.x,
+                rect.y,
                 WHITE,
                 DrawTextureParams {
-                    dest_size: Some(Vec2::new(card_rect.rect.w, card_rect.rect.h) * scale),
-                    rotation: card_rect.rotation,
+                    dest_size: Some(Vec2::new(rect.w, rect.h) * scale),
+                    rotation: card_rect.rotation.clone(),
                     ..Default::default()
                 },
             );
+
+            draw_rectangle_lines(rect.x, rect.y, rect.w * scale, rect.h * scale, 5.0, DARKGREEN);
+
+            if let Status::SelectingCard { cards } = &self.status {
+                if !cards.contains(&card_rect.id) {
+                    draw_rectangle_ex(
+                        rect.x,
+                        rect.y,
+                        rect.w * scale,
+                        rect.h * scale,
+                        DrawRectangleParams {
+                            color: Color::new(200.0, 200.0, 200.0, 0.6),
+                            rotation: card_rect.rotation,
+                            ..Default::default()
+                        },
+                    );
+                }
+            }
         }
     }
 
@@ -685,6 +765,7 @@ impl Game {
 
                 self.card_rects.push(CardRect {
                     id: card.id,
+                    owner_id: card.owner_id,
                     zone: card.zone.clone(),
                     tapped: card.tapped,
                     image: TextureCache::get_card_texture(&card).await,
@@ -718,21 +799,46 @@ impl Game {
             .collect();
 
         let spell_hand_size = spells.len();
+        let site_hand_size = sites.len();
         let mut displays: Vec<CardRect> = Vec::new();
         let hand_rect = hand_rect();
-        for (idx, card) in spells.iter().enumerate() {
-            let dimensions = spell_dimensions();
-            let x = hand_rect.x + idx as f32 * CARD_OFFSET_X + 20.0;
-            let y = hand_rect.y + 20.0;
 
-            let rect = Rect::new(x, y, dimensions.x, dimensions.y);
+        // Layout parameters
+        let spell_dim = spell_dimensions();
+        let site_dim = site_dimensions();
+        let card_spacing = 20.0;
+
+        // Calculate total width for spells (horizontal row)
+        let spells_width = if spell_hand_size > 0 {
+            spell_hand_size as f32 * spell_dim.x + (spell_hand_size as f32 - 1.0) * card_spacing
+        } else {
+            0.0
+        };
+
+        // Combined width for centering: spells row + spacing + site card width (if any sites)
+        let total_width = spells_width
+            + if site_hand_size > 0 {
+                card_spacing + site_dim.x
+            } else {
+                0.0
+            };
+
+        // Center horizontally in hand area
+        let start_x = hand_rect.x + (hand_rect.w - total_width) / 2.0;
+        let spells_y = hand_rect.y + hand_rect.h / 2.0 - spell_dim.y / 2.0;
+
+        // Spells row
+        for (idx, card) in spells.iter().enumerate() {
+            let x = start_x + idx as f32 * (spell_dim.x + card_spacing);
+            let rect = Rect::new(x, spells_y, spell_dim.x, spell_dim.y);
 
             displays.push(CardRect {
+                id: card.id,
+                owner_id: card.owner_id,
                 rect,
                 is_hovered: false,
                 is_selected: false,
                 rotation: 0.0,
-                id: card.id,
                 zone: card.zone.clone(),
                 tapped: card.tapped,
                 image: TextureCache::get_card_texture(card).await,
@@ -740,25 +846,27 @@ impl Game {
             });
         }
 
-        let site_x = hand_rect.x + spell_hand_size as f32 * CARD_OFFSET_X + 40.0;
-        for (idx, card) in sites.iter().enumerate() {
-            let dimensions = site_dimensions();
-            let x = site_x;
-            let y = hand_rect.y + 20.0 + 20.0 * idx as f32;
+        // Sites column, stacked vertically to the right of spells
+        if site_hand_size > 0 {
+            let sites_x = start_x + spells_width + card_spacing;
+            let sites_start_y = hand_rect.y + hand_rect.h / 2.0 - spell_dim.y / 2.0;
+            for (idx, card) in sites.iter().enumerate() {
+                let y = sites_start_y + idx as f32 * 20.0;
+                let rect = Rect::new(sites_x, y, site_dim.x, site_dim.y);
 
-            let rect = Rect::new(x, y, dimensions.x, dimensions.y);
-
-            displays.push(CardRect {
-                rect,
-                is_hovered: false,
-                is_selected: false,
-                rotation: 0.0,
-                id: card.id,
-                zone: card.zone.clone(),
-                tapped: card.tapped,
-                image: TextureCache::get_card_texture(card).await,
-                modifiers: card.modifiers.clone(),
-            });
+                displays.push(CardRect {
+                    id: card.id,
+                    owner_id: card.owner_id,
+                    rect,
+                    is_hovered: false,
+                    is_selected: false,
+                    rotation: 0.0,
+                    zone: card.zone.clone(),
+                    tapped: card.tapped,
+                    image: TextureCache::get_card_texture(card).await,
+                    modifiers: card.modifiers.clone(),
+                });
+            }
         }
 
         self.card_rects = displays;

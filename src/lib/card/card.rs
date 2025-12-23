@@ -660,7 +660,11 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     fn base_avatar_actions(&self) -> Vec<Box<dyn Action>> {
-        vec![Box::new(AvatarAction::PlaySite), Box::new(AvatarAction::DrawSite)]
+        let unit_actions: Vec<Box<dyn Action>> = self.base_unit_actions();
+        let mut actions: Vec<Box<dyn Action>> =
+            vec![Box::new(AvatarAction::PlaySite), Box::new(AvatarAction::DrawSite)];
+        actions.extend(unit_actions);
+        actions
     }
 
     fn base_unit_actions(&self) -> Vec<Box<dyn Action>> {
@@ -669,12 +673,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     fn get_actions(&self, _: &State) -> Vec<Box<dyn Action>> {
         if self.is_avatar() {
-            let unit_actions = self.base_unit_actions();
-            let avatar_actions = self.base_avatar_actions();
-            let mut actions = Vec::new();
-            actions.extend(unit_actions);
-            actions.extend(avatar_actions);
-            return actions;
+            return self.base_avatar_actions();
         } else if self.is_unit() {
             return self.base_unit_actions();
         }
