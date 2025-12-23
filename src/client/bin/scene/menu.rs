@@ -1,5 +1,9 @@
 use crate::scene::{Scene, game::Game};
-use macroquad::{math::Vec2, ui::root_ui};
+use macroquad::{
+    color::WHITE,
+    math::Vec2,
+    ui::{self, root_ui},
+};
 use sorcerers::networking::{
     self,
     message::{ClientMessage, ServerMessage},
@@ -34,10 +38,42 @@ impl Menu {
     }
 
     pub async fn process_input(&mut self) -> Option<Scene> {
-        if root_ui().button(Vec2::new(100.0, 100.0), "Connect!") {
+        let button_size = Vec2::new(300.0, 60.0);
+        let screen_w = macroquad::window::screen_width();
+        let screen_h = macroquad::window::screen_height();
+        let button_pos = Vec2::new(
+            screen_w / 2.0 - button_size.x / 2.0,
+            screen_h / 2.0 - button_size.y / 2.0,
+        );
+
+        // Style the button to be more prominent
+        let button_style = root_ui()
+            .style_builder()
+            .font_size(32)
+            .text_color(WHITE)
+            .text_color_hovered(WHITE)
+            .text_color_clicked(WHITE)
+            .color(macroquad::color::Color::from_rgba(30, 144, 255, 255)) // DodgerBlue
+            .color_hovered(macroquad::color::Color::from_rgba(65, 105, 225, 255)) // RoyalBlue
+            .color_clicked(macroquad::color::Color::from_rgba(25, 25, 112, 255)) // MidnightBlue
+            .build();
+
+        let skin = ui::Skin {
+            button_style,
+            ..root_ui().default_skin()
+        };
+
+        root_ui().push_skin(&skin);
+
+        let clicked = ui::widgets::Button::new("Search for Match")
+            .position(button_pos)
+            .size(button_size)
+            .ui(&mut ui::root_ui());
+        if clicked {
             self.client.send(ClientMessage::Connect).unwrap();
         }
 
+        root_ui().pop_skin();
         None
     }
 }

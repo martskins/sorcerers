@@ -113,6 +113,21 @@ impl Game {
     }
 
     pub async fn render(&mut self) -> anyhow::Result<()> {
+        if self.game_id.is_nil() {
+            let time = macroquad::time::get_time();
+            let dot_count = ((time * 2.0) as usize % 3) + 1;
+            let dots = ".".repeat(dot_count);
+            let message = format!("Looking for match{}", dots);
+
+            let screen_rect = screen_rect();
+            let text_dimensions = macroquad::text::measure_text(&message, None, FONT_SIZE as u16, 1.0);
+            let x = screen_rect.w / 2.0 - text_dimensions.width / 2.0;
+            let y = screen_rect.h / 2.0 - text_dimensions.height / 2.0;
+
+            draw_text(&message, x, y, 32.0, WHITE);
+            return Ok(());
+        }
+
         self.render_background().await;
         self.render_grid().await;
         self.render_deck().await;
@@ -317,6 +332,7 @@ impl Game {
                     window_style,
                     ..ui::root_ui().default_skin()
                 };
+
                 ui::root_ui().push_skin(&skin);
 
                 let prompt = prompt.clone();
@@ -330,14 +346,14 @@ impl Game {
                     ),
                     window_size,
                     |ui| {
-                        macroquad::ui::widgets::Label::new(&prompt)
+                        ui::widgets::Label::new(&prompt)
                             .position(Vec2::new(5.0, 5.0))
                             .multiline(10.0)
                             .ui(ui);
                         for (idx, action) in self.actions.iter().enumerate() {
                             let button_pos =
                                 Vec2::new(window_size.x * 0.1, (button_height + 10.0) * (idx as f32 + 1.0));
-                            let clicked = macroquad::ui::widgets::Button::new(action.as_str())
+                            let clicked = ui::widgets::Button::new(action.as_str())
                                 .position(button_pos)
                                 .size(Vec2::new(window_size.x * 0.8, button_height))
                                 .ui(ui);
@@ -354,6 +370,8 @@ impl Game {
                         }
                     },
                 );
+
+                ui::root_ui().pop_skin();
             }
             _ => {}
         }
