@@ -13,6 +13,7 @@ fn window_conf() -> Conf {
         // fullscreen: true,
         window_width: 1024,
         window_height: 768,
+        window_resizable: true,
         ..Default::default()
     }
 }

@@ -27,7 +27,6 @@ use std::collections::HashMap;
 const FONT_SIZE: f32 = 24.0;
 const THRESHOLD_SYMBOL_SPACING: f32 = 18.0;
 const SYMBOL_SIZE: f32 = 20.0;
-const ACTION_SELECTION_WINDOW_ID: u64 = 1;
 
 fn draw_vortex_icon(x: f32, y: f32, size: f32, color: Color) {
     use macroquad::shapes::draw_line;
@@ -64,8 +63,6 @@ pub struct Game {
     pub client: networking::client::Client,
     pub current_player: PlayerId,
     pub is_player_one: bool,
-    action_window_position: Option<Vec2>,
-    action_window_size: Option<Vec2>,
     actions: Vec<String>,
     status: Status,
 }
@@ -88,8 +85,6 @@ impl Game {
             current_player: uuid::Uuid::nil(),
             is_player_one: false,
             resources: HashMap::new(),
-            action_window_position: None,
-            action_window_size: None,
             actions: Vec::new(),
             status: Status::Idle,
         }
@@ -223,7 +218,7 @@ impl Game {
             draw_triangle_lines(v1, v2, v3, 3.0, element_color);
         }
 
-        if element == Element::Air || element == Element::Water {
+        if element == Element::Air || element == Element::Earth {
             let line_offset_y: f32 = SYMBOL_SIZE / 2.0;
             draw_line(
                 x + THRESHOLD_SYMBOL_SPACING,
@@ -300,7 +295,6 @@ impl Game {
         match self.status {
             Status::SelectingCard { ref cards } => {
                 let valid_cards: Vec<&CardRect> = self.card_rects.iter().filter(|c| cards.contains(&c.id)).collect();
-
                 for card in valid_cards {
                     draw_rectangle_lines(card.rect.x, card.rect.y, card.rect.w, card.rect.h, 3.0, WHITE);
                 }
@@ -326,7 +320,8 @@ impl Game {
                 ui::root_ui().push_skin(&skin);
 
                 let prompt = prompt.clone();
-                let window_size = Vec2::new(400.0, 30.0 * self.actions.len() as f32 + 20.0 + 50.0);
+                let button_height = 30.0;
+                let window_size = Vec2::new(400.0, (button_height + 10.0) * self.actions.len() as f32 + 20.0 + 50.0);
                 ui::root_ui().window(
                     hash!(),
                     Vec2::new(
@@ -340,8 +335,13 @@ impl Game {
                             .multiline(10.0)
                             .ui(ui);
                         for (idx, action) in self.actions.iter().enumerate() {
-                            let button_pos = Vec2::new(0.0, 30.0 * (idx as f32 + 1.0));
-                            if ui.button(button_pos, action.as_str()) {
+                            let button_pos =
+                                Vec2::new(window_size.x * 0.1, (button_height + 10.0) * (idx as f32 + 1.0));
+                            let clicked = macroquad::ui::widgets::Button::new(action.as_str())
+                                .position(button_pos)
+                                .size(Vec2::new(window_size.x * 0.8, button_height))
+                                .ui(ui);
+                            if clicked {
                                 self.client
                                     .send(ClientMessage::PickAction {
                                         game_id: self.game_id,

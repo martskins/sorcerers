@@ -54,14 +54,21 @@ impl Client {
         Ok(())
     }
 
+    fn dimensions_changed(&self) -> bool {
+        let dimensions = SCREEN_RECT.get().unwrap();
+        let current_screen = dimensions.read().unwrap().clone();
+        current_screen.w != screen_width() || current_screen.h != screen_height()
+    }
+
     async fn update(&mut self) -> anyhow::Result<()> {
+        if self.dimensions_changed() {
+            let mut dimensions = SCREEN_RECT.get().unwrap().write().unwrap();
+            dimensions.w = screen_width();
+            dimensions.h = screen_height();
+        }
+
         let scene = &mut self.scene.lock().unwrap();
         scene.update().await?;
-        let current_screen = SCREEN_RECT.get().unwrap().read().unwrap();
-        if current_screen.w != screen_width() || current_screen.h != screen_height() {
-            SCREEN_RECT.get().unwrap().write().unwrap().w = screen_width();
-            SCREEN_RECT.get().unwrap().write().unwrap().h = screen_height();
-        }
         Ok(())
     }
 
