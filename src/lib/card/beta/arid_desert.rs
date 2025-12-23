@@ -1,6 +1,8 @@
 use crate::{
     card::{Card, CardBase, Edition, Plane, SiteBase, Zone},
-    game::{PlayerId, Thresholds},
+    effect::Effect,
+    game::{PlayerId, Thresholds, pick_card},
+    state::State,
 };
 
 #[derive(Debug, Clone)]
@@ -32,6 +34,7 @@ impl AridDesert {
     }
 }
 
+#[async_trait::async_trait]
 impl Card for AridDesert {
     fn get_name(&self) -> &str {
         Self::NAME
@@ -67,5 +70,28 @@ impl Card for AridDesert {
 
     fn get_site_base_mut(&mut self) -> Option<&mut SiteBase> {
         Some(&mut self.site_base)
+    }
+
+    async fn genesis(&self, state: &State) -> Vec<Effect> {
+        let site_ids = self
+            .get_zone()
+            .get_nearby_sites(state, None)
+            .iter()
+            .map(|c| c.get_id().clone())
+            .collect::<Vec<uuid::Uuid>>();
+        if site_ids.is_empty() {
+            return vec![];
+        }
+
+        let prompt = "Red Desert: Pick a site to deal 1 damage to all atop units";
+        let picked_card_id = pick_card(self.get_owner_id(), &site_ids, state, prompt).await;
+        let site = state.get_card(&picked_card_id).unwrap();
+        // TODO: filter atop units only
+        let units = state.get_minions_in_zone(site.get_zone());
+        let mut effects = vec![];
+        for unit in units {
+            effects.push(Effect::take_damage(&unit.get_id(), site.get_id(), 1));
+        }
+        effects
     }
 }

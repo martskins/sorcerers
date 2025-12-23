@@ -70,6 +70,14 @@ impl State {
         self.cards.iter().find(|c| c.get_id() == card_id)
     }
 
+    pub fn get_minions_in_zone(&self, zone: &Zone) -> Vec<&Box<dyn Card>> {
+        self.cards
+            .iter()
+            .filter(|c| c.get_zone() == zone)
+            .filter(|c| c.is_minion())
+            .collect()
+    }
+
     pub fn get_units_in_zone(&self, zone: &Zone) -> Vec<&Box<dyn Card>> {
         self.cards
             .iter()
