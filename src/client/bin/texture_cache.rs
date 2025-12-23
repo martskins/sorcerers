@@ -28,6 +28,7 @@ impl TextureCache {
             .block_on(async { TextureCache::texture_for_card(card).await })
     }
 
+    #[allow(dead_code)]
     pub async fn get_texture(path: &str, name: &str) -> Texture2D {
         if let Some(tex) = TEXTURE_CACHE.get().unwrap().read().unwrap().inner.get(name) {
             return tex.clone();

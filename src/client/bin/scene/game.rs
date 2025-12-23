@@ -5,12 +5,12 @@ use crate::{
     texture_cache::TextureCache,
 };
 use macroquad::{
-    color::{BLUE, Color, DARKGRAY, DARKGREEN, GRAY, GREEN, RED, WHITE},
+    color::{BLUE, Color, DARKGREEN, GRAY, GREEN, RED, WHITE},
     input::{MouseButton, is_mouse_button_released, mouse_position},
     math::{Rect, RectOffset, Vec2},
     shapes::{
         DrawRectangleParams, draw_circle_lines, draw_line, draw_rectangle, draw_rectangle_ex, draw_rectangle_lines,
-        draw_rectangle_lines_ex, draw_triangle_lines,
+        draw_triangle_lines,
     },
     text::draw_text,
     texture::{DrawTextureParams, draw_texture_ex},
@@ -135,8 +135,6 @@ impl Game {
         self.render_background().await;
         self.render_grid().await;
         self.render_realm().await;
-        // self.render_deck().await;
-        // self.render_cemetery().await?;
         self.render_gui().await?;
         self.render_player_hand().await;
         self.render_card_preview().await?;
@@ -314,12 +312,6 @@ impl Game {
         }
 
         match self.status {
-            // Status::SelectingCard { ref cards } => {
-            //     let valid_cards: Vec<&CardRect> = self.card_rects.iter().filter(|c| cards.contains(&c.id)).collect();
-            //     for card in valid_cards {
-            //         draw_rectangle_lines(card.rect.x, card.rect.y, card.rect.w, card.rect.h, 3.0, WHITE);
-            //     }
-            // }
             Status::SelectingAction { ref prompt } => {
                 // Draw semi-transparent overlay behind the action selection window
                 draw_rectangle(
@@ -404,29 +396,6 @@ impl Game {
                 WHITE,
                 DrawTextureParams {
                     dest_size: Some(Vec2::new(rect.w, rect.h)),
-                    ..Default::default()
-                },
-            );
-        }
-
-        Ok(())
-    }
-
-    async fn render_cemetery(&self) -> anyhow::Result<()> {
-        let discarded_cards = self
-            .card_rects
-            .iter()
-            .filter(|card_display| card_display.zone == Zone::Cemetery)
-            .collect::<Vec<&CardRect>>();
-        for card in discarded_cards {
-            let cemetery_rect = cemetery_rect();
-            draw_texture_ex(
-                &card.image,
-                cemetery_rect.x,
-                cemetery_rect.y,
-                WHITE,
-                DrawTextureParams {
-                    dest_size: Some(cemetery_rect.size() * CARD_IN_PLAY_SCALE),
                     ..Default::default()
                 },
             );

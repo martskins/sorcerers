@@ -47,36 +47,6 @@ pub fn realm_rect() -> Rect {
     Rect::new(200.0, 0.0, screen_rect.w - 200.0, screen_rect.h - hand_space_height()) // Last parame is the hand's area height
 }
 
-pub fn spellbook_rect() -> Rect {
-    let realm_rect = realm_rect();
-    Rect::new(
-        realm_rect.x + realm_rect.w + 10.0,
-        realm_rect.y + realm_rect.h - 2.0 * card_height() - 30.0,
-        card_width(),
-        card_height(),
-    )
-}
-
-pub fn cemetery_rect() -> Rect {
-    let realm_rect = realm_rect();
-    Rect::new(
-        realm_rect.x + realm_rect.w + 10.0,
-        realm_rect.y + realm_rect.h - card_height() - 10.0,
-        card_width(),
-        card_height(),
-    )
-}
-
-pub fn atlasbook_rect() -> Rect {
-    let realm_rect = realm_rect();
-    Rect::new(
-        realm_rect.x + realm_rect.w + 10.0,
-        realm_rect.y + realm_rect.h - 3.0 * card_height() - 10.0,
-        card_height(),
-        card_width(),
-    )
-}
-
 pub fn cell_rect(id: u8, mirror: bool) -> Rect {
     let realm_rect = realm_rect();
     // id 1 is bottom left, id 5 is bottom right, id 16 is top right
