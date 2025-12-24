@@ -1,7 +1,7 @@
 use crate::{
     card::{Card, CardBase, Edition, Plane, Rarity, Zone},
-    effect::Effect,
-    game::{PlayerId, Thresholds, pick_card, pick_option},
+    effect::{Effect, Query},
+    game::{PlayerId, Thresholds, pick_option, pick_zone},
     state::State,
 };
 
@@ -62,19 +62,18 @@ impl Card for ChainLightning {
     async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> Vec<Effect> {
         let caster = state.get_card(caster_id).unwrap();
         let mut effects = vec![];
-        let mut last_hit_zone = caster.get_zone();
+        let mut last_hit_zone = caster.get_zone().clone();
         let mut first_pick = true;
         loop {
-            let units = last_hit_zone
-                .get_nearby_units(state, None)
-                .iter()
-                .map(|c| c.get_id().clone())
-                .collect::<Vec<uuid::Uuid>>();
-            let picked_card = pick_card(self.get_owner_id(), &units, state, "Chain Lightning: Pick a unit").await;
-            effects.push(Effect::TakeDamage {
-                card_id: picked_card.clone(),
+            effects.push(Effect::DealDamageToTarget {
+                player_id: self.get_owner_id().clone(),
+                query: Query::InZone {
+                    zone: last_hit_zone.clone(),
+                    owner: None,
+                },
                 from: caster_id.clone(),
                 damage: 2,
+                prompt: "Chain Lightning: Pick a unit to deal 2 damage to".to_string(),
             });
 
             if !first_pick {
@@ -98,7 +97,16 @@ impl Card for ChainLightning {
                 break;
             }
 
-            last_hit_zone = state.get_card(&picked_card).unwrap().get_zone();
+            let zones = last_hit_zone.get_nearby();
+            let picked_zone = pick_zone(
+                self.get_owner_id(),
+                &zones,
+                state,
+                "Chain Lightning: Pick a nearby zone",
+            )
+            .await;
+
+            last_hit_zone = picked_zone;
             first_pick = false;
         }
 

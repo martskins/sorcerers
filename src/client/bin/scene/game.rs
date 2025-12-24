@@ -12,6 +12,7 @@ use macroquad::{
         DrawRectangleParams, draw_circle_lines, draw_line, draw_rectangle, draw_rectangle_ex, draw_rectangle_lines,
         draw_triangle_lines,
     },
+    telemetry::ZoneGuard,
     text::draw_text,
     texture::{DrawTextureParams, draw_texture_ex},
     ui::{self, hash},
@@ -103,6 +104,7 @@ impl Game {
         self.compute_hand_rects().await?;
         self.compute_realm_rects().await?;
         self.handle_click(mouse_position);
+
         Ok(())
     }
 
@@ -369,7 +371,7 @@ impl Game {
                     },
                 );
 
-                ui::root_ui().pop_skin();
+                // ui::root_ui().pop_skin();
             }
             _ => {}
         }

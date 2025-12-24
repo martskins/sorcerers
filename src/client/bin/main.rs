@@ -20,13 +20,21 @@ fn window_conf() -> Conf {
 
 #[macroquad::main(window_conf)]
 async fn main() -> anyhow::Result<()> {
-    let mut client = Client::new().unwrap();
-    client.start().unwrap();
-
     TextureCache::init();
 
+    let mut client = Client::new().unwrap();
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+    client.start(tx).unwrap();
+
     loop {
+        if let Ok(msg) = rx.try_recv() {
+            let new_scene = client.scene.process_message(&msg).await.unwrap();
+            if let Some(new_scene) = new_scene {
+                client.scene = new_scene;
+            }
+        }
+
         client.step().await.unwrap();
-        next_frame().await
+        next_frame().await;
     }
 }

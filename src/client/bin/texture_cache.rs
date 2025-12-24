@@ -65,7 +65,8 @@ impl TextureCache {
 
     async fn download_card_image(card: &RenderableCard) -> anyhow::Result<Texture2D> {
         let set = card.get_edition().url_name();
-        let name = card
+        let card_name = card.get_name();
+        let name_for_url = card
             .get_name()
             .to_string()
             .to_lowercase()
@@ -82,13 +83,13 @@ impl TextureCache {
 
         let path = format!(
             "https://d27a44hjr9gen3.cloudfront.net/{}/{}-{}-{}-s.png",
-            folder, set, name, after_card_name
+            folder, set, name_for_url, after_card_name
         );
         let response = reqwest::get(&path).await?;
         if response.status() != reqwest::StatusCode::OK {
             return Err(anyhow::anyhow!(
                 "Failed to download image for {} on path {}: HTTP {}",
-                name,
+                name_for_url,
                 path,
                 response.status()
             ));
@@ -97,9 +98,9 @@ impl TextureCache {
         let bytes = response.bytes().await.unwrap();
         let texture = macroquad::texture::Texture2D::from_file_with_format(&bytes, None);
         let mut cache = TEXTURE_CACHE.get().unwrap().write().unwrap();
-        cache.inner.insert(name.to_string(), texture.clone());
+        cache.inner.insert(name_for_url.to_string(), texture.clone());
 
-        let save_path = format!("assets/images/cache/{}.png", name);
+        let save_path = format!("assets/images/cache/{}.png", card_name);
         if let Err(e) = std::fs::write(&save_path, &bytes) {
             println!("Error saving image to disk: {}", e);
         }

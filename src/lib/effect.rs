@@ -29,6 +29,13 @@ impl Counter {
 }
 
 #[derive(Debug)]
+pub enum Query {
+    InZone { zone: Zone, owner: Option<PlayerId> },
+    NearZone { zone: Zone, owner: Option<PlayerId> },
+    OwnedBy { owner: uuid::Uuid },
+}
+
+#[derive(Debug)]
 pub enum Effect {
     ShootProjectile {
         player_id: uuid::Uuid,
@@ -133,6 +140,13 @@ pub enum Effect {
         card_id: uuid::Uuid,
         data: Box<dyn std::any::Any + Send + Sync>,
     },
+    DealDamageToTarget {
+        player_id: uuid::Uuid,
+        query: Query,
+        from: uuid::Uuid,
+        damage: u8,
+        prompt: String,
+    },
 }
 
 impl Effect {
@@ -210,6 +224,7 @@ impl Effect {
             Effect::BanishCard { .. } => "BanishCard".to_string(),
             Effect::SetCardData { .. } => "SetCardData".to_string(),
             Effect::RangedStrike { .. } => "RangedStrike".to_string(),
+            Effect::DealDamageToTarget { .. } => "DealDamageToTarget".to_string(),
         }
     }
 
@@ -496,6 +511,38 @@ impl Effect {
                 effects.extend(attacker.after_attack(state).await);
                 state.effects.extend(effects);
                 state.effects.extend(defender.on_defend(state, attacker_id));
+            }
+            Effect::DealDamageToTarget {
+                player_id,
+                query,
+                from,
+                damage,
+                prompt,
+            } => {
+                let cards: Vec<uuid::Uuid> = match query {
+                    Query::InZone { zone, owner } => zone
+                        .get_units(state, owner.as_ref())
+                        .iter()
+                        .map(|c| c.get_id().clone())
+                        .collect(),
+                    Query::NearZone { zone, owner } => zone
+                        .get_nearby_units(state, owner.as_ref())
+                        .iter()
+                        .map(|c| c.get_id().clone())
+                        .collect(),
+                    Query::OwnedBy { owner } => state
+                        .cards
+                        .iter()
+                        .filter(|c| c.get_owner_id() == owner)
+                        .map(|c| c.get_id().clone())
+                        .collect(),
+                };
+                let picked_card = pick_card(player_id, &cards, state, prompt).await;
+                state.effects.push_front(Effect::TakeDamage {
+                    card_id: picked_card,
+                    from: from.clone(),
+                    damage: *damage,
+                });
             }
             Effect::TakeDamage { card_id, damage, from } => {
                 let snapshot = state.snapshot();

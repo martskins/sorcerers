@@ -81,6 +81,22 @@ impl Zone {
         get_nearby_zones(self)
     }
 
+    pub fn get_units<'a>(&self, state: &'a State, owner_id: Option<&uuid::Uuid>) -> Vec<&'a Box<dyn Card>> {
+        state
+            .get_cards_in_zone(self)
+            .iter()
+            .filter(|c| c.is_unit())
+            .filter(|c| {
+                if let Some(owner_id) = owner_id {
+                    c.get_owner_id() == owner_id
+                } else {
+                    true
+                }
+            })
+            .cloned()
+            .collect::<Vec<&Box<dyn Card>>>()
+    }
+
     pub fn get_nearby_units<'a>(&self, state: &'a State, owner_id: Option<&uuid::Uuid>) -> Vec<&'a Box<dyn Card>> {
         get_nearby_zones(self)
             .iter()

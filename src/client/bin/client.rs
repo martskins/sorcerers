@@ -1,14 +1,17 @@
 use crate::scene::Scene;
 use crate::{config::SCREEN_RECT, scene::menu::Menu};
 use macroquad::prelude::*;
+use macroquad::telemetry::ZoneGuard;
+use macroquad_profiler::ProfilerParams;
 use sorcerers::networking;
-use sorcerers::networking::message::Message;
-use std::sync::{Arc, Mutex, RwLock};
+use sorcerers::networking::message::{Message, ServerMessage};
+use std::sync::RwLock;
 use tokio::runtime::Runtime;
+use tokio::sync::mpsc::UnboundedSender;
 
 #[derive(Debug)]
 pub struct Client {
-    scene: Arc<Mutex<Scene>>,
+    pub scene: Scene,
     client: networking::client::Client,
 }
 
@@ -16,27 +19,21 @@ impl Client {
     pub fn new() -> anyhow::Result<Self> {
         let client = networking::client::Client::new("127.0.0.1:8080")?;
         let scene = Scene::Menu(Menu::new(client.clone()));
-        let scene = Arc::new(Mutex::new(scene));
 
         let rect = Rect::new(0.0, 0.0, screen_width(), screen_height());
         SCREEN_RECT.get_or_init(|| RwLock::new(rect));
         Ok(Client { scene, client })
     }
 
-    pub fn start(&mut self) -> anyhow::Result<()> {
+    pub fn start(&mut self, sender: UnboundedSender<ServerMessage>) -> anyhow::Result<()> {
         let receiver = self.client.clone();
-        let scene = Arc::clone(&self.scene);
-        std::thread::spawn(move || {
+        std::thread::spawn(|| {
             let rt = Runtime::new().unwrap();
-            rt.block_on(async {
+            rt.block_on(async move {
                 loop {
                     match receiver.recv().unwrap() {
                         Some(Message::ServerMessage(msg)) => {
-                            let mut scene = scene.lock().unwrap();
-                            let new_scene = scene.process_message(&msg).await.unwrap();
-                            if let Some(new_scene) = new_scene {
-                                *scene = new_scene;
-                            }
+                            sender.send(msg).unwrap();
                         }
                         _ => {}
                     }
@@ -55,6 +52,7 @@ impl Client {
     }
 
     fn dimensions_changed(&self) -> bool {
+        let _ = ZoneGuard::new("Dimensions changed");
         let dimensions = SCREEN_RECT.get().unwrap();
         let current_screen = dimensions.read().unwrap().clone();
         current_screen.w != screen_width() || current_screen.h != screen_height()
@@ -67,22 +65,22 @@ impl Client {
             dimensions.h = screen_height();
         }
 
-        let scene = &mut self.scene.lock().unwrap();
-        scene.update().await?;
+        self.scene.update().await?;
         Ok(())
     }
 
     async fn render(&mut self) -> anyhow::Result<()> {
         clear_background(BLACK);
-        let scene = &mut *self.scene.lock().unwrap();
-        scene.render().await
+        macroquad_profiler::profiler(ProfilerParams {
+            fps_counter_pos: Vec2::new(10.0, 200.0),
+        });
+        self.scene.render().await
     }
 
     async fn process_input(&mut self) {
-        let current_scene = &mut *self.scene.lock().unwrap();
-        let new_scene = current_scene.process_input().await;
+        let new_scene = self.scene.process_input().await;
         if let Some(scene) = new_scene {
-            *current_scene = scene;
+            self.scene = scene;
         }
     }
 }
