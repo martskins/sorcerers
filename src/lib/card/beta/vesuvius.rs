@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, Plane, Rubble, SiteBase, Zone},
+    card::{Card, CardBase, Edition, Plane, Rarity, Rubble, SiteBase, Zone},
     effect::Effect,
     game::{Action, PlayerId, Thresholds},
     state::State,
@@ -72,6 +72,7 @@ impl Vesuvius {
                 mana_cost: 0,
                 required_thresholds: Thresholds::new(),
                 plane: Plane::Surface,
+                rarity: Rarity::Unique,
             },
         }
     }

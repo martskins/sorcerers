@@ -1,5 +1,5 @@
 use crate::{
-    card::{AvatarBase, Card, CardBase, Edition, Plane, UnitBase, Zone},
+    card::{AvatarBase, Card, CardBase, Edition, Plane, Rarity, UnitBase, Zone},
     game::{PlayerId, Thresholds},
 };
 
@@ -28,6 +28,7 @@ impl Sparkmage {
                 mana_cost: 0,
                 required_thresholds: Thresholds::new(),
                 plane: Plane::Surface,
+                rarity: Rarity::Ordinary,
             },
             avatar_base: AvatarBase {},
         }

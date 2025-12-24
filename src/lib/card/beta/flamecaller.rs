@@ -1,5 +1,5 @@
 use crate::{
-    card::{AvatarBase, Card, CardBase, Edition, Plane, UnitBase, Zone},
+    card::{AvatarBase, Card, CardBase, Edition, Plane, Rarity, UnitBase, Zone},
     effect::Effect,
     game::{Action, CARDINAL_DIRECTIONS, Element, PlayerId, Thresholds, pick_direction},
     state::State,
@@ -91,6 +91,7 @@ impl Flamecaller {
                 mana_cost: 0,
                 required_thresholds: Thresholds::new(),
                 plane: Plane::Surface,
+                rarity: Rarity::Ordinary,
             },
             avatar_base: AvatarBase {},
         }

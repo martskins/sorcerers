@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, Plane, UnitBase, Zone},
+    card::{Card, CardBase, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds},
     state::State,
@@ -20,6 +20,7 @@ impl InfernalLegion {
                 power: 6,
                 toughness: 6,
                 modifiers: vec![],
+                types: vec![MinionType::Undead],
                 ..Default::default()
             },
             card_base: CardBase {
@@ -30,6 +31,7 @@ impl InfernalLegion {
                 mana_cost: 6,
                 required_thresholds: Thresholds::parse("FFF"),
                 plane: Plane::Surface,
+                rarity: Rarity::Elite,
             },
         }
     }

@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, Plane, SiteBase, Zone},
+    card::{Card, CardBase, Edition, Plane, Rarity, SiteBase, Zone},
     game::{PlayerId, Thresholds},
     state::State,
 };
@@ -28,6 +28,7 @@ impl Cornerstone {
                 mana_cost: 0,
                 required_thresholds: Thresholds::new(),
                 plane: Plane::Surface,
+                rarity: Rarity::Exceptional,
             },
         }
     }

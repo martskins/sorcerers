@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, Modifier, Plane, UnitBase, Zone},
+    card::{Card, CardBase, Edition, MinionType, Modifier, Plane, Rarity, UnitBase, Zone},
     game::{Element, PlayerId, Thresholds},
 };
 
@@ -21,6 +21,7 @@ impl LavaSalamander {
                     Modifier::Spellcaster(Element::Fire),
                     Modifier::TakesNoDamageFromElement(Element::Fire),
                 ],
+                types: vec![MinionType::Beast],
                 ..Default::default()
             },
             card_base: CardBase {
@@ -31,6 +32,7 @@ impl LavaSalamander {
                 mana_cost: 2,
                 required_thresholds: Thresholds::parse("FF"),
                 plane: Plane::Surface,
+                rarity: Rarity::Exceptional,
             },
         }
     }

@@ -64,11 +64,11 @@ pub fn fire(player_id: PlayerId) -> (Deck, Vec<Box<dyn Card>>) {
 
 pub fn air(player_id: PlayerId) -> (Deck, Vec<Box<dyn Card>>) {
     let spells = vec![
-        from_name("Clamor of Harpies", player_id),
-        from_name("Clamor of Harpies", player_id),
-        from_name("Clamor of Harpies", player_id),
-        from_name("Clamor of Harpies", player_id),
-        from_name("Clamor of Harpies", player_id),
+        from_name("Sling Pixies", player_id),
+        from_name("Sling Pixies", player_id),
+        from_name("Sling Pixies", player_id),
+        from_name("Sling Pixies", player_id),
+        from_name("Sling Pixies", player_id),
         from_name("Pit Vipers", player_id),
         from_name("Pit Vipers", player_id),
         from_name("Pit Vipers", player_id),

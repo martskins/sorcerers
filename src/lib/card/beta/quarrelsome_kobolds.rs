@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, Plane, UnitBase, Zone},
+    card::{Card, CardBase, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds, pick_card},
     state::State,
@@ -20,6 +20,7 @@ impl QuarrelsomeKobolds {
                 power: 2,
                 toughness: 2,
                 modifiers: vec![],
+                types: vec![MinionType::Goblin],
                 ..Default::default()
             },
             card_base: CardBase {
@@ -30,6 +31,7 @@ impl QuarrelsomeKobolds {
                 mana_cost: 3,
                 required_thresholds: Thresholds::parse("F"),
                 plane: Plane::Surface,
+                rarity: Rarity::Exceptional,
             },
         }
     }

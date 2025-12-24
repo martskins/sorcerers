@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, Modifier, Plane, UnitBase, Zone},
+    card::{Card, CardBase, Edition, MinionType, Modifier, Plane, Rarity, UnitBase, Zone},
     game::{Direction, PlayerId, Thresholds},
     state::State,
 };
@@ -19,6 +19,7 @@ impl HillockBasilisk {
                 power: 3,
                 toughness: 3,
                 modifiers: vec![],
+                types: vec![MinionType::Beast],
                 ..Default::default()
             },
             card_base: CardBase {
@@ -29,6 +30,7 @@ impl HillockBasilisk {
                 mana_cost: 4,
                 required_thresholds: Thresholds::parse("F"),
                 plane: Plane::Surface,
+                rarity: Rarity::Exceptional,
             },
         }
     }

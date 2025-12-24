@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, Modifier, Plane, UnitBase, Zone},
+    card::{Card, CardBase, Edition, MinionType, Modifier, Plane, Rarity, UnitBase, Zone},
     game::{PlayerId, Thresholds},
 };
 
@@ -18,6 +18,7 @@ impl PitVipers {
                 power: 1,
                 toughness: 1,
                 modifiers: vec![Modifier::Lethal, Modifier::Burrowing],
+                types: vec![MinionType::Beast],
                 ..Default::default()
             },
             card_base: CardBase {
@@ -28,6 +29,7 @@ impl PitVipers {
                 mana_cost: 1,
                 required_thresholds: Thresholds::parse("F"),
                 plane: Plane::Surface,
+                rarity: Rarity::Ordinary,
             },
         }
     }

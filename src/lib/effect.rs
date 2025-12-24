@@ -47,15 +47,28 @@ pub enum Effect {
         card_id: uuid::Uuid,
         counter: Counter,
     },
+    TeleportCard {
+        card_id: uuid::Uuid,
+        from: Zone,
+        to: Zone,
+    },
     MoveCard {
         card_id: uuid::Uuid,
         from: Zone,
         to: Zone,
         tap: bool,
     },
+    DrawSite {
+        player_id: uuid::Uuid,
+        count: u8,
+    },
+    DrawSpell {
+        player_id: uuid::Uuid,
+        count: u8,
+    },
     DrawCard {
         player_id: uuid::Uuid,
-        from: Zone,
+        count: u8,
     },
     PlayMagic {
         player_id: uuid::Uuid,
@@ -94,6 +107,10 @@ pub enum Effect {
         mana: u8,
         thresholds: Thresholds,
         health: u8,
+    },
+    RangedStrike {
+        attacker_id: uuid::Uuid,
+        defender_id: uuid::Uuid,
     },
     Attack {
         attacker_id: uuid::Uuid,
@@ -170,8 +187,11 @@ impl Effect {
             Effect::AddCard { .. } => "AddCard".to_string(),
             Effect::AddModifier { .. } => "AddModifier".to_string(),
             Effect::AddCounter { .. } => "AddCounter".to_string(),
+            Effect::TeleportCard { .. } => "TeleportCard".to_string(),
             Effect::MoveCard { .. } => "MoveCard".to_string(),
             Effect::DrawCard { .. } => "DrawCard".to_string(),
+            Effect::DrawSite { .. } => "DrawSite".to_string(),
+            Effect::DrawSpell { .. } => "DrawSpell".to_string(),
             Effect::PlayMagic { .. } => "PlayMagic".to_string(),
             Effect::PlayCard { .. } => "PlayCard".to_string(),
             Effect::TapCard { .. } => "TapCard".to_string(),
@@ -189,6 +209,7 @@ impl Effect {
             Effect::BuryCard { .. } => "BuryCard".to_string(),
             Effect::BanishCard { .. } => "BanishCard".to_string(),
             Effect::SetCardData { .. } => "SetCardData".to_string(),
+            Effect::RangedStrike { .. } => "RangedStrike".to_string(),
         }
     }
 
@@ -247,6 +268,13 @@ impl Effect {
             Effect::AddCard { card } => {
                 state.cards.push(card.clone_box());
             }
+            Effect::TeleportCard { card_id, to, .. } => {
+                let snapshot = state.snapshot();
+                let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
+                card.set_zone(to.clone());
+                let effects = card.on_visit_zone(&snapshot, to).await;
+                state.effects.extend(effects);
+            }
             Effect::MoveCard {
                 card_id, from, to, tap, ..
             } => {
@@ -260,28 +288,38 @@ impl Effect {
                     card.get_base_mut().tapped = true;
                 }
             }
-            Effect::DrawCard { player_id, from } => {
+            Effect::DrawSite { player_id, count } => {
                 let deck = state.decks.get_mut(player_id).unwrap();
-                match from {
-                    Zone::Atlasbook => {
-                        let card_id = deck.sites.pop().unwrap();
-                        state
-                            .cards
-                            .iter_mut()
-                            .find(|c| c.get_id() == &card_id)
-                            .unwrap()
-                            .set_zone(Zone::Hand);
-                    }
-                    Zone::Spellbook => {
-                        let card_id = deck.spells.pop().unwrap();
-                        state
-                            .cards
-                            .iter_mut()
-                            .find(|c| c.get_id() == &card_id)
-                            .unwrap()
-                            .set_zone(Zone::Hand);
-                    }
-                    _ => unreachable!(),
+                for _ in 0..*count {
+                    let card_id = deck.sites.pop().unwrap();
+                    state
+                        .cards
+                        .iter_mut()
+                        .find(|c| c.get_id() == &card_id)
+                        .unwrap()
+                        .set_zone(Zone::Hand);
+                }
+            }
+            Effect::DrawSpell { player_id, count } => {
+                let deck = state.decks.get_mut(player_id).unwrap();
+                for _ in 0..*count {
+                    let card_id = deck.spells.pop().unwrap();
+                    state
+                        .cards
+                        .iter_mut()
+                        .find(|c| c.get_id() == &card_id)
+                        .unwrap()
+                        .set_zone(Zone::Hand);
+                }
+            }
+            Effect::DrawCard { player_id, count } => {
+                for _ in 0..*count {
+                    let actions: Vec<Box<dyn Action>> =
+                        vec![Box::new(BaseAction::DrawSite), Box::new(BaseAction::DrawSpell)];
+                    let picked_action = pick_action(player_id, &actions, state, "Draw a card").await;
+                    state
+                        .effects
+                        .extend(picked_action.on_select(None, player_id, state).await)
                 }
             }
             Effect::PlayMagic { card_id, caster_id, .. } => {
@@ -336,6 +374,11 @@ impl Effect {
                 for card in cards {
                     card.get_base_mut().tapped = false;
                     card.remove_modifier(Modifier::SummoningSickness);
+                }
+
+                for card in state.cards.iter().filter(|c| c.get_owner_id() == &state.current_player) {
+                    let effects = card.on_turn_start(state).await;
+                    state.effects.extend(effects);
                 }
 
                 let player_resources = state.resources.get_mut(player_id).unwrap();
@@ -437,7 +480,7 @@ impl Effect {
                 let snapshot = state.snapshot();
                 let attacker = state.cards.iter().find(|c| c.get_id() == attacker_id).unwrap();
                 let defender = state.cards.iter().find(|c| c.get_id() == defender_id).unwrap();
-                let effects = vec![
+                let mut effects = vec![
                     Effect::MoveCard {
                         card_id: attacker_id.clone(),
                         from: attacker.get_zone().clone(),
@@ -450,6 +493,7 @@ impl Effect {
                         damage: attacker.get_power(&snapshot).unwrap(),
                     },
                 ];
+                effects.extend(attacker.after_attack(state).await);
                 state.effects.extend(effects);
                 state.effects.extend(defender.on_defend(state, attacker_id));
             }
@@ -493,6 +537,23 @@ impl Effect {
             Effect::SetCardData { card_id, data } => {
                 let card = state.get_card_mut(card_id).unwrap();
                 card.set_data(data)?;
+            }
+            Effect::RangedStrike {
+                attacker_id,
+                defender_id,
+            } => {
+                // TODO: Review this
+                let snapshot = state.snapshot();
+                let attacker = state.cards.iter().find(|c| c.get_id() == attacker_id).unwrap();
+                let defender = state.cards.iter().find(|c| c.get_id() == defender_id).unwrap();
+                let mut effects = vec![Effect::TakeDamage {
+                    card_id: defender_id.clone(),
+                    from: attacker_id.clone(),
+                    damage: attacker.get_power(&snapshot).unwrap(),
+                }];
+                effects.extend(attacker.after_attack(state).await);
+                state.effects.extend(effects);
+                state.effects.extend(defender.on_defend(state, attacker_id));
             }
         }
 

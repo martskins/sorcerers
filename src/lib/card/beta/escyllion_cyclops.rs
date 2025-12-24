@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, Modifier, Plane, UnitBase, Zone},
+    card::{Card, CardBase, Edition, MinionType, Modifier, Plane, Rarity, UnitBase, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds},
     state::State,
@@ -20,6 +20,7 @@ impl EscyllionCyclops {
                 power: 6,
                 toughness: 6,
                 modifiers: vec![Modifier::Charge],
+                types: vec![MinionType::Monster],
                 ..Default::default()
             },
             card_base: CardBase {
@@ -30,6 +31,7 @@ impl EscyllionCyclops {
                 mana_cost: 6,
                 required_thresholds: Thresholds::parse("FF"),
                 plane: Plane::Surface,
+                rarity: Rarity::Exceptional,
             },
         }
     }

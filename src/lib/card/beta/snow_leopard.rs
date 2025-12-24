@@ -1,24 +1,24 @@
 use crate::{
-    card::{Card, CardBase, Edition, MinionType, Modifier, Plane, Rarity, UnitBase, Zone},
+    card::{Card, CardBase, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
     game::{PlayerId, Thresholds},
 };
 
 #[derive(Debug, Clone)]
-pub struct PetrosianCavalry {
+pub struct SnowLeopard {
     pub unit_base: UnitBase,
     pub card_base: CardBase,
 }
 
-impl PetrosianCavalry {
-    pub const NAME: &'static str = "Petrosian Cavalry";
+impl SnowLeopard {
+    pub const NAME: &'static str = "Snow Leopard";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
             unit_base: UnitBase {
-                power: 3,
-                toughness: 3,
-                modifiers: vec![Modifier::Charge],
-                types: vec![MinionType::Mortal],
+                power: 2,
+                toughness: 2,
+                modifiers: vec![],
+                types: vec![MinionType::Beast],
                 ..Default::default()
             },
             card_base: CardBase {
@@ -26,16 +26,17 @@ impl PetrosianCavalry {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 4,
-                required_thresholds: Thresholds::parse("F"),
-                plane: Plane::Surface,
+                mana_cost: 1,
+                required_thresholds: Thresholds::parse("A"),
+                plane: Plane::Air,
                 rarity: Rarity::Ordinary,
             },
         }
     }
 }
 
-impl Card for PetrosianCavalry {
+#[async_trait::async_trait]
+impl Card for SnowLeopard {
     fn get_name(&self) -> &str {
         Self::NAME
     }

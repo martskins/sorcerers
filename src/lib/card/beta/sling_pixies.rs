@@ -1,26 +1,26 @@
 use crate::{
     card::{Card, CardBase, Edition, MinionType, Modifier, Plane, Rarity, UnitBase, Zone},
-    effect::{Counter, Effect},
-    game::{Element, PlayerId, Thresholds},
+    effect::Effect,
+    game::{PlayerId, Thresholds},
     state::State,
 };
 
 #[derive(Debug, Clone)]
-pub struct AskelonPhoenix {
+pub struct SlingPixies {
     pub unit_base: UnitBase,
     pub card_base: CardBase,
 }
 
-impl AskelonPhoenix {
-    pub const NAME: &'static str = "Askelon Phoenix";
+impl SlingPixies {
+    pub const NAME: &'static str = "Sling Pixies";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
             unit_base: UnitBase {
-                power: 4,
-                toughness: 4,
-                modifiers: vec![Modifier::Airborne],
-                types: vec![MinionType::Beast],
+                power: 1,
+                toughness: 1,
+                modifiers: vec![Modifier::Airborne, Modifier::Ranged],
+                types: vec![MinionType::Fairy],
                 ..Default::default()
             },
             card_base: CardBase {
@@ -28,16 +28,17 @@ impl AskelonPhoenix {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 5,
-                required_thresholds: Thresholds::parse("FF"),
+                mana_cost: 1,
+                required_thresholds: Thresholds::parse("A"),
                 plane: Plane::Air,
-                rarity: Rarity::Elite,
+                rarity: Rarity::Exceptional,
             },
         }
     }
 }
 
-impl Card for AskelonPhoenix {
+#[async_trait::async_trait]
+impl Card for SlingPixies {
     fn get_name(&self) -> &str {
         Self::NAME
     }
@@ -75,21 +76,12 @@ impl Card for AskelonPhoenix {
     }
 
     fn on_take_damage(&mut self, state: &State, from: &uuid::Uuid, damage: u8) -> Vec<Effect> {
-        let attacker = state.get_card(from).unwrap();
-        if attacker.get_elements(state).contains(&Element::Fire) {
-            return vec![Effect::AddCounter {
-                card_id: self.get_id().clone(),
-                counter: Counter::new(1, 1, Some(1)),
-            }];
+        let dealer = state.get_card(from).unwrap();
+        if dealer.get_power(state).unwrap_or(0) >= 4 {
+            // Takes no damage from units with 4 or more power:w
+            return vec![];
         }
 
-        let ub = self.get_unit_base_mut().unwrap();
-        ub.damage += damage;
-
-        let mut effects = vec![];
-        if ub.damage >= self.get_toughness(state).unwrap_or(0) || attacker.has_modifier(state, Modifier::Lethal) {
-            effects.push(Effect::bury_card(self.get_id(), self.get_zone()));
-        }
-        effects
+        self.base_take_damage(state, from, damage)
     }
 }

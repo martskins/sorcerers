@@ -424,13 +424,13 @@ impl Action for BaseAction {
 
     async fn on_select(&self, _: Option<&uuid::Uuid>, player_id: &PlayerId, _: &State) -> Vec<Effect> {
         match self {
-            BaseAction::DrawSite => vec![Effect::DrawCard {
+            BaseAction::DrawSite => vec![Effect::DrawSite {
                 player_id: player_id.clone(),
-                from: Zone::Atlasbook,
+                count: 1,
             }],
-            BaseAction::DrawSpell => vec![Effect::DrawCard {
+            BaseAction::DrawSpell => vec![Effect::DrawSpell {
                 player_id: player_id.clone(),
-                from: Zone::Spellbook,
+                count: 1,
             }],
             BaseAction::Cancel => vec![],
         }
@@ -476,9 +476,9 @@ impl Action for AvatarAction {
             }
             AvatarAction::DrawSite => {
                 vec![
-                    Effect::DrawCard {
+                    Effect::DrawSite {
                         player_id: player_id.clone(),
-                        from: Zone::Atlasbook,
+                        count: 1,
                     },
                     Effect::tap_card(card_id.unwrap()),
                 ]
@@ -491,6 +491,7 @@ impl Action for AvatarAction {
 pub enum UnitAction {
     Move,
     Attack,
+    RangedStrike,
     Defend,
 }
 
@@ -500,12 +501,17 @@ impl Action for UnitAction {
         match self {
             UnitAction::Move => "Move",
             UnitAction::Attack => "Attack",
+            UnitAction::RangedStrike => "Attack",
             UnitAction::Defend => "Defend",
         }
     }
 
     async fn on_select(&self, card_id: Option<&uuid::Uuid>, player_id: &PlayerId, state: &State) -> Vec<Effect> {
         match self {
+            UnitAction::RangedStrike => {
+                // TODO
+                vec![]
+            }
             UnitAction::Attack => {
                 let card_id = card_id.unwrap();
                 let card = state.get_card(card_id).unwrap();
@@ -797,30 +803,14 @@ impl Game {
     pub fn draw_initial_six(&self) -> Vec<Effect> {
         let mut effects = Vec::new();
         for player_id in &self.players {
-            effects.push(Effect::DrawCard {
+            effects.push(Effect::DrawSite {
                 player_id: player_id.clone(),
-                from: Zone::Atlasbook,
-            });
-            effects.push(Effect::DrawCard {
-                player_id: player_id.clone(),
-                from: Zone::Atlasbook,
-            });
-            effects.push(Effect::DrawCard {
-                player_id: player_id.clone(),
-                from: Zone::Atlasbook,
+                count: 3,
             });
 
-            effects.push(Effect::DrawCard {
+            effects.push(Effect::DrawSpell {
                 player_id: player_id.clone(),
-                from: Zone::Spellbook,
-            });
-            effects.push(Effect::DrawCard {
-                player_id: player_id.clone(),
-                from: Zone::Spellbook,
-            });
-            effects.push(Effect::DrawCard {
-                player_id: player_id.clone(),
-                from: Zone::Spellbook,
+                count: 3,
             });
         }
 

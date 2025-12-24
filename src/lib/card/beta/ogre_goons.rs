@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, Plane, UnitBase, Zone},
+    card::{Card, CardBase, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
     game::{PlayerId, Thresholds},
 };
 
@@ -18,6 +18,7 @@ impl OgreGoons {
                 power: 3,
                 toughness: 3,
                 modifiers: vec![],
+                types: vec![MinionType::Ogre],
                 ..Default::default()
             },
             card_base: CardBase {
@@ -28,6 +29,7 @@ impl OgreGoons {
                 mana_cost: 3,
                 required_thresholds: Thresholds::parse("F"),
                 plane: Plane::Surface,
+                rarity: Rarity::Ordinary,
             },
         }
     }

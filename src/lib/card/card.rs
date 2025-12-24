@@ -81,6 +81,27 @@ impl Zone {
         get_nearby_zones(self)
     }
 
+    pub fn get_nearby_units<'a>(&self, state: &'a State, owner_id: Option<&uuid::Uuid>) -> Vec<&'a Box<dyn Card>> {
+        get_nearby_zones(self)
+            .iter()
+            .flat_map(|z| {
+                state
+                    .get_cards_in_zone(z)
+                    .iter()
+                    .filter(|c| c.is_unit())
+                    .filter(|c| {
+                        if let Some(owner_id) = owner_id {
+                            c.get_owner_id() == owner_id
+                        } else {
+                            true
+                        }
+                    })
+                    .cloned()
+                    .collect::<Vec<&Box<dyn Card>>>()
+            })
+            .collect()
+    }
+
     pub fn get_nearby_sites<'a>(&self, state: &'a State, owner_id: Option<&uuid::Uuid>) -> Vec<&'a Box<dyn Card>> {
         get_nearby_zones(self)
             .iter()
@@ -200,6 +221,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     fn get_id(&self) -> &uuid::Uuid;
     fn get_base(&self) -> &CardBase;
     fn get_base_mut(&mut self) -> &mut CardBase;
+
+    async fn after_attack(&self, _state: &State) -> Vec<Effect> {
+        vec![]
+    }
 
     fn set_data(&mut self, _data: &Box<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
         Err(anyhow::anyhow!("set_data not implemented for {}", self.get_name()))
@@ -463,6 +488,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     fn get_modifiers(&self, state: &State) -> Vec<Modifier> {
+        self.base_get_modifiers(state)
+    }
+
+    fn base_get_modifiers(&self, state: &State) -> Vec<Modifier> {
         let base = self.get_unit_base();
         if base.is_none() {
             return vec![];
@@ -492,7 +521,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         modifiers
     }
 
-    fn get_power(&self, _state: &State) -> Option<u8> {
+    fn base_get_power(&self, _state: &State) -> Option<u8> {
         let base = self.get_unit_base();
         if base.is_none() {
             return None;
@@ -504,6 +533,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             power = power.saturating_add_signed(counter.power);
         }
         Some(power)
+    }
+
+    fn get_power(&self, state: &State) -> Option<u8> {
+        self.base_get_power(state)
     }
 
     fn get_required_thresholds(&self, _state: &State) -> &Thresholds {
@@ -631,6 +664,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         self.base_take_damage(state, from, damage)
     }
 
+    async fn on_turn_start(&self, _state: &State) -> Vec<Effect> {
+        vec![]
+    }
+
     async fn on_turn_end(&self, _state: &State) -> Vec<Effect> {
         vec![]
     }
@@ -688,12 +725,22 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum MinionType {
+    Monster,
+    Goblin,
+    Ogre,
+    Mortal,
+    Demon,
     Dragon,
+    Fairy,
+    Beast,
+    Spirit,
+    Undead,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum SiteType {
     Desert,
+    Tower,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -706,16 +753,19 @@ pub struct SiteBase {
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum Modifier {
     Disabled,
+    Voidwalk,
     Airborne,
+    Ranged,
+    Stealth,
     Lethal,
     Movement(u8),
     Burrowing,
     Landbound,
     Submerge,
     Spellcaster(Element),
-    TakesNoDamageFromElement(Element),
     Charge,
     SummoningSickness,
+    TakesNoDamageFromElement(Element),
     Blaze(u8), // Specific modifier for the Blaze magic
 }
 
@@ -748,6 +798,14 @@ pub struct UnitBase {
     pub types: Vec<MinionType>,
 }
 
+#[derive(Debug, Clone)]
+pub enum Rarity {
+    Ordinary,
+    Exceptional,
+    Elite,
+    Unique,
+}
+
 #[derive(Debug)]
 pub struct CardBase {
     pub id: uuid::Uuid,
@@ -757,6 +815,7 @@ pub struct CardBase {
     pub mana_cost: u8,
     pub required_thresholds: Thresholds,
     pub plane: Plane,
+    pub rarity: Rarity,
 }
 
 impl Clone for CardBase {
@@ -769,6 +828,7 @@ impl Clone for CardBase {
             mana_cost: self.mana_cost,
             required_thresholds: self.required_thresholds.clone(),
             plane: self.plane.clone(),
+            rarity: self.rarity.clone(),
         }
     }
 }

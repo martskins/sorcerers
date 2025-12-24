@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, MinionType, Plane, UnitBase, Zone},
+    card::{Card, CardBase, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
     effect::Effect,
     game::{CARDINAL_DIRECTIONS, PlayerId, Thresholds, pick_direction},
     state::State,
@@ -31,6 +31,7 @@ impl ColickyDragonettes {
                 mana_cost: 3,
                 required_thresholds: Thresholds::parse("FF"),
                 plane: Plane::Surface,
+                rarity: Rarity::Exceptional,
             },
         }
     }

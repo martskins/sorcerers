@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, Modifier, Plane, UnitBase, Zone},
+    card::{Card, CardBase, Edition, MinionType, Modifier, Plane, Rarity, UnitBase, Zone},
     game::{PlayerId, Thresholds},
 };
 
@@ -18,6 +18,7 @@ impl SandWorm {
                 power: 4,
                 toughness: 4,
                 modifiers: vec![Modifier::Burrowing, Modifier::Landbound],
+                types: vec![MinionType::Beast],
                 ..Default::default()
             },
             card_base: CardBase {
@@ -28,6 +29,7 @@ impl SandWorm {
                 mana_cost: 4,
                 required_thresholds: Thresholds::parse("F"),
                 plane: Plane::Surface,
+                rarity: Rarity::Ordinary,
             },
         }
     }

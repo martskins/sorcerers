@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, Plane, SiteBase, SiteType, Zone},
+    card::{Card, CardBase, Edition, Plane, Rarity, SiteBase, SiteType, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds},
     state::State,
@@ -29,6 +29,7 @@ impl ShiftingSands {
                 mana_cost: 0,
                 required_thresholds: Thresholds::new(),
                 plane: Plane::Surface,
+                rarity: Rarity::Exceptional,
             },
         }
     }

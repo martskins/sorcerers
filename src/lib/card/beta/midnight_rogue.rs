@@ -4,20 +4,20 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub struct PetrosianCavalry {
+pub struct MidnightRogue {
     pub unit_base: UnitBase,
     pub card_base: CardBase,
 }
 
-impl PetrosianCavalry {
-    pub const NAME: &'static str = "Petrosian Cavalry";
+impl MidnightRogue {
+    pub const NAME: &'static str = "Midnight Rogue";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
             unit_base: UnitBase {
-                power: 3,
-                toughness: 3,
-                modifiers: vec![Modifier::Charge],
+                power: 2,
+                toughness: 2,
+                modifiers: vec![Modifier::Ranged, Modifier::Stealth],
                 types: vec![MinionType::Mortal],
                 ..Default::default()
             },
@@ -26,8 +26,8 @@ impl PetrosianCavalry {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 4,
-                required_thresholds: Thresholds::parse("F"),
+                mana_cost: 3,
+                required_thresholds: Thresholds::parse("A"),
                 plane: Plane::Surface,
                 rarity: Rarity::Ordinary,
             },
@@ -35,7 +35,8 @@ impl PetrosianCavalry {
     }
 }
 
-impl Card for PetrosianCavalry {
+#[async_trait::async_trait]
+impl Card for MidnightRogue {
     fn get_name(&self) -> &str {
         Self::NAME
     }

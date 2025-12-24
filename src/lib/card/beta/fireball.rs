@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, Plane, Zone},
+    card::{Card, CardBase, Edition, Plane, Rarity, Zone},
     effect::Effect,
     game::{CARDINAL_DIRECTIONS, PlayerId, Thresholds, pick_direction},
     state::State,
@@ -23,6 +23,7 @@ impl Fireball {
                 mana_cost: 4,
                 required_thresholds: Thresholds::parse("FF"),
                 plane: Plane::Surface,
+                rarity: Rarity::Exceptional,
             },
         }
     }

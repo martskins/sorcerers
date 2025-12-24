@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, Modifier, Plane, Zone},
+    card::{Card, CardBase, Edition, Modifier, Plane, Rarity, Zone},
     effect::{Effect, ModifierCounter},
     game::{PlayerId, Thresholds, pick_card},
     state::State,
@@ -20,9 +20,10 @@ impl Blaze {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 4,
-                required_thresholds: Thresholds::parse("FF"),
+                mana_cost: 3,
+                required_thresholds: Thresholds::parse("F"),
                 plane: Plane::Surface,
+                rarity: Rarity::Exceptional,
             },
         }
     }

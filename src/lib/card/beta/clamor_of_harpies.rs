@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, Plane, UnitBase, Zone},
+    card::{Card, CardBase, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
     effect::Effect,
     game::{Action, PlayerId, Thresholds, pick_action, pick_card},
     state::State,
@@ -49,6 +49,7 @@ impl ClamorOfHarpies {
             unit_base: UnitBase {
                 power: 3,
                 toughness: 3,
+                types: vec![MinionType::Monster],
                 ..Default::default()
             },
             card_base: CardBase {
@@ -59,6 +60,7 @@ impl ClamorOfHarpies {
                 mana_cost: 4,
                 required_thresholds: Thresholds::parse("F"),
                 plane: Plane::Surface,
+                rarity: Rarity::Exceptional,
             },
         }
     }

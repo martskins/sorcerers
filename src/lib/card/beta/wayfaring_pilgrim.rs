@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, Modifier, Plane, UnitBase, Zone},
+    card::{Card, CardBase, Edition, MinionType, Modifier, Plane, Rarity, UnitBase, Zone},
     effect::Effect,
     game::{Action, BaseAction, PlayerId, Thresholds, pick_action},
     state::State,
@@ -21,6 +21,7 @@ impl WayfaringPilgrim {
                 power: 1,
                 toughness: 1,
                 modifiers: vec![Modifier::Airborne],
+                types: vec![MinionType::Mortal],
                 ..Default::default()
             },
             card_base: CardBase {
@@ -31,6 +32,7 @@ impl WayfaringPilgrim {
                 mana_cost: 2,
                 required_thresholds: Thresholds::parse("F"),
                 plane: Plane::Air,
+                rarity: Rarity::Exceptional,
             },
             corners_visited: Vec::new(),
         }

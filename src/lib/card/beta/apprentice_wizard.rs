@@ -1,26 +1,31 @@
 use crate::{
     card::{Card, CardBase, Edition, MinionType, Modifier, Plane, Rarity, UnitBase, Zone},
-    effect::{Counter, Effect},
+    effect::Effect,
     game::{Element, PlayerId, Thresholds},
     state::State,
 };
 
 #[derive(Debug, Clone)]
-pub struct AskelonPhoenix {
+pub struct ApprenticeWizard {
     pub unit_base: UnitBase,
     pub card_base: CardBase,
 }
 
-impl AskelonPhoenix {
-    pub const NAME: &'static str = "Askelon Phoenix";
+impl ApprenticeWizard {
+    pub const NAME: &'static str = "Apprentice Wizard";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
             unit_base: UnitBase {
-                power: 4,
-                toughness: 4,
-                modifiers: vec![Modifier::Airborne],
-                types: vec![MinionType::Beast],
+                power: 1,
+                toughness: 1,
+                modifiers: vec![
+                    Modifier::Spellcaster(Element::Air),
+                    Modifier::Spellcaster(Element::Fire),
+                    Modifier::Spellcaster(Element::Earth),
+                    Modifier::Spellcaster(Element::Fire),
+                ],
+                types: vec![MinionType::Mortal],
                 ..Default::default()
             },
             card_base: CardBase {
@@ -28,16 +33,17 @@ impl AskelonPhoenix {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 5,
-                required_thresholds: Thresholds::parse("FF"),
-                plane: Plane::Air,
-                rarity: Rarity::Elite,
+                mana_cost: 3,
+                required_thresholds: Thresholds::parse("A"),
+                plane: Plane::Surface,
+                rarity: Rarity::Ordinary,
             },
         }
     }
 }
 
-impl Card for AskelonPhoenix {
+#[async_trait::async_trait]
+impl Card for ApprenticeWizard {
     fn get_name(&self) -> &str {
         Self::NAME
     }
@@ -74,22 +80,10 @@ impl Card for AskelonPhoenix {
         Some(&mut self.unit_base)
     }
 
-    fn on_take_damage(&mut self, state: &State, from: &uuid::Uuid, damage: u8) -> Vec<Effect> {
-        let attacker = state.get_card(from).unwrap();
-        if attacker.get_elements(state).contains(&Element::Fire) {
-            return vec![Effect::AddCounter {
-                card_id: self.get_id().clone(),
-                counter: Counter::new(1, 1, Some(1)),
-            }];
-        }
-
-        let ub = self.get_unit_base_mut().unwrap();
-        ub.damage += damage;
-
-        let mut effects = vec![];
-        if ub.damage >= self.get_toughness(state).unwrap_or(0) || attacker.has_modifier(state, Modifier::Lethal) {
-            effects.push(Effect::bury_card(self.get_id(), self.get_zone()));
-        }
-        effects
+    async fn genesis(&self, _state: &State) -> Vec<Effect> {
+        vec![Effect::DrawSpell {
+            player_id: self.get_owner_id().clone(),
+            count: 1,
+        }]
     }
 }

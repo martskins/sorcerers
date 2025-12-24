@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, Modifier, Plane, UnitBase, Zone},
+    card::{Card, CardBase, Edition, MinionType, Modifier, Plane, Rarity, UnitBase, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds},
     state::State,
@@ -20,6 +20,7 @@ impl SacredScarabs {
                 power: 1,
                 toughness: 1,
                 modifiers: vec![Modifier::Airborne],
+                types: vec![MinionType::Beast],
                 ..Default::default()
             },
             card_base: CardBase {
@@ -30,6 +31,7 @@ impl SacredScarabs {
                 mana_cost: 2,
                 required_thresholds: Thresholds::parse("F"),
                 plane: Plane::Air,
+                rarity: Rarity::Ordinary,
             },
         }
     }

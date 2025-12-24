@@ -1,5 +1,5 @@
 use crate::{
-    card::{AuraBase, Card, CardBase, Edition, Plane, Zone},
+    card::{AuraBase, Card, CardBase, Edition, Plane, Rarity, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds, pick_zone},
     state::State,
@@ -25,6 +25,7 @@ impl Wildfire {
                 mana_cost: 4,
                 required_thresholds: Thresholds::parse("F"),
                 plane: Plane::Surface,
+                rarity: Rarity::Exceptional,
             },
             aura_base: AuraBase {},
             sites_visited: vec![],

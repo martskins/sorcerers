@@ -1,17 +1,17 @@
 use crate::{
-    card::{Card, CardBase, Edition, MinionType, Plane, Rarity, Zone},
+    card::{Card, CardBase, Edition, Plane, Rarity, Zone},
     effect::Effect,
-    game::{PlayerId, Thresholds, pick_zone},
+    game::{PlayerId, Thresholds, pick_card, pick_zone},
     state::State,
 };
 
 #[derive(Debug, Clone)]
-pub struct Incinerate {
+pub struct Blink {
     pub card_base: CardBase,
 }
 
-impl Incinerate {
-    pub const NAME: &'static str = "Incinerate";
+impl Blink {
+    pub const NAME: &'static str = "Blink";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -21,7 +21,7 @@ impl Incinerate {
                 tapped: false,
                 zone: Zone::Spellbook,
                 mana_cost: 2,
-                required_thresholds: Thresholds::parse("F"),
+                required_thresholds: Thresholds::parse("A"),
                 plane: Plane::Surface,
                 rarity: Rarity::Ordinary,
             },
@@ -30,7 +30,7 @@ impl Incinerate {
 }
 
 #[async_trait::async_trait]
-impl Card for Incinerate {
+impl Card for Blink {
     fn get_name(&self) -> &str {
         Self::NAME
     }
@@ -61,28 +61,28 @@ impl Card for Incinerate {
 
     async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> Vec<Effect> {
         let caster = state.get_card(caster_id).unwrap();
-        let mut zones: Vec<Zone> = state
+        let cards = state
             .cards
             .iter()
-            .filter(|c| matches!(c.get_zone(), Zone::Realm(_)))
-            .filter(|c| c.get_owner_id() == self.get_owner_id())
-            .filter(|c| c.is_unit())
-            .filter(|c| c.get_unit_base().unwrap().types.contains(&MinionType::Dragon))
-            .flat_map(|c| c.get_zone().get_nearby())
-            .collect();
-        zones.push(caster.get_zone().clone());
+            .filter(|c| c.get_owner_id() == caster.get_owner_id())
+            .filter(|c| c.get_id() != caster_id)
+            .map(|c| c.get_id().clone())
+            .collect::<Vec<_>>();
+        let picked_card = pick_card(self.get_owner_id(), &cards, state, "Pick an ally to teleport").await;
 
-        let prompt = "Incinerate: Pick a zone to deal 4 damage to all other units in that zone";
-        let picked_zone = pick_zone(self.get_owner_id(), &zones, state, prompt).await;
-        let units = state.get_units_in_zone(&picked_zone);
-        let mut effects = vec![];
-        for unit in units {
-            if unit.get_id() == self.get_id() {
-                continue;
-            }
-
-            effects.push(Effect::take_damage(unit.get_id(), self.get_id(), 4));
-        }
-        effects
+        let zone = state.get_card(&picked_card).unwrap().get_zone();
+        let zones = zone.get_nearby();
+        let picked_zone = pick_zone(self.get_owner_id(), &zones, state, "Pick a zone to teleport to").await;
+        vec![
+            Effect::TeleportCard {
+                card_id: picked_card.clone(),
+                from: zone.clone(),
+                to: picked_zone.clone(),
+            },
+            Effect::DrawCard {
+                player_id: self.get_owner_id().clone(),
+                count: 1,
+            },
+        ]
     }
 }
