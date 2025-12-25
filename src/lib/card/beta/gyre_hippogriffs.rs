@@ -4,21 +4,21 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub struct SpectralWalker {
+pub struct GyreHippogriffs {
     pub unit_base: UnitBase,
     pub card_base: CardBase,
 }
 
-impl SpectralWalker {
-    pub const NAME: &'static str = "Spectral Walker";
+impl GyreHippogriffs {
+    pub const NAME: &'static str = "Gyre Hippogriffs";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
             unit_base: UnitBase {
-                power: 2,
-                toughness: 2,
-                modifiers: vec![Modifier::Voidwalk],
-                types: vec![MinionType::Undead],
+                power: 3,
+                toughness: 3,
+                modifiers: vec![Modifier::Airborne, Modifier::Charge],
+                types: vec![MinionType::Beast],
                 ..Default::default()
             },
             card_base: CardBase {
@@ -26,17 +26,18 @@ impl SpectralWalker {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 2,
-                required_thresholds: Thresholds::parse("A"),
-                plane: Plane::Surface,
-                rarity: Rarity::Ordinary,
+                mana_cost: 4,
+                required_thresholds: Thresholds::parse("AA"),
+                plane: Plane::Air,
+                rarity: Rarity::Exceptional,
+                controller_id: owner_id.clone(),
             },
         }
     }
 }
 
 #[async_trait::async_trait]
-impl Card for SpectralWalker {
+impl Card for GyreHippogriffs {
     fn get_name(&self) -> &str {
         Self::NAME
     }

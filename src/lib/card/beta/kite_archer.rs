@@ -32,6 +32,7 @@ impl KiteArcher {
                 required_thresholds: Thresholds::parse("A"),
                 plane: Plane::Surface,
                 rarity: Rarity::Exceptional,
+                controller_id: owner_id.clone(),
             },
         }
     }

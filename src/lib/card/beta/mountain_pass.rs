@@ -1,36 +1,31 @@
 use crate::{
-    card::{Card, CardBase, Edition, MinionType, Modifier, Plane, Rarity, UnitBase, Zone},
-    game::{Element, PlayerId, Thresholds},
+    card::{Card, CardBase, Edition, Plane, Rarity, SiteBase, SiteType, Zone},
+    game::{PlayerId, Thresholds},
 };
 
 #[derive(Debug, Clone)]
-pub struct LavaSalamander {
-    pub unit_base: UnitBase,
+pub struct MountainPass {
+    pub site_base: SiteBase,
     pub card_base: CardBase,
 }
 
-impl LavaSalamander {
-    pub const NAME: &'static str = "Lava Salamander";
+impl MountainPass {
+    pub const NAME: &'static str = "Mountain Pass";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
-            unit_base: UnitBase {
-                power: 1,
-                toughness: 1,
-                modifiers: vec![
-                    Modifier::Spellcaster(Element::Fire),
-                    Modifier::TakesNoDamageFromElement(Element::Fire),
-                ],
-                types: vec![MinionType::Beast],
-                ..Default::default()
+            site_base: SiteBase {
+                provided_mana: 1,
+                provided_thresholds: Thresholds::parse("A"),
+                types: vec![SiteType::Tower],
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
                 tapped: false,
-                zone: Zone::Spellbook,
-                mana_cost: 2,
-                required_thresholds: Thresholds::parse("FF"),
+                zone: Zone::Atlasbook,
+                mana_cost: 0,
+                required_thresholds: Thresholds::new(),
                 plane: Plane::Surface,
                 rarity: Rarity::Exceptional,
                 controller_id: owner_id.clone(),
@@ -39,7 +34,8 @@ impl LavaSalamander {
     }
 }
 
-impl Card for LavaSalamander {
+#[async_trait::async_trait]
+impl Card for MountainPass {
     fn get_name(&self) -> &str {
         Self::NAME
     }
@@ -68,11 +64,12 @@ impl Card for LavaSalamander {
         &self.card_base.id
     }
 
-    fn get_unit_base(&self) -> Option<&UnitBase> {
-        Some(&self.unit_base)
+    fn get_site_base(&self) -> Option<&SiteBase> {
+        Some(&self.site_base)
     }
 
-    fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
-        Some(&mut self.unit_base)
+    fn get_site_base_mut(&mut self) -> Option<&mut SiteBase> {
+        Some(&mut self.site_base)
     }
+    // TODO: Implement special ability
 }

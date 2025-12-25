@@ -32,6 +32,7 @@ impl SkirmishersOfMu {
                 required_thresholds: Thresholds::parse("AA"),
                 plane: Plane::Air,
                 rarity: Rarity::Exceptional,
+                controller_id: owner_id.clone(),
             },
         }
     }

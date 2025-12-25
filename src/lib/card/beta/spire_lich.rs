@@ -31,17 +31,26 @@ impl SpireLich {
                 required_thresholds: Thresholds::parse("A"),
                 plane: Plane::Air,
                 rarity: Rarity::Ordinary,
+                controller_id: owner_id.clone(),
             },
         }
     }
 
     fn is_atop_tower(&self, state: &State) -> bool {
+        if !matches!(self.get_zone(), Zone::Realm(_)) {
+            return false;
+        }
+
         let site = state
             .get_cards_in_zone(self.get_zone())
             .iter()
             .find(|c| c.is_site())
-            .cloned()
-            .unwrap();
+            .cloned();
+        if site.is_none() {
+            return false;
+        }
+
+        let site = site.unwrap();
         site.get_site_base().unwrap().types.contains(&SiteType::Tower)
     }
 }

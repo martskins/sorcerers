@@ -1,17 +1,17 @@
 use crate::{
     card::{Card, CardBase, Edition, Plane, Rarity, Zone},
-    effect::Effect,
-    game::{CARDINAL_DIRECTIONS, PlayerId, Thresholds, pick_direction},
+    effect::{Effect, UnitQuery, ZoneQuery},
+    game::{PlayerId, Thresholds, pick_zone},
     state::State,
 };
 
 #[derive(Debug, Clone)]
-pub struct HeatRay {
+pub struct RaiseDead {
     pub card_base: CardBase,
 }
 
-impl HeatRay {
-    pub const NAME: &'static str = "Heat Ray";
+impl RaiseDead {
+    pub const NAME: &'static str = "Raise Dead";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -20,10 +20,10 @@ impl HeatRay {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 2,
-                required_thresholds: Thresholds::parse("F"),
+                mana_cost: 4,
+                required_thresholds: Thresholds::parse("AA"),
                 plane: Plane::Surface,
-                rarity: Rarity::Ordinary,
+                rarity: Rarity::Exceptional,
                 controller_id: owner_id.clone(),
             },
         }
@@ -31,7 +31,7 @@ impl HeatRay {
 }
 
 #[async_trait::async_trait]
-impl Card for HeatRay {
+impl Card for RaiseDead {
     fn get_name(&self) -> &str {
         Self::NAME
     }
@@ -61,17 +61,18 @@ impl Card for HeatRay {
     }
 
     async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> Vec<Effect> {
-        let caster = state.get_card(caster_id).unwrap();
-        let prompt = "Heat Ray: Pick a direction to cast the spell:";
-        let direction = pick_direction(self.get_owner_id(), &CARDINAL_DIRECTIONS, state, prompt).await;
-        vec![Effect::ShootProjectile {
+        let prompt = "Summon a random dead minion".to_string();
+        let query = UnitQuery::RandomUnitInZone {
+            zone: ZoneQuery::Specific(Zone::Cemetery),
+        };
+        let unit_id = query.resolve(self.get_owner_id(), state, &prompt).await;
+        let unit = state.get_card(&unit_id).unwrap();
+        let zones = unit.get_valid_play_zones(state);
+        let picked_zone = pick_zone(self.get_owner_id(), &zones, state, &prompt).await;
+        vec![Effect::SummonCard {
             player_id: self.get_owner_id().clone(),
-            shooter: caster.get_id().clone(),
-            from_zone: caster.get_zone().clone(),
-            direction,
-            damage: 2,
-            piercing: true,
-            splash_damage: None,
+            card_id: unit_id,
+            zone: picked_zone,
         }]
     }
 }

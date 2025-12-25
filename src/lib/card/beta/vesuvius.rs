@@ -73,6 +73,7 @@ impl Vesuvius {
                 required_thresholds: Thresholds::new(),
                 plane: Plane::Surface,
                 rarity: Rarity::Unique,
+                controller_id: owner_id.clone(),
             },
         }
     }

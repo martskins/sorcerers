@@ -30,6 +30,7 @@ impl SandWorm {
                 required_thresholds: Thresholds::parse("F"),
                 plane: Plane::Surface,
                 rarity: Rarity::Ordinary,
+                controller_id: owner_id.clone(),
             },
         }
     }

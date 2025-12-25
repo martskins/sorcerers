@@ -24,6 +24,7 @@ impl MajorExplosion {
                 required_thresholds: Thresholds::parse("FF"),
                 plane: Plane::Surface,
                 rarity: Rarity::Elite,
+                controller_id: owner_id.clone(),
             },
         }
     }

@@ -32,6 +32,7 @@ impl SlingPixies {
                 required_thresholds: Thresholds::parse("A"),
                 plane: Plane::Air,
                 rarity: Rarity::Exceptional,
+                controller_id: owner_id.clone(),
             },
         }
     }

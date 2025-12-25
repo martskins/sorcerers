@@ -30,6 +30,7 @@ impl HighlandClansmen {
                 required_thresholds: Thresholds::parse("A"),
                 plane: Plane::Air,
                 rarity: Rarity::Ordinary,
+                controller_id: owner_id.clone(),
             },
         }
     }

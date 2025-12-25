@@ -64,45 +64,49 @@ pub fn fire(player_id: PlayerId) -> (Deck, Vec<Box<dyn Card>>) {
 
 pub fn air(player_id: PlayerId) -> (Deck, Vec<Box<dyn Card>>) {
     let spells = vec![
-        from_name("Sling Pixies", player_id),
-        from_name("Sling Pixies", player_id),
-        from_name("Sling Pixies", player_id),
-        from_name("Sling Pixies", player_id),
-        from_name("Sling Pixies", player_id),
-        from_name("Pit Vipers", player_id),
-        from_name("Pit Vipers", player_id),
-        from_name("Pit Vipers", player_id),
-        from_name("Pit Vipers", player_id),
-        from_name("Pit Vipers", player_id),
-        from_name("Pit Vipers", player_id),
-        from_name("Wayfaring Pilgrim", player_id),
-        from_name("Wayfaring Pilgrim", player_id),
-        from_name("Wayfaring Pilgrim", player_id),
-        from_name("Wayfaring Pilgrim", player_id),
-        from_name("Wayfaring Pilgrim", player_id),
-        from_name("Sacred Scarabs", player_id),
-        from_name("Sacred Scarabs", player_id),
-        from_name("Sacred Scarabs", player_id),
-        from_name("Sacred Scarabs", player_id),
-        from_name("Sacred Scarabs", player_id),
-        from_name("Lava Salamander", player_id),
-        from_name("Lava Salamander", player_id),
-        from_name("Lava Salamander", player_id),
-        from_name("Lava Salamander", player_id),
-        from_name("Lava Salamander", player_id),
-        from_name("Raal Dromedary", player_id),
-        from_name("Raal Dromedary", player_id),
-        from_name("Raal Dromedary", player_id),
-        from_name("Raal Dromedary", player_id),
-        from_name("Raal Dromedary", player_id),
+        (1, "Sling Pixies"),
+        (2, "Snow Leopard"),
+        (2, "Cloud Spirit"),
+        (2, "Dead of Night Demon"),
+        (2, "Spectral Stalker"),
+        (2, "Apprentice Wizard"),
+        (2, "Headless Haunt"),
+        (1, "Kite Archer"),
+        (2, "Midnight Rogue"),
+        (2, "Plumed Pegasus"),
+        (1, "Spire Lich"),
+        (1, "Gyre Hippogriffs"),
+        (1, "Skirmishers of Mu"),
+        (1, "Roaming Monster"),
+        (1, "Grandmaster Wizard"),
+        (1, "Nimbus Jinn"),
+        (1, "Highland Clansmen"),
+        (2, "Blink"),
+        (2, "Chain Lightning"),
+        (3, "Lightning Bolt"),
+        (1, "Teleport"),
+        (1, "Raise Dead"),
     ];
+    let spells = spells
+        .into_iter()
+        .flat_map(|(count, name)| (0..count).map(move |_| from_name(name, player_id)))
+        .collect::<Vec<_>>();
+
     let sites = vec![
-        from_name("Arid Desert", player_id),
-        from_name("Arid Desert", player_id),
-        from_name("Arid Desert", player_id),
-        from_name("Arid Desert", player_id),
-        from_name("Arid Desert", player_id),
+        (1, "Cloud City"),
+        (3, "Dark Tower"),
+        (3, "Gothic Tower"),
+        (3, "Lone Tower"),
+        (2, "Mountain Pass"),
+        (1, "Observatory"),
+        (1, "Planar Gate"),
+        (2, "Updraft Ridge"),
     ];
+    let sites = sites
+        .into_iter()
+        .flat_map(|(count, name)| (0..count).map(move |_| from_name(name, player_id)))
+        .collect::<Vec<_>>();
+
     let avatar = from_name("Sparkmage", player_id);
 
     let mut deck = Deck {

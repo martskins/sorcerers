@@ -1,45 +1,37 @@
 use crate::{
-    card::{Card, CardBase, Edition, MinionType, Modifier, Plane, Rarity, UnitBase, Zone},
-    game::{Element, PlayerId, Thresholds},
+    card::{Card, CardBase, Edition, Plane, Rarity, Zone},
+    effect::{Effect, UnitQuery, ZoneQuery},
+    game::{PlayerId, Thresholds},
+    state::State,
 };
 
 #[derive(Debug, Clone)]
-pub struct LavaSalamander {
-    pub unit_base: UnitBase,
+pub struct LightningBolt {
     pub card_base: CardBase,
 }
 
-impl LavaSalamander {
-    pub const NAME: &'static str = "Lava Salamander";
+impl LightningBolt {
+    pub const NAME: &'static str = "Lightning Bolt";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
-            unit_base: UnitBase {
-                power: 1,
-                toughness: 1,
-                modifiers: vec![
-                    Modifier::Spellcaster(Element::Fire),
-                    Modifier::TakesNoDamageFromElement(Element::Fire),
-                ],
-                types: vec![MinionType::Beast],
-                ..Default::default()
-            },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
                 mana_cost: 2,
-                required_thresholds: Thresholds::parse("FF"),
+                required_thresholds: Thresholds::parse("A"),
                 plane: Plane::Surface,
-                rarity: Rarity::Exceptional,
+                rarity: Rarity::Ordinary,
                 controller_id: owner_id.clone(),
             },
         }
     }
 }
 
-impl Card for LavaSalamander {
+#[async_trait::async_trait]
+impl Card for LightningBolt {
     fn get_name(&self) -> &str {
         Self::NAME
     }
@@ -68,11 +60,13 @@ impl Card for LavaSalamander {
         &self.card_base.id
     }
 
-    fn get_unit_base(&self) -> Option<&UnitBase> {
-        Some(&self.unit_base)
-    }
-
-    fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
-        Some(&mut self.unit_base)
+    async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> Vec<Effect> {
+        vec![Effect::DealDamageToTarget {
+            player_id: self.get_owner_id().clone(),
+            query: UnitQuery::RandomUnitInZone { zone: ZoneQuery::Any },
+            from: caster_id.clone(),
+            damage: 3,
+            prompt: "Deal 3 damage to a random unit in target zone".to_string(),
+        }]
     }
 }

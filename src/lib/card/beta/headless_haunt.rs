@@ -33,6 +33,7 @@ impl HeadlessHaunt {
                 required_thresholds: Thresholds::parse("AA"),
                 plane: Plane::Surface,
                 rarity: Rarity::Exceptional,
+                controller_id: owner_id.clone(),
             },
         }
     }
@@ -77,6 +78,10 @@ impl Card for HeadlessHaunt {
     }
 
     async fn on_turn_start(&self, _state: &State) -> Vec<Effect> {
+        if !matches!(self.get_zone(), Zone::Realm(_)) {
+            return vec![];
+        }
+
         let mut rng = rand::rng();
         let site_number = rng.random_range(1..=20);
         vec![Effect::MoveCard {

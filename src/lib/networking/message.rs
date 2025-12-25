@@ -35,6 +35,7 @@ pub enum ServerMessage {
         prompt: String,
         player_id: PlayerId,
         cards: Vec<uuid::Uuid>,
+        preview: bool,
     },
     PickAction {
         prompt: String,

@@ -69,6 +69,7 @@ impl NimbusJinn {
                 required_thresholds: Thresholds::parse("AA"),
                 plane: Plane::Air,
                 rarity: Rarity::Elite,
+                controller_id: owner_id.clone(),
             },
         }
     }

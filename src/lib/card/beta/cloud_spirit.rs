@@ -30,6 +30,7 @@ impl CloudSpirit {
                 required_thresholds: Thresholds::parse("AA"),
                 plane: Plane::Air,
                 rarity: Rarity::Ordinary,
+                controller_id: owner_id.clone(),
             },
         }
     }

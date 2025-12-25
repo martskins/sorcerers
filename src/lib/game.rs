@@ -75,6 +75,32 @@ impl Direction {
 
 pub const CARDINAL_DIRECTIONS: [Direction; 4] = [Direction::Up, Direction::Down, Direction::Left, Direction::Right];
 
+pub async fn pick_card_with_preview(
+    player_id: &PlayerId,
+    card_ids: &[uuid::Uuid],
+    state: &State,
+    prompt: &str,
+) -> uuid::Uuid {
+    state
+        .get_sender()
+        .send(ServerMessage::PickCard {
+            prompt: prompt.to_string(),
+            player_id: player_id.clone(),
+            cards: card_ids.to_vec(),
+            preview: true,
+        })
+        .await
+        .unwrap();
+
+    loop {
+        let msg = state.get_receiver().recv().await.unwrap();
+        match msg {
+            ClientMessage::PickCard { card_id, .. } => break card_id,
+            _ => unreachable!(),
+        }
+    }
+}
+
 pub async fn pick_card(player_id: &PlayerId, card_ids: &[uuid::Uuid], state: &State, prompt: &str) -> uuid::Uuid {
     state
         .get_sender()
@@ -82,6 +108,7 @@ pub async fn pick_card(player_id: &PlayerId, card_ids: &[uuid::Uuid], state: &St
             prompt: prompt.to_string(),
             player_id: player_id.clone(),
             cards: card_ids.to_vec(),
+            preview: false,
         })
         .await
         .unwrap();

@@ -5,14 +5,14 @@ use crate::{
     texture_cache::TextureCache,
 };
 use macroquad::{
-    color::{BLUE, Color, DARKGREEN, GRAY, GREEN, RED, WHITE},
+    color::{BLACK, BLUE, Color, DARKGREEN, GRAY, GREEN, RED, WHITE},
     input::{MouseButton, is_mouse_button_released, mouse_position},
     math::{Rect, RectOffset, Vec2},
     shapes::{
         DrawRectangleParams, draw_circle_lines, draw_line, draw_rectangle, draw_rectangle_ex, draw_rectangle_lines,
         draw_triangle_lines,
     },
-    text::draw_text,
+    text::{TextParams, draw_text},
     texture::{DrawTextureParams, draw_texture_ex},
     ui::{self, hash},
     window::{screen_height, screen_width},
@@ -50,9 +50,17 @@ fn draw_vortex_icon(x: f32, y: f32, size: f32, color: Color) {
 #[derive(Debug, PartialEq)]
 pub enum Status {
     Idle,
-    SelectingAction { prompt: String },
-    SelectingCard { cards: Vec<uuid::Uuid> },
-    SelectingZone { zones: Vec<Zone> },
+    SelectingAction {
+        prompt: String,
+    },
+    SelectingCard {
+        cards: Vec<uuid::Uuid>,
+        preview: bool,
+        prompt: String,
+    },
+    SelectingZone {
+        zones: Vec<Zone>,
+    },
 }
 
 #[derive(Debug)]
@@ -135,10 +143,10 @@ impl Game {
 
         self.render_background().await;
         self.render_grid().await;
-        self.render_realm().await;
         self.render_gui().await?;
         self.render_player_hand().await;
         self.render_card_preview().await?;
+        self.render_realm().await;
         Ok(())
     }
 
@@ -148,8 +156,14 @@ impl Game {
                 self.status = Status::SelectingZone { zones: zones.clone() };
                 Ok(None)
             }
-            ServerMessage::PickCard { cards, .. } => {
-                self.status = Status::SelectingCard { cards: cards.clone() };
+            ServerMessage::PickCard {
+                cards, prompt, preview, ..
+            } => {
+                self.status = Status::SelectingCard {
+                    cards: cards.clone(),
+                    preview: preview.clone(),
+                    prompt: prompt.clone(),
+                };
                 Ok(None)
             }
             ServerMessage::PickAction { prompt, actions, .. } => {
@@ -303,8 +317,9 @@ impl Game {
         draw_text(turn_label, screen_rect.w / 2.0 - 50.0, 30.0, FONT_SIZE, WHITE);
 
         let is_in_turn = self.current_player == self.player_id;
-        if is_in_turn {
-            if ui::root_ui().button(Vec2::new(screen_rect.w - 100.0, screen_rect.h - 40.0), "End Turn") {
+        let is_idle = matches!(self.status, Status::Idle);
+        if is_in_turn && is_idle {
+            if ui::root_ui().button(Vec2::new(screen_rect.w - 100.0, screen_rect.h - 40.0), "Pass Turn") {
                 self.client.send(ClientMessage::EndTurn {
                     player_id: self.player_id.clone(),
                     game_id: self.game_id.clone(),
@@ -379,9 +394,12 @@ impl Game {
     }
 
     async fn render_card_preview(&self) -> anyhow::Result<()> {
+        if let Status::SelectingCard { preview: true, .. } = &self.status {
+            return Ok(());
+        }
+
         let selected_card = self.card_rects.iter().find(|card_display| card_display.is_hovered);
         let screen_rect = screen_rect();
-
         if let Some(card_display) = selected_card {
             const PREVIEW_SCALE: f32 = 2.7;
             let mut rect = card_display.rect;
@@ -543,6 +561,26 @@ impl Game {
             let button_y = cell_display.rect.y + 4.0;
             let button_pos = Vec2::new(button_x, button_y);
             let button_dim = Vec2::new(button_size, button_size);
+
+            match &self.status {
+                Status::SelectingZone { zones } => {
+                    if zones.iter().find(|i| i == &&Zone::Realm(cell_display.id)).is_some() {
+                        draw_rectangle_lines(
+                            cell_display.rect.x,
+                            cell_display.rect.y,
+                            cell_display.rect.w,
+                            cell_display.rect.h,
+                            5.0,
+                            GREEN,
+                        );
+                    }
+                }
+                Status::SelectingCard { preview: true, .. } | Status::SelectingAction { .. } => {
+                    continue;
+                }
+                Status::SelectingCard { preview: false, .. } | Status::Idle => {}
+            }
+
             let button = ui::widgets::Button::new("+")
                 .position(button_pos)
                 .size(button_dim)
@@ -551,23 +589,36 @@ impl Game {
             if button {
                 println!("Clicked cell {}", cell_display.id);
             }
-
-            if let Status::SelectingZone { zones } = &self.status {
-                if zones.iter().find(|i| i == &&Zone::Realm(cell_display.id)).is_some() {
-                    draw_rectangle_lines(
-                        cell_display.rect.x,
-                        cell_display.rect.y,
-                        cell_display.rect.w,
-                        cell_display.rect.h,
-                        5.0,
-                        GREEN,
-                    );
-                }
-            }
         }
     }
 
-    async fn render_realm(&self) {
+    fn wrap_text(text: &str, max_width: f32, font_size: u16) -> String {
+        use macroquad::text::measure_text;
+        let mut lines = Vec::new();
+        for paragraph in text.split('\n') {
+            let mut current = String::new();
+            for word in paragraph.split_whitespace() {
+                let test = if current.is_empty() {
+                    word.to_string()
+                } else {
+                    format!("{} {}", current, word)
+                };
+                let dims = measure_text(&test, None, font_size, 1.0);
+                if dims.width > max_width && !current.is_empty() {
+                    lines.push(current.clone());
+                    current = word.to_string();
+                } else {
+                    current = test;
+                }
+            }
+            if !current.is_empty() {
+                lines.push(current);
+            }
+        }
+        lines.join("\n")
+    }
+
+    async fn render_realm(&mut self) {
         for card_rect in &self.card_rects {
             if !matches!(card_rect.zone, Zone::Realm(_)) {
                 continue;
@@ -628,19 +679,96 @@ impl Game {
                 );
             }
 
-            if let Status::SelectingCard { cards } = &self.status {
-                if !cards.contains(&card_rect.id) {
-                    draw_rectangle_ex(
-                        rect.x,
-                        rect.y,
-                        rect.w * CARD_IN_PLAY_SCALE,
-                        rect.h * CARD_IN_PLAY_SCALE,
-                        DrawRectangleParams {
-                            color: Color::new(100.0, 100.0, 100.0, 0.6),
-                            rotation,
-                            ..Default::default()
-                        },
+            if let Status::SelectingCard { cards, preview, prompt } = &self.status {
+                if *preview {
+                    // Draw semi-transparent overlay
+                    draw_rectangle(
+                        0.0,
+                        0.0,
+                        screen_width(),
+                        screen_height(),
+                        Color::new(0.0, 0.0, 0.0, 0.6),
                     );
+
+                    let window_style = ui::root_ui()
+                        .style_builder()
+                        .background_margin(RectOffset::new(10.0, 10.0, 10.0, 10.0))
+                        .build();
+                    let skin = ui::Skin {
+                        window_style,
+                        ..ui::root_ui().default_skin()
+                    };
+
+                    ui::root_ui().push_skin(&skin);
+
+                    // Find the RenderableCards for the given card IDs
+                    let preview_cards: Vec<&RenderableCard> =
+                        self.cards.iter().filter(|c| cards.contains(&c.id)).collect();
+                    let mut textures = Vec::with_capacity(cards.len());
+                    for card in &preview_cards {
+                        let texture = TextureCache::get_card_texture(card).await;
+                        textures.push(texture);
+                    }
+                    let card_count = preview_cards.len();
+                    let card_width = 120.0;
+                    let card_height = 180.0;
+                    let card_spacing = 20.0;
+
+                    let mut skin = ui::root_ui().default_skin();
+                    skin.button_style = ui::root_ui()
+                        .style_builder()
+                        .color(Color::new(0.0, 0.0, 0.0, 0.0))
+                        .build();
+                    skin.label_style = ui::root_ui().style_builder().font_size(FONT_SIZE as u16).build();
+                    ui::root_ui().push_skin(&skin);
+
+                    let cards_area_width = card_count as f32 * card_width + (card_count as f32 - 1.0) * card_spacing;
+                    let cards_start_x = (screen_width() - cards_area_width) / 2.0;
+                    let cards_y = (screen_height() - card_height) / 2.0 + 30.0;
+
+                    let wrapped_text = Game::wrap_text(&prompt, screen_width() - 20.0, FONT_SIZE as u16);
+                    macroquad::text::draw_multiline_text(
+                        &wrapped_text,
+                        cards_start_x - 50.0,
+                        cards_y - 50.0,
+                        FONT_SIZE,
+                        Some(1.0),
+                        WHITE,
+                    );
+
+                    for (idx, card) in preview_cards.iter().enumerate() {
+                        let x = cards_start_x + idx as f32 * (card_width + card_spacing);
+                        if ui::widgets::Button::new(textures[idx].clone())
+                            .position(Vec2::new(x, cards_y))
+                            .size(Vec2::new(card_width, card_height))
+                            .ui(&mut ui::root_ui())
+                        {
+                            self.client
+                                .send(ClientMessage::PickCard {
+                                    player_id: self.player_id.clone(),
+                                    game_id: self.game_id.clone(),
+                                    card_id: card.id,
+                                })
+                                .unwrap();
+                            self.status = Status::Idle;
+                        }
+                    }
+
+                    ui::root_ui().pop_skin();
+                } else {
+                    if !cards.contains(&card_rect.id) {
+                        draw_rectangle_ex(
+                            rect.x,
+                            rect.y,
+                            rect.w * CARD_IN_PLAY_SCALE,
+                            rect.h * CARD_IN_PLAY_SCALE,
+                            DrawRectangleParams {
+                                color: Color::new(100.0, 100.0, 100.0, 0.6),
+                                rotation,
+                                ..Default::default()
+                            },
+                        );
+                    }
                 }
             }
 
@@ -676,7 +804,9 @@ impl Game {
 
             let mut scale = 1.0;
             if card_rect.is_selected || card_rect.is_hovered {
-                scale = 1.2;
+                if let Status::SelectingCard { preview: false, .. } = &self.status {
+                    scale = 1.2;
+                }
             }
 
             let rect = card_rect.rect;
@@ -694,7 +824,10 @@ impl Game {
 
             draw_rectangle_lines(rect.x, rect.y, rect.w * scale, rect.h * scale, 5.0, DARKGREEN);
 
-            if let Status::SelectingCard { cards } = &self.status {
+            if let Status::SelectingCard {
+                cards, preview: false, ..
+            } = &self.status
+            {
                 if !cards.contains(&card_rect.id) {
                     draw_rectangle_ex(
                         rect.x,

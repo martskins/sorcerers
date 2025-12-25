@@ -76,8 +76,8 @@ pub mod cloud_spirit;
 pub use cloud_spirit::*;
 pub mod dead_of_night_demon;
 pub use dead_of_night_demon::*;
-pub mod spectral_walker;
-pub use spectral_walker::*;
+pub mod spectral_stalker;
+pub use spectral_stalker::*;
 pub mod apprentice_wizard;
 pub use apprentice_wizard::*;
 pub mod headless_haunt;
@@ -90,8 +90,8 @@ pub mod plumed_pegasus;
 pub use plumed_pegasus::*;
 pub mod spire_lich;
 pub use spire_lich::*;
-pub mod gyre_hippogrifs;
-pub use gyre_hippogrifs::*;
+pub mod gyre_hippogriffs;
+pub use gyre_hippogriffs::*;
 pub mod skirmishers_of_mu;
 pub use skirmishers_of_mu::*;
 pub mod roaming_monster;
@@ -106,6 +106,28 @@ pub mod blink;
 pub use blink::*;
 pub mod chain_lightning;
 pub use chain_lightning::*;
+pub mod lightning_bolt;
+pub use lightning_bolt::*;
+pub mod teleport;
+pub use teleport::*;
+pub mod raise_dead;
+pub use raise_dead::*;
+pub mod cloud_city;
+pub use cloud_city::*;
+pub mod dark_tower;
+pub use dark_tower::*;
+pub mod gothic_tower;
+pub use gothic_tower::*;
+pub mod lone_tower;
+pub use lone_tower::*;
+pub mod mountain_pass;
+pub use mountain_pass::*;
+pub mod observatory;
+pub use observatory::*;
+pub mod planar_gate;
+pub use planar_gate::*;
+pub mod updraft_ridge;
+pub use updraft_ridge::*;
 
 use crate::{card::Card, game::PlayerId};
 
@@ -150,14 +172,14 @@ pub fn from_beta_name(name: &str, player_id: PlayerId) -> Option<Box<dyn Card>> 
         SnowLeopard::NAME => Some(Box::new(SnowLeopard::new(player_id))),
         CloudSpirit::NAME => Some(Box::new(CloudSpirit::new(player_id))),
         DeadOfNightDemon::NAME => Some(Box::new(DeadOfNightDemon::new(player_id))),
-        SpectralWalker::NAME => Some(Box::new(SpectralWalker::new(player_id))),
+        SpectralStalker::NAME => Some(Box::new(SpectralStalker::new(player_id))),
         ApprenticeWizard::NAME => Some(Box::new(ApprenticeWizard::new(player_id))),
         HeadlessHaunt::NAME => Some(Box::new(HeadlessHaunt::new(player_id))),
         KiteArcher::NAME => Some(Box::new(KiteArcher::new(player_id))),
         MidnightRogue::NAME => Some(Box::new(MidnightRogue::new(player_id))),
         PlumedPegasus::NAME => Some(Box::new(PlumedPegasus::new(player_id))),
         SpireLich::NAME => Some(Box::new(SpireLich::new(player_id))),
-        GyreHippogrifs::NAME => Some(Box::new(GyreHippogrifs::new(player_id))),
+        GyreHippogriffs::NAME => Some(Box::new(GyreHippogriffs::new(player_id))),
         SkirmishersOfMu::NAME => Some(Box::new(SkirmishersOfMu::new(player_id))),
         RoamingMonster::NAME => Some(Box::new(RoamingMonster::new(player_id))),
         GrandmasterWizard::NAME => Some(Box::new(GrandmasterWizard::new(player_id))),
@@ -165,6 +187,17 @@ pub fn from_beta_name(name: &str, player_id: PlayerId) -> Option<Box<dyn Card>> 
         HighlandClansmen::NAME => Some(Box::new(HighlandClansmen::new(player_id))),
         Blink::NAME => Some(Box::new(Blink::new(player_id))),
         ChainLightning::NAME => Some(Box::new(ChainLightning::new(player_id))),
+        LightningBolt::NAME => Some(Box::new(LightningBolt::new(player_id))),
+        Teleport::NAME => Some(Box::new(Teleport::new(player_id))),
+        RaiseDead::NAME => Some(Box::new(RaiseDead::new(player_id))),
+        CloudCity::NAME => Some(Box::new(CloudCity::new(player_id))),
+        DarkTower::NAME => Some(Box::new(DarkTower::new(player_id))),
+        GothicTower::NAME => Some(Box::new(GothicTower::new(player_id))),
+        LoneTower::NAME => Some(Box::new(LoneTower::new(player_id))),
+        MountainPass::NAME => Some(Box::new(MountainPass::new(player_id))),
+        Observatory::NAME => Some(Box::new(Observatory::new(player_id))),
+        PlanarGate::NAME => Some(Box::new(PlanarGate::new(player_id))),
+        UpdraftRidge::NAME => Some(Box::new(UpdraftRidge::new(player_id))),
         _ => None,
     }
 }

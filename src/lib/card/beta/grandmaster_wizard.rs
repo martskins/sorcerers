@@ -37,6 +37,7 @@ impl GrandmasterWizard {
                 required_thresholds: Thresholds::parse("AA"),
                 plane: Plane::Surface,
                 rarity: Rarity::Elite,
+                controller_id: owner_id.clone(),
             },
         }
     }

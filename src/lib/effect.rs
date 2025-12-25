@@ -1,6 +1,8 @@
+use rand::seq::IndexedRandom;
+
 use crate::{
     card::{Modifier, Plane, SiteBase, UnitBase, Zone},
-    game::{Action, BaseAction, Direction, PlayerId, Thresholds, pick_action, pick_card},
+    game::{Action, BaseAction, Direction, PlayerId, Thresholds, pick_action, pick_card, pick_zone},
     state::{Phase, State},
 };
 use std::fmt::Debug;
@@ -29,10 +31,79 @@ impl Counter {
 }
 
 #[derive(Debug)]
-pub enum Query {
+pub enum UnitQuery {
     InZone { zone: Zone, owner: Option<PlayerId> },
     NearZone { zone: Zone, owner: Option<PlayerId> },
     OwnedBy { owner: uuid::Uuid },
+    RandomUnitInZone { zone: ZoneQuery },
+}
+
+impl UnitQuery {
+    pub async fn resolve(&self, player_id: &PlayerId, state: &State, prompt: &str) -> uuid::Uuid {
+        match self {
+            UnitQuery::InZone { zone, owner } => {
+                let cards: Vec<uuid::Uuid> = zone
+                    .get_units(state, owner.as_ref())
+                    .iter()
+                    .map(|c| c.get_id().clone())
+                    .collect();
+                pick_card(player_id, &cards, state, prompt).await
+            }
+            UnitQuery::NearZone { zone, owner } => {
+                let cards: Vec<uuid::Uuid> = zone
+                    .get_nearby_units(state, owner.as_ref())
+                    .iter()
+                    .map(|c| c.get_id().clone())
+                    .collect();
+                pick_card(player_id, &cards, state, prompt).await
+            }
+            UnitQuery::OwnedBy { owner } => {
+                let cards: Vec<uuid::Uuid> = state
+                    .cards
+                    .iter()
+                    .filter(|c| c.get_owner_id() == owner)
+                    .map(|c| c.get_id().clone())
+                    .collect();
+                pick_card(player_id, &cards, state, prompt).await
+            }
+            UnitQuery::RandomUnitInZone { zone } => {
+                let zone = zone.resolve(player_id, state, prompt).await;
+                let cards: Vec<uuid::Uuid> = state
+                    .get_units_in_zone(&zone)
+                    .iter()
+                    .map(|c| c.get_id().clone())
+                    .collect();
+                cards.choose(&mut rand::rng()).unwrap().clone()
+            }
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum ZoneQuery {
+    Any,
+    AnySite,
+    Specific(Zone),
+}
+
+impl ZoneQuery {
+    pub async fn resolve(&self, player_id: &PlayerId, state: &State, prompt: &str) -> Zone {
+        match self {
+            ZoneQuery::Any => pick_zone(player_id, &Zone::all_realm(), state, prompt).await,
+            ZoneQuery::Specific(z) => z.clone(),
+            ZoneQuery::AnySite => {
+                let mut sites = state
+                    .cards
+                    .iter()
+                    .filter(|c| c.is_site())
+                    .filter(|c| matches!(c.get_zone(), Zone::Realm(_)))
+                    .map(|c| c.get_zone().clone())
+                    .collect::<Vec<Zone>>();
+                sites.dedup();
+                pick_zone(player_id, &sites, state, prompt).await
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -92,6 +163,11 @@ pub enum Effect {
         card_id: uuid::Uuid,
         zone: Zone,
     },
+    SummonCard {
+        player_id: uuid::Uuid,
+        card_id: uuid::Uuid,
+        zone: Zone,
+    },
     TapCard {
         card_id: uuid::Uuid,
     },
@@ -141,12 +217,22 @@ pub enum Effect {
         card_id: uuid::Uuid,
         data: Box<dyn std::any::Any + Send + Sync>,
     },
+    TeleportUnitToZone {
+        player_id: PlayerId,
+        unit_query: UnitQuery,
+        zone_query: ZoneQuery,
+        prompt: String,
+    },
     DealDamageToTarget {
         player_id: uuid::Uuid,
-        query: Query,
+        query: UnitQuery,
         from: uuid::Uuid,
         damage: u8,
         prompt: String,
+    },
+    RearrangeDeck {
+        spells: Vec<uuid::Uuid>,
+        sites: Vec<uuid::Uuid>,
     },
 }
 
@@ -209,6 +295,7 @@ impl Effect {
             Effect::DrawSpell { .. } => "DrawSpell".to_string(),
             Effect::PlayMagic { .. } => "PlayMagic".to_string(),
             Effect::PlayCard { .. } => "PlayCard".to_string(),
+            Effect::SummonCard { .. } => "SummonCard".to_string(),
             Effect::TapCard { .. } => "TapCard".to_string(),
             Effect::PreEndTurn { .. } => "PrepareEndTurn".to_string(),
             Effect::EndTurn { .. } => "EndTurn".to_string(),
@@ -226,6 +313,8 @@ impl Effect {
             Effect::SetCardData { .. } => "SetCardData".to_string(),
             Effect::RangedStrike { .. } => "RangedStrike".to_string(),
             Effect::DealDamageToTarget { .. } => "DealDamageToTarget".to_string(),
+            Effect::TeleportUnitToZone { .. } => "TeleportUnitToZone".to_string(),
+            Effect::RearrangeDeck { .. } => "RearrangeDeck".to_string(),
         }
     }
 
@@ -379,6 +468,20 @@ impl Effect {
                 state.effects.extend(effects);
                 state.effects.extend(cast_effects);
             }
+            Effect::SummonCard { card_id, zone, .. } => {
+                let snapshot = state.snapshot();
+                let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
+                let cast_effects = card.on_summon(&snapshot);
+                card.set_zone(zone.clone());
+                if !card.has_modifier(&snapshot, Modifier::Charge) {
+                    card.add_modifier(Modifier::SummoningSickness);
+                }
+
+                let mut effects = card.genesis(&snapshot).await;
+                effects.extend(card.on_visit_zone(&snapshot, zone).await);
+                state.effects.extend(effects);
+                state.effects.extend(cast_effects);
+            }
             Effect::TapCard { card_id } => {
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
                 card.get_base_mut().tapped = true;
@@ -522,27 +625,9 @@ impl Effect {
                 damage,
                 prompt,
             } => {
-                let cards: Vec<uuid::Uuid> = match query {
-                    Query::InZone { zone, owner } => zone
-                        .get_units(state, owner.as_ref())
-                        .iter()
-                        .map(|c| c.get_id().clone())
-                        .collect(),
-                    Query::NearZone { zone, owner } => zone
-                        .get_nearby_units(state, owner.as_ref())
-                        .iter()
-                        .map(|c| c.get_id().clone())
-                        .collect(),
-                    Query::OwnedBy { owner } => state
-                        .cards
-                        .iter()
-                        .filter(|c| c.get_owner_id() == owner)
-                        .map(|c| c.get_id().clone())
-                        .collect(),
-                };
-                let picked_card = pick_card(player_id, &cards, state, prompt).await;
+                let target = query.resolve(player_id, state, prompt).await;
                 state.effects.push_front(Effect::TakeDamage {
-                    card_id: picked_card,
+                    card_id: target,
                     from: from.clone(),
                     damage: *damage,
                 });
@@ -604,6 +689,28 @@ impl Effect {
                 effects.extend(attacker.after_attack(state).await);
                 state.effects.extend(effects);
                 state.effects.extend(defender.on_defend(state, attacker_id));
+            }
+            Effect::TeleportUnitToZone {
+                player_id,
+                unit_query,
+                zone_query,
+                prompt,
+            } => {
+                let unit_id = unit_query.resolve(player_id, state, prompt).await;
+                let unit = state.get_card(&unit_id).unwrap();
+                let zone = zone_query.resolve(player_id, state, prompt).await;
+                state.effects.push_back(Effect::MoveCard {
+                    card_id: unit_id.clone(),
+                    from: unit.get_zone().clone(),
+                    to: zone,
+                    tap: false,
+                    plane: Plane::Surface,
+                });
+            }
+            Effect::RearrangeDeck { spells, sites } => {
+                let deck = state.decks.get_mut(&state.current_player).unwrap();
+                deck.spells = spells.clone();
+                deck.sites = sites.clone();
             }
         }
 

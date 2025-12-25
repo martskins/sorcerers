@@ -1,42 +1,37 @@
 use crate::{
-    card::{Card, CardBase, Edition, MinionType, Modifier, Plane, Rarity, UnitBase, Zone},
+    card::{Card, CardBase, Edition, Plane, Rarity, Zone},
+    effect::{Effect, UnitQuery, ZoneQuery},
     game::{PlayerId, Thresholds},
+    state::State,
 };
 
 #[derive(Debug, Clone)]
-pub struct GyreHippogrifs {
-    pub unit_base: UnitBase,
+pub struct Teleport {
     pub card_base: CardBase,
 }
 
-impl GyreHippogrifs {
-    pub const NAME: &'static str = "Gyre Hippogrifs";
+impl Teleport {
+    pub const NAME: &'static str = "Teleport";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
-            unit_base: UnitBase {
-                power: 3,
-                toughness: 3,
-                modifiers: vec![Modifier::Airborne, Modifier::Charge],
-                types: vec![MinionType::Beast],
-                ..Default::default()
-            },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 4,
+                mana_cost: 2,
                 required_thresholds: Thresholds::parse("AA"),
-                plane: Plane::Air,
-                rarity: Rarity::Exceptional,
+                plane: Plane::Surface,
+                rarity: Rarity::Ordinary,
+                controller_id: owner_id.clone(),
             },
         }
     }
 }
 
 #[async_trait::async_trait]
-impl Card for GyreHippogrifs {
+impl Card for Teleport {
     fn get_name(&self) -> &str {
         Self::NAME
     }
@@ -65,11 +60,14 @@ impl Card for GyreHippogrifs {
         &self.card_base.id
     }
 
-    fn get_unit_base(&self) -> Option<&UnitBase> {
-        Some(&self.unit_base)
-    }
-
-    fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
-        Some(&mut self.unit_base)
+    async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> Vec<Effect> {
+        vec![Effect::TeleportUnitToZone {
+            player_id: self.get_owner_id().clone(),
+            unit_query: UnitQuery::OwnedBy {
+                owner: self.get_owner_id().clone(),
+            },
+            zone_query: ZoneQuery::AnySite,
+            prompt: "Teleport an ally to the top of target site".to_string(),
+        }]
     }
 }

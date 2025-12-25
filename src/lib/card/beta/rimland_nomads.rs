@@ -32,6 +32,7 @@ impl RimlandNomads {
                 required_thresholds: Thresholds::parse("F"),
                 plane: Plane::Air,
                 rarity: Rarity::Ordinary,
+                controller_id: owner_id.clone(),
             },
         }
     }

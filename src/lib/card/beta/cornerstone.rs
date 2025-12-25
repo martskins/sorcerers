@@ -29,6 +29,7 @@ impl Cornerstone {
                 required_thresholds: Thresholds::new(),
                 plane: Plane::Surface,
                 rarity: Rarity::Exceptional,
+                controller_id: owner_id.clone(),
             },
         }
     }

@@ -1,25 +1,25 @@
 use crate::{
-    card::{Card, CardBase, Edition, Plane, Rarity, SiteBase, Zone},
+    card::{Card, CardBase, Edition, Plane, Rarity, SiteBase, SiteType, Zone},
     effect::Effect,
-    game::{PlayerId, Thresholds, pick_card},
+    game::{PlayerId, Thresholds, pick_card_with_preview},
     state::State,
 };
 
 #[derive(Debug, Clone)]
-pub struct AridDesert {
+pub struct Observatory {
     pub site_base: SiteBase,
     pub card_base: CardBase,
 }
 
-impl AridDesert {
-    pub const NAME: &'static str = "Arid Desert";
+impl Observatory {
+    pub const NAME: &'static str = "Observatory";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
             site_base: SiteBase {
                 provided_mana: 1,
-                provided_thresholds: Thresholds::parse("F"),
-                ..Default::default()
+                provided_thresholds: Thresholds::parse("A"),
+                types: vec![SiteType::Tower],
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
@@ -29,7 +29,7 @@ impl AridDesert {
                 mana_cost: 0,
                 required_thresholds: Thresholds::new(),
                 plane: Plane::Surface,
-                rarity: Rarity::Ordinary,
+                rarity: Rarity::Elite,
                 controller_id: owner_id.clone(),
             },
         }
@@ -37,7 +37,7 @@ impl AridDesert {
 }
 
 #[async_trait::async_trait]
-impl Card for AridDesert {
+impl Card for Observatory {
     fn get_name(&self) -> &str {
         Self::NAME
     }
@@ -75,25 +75,38 @@ impl Card for AridDesert {
     }
 
     async fn genesis(&self, state: &State) -> Vec<Effect> {
-        let site_ids = self
-            .get_zone()
-            .get_nearby_sites(state, None)
-            .iter()
-            .map(|c| c.get_id().clone())
-            .collect::<Vec<uuid::Uuid>>();
-        if site_ids.is_empty() {
-            return vec![];
+        let deck = state.decks.get(self.get_owner_id()).unwrap().clone();
+        let mut spells = deck.spells.clone();
+        let mut cards = vec![];
+        for _ in 0..3 {
+            if let Some(card_id) = spells.pop() {
+                cards.push(card_id);
+            }
         }
 
-        let prompt = "Red Desert: Pick a site to deal 1 damage to all atop units";
-        let picked_card_id = pick_card(self.get_owner_id(), &site_ids, state, prompt).await;
-        let site = state.get_card(&picked_card_id).unwrap();
-        // TODO: filter atop units only
-        let units = state.get_minions_in_zone(site.get_zone());
-        let mut effects = vec![];
-        for unit in units {
-            effects.push(Effect::take_damage(&unit.get_id(), site.get_id(), 1));
+        while cards.len() > 0 {
+            let position = match cards.len() {
+                3 => "third from the top",
+                2 => "second from the top",
+                1 => "on the top",
+                _ => unreachable!(),
+            };
+            let picked_card_id = pick_card_with_preview(
+                self.get_owner_id(),
+                &cards,
+                state,
+                &format!("Pick a spell to put back into your spellbook, {}", position),
+            )
+            .await;
+            spells.push(picked_card_id.clone());
+
+            let idx = cards.iter().position(|id| id == &picked_card_id).unwrap();
+            cards.remove(idx);
         }
-        effects
+
+        vec![Effect::RearrangeDeck {
+            spells: spells,
+            sites: deck.sites.clone(),
+        }]
     }
 }

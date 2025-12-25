@@ -26,6 +26,7 @@ impl Wildfire {
                 required_thresholds: Thresholds::parse("F"),
                 plane: Plane::Surface,
                 rarity: Rarity::Exceptional,
+                controller_id: owner_id.clone(),
             },
             aura_base: AuraBase {},
             sites_visited: vec![],

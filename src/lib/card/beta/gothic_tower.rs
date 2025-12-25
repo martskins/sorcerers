@@ -1,23 +1,25 @@
 use crate::{
-    card::{Card, CardBase, Edition, Plane, Rarity, SiteBase, Zone},
+    card::{Card, CardBase, Edition, Plane, Rarity, SiteBase, SiteType, Zone},
+    effect::Effect,
     game::{PlayerId, Thresholds},
+    state::State,
 };
 
 #[derive(Debug, Clone)]
-pub struct Rubble {
+pub struct GothicTower {
     pub site_base: SiteBase,
     pub card_base: CardBase,
 }
 
-impl Rubble {
-    pub const NAME: &'static str = "Rubble";
+impl GothicTower {
+    pub const NAME: &'static str = "Gothic Tower";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
             site_base: SiteBase {
-                provided_mana: 0,
-                provided_thresholds: Thresholds::parse(""),
-                ..Default::default()
+                provided_mana: 1,
+                provided_thresholds: Thresholds::parse("A"),
+                types: vec![SiteType::Tower],
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
@@ -34,7 +36,8 @@ impl Rubble {
     }
 }
 
-impl Card for Rubble {
+#[async_trait::async_trait]
+impl Card for GothicTower {
     fn get_name(&self) -> &str {
         Self::NAME
     }
@@ -56,7 +59,7 @@ impl Card for Rubble {
     }
 
     fn get_edition(&self) -> Edition {
-        Edition::Alpha
+        Edition::Beta
     }
 
     fn get_id(&self) -> &uuid::Uuid {
@@ -71,7 +74,23 @@ impl Card for Rubble {
         Some(&mut self.site_base)
     }
 
-    fn is_token(&self) -> bool {
-        true
+    async fn genesis(&self, state: &State) -> Vec<Effect> {
+        let count = state
+            .cards
+            .iter()
+            .filter(|c| c.get_id() != self.get_id())
+            .filter(|c| c.get_controller_id() == self.get_owner_id())
+            .filter(|c| c.get_name() == Self::NAME)
+            .count();
+        if count > 0 {
+            return vec![];
+        }
+
+        vec![Effect::AddResources {
+            player_id: self.get_owner_id().clone(),
+            mana: 1,
+            thresholds: Thresholds::new(),
+            health: 0,
+        }]
     }
 }

@@ -62,6 +62,10 @@ pub enum Zone {
 }
 
 impl Zone {
+    pub fn all_realm() -> Vec<Zone> {
+        (1..=20).map(|sq| Zone::Realm(sq)).collect()
+    }
+
     pub fn get_square(&self) -> Option<u8> {
         match self {
             Zone::Realm(sq) => Some(*sq),
@@ -237,6 +241,20 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     fn get_id(&self) -> &uuid::Uuid;
     fn get_base(&self) -> &CardBase;
     fn get_base_mut(&mut self) -> &mut CardBase;
+
+    /// on_card_enter is used on sites and it emits the effects that happen when a card enters the
+    /// site.
+    fn on_card_enter(&self, _state: &State, _card_id: &uuid::Uuid) -> Vec<Effect> {
+        vec![]
+    }
+
+    fn get_controller_id(&self) -> &PlayerId {
+        &self.get_base().controller_id
+    }
+
+    fn set_controller_id(&mut self, controller_id: &PlayerId) {
+        self.get_base_mut().controller_id = controller_id.clone();
+    }
 
     async fn after_attack(&self, _state: &State) -> Vec<Effect> {
         vec![]
@@ -832,6 +850,7 @@ pub struct CardBase {
     pub required_thresholds: Thresholds,
     pub plane: Plane,
     pub rarity: Rarity,
+    pub controller_id: PlayerId,
 }
 
 impl Clone for CardBase {
@@ -845,6 +864,7 @@ impl Clone for CardBase {
             required_thresholds: self.required_thresholds.clone(),
             plane: self.plane.clone(),
             rarity: self.rarity.clone(),
+            controller_id: self.controller_id.clone(),
         }
     }
 }

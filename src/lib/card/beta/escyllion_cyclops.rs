@@ -32,6 +32,7 @@ impl EscyllionCyclops {
                 required_thresholds: Thresholds::parse("FF"),
                 plane: Plane::Surface,
                 rarity: Rarity::Exceptional,
+                controller_id: owner_id.clone(),
             },
         }
     }

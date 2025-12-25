@@ -33,6 +33,7 @@ impl WayfaringPilgrim {
                 required_thresholds: Thresholds::parse("F"),
                 plane: Plane::Air,
                 rarity: Rarity::Exceptional,
+                controller_id: owner_id.clone(),
             },
             corners_visited: Vec::new(),
         }

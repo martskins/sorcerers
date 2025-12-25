@@ -1,42 +1,43 @@
 use crate::{
-    card::{Card, CardBase, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    card::{Card, CardBase, Edition, Plane, Rarity, SiteBase, SiteType, Zone},
+    effect::Effect,
     game::{PlayerId, Thresholds},
+    state::State,
 };
 
 #[derive(Debug, Clone)]
-pub struct RaalDromedary {
-    pub unit_base: UnitBase,
+pub struct PlanarGate {
+    pub site_base: SiteBase,
     pub card_base: CardBase,
 }
 
-impl RaalDromedary {
-    pub const NAME: &'static str = "Raal Dromedary";
+impl PlanarGate {
+    pub const NAME: &'static str = "Planar Gate";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
-            unit_base: UnitBase {
-                power: 2,
-                toughness: 2,
-                modifiers: vec![],
-                types: vec![MinionType::Beast],
-                ..Default::default()
+            site_base: SiteBase {
+                provided_mana: 1,
+                provided_thresholds: Thresholds::parse(""),
+                types: vec![SiteType::Tower],
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
                 tapped: false,
-                zone: Zone::Spellbook,
-                mana_cost: 1,
-                required_thresholds: Thresholds::parse("F"),
+                zone: Zone::Atlasbook,
+                mana_cost: 0,
+                required_thresholds: Thresholds::new(),
                 plane: Plane::Surface,
-                rarity: Rarity::Ordinary,
+                rarity: Rarity::Elite,
                 controller_id: owner_id.clone(),
             },
         }
     }
 }
 
-impl Card for RaalDromedary {
+#[async_trait::async_trait]
+impl Card for PlanarGate {
     fn get_name(&self) -> &str {
         Self::NAME
     }
@@ -65,11 +66,16 @@ impl Card for RaalDromedary {
         &self.card_base.id
     }
 
-    fn get_unit_base(&self) -> Option<&UnitBase> {
-        Some(&self.unit_base)
+    fn get_site_base(&self) -> Option<&SiteBase> {
+        Some(&self.site_base)
     }
 
-    fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
-        Some(&mut self.unit_base)
+    fn get_site_base_mut(&mut self) -> Option<&mut SiteBase> {
+        Some(&mut self.site_base)
+    }
+
+    fn on_card_enter(&self, _state: &State, card_id: &uuid::Uuid) -> Vec<Effect> {
+        // TODO: Implement ability
+        vec![]
     }
 }

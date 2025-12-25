@@ -24,6 +24,7 @@ impl Blink {
                 required_thresholds: Thresholds::parse("A"),
                 plane: Plane::Surface,
                 rarity: Rarity::Ordinary,
+                controller_id: owner_id.clone(),
             },
         }
     }

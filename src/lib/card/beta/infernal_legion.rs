@@ -32,6 +32,7 @@ impl InfernalLegion {
                 required_thresholds: Thresholds::parse("FFF"),
                 plane: Plane::Surface,
                 rarity: Rarity::Elite,
+                controller_id: owner_id.clone(),
             },
         }
     }

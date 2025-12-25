@@ -1,6 +1,6 @@
 use crate::{
     card::{Card, CardBase, Edition, Plane, Rarity, Zone},
-    effect::{Effect, Query},
+    effect::{Effect, UnitQuery},
     game::{PlayerId, Thresholds, pick_option, pick_zone},
     state::State,
 };
@@ -24,6 +24,7 @@ impl ChainLightning {
                 required_thresholds: Thresholds::parse("AA"),
                 plane: Plane::Surface,
                 rarity: Rarity::Exceptional,
+                controller_id: owner_id.clone(),
             },
         }
     }
@@ -76,7 +77,7 @@ impl Card for ChainLightning {
             .await;
             effects.push(Effect::DealDamageToTarget {
                 player_id: self.get_owner_id().clone(),
-                query: Query::InZone {
+                query: UnitQuery::InZone {
                     zone: picked_zone.clone(),
                     owner: None,
                 },

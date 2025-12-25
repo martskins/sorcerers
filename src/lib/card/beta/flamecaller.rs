@@ -92,6 +92,7 @@ impl Flamecaller {
                 required_thresholds: Thresholds::new(),
                 plane: Plane::Surface,
                 rarity: Rarity::Ordinary,
+                controller_id: owner_id.clone(),
             },
             avatar_base: AvatarBase {},
         }

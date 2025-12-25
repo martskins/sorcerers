@@ -1,6 +1,6 @@
 use async_channel::Sender;
 use sorcerers::{
-    card::{ChainLightning, Zone, from_name_and_zone},
+    card::{Zone, from_name_and_zone, *},
     deck::precon,
     game::{Game, Resources},
     networking::message::{ClientMessage, Message, ServerMessage, ToMessage},
@@ -81,10 +81,10 @@ impl Server {
         state.resources.insert(player1.clone(), Resources::new());
         state.resources.insert(player2.clone(), Resources::new());
 
-        state.resources.get_mut(player1).unwrap().thresholds.air = 3;
+        state.resources.get_mut(player2).unwrap().thresholds.air = 3;
         state
             .cards
-            .push(from_name_and_zone(ChainLightning::NAME, player2.clone(), Zone::Hand));
+            .push(from_name_and_zone(Observatory::NAME, player2.clone(), Zone::Hand));
 
         let stream1 = self.streams.remove(player1).unwrap().clone();
         let stream2 = self.streams.remove(player2).unwrap().clone();
