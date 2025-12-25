@@ -84,6 +84,7 @@ impl Card for HeadlessHaunt {
             from: self.get_zone().clone(),
             to: Zone::Realm(site_number),
             tap: false,
+            plane: Plane::Surface,
         }]
     }
 }

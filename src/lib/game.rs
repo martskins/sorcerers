@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardType, Modifier, RenderableCard, Zone},
+    card::{Card, CardType, Modifier, Plane, RenderableCard, Zone},
     effect::Effect,
     networking::message::{ClientMessage, ServerMessage, ToMessage},
     state::{Phase, State},
@@ -525,6 +525,7 @@ impl Action for UnitAction {
                         from: card.get_zone().clone(),
                         to: picked_card.get_zone().clone(),
                         tap: true,
+                        plane: card.get_base().plane.clone(),
                     },
                     Effect::take_damage(&picked_card_id, card_id, card.get_power(state).unwrap()),
                 ]
@@ -540,6 +541,7 @@ impl Action for UnitAction {
                     from: card.get_zone().clone(),
                     to: zone,
                     tap: true,
+                    plane: card.get_base().plane.clone(),
                 }]
             }
             UnitAction::Defend => vec![],
@@ -831,6 +833,7 @@ impl Game {
                 from: Zone::Spellbook,
                 to: Zone::Realm(square),
                 tap: false,
+                plane: Plane::Surface,
             });
         }
         effects

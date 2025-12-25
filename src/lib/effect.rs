@@ -1,5 +1,5 @@
 use crate::{
-    card::{Modifier, SiteBase, UnitBase, Zone},
+    card::{Modifier, Plane, SiteBase, UnitBase, Zone},
     game::{Action, BaseAction, Direction, PlayerId, Thresholds, pick_action, pick_card},
     state::{Phase, State},
 };
@@ -64,6 +64,7 @@ pub enum Effect {
         from: Zone,
         to: Zone,
         tap: bool,
+        plane: Plane,
     },
     DrawSite {
         player_id: uuid::Uuid,
@@ -353,6 +354,7 @@ impl Effect {
                     from: card.get_zone().clone(),
                     to: Zone::Cemetery,
                     tap: false,
+                    plane: Plane::None,
                 });
                 state.effects.extend(effects);
             }
@@ -501,6 +503,7 @@ impl Effect {
                         from: attacker.get_zone().clone(),
                         to: defender.get_zone().clone(),
                         tap: true,
+                        plane: attacker.get_base().plane.clone(),
                     },
                     Effect::TakeDamage {
                         card_id: defender_id.clone(),

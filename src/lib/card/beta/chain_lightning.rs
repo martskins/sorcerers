@@ -65,10 +65,19 @@ impl Card for ChainLightning {
         let mut last_hit_zone = caster.get_zone().clone();
         let mut first_pick = true;
         loop {
+            // TODO: This is horribly implemented. We may need a specific ChainLightning effect.
+            let zones = last_hit_zone.get_nearby();
+            let picked_zone = pick_zone(
+                self.get_owner_id(),
+                &zones,
+                state,
+                "Chain Lightning: Pick a nearby zone",
+            )
+            .await;
             effects.push(Effect::DealDamageToTarget {
                 player_id: self.get_owner_id().clone(),
                 query: Query::InZone {
-                    zone: last_hit_zone.clone(),
+                    zone: picked_zone.clone(),
                     owner: None,
                 },
                 from: caster_id.clone(),
@@ -96,15 +105,6 @@ impl Card for ChainLightning {
             if options[pick_option] == "No" {
                 break;
             }
-
-            let zones = last_hit_zone.get_nearby();
-            let picked_zone = pick_zone(
-                self.get_owner_id(),
-                &zones,
-                state,
-                "Chain Lightning: Pick a nearby zone",
-            )
-            .await;
 
             last_hit_zone = picked_zone;
             first_pick = false;

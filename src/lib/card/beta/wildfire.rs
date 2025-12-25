@@ -115,6 +115,7 @@ impl Card for Wildfire {
             from: self.get_zone().clone(),
             to: picked_zone.clone(),
             tap: false,
+            plane: self.card_base.plane.clone(),
         });
 
         effects

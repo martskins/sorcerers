@@ -12,7 +12,6 @@ use macroquad::{
         DrawRectangleParams, draw_circle_lines, draw_line, draw_rectangle, draw_rectangle_ex, draw_rectangle_lines,
         draw_triangle_lines,
     },
-    telemetry::ZoneGuard,
     text::draw_text,
     texture::{DrawTextureParams, draw_texture_ex},
     ui::{self, hash},

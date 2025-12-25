@@ -127,6 +127,7 @@ impl Card for ClamorOfHarpies {
             from: card.get_zone().clone(),
             to: self.get_zone().clone(),
             tap: false,
+            plane: self.card_base.plane.clone(),
         }];
         effects.extend(action.on_select(Some(card.get_id()), self.get_owner_id(), state).await);
         effects

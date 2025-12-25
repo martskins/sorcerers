@@ -1,6 +1,9 @@
 pub mod precon;
 
-use crate::{card::Zone, effect::Effect};
+use crate::{
+    card::{Plane, Zone},
+    effect::Effect,
+};
 
 #[derive(Debug, Clone)]
 pub struct Deck {
@@ -21,6 +24,7 @@ impl Deck {
             from: Zone::Atlasbook,
             to: Zone::Hand,
             tap: false,
+            plane: Plane::None,
         }]
     }
 
@@ -31,6 +35,7 @@ impl Deck {
             from: Zone::Spellbook,
             to: Zone::Hand,
             tap: false,
+            plane: Plane::None,
         }]
     }
 
