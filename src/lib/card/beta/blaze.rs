@@ -1,6 +1,6 @@
 use crate::{
     card::{Card, CardBase, Edition, Modifier, Plane, Rarity, Zone},
-    effect::{Effect, ModifierCounter},
+    effect::{Effect, EffectQuery, ModifierCounter},
     game::{PlayerId, Thresholds, pick_card},
     state::State,
 };
@@ -73,15 +73,17 @@ impl Card for Blaze {
             Effect::AddModifier {
                 card_id: picked_card.clone(),
                 counter: ModifierCounter {
+                    id: uuid::Uuid::new_v4(),
                     modifier: Modifier::Movement(2),
-                    expires_in_turns: Some(1),
+                    expires_on_effect: Some(EffectQuery::TurnEnd),
                 },
             },
             Effect::AddModifier {
                 card_id: picked_card,
                 counter: ModifierCounter {
+                    id: uuid::Uuid::new_v4(),
                     modifier: Modifier::Blaze(2),
-                    expires_in_turns: Some(1),
+                    expires_on_effect: Some(EffectQuery::TurnEnd),
                 },
             },
         ]

@@ -1,6 +1,6 @@
 use crate::{
-    card::{Card, CardBase, Edition, Plane, Rarity, SiteBase, SiteType, Zone},
-    effect::Effect,
+    card::{Card, CardBase, Edition, Modifier, Plane, Rarity, SiteBase, SiteType, Zone},
+    effect::{CardQuery, Effect, EffectQuery, ModifierCounter, ZoneQuery},
     game::{PlayerId, Thresholds},
     state::State,
 };
@@ -74,8 +74,22 @@ impl Card for PlanarGate {
         Some(&mut self.site_base)
     }
 
-    fn on_card_enter(&self, _state: &State, card_id: &uuid::Uuid) -> Vec<Effect> {
-        // TODO: Implement ability
-        vec![]
+    fn on_card_enter(&self, state: &State, card_id: &uuid::Uuid) -> Vec<Effect> {
+        let card = state.get_card(card_id).unwrap();
+        if !card.is_minion() {
+            return vec![];
+        }
+
+        vec![Effect::AddModifier {
+            card_id: card_id.clone(),
+            counter: ModifierCounter {
+                id: uuid::Uuid::new_v4(),
+                modifier: Modifier::Voidwalk,
+                expires_on_effect: Some(EffectQuery::EnterZone {
+                    card: CardQuery::Specific(card_id.clone()),
+                    zone: ZoneQuery::AnySite,
+                }),
+            },
+        }]
     }
 }

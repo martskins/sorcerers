@@ -1,6 +1,6 @@
 use crate::{
     card::{Card, CardBase, Edition, Modifier, Plane, Rarity, Zone},
-    effect::Effect,
+    effect::{Effect, EffectQuery},
     game::{PlayerId, Thresholds, pick_card},
     state::State,
 };
@@ -74,7 +74,11 @@ impl Card for MadDash {
             .collect::<Vec<uuid::Uuid>>();
         let prompt = "Mad Dash: Pick a unit to gain Movement +1";
         let picked_card_id = pick_card(self.get_owner_id(), &cards, state, prompt).await;
-        effects.push(Effect::add_modifier(&picked_card_id, Modifier::Movement(1), Some(1)));
+        effects.push(Effect::add_modifier(
+            &picked_card_id,
+            Modifier::Movement(1),
+            Some(EffectQuery::TurnEnd),
+        ));
         effects
     }
 }

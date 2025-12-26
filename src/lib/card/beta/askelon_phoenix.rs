@@ -1,6 +1,6 @@
 use crate::{
     card::{Card, CardBase, Edition, MinionType, Modifier, Plane, Rarity, UnitBase, Zone},
-    effect::{Counter, Effect},
+    effect::{Counter, Effect, EffectQuery},
     game::{Element, PlayerId, Thresholds},
     state::State,
 };
@@ -80,7 +80,7 @@ impl Card for AskelonPhoenix {
         if attacker.get_elements(state).contains(&Element::Fire) {
             return vec![Effect::AddCounter {
                 card_id: self.get_id().clone(),
-                counter: Counter::new(1, 1, Some(1)),
+                counter: Counter::new(1, 1, Some(EffectQuery::TurnEnd)),
             }];
         }
 

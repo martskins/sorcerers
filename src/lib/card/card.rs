@@ -101,6 +101,10 @@ impl Zone {
             .collect::<Vec<&Box<dyn Card>>>()
     }
 
+    pub fn get_site<'a>(&self, state: &'a State) -> Option<&'a Box<dyn Card>> {
+        state.get_cards_in_zone(self).iter().find(|c| c.is_site()).cloned()
+    }
+
     pub fn get_nearby_units<'a>(&self, state: &'a State, owner_id: Option<&uuid::Uuid>) -> Vec<&'a Box<dyn Card>> {
         get_nearby_zones(self)
             .iter()
@@ -242,6 +246,18 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     fn get_base(&self) -> &CardBase;
     fn get_base_mut(&mut self) -> &mut CardBase;
 
+    fn remove_counter(&mut self, id: &uuid::Uuid) {
+        if let Some(ub) = self.get_unit_base_mut() {
+            ub.power_counters.retain(|c| &c.id != id);
+        }
+    }
+
+    fn remove_modifier_counter(&mut self, id: &uuid::Uuid) {
+        if let Some(ub) = self.get_unit_base_mut() {
+            ub.modifier_counters.retain(|c| &c.id != id);
+        }
+    }
+
     /// on_card_enter is used on sites and it emits the effects that happen when a card enters the
     /// site.
     fn on_card_enter(&self, _state: &State, _card_id: &uuid::Uuid) -> Vec<Effect> {
@@ -299,6 +315,14 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     }
                 }
             }
+        }
+
+        if !self.has_modifier(state, Modifier::Voidwalk) {
+            visited = visited
+                .iter()
+                .filter(|z| z.get_site(state).is_some())
+                .cloned()
+                .collect();
         }
 
         visited
@@ -730,11 +754,19 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         vec![]
     }
 
-    fn base_avatar_actions(&self) -> Vec<Box<dyn Action>> {
-        let unit_actions: Vec<Box<dyn Action>> = self.base_unit_actions();
-        let mut actions: Vec<Box<dyn Action>> =
-            vec![Box::new(AvatarAction::PlaySite), Box::new(AvatarAction::DrawSite)];
-        actions.extend(unit_actions);
+    fn base_avatar_actions(&self, state: &State) -> Vec<Box<dyn Action>> {
+        let mut actions: Vec<Box<dyn Action>> = self.base_unit_actions();
+        actions.push(Box::new(AvatarAction::DrawSite));
+        if state
+            .cards
+            .iter()
+            .filter(|c| c.get_owner_id() == self.get_owner_id())
+            .filter(|c| matches!(c.get_zone(), Zone::Hand))
+            .count()
+            > 0
+        {
+            actions.push(Box::new(AvatarAction::PlaySite));
+        }
         actions
     }
 
@@ -742,9 +774,9 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         vec![Box::new(UnitAction::Attack), Box::new(UnitAction::Move)]
     }
 
-    fn get_actions(&self, _: &State) -> Vec<Box<dyn Action>> {
+    fn get_actions(&self, state: &State) -> Vec<Box<dyn Action>> {
         if self.is_avatar() {
-            return self.base_avatar_actions();
+            return self.base_avatar_actions(state);
         } else if self.is_unit() {
             return self.base_unit_actions();
         }

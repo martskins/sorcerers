@@ -1,6 +1,6 @@
 use crate::{
     card::{Card, CardBase, Edition, Plane, Rarity, Zone},
-    effect::{Effect, UnitQuery, ZoneQuery},
+    effect::{CardQuery, Effect, ZoneQuery},
     game::{PlayerId, Thresholds, pick_zone},
     state::State,
 };
@@ -62,7 +62,7 @@ impl Card for RaiseDead {
 
     async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> Vec<Effect> {
         let prompt = "Summon a random dead minion".to_string();
-        let query = UnitQuery::RandomUnitInZone {
+        let query = CardQuery::RandomUnitInZone {
             zone: ZoneQuery::Specific(Zone::Cemetery),
         };
         let unit_id = query.resolve(self.get_owner_id(), state, &prompt).await;

@@ -612,6 +612,7 @@ impl Game {
             player1: self.players[0].clone(),
             player2: self.players[1].clone(),
             game_id: self.id.clone(),
+            cards: self.renderables_from_cards(),
         })
         .await?;
         self.process_effects().await?;
@@ -780,24 +781,27 @@ impl Game {
         Ok(())
     }
 
+    fn renderables_from_cards(&self) -> Vec<RenderableCard> {
+        self.state
+            .cards
+            .iter()
+            .map(|c| RenderableCard {
+                id: c.get_id().clone(),
+                name: c.get_name().to_string(),
+                owner_id: c.get_owner_id().clone(),
+                tapped: c.is_tapped(),
+                edition: c.get_edition().clone(),
+                zone: c.get_zone().clone(),
+                card_type: c.get_card_type().clone(),
+                modifiers: c.get_modifiers(&self.state),
+                plane: c.get_plane().clone(),
+            })
+            .collect()
+    }
+
     pub async fn send_sync(&self) -> anyhow::Result<()> {
         let msg = ServerMessage::Sync {
-            cards: self
-                .state
-                .cards
-                .iter()
-                .map(|c| RenderableCard {
-                    id: c.get_id().clone(),
-                    name: c.get_name().to_string(),
-                    owner_id: c.get_owner_id().clone(),
-                    tapped: c.is_tapped(),
-                    edition: c.get_edition().clone(),
-                    zone: c.get_zone().clone(),
-                    card_type: c.get_card_type().clone(),
-                    modifiers: c.get_modifiers(&self.state),
-                    plane: c.get_plane().clone(),
-                })
-                .collect(),
+            cards: self.renderables_from_cards(),
             resources: self.state.resources.clone(),
             current_player: self.state.current_player.clone(),
         };

@@ -144,8 +144,8 @@ impl Card for Flamecaller {
         &self.card_base.id
     }
 
-    fn get_actions(&self, _: &State) -> Vec<Box<dyn Action>> {
-        let mut actions = self.base_avatar_actions();
+    fn get_actions(&self, state: &State) -> Vec<Box<dyn Action>> {
+        let mut actions = self.base_avatar_actions(state);
         actions.push(Box::new(FlamecallerAction::ShootProjectile));
         actions
     }

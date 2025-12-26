@@ -116,7 +116,7 @@ impl Card for Vesuvius {
         Some(&mut self.site_base)
     }
 
-    fn get_actions(&self, _: &State) -> Vec<Box<dyn Action>> {
+    fn get_actions(&self, _state: &State) -> Vec<Box<dyn Action>> {
         vec![Box::new(VesuviusAction::UseAbility)]
     }
 }

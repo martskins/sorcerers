@@ -5,14 +5,14 @@ use crate::{
     texture_cache::TextureCache,
 };
 use macroquad::{
-    color::{BLACK, BLUE, Color, DARKGREEN, GRAY, GREEN, RED, WHITE},
+    color::{BLUE, Color, DARKGREEN, GRAY, GREEN, RED, WHITE},
     input::{MouseButton, is_mouse_button_released, mouse_position},
     math::{Rect, RectOffset, Vec2},
     shapes::{
         DrawRectangleParams, draw_circle_lines, draw_line, draw_rectangle, draw_rectangle_ex, draw_rectangle_lines,
         draw_triangle_lines,
     },
-    text::{TextParams, draw_text},
+    text::draw_text,
     texture::{DrawTextureParams, draw_texture_ex},
     ui::{self, hash},
     window::{screen_height, screen_width},
@@ -74,6 +74,11 @@ pub struct Game {
     pub client: networking::client::Client,
     pub current_player: PlayerId,
     pub is_player_one: bool,
+    // click_enabled is set to false whenever a Button is click to prevent the release of the mouse
+    // button from triggering other actions in the same frame. This happens because buttons in
+    // macroquad respond to mouse button presses and our game mostly responds to mouse button
+    // releases, so a single click can trigger two actions.
+    click_enabled: bool,
     actions: Vec<String>,
     status: Status,
 }
@@ -97,6 +102,7 @@ impl Game {
             is_player_one: false,
             resources: HashMap::new(),
             actions: Vec::new(),
+            click_enabled: true,
             status: Status::Idle,
         }
     }
@@ -111,6 +117,12 @@ impl Game {
         self.compute_hand_rects().await?;
         self.compute_realm_rects().await?;
         self.handle_click(mouse_position);
+
+        // Update click_enabled at the end of the update cycle so that we don't process the release
+        // event in the same frame as the one that re-enables clicking.
+        if is_mouse_button_released(MouseButton::Left) {
+            self.click_enabled = true;
+        }
 
         Ok(())
     }
@@ -173,7 +185,12 @@ impl Game {
                 };
                 Ok(None)
             }
-            ServerMessage::GameStarted { game_id, player1, .. } => {
+            ServerMessage::GameStarted {
+                game_id,
+                player1,
+                cards,
+                ..
+            } => {
                 // Flip the board for player 2. Use player1 instead of the is_player_one method
                 // because state is not set at this point.
                 self.is_player_one = player1 == &self.player_id;
@@ -185,6 +202,8 @@ impl Game {
                 }
 
                 self.game_id = game_id.clone();
+                // TODO: Fix so client doesn't hang
+                TextureCache::load_cache(cards).await;
                 Ok(None)
             }
             ServerMessage::Sync {
@@ -320,6 +339,7 @@ impl Game {
         let is_idle = matches!(self.status, Status::Idle);
         if is_in_turn && is_idle {
             if ui::root_ui().button(Vec2::new(screen_rect.w - 100.0, screen_rect.h - 40.0), "Pass Turn") {
+                self.click_enabled = false;
                 self.client.send(ClientMessage::EndTurn {
                     player_id: self.player_id.clone(),
                     game_id: self.game_id.clone(),
@@ -372,6 +392,7 @@ impl Game {
                                 .size(Vec2::new(window_size.x * 0.8, button_height))
                                 .ui(ui);
                             if clicked {
+                                self.click_enabled = false;
                                 self.client
                                     .send(ClientMessage::PickAction {
                                         game_id: self.game_id,
@@ -508,6 +529,10 @@ impl Game {
 
         match &self.status {
             Status::SelectingZone { zones } => {
+                if !self.click_enabled {
+                    return;
+                }
+
                 let zones = zones.clone();
                 for (idx, cell) in self.cell_rects.iter().enumerate() {
                     if zones.iter().find(|i| i == &&Zone::Realm(cell.id)).is_none() {
@@ -534,7 +559,7 @@ impl Game {
         }
     }
 
-    async fn render_grid(&self) {
+    async fn render_grid(&mut self) {
         let grid_color = WHITE;
         let grid_thickness = 1.0;
         for cell_display in &self.cell_rects {
@@ -587,6 +612,7 @@ impl Game {
                 .ui(&mut ui::root_ui());
 
             if button {
+                self.click_enabled = false;
                 println!("Clicked cell {}", cell_display.id);
             }
         }
@@ -680,6 +706,10 @@ impl Game {
             }
 
             if let Status::SelectingCard { cards, preview, prompt } = &self.status {
+                if !self.click_enabled {
+                    return;
+                }
+
                 if *preview {
                     // Draw semi-transparent overlay
                     draw_rectangle(
@@ -743,6 +773,7 @@ impl Game {
                             .size(Vec2::new(card_width, card_height))
                             .ui(&mut ui::root_ui())
                         {
+                            self.click_enabled = false;
                             self.client
                                 .send(ClientMessage::PickCard {
                                     player_id: self.player_id.clone(),

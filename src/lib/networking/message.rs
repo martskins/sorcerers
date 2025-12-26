@@ -25,6 +25,7 @@ pub enum ServerMessage {
         game_id: uuid::Uuid,
         player1: PlayerId,
         player2: PlayerId,
+        cards: Vec<RenderableCard>,
     },
     Sync {
         cards: Vec<RenderableCard>,

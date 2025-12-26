@@ -85,6 +85,21 @@ impl Server {
         state
             .cards
             .push(from_name_and_zone(Observatory::NAME, player2.clone(), Zone::Hand));
+        state
+            .cards
+            .push(from_name_and_zone(AridDesert::NAME, player1.clone(), Zone::Realm(3)));
+        state
+            .cards
+            .push(from_name_and_zone(AridDesert::NAME, player1.clone(), Zone::Realm(8)));
+        state
+            .cards
+            .push(from_name_and_zone(PitVipers::NAME, player1.clone(), Zone::Realm(8)));
+        state
+            .cards
+            .push(from_name_and_zone(PlanarGate::NAME, player2.clone(), Zone::Realm(13)));
+        state
+            .cards
+            .push(from_name_and_zone(PlanarGate::NAME, player2.clone(), Zone::Realm(18)));
 
         let stream1 = self.streams.remove(player1).unwrap().clone();
         let stream2 = self.streams.remove(player2).unwrap().clone();

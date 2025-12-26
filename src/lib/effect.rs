@@ -1,47 +1,94 @@
-use rand::seq::IndexedRandom;
-
 use crate::{
-    card::{Modifier, Plane, SiteBase, UnitBase, Zone},
+    card::{Card, Modifier, Plane, SiteBase, UnitBase, Zone},
     game::{Action, BaseAction, Direction, PlayerId, Thresholds, pick_action, pick_card, pick_zone},
     state::{Phase, State},
 };
+use rand::seq::IndexedRandom;
 use std::fmt::Debug;
 
 #[derive(Debug, Clone)]
-pub struct ModifierCounter {
-    pub modifier: Modifier,
-    pub expires_in_turns: Option<u8>,
+pub enum EffectQuery {
+    EnterZone { card: CardQuery, zone: ZoneQuery },
+    TurnEnd,
 }
 
-#[derive(Debug, Clone)]
-pub struct Counter {
-    pub power: i8,
-    pub toughness: i8,
-    pub expires_in_turns: Option<u8>,
-}
-
-impl Counter {
-    pub fn new(power: i8, toughness: i8, expires_in_turns: Option<u8>) -> Self {
-        Self {
-            power,
-            toughness,
-            expires_in_turns,
+impl EffectQuery {
+    pub fn matches(&self, effect: &Effect, state: &State) -> bool {
+        match (self, effect) {
+            (EffectQuery::EnterZone { card, zone }, Effect::MoveCard { card_id, to, .. }) => {
+                let cards = card.options(state);
+                let zones = zone.options(state);
+                return cards.contains(card_id) && zones.contains(to);
+            }
+            (EffectQuery::TurnEnd, Effect::EndTurn { .. }) => true,
+            _ => false,
         }
     }
 }
 
-#[derive(Debug)]
-pub enum UnitQuery {
+#[derive(Debug, Clone)]
+pub struct ModifierCounter {
+    pub id: uuid::Uuid,
+    pub modifier: Modifier,
+    pub expires_on_effect: Option<EffectQuery>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Counter {
+    pub id: uuid::Uuid,
+    pub power: i8,
+    pub toughness: i8,
+    pub expires_on_effect: Option<EffectQuery>,
+}
+
+impl Counter {
+    pub fn new(power: i8, toughness: i8, expires_on_effect: Option<EffectQuery>) -> Self {
+        Self {
+            id: uuid::Uuid::new_v4(),
+            power,
+            toughness,
+            expires_on_effect,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum CardQuery {
+    Specific(uuid::Uuid),
     InZone { zone: Zone, owner: Option<PlayerId> },
     NearZone { zone: Zone, owner: Option<PlayerId> },
     OwnedBy { owner: uuid::Uuid },
     RandomUnitInZone { zone: ZoneQuery },
 }
 
-impl UnitQuery {
+impl CardQuery {
+    pub fn options(&self, state: &State) -> Vec<uuid::Uuid> {
+        match self {
+            CardQuery::Specific(id) => vec![id.clone()],
+            CardQuery::InZone { zone, owner } => zone
+                .get_units(state, owner.as_ref())
+                .iter()
+                .map(|c| c.get_id().clone())
+                .collect(),
+            CardQuery::NearZone { zone, owner } => zone
+                .get_nearby_units(state, owner.as_ref())
+                .iter()
+                .map(|c| c.get_id().clone())
+                .collect(),
+            CardQuery::OwnedBy { owner } => state
+                .cards
+                .iter()
+                .filter(|c| c.get_owner_id() == owner)
+                .map(|c| c.get_id().clone())
+                .collect(),
+            _ => unreachable!(),
+        }
+    }
+
     pub async fn resolve(&self, player_id: &PlayerId, state: &State, prompt: &str) -> uuid::Uuid {
         match self {
-            UnitQuery::InZone { zone, owner } => {
+            CardQuery::Specific(id) => id.clone(),
+            CardQuery::InZone { zone, owner } => {
                 let cards: Vec<uuid::Uuid> = zone
                     .get_units(state, owner.as_ref())
                     .iter()
@@ -49,7 +96,7 @@ impl UnitQuery {
                     .collect();
                 pick_card(player_id, &cards, state, prompt).await
             }
-            UnitQuery::NearZone { zone, owner } => {
+            CardQuery::NearZone { zone, owner } => {
                 let cards: Vec<uuid::Uuid> = zone
                     .get_nearby_units(state, owner.as_ref())
                     .iter()
@@ -57,7 +104,7 @@ impl UnitQuery {
                     .collect();
                 pick_card(player_id, &cards, state, prompt).await
             }
-            UnitQuery::OwnedBy { owner } => {
+            CardQuery::OwnedBy { owner } => {
                 let cards: Vec<uuid::Uuid> = state
                     .cards
                     .iter()
@@ -66,7 +113,7 @@ impl UnitQuery {
                     .collect();
                 pick_card(player_id, &cards, state, prompt).await
             }
-            UnitQuery::RandomUnitInZone { zone } => {
+            CardQuery::RandomUnitInZone { zone } => {
                 let zone = zone.resolve(player_id, state, prompt).await;
                 let cards: Vec<uuid::Uuid> = state
                     .get_units_in_zone(&zone)
@@ -79,7 +126,7 @@ impl UnitQuery {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ZoneQuery {
     Any,
     AnySite,
@@ -87,6 +134,23 @@ pub enum ZoneQuery {
 }
 
 impl ZoneQuery {
+    pub fn options(&self, state: &State) -> Vec<Zone> {
+        match self {
+            ZoneQuery::Any => Zone::all_realm(),
+            ZoneQuery::Specific(z) => vec![z.clone()],
+            ZoneQuery::AnySite => {
+                let mut sites = state
+                    .cards
+                    .iter()
+                    .filter(|c| c.is_site())
+                    .filter(|c| matches!(c.get_zone(), Zone::Realm(_)))
+                    .map(|c| c.get_zone().clone())
+                    .collect::<Vec<Zone>>();
+                sites.dedup();
+                sites
+            }
+        }
+    }
     pub async fn resolve(&self, player_id: &PlayerId, state: &State, prompt: &str) -> Zone {
         match self {
             ZoneQuery::Any => pick_zone(player_id, &Zone::all_realm(), state, prompt).await,
@@ -219,13 +283,13 @@ pub enum Effect {
     },
     TeleportUnitToZone {
         player_id: PlayerId,
-        unit_query: UnitQuery,
+        unit_query: CardQuery,
         zone_query: ZoneQuery,
         prompt: String,
     },
     DealDamageToTarget {
         player_id: uuid::Uuid,
-        query: UnitQuery,
+        query: CardQuery,
         from: uuid::Uuid,
         damage: u8,
         prompt: String,
@@ -272,12 +336,13 @@ impl Effect {
         }
     }
 
-    pub fn add_modifier(card_id: &uuid::Uuid, modifier: Modifier, expires_in_turns: Option<u8>) -> Self {
+    pub fn add_modifier(card_id: &uuid::Uuid, modifier: Modifier, expires_on_effect: Option<EffectQuery>) -> Self {
         Effect::AddModifier {
             card_id: card_id.clone(),
             counter: ModifierCounter {
+                id: uuid::Uuid::new_v4(),
                 modifier,
-                expires_in_turns,
+                expires_on_effect,
             },
         }
     }
@@ -315,6 +380,66 @@ impl Effect {
             Effect::DealDamageToTarget { .. } => "DealDamageToTarget".to_string(),
             Effect::TeleportUnitToZone { .. } => "TeleportUnitToZone".to_string(),
             Effect::RearrangeDeck { .. } => "RearrangeDeck".to_string(),
+        }
+    }
+
+    fn expire_counters(&self, state: &mut State) {
+        let modified_cards: Vec<&Box<dyn Card>> = state
+            .cards
+            .iter()
+            .filter(|c| c.is_unit())
+            .filter(|c| c.get_unit_base().unwrap().modifier_counters.len() > 0)
+            .collect();
+        let mut card_modifiers_to_remove: Vec<(uuid::Uuid, Vec<uuid::Uuid>)> = vec![];
+        for card in modified_cards {
+            let mut to_remove: Vec<uuid::Uuid> = vec![];
+            for counter in &card.get_unit_base().unwrap().modifier_counters {
+                if let Some(effect_query) = &counter.expires_on_effect {
+                    if effect_query.matches(self, state) {
+                        to_remove.push(counter.id);
+                    }
+                }
+            }
+
+            if !to_remove.is_empty() {
+                card_modifiers_to_remove.push((card.get_id().clone(), to_remove));
+            }
+        }
+
+        for (card_id, to_remove) in card_modifiers_to_remove {
+            let card_mut = state.get_card_mut(&card_id).unwrap();
+            for counter_id in to_remove {
+                card_mut.remove_modifier_counter(&counter_id);
+            }
+        }
+
+        let cards_with_counters: Vec<&Box<dyn Card>> = state
+            .cards
+            .iter()
+            .filter(|c| c.is_unit())
+            .filter(|c| c.get_unit_base().unwrap().power_counters.len() > 0)
+            .collect();
+        let mut card_counters_to_remove: Vec<(uuid::Uuid, Vec<uuid::Uuid>)> = vec![];
+        for card in cards_with_counters {
+            let mut to_remove: Vec<uuid::Uuid> = vec![];
+            for counter in &card.get_unit_base().unwrap().power_counters {
+                if let Some(effect_query) = &counter.expires_on_effect {
+                    if effect_query.matches(self, state) {
+                        to_remove.push(counter.id);
+                    }
+                }
+            }
+
+            if !to_remove.is_empty() {
+                card_counters_to_remove.push((card.get_id().clone(), to_remove));
+            }
+        }
+
+        for (card_id, to_remove) in card_counters_to_remove {
+            let card_mut = state.get_card_mut(&card_id).unwrap();
+            for counter_id in to_remove {
+                card_mut.remove_counter(&counter_id);
+            }
         }
     }
 
@@ -386,12 +511,18 @@ impl Effect {
                 let snapshot = state.snapshot();
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
                 card.set_zone(to.clone());
-                let mut effects = card.on_move(&snapshot, from, to).await;
-                effects.extend(card.on_visit_zone(&snapshot, to).await);
-                state.effects.extend(effects);
                 if *tap {
                     card.get_base_mut().tapped = true;
                 }
+
+                let card = state.cards.iter().find(|c| c.get_id() == card_id).unwrap();
+                let mut effects = card.on_move(&snapshot, from, to).await;
+                effects.extend(card.on_visit_zone(&snapshot, to).await);
+                if let Some(site) = to.get_site(state) {
+                    effects.extend(site.on_card_enter(state, card_id));
+                }
+
+                state.effects.extend(effects);
             }
             Effect::DrawSite { player_id, count } => {
                 let deck = state.decks.get_mut(player_id).unwrap();
@@ -549,34 +680,6 @@ impl Effect {
             Effect::EndTurn { player_id } => {
                 let resources = state.resources.get_mut(player_id).unwrap();
                 resources.mana = 0;
-
-                // Clear any counters that expire at the end of the turn
-                let card_ids: Vec<uuid::Uuid> = state
-                    .cards
-                    .iter()
-                    .filter(|c| c.is_unit())
-                    .filter(|c| {
-                        !c.get_unit_base()
-                            .unwrap_or(&UnitBase::default())
-                            .power_counters
-                            .is_empty()
-                    })
-                    .map(|c| c.get_id().clone())
-                    .collect();
-                for card_id in card_ids {
-                    let card = state.get_card_mut(&card_id).unwrap();
-                    let base = card.get_unit_base_mut().unwrap();
-                    for counter in &mut base.power_counters {
-                        if counter.expires_in_turns.is_some() && counter.expires_in_turns.unwrap() > 0 {
-                            counter.expires_in_turns = Some(counter.expires_in_turns.unwrap() - 1);
-                        }
-                    }
-
-                    card.get_unit_base_mut()
-                        .unwrap()
-                        .power_counters
-                        .retain(|c| c.expires_in_turns.is_none() || c.expires_in_turns.unwrap() > 0);
-                }
                 state.phase = Phase::Main;
             }
             Effect::AddResources {
@@ -713,6 +816,8 @@ impl Effect {
                 deck.sites = sites.clone();
             }
         }
+
+        self.expire_counters(state);
 
         Ok(())
     }
