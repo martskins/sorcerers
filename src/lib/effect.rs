@@ -194,6 +194,12 @@ pub enum Effect {
         from: Zone,
         to: Zone,
     },
+    Burrow {
+        card_id: uuid::Uuid,
+    },
+    Submerge {
+        card_id: uuid::Uuid,
+    },
     MoveCard {
         card_id: uuid::Uuid,
         from: Zone,
@@ -380,6 +386,8 @@ impl Effect {
             Effect::DealDamageToTarget { .. } => "DealDamageToTarget".to_string(),
             Effect::TeleportUnitToZone { .. } => "TeleportUnitToZone".to_string(),
             Effect::RearrangeDeck { .. } => "RearrangeDeck".to_string(),
+            Effect::Burrow { .. } => "Burrow".to_string(),
+            Effect::Submerge { .. } => "Submerge".to_string(),
         }
     }
 
@@ -813,6 +821,14 @@ impl Effect {
                 let deck = state.decks.get_mut(&state.current_player).unwrap();
                 deck.spells = spells.clone();
                 deck.sites = sites.clone();
+            }
+            Effect::Burrow { card_id } => {
+                let card = state.get_card_mut(card_id).unwrap();
+                card.get_base_mut().plane = Plane::Burrowed;
+            }
+            Effect::Submerge { card_id } => {
+                let card = state.get_card_mut(card_id).unwrap();
+                card.get_base_mut().plane = Plane::Submerged;
             }
         }
 

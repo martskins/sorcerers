@@ -520,22 +520,20 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         self.get_zones_within_steps(state, steps + 1)
     }
 
-    fn get_valid_attack_targets(&self, state: &State) -> Vec<uuid::Uuid> {
-        let attacker_is_airborne = self.has_modifier(state, &Modifier::Airborne);
+    fn get_valid_attack_targets(&self, state: &State, ranged: bool) -> Vec<uuid::Uuid> {
         state
             .cards
             .iter()
             .filter(|c| c.get_owner_id() != self.get_owner_id())
             .filter(|c| c.is_unit() || c.is_site())
             .filter(|c| {
-                if attacker_is_airborne {
-                    return true;
-                }
-
-                let defender_is_airborne = c.has_modifier(state, &Modifier::Airborne);
-                !defender_is_airborne
+                let same_plane = c.get_base().plane == self.get_base().plane;
+                let ranged_on_airborne =
+                    ranged && self.get_base().plane == Plane::Surface && c.get_base().plane == Plane::Air;
+                return same_plane || ranged_on_airborne;
             })
             .filter(|c| {
+                let attacker_is_airborne = self.has_modifier(state, &Modifier::Airborne);
                 if !attacker_is_airborne {
                     return c.get_zone().is_adjacent(&self.get_zone());
                 }
@@ -790,6 +788,15 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         if self.has_modifier(state, &Modifier::Ranged) {
             actions.push(Box::new(UnitAction::RangedAttack));
         }
+
+        if self.has_modifier(state, &Modifier::Burrowing) {
+            actions.push(Box::new(UnitAction::Burrow));
+        }
+
+        if self.has_modifier(state, &Modifier::Submerge) {
+            actions.push(Box::new(UnitAction::Submerge));
+        }
+
         actions
     }
 

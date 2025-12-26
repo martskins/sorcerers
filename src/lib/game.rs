@@ -520,6 +520,8 @@ pub enum UnitAction {
     Attack,
     RangedAttack,
     Defend,
+    Burrow,
+    Submerge,
 }
 
 #[async_trait::async_trait]
@@ -530,6 +532,8 @@ impl Action for UnitAction {
             UnitAction::Attack => "Attack",
             UnitAction::RangedAttack => "Ranged Attack",
             UnitAction::Defend => "Defend",
+            UnitAction::Burrow => "Burrow",
+            UnitAction::Submerge => "Submerge",
         }
     }
 
@@ -538,7 +542,7 @@ impl Action for UnitAction {
             UnitAction::RangedAttack => {
                 let card_id = card_id.unwrap();
                 let card = state.get_card(card_id).unwrap();
-                let cards = card.get_valid_attack_targets(state);
+                let cards = card.get_valid_attack_targets(state, true);
                 let prompt = "Pick a unit to attack";
                 let picked_card_id = pick_card(player_id, &cards, state, prompt).await;
                 vec![Effect::RangedStrike {
@@ -549,7 +553,7 @@ impl Action for UnitAction {
             UnitAction::Attack => {
                 let card_id = card_id.unwrap();
                 let card = state.get_card(card_id).unwrap();
-                let cards = card.get_valid_attack_targets(state);
+                let cards = card.get_valid_attack_targets(state, false);
                 let prompt = "Pick a unit to attack";
                 let picked_card_id = pick_card(player_id, &cards, state, prompt).await;
                 vec![Effect::Attack {
@@ -569,6 +573,18 @@ impl Action for UnitAction {
                     to: zone,
                     tap: true,
                     plane: card.get_base().plane.clone(),
+                }]
+            }
+            UnitAction::Burrow => {
+                let card_id = card_id.unwrap();
+                vec![Effect::Burrow {
+                    card_id: card_id.clone(),
+                }]
+            }
+            UnitAction::Submerge => {
+                let card_id = card_id.unwrap();
+                vec![Effect::Submerge {
+                    card_id: card_id.clone(),
                 }]
             }
             UnitAction::Defend => vec![],
