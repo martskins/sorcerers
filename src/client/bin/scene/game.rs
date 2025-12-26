@@ -63,6 +63,19 @@ pub enum Status {
     },
 }
 
+#[derive(Debug, PartialEq)]
+enum CardSelectionOverlayBehaviour {
+    Preview,
+    Pick,
+}
+
+#[derive(Debug)]
+struct CardSelectionOverlay {
+    pub cards: Vec<uuid::Uuid>,
+    pub prompt: String,
+    pub behaviour: CardSelectionOverlayBehaviour,
+}
+
 #[derive(Debug)]
 pub struct Game {
     pub player_id: PlayerId,
@@ -79,6 +92,7 @@ pub struct Game {
     // macroquad respond to mouse button presses and our game mostly responds to mouse button
     // releases, so a single click can trigger two actions.
     click_enabled: bool,
+    card_selection_overlay: Option<CardSelectionOverlay>,
     actions: Vec<String>,
     status: Status,
 }
@@ -103,6 +117,7 @@ impl Game {
             resources: HashMap::new(),
             actions: Vec::new(),
             click_enabled: true,
+            card_selection_overlay: None,
             status: Status::Idle,
         }
     }
@@ -159,6 +174,7 @@ impl Game {
         self.render_player_hand().await;
         self.render_card_preview().await?;
         self.render_realm().await;
+        self.render_selecting_overlay().await;
         Ok(())
     }
 
@@ -562,42 +578,23 @@ impl Game {
     async fn render_grid(&mut self) {
         let grid_color = WHITE;
         let grid_thickness = 1.0;
-        for cell_display in &self.cell_rects {
-            draw_rectangle_lines(
-                cell_display.rect.x,
-                cell_display.rect.y,
-                cell_display.rect.w,
-                cell_display.rect.h,
-                grid_thickness,
-                grid_color,
-            );
+        for cell_rect in &self.cell_rects {
+            let rect = cell_rect.rect;
+            draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, grid_thickness, grid_color);
 
-            draw_text(
-                &cell_display.id.to_string(),
-                cell_display.rect.x + 5.0,
-                cell_display.rect.y + 15.0,
-                12.0,
-                GRAY,
-            );
+            draw_text(&cell_rect.id.to_string(), rect.x + 5.0, rect.y + 15.0, 12.0, GRAY);
 
             // Draw a UI button at the top right corner as a placeholder for an icon
             let button_size = 18.0;
-            let button_x = cell_display.rect.x + cell_display.rect.w - button_size - 4.0;
-            let button_y = cell_display.rect.y + 4.0;
+            let button_x = rect.x + rect.w - button_size - 4.0;
+            let button_y = rect.y + 4.0;
             let button_pos = Vec2::new(button_x, button_y);
             let button_dim = Vec2::new(button_size, button_size);
 
             match &self.status {
                 Status::SelectingZone { zones } => {
-                    if zones.iter().find(|i| i == &&Zone::Realm(cell_display.id)).is_some() {
-                        draw_rectangle_lines(
-                            cell_display.rect.x,
-                            cell_display.rect.y,
-                            cell_display.rect.w,
-                            cell_display.rect.h,
-                            5.0,
-                            GREEN,
-                        );
+                    if zones.iter().find(|i| i == &&Zone::Realm(cell_rect.id)).is_some() {
+                        draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, 5.0, GREEN);
                     }
                 }
                 Status::SelectingCard { preview: true, .. } | Status::SelectingAction { .. } => {
@@ -612,8 +609,18 @@ impl Game {
                 .ui(&mut ui::root_ui());
 
             if button {
-                self.click_enabled = false;
-                println!("Clicked cell {}", cell_display.id);
+                let cards = self
+                    .cards
+                    .iter()
+                    .filter(|c| c.zone == Zone::Realm(cell_rect.id))
+                    .map(|c| c.id)
+                    .collect::<Vec<uuid::Uuid>>();
+                let prompt = format!("Viewing cards on location {}", cell_rect.id);
+                self.card_selection_overlay = Some(CardSelectionOverlay {
+                    cards,
+                    prompt,
+                    behaviour: CardSelectionOverlayBehaviour::Preview,
+                });
             }
         }
     }
@@ -642,6 +649,107 @@ impl Game {
             }
         }
         lines.join("\n")
+    }
+
+    async fn render_selecting_overlay(&mut self) {
+        let mut close = false;
+        if let Some(CardSelectionOverlay {
+            cards,
+            prompt,
+            behaviour,
+        }) = &self.card_selection_overlay
+        {
+            // Draw semi-transparent overlay
+            draw_rectangle(
+                0.0,
+                0.0,
+                screen_width(),
+                screen_height(),
+                Color::new(0.0, 0.0, 0.0, 0.6),
+            );
+
+            let window_style = ui::root_ui()
+                .style_builder()
+                .background_margin(RectOffset::new(10.0, 10.0, 10.0, 10.0))
+                .build();
+            let skin = ui::Skin {
+                window_style,
+                ..ui::root_ui().default_skin()
+            };
+
+            ui::root_ui().push_skin(&skin);
+
+            // Find the RenderableCards for the given card IDs
+            let preview_cards: Vec<&RenderableCard> = self.cards.iter().filter(|c| cards.contains(&c.id)).collect();
+            let mut textures = Vec::with_capacity(cards.len());
+            for card in &preview_cards {
+                let texture = TextureCache::get_card_texture(card).await;
+                textures.push(texture);
+            }
+            let card_count = preview_cards.len();
+            let card_width = 120.0;
+            let card_height = 180.0;
+            let card_spacing = 20.0;
+
+            let mut skin = ui::root_ui().default_skin();
+            skin.button_style = ui::root_ui()
+                .style_builder()
+                .color(Color::new(0.0, 0.0, 0.0, 0.0))
+                .build();
+            skin.label_style = ui::root_ui().style_builder().font_size(FONT_SIZE as u16).build();
+            ui::root_ui().push_skin(&skin);
+
+            let cards_area_width = card_count as f32 * card_width + (card_count as f32 - 1.0) * card_spacing;
+            let cards_start_x = (screen_width() - cards_area_width) / 2.0;
+            let cards_y = (screen_height() - card_height) / 2.0 + 30.0;
+
+            let wrapped_text = Game::wrap_text(&prompt, screen_width() - 20.0, FONT_SIZE as u16);
+            macroquad::text::draw_multiline_text(
+                &wrapped_text,
+                cards_start_x - 50.0,
+                cards_y - 50.0,
+                FONT_SIZE,
+                Some(1.0),
+                WHITE,
+            );
+
+            for (idx, card) in preview_cards.iter().enumerate() {
+                let x = cards_start_x + idx as f32 * (card_width + card_spacing);
+                let card_button = ui::widgets::Button::new(textures[idx].clone())
+                    .position(Vec2::new(x, cards_y))
+                    .size(Vec2::new(card_width, card_height))
+                    .ui(&mut ui::root_ui());
+                if card_button && behaviour == &CardSelectionOverlayBehaviour::Pick {
+                    self.client
+                        .send(ClientMessage::PickCard {
+                            player_id: self.player_id.clone(),
+                            game_id: self.game_id.clone(),
+                            card_id: card.id,
+                        })
+                        .unwrap();
+                    close = true;
+                }
+            }
+
+            if behaviour == &CardSelectionOverlayBehaviour::Preview {
+                let close_button_pos = Vec2::new(screen_width() / 2.0 - 50.0, cards_y + card_height + 20.0);
+                let close_button_size = Vec2::new(100.0, 40.0);
+                let close_button = ui::widgets::Button::new("Close")
+                    .position(close_button_pos)
+                    .size(close_button_size)
+                    .ui(&mut ui::root_ui());
+                if close_button {
+                    close = true;
+                }
+            }
+
+            ui::root_ui().pop_skin();
+        }
+
+        if close {
+            self.card_selection_overlay = None;
+            self.status = Status::Idle;
+        }
     }
 
     async fn render_realm(&mut self) {
@@ -711,81 +819,11 @@ impl Game {
                 }
 
                 if *preview {
-                    // Draw semi-transparent overlay
-                    draw_rectangle(
-                        0.0,
-                        0.0,
-                        screen_width(),
-                        screen_height(),
-                        Color::new(0.0, 0.0, 0.0, 0.6),
-                    );
-
-                    let window_style = ui::root_ui()
-                        .style_builder()
-                        .background_margin(RectOffset::new(10.0, 10.0, 10.0, 10.0))
-                        .build();
-                    let skin = ui::Skin {
-                        window_style,
-                        ..ui::root_ui().default_skin()
-                    };
-
-                    ui::root_ui().push_skin(&skin);
-
-                    // Find the RenderableCards for the given card IDs
-                    let preview_cards: Vec<&RenderableCard> =
-                        self.cards.iter().filter(|c| cards.contains(&c.id)).collect();
-                    let mut textures = Vec::with_capacity(cards.len());
-                    for card in &preview_cards {
-                        let texture = TextureCache::get_card_texture(card).await;
-                        textures.push(texture);
-                    }
-                    let card_count = preview_cards.len();
-                    let card_width = 120.0;
-                    let card_height = 180.0;
-                    let card_spacing = 20.0;
-
-                    let mut skin = ui::root_ui().default_skin();
-                    skin.button_style = ui::root_ui()
-                        .style_builder()
-                        .color(Color::new(0.0, 0.0, 0.0, 0.0))
-                        .build();
-                    skin.label_style = ui::root_ui().style_builder().font_size(FONT_SIZE as u16).build();
-                    ui::root_ui().push_skin(&skin);
-
-                    let cards_area_width = card_count as f32 * card_width + (card_count as f32 - 1.0) * card_spacing;
-                    let cards_start_x = (screen_width() - cards_area_width) / 2.0;
-                    let cards_y = (screen_height() - card_height) / 2.0 + 30.0;
-
-                    let wrapped_text = Game::wrap_text(&prompt, screen_width() - 20.0, FONT_SIZE as u16);
-                    macroquad::text::draw_multiline_text(
-                        &wrapped_text,
-                        cards_start_x - 50.0,
-                        cards_y - 50.0,
-                        FONT_SIZE,
-                        Some(1.0),
-                        WHITE,
-                    );
-
-                    for (idx, card) in preview_cards.iter().enumerate() {
-                        let x = cards_start_x + idx as f32 * (card_width + card_spacing);
-                        if ui::widgets::Button::new(textures[idx].clone())
-                            .position(Vec2::new(x, cards_y))
-                            .size(Vec2::new(card_width, card_height))
-                            .ui(&mut ui::root_ui())
-                        {
-                            self.click_enabled = false;
-                            self.client
-                                .send(ClientMessage::PickCard {
-                                    player_id: self.player_id.clone(),
-                                    game_id: self.game_id.clone(),
-                                    card_id: card.id,
-                                })
-                                .unwrap();
-                            self.status = Status::Idle;
-                        }
-                    }
-
-                    ui::root_ui().pop_skin();
+                    self.card_selection_overlay = Some(CardSelectionOverlay {
+                        cards: cards.clone(),
+                        prompt: prompt.clone(),
+                        behaviour: CardSelectionOverlayBehaviour::Pick,
+                    });
                 } else {
                     if !cards.contains(&card_rect.id) {
                         draw_rectangle_ex(
