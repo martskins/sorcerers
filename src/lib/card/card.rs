@@ -521,12 +521,27 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     fn get_valid_attack_targets(&self, state: &State) -> Vec<uuid::Uuid> {
+        let attacker_is_airborne = self.has_modifier(state, &Modifier::Airborne);
         state
             .cards
             .iter()
             .filter(|c| c.get_owner_id() != self.get_owner_id())
             .filter(|c| c.is_unit() || c.is_site())
-            .filter(|c| c.get_zone().is_adjacent(&self.get_zone()))
+            .filter(|c| {
+                if attacker_is_airborne {
+                    return true;
+                }
+
+                let defender_is_airborne = c.has_modifier(state, &Modifier::Airborne);
+                !defender_is_airborne
+            })
+            .filter(|c| {
+                if !attacker_is_airborne {
+                    return c.get_zone().is_adjacent(&self.get_zone());
+                }
+
+                return c.get_zone().is_nearby(&self.get_zone());
+            })
             .map(|c| c.get_id().clone())
             .collect()
     }
