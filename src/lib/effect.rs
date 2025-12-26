@@ -583,7 +583,7 @@ impl Effect {
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
                 let cast_effects = card.on_summon(&snapshot);
                 card.set_zone(zone.clone());
-                if !card.has_modifier(&snapshot, Modifier::Charge) {
+                if !card.has_modifier(&snapshot, &Modifier::Charge) {
                     card.add_modifier(Modifier::SummoningSickness);
                 }
 
@@ -604,7 +604,7 @@ impl Effect {
                 let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
                 let cast_effects = card.on_summon(&snapshot);
                 card.set_zone(zone.clone());
-                if !card.has_modifier(&snapshot, Modifier::Charge) {
+                if !card.has_modifier(&snapshot, &Modifier::Charge) {
                     card.add_modifier(Modifier::SummoningSickness);
                 }
 
@@ -780,7 +780,6 @@ impl Effect {
                 attacker_id,
                 defender_id,
             } => {
-                // TODO: Review this
                 let snapshot = state.snapshot();
                 let attacker = state.cards.iter().find(|c| c.get_id() == attacker_id).unwrap();
                 let defender = state.cards.iter().find(|c| c.get_id() == defender_id).unwrap();

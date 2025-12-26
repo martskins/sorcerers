@@ -114,7 +114,7 @@ impl Card for NimbusJinn {
     }
 
     fn get_actions(&self, state: &State) -> Vec<Box<dyn Action>> {
-        let mut actions = self.base_unit_actions();
+        let mut actions = self.base_unit_actions(state);
         actions.push(Box::new(NimbusJinnAction::DealDamage));
         actions
     }

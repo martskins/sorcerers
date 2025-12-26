@@ -518,7 +518,7 @@ impl Action for AvatarAction {
 pub enum UnitAction {
     Move,
     Attack,
-    RangedStrike,
+    RangedAttack,
     Defend,
 }
 
@@ -528,16 +528,23 @@ impl Action for UnitAction {
         match self {
             UnitAction::Move => "Move",
             UnitAction::Attack => "Attack",
-            UnitAction::RangedStrike => "Attack",
+            UnitAction::RangedAttack => "Ranged Attack",
             UnitAction::Defend => "Defend",
         }
     }
 
     async fn on_select(&self, card_id: Option<&uuid::Uuid>, player_id: &PlayerId, state: &State) -> Vec<Effect> {
         match self {
-            UnitAction::RangedStrike => {
-                // TODO
-                vec![]
+            UnitAction::RangedAttack => {
+                let card_id = card_id.unwrap();
+                let card = state.get_card(card_id).unwrap();
+                let cards = card.get_valid_attack_targets(state);
+                let prompt = "Pick a unit to attack";
+                let picked_card_id = pick_card(player_id, &cards, state, prompt).await;
+                vec![Effect::RangedStrike {
+                    attacker_id: card_id.clone(),
+                    defender_id: picked_card_id,
+                }]
             }
             UnitAction::Attack => {
                 let card_id = card_id.unwrap();
@@ -545,17 +552,10 @@ impl Action for UnitAction {
                 let cards = card.get_valid_attack_targets(state);
                 let prompt = "Pick a unit to attack";
                 let picked_card_id = pick_card(player_id, &cards, state, prompt).await;
-                let picked_card = state.get_card(&picked_card_id).unwrap();
-                vec![
-                    Effect::MoveCard {
-                        card_id: card_id.clone(),
-                        from: card.get_zone().clone(),
-                        to: picked_card.get_zone().clone(),
-                        tap: true,
-                        plane: card.get_base().plane.clone(),
-                    },
-                    Effect::take_damage(&picked_card_id, card_id, card.get_power(state).unwrap()),
-                ]
+                vec![Effect::Attack {
+                    attacker_id: card_id.clone(),
+                    defender_id: picked_card_id,
+                }]
             }
             UnitAction::Move => {
                 let card_id = card_id.unwrap();
@@ -713,7 +713,7 @@ impl Game {
                     }
                     (_, Zone::Realm(_)) => {
                         let unit_disabled =
-                            card.is_tapped() || card.has_modifier(&self.state, Modifier::SummoningSickness);
+                            card.is_tapped() || card.has_modifier(&self.state, &Modifier::SummoningSickness);
                         if card.is_unit() && unit_disabled {
                             return Ok(());
                         }

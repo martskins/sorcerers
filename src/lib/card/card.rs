@@ -305,7 +305,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             if !visited.contains(&current_zone) {
                 visited.push(current_zone.clone());
 
-                if self.has_modifier(state, Modifier::Airborne) {
+                if self.has_modifier(state, &Modifier::Airborne) {
                     for nearby in current_zone.get_nearby() {
                         to_visit.push((nearby, current_step + 1));
                     }
@@ -317,7 +317,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             }
         }
 
-        if !self.has_modifier(state, Modifier::Voidwalk) {
+        if !self.has_modifier(state, &Modifier::Voidwalk) {
             visited = visited
                 .iter()
                 .filter(|z| z.get_site(state).is_some())
@@ -348,7 +348,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             ub.damage += damage;
 
             let attacker = state.cards.iter().find(|c| c.get_id() == from).unwrap();
-            if ub.damage >= self.get_toughness(state).unwrap_or(0) || attacker.has_modifier(state, Modifier::Lethal) {
+            if ub.damage >= self.get_toughness(state).unwrap_or(0) || attacker.has_modifier(state, &Modifier::Lethal) {
                 return vec![Effect::bury_card(self.get_id(), self.get_zone())];
             }
 
@@ -460,7 +460,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         self.default_get_valid_play_zones(state)
     }
 
-    fn has_modifier(&self, _state: &State, modifier: Modifier) -> bool {
+    fn has_modifier(&self, _state: &State, modifier: &Modifier) -> bool {
         if self
             .get_unit_base()
             .unwrap_or(&UnitBase::default())
@@ -474,7 +474,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             .unwrap_or(&UnitBase::default())
             .modifier_counters
             .iter()
-            .find(|c| c.modifier == modifier)
+            .find(|c| &c.modifier == modifier)
             .is_some()
     }
 
@@ -697,7 +697,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
         let elements = spell.get_elements(state);
         for element in elements {
-            if self.has_modifier(state, Modifier::Spellcaster(element)) {
+            if self.has_modifier(state, &Modifier::Spellcaster(element)) {
                 return true;
             }
         }
@@ -742,9 +742,9 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         }
     }
 
-    fn on_summon(&mut self, _state: &State) -> Vec<Effect> {
+    fn on_summon(&mut self, state: &State) -> Vec<Effect> {
         if self.is_site() {
-            return self.base_site_on_summon(_state);
+            return self.base_site_on_summon(state);
         }
 
         vec![]
@@ -755,7 +755,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     fn base_avatar_actions(&self, state: &State) -> Vec<Box<dyn Action>> {
-        let mut actions: Vec<Box<dyn Action>> = self.base_unit_actions();
+        let mut actions: Vec<Box<dyn Action>> = self.base_unit_actions(state);
         actions.push(Box::new(AvatarAction::DrawSite));
         if state
             .cards
@@ -770,15 +770,19 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         actions
     }
 
-    fn base_unit_actions(&self) -> Vec<Box<dyn Action>> {
-        vec![Box::new(UnitAction::Attack), Box::new(UnitAction::Move)]
+    fn base_unit_actions(&self, state: &State) -> Vec<Box<dyn Action>> {
+        let mut actions: Vec<Box<dyn Action>> = vec![Box::new(UnitAction::Attack), Box::new(UnitAction::Move)];
+        if self.has_modifier(state, &Modifier::Ranged) {
+            actions.push(Box::new(UnitAction::RangedAttack));
+        }
+        actions
     }
 
     fn get_actions(&self, state: &State) -> Vec<Box<dyn Action>> {
         if self.is_avatar() {
             return self.base_avatar_actions(state);
         } else if self.is_unit() {
-            return self.base_unit_actions();
+            return self.base_unit_actions(state);
         }
 
         vec![]

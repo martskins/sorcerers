@@ -88,7 +88,7 @@ impl Card for AskelonPhoenix {
         ub.damage += damage;
 
         let mut effects = vec![];
-        if ub.damage >= self.get_toughness(state).unwrap_or(0) || attacker.has_modifier(state, Modifier::Lethal) {
+        if ub.damage >= self.get_toughness(state).unwrap_or(0) || attacker.has_modifier(state, &Modifier::Lethal) {
             effects.push(Effect::bury_card(self.get_id(), self.get_zone()));
         }
         effects
