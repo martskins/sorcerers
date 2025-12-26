@@ -72,6 +72,7 @@ impl TextureCache {
     }
 
     async fn download_card_image(card: &RenderableCard) -> anyhow::Result<Texture2D> {
+        println!("Downloading image for {}", card.get_name());
         let set = card.get_edition().url_name();
         let card_name = card.get_name();
         let name_for_url = card

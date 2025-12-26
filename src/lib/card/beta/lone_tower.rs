@@ -75,9 +75,11 @@ impl Card for LoneTower {
     }
 
     async fn genesis(&self, state: &State) -> Vec<Effect> {
+        println!("Lone Tower genesis triggered");
         let count = state
             .cards
             .iter()
+            .filter(|c| matches!(c.get_zone(), Zone::Realm(_)))
             .filter(|c| c.get_id() != self.get_id())
             .filter(|c| c.get_controller_id() == self.get_owner_id())
             .filter(|c| c.get_name() == Self::NAME)
