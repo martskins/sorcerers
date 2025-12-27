@@ -17,6 +17,7 @@ pub enum CardType {
     Token,
     Minion,
     Magic,
+    Artifact,
     Aura,
 }
 
@@ -208,7 +209,7 @@ impl RenderableCard {
     }
 
     pub fn is_spell(&self) -> bool {
-        self.card_type == CardType::Minion || self.card_type == CardType::Aura || self.card_type == CardType::Magic
+        !self.is_site()
     }
 
     pub fn get_name(&self) -> &str {
@@ -377,6 +378,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     fn default_get_valid_play_zones(&self, state: &State) -> Vec<Zone> {
         match self.get_card_type() {
+            CardType::Artifact => vec![],
             CardType::Minion | CardType::Aura => state
                 .cards
                 .iter()
@@ -460,6 +462,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             CardType::Aura
         } else if self.is_unit() {
             CardType::Minion
+        } else if self.is_artifact() {
+            CardType::Artifact
         } else {
             CardType::Magic
         }
@@ -527,6 +531,19 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         }
 
         self.get_zones_within_steps(state, steps + 1)
+    }
+
+    fn get_valid_attach_targets(&self, state: &State) -> Vec<uuid::Uuid> {
+        match self.get_card_type() {
+            CardType::Artifact => state
+                .cards
+                .iter()
+                .filter(|c| c.is_unit())
+                .filter(|c| c.get_controller_id() == self.get_owner_id())
+                .map(|c| c.get_id().clone())
+                .collect(),
+            _ => vec![],
+        }
     }
 
     fn get_valid_attack_targets(&self, state: &State, ranged: bool) -> Vec<uuid::Uuid> {
@@ -656,6 +673,14 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         None
     }
 
+    fn get_relic_base_mut(&mut self) -> Option<&mut ArtifactBase> {
+        None
+    }
+
+    fn get_relic_base(&self) -> Option<&ArtifactBase> {
+        None
+    }
+
     fn get_zone(&self) -> &Zone {
         &self.get_base().zone
     }
@@ -691,6 +716,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     fn is_avatar(&self) -> bool {
         self.get_avatar_base().is_some()
+    }
+
+    fn is_artifact(&self) -> bool {
+        self.get_relic_base().is_some()
     }
 
     fn is_unit(&self) -> bool {
@@ -906,6 +935,11 @@ pub enum Rarity {
     Exceptional,
     Elite,
     Unique,
+}
+
+#[derive(Debug, Clone)]
+pub struct ArtifactBase {
+    pub attached_to: Option<uuid::Uuid>,
 }
 
 #[derive(Debug)]

@@ -1,7 +1,7 @@
 use crate::{
     card::{Card, CardBase, Edition, Plane, Rarity, Zone},
     effect::{CardQuery, Effect, ZoneQuery},
-    game::{PlayerId, Thresholds},
+    game::{PlayerId, Thresholds, pick_zone},
     state::State,
 };
 
@@ -61,9 +61,11 @@ impl Card for LightningBolt {
     }
 
     async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> Vec<Effect> {
+        let zones = Zone::all_realm();
+        let picked_zone = pick_zone(self.get_owner_id(), &zones, state, "Lightning Bolt: Choose a zone").await;
         vec![Effect::DealDamageToTarget {
             player_id: self.get_owner_id().clone(),
-            query: CardQuery::RandomUnitInZone { zone: ZoneQuery::Any },
+            query: CardQuery::RandomUnitInZone { zone: picked_zone },
             from: caster_id.clone(),
             damage: 3,
             prompt: "Deal 3 damage to a random unit in target zone".to_string(),

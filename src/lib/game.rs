@@ -689,6 +689,19 @@ impl Game {
                 }
 
                 match (card.get_card_type(), card.get_zone()) {
+                    (CardType::Artifact, Zone::Hand) => {
+                        let resources = self.state.resources.get(&player_id).unwrap();
+                        let can_afford = resources.can_afford(card, &self.state);
+                        if !can_afford {
+                            return Ok(());
+                        }
+
+                        let units = card.get_valid_attach_targets(&self.state);
+                        let picked_card_id =
+                            pick_card(player_id, &units, &self.state, "Pick a unit to attach the relic to").await;
+                        let artifact = self.state.get_card_mut(card_id).unwrap();
+                        artifact.get_relic_base_mut().unwrap().attached_to = Some(picked_card_id.clone());
+                    }
                     (CardType::Minion, Zone::Hand) | (CardType::Aura, Zone::Hand) => {
                         let resources = self.state.resources.get(&player_id).unwrap();
                         let can_afford = resources.can_afford(card, &self.state);
@@ -791,6 +804,27 @@ impl Game {
                 ];
                 self.state.effects.extend(effects);
             }
+        }
+
+        // Move attached artifacts to the same zone as the unit they are attached to
+        let attached_artifacts: Vec<(uuid::Uuid, uuid::Uuid)> = self
+            .state
+            .cards
+            .iter()
+            .filter(|c| c.is_artifact())
+            .filter(|c| c.get_relic_base().unwrap().attached_to.is_some())
+            .map(|c| {
+                (
+                    c.get_id().clone(),
+                    c.get_relic_base().unwrap().attached_to.unwrap().clone(),
+                )
+            })
+            .collect();
+        for (artifact_id, unit_id) in attached_artifacts {
+            let unit = self.state.get_card(&unit_id).unwrap();
+            let zone = unit.get_zone().clone();
+            let artifact = self.state.get_card_mut(&artifact_id).unwrap();
+            artifact.set_zone(zone);
         }
 
         self.send_sync().await?;

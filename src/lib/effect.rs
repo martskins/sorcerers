@@ -58,7 +58,7 @@ pub enum CardQuery {
     InZone { zone: Zone, owner: Option<PlayerId> },
     NearZone { zone: Zone, owner: Option<PlayerId> },
     OwnedBy { owner: uuid::Uuid },
-    RandomUnitInZone { zone: ZoneQuery },
+    RandomUnitInZone { zone: Zone },
 }
 
 impl CardQuery {
@@ -114,7 +114,6 @@ impl CardQuery {
                 pick_card(player_id, &cards, state, prompt).await
             }
             CardQuery::RandomUnitInZone { zone } => {
-                let zone = zone.resolve(player_id, state, prompt).await;
                 let cards: Vec<uuid::Uuid> = state
                     .get_units_in_zone(&zone)
                     .iter()

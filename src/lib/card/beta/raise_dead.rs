@@ -62,9 +62,7 @@ impl Card for RaiseDead {
 
     async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> Vec<Effect> {
         let prompt = "Summon a random dead minion".to_string();
-        let query = CardQuery::RandomUnitInZone {
-            zone: ZoneQuery::Specific(Zone::Cemetery),
-        };
+        let query = CardQuery::RandomUnitInZone { zone: Zone::Cemetery };
         let unit_id = query.resolve(self.get_owner_id(), state, &prompt).await;
         let unit = state.get_card(&unit_id).unwrap();
         let zones = unit.get_valid_play_zones(state);

@@ -513,26 +513,20 @@ impl Game {
 
         match &self.status {
             Status::Idle => {
-                let mut card_selected = None;
-                for card_display in &mut self
+                for card_rect in &mut self
                     .card_rects
                     .iter_mut()
                     .filter(|c| matches!(c.zone, Zone::Realm(_)) || c.zone == Zone::Hand)
                 {
-                    if card_display.is_hovered && is_mouse_button_released(MouseButton::Left) {
-                        card_selected = Some(card_display.id.clone());
-                        break;
+                    if card_rect.is_hovered && is_mouse_button_released(MouseButton::Left) {
+                        self.client
+                            .send(ClientMessage::ClickCard {
+                                card_id: card_rect.id.clone(),
+                                player_id: self.player_id,
+                                game_id: self.game_id,
+                            })
+                            .unwrap();
                     };
-                }
-
-                if card_selected.is_some() {
-                    self.client
-                        .send(ClientMessage::ClickCard {
-                            card_id: card_selected.unwrap(),
-                            player_id: self.player_id,
-                            game_id: self.game_id,
-                        })
-                        .unwrap();
                 }
             }
             Status::SelectingCard {
@@ -659,6 +653,10 @@ impl Game {
                     continue;
                 }
                 Status::SelectingCard { preview: false, .. } | Status::Idle => {}
+            }
+
+            if self.card_selection_overlay.is_some() {
+                continue;
             }
 
             let button = ui::widgets::Button::new("+")
