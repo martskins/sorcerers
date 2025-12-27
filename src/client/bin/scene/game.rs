@@ -1,7 +1,7 @@
 use crate::{
     config::*,
     render::{CardRect, CellRect},
-    scene::Scene,
+    scene::{Scene, selection_overlay::SelectionOverlay},
     texture_cache::TextureCache,
 };
 use macroquad::{
@@ -26,6 +26,8 @@ use sorcerers::{
     },
 };
 use std::collections::HashMap;
+
+use super::selection_overlay::SelectionOverlayBehaviour;
 
 const FONT_SIZE: f32 = 24.0;
 const THRESHOLD_SYMBOL_SPACING: f32 = 18.0;
@@ -63,19 +65,6 @@ pub enum Status {
     },
 }
 
-#[derive(Debug, PartialEq)]
-enum CardSelectionOverlayBehaviour {
-    Preview,
-    Pick,
-}
-
-#[derive(Debug)]
-struct CardSelectionOverlay {
-    pub cards: Vec<uuid::Uuid>,
-    pub prompt: String,
-    pub behaviour: CardSelectionOverlayBehaviour,
-}
-
 #[derive(Debug)]
 pub struct Game {
     pub player_id: PlayerId,
@@ -92,7 +81,7 @@ pub struct Game {
     // macroquad respond to mouse button presses and our game mostly responds to mouse button
     // releases, so a single click can trigger two actions.
     click_enabled: bool,
-    card_selection_overlay: Option<CardSelectionOverlay>,
+    card_selection_overlay: Option<SelectionOverlay>,
     actions: Vec<String>,
     status: Status,
 }
@@ -139,6 +128,16 @@ impl Game {
             self.click_enabled = true;
         }
 
+        if self.card_selection_overlay.is_some() {
+            let overlay = self.card_selection_overlay.as_mut().unwrap();
+            overlay.update();
+
+            if overlay.should_close() {
+                self.card_selection_overlay = None;
+                self.status = Status::Idle;
+            }
+        }
+
         Ok(())
     }
 
@@ -174,7 +173,10 @@ impl Game {
         self.render_player_hand().await;
         self.render_card_preview().await?;
         self.render_realm().await;
-        self.render_selecting_overlay().await;
+        if self.card_selection_overlay.is_some() {
+            let overlay = self.card_selection_overlay.as_mut().unwrap();
+            overlay.render();
+        }
         Ok(())
     }
 
@@ -192,6 +194,21 @@ impl Game {
                     preview: preview.clone(),
                     prompt: prompt.clone(),
                 };
+
+                if *preview {
+                    let renderables = self.cards.iter().filter(|c| cards.contains(&c.id)).collect();
+                    self.card_selection_overlay = Some(
+                        SelectionOverlay::new(
+                            self.client.clone(),
+                            &self.game_id,
+                            &self.player_id,
+                            renderables,
+                            prompt,
+                            SelectionOverlayBehaviour::Pick,
+                        )
+                        .await,
+                    );
+                }
                 Ok(None)
             }
             ServerMessage::PickAction { prompt, actions, .. } => {
@@ -256,6 +273,12 @@ impl Game {
     }
 
     fn handle_click(&mut self, mouse_position: Vec2) {
+        if self.card_selection_overlay.is_some() {
+            let overlay = self.card_selection_overlay.as_mut().unwrap();
+            overlay.process_input();
+            return;
+        }
+
         self.handle_card_click(mouse_position);
         self.handle_square_click(mouse_position);
     }
@@ -508,7 +531,38 @@ impl Game {
                         .unwrap();
                 }
             }
-            Status::SelectingCard { cards, .. } => {
+            Status::SelectingCard {
+                cards, preview: true, ..
+            } => {
+                let valid_cards: Vec<&CardRect> = self.card_rects.iter().filter(|c| cards.contains(&c.id)).collect();
+                let mut selected_id = None;
+                for card in valid_cards {
+                    if card.rect.contains(mouse_position.into()) && is_mouse_button_released(MouseButton::Left) {
+                        selected_id = Some(card.id.clone());
+                    }
+                }
+
+                if let Some(id) = selected_id {
+                    let card = self.card_rects.iter_mut().find(|c| c.id == id).unwrap();
+                    card.is_selected = !card.is_selected;
+
+                    if card.is_selected {
+                        self.client
+                            .send(ClientMessage::PickCard {
+                                player_id: self.player_id.clone(),
+                                game_id: self.game_id.clone(),
+                                card_id: id.clone(),
+                            })
+                            .unwrap();
+
+                        self.status = Status::Idle;
+                    }
+                }
+            }
+
+            Status::SelectingCard {
+                cards, preview: false, ..
+            } => {
                 let valid_cards: Vec<&CardRect> = self.card_rects.iter().filter(|c| cards.contains(&c.id)).collect();
                 let mut selected_id = None;
                 for card in valid_cards {
@@ -609,23 +663,28 @@ impl Game {
                 .ui(&mut ui::root_ui());
 
             if button {
-                let cards = self
+                let renderables = self
                     .cards
                     .iter()
                     .filter(|c| c.zone == Zone::Realm(cell_rect.id))
-                    .map(|c| c.id)
-                    .collect::<Vec<uuid::Uuid>>();
+                    .collect::<Vec<&RenderableCard>>();
                 let prompt = format!("Viewing cards on location {}", cell_rect.id);
-                self.card_selection_overlay = Some(CardSelectionOverlay {
-                    cards,
-                    prompt,
-                    behaviour: CardSelectionOverlayBehaviour::Preview,
-                });
+                self.card_selection_overlay = Some(
+                    SelectionOverlay::new(
+                        self.client.clone(),
+                        &self.game_id,
+                        &self.player_id,
+                        renderables,
+                        &prompt,
+                        SelectionOverlayBehaviour::Preview,
+                    )
+                    .await,
+                );
             }
         }
     }
 
-    fn wrap_text(text: &str, max_width: f32, font_size: u16) -> String {
+    pub fn wrap_text(text: &str, max_width: f32, font_size: u16) -> String {
         use macroquad::text::measure_text;
         let mut lines = Vec::new();
         for paragraph in text.split('\n') {
@@ -651,104 +710,55 @@ impl Game {
         lines.join("\n")
     }
 
-    async fn render_selecting_overlay(&mut self) {
-        let mut close = false;
-        if let Some(CardSelectionOverlay {
-            cards,
-            prompt,
-            behaviour,
-        }) = &self.card_selection_overlay
-        {
-            // Draw semi-transparent overlay
-            draw_rectangle(
-                0.0,
-                0.0,
-                screen_width(),
-                screen_height(),
-                Color::new(0.0, 0.0, 0.0, 0.6),
-            );
+    pub fn draw_card(card_rect: &CardRect, player: bool) {
+        let rect = card_rect.rect;
+        draw_texture_ex(
+            &card_rect.image,
+            rect.x,
+            rect.y,
+            WHITE,
+            DrawTextureParams {
+                dest_size: Some(Vec2::new(rect.w, rect.h) * CARD_IN_PLAY_SCALE),
+                rotation: card_rect.rotation(),
+                ..Default::default()
+            },
+        );
 
-            let window_style = ui::root_ui()
-                .style_builder()
-                .background_margin(RectOffset::new(10.0, 10.0, 10.0, 10.0))
-                .build();
-            let skin = ui::Skin {
-                window_style,
-                ..ui::root_ui().default_skin()
-            };
-
-            ui::root_ui().push_skin(&skin);
-
-            // Find the RenderableCards for the given card IDs
-            let preview_cards: Vec<&RenderableCard> = self.cards.iter().filter(|c| cards.contains(&c.id)).collect();
-            let mut textures = Vec::with_capacity(cards.len());
-            for card in &preview_cards {
-                let texture = TextureCache::get_card_texture(card).await;
-                textures.push(texture);
-            }
-            let card_count = preview_cards.len();
-            let card_width = 120.0;
-            let card_height = 180.0;
-            let card_spacing = 20.0;
-
-            let mut skin = ui::root_ui().default_skin();
-            skin.button_style = ui::root_ui()
-                .style_builder()
-                .color(Color::new(0.0, 0.0, 0.0, 0.0))
-                .build();
-            skin.label_style = ui::root_ui().style_builder().font_size(FONT_SIZE as u16).build();
-            ui::root_ui().push_skin(&skin);
-
-            let cards_area_width = card_count as f32 * card_width + (card_count as f32 - 1.0) * card_spacing;
-            let cards_start_x = (screen_width() - cards_area_width) / 2.0;
-            let cards_y = (screen_height() - card_height) / 2.0 + 30.0;
-
-            let wrapped_text = Game::wrap_text(&prompt, screen_width() - 20.0, FONT_SIZE as u16);
-            macroquad::text::draw_multiline_text(
-                &wrapped_text,
-                cards_start_x - 50.0,
-                cards_y - 50.0,
-                FONT_SIZE,
-                Some(1.0),
-                WHITE,
-            );
-
-            for (idx, card) in preview_cards.iter().enumerate() {
-                let x = cards_start_x + idx as f32 * (card_width + card_spacing);
-                let card_button = ui::widgets::Button::new(textures[idx].clone())
-                    .position(Vec2::new(x, cards_y))
-                    .size(Vec2::new(card_width, card_height))
-                    .ui(&mut ui::root_ui());
-                if card_button && behaviour == &CardSelectionOverlayBehaviour::Pick {
-                    self.client
-                        .send(ClientMessage::PickCard {
-                            player_id: self.player_id.clone(),
-                            game_id: self.game_id.clone(),
-                            card_id: card.id,
-                        })
-                        .unwrap();
-                    close = true;
-                }
-            }
-
-            if behaviour == &CardSelectionOverlayBehaviour::Preview {
-                let close_button_pos = Vec2::new(screen_width() / 2.0 - 50.0, cards_y + card_height + 20.0);
-                let close_button_size = Vec2::new(100.0, 40.0);
-                let close_button = ui::widgets::Button::new("Close")
-                    .position(close_button_pos)
-                    .size(close_button_size)
-                    .ui(&mut ui::root_ui());
-                if close_button {
-                    close = true;
-                }
-            }
-
-            ui::root_ui().pop_skin();
+        let mut sleeve_color = DARKGREEN;
+        if !player {
+            sleeve_color = RED;
         }
 
-        if close {
-            self.card_selection_overlay = None;
-            self.status = Status::Idle;
+        // Draw rectangle border rotated around the center
+        let w = rect.w * CARD_IN_PLAY_SCALE;
+        let h = rect.h * CARD_IN_PLAY_SCALE;
+        let cx = rect.x + w / 2.0;
+        let cy = rect.y + h / 2.0;
+        let corners = [
+            Vec2::new(-w / 2.0, -h / 2.0),
+            Vec2::new(w / 2.0, -h / 2.0),
+            Vec2::new(w / 2.0, h / 2.0),
+            Vec2::new(-w / 2.0, h / 2.0),
+        ];
+        let rotated: Vec<Vec2> = corners
+            .iter()
+            .map(|corner| {
+                let (sin, cos) = card_rect.rotation().sin_cos();
+                Vec2::new(
+                    cos * corner.x - sin * corner.y + cx,
+                    sin * corner.x + cos * corner.y + cy,
+                )
+            })
+            .collect();
+        for i in 0..4 {
+            draw_line(
+                rotated[i].x,
+                rotated[i].y,
+                rotated[(i + 1) % 4].x,
+                rotated[(i + 1) % 4].y,
+                2.0,
+                sleeve_color,
+            );
         }
     }
 
@@ -758,86 +768,28 @@ impl Game {
                 continue;
             }
 
-            let mut rotation = 0.0;
-            if card_rect.tapped {
-                rotation = std::f32::consts::FRAC_PI_2;
-            }
+            Game::draw_card(card_rect, card_rect.owner_id == self.player_id);
 
-            let rect = card_rect.rect;
-            draw_texture_ex(
-                &card_rect.image,
-                rect.x,
-                rect.y,
-                WHITE,
-                DrawTextureParams {
-                    dest_size: Some(Vec2::new(rect.w, rect.h) * CARD_IN_PLAY_SCALE),
-                    rotation,
-                    ..Default::default()
-                },
-            );
-
-            let mut sleeve_color = DARKGREEN;
-            if card_rect.owner_id != self.player_id {
-                sleeve_color = RED;
-            }
-
-            // Draw rectangle border rotated around the center
-            let w = rect.w * CARD_IN_PLAY_SCALE;
-            let h = rect.h * CARD_IN_PLAY_SCALE;
-            let cx = rect.x + w / 2.0;
-            let cy = rect.y + h / 2.0;
-            let corners = [
-                Vec2::new(-w / 2.0, -h / 2.0),
-                Vec2::new(w / 2.0, -h / 2.0),
-                Vec2::new(w / 2.0, h / 2.0),
-                Vec2::new(-w / 2.0, h / 2.0),
-            ];
-            let rotated: Vec<Vec2> = corners
-                .iter()
-                .map(|corner| {
-                    let (sin, cos) = rotation.sin_cos();
-                    Vec2::new(
-                        cos * corner.x - sin * corner.y + cx,
-                        sin * corner.x + cos * corner.y + cy,
-                    )
-                })
-                .collect();
-            for i in 0..4 {
-                draw_line(
-                    rotated[i].x,
-                    rotated[i].y,
-                    rotated[(i + 1) % 4].x,
-                    rotated[(i + 1) % 4].y,
-                    2.0,
-                    sleeve_color,
-                );
-            }
-
-            if let Status::SelectingCard { cards, preview, prompt } = &self.status {
+            if let Status::SelectingCard {
+                cards, preview: false, ..
+            } = &self.status
+            {
                 if !self.click_enabled {
                     return;
                 }
 
-                if *preview {
-                    self.card_selection_overlay = Some(CardSelectionOverlay {
-                        cards: cards.clone(),
-                        prompt: prompt.clone(),
-                        behaviour: CardSelectionOverlayBehaviour::Pick,
-                    });
-                } else {
-                    if !cards.contains(&card_rect.id) {
-                        draw_rectangle_ex(
-                            rect.x,
-                            rect.y,
-                            rect.w * CARD_IN_PLAY_SCALE,
-                            rect.h * CARD_IN_PLAY_SCALE,
-                            DrawRectangleParams {
-                                color: Color::new(100.0, 100.0, 100.0, 0.6),
-                                rotation,
-                                ..Default::default()
-                            },
-                        );
-                    }
+                if !cards.contains(&card_rect.id) {
+                    draw_rectangle_ex(
+                        card_rect.rect.x,
+                        card_rect.rect.y,
+                        card_rect.rect.w * CARD_IN_PLAY_SCALE,
+                        card_rect.rect.h * CARD_IN_PLAY_SCALE,
+                        DrawRectangleParams {
+                            color: Color::new(100.0, 100.0, 100.0, 0.6),
+                            rotation: card_rect.rotation(),
+                            ..Default::default()
+                        },
+                    );
                 }
             }
 
@@ -886,7 +838,7 @@ impl Game {
                 WHITE,
                 DrawTextureParams {
                     dest_size: Some(Vec2::new(rect.w, rect.h) * scale),
-                    rotation: card_rect.rotation.clone(),
+                    rotation: card_rect.rotation().clone(),
                     ..Default::default()
                 },
             );
@@ -905,7 +857,7 @@ impl Game {
                         rect.h * scale,
                         DrawRectangleParams {
                             color: Color::new(200.0, 200.0, 200.0, 0.6),
-                            rotation: card_rect.rotation,
+                            rotation: card_rect.rotation(),
                             ..Default::default()
                         },
                     );
@@ -942,7 +894,6 @@ impl Game {
                     tapped: card.tapped,
                     image: TextureCache::get_card_texture(&card).await,
                     rect,
-                    rotation: 0.0,
                     is_hovered: false,
                     is_selected: false,
                     modifiers: card.modifiers.clone(),
@@ -1010,7 +961,6 @@ impl Game {
                 rect,
                 is_hovered: false,
                 is_selected: false,
-                rotation: 0.0,
                 zone: card.zone.clone(),
                 tapped: card.tapped,
                 image: TextureCache::get_card_texture(card).await,
@@ -1032,7 +982,6 @@ impl Game {
                     rect,
                     is_hovered: false,
                     is_selected: false,
-                    rotation: 0.0,
                     zone: card.zone.clone(),
                     tapped: card.tapped,
                     image: TextureCache::get_card_texture(card).await,

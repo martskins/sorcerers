@@ -1,7 +1,8 @@
 use sorcerers::networking::message::ServerMessage;
 
-pub mod game;
+mod game;
 pub mod menu;
+mod selection_overlay;
 
 #[derive(Debug)]
 pub enum Scene {

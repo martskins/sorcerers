@@ -12,10 +12,19 @@ pub struct CardRect {
     pub tapped: bool,
     pub image: Texture2D,
     pub rect: Rect,
-    pub rotation: f32,
     pub is_hovered: bool,
     pub is_selected: bool,
     pub modifiers: Vec<Modifier>,
+}
+
+impl CardRect {
+    pub fn rotation(&self) -> f32 {
+        if self.tapped {
+            return std::f32::consts::FRAC_PI_2;
+        }
+
+        return 0.0;
+    }
 }
 
 #[derive(Debug, Clone)]
