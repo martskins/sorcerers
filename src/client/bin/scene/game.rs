@@ -9,8 +9,8 @@ use macroquad::{
     input::{MouseButton, is_mouse_button_released, mouse_position},
     math::{Rect, RectOffset, Vec2},
     shapes::{
-        DrawRectangleParams, draw_circle_lines, draw_line, draw_rectangle, draw_rectangle_ex, draw_rectangle_lines,
-        draw_triangle_lines,
+        DrawRectangleParams, draw_circle, draw_circle_lines, draw_line, draw_rectangle, draw_rectangle_ex,
+        draw_rectangle_lines, draw_triangle_lines,
     },
     text::draw_text,
     texture::{DrawTextureParams, draw_texture_ex},
@@ -760,6 +760,46 @@ impl Game {
                 sleeve_color,
             );
         }
+
+        if card_rect.modifiers.contains(&Modifier::SummoningSickness) {
+            let icon_size = 22.0;
+            let scale = CARD_IN_PLAY_SCALE;
+            let x = card_rect.rect.x + card_rect.rect.w * scale - icon_size - 4.0;
+            let y = card_rect.rect.y + 4.0;
+            draw_vortex_icon(x, y, icon_size, BLUE);
+        }
+
+        if card_rect.modifiers.contains(&Modifier::Disabled) {
+            let icon_size = 15.0;
+            let x = card_rect.rect.x + card_rect.rect.w - 30.0 - 5.0;
+            let y = card_rect.rect.y + 4.0;
+            let cx = x + icon_size / 2.0;
+            let cy = y + icon_size / 2.0;
+            draw_circle_lines(cx, cy, icon_size / 2.0, 3.0, WHITE);
+            draw_line(x + 4.0, y + icon_size - 4.0, x + icon_size - 4.0, y + 4.0, 3.0, WHITE);
+        }
+
+        // Draw damage taken indicator if damage_taken > 0
+        if card_rect.damage_taken > 0 {
+            let circle_radius = 8.0;
+            let circle_x = rect.x + w - circle_radius - 3.0;
+            let circle_y = rect.y + circle_radius - 3.0;
+            draw_circle(
+                circle_x + circle_radius,
+                circle_y + circle_radius,
+                circle_radius - 2.0,
+                RED,
+            );
+            let dmg_text = card_rect.damage_taken.to_string();
+            let text_dims = macroquad::text::measure_text(&dmg_text, None, 12, 1.0);
+            draw_text(
+                &dmg_text,
+                circle_x + circle_radius - text_dims.width / 2.0,
+                circle_y + circle_radius + text_dims.height / 2.8,
+                12.0,
+                WHITE,
+            );
+        }
     }
 
     async fn render_realm(&mut self) {
@@ -791,24 +831,6 @@ impl Game {
                         },
                     );
                 }
-            }
-
-            if card_rect.modifiers.contains(&Modifier::SummoningSickness) {
-                let icon_size = 22.0;
-                let scale = CARD_IN_PLAY_SCALE;
-                let x = card_rect.rect.x + card_rect.rect.w * scale - icon_size - 4.0;
-                let y = card_rect.rect.y + 4.0;
-                draw_vortex_icon(x, y, icon_size, BLUE);
-            }
-
-            if card_rect.modifiers.contains(&Modifier::Disabled) {
-                let icon_size = 15.0;
-                let x = card_rect.rect.x + card_rect.rect.w - 30.0 - 5.0;
-                let y = card_rect.rect.y + 4.0;
-                let cx = x + icon_size / 2.0;
-                let cy = y + icon_size / 2.0;
-                draw_circle_lines(cx, cy, icon_size / 2.0, 3.0, WHITE);
-                draw_line(x + 4.0, y + icon_size - 4.0, x + icon_size - 4.0, y + 4.0, 3.0, WHITE);
             }
         }
     }
@@ -897,6 +919,7 @@ impl Game {
                     is_hovered: false,
                     is_selected: false,
                     modifiers: card.modifiers.clone(),
+                    damage_taken: card.damage_taken,
                 });
             }
         }
@@ -965,6 +988,7 @@ impl Game {
                 tapped: card.tapped,
                 image: TextureCache::get_card_texture(card).await,
                 modifiers: card.modifiers.clone(),
+                damage_taken: card.damage_taken.clone(),
             });
         }
 
@@ -986,6 +1010,7 @@ impl Game {
                     tapped: card.tapped,
                     image: TextureCache::get_card_texture(card).await,
                     modifiers: card.modifiers.clone(),
+                    damage_taken: 0,
                 });
             }
         }

@@ -15,6 +15,7 @@ pub struct CardRect {
     pub is_hovered: bool,
     pub is_selected: bool,
     pub modifiers: Vec<Modifier>,
+    pub damage_taken: u8,
 }
 
 impl CardRect {

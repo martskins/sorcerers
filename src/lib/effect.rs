@@ -689,6 +689,11 @@ impl Effect {
                 let resources = state.resources.get_mut(player_id).unwrap();
                 resources.mana = 0;
                 state.phase = Phase::Main;
+
+                let cards = state.cards.iter_mut().filter(|c| c.is_unit());
+                for card in cards {
+                    card.get_unit_base_mut().unwrap().damage = 0;
+                }
             }
             Effect::AddResources {
                 player_id,

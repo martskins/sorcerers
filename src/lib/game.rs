@@ -811,6 +811,7 @@ impl Game {
                 card_type: c.get_card_type().clone(),
                 modifiers: c.get_modifiers(&self.state),
                 plane: c.get_plane().clone(),
+                damage_taken: c.get_damage_taken(),
             })
             .collect()
     }

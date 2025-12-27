@@ -199,6 +199,7 @@ pub struct RenderableCard {
     pub plane: Plane,
     pub card_type: CardType,
     pub modifiers: Vec<Modifier>,
+    pub damage_taken: u8,
 }
 
 impl RenderableCard {
@@ -440,6 +441,14 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     fn get_plane(&self) -> &Plane {
         &self.get_base().plane
+    }
+
+    fn get_damage_taken(&self) -> u8 {
+        if self.is_unit() {
+            return self.get_unit_base().unwrap().damage;
+        }
+
+        0
     }
 
     fn get_card_type(&self) -> CardType {

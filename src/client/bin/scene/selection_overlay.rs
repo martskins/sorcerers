@@ -78,6 +78,7 @@ impl SelectionOverlay {
                 is_hovered: false,
                 is_selected: false,
                 modifiers: card.modifiers.clone(),
+                damage_taken: card.damage_taken,
             };
             rects.push(rect);
         }

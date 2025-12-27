@@ -93,10 +93,24 @@ impl Server {
             .push(from_name_and_zone(AridDesert::NAME, player1.clone(), Zone::Realm(8)));
         state
             .cards
+            .push(from_name_and_zone(AridDesert::NAME, player1.clone(), Zone::Realm(7)));
+        state
+            .cards
+            .push(from_name_and_zone(RaalDromedary::NAME, player1.clone(), Zone::Realm(7)));
+        state
+            .cards
             .push(from_name_and_zone(PitVipers::NAME, player1.clone(), Zone::Realm(8)));
         state
             .cards
             .push(from_name_and_zone(PlanarGate::NAME, player2.clone(), Zone::Realm(13)));
+        state
+            .cards
+            .push(from_name_and_zone(PlanarGate::NAME, player2.clone(), Zone::Realm(12)));
+        state.cards.push(from_name_and_zone(
+            HeadlessHaunt::NAME,
+            player2.clone(),
+            Zone::Realm(12),
+        ));
         state
             .cards
             .push(from_name_and_zone(PlanarGate::NAME, player2.clone(), Zone::Realm(18)));
