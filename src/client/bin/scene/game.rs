@@ -431,7 +431,6 @@ impl Game {
                                 .size(Vec2::new(window_size.x * 0.8, button_height))
                                 .ui(ui);
                             if clicked {
-                                self.click_enabled = false;
                                 self.client
                                     .send(ClientMessage::PickAction {
                                         game_id: self.game_id,
@@ -439,13 +438,14 @@ impl Game {
                                         action_idx: idx,
                                     })
                                     .unwrap();
+                                self.click_enabled = false;
                                 self.status = Status::Idle;
                             }
                         }
                     },
                 );
 
-                // ui::root_ui().pop_skin();
+                ui::root_ui().pop_skin();
             }
             _ => {}
         }
@@ -484,6 +484,10 @@ impl Game {
     }
 
     fn handle_card_click(&mut self, mouse_position: Vec2) {
+        if !self.click_enabled {
+            return;
+        }
+
         if let Status::SelectingAction { .. } = &self.status {
             return;
         }
@@ -663,6 +667,7 @@ impl Game {
                 .ui(&mut ui::root_ui());
 
             if button {
+                self.click_enabled = false;
                 let renderables = self
                     .cards
                     .iter()

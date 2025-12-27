@@ -75,7 +75,6 @@ impl Card for LoneTower {
     }
 
     async fn genesis(&self, state: &State) -> Vec<Effect> {
-        println!("Lone Tower genesis triggered");
         let count = state
             .cards
             .iter()

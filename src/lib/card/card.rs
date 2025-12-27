@@ -539,7 +539,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 let same_plane = c.get_base().plane == self.get_base().plane;
                 let ranged_on_airborne =
                     ranged && self.get_base().plane == Plane::Surface && c.get_base().plane == Plane::Air;
-                return same_plane || ranged_on_airborne;
+                let airborne_on_surface = self.get_base().plane == Plane::Air && c.get_base().plane == Plane::Surface;
+                return same_plane || ranged_on_airborne || airborne_on_surface;
             })
             .filter(|c| {
                 let attacker_is_airborne = self.has_modifier(state, &Modifier::Airborne);
