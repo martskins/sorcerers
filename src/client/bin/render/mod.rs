@@ -33,3 +33,9 @@ pub struct CellRect {
     pub id: u8,
     pub rect: Rect,
 }
+
+#[derive(Debug, Clone)]
+pub struct IntersectionRect {
+    pub locations: Vec<u8>,
+    pub rect: Rect,
+}

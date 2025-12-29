@@ -3,7 +3,7 @@ use rand::seq::IndexedRandom;
 use crate::{
     card::Zone,
     effect::Effect,
-    game::{PlayerId, pick_card, pick_zone},
+    game::{PlayerId, pick_card, pick_card_with_preview, pick_zone},
     state::State,
 };
 
@@ -29,11 +29,29 @@ pub enum ZoneQuery {
 impl ZoneQuery {
     pub fn prompt(&self) -> &str {
         match self {
-            ZoneQuery::Any { prompt } => prompt.as_ref().unwrap(),
+            ZoneQuery::Any { prompt } => {
+                if let Some(p) = prompt {
+                    p.as_ref()
+                } else {
+                    "Pick a zone"
+                }
+            }
             ZoneQuery::Specific(_) => "Pick a zone",
-            ZoneQuery::AnySite { prompt, .. } => prompt.as_ref().unwrap(),
+            ZoneQuery::AnySite { prompt, .. } => {
+                if let Some(p) = prompt {
+                    p.as_ref()
+                } else {
+                    "Pick a site zone"
+                }
+            }
             ZoneQuery::Random { .. } => "Pick a zone",
-            ZoneQuery::FromOptions { prompt, .. } => prompt.as_ref().unwrap(),
+            ZoneQuery::FromOptions { prompt, .. } => {
+                if let Some(p) = prompt {
+                    p.as_ref()
+                } else {
+                    "Pick a zone"
+                }
+            }
         }
     }
 
@@ -61,7 +79,13 @@ impl ZoneQuery {
     pub async fn resolve(&self, player_id: &PlayerId, state: &State) -> Zone {
         match self {
             ZoneQuery::Any { prompt } => {
-                pick_zone(player_id, &Zone::all_realm(), state, prompt.as_ref().unwrap()).await
+                pick_zone(
+                    player_id,
+                    &Zone::all_realm(),
+                    state,
+                    prompt.as_ref().map_or("Pick a zone", |v| v),
+                )
+                .await
             }
             ZoneQuery::Specific(z) => z.clone(),
             ZoneQuery::AnySite { prompt, .. } => {
@@ -73,7 +97,7 @@ impl ZoneQuery {
                     .map(|c| c.get_zone().clone())
                     .collect::<Vec<Zone>>();
                 sites.dedup();
-                pick_zone(player_id, &sites, state, prompt.as_ref().unwrap()).await
+                pick_zone(player_id, &sites, state, prompt.as_ref().map_or("Pick a zone", |v| v)).await
             }
             ZoneQuery::Random { options } => {
                 for card in &state.cards {
@@ -85,7 +109,7 @@ impl ZoneQuery {
                 options.choose(&mut rand::rng()).unwrap().clone()
             }
             ZoneQuery::FromOptions { options, prompt } => {
-                pick_zone(player_id, options, state, prompt.as_ref().unwrap()).await
+                pick_zone(player_id, options, state, prompt.as_ref().map_or("Pick a zone", |v| v)).await
             }
         }
     }
@@ -114,6 +138,7 @@ pub enum CardQuery {
     FromOptions {
         options: Vec<uuid::Uuid>,
         prompt: Option<String>,
+        preview: bool,
     },
 }
 
@@ -151,7 +176,7 @@ impl CardQuery {
                     .iter()
                     .map(|c| c.get_id().clone())
                     .collect();
-                pick_card(player_id, &cards, state, prompt.as_ref().unwrap()).await
+                pick_card(player_id, &cards, state, prompt.as_ref().map_or("Pick a zone", |v| v)).await
             }
             CardQuery::NearZone { zone, owner, prompt } => {
                 let cards: Vec<uuid::Uuid> = zone
@@ -159,7 +184,7 @@ impl CardQuery {
                     .iter()
                     .map(|c| c.get_id().clone())
                     .collect();
-                pick_card(player_id, &cards, state, prompt.as_ref().unwrap()).await
+                pick_card(player_id, &cards, state, prompt.as_ref().map_or("Pick a zone", |v| v)).await
             }
             CardQuery::OwnedBy { owner, prompt } => {
                 let cards: Vec<uuid::Uuid> = state
@@ -168,9 +193,15 @@ impl CardQuery {
                     .filter(|c| c.get_owner_id() == owner)
                     .map(|c| c.get_id().clone())
                     .collect();
-                pick_card(player_id, &cards, state, prompt.as_ref().unwrap()).await
+                pick_card(player_id, &cards, state, prompt.as_ref().map_or("Pick a zone", |v| v)).await
             }
             CardQuery::RandomUnitInZone { zone } => {
+                for card in &state.cards {
+                    if let Some(query) = card.card_query_override(state, self) {
+                        return Box::pin(query.resolve(player_id, state)).await;
+                    }
+                }
+
                 let cards: Vec<uuid::Uuid> = state
                     .get_units_in_zone(&zone)
                     .iter()
@@ -178,8 +209,22 @@ impl CardQuery {
                     .collect();
                 cards.choose(&mut rand::rng()).unwrap().clone()
             }
-            CardQuery::FromOptions { options, prompt } => {
-                pick_card(player_id, options, state, prompt.as_ref().unwrap()).await
+            CardQuery::FromOptions {
+                options,
+                prompt,
+                preview,
+            } => {
+                if *preview {
+                    return pick_card_with_preview(
+                        player_id,
+                        options,
+                        state,
+                        prompt.as_ref().unwrap_or(&String::new()),
+                    )
+                    .await;
+                }
+
+                pick_card(player_id, options, state, prompt.as_ref().unwrap_or(&String::new())).await
             }
         }
     }

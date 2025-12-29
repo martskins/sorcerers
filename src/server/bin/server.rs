@@ -82,9 +82,14 @@ impl Server {
         state.resources.insert(player2.clone(), Resources::new());
 
         state.resources.get_mut(player2).unwrap().thresholds.air = 3;
+        state.cards.push(from_name_and_zone(
+            Wildfire::NAME,
+            player1.clone(),
+            Zone::Intersection(vec![1, 2, 6, 7]),
+        ));
         state
             .cards
-            .push(from_name_and_zone(Observatory::NAME, player2.clone(), Zone::Hand));
+            .push(from_name_and_zone(RaiseDead::NAME, player2.clone(), Zone::Hand));
         state
             .cards
             .push(from_name_and_zone(AridDesert::NAME, player1.clone(), Zone::Realm(3)));
@@ -113,10 +118,16 @@ impl Server {
             .cards
             .push(from_name_and_zone(PlanarGate::NAME, player2.clone(), Zone::Realm(12)));
         state.cards.push(from_name_and_zone(
-            HeadlessHaunt::NAME,
+            GrandmasterWizard::NAME,
             player2.clone(),
-            Zone::Realm(12),
+            Zone::Cemetery,
         ));
+        state
+            .cards
+            .push(from_name_and_zone(PitVipers::NAME, player1.clone(), Zone::Cemetery));
+        state
+            .cards
+            .push(from_name_and_zone(HeadlessHaunt::NAME, player2.clone(), Zone::Cemetery));
         state
             .cards
             .push(from_name_and_zone(PlanarGate::NAME, player2.clone(), Zone::Realm(18)));

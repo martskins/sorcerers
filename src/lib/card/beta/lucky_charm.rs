@@ -103,6 +103,7 @@ impl Card for LuckyCharm {
                 Some(CardQuery::FromOptions {
                     options: zones,
                     prompt: Some("Lucky Charm: Choose a unit".to_string()),
+                    preview: true,
                 })
             }
             _ => None,

@@ -1,11 +1,11 @@
 use crate::{
     config::*,
-    render::{CardRect, CellRect},
+    render::{CardRect, CellRect, IntersectionRect},
     scene::{Scene, selection_overlay::SelectionOverlay},
     texture_cache::TextureCache,
 };
 use macroquad::{
-    color::{BLUE, Color, DARKGREEN, GRAY, GREEN, RED, WHITE},
+    color::{BLUE, Color, DARKGREEN, GRAY, GREEN, LIGHTGRAY, RED, WHITE},
     input::{MouseButton, is_mouse_button_released, mouse_position},
     math::{Rect, RectOffset, Vec2},
     shapes::{
@@ -72,6 +72,7 @@ pub struct Game {
     pub game_id: uuid::Uuid,
     pub card_rects: Vec<CardRect>,
     pub cell_rects: Vec<CellRect>,
+    pub intersection_rects: Vec<IntersectionRect>,
     pub cards: Vec<RenderableCard>,
     pub resources: HashMap<PlayerId, Resources>,
     pub client: networking::client::Client,
@@ -89,10 +90,20 @@ pub struct Game {
 
 impl Game {
     pub fn new(player_id: uuid::Uuid, client: networking::client::Client) -> Self {
-        let cells = (0..20)
+        let cell_rects: Vec<CellRect> = (0..20)
             .map(|i| {
                 let rect = cell_rect(i + 1, false);
                 CellRect { id: i as u8 + 1, rect }
+            })
+            .collect();
+        let intersection_rects = Zone::all_intersections()
+            .into_iter()
+            .filter_map(|z| match z {
+                Zone::Intersection(locs) => {
+                    let rect = intersection_rect(&locs, false).unwrap();
+                    Some(IntersectionRect { locations: locs, rect })
+                }
+                _ => None,
             })
             .collect();
         Self {
@@ -100,7 +111,8 @@ impl Game {
             card_rects: Vec::new(),
             cards: Vec::new(),
             game_id: uuid::Uuid::nil(),
-            cell_rects: cells,
+            cell_rects,
+            intersection_rects,
             client,
             current_player: uuid::Uuid::nil(),
             is_player_one: false,
@@ -640,25 +652,17 @@ impl Game {
     async fn render_grid(&mut self) {
         let grid_color = WHITE;
         let grid_thickness = 1.0;
-        for cell_rect in &self.cell_rects {
-            let rect = cell_rect.rect;
+        for cell in &self.cell_rects {
+            let rect = cell.rect;
             draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, grid_thickness, grid_color);
-
-            draw_text(&cell_rect.id.to_string(), rect.x + 5.0, rect.y + 15.0, 12.0, GRAY);
-
-            // Draw a UI button at the top right corner as a placeholder for an icon
-            let button_size = 18.0;
-            let button_x = rect.x + rect.w - button_size - 4.0;
-            let button_y = rect.y + 4.0;
-            let button_pos = Vec2::new(button_x, button_y);
-            let button_dim = Vec2::new(button_size, button_size);
+            draw_text(&cell.id.to_string(), rect.x + 5.0, rect.y + 15.0, 12.0, GRAY);
 
             match &self.status {
                 Status::SelectingZone { zones } => {
                     let intersections: Vec<&Zone> = zones
                         .iter()
                         .filter(|z| match z {
-                            Zone::Intersection(locations) => locations.contains(&cell_rect.id),
+                            Zone::Intersection(locations) => locations.contains(&cell.id),
                             _ => false,
                         })
                         .collect();
@@ -667,7 +671,7 @@ impl Game {
                         // TODO:
                     }
 
-                    let can_pick_zone = zones.iter().find(|i| i == &&Zone::Realm(cell_rect.id)).is_some();
+                    let can_pick_zone = zones.iter().find(|i| i == &&Zone::Realm(cell.id)).is_some();
                     if can_pick_zone {
                         draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, 5.0, GREEN);
                     }
@@ -682,6 +686,12 @@ impl Game {
                 continue;
             }
 
+            // Draw a UI button at the top right corner as a placeholder for an icon
+            let button_size = 18.0;
+            let button_x = rect.x + rect.w - button_size - 4.0;
+            let button_y = rect.y + 4.0;
+            let button_pos = Vec2::new(button_x, button_y);
+            let button_dim = Vec2::new(button_size, button_size);
             let button = ui::widgets::Button::new("+")
                 .position(button_pos)
                 .size(button_dim)
@@ -692,9 +702,9 @@ impl Game {
                 let renderables = self
                     .cards
                     .iter()
-                    .filter(|c| c.zone == Zone::Realm(cell_rect.id))
+                    .filter(|c| c.zone == Zone::Realm(cell.id))
                     .collect::<Vec<&RenderableCard>>();
-                let prompt = format!("Viewing cards on location {}", cell_rect.id);
+                let prompt = format!("Viewing cards on location {}", cell.id);
                 self.card_selection_overlay = Some(
                     SelectionOverlay::new(
                         self.client.clone(),
@@ -708,6 +718,25 @@ impl Game {
                 );
             }
         }
+
+        // Intersections are not drawn
+        // for intersection in &self.intersection_rects {
+        //     let rect = intersection.rect;
+        //     draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, 2.0, LIGHTGRAY);
+        //
+        //     match &self.status {
+        //         Status::SelectingZone { zones } => {
+        //             let can_pick_zone = zones.iter().find(|i| i == &&Zone::Realm(intersection.id)).is_some();
+        //             if can_pick_zone {
+        //                 draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, 5.0, GREEN);
+        //             }
+        //         }
+        //         Status::SelectingCard { preview: true, .. } | Status::SelectingAction { .. } => {
+        //             continue;
+        //         }
+        //         Status::SelectingCard { preview: false, .. } | Status::Idle => {}
+        //     }
+        // }
     }
 
     pub fn wrap_text(text: &str, max_width: f32, font_size: u16) -> String {
@@ -829,12 +858,12 @@ impl Game {
     }
 
     async fn render_realm(&mut self) {
-        for card_rect in &self.card_rects {
-            if !matches!(card_rect.zone, Zone::Realm(_)) {
+        for card in &self.card_rects {
+            if !matches!(card.zone, Zone::Realm(_)) && !matches!(card.zone, Zone::Intersection(_)) {
                 continue;
             }
 
-            Game::draw_card(card_rect, card_rect.owner_id == self.player_id);
+            Game::draw_card(card, card.owner_id == self.player_id);
 
             if let Status::SelectingCard {
                 cards, preview: false, ..
@@ -844,15 +873,15 @@ impl Game {
                     return;
                 }
 
-                if !cards.contains(&card_rect.id) {
+                if !cards.contains(&card.id) {
                     draw_rectangle_ex(
-                        card_rect.rect.x,
-                        card_rect.rect.y,
-                        card_rect.rect.w * CARD_IN_PLAY_SCALE,
-                        card_rect.rect.h * CARD_IN_PLAY_SCALE,
+                        card.rect.x,
+                        card.rect.y,
+                        card.rect.w * CARD_IN_PLAY_SCALE,
+                        card.rect.h * CARD_IN_PLAY_SCALE,
                         DrawRectangleParams {
                             color: Color::new(100.0, 100.0, 100.0, 0.6),
-                            rotation: card_rect.rotation(),
+                            rotation: card.rotation(),
                             ..Default::default()
                         },
                     );
@@ -923,39 +952,81 @@ impl Game {
         use rand::Rng;
         let mut rng = rand::rngs::SmallRng::seed_from_u64(1);
         for card in &self.cards {
-            if let Zone::Realm(square) = card.zone {
-                let cell_rect = self.cell_rects.iter().find(|c| c.id == square).unwrap().rect;
-                let mut dimensions = spell_dimensions();
-                if card.card_type == CardType::Site {
-                    dimensions = site_dimensions();
+            match &card.zone {
+                Zone::Realm(square) => {
+                    let cell_rect = self.cell_rects.iter().find(|c| &c.id == square).unwrap().rect;
+                    let mut dimensions = spell_dimensions();
+                    if card.card_type == CardType::Site {
+                        dimensions = site_dimensions();
+                    }
+
+                    let mut rect = Rect::new(
+                        cell_rect.x + (cell_rect.w - dimensions.x) / 2.0,
+                        cell_rect.y + (cell_rect.h - dimensions.y) / 2.0,
+                        dimensions.x,
+                        dimensions.y,
+                    );
+
+                    // Add jitter to position
+                    // let mut rng = thread_rng();
+                    let jitter_x: f32 = rng.random_range(-12.0..12.0);
+                    let jitter_y: f32 = rng.random_range(-12.0..12.0);
+                    rect.x += jitter_x;
+                    rect.y += jitter_y;
+
+                    self.card_rects.push(CardRect {
+                        id: card.id,
+                        owner_id: card.owner_id,
+                        zone: card.zone.clone(),
+                        tapped: card.tapped,
+                        image: TextureCache::get_card_texture(&card).await,
+                        rect,
+                        is_hovered: false,
+                        is_selected: false,
+                        modifiers: card.modifiers.clone(),
+                        damage_taken: card.damage_taken,
+                    });
                 }
+                Zone::Intersection(locs) => {
+                    let rect = self
+                        .intersection_rects
+                        .iter()
+                        .find(|c| &c.locations == locs)
+                        .unwrap()
+                        .rect;
+                    let mut dimensions = spell_dimensions();
+                    if card.card_type == CardType::Site {
+                        dimensions = site_dimensions();
+                    }
 
-                let mut rect = Rect::new(
-                    cell_rect.x + (cell_rect.w - dimensions.x) / 2.0,
-                    cell_rect.y + (cell_rect.h - dimensions.y) / 2.0,
-                    dimensions.x,
-                    dimensions.y,
-                );
+                    let mut rect = Rect::new(
+                        rect.x + (rect.w - dimensions.x) / 2.0,
+                        rect.y + (rect.h - dimensions.y) / 2.0,
+                        dimensions.x,
+                        dimensions.y,
+                    );
 
-                // Add jitter to position
-                // let mut rng = thread_rng();
-                let jitter_x: f32 = rng.random_range(-12.0..12.0);
-                let jitter_y: f32 = rng.random_range(-12.0..12.0);
-                rect.x += jitter_x;
-                rect.y += jitter_y;
+                    // Add jitter to position
+                    // let mut rng = thread_rng();
+                    let jitter_x: f32 = rng.random_range(-2.0..2.0);
+                    let jitter_y: f32 = rng.random_range(-2.0..2.0);
+                    rect.x += jitter_x;
+                    rect.y += jitter_y;
 
-                self.card_rects.push(CardRect {
-                    id: card.id,
-                    owner_id: card.owner_id,
-                    zone: card.zone.clone(),
-                    tapped: card.tapped,
-                    image: TextureCache::get_card_texture(&card).await,
-                    rect,
-                    is_hovered: false,
-                    is_selected: false,
-                    modifiers: card.modifiers.clone(),
-                    damage_taken: card.damage_taken,
-                });
+                    self.card_rects.push(CardRect {
+                        id: card.id,
+                        owner_id: card.owner_id,
+                        zone: card.zone.clone(),
+                        tapped: card.tapped,
+                        image: TextureCache::get_card_texture(&card).await,
+                        rect,
+                        is_hovered: false,
+                        is_selected: false,
+                        modifiers: card.modifiers.clone(),
+                        damage_taken: card.damage_taken,
+                    });
+                }
+                _ => {}
             }
         }
 
