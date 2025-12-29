@@ -1,10 +1,11 @@
 use crate::{
     card::beta,
-    effect::{CardQuery, Counter, Effect, ModifierCounter, ZoneQuery},
+    effect::{Counter, Effect, ModifierCounter},
     game::{
         Action, AvatarAction, Direction, Element, PlayerId, Thresholds, UnitAction, are_adjacent, are_nearby,
         get_adjacent_zones, get_nearby_zones,
     },
+    query::{CardQuery, ZoneQuery},
     state::State,
 };
 use serde::{Deserialize, Serialize};

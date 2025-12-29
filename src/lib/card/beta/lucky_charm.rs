@@ -2,8 +2,8 @@ use rand::seq::IndexedRandom;
 
 use crate::{
     card::{ArtifactBase, Card, CardBase, Edition, Plane, Rarity, Zone},
-    effect::{CardQuery, ZoneQuery},
     game::{PlayerId, Thresholds},
+    query::{CardQuery, ZoneQuery},
     state::State,
 };
 

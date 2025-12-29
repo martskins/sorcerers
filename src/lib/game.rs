@@ -1,7 +1,8 @@
 use crate::{
     card::{Card, CardType, Modifier, Plane, RenderableCard, Zone},
-    effect::{Effect, ZoneQuery},
+    effect::Effect,
     networking::message::{ClientMessage, ServerMessage, ToMessage},
+    query::ZoneQuery,
     state::{Phase, State},
 };
 use async_channel::{Receiver, Sender};

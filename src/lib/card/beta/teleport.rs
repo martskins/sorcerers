@@ -1,7 +1,8 @@
 use crate::{
     card::{Card, CardBase, Edition, Plane, Rarity, Zone},
-    effect::{CardQuery, Effect, ZoneQuery},
+    effect::Effect,
     game::{PlayerId, Thresholds},
+    query::{CardQuery, ZoneQuery},
     state::State,
 };
 

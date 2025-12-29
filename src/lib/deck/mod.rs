@@ -2,8 +2,9 @@ pub mod precon;
 
 use crate::{
     card::{Plane, Zone},
-    effect::{Effect, ZoneQuery},
+    effect::Effect,
     game::PlayerId,
+    query::ZoneQuery,
 };
 
 #[derive(Debug, Clone)]
