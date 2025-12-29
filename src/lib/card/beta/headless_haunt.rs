@@ -1,10 +1,9 @@
 use crate::{
     card::{Card, CardBase, Edition, MinionType, Modifier, Plane, Rarity, UnitBase, Zone},
-    effect::Effect,
+    effect::{Effect, ZoneQuery},
     game::{PlayerId, Thresholds},
     state::State,
 };
-use rand::Rng;
 
 #[derive(Debug, Clone)]
 pub struct HeadlessHaunt {
@@ -82,12 +81,13 @@ impl Card for HeadlessHaunt {
             return vec![];
         }
 
-        let mut rng = rand::rng();
-        let site_number = rng.random_range(1..=20);
         vec![Effect::MoveCard {
+            player_id: self.get_owner_id().clone(),
             card_id: self.get_id().clone(),
             from: self.get_zone().clone(),
-            to: Zone::Realm(site_number),
+            to: ZoneQuery::Random {
+                options: Zone::all_realm(),
+            },
             tap: false,
             plane: Plane::Surface,
         }]

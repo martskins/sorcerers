@@ -1,6 +1,6 @@
 use crate::{
     card::{Card, CardBase, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
-    effect::Effect,
+    effect::{Effect, ZoneQuery},
     game::{Action, PlayerId, Thresholds, pick_action, pick_card},
     state::State,
 };
@@ -124,9 +124,10 @@ impl Card for ClamorOfHarpies {
         let prompt = "Clamor of Harpies: Strike selected unit?";
         let action = pick_action(self.get_owner_id(), &actions, state, prompt).await;
         let mut effects = vec![Effect::MoveCard {
+            player_id: self.get_owner_id().clone(),
             card_id,
             from: card.get_zone().clone(),
-            to: self.get_zone().clone(),
+            to: ZoneQuery::Specific(self.get_zone().clone()),
             tap: false,
             plane: self.card_base.plane.clone(),
         }];

@@ -2,27 +2,35 @@ pub mod precon;
 
 use crate::{
     card::{Plane, Zone},
-    effect::Effect,
+    effect::{Effect, ZoneQuery},
+    game::PlayerId,
 };
 
 #[derive(Debug, Clone)]
 pub struct Deck {
+    pub player_id: uuid::Uuid,
     pub sites: Vec<uuid::Uuid>,
     pub spells: Vec<uuid::Uuid>,
     pub avatar: uuid::Uuid,
 }
 
 impl Deck {
-    pub fn new(sites: Vec<uuid::Uuid>, spells: Vec<uuid::Uuid>, avatar: uuid::Uuid) -> Self {
-        Deck { sites, spells, avatar }
+    pub fn new(player_id: &PlayerId, sites: Vec<uuid::Uuid>, spells: Vec<uuid::Uuid>, avatar: uuid::Uuid) -> Self {
+        Deck {
+            player_id: player_id.clone(),
+            sites,
+            spells,
+            avatar,
+        }
     }
 
     pub fn draw_site(&mut self) -> Vec<Effect> {
         let card_id = self.sites.pop();
         vec![Effect::MoveCard {
+            player_id: self.player_id.clone(),
             card_id: card_id.unwrap(),
             from: Zone::Atlasbook,
-            to: Zone::Hand,
+            to: ZoneQuery::Specific(Zone::Hand),
             tap: false,
             plane: Plane::None,
         }]
@@ -31,9 +39,10 @@ impl Deck {
     pub fn draw_spell(&mut self) -> Vec<Effect> {
         let card_id = self.spells.pop();
         vec![Effect::MoveCard {
+            player_id: self.player_id.clone(),
             card_id: card_id.unwrap(),
             from: Zone::Spellbook,
-            to: Zone::Hand,
+            to: ZoneQuery::Specific(Zone::Hand),
             tap: false,
             plane: Plane::None,
         }]

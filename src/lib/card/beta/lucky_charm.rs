@@ -1,6 +1,10 @@
+use rand::seq::IndexedRandom;
+
 use crate::{
     card::{ArtifactBase, Card, CardBase, Edition, Plane, Rarity, Zone},
-    game::{PlayerId, Thresholds},
+    effect::{Effect, EffectQuery, ZoneQuery},
+    game::{PlayerId, Thresholds, pick_zone},
+    state::State,
 };
 
 #[derive(Debug, Clone)]
@@ -30,6 +34,7 @@ impl LuckyCharm {
     }
 }
 
+#[async_trait::async_trait]
 impl Card for LuckyCharm {
     fn get_name(&self) -> &str {
         Self::NAME
@@ -59,11 +64,27 @@ impl Card for LuckyCharm {
         &self.card_base.id
     }
 
-    fn get_relic_base(&self) -> Option<&ArtifactBase> {
+    fn get_artifact_base(&self) -> Option<&ArtifactBase> {
         Some(&self.relic_base)
     }
 
     fn get_relic_base_mut(&mut self) -> Option<&mut ArtifactBase> {
         Some(&mut self.relic_base)
+    }
+
+    fn zone_query_override(&self, _state: &State, query: &ZoneQuery) -> Option<ZoneQuery> {
+        match query {
+            ZoneQuery::Random { options } => {
+                let zones = vec![
+                    options.choose(&mut rand::rng()).unwrap().clone(),
+                    options.choose(&mut rand::rng()).unwrap().clone(),
+                ];
+                Some(ZoneQuery::FromOptions {
+                    options: zones,
+                    prompt: Some("Lucky Charm: Choose a zone".to_string()),
+                })
+            }
+            _ => None,
+        }
     }
 }

@@ -1,6 +1,6 @@
 use crate::{
     card::beta,
-    effect::{Counter, Effect, ModifierCounter},
+    effect::{Counter, Effect, ModifierCounter, ZoneQuery},
     game::{
         Action, AvatarAction, Direction, Element, PlayerId, Thresholds, UnitAction, are_adjacent, are_nearby,
         get_adjacent_zones, get_nearby_zones,
@@ -60,9 +60,27 @@ pub enum Zone {
     Realm(u8),
     Cemetery,
     Banish,
+    Intersection(Vec<u8>),
 }
 
 impl Zone {
+    pub fn all_intersections() -> Vec<Zone> {
+        vec![
+            Zone::Intersection(vec![1, 2, 6, 7]),
+            Zone::Intersection(vec![2, 3, 7, 8]),
+            Zone::Intersection(vec![3, 4, 8, 9]),
+            Zone::Intersection(vec![4, 5, 9, 10]),
+            Zone::Intersection(vec![6, 7, 11, 12]),
+            Zone::Intersection(vec![7, 8, 12, 13]),
+            Zone::Intersection(vec![8, 9, 13, 14]),
+            Zone::Intersection(vec![9, 10, 14, 15]),
+            Zone::Intersection(vec![11, 12, 16, 17]),
+            Zone::Intersection(vec![12, 13, 17, 18]),
+            Zone::Intersection(vec![13, 14, 18, 19]),
+            Zone::Intersection(vec![14, 15, 19, 20]),
+        ]
+    }
+
     pub fn all_realm() -> Vec<Zone> {
         (1..=20).map(|sq| Zone::Realm(sq)).collect()
     }
@@ -248,6 +266,14 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     fn get_base(&self) -> &CardBase;
     fn get_base_mut(&mut self) -> &mut CardBase;
 
+    fn zone_query_override(&self, _state: &State, _query: &ZoneQuery) -> Option<ZoneQuery> {
+        None
+    }
+
+    fn replace_effect(&self, _state: &State, _effect: &Effect) -> Option<Vec<Effect>> {
+        None
+    }
+
     fn remove_counter(&mut self, id: &uuid::Uuid) {
         if let Some(ub) = self.get_unit_base_mut() {
             ub.power_counters.retain(|c| &c.id != id);
@@ -379,7 +405,15 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     fn default_get_valid_play_zones(&self, state: &State) -> Vec<Zone> {
         match self.get_card_type() {
             CardType::Artifact => vec![],
-            CardType::Minion | CardType::Aura => state
+            CardType::Aura => Zone::all_intersections()
+                .iter()
+                .filter(|z| match z {
+                    Zone::Intersection(sqs) => sqs.iter().any(|sq| state.cards.iter().any(|c| c.is_site())),
+                    _ => false,
+                })
+                .cloned()
+                .collect(),
+            CardType::Minion => state
                 .cards
                 .iter()
                 .filter(|c| c.get_owner_id() == self.get_owner_id())
@@ -677,7 +711,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         None
     }
 
-    fn get_relic_base(&self) -> Option<&ArtifactBase> {
+    fn get_artifact_base(&self) -> Option<&ArtifactBase> {
         None
     }
 
@@ -719,7 +753,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     fn is_artifact(&self) -> bool {
-        self.get_relic_base().is_some()
+        self.get_artifact_base().is_some()
     }
 
     fn is_unit(&self) -> bool {

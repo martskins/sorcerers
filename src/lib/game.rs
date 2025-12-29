@@ -1,6 +1,6 @@
 use crate::{
     card::{Card, CardType, Modifier, Plane, RenderableCard, Zone},
-    effect::Effect,
+    effect::{Effect, ZoneQuery},
     networking::message::{ClientMessage, ServerMessage, ToMessage},
     state::{Phase, State},
 };
@@ -568,9 +568,10 @@ impl Action for UnitAction {
                 let prompt = "Pick a zone to move to";
                 let zone = pick_zone(player_id, &zones, state, prompt).await;
                 vec![Effect::MoveCard {
+                    player_id: player_id.clone(),
                     card_id: card_id.clone(),
                     from: card.get_zone().clone(),
-                    to: zone,
+                    to: ZoneQuery::Specific(zone),
                     tap: true,
                     plane: card.get_base().plane.clone(),
                 }]
@@ -812,11 +813,11 @@ impl Game {
             .cards
             .iter()
             .filter(|c| c.is_artifact())
-            .filter(|c| c.get_relic_base().unwrap().attached_to.is_some())
+            .filter(|c| c.get_artifact_base().unwrap().attached_to.is_some())
             .map(|c| {
                 (
                     c.get_id().clone(),
-                    c.get_relic_base().unwrap().attached_to.unwrap().clone(),
+                    c.get_artifact_base().unwrap().attached_to.unwrap().clone(),
                 )
             })
             .collect();
@@ -911,9 +912,10 @@ impl Game {
             }
 
             effects.push(Effect::MoveCard {
+                player_id: player_id.clone(),
                 card_id: avatar_id,
                 from: Zone::Spellbook,
-                to: Zone::Realm(square),
+                to: ZoneQuery::Specific(Zone::Realm(square)),
                 tap: false,
                 plane: Plane::Surface,
             });

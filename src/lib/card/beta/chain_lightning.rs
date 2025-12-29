@@ -80,10 +80,10 @@ impl Card for ChainLightning {
                 query: CardQuery::InZone {
                     zone: picked_zone.clone(),
                     owner: None,
+                    prompt: Some("Chain Lightning: Pick a unit to deal 2 damage to".to_string()),
                 },
                 from: caster_id.clone(),
                 damage: 2,
-                prompt: "Chain Lightning: Pick a unit to deal 2 damage to".to_string(),
             });
 
             if !first_pick {

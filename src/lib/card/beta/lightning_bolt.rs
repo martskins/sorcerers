@@ -68,7 +68,6 @@ impl Card for LightningBolt {
             query: CardQuery::RandomUnitInZone { zone: picked_zone },
             from: caster_id.clone(),
             damage: 3,
-            prompt: "Deal 3 damage to a random unit in target zone".to_string(),
         }]
     }
 }

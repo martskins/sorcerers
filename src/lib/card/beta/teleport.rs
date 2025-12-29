@@ -60,14 +60,17 @@ impl Card for Teleport {
         &self.card_base.id
     }
 
-    async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> Vec<Effect> {
+    async fn on_cast(&mut self, _state: &State, _caster_id: &uuid::Uuid) -> Vec<Effect> {
         vec![Effect::TeleportUnitToZone {
             player_id: self.get_owner_id().clone(),
             unit_query: CardQuery::OwnedBy {
                 owner: self.get_owner_id().clone(),
+                prompt: Some("Teleport: Choose an ally to teleport".to_string()),
             },
-            zone_query: ZoneQuery::AnySite,
-            prompt: "Teleport an ally to the top of target site".to_string(),
+            zone_query: ZoneQuery::AnySite {
+                controlled_by: None,
+                prompt: Some("Teleport: Choose site to teleport to".to_string()),
+            },
         }]
     }
 }

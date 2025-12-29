@@ -1,6 +1,6 @@
 use crate::{
     card::{AuraBase, Card, CardBase, Edition, Plane, Rarity, Zone},
-    effect::Effect,
+    effect::{Effect, ZoneQuery},
     game::{PlayerId, Thresholds, pick_zone},
     state::State,
 };
@@ -112,13 +112,18 @@ impl Card for Wildfire {
         let prompt = "Wildfire: Pick a zone to move to:";
         let picked_zone = pick_zone(self.get_owner_id(), &zones, state, prompt).await;
         effects.push(Effect::MoveCard {
+            player_id: self.get_owner_id().clone(),
             card_id: self.get_id().clone(),
             from: self.get_zone().clone(),
-            to: picked_zone.clone(),
+            to: ZoneQuery::Specific(picked_zone.clone()),
             tap: false,
             plane: self.card_base.plane.clone(),
         });
 
         effects
+    }
+
+    fn get_valid_play_zones(&self, _state: &State) -> Vec<Zone> {
+        Zone::all_realm()
     }
 }

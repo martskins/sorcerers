@@ -1,6 +1,6 @@
 use crate::{
     card::{Card, CardBase, Edition, MinionType, Modifier, Plane, Rarity, UnitBase, Zone},
-    effect::Effect,
+    effect::{Effect, ZoneQuery},
     game::{PlayerId, Thresholds, pick_option, pick_zone},
     state::State,
 };
@@ -86,9 +86,10 @@ impl Card for KiteArcher {
         let zones = self.get_zone().get_adjacent();
         let picked_zone = pick_zone(self.get_owner_id(), &zones, state, "Choose to step to").await;
         vec![Effect::MoveCard {
+            player_id: self.get_owner_id().clone(),
             card_id: self.get_id().clone(),
             from: self.get_zone().clone(),
-            to: picked_zone.clone(),
+            to: ZoneQuery::Specific(picked_zone.clone()),
             tap: false,
             plane: self.card_base.plane.clone(),
         }]

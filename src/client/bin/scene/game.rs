@@ -17,6 +17,7 @@ use macroquad::{
     ui::{self, hash},
     window::{screen_height, screen_width},
 };
+use rand::SeedableRng;
 use sorcerers::{
     card::{CardType, Modifier, Plane, RenderableCard, Zone},
     game::{Element, PlayerId, Resources},
@@ -603,7 +604,16 @@ impl Game {
 
                 let zones = zones.clone();
                 for (idx, cell) in self.cell_rects.iter().enumerate() {
-                    if zones.iter().find(|i| i == &&Zone::Realm(cell.id)).is_none() {
+                    let intersections: Vec<&Zone> = zones
+                        .iter()
+                        .filter(|z| match z {
+                            Zone::Intersection(locations) => locations.contains(&cell.id),
+                            _ => false,
+                        })
+                        .collect();
+                    let can_pick_intersection = !intersections.is_empty();
+                    let can_pick_zone = zones.iter().find(|i| i == &&Zone::Realm(cell.id)).is_some();
+                    if !can_pick_zone && !can_pick_intersection {
                         continue;
                     }
 
@@ -645,7 +655,20 @@ impl Game {
 
             match &self.status {
                 Status::SelectingZone { zones } => {
-                    if zones.iter().find(|i| i == &&Zone::Realm(cell_rect.id)).is_some() {
+                    let intersections: Vec<&Zone> = zones
+                        .iter()
+                        .filter(|z| match z {
+                            Zone::Intersection(locations) => locations.contains(&cell_rect.id),
+                            _ => false,
+                        })
+                        .collect();
+                    let can_pick_intersection = !intersections.is_empty();
+                    if can_pick_intersection {
+                        // TODO:
+                    }
+
+                    let can_pick_zone = zones.iter().find(|i| i == &&Zone::Realm(cell_rect.id)).is_some();
+                    if can_pick_zone {
                         draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, 5.0, GREEN);
                     }
                 }
@@ -897,6 +920,8 @@ impl Game {
     }
 
     async fn compute_realm_rects(&mut self) -> anyhow::Result<()> {
+        use rand::Rng;
+        let mut rng = rand::rngs::SmallRng::seed_from_u64(1);
         for card in &self.cards {
             if let Zone::Realm(square) = card.zone {
                 let cell_rect = self.cell_rects.iter().find(|c| c.id == square).unwrap().rect;
@@ -905,12 +930,19 @@ impl Game {
                     dimensions = site_dimensions();
                 }
 
-                let rect = Rect::new(
+                let mut rect = Rect::new(
                     cell_rect.x + (cell_rect.w - dimensions.x) / 2.0,
                     cell_rect.y + (cell_rect.h - dimensions.y) / 2.0,
                     dimensions.x,
                     dimensions.y,
                 );
+
+                // Add jitter to position
+                // let mut rng = thread_rng();
+                let jitter_x: f32 = rng.random_range(-12.0..12.0);
+                let jitter_y: f32 = rng.random_range(-12.0..12.0);
+                rect.x += jitter_x;
+                rect.y += jitter_y;
 
                 self.card_rects.push(CardRect {
                     id: card.id,
