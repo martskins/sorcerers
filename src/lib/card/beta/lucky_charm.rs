@@ -2,8 +2,8 @@ use rand::seq::IndexedRandom;
 
 use crate::{
     card::{ArtifactBase, Card, CardBase, Edition, Plane, Rarity, Zone},
-    effect::{Effect, EffectQuery, ZoneQuery},
-    game::{PlayerId, Thresholds, pick_zone},
+    effect::{CardQuery, ZoneQuery},
+    game::{PlayerId, Thresholds},
     state::State,
 };
 
@@ -82,6 +82,27 @@ impl Card for LuckyCharm {
                 Some(ZoneQuery::FromOptions {
                     options: zones,
                     prompt: Some("Lucky Charm: Choose a zone".to_string()),
+                })
+            }
+            _ => None,
+        }
+    }
+
+    fn card_query_override(&self, state: &State, query: &CardQuery) -> Option<CardQuery> {
+        match query {
+            CardQuery::RandomUnitInZone { zone } => {
+                let options = zone
+                    .get_units(state, None)
+                    .iter()
+                    .map(|c| c.get_id().clone())
+                    .collect::<Vec<_>>();
+                let zones = vec![
+                    options.choose(&mut rand::rng()).unwrap().clone(),
+                    options.choose(&mut rand::rng()).unwrap().clone(),
+                ];
+                Some(CardQuery::FromOptions {
+                    options: zones,
+                    prompt: Some("Lucky Charm: Choose a unit".to_string()),
                 })
             }
             _ => None,

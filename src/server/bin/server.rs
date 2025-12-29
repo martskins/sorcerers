@@ -105,6 +105,9 @@ impl Server {
             .push(from_name_and_zone(PitVipers::NAME, player1.clone(), Zone::Realm(8)));
         state
             .cards
+            .push(from_name_and_zone(LuckyCharm::NAME, player1.clone(), Zone::Realm(8)));
+        state
+            .cards
             .push(from_name_and_zone(PlanarGate::NAME, player2.clone(), Zone::Realm(13)));
         state
             .cards

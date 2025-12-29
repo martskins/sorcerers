@@ -78,6 +78,10 @@ pub enum CardQuery {
     RandomUnitInZone {
         zone: Zone,
     },
+    FromOptions {
+        options: Vec<uuid::Uuid>,
+        prompt: Option<String>,
+    },
 }
 
 impl CardQuery {
@@ -100,7 +104,8 @@ impl CardQuery {
                 .filter(|c| c.get_owner_id() == owner)
                 .map(|c| c.get_id().clone())
                 .collect(),
-            _ => unreachable!(),
+            CardQuery::FromOptions { options, .. } => options.clone(),
+            CardQuery::RandomUnitInZone { .. } => unreachable!(),
         }
     }
 
@@ -139,6 +144,9 @@ impl CardQuery {
                     .map(|c| c.get_id().clone())
                     .collect();
                 cards.choose(&mut rand::rng()).unwrap().clone()
+            }
+            CardQuery::FromOptions { options, prompt } => {
+                pick_card(player_id, options, state, prompt.as_ref().unwrap()).await
             }
         }
     }
@@ -913,7 +921,7 @@ impl Effect {
             }
         }
 
-        self.expire_counters(state);
+        self.expire_counters(state).await;
 
         Ok(())
     }

@@ -1,6 +1,6 @@
 use crate::{
     card::beta,
-    effect::{Counter, Effect, ModifierCounter, ZoneQuery},
+    effect::{CardQuery, Counter, Effect, ModifierCounter, ZoneQuery},
     game::{
         Action, AvatarAction, Direction, Element, PlayerId, Thresholds, UnitAction, are_adjacent, are_nearby,
         get_adjacent_zones, get_nearby_zones,
@@ -266,6 +266,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     fn get_base(&self) -> &CardBase;
     fn get_base_mut(&mut self) -> &mut CardBase;
 
+    fn card_query_override(&self, _state: &State, _query: &CardQuery) -> Option<CardQuery> {
+        None
+    }
+
     fn zone_query_override(&self, _state: &State, _query: &ZoneQuery) -> Option<ZoneQuery> {
         None
     }
@@ -408,7 +412,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             CardType::Aura => Zone::all_intersections()
                 .iter()
                 .filter(|z| match z {
-                    Zone::Intersection(sqs) => sqs.iter().any(|sq| state.cards.iter().any(|c| c.is_site())),
+                    Zone::Intersection(sqs) => sqs.iter().any(|_| state.cards.iter().any(|c| c.is_site())),
                     _ => false,
                 })
                 .cloned()

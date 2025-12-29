@@ -1,8 +1,6 @@
 use crate::{
     card::{Card, CardBase, Edition, Plane, Rarity, SiteBase, SiteType, Zone},
-    effect::Effect,
     game::{PlayerId, Thresholds},
-    state::State,
 };
 
 #[derive(Debug, Clone)]
