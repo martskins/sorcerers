@@ -528,7 +528,7 @@ impl Effect {
                     .iter()
                     .filter(|c| c.is_site())
                     .filter(|c| c.get_owner_id() == player_id)
-                    .filter(|c| matches!(c.get_zone(), Zone::Realm(_)))
+                    .filter(|c| c.get_zone().is_in_realm())
                     .filter_map(|c| c.get_site_base())
                     .collect();
                 for site in sites {
@@ -560,7 +560,7 @@ impl Effect {
                 state.phase = Phase::PreEndTurn {
                     player_id: player_id.clone(),
                 };
-                for card in state.cards.iter().filter(|c| matches!(c.get_zone(), Zone::Realm(_))) {
+                for card in state.cards.iter().filter(|c| c.get_zone().is_in_realm()) {
                     let effects = card.on_turn_end(state).await;
                     state.effects.extend(effects);
                 }

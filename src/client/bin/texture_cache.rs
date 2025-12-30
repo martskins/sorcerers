@@ -36,16 +36,15 @@ impl TextureCache {
         })
     }
 
-    #[allow(dead_code)]
-    pub async fn get_texture(path: &str, name: &str) -> Texture2D {
-        if let Some(tex) = TEXTURE_CACHE.get().unwrap().read().unwrap().inner.get(name) {
+    pub async fn get_texture(path: &str) -> Texture2D {
+        if let Some(tex) = TEXTURE_CACHE.get().unwrap().read().unwrap().inner.get(path) {
             return tex.clone();
         }
 
         let mut cache = TEXTURE_CACHE.get().unwrap().write().unwrap();
         let new_path = path.to_string();
         let texture = macroquad::texture::load_texture(&new_path).await.unwrap();
-        cache.inner.insert(name.to_string(), texture.clone());
+        cache.inner.insert(path.to_string(), texture.clone());
         texture
     }
 

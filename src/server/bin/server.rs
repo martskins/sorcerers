@@ -83,7 +83,7 @@ impl Server {
 
         state.resources.get_mut(player2).unwrap().thresholds.air = 3;
         state.cards.push(from_name_and_zone(
-            Wildfire::NAME,
+            Thunderstorm::NAME,
             player1.clone(),
             Zone::Intersection(vec![1, 2, 6, 7]),
         ));
@@ -127,7 +127,7 @@ impl Server {
             .push(from_name_and_zone(PitVipers::NAME, player1.clone(), Zone::Cemetery));
         state
             .cards
-            .push(from_name_and_zone(HeadlessHaunt::NAME, player2.clone(), Zone::Cemetery));
+            .push(from_name_and_zone(Thunderstorm::NAME, player2.clone(), Zone::Hand));
         state
             .cards
             .push(from_name_and_zone(PlanarGate::NAME, player2.clone(), Zone::Realm(18)));

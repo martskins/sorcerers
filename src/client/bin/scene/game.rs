@@ -5,7 +5,7 @@ use crate::{
     texture_cache::TextureCache,
 };
 use macroquad::{
-    color::{BLUE, Color, DARKGREEN, GRAY, GREEN, LIGHTGRAY, RED, WHITE},
+    color::{BLUE, Color, DARKGREEN, GRAY, GREEN, RED, WHITE},
     input::{MouseButton, is_mouse_button_released, mouse_position},
     math::{Rect, RectOffset, Vec2},
     shapes::{
@@ -69,6 +69,7 @@ pub enum Status {
 #[derive(Debug)]
 pub struct Game {
     pub player_id: PlayerId,
+    pub opponent_id: PlayerId,
     pub game_id: uuid::Uuid,
     pub card_rects: Vec<CardRect>,
     pub cell_rects: Vec<CellRect>,
@@ -96,23 +97,14 @@ impl Game {
                 CellRect { id: i as u8 + 1, rect }
             })
             .collect();
-        let intersection_rects = Zone::all_intersections()
-            .into_iter()
-            .filter_map(|z| match z {
-                Zone::Intersection(locs) => {
-                    let rect = intersection_rect(&locs, false).unwrap();
-                    Some(IntersectionRect { locations: locs, rect })
-                }
-                _ => None,
-            })
-            .collect();
         Self {
             player_id: player_id,
+            opponent_id: uuid::Uuid::nil(),
             card_rects: Vec::new(),
             cards: Vec::new(),
             game_id: uuid::Uuid::nil(),
             cell_rects,
-            intersection_rects,
+            intersection_rects: Vec::new(),
             client,
             current_player: uuid::Uuid::nil(),
             is_player_one: false,
@@ -234,12 +226,18 @@ impl Game {
             ServerMessage::GameStarted {
                 game_id,
                 player1,
+                player2,
                 cards,
                 ..
             } => {
                 // Flip the board for player 2. Use player1 instead of the is_player_one method
                 // because state is not set at this point.
                 self.is_player_one = player1 == &self.player_id;
+                self.opponent_id = if self.is_player_one {
+                    player2.clone()
+                } else {
+                    player1.clone()
+                };
                 if !self.is_player_one {
                     for cell in &mut self.cell_rects {
                         let new_id: i8 = cell.id as i8 - 21;
@@ -247,6 +245,17 @@ impl Game {
                     }
                 }
 
+                let intersection_rects = Zone::all_intersections()
+                    .into_iter()
+                    .filter_map(|z| match z {
+                        Zone::Intersection(locs) => {
+                            let rect = intersection_rect(&locs, !self.is_player_one).unwrap();
+                            Some(IntersectionRect { locations: locs, rect })
+                        }
+                        _ => None,
+                    })
+                    .collect();
+                self.intersection_rects = intersection_rects;
                 self.game_id = game_id.clone();
                 // TODO: Fix so client doesn't hang
                 TextureCache::load_cache(cards).await;
@@ -334,14 +343,84 @@ impl Game {
         }
     }
 
-    fn render_player_card(x: f32, y: f32, resources: &Resources, player_name: &str) {
+    async fn render_player_card(&self, x: f32, y: f32, player_id: &uuid::Uuid) {
+        let resources = self.resources.get(&self.player_id).cloned().unwrap_or(Resources::new());
+        let player_name = if &self.player_id == player_id { "You" } else { "Them" };
         draw_text(player_name, x, y, FONT_SIZE, WHITE);
 
-        let health = format!("Health: {}", resources.health);
-        draw_text(&health, x, y + 20.0, FONT_SIZE, WHITE);
+        const ICON_SIZE: f32 = 20.0;
+        const NAME_BOTTOM_MARGIN: f32 = 7.0;
+        let icon_y = y + NAME_BOTTOM_MARGIN;
+        let health_text_y: f32 = y + NAME_BOTTOM_MARGIN + 20.0;
+        let heart_texture = TextureCache::get_texture("assets/icons/heart.png").await;
+        draw_texture_ex(
+            &heart_texture,
+            x,
+            icon_y + 5.0,
+            WHITE,
+            DrawTextureParams {
+                dest_size: Some(Vec2::new(ICON_SIZE - 5.0, ICON_SIZE - 5.0)),
+                ..Default::default()
+            },
+        );
+        let health = format!("{}", resources.health);
+        draw_text(&health, x + 22.0, health_text_y, FONT_SIZE, WHITE);
 
-        let mana_text = format!("Mana: {}", resources.mana);
-        draw_text(&mana_text, x, y + 40.0, FONT_SIZE, WHITE);
+        let cards_texture = TextureCache::get_texture("assets/icons/cards.png").await;
+        draw_texture_ex(
+            &cards_texture,
+            x + 52.0,
+            icon_y + 2.0,
+            WHITE,
+            DrawTextureParams {
+                dest_size: Some(Vec2::new(ICON_SIZE, ICON_SIZE)),
+                ..Default::default()
+            },
+        );
+        let cards_in_hand = format!(
+            "{}",
+            self.cards
+                .iter()
+                .filter(|c| &c.owner_id == player_id)
+                .filter(|c| c.zone == Zone::Hand)
+                .count()
+        );
+        draw_text(&cards_in_hand, x + 77.0, health_text_y, FONT_SIZE, WHITE);
+
+        let potion_texture = TextureCache::get_texture("assets/icons/potion.png").await;
+        draw_texture_ex(
+            &potion_texture,
+            x + 95.0,
+            icon_y + 4.0,
+            WHITE,
+            DrawTextureParams {
+                dest_size: Some(Vec2::new(ICON_SIZE, ICON_SIZE)),
+                ..Default::default()
+            },
+        );
+        let mana_text = format!("{}", resources.mana);
+        draw_text(&mana_text, x + 120.0, health_text_y, FONT_SIZE, WHITE);
+
+        let tombstone_texture = TextureCache::get_texture("assets/icons/tombstone.png").await;
+        draw_texture_ex(
+            &tombstone_texture,
+            x + 140.0,
+            icon_y + 5.0,
+            WHITE,
+            DrawTextureParams {
+                dest_size: Some(Vec2::new(ICON_SIZE, ICON_SIZE)),
+                ..Default::default()
+            },
+        );
+        let cards_in_cemetery = format!(
+            "{}",
+            self.cards
+                .iter()
+                .filter(|c| &c.owner_id == player_id)
+                .filter(|c| c.zone == Zone::Cemetery)
+                .count()
+        );
+        draw_text(&cards_in_cemetery, x + 165.0, health_text_y, FONT_SIZE, WHITE);
 
         let thresholds_y: f32 = y + 10.0 + 20.0 + 20.0;
         let fire_x = x;
@@ -363,21 +442,12 @@ impl Game {
 
     async fn render_gui(&mut self) -> anyhow::Result<()> {
         let screen_rect = screen_rect();
-        let base_x: f32 = 20.0;
+        const BASE_X: f32 = 20.0;
         let player_y: f32 = screen_rect.h - 90.0;
-        let resources = self.resources.get(&self.player_id).cloned().unwrap_or(Resources::new());
-        let player1 = if self.is_player_one { "Player 1" } else { "Player 2" };
-        let player2 = if self.is_player_one { "Player 2" } else { "Player 1" };
-        Game::render_player_card(base_x, player_y, &resources, player1);
+        self.render_player_card(BASE_X, player_y, &self.player_id).await;
 
         const OPPONENT_Y: f32 = 25.0;
-        let opponent_resources = self
-            .resources
-            .iter()
-            .find(|(player_id, _)| **player_id != self.player_id)
-            .map(|(_, resources)| resources.clone())
-            .unwrap_or(Resources::new());
-        Game::render_player_card(base_x, OPPONENT_Y, &opponent_resources, player2);
+        self.render_player_card(BASE_X, OPPONENT_Y, &self.opponent_id).await;
 
         let turn_label = if self.is_players_turn(&self.player_id) {
             "Your Turn"
@@ -529,7 +599,7 @@ impl Game {
                 for card_rect in &mut self
                     .card_rects
                     .iter_mut()
-                    .filter(|c| matches!(c.zone, Zone::Realm(_)) || c.zone == Zone::Hand)
+                    .filter(|c| c.zone.is_in_realm() || c.zone == Zone::Hand)
                 {
                     if card_rect.is_hovered && is_mouse_button_released(MouseButton::Left) {
                         self.client
@@ -616,16 +686,8 @@ impl Game {
 
                 let zones = zones.clone();
                 for (idx, cell) in self.cell_rects.iter().enumerate() {
-                    let intersections: Vec<&Zone> = zones
-                        .iter()
-                        .filter(|z| match z {
-                            Zone::Intersection(locations) => locations.contains(&cell.id),
-                            _ => false,
-                        })
-                        .collect();
-                    let can_pick_intersection = !intersections.is_empty();
                     let can_pick_zone = zones.iter().find(|i| i == &&Zone::Realm(cell.id)).is_some();
-                    if !can_pick_zone && !can_pick_intersection {
+                    if !can_pick_zone {
                         continue;
                     }
 
@@ -636,7 +698,36 @@ impl Game {
                                 .send(ClientMessage::PickSquare {
                                     player_id: self.player_id.clone(),
                                     game_id: self.game_id.clone(),
-                                    square,
+                                    zone: Zone::Realm(square),
+                                })
+                                .unwrap();
+
+                            self.status = Status::Idle;
+                        }
+                    }
+                }
+
+                for (idx, cell) in self.intersection_rects.iter().enumerate() {
+                    let can_pick_intersection = zones
+                        .iter()
+                        .find(|z| match z {
+                            Zone::Intersection(locations) => locations == &cell.locations,
+                            _ => false,
+                        })
+                        .is_some();
+                    if !can_pick_intersection {
+                        continue;
+                    }
+
+                    if cell.rect.contains(mouse_position.into()) {
+                        let locs = self.intersection_rects[idx].locations.clone();
+                        if is_mouse_button_released(MouseButton::Left) {
+                            println!("Picking intersection at locations {:?}", cell.locations);
+                            self.client
+                                .send(ClientMessage::PickSquare {
+                                    player_id: self.player_id.clone(),
+                                    game_id: self.game_id.clone(),
+                                    zone: Zone::Intersection(locs),
                                 })
                                 .unwrap();
 
@@ -719,24 +810,27 @@ impl Game {
             }
         }
 
-        // Intersections are not drawn
-        // for intersection in &self.intersection_rects {
-        //     let rect = intersection.rect;
-        //     draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, 2.0, LIGHTGRAY);
-        //
-        //     match &self.status {
-        //         Status::SelectingZone { zones } => {
-        //             let can_pick_zone = zones.iter().find(|i| i == &&Zone::Realm(intersection.id)).is_some();
-        //             if can_pick_zone {
-        //                 draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, 5.0, GREEN);
-        //             }
-        //         }
-        //         Status::SelectingCard { preview: true, .. } | Status::SelectingAction { .. } => {
-        //             continue;
-        //         }
-        //         Status::SelectingCard { preview: false, .. } | Status::Idle => {}
-        //     }
-        // }
+        for intersection in &self.intersection_rects {
+            match &self.status {
+                Status::SelectingZone { zones } => {
+                    let rect = intersection.rect;
+                    let can_pick_zone = zones
+                        .iter()
+                        .find(|z| match z {
+                            Zone::Intersection(locations) => locations == &intersection.locations,
+                            _ => false,
+                        })
+                        .is_some();
+                    if can_pick_zone {
+                        draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, 5.0, GREEN);
+                    }
+                }
+                Status::SelectingCard { preview: true, .. } | Status::SelectingAction { .. } => {
+                    continue;
+                }
+                Status::SelectingCard { preview: false, .. } | Status::Idle => {}
+            }
+        }
     }
 
     pub fn wrap_text(text: &str, max_width: f32, font_size: u16) -> String {
@@ -859,7 +953,7 @@ impl Game {
 
     async fn render_realm(&mut self) {
         for card in &self.card_rects {
-            if !matches!(card.zone, Zone::Realm(_)) && !matches!(card.zone, Zone::Intersection(_)) {
+            if !card.zone.is_in_realm() {
                 continue;
             }
 
@@ -999,15 +1093,9 @@ impl Game {
                         dimensions = site_dimensions();
                     }
 
-                    let mut rect = Rect::new(
-                        rect.x + (rect.w - dimensions.x) / 2.0,
-                        rect.y + (rect.h - dimensions.y) / 2.0,
-                        dimensions.x,
-                        dimensions.y,
-                    );
+                    let mut rect = Rect::new(rect.x, rect.y, dimensions.x, dimensions.y);
 
                     // Add jitter to position
-                    // let mut rng = thread_rng();
                     let jitter_x: f32 = rng.random_range(-2.0..2.0);
                     let jitter_y: f32 = rng.random_range(-2.0..2.0);
                     rect.x += jitter_x;

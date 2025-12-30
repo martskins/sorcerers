@@ -37,7 +37,7 @@ impl SpireLich {
     }
 
     fn is_atop_tower(&self, state: &State) -> bool {
-        if !matches!(self.get_zone(), Zone::Realm(_)) {
+        if !self.get_zone().is_in_realm() {
             return false;
         }
 

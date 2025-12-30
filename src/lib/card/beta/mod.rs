@@ -130,6 +130,8 @@ pub mod updraft_ridge;
 pub use updraft_ridge::*;
 pub mod lucky_charm;
 pub use lucky_charm::*;
+pub mod thunderstorm;
+pub use thunderstorm::*;
 
 use crate::{card::Card, game::PlayerId};
 
@@ -201,6 +203,7 @@ pub fn from_beta_name(name: &str, player_id: PlayerId) -> Option<Box<dyn Card>> 
         PlanarGate::NAME => Some(Box::new(PlanarGate::new(player_id))),
         UpdraftRidge::NAME => Some(Box::new(UpdraftRidge::new(player_id))),
         LuckyCharm::NAME => Some(Box::new(LuckyCharm::new(player_id))),
+        Thunderstorm::NAME => Some(Box::new(Thunderstorm::new(player_id))),
         _ => None,
     }
 }

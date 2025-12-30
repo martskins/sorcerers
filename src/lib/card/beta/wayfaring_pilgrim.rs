@@ -87,7 +87,7 @@ impl Card for WayfaringPilgrim {
     }
 
     async fn on_visit_zone(&self, state: &State, to: &Zone) -> Vec<Effect> {
-        if !matches!(to, Zone::Realm(_)) {
+        if !to.is_in_realm() {
             return vec![];
         }
 

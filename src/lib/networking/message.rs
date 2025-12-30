@@ -101,7 +101,7 @@ pub enum ClientMessage {
     PickSquare {
         game_id: uuid::Uuid,
         player_id: PlayerId,
-        square: u8,
+        zone: Zone,
     },
     PickAction {
         game_id: uuid::Uuid,

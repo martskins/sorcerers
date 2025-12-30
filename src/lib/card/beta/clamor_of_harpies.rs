@@ -111,7 +111,7 @@ impl Card for ClamorOfHarpies {
             .cards
             .iter()
             .filter(|c| c.is_unit())
-            .filter(|c| matches!(c.get_zone(), Zone::Realm(_)))
+            .filter(|c| c.get_zone().is_in_realm())
             .filter(|c| c.get_power(state).unwrap_or(0) < self.get_power(state).unwrap_or(0))
             .map(|c| c.get_id().clone())
             .collect();

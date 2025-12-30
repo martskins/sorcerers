@@ -65,6 +65,13 @@ pub enum Zone {
 }
 
 impl Zone {
+    pub fn is_in_realm(&self) -> bool {
+        match self {
+            Zone::Realm(_) | Zone::Intersection(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn all_intersections() -> Vec<Zone> {
         vec![
             Zone::Intersection(vec![1, 2, 6, 7]),
@@ -179,27 +186,50 @@ impl Zone {
     }
 
     pub fn zone_in_direction(&self, direction: &Direction) -> Option<Self> {
-        let square = self.get_square().unwrap();
-        let zone = match direction {
-            Direction::Up => Zone::Realm(square.saturating_add(5)),
-            Direction::Down => Zone::Realm(square.saturating_sub(5)),
-            Direction::Left => Zone::Realm(square.saturating_sub(1)),
-            Direction::Right => Zone::Realm(square.saturating_add(1)),
-            Direction::TopLeft => Zone::Realm(square.saturating_add(4)),
-            Direction::TopRight => Zone::Realm(square.saturating_add(6)),
-            Direction::BottomLeft => Zone::Realm(square.saturating_sub(6)),
-            Direction::BottomRight => Zone::Realm(square.saturating_sub(4)),
-        };
+        match self {
+            Zone::Realm(square) => {
+                let zone = match direction {
+                    Direction::Up => Zone::Realm(square.saturating_add(5)),
+                    Direction::Down => Zone::Realm(square.saturating_sub(5)),
+                    Direction::Left => Zone::Realm(square.saturating_sub(1)),
+                    Direction::Right => Zone::Realm(square.saturating_add(1)),
+                    Direction::TopLeft => Zone::Realm(square.saturating_add(4)),
+                    Direction::TopRight => Zone::Realm(square.saturating_add(6)),
+                    Direction::BottomLeft => Zone::Realm(square.saturating_sub(6)),
+                    Direction::BottomRight => Zone::Realm(square.saturating_sub(4)),
+                };
 
-        match direction {
-            Direction::Up | Direction::Down => {
-                if zone.get_square() > Some(20) || zone.get_square() < Some(1) {
-                    return None;
+                match direction {
+                    Direction::Up | Direction::Down => {
+                        if zone.get_square() > Some(20) || zone.get_square() < Some(1) {
+                            return None;
+                        }
+
+                        Some(zone)
+                    }
+                    _ => Some(zone),
+                }
+            }
+            Zone::Intersection(locs) => {
+                let new_squares: Vec<u8> = locs
+                    .iter()
+                    .filter_map(|sq| {
+                        let realm_zone = Zone::Realm(*sq);
+                        realm_zone.zone_in_direction(direction)?.get_square()
+                    })
+                    .collect();
+
+                for intersection in Zone::all_intersections() {
+                    if let Zone::Intersection(locs) = &intersection {
+                        if locs == &new_squares {
+                            return Some(intersection);
+                        }
+                    }
                 }
 
-                Some(zone)
+                None
             }
-            _ => Some(zone),
+            _ => None,
         }
     }
 
@@ -350,7 +380,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             }
         }
 
-        if !self.has_modifier(state, &Modifier::Voidwalk) {
+        let is_minion = matches!(self.get_card_type(), CardType::Minion);
+        if is_minion && !self.has_modifier(state, &Modifier::Voidwalk) {
             visited = visited
                 .iter()
                 .filter(|z| z.get_site(state).is_some())
@@ -556,20 +587,20 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     fn get_valid_move_zones(&self, state: &State) -> Vec<Zone> {
-        let mut steps = 0;
+        let mut extra_steps = 0;
         let movement_mods = self
             .get_modifiers(state)
             .into_iter()
             .filter(|m| matches!(m, Modifier::Movement(_)));
         for mov in movement_mods {
             if let Modifier::Movement(s) = mov {
-                if s > steps {
-                    steps = s;
+                if s > extra_steps {
+                    extra_steps = s;
                 }
             }
         }
 
-        self.get_zones_within_steps(state, steps + 1)
+        self.get_zones_within_steps(state, extra_steps + 1)
     }
 
     fn get_valid_attach_targets(&self, state: &State) -> Vec<uuid::Uuid> {
@@ -643,7 +674,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         let area_mods: Vec<Modifier> = state
             .cards
             .iter()
-            .filter(|c| matches!(c.get_zone(), Zone::Realm(_)))
+            .filter(|c| c.get_zone().is_in_realm())
             .flat_map(|c| c.area_modifiers(state))
             .filter_map(|(modif, units)| {
                 if units.contains(self.get_id()) {
@@ -774,7 +805,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     fn can_cast(&self, state: &State, spell: &Box<dyn Card>) -> bool {
-        if !matches!(self.get_zone(), Zone::Realm(_)) {
+        if !self.get_zone().is_in_realm() {
             return false;
         }
 

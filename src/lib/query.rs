@@ -64,7 +64,7 @@ impl ZoneQuery {
                     .cards
                     .iter()
                     .filter(|c| c.is_site())
-                    .filter(|c| matches!(c.get_zone(), Zone::Realm(_)))
+                    .filter(|c| c.get_zone().is_in_realm())
                     .map(|c| c.get_zone().clone())
                     .collect::<Vec<Zone>>();
                 sites.dedup();
@@ -93,7 +93,7 @@ impl ZoneQuery {
                     .cards
                     .iter()
                     .filter(|c| c.is_site())
-                    .filter(|c| matches!(c.get_zone(), Zone::Realm(_)))
+                    .filter(|c| c.get_zone().is_in_realm())
                     .map(|c| c.get_zone().clone())
                     .collect::<Vec<Zone>>();
                 sites.dedup();

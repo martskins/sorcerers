@@ -1,46 +1,40 @@
 use crate::{
-    card::{Card, CardBase, Edition, MinionType, Modifier, Plane, Rarity, UnitBase, Zone},
+    card::{AuraBase, Card, CardBase, Edition, Plane, Rarity, Zone},
     effect::Effect,
-    game::{PlayerId, Thresholds},
+    game::{PlayerId, Thresholds, pick_zone},
     query::ZoneQuery,
     state::State,
 };
 
 #[derive(Debug, Clone)]
-pub struct HeadlessHaunt {
-    pub unit_base: UnitBase,
+pub struct Thunderstorm {
+    pub aura_base: AuraBase,
     pub card_base: CardBase,
 }
 
-impl HeadlessHaunt {
-    pub const NAME: &'static str = "Headless Haunt";
+impl Thunderstorm {
+    pub const NAME: &'static str = "Thunderstorm";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
-            unit_base: UnitBase {
-                power: 4,
-                toughness: 4,
-                modifiers: vec![Modifier::Voidwalk],
-                types: vec![MinionType::Spirit],
-                ..Default::default()
-            },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 3,
+                mana_cost: 4,
                 required_thresholds: Thresholds::parse("AA"),
                 plane: Plane::Surface,
                 rarity: Rarity::Exceptional,
                 controller_id: owner_id.clone(),
             },
+            aura_base: AuraBase {},
         }
     }
 }
 
 #[async_trait::async_trait]
-impl Card for HeadlessHaunt {
+impl Card for Thunderstorm {
     fn get_name(&self) -> &str {
         Self::NAME
     }
@@ -51,6 +45,10 @@ impl Card for HeadlessHaunt {
 
     fn get_base(&self) -> &CardBase {
         &self.card_base
+    }
+
+    fn get_aura_base(&self) -> Option<&AuraBase> {
+        Some(&self.aura_base)
     }
 
     fn is_tapped(&self) -> bool {
@@ -69,25 +67,19 @@ impl Card for HeadlessHaunt {
         &self.card_base.id
     }
 
-    fn get_unit_base(&self) -> Option<&UnitBase> {
-        Some(&self.unit_base)
+    fn get_valid_play_zones(&self, _state: &State) -> Vec<Zone> {
+        Zone::all_intersections()
     }
 
-    fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
-        Some(&mut self.unit_base)
-    }
-
-    async fn on_turn_start(&self, _state: &State) -> Vec<Effect> {
-        if !self.get_zone().is_in_realm() {
-            return vec![];
-        }
-
+    async fn on_turn_end(&self, state: &State) -> Vec<Effect> {
+        let zones = dbg!(self.get_valid_move_zones(state));
         vec![Effect::MoveCard {
-            player_id: self.get_owner_id().clone(),
+            player_id: self.get_controller_id().clone(),
             card_id: self.get_id().clone(),
             from: self.get_zone().clone(),
-            to: ZoneQuery::Random {
-                options: Zone::all_realm(),
+            to: ZoneQuery::FromOptions {
+                options: zones,
+                prompt: Some("Pick a zone to move Thunderstorm to".to_string()),
             },
             tap: false,
             plane: Plane::Surface,

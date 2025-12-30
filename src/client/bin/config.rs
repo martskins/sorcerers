@@ -71,10 +71,14 @@ pub fn cell_rect(id: u8, mirror: bool) -> Rect {
 
 pub fn intersection_rect(locations: &[u8], mirror: bool) -> Option<Rect> {
     let realm_rect = realm_rect();
-    let width = spell_dimensions().x;
-    let height = spell_dimensions().y;
+    let width = spell_dimensions().x * CARD_IN_PLAY_SCALE;
+    let height = spell_dimensions().y * CARD_IN_PLAY_SCALE;
     let cell_width = realm_rect.w / 5.0;
-    let start_rect = cell_rect(locations[0], mirror);
+    let start_rect = if mirror {
+        cell_rect(locations[locations.len() - 1], mirror)
+    } else {
+        cell_rect(locations[0], mirror)
+    };
     Some(Rect::new(
         start_rect.x + cell_width - width / 2.0,
         start_rect.y - height / 2.0,

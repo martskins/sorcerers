@@ -182,7 +182,7 @@ pub async fn pick_zone(player_id: &PlayerId, zones: &[Zone], state: &State, prom
     loop {
         let msg = state.get_receiver().recv().await.unwrap();
         match msg {
-            ClientMessage::PickSquare { square, .. } => break Zone::Realm(square),
+            ClientMessage::PickSquare { zone, .. } => break zone,
             _ => panic!("expected PickSquare, got {:?}", msg),
         }
     }
@@ -334,6 +334,38 @@ pub fn get_nearby_zones(zone: &Zone) -> Vec<Zone> {
             adjacent.retain(|s| s.get_square().unwrap() <= 20);
             adjacent
         }
+        Zone::Intersection(sqs) => {
+            // Nearby zones are all adjacent zones of all squares in the intersection, plus all intersections that share at least one square
+            let mut nearby = Vec::new();
+            for sq in sqs {
+                let realm_zone = Zone::Realm(*sq);
+                nearby.extend(get_adjacent_zones(&realm_zone));
+                // Add diagonals for each square
+                let diagonals = match sq % 5 {
+                    0 => vec![Zone::Realm(sq.saturating_add(4)), Zone::Realm(sq.saturating_sub(6))],
+                    1 => vec![Zone::Realm(sq.saturating_sub(4)), Zone::Realm(sq.saturating_add(6))],
+                    _ => vec![
+                        Zone::Realm(sq.saturating_sub(4)),
+                        Zone::Realm(sq.saturating_add(6)),
+                        Zone::Realm(sq.saturating_add(4)),
+                        Zone::Realm(sq.saturating_sub(6)),
+                    ],
+                };
+                nearby.extend(diagonals);
+            }
+            // Add intersections that share at least one square (excluding self)
+            for intersection in Zone::all_intersections() {
+                if let Zone::Intersection(isqs) = &intersection {
+                    if isqs != sqs && isqs.iter().any(|sq| sqs.contains(sq)) {
+                        nearby.push(intersection.clone());
+                    }
+                }
+            }
+            // Remove duplicates
+            nearby.dedup();
+            nearby
+        }
+
         _ => vec![],
     }
 }
@@ -364,6 +396,24 @@ pub fn get_adjacent_zones(zone: &Zone) -> Vec<Zone> {
             };
             adjacent.retain(|s| s.get_square().unwrap() <= 20);
             adjacent
+        }
+        Zone::Intersection(locs) => {
+            let mut locs = locs.clone();
+            locs.sort();
+            let mut intersections = vec![
+                Zone::Intersection(locs.iter().map(|l| l.saturating_add(5)).collect()),
+                Zone::Intersection(locs.iter().map(|l| l.saturating_add(1)).collect()),
+            ];
+
+            if locs[0] > 1 {
+                intersections.push(Zone::Intersection(locs.iter().map(|l| l.saturating_sub(1)).collect()));
+            }
+
+            if locs[0] > 5 {
+                intersections.push(Zone::Intersection(locs.iter().map(|l| l.saturating_sub(5)).collect()));
+            }
+
+            dbg!(intersections)
         }
         _ => vec![],
     }
