@@ -735,6 +735,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         None
     }
 
+    fn get_aura(&self) -> Option<&dyn Aura> {
+        None
+    }
+
     fn get_unit_base(&self) -> Option<&UnitBase> {
         None
     }
@@ -1012,7 +1016,7 @@ pub struct ArtifactBase {
     pub attached_to: Option<uuid::Uuid>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CardBase {
     pub id: uuid::Uuid,
     pub owner_id: PlayerId,
@@ -1025,24 +1029,24 @@ pub struct CardBase {
     pub controller_id: PlayerId,
 }
 
-impl Clone for CardBase {
-    fn clone(&self) -> Self {
-        Self {
-            id: self.id,
-            owner_id: self.owner_id.clone(),
-            tapped: self.tapped,
-            zone: self.zone.clone(),
-            mana_cost: self.mana_cost,
-            required_thresholds: self.required_thresholds.clone(),
-            plane: self.plane.clone(),
-            rarity: self.rarity.clone(),
-            controller_id: self.controller_id.clone(),
+#[derive(Debug, Clone)]
+pub struct AuraBase {}
+
+pub trait Aura: Card {
+    fn get_affected_zones(&self, _state: &State) -> Vec<Zone> {
+        match self.get_zone() {
+            z @ Zone::Realm(_) => vec![z.clone()],
+            Zone::Intersection(locs) => {
+                let mut zones = Vec::new();
+                for sq in locs {
+                    zones.push(Zone::Realm(*sq));
+                }
+                zones
+            }
+            _ => vec![],
         }
     }
 }
-
-#[derive(Debug, Clone)]
-pub struct AuraBase {}
 
 #[derive(Debug, Clone)]
 pub struct AvatarBase {}

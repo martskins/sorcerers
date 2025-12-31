@@ -90,6 +90,17 @@ impl Card for LuckyCharm {
 
     fn card_query_override(&self, state: &State, query: &CardQuery) -> Option<CardQuery> {
         match query {
+            CardQuery::RandomTarget { possible_targets } => {
+                let targets = vec![
+                    possible_targets.choose(&mut rand::rng()).unwrap().clone(),
+                    possible_targets.choose(&mut rand::rng()).unwrap().clone(),
+                ];
+                Some(CardQuery::FromOptions {
+                    options: targets,
+                    prompt: Some("Lucky Charm: Choose a target".to_string()),
+                    preview: true,
+                })
+            }
             CardQuery::RandomUnitInZone { zone } => {
                 let options = zone
                     .get_units(state, None)

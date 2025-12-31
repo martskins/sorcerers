@@ -135,6 +135,9 @@ pub enum CardQuery {
     RandomUnitInZone {
         zone: Zone,
     },
+    RandomTarget {
+        possible_targets: Vec<uuid::Uuid>,
+    },
     FromOptions {
         options: Vec<uuid::Uuid>,
         prompt: Option<String>,
@@ -164,6 +167,7 @@ impl CardQuery {
                 .collect(),
             CardQuery::FromOptions { options, .. } => options.clone(),
             CardQuery::RandomUnitInZone { .. } => unreachable!(),
+            CardQuery::RandomTarget { .. } => unreachable!(),
         }
     }
 
@@ -194,6 +198,15 @@ impl CardQuery {
                     .map(|c| c.get_id().clone())
                     .collect();
                 pick_card(player_id, &cards, state, prompt.as_ref().map_or("Pick a zone", |v| v)).await
+            }
+            CardQuery::RandomTarget { possible_targets } => {
+                for card in &state.cards {
+                    if let Some(query) = card.card_query_override(state, self) {
+                        return Box::pin(query.resolve(player_id, state)).await;
+                    }
+                }
+
+                possible_targets.choose(&mut rand::rng()).unwrap().clone()
             }
             CardQuery::RandomUnitInZone { zone } => {
                 for card in &state.cards {
