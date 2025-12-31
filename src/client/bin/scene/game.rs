@@ -1,5 +1,4 @@
 use crate::{
-    clicks_enabled,
     components::{Component, player_hand::PlayerHandComponent, realm::RealmComponent},
     config::*,
     render::{CardRect, CellRect, IntersectionRect},
@@ -9,15 +8,14 @@ use crate::{
 };
 use macroquad::{
     color::{BLUE, Color, RED, WHITE},
-    input::{MouseButton, is_mouse_button_released, mouse_position},
-    math::{Rect, RectOffset, Vec2},
+    input::{MouseButton, is_mouse_button_released},
+    math::{RectOffset, Vec2},
     shapes::{draw_line, draw_rectangle, draw_triangle_lines},
     text::draw_text,
     texture::{DrawTextureParams, draw_texture_ex},
     ui::{self, hash},
     window::{screen_height, screen_width},
 };
-use rand::SeedableRng;
 use sorcerers::{
     card::{CardType, Plane, RenderableCard, Zone},
     game::{Element, PlayerId, Resources},
@@ -26,8 +24,7 @@ use sorcerers::{
         message::{ClientMessage, ServerMessage},
     },
 };
-use std::{collections::HashMap, sync::Arc};
-use tokio::sync::Mutex;
+use std::collections::HashMap;
 
 use super::selection_overlay::SelectionOverlayBehaviour;
 
@@ -48,6 +45,12 @@ pub enum Status {
     },
     SelectingZone {
         zones: Vec<Zone>,
+    },
+    ViewingCards {
+        cards: Vec<uuid::Uuid>,
+        prompt: String,
+        prev_status: Box<Status>,
+        behaviour: SelectionOverlayBehaviour,
     },
 }
 
@@ -72,7 +75,7 @@ pub struct Game {
 
 impl Game {
     pub fn new(
-        id: uuid::Uuid,
+        game_id: uuid::Uuid,
         player_id: uuid::Uuid,
         opponent_id: uuid::Uuid,
         is_player_one: bool,
@@ -101,10 +104,10 @@ impl Game {
             opponent_id,
             card_rects: Vec::new(),
             cards,
-            game_id: id,
+            game_id: game_id.clone(),
             cell_rects,
             intersection_rects,
-            client,
+            client: client.clone(),
             current_player: uuid::Uuid::nil(),
             is_player_one,
             resources: HashMap::new(),
@@ -112,8 +115,13 @@ impl Game {
             card_selection_overlay: None,
             status: Status::Idle,
             components: vec![
-                Box::new(PlayerHandComponent::new(hand_rect(), &player_id)),
-                Box::new(RealmComponent::new(realm_rect(), &player_id, is_player_one)),
+                Box::new(PlayerHandComponent::new(&game_id, &player_id, client.clone())),
+                Box::new(RealmComponent::new(
+                    &game_id,
+                    &player_id,
+                    !is_player_one,
+                    client.clone(),
+                )),
             ],
         }
     }
@@ -127,16 +135,32 @@ impl Game {
             component.update(&self.cards, self.status.clone()).await?;
         }
 
-        let mouse_position = mouse_position().into();
-        self.resize_cells().await?;
-        self.compute_hand_rects().await?;
-        self.compute_realm_rects().await?;
-        self.handle_click(mouse_position);
-
         // Update click_enabled at the end of the update cycle so that we don't process the release
         // event in the same frame as the one that re-enables clicking.
         if is_mouse_button_released(MouseButton::Left) {
             set_clicks_enabled(true);
+        }
+
+        if let Status::ViewingCards {
+            cards,
+            behaviour,
+            prev_status,
+            prompt,
+        } = &self.status
+        {
+            let renderables = self.cards.iter().filter(|c| cards.contains(&c.id)).collect();
+            self.card_selection_overlay = Some(
+                SelectionOverlay::new(
+                    self.client.clone(),
+                    &self.game_id,
+                    &self.player_id,
+                    renderables,
+                    prompt,
+                    behaviour.clone(),
+                )
+                .await,
+            );
+            self.status = *prev_status.clone();
         }
 
         if self.card_selection_overlay.is_some() {
@@ -147,15 +171,6 @@ impl Game {
                 self.card_selection_overlay = None;
                 self.status = Status::Idle;
             }
-        }
-
-        Ok(())
-    }
-
-    async fn resize_cells(&mut self) -> anyhow::Result<()> {
-        let mirror = !self.is_player_one;
-        for cell in &mut self.cell_rects {
-            cell.rect = cell_rect(cell.id, mirror);
         }
 
         Ok(())
@@ -180,7 +195,7 @@ impl Game {
 
         self.render_gui().await?;
         for component in &mut self.components {
-            component.render().await;
+            component.render(&mut self.status).await;
         }
 
         self.render_card_preview().await?;
@@ -304,15 +319,16 @@ impl Game {
         }
     }
 
-    fn handle_click(&mut self, mouse_position: Vec2) {
+    pub fn process_input(&mut self) {
         if self.card_selection_overlay.is_some() {
             let overlay = self.card_selection_overlay.as_mut().unwrap();
             overlay.process_input();
             return;
         }
 
-        self.handle_card_click(mouse_position);
-        self.handle_square_click(mouse_position);
+        for component in &mut self.components {
+            component.process_input(self.current_player == self.player_id, &mut self.status);
+        }
     }
 
     fn render_threshold(x: f32, y: f32, value: u8, element: Element) {
@@ -576,180 +592,6 @@ impl Game {
         Ok(())
     }
 
-    fn handle_card_click(&mut self, mouse_position: Vec2) {
-        if !clicks_enabled() {
-            return;
-        }
-
-        if let Status::SelectingAction { .. } = &self.status {
-            return;
-        }
-
-        if self.current_player != self.player_id {
-            return;
-        }
-
-        let mut hovered_card_index = None;
-        for (idx, card_display) in self.card_rects.iter().enumerate() {
-            if card_display.rect.contains(mouse_position.into()) {
-                hovered_card_index = Some(idx);
-            };
-        }
-
-        for card in &mut self.card_rects {
-            card.is_hovered = false;
-        }
-
-        if let Some(idx) = hovered_card_index {
-            self.card_rects.get_mut(idx).unwrap().is_hovered = true;
-        }
-
-        match &self.status {
-            Status::Idle => {
-                for card_rect in &mut self
-                    .card_rects
-                    .iter_mut()
-                    .filter(|c| c.zone.is_in_realm() || c.zone == Zone::Hand)
-                {
-                    if card_rect.is_hovered && is_mouse_button_released(MouseButton::Left) {
-                        self.client
-                            .send(ClientMessage::ClickCard {
-                                card_id: card_rect.id.clone(),
-                                player_id: self.player_id,
-                                game_id: self.game_id,
-                            })
-                            .unwrap();
-                    };
-                }
-            }
-            Status::SelectingCard {
-                cards, preview: true, ..
-            } => {
-                let valid_cards: Vec<&CardRect> = self.card_rects.iter().filter(|c| cards.contains(&c.id)).collect();
-                let mut selected_id = None;
-                for card in valid_cards {
-                    if card.rect.contains(mouse_position.into()) && is_mouse_button_released(MouseButton::Left) {
-                        selected_id = Some(card.id.clone());
-                    }
-                }
-
-                if let Some(id) = selected_id {
-                    let card = self.card_rects.iter_mut().find(|c| c.id == id).unwrap();
-                    card.is_selected = !card.is_selected;
-
-                    if card.is_selected {
-                        self.client
-                            .send(ClientMessage::PickCard {
-                                player_id: self.player_id.clone(),
-                                game_id: self.game_id.clone(),
-                                card_id: id.clone(),
-                            })
-                            .unwrap();
-
-                        self.status = Status::Idle;
-                    }
-                }
-            }
-
-            Status::SelectingCard {
-                cards, preview: false, ..
-            } => {
-                let valid_cards: Vec<&CardRect> = self.card_rects.iter().filter(|c| cards.contains(&c.id)).collect();
-                let mut selected_id = None;
-                for card in valid_cards {
-                    if card.rect.contains(mouse_position.into()) && is_mouse_button_released(MouseButton::Left) {
-                        selected_id = Some(card.id.clone());
-                    }
-                }
-
-                if let Some(id) = selected_id {
-                    let card = self.card_rects.iter_mut().find(|c| c.id == id).unwrap();
-                    card.is_selected = !card.is_selected;
-
-                    if card.is_selected {
-                        self.client
-                            .send(ClientMessage::PickCard {
-                                player_id: self.player_id.clone(),
-                                game_id: self.game_id.clone(),
-                                card_id: id.clone(),
-                            })
-                            .unwrap();
-
-                        self.status = Status::Idle;
-                    }
-                }
-            }
-            _ => {}
-        }
-    }
-
-    fn handle_square_click(&mut self, mouse_position: Vec2) {
-        if let Status::SelectingAction { .. } = &self.status {
-            return;
-        }
-
-        match &self.status {
-            Status::SelectingZone { zones } => {
-                if !clicks_enabled() {
-                    return;
-                }
-
-                let zones = zones.clone();
-                for (idx, cell) in self.cell_rects.iter().enumerate() {
-                    let can_pick_zone = zones.iter().find(|i| i == &&Zone::Realm(cell.id)).is_some();
-                    if !can_pick_zone {
-                        continue;
-                    }
-
-                    if cell.rect.contains(mouse_position.into()) {
-                        let square = self.cell_rects[idx].id;
-                        if is_mouse_button_released(MouseButton::Left) {
-                            self.client
-                                .send(ClientMessage::PickSquare {
-                                    player_id: self.player_id.clone(),
-                                    game_id: self.game_id.clone(),
-                                    zone: Zone::Realm(square),
-                                })
-                                .unwrap();
-
-                            self.status = Status::Idle;
-                        }
-                    }
-                }
-
-                for (idx, cell) in self.intersection_rects.iter().enumerate() {
-                    let can_pick_intersection = zones
-                        .iter()
-                        .find(|z| match z {
-                            Zone::Intersection(locations) => locations == &cell.locations,
-                            _ => false,
-                        })
-                        .is_some();
-                    if !can_pick_intersection {
-                        continue;
-                    }
-
-                    if cell.rect.contains(mouse_position.into()) {
-                        let locs = self.intersection_rects[idx].locations.clone();
-                        if is_mouse_button_released(MouseButton::Left) {
-                            println!("Picking intersection at locations {:?}", cell.locations);
-                            self.client
-                                .send(ClientMessage::PickSquare {
-                                    player_id: self.player_id.clone(),
-                                    game_id: self.game_id.clone(),
-                                    zone: Zone::Intersection(locs),
-                                })
-                                .unwrap();
-
-                            self.status = Status::Idle;
-                        }
-                    }
-                }
-            }
-            _ => {}
-        }
-    }
-
     pub fn wrap_text(text: &str, max_width: f32, font_size: u16) -> String {
         use macroquad::text::measure_text;
         let mut lines = Vec::new();
@@ -774,176 +616,5 @@ impl Game {
             }
         }
         lines.join("\n")
-    }
-
-    async fn compute_realm_rects(&mut self) -> anyhow::Result<()> {
-        use rand::Rng;
-        let mut rng = rand::rngs::SmallRng::seed_from_u64(1);
-        for card in &self.cards {
-            match &card.zone {
-                Zone::Realm(square) => {
-                    let cell_rect = self.cell_rects.iter().find(|c| &c.id == square).unwrap().rect;
-                    let mut dimensions = spell_dimensions();
-                    if card.card_type == CardType::Site {
-                        dimensions = site_dimensions();
-                    }
-
-                    let mut rect = Rect::new(
-                        cell_rect.x + (cell_rect.w - dimensions.x) / 2.0,
-                        cell_rect.y + (cell_rect.h - dimensions.y) / 2.0,
-                        dimensions.x,
-                        dimensions.y,
-                    );
-
-                    // Add jitter to position
-                    // let mut rng = thread_rng();
-                    let jitter_x: f32 = rng.random_range(-12.0..12.0);
-                    let jitter_y: f32 = rng.random_range(-12.0..12.0);
-                    rect.x += jitter_x;
-                    rect.y += jitter_y;
-
-                    self.card_rects.push(CardRect {
-                        id: card.id,
-                        owner_id: card.owner_id,
-                        zone: card.zone.clone(),
-                        tapped: card.tapped,
-                        image: TextureCache::get_card_texture(&card).await,
-                        rect,
-                        is_hovered: false,
-                        is_selected: false,
-                        modifiers: card.modifiers.clone(),
-                        damage_taken: card.damage_taken,
-                    });
-                }
-                Zone::Intersection(locs) => {
-                    let rect = self
-                        .intersection_rects
-                        .iter()
-                        .find(|c| &c.locations == locs)
-                        .unwrap()
-                        .rect;
-                    let mut dimensions = spell_dimensions();
-                    if card.card_type == CardType::Site {
-                        dimensions = site_dimensions();
-                    }
-
-                    let mut rect = Rect::new(rect.x, rect.y, dimensions.x, dimensions.y);
-
-                    // Add jitter to position
-                    let jitter_x: f32 = rng.random_range(-2.0..2.0);
-                    let jitter_y: f32 = rng.random_range(-2.0..2.0);
-                    rect.x += jitter_x;
-                    rect.y += jitter_y;
-
-                    self.card_rects.push(CardRect {
-                        id: card.id,
-                        owner_id: card.owner_id,
-                        zone: card.zone.clone(),
-                        tapped: card.tapped,
-                        image: TextureCache::get_card_texture(&card).await,
-                        rect,
-                        is_hovered: false,
-                        is_selected: false,
-                        modifiers: card.modifiers.clone(),
-                        damage_taken: card.damage_taken,
-                    });
-                }
-                _ => {}
-            }
-        }
-
-        Ok(())
-    }
-
-    async fn compute_hand_rects(&mut self) -> anyhow::Result<()> {
-        let spells: Vec<&RenderableCard> = self
-            .cards
-            .iter()
-            .filter(|c| c.zone == Zone::Hand)
-            .filter(|c| c.owner_id == self.player_id)
-            .filter(|c| c.is_spell())
-            .collect();
-
-        let sites: Vec<&RenderableCard> = self
-            .cards
-            .iter()
-            .filter(|c| c.zone == Zone::Hand)
-            .filter(|c| c.owner_id == self.player_id)
-            .filter(|c| c.is_site())
-            .collect();
-
-        let spell_hand_size = spells.len();
-        let site_hand_size = sites.len();
-        let mut displays: Vec<CardRect> = Vec::new();
-        let hand_rect = hand_rect();
-
-        // Layout parameters
-        let spell_dim = spell_dimensions();
-        let site_dim = site_dimensions();
-        let card_spacing = 20.0;
-
-        // Calculate total width for spells (horizontal row)
-        let spells_width = if spell_hand_size > 0 {
-            spell_hand_size as f32 * spell_dim.x + (spell_hand_size as f32 - 1.0) * card_spacing
-        } else {
-            0.0
-        };
-
-        // Combined width for centering: spells row + spacing + site card width (if any sites)
-        let total_width = spells_width
-            + if site_hand_size > 0 {
-                card_spacing + site_dim.x
-            } else {
-                0.0
-            };
-
-        // Center horizontally in hand area
-        let start_x = hand_rect.x + (hand_rect.w - total_width) / 2.0;
-        let spells_y = hand_rect.y + hand_rect.h / 2.0 - spell_dim.y / 2.0;
-
-        // Spells row
-        for (idx, card) in spells.iter().enumerate() {
-            let x = start_x + idx as f32 * (spell_dim.x + card_spacing);
-            let rect = Rect::new(x, spells_y, spell_dim.x, spell_dim.y);
-
-            displays.push(CardRect {
-                id: card.id,
-                owner_id: card.owner_id,
-                rect,
-                is_hovered: false,
-                is_selected: false,
-                zone: card.zone.clone(),
-                tapped: card.tapped,
-                image: TextureCache::get_card_texture(card).await,
-                modifiers: card.modifiers.clone(),
-                damage_taken: card.damage_taken.clone(),
-            });
-        }
-
-        // Sites column, stacked vertically to the right of spells
-        if site_hand_size > 0 {
-            let sites_x = start_x + spells_width + card_spacing;
-            let sites_start_y = hand_rect.y + hand_rect.h / 2.0 - spell_dim.y / 2.0;
-            for (idx, card) in sites.iter().enumerate() {
-                let y = sites_start_y + idx as f32 * 20.0;
-                let rect = Rect::new(sites_x, y, site_dim.x, site_dim.y);
-
-                displays.push(CardRect {
-                    id: card.id,
-                    owner_id: card.owner_id,
-                    rect,
-                    is_hovered: false,
-                    is_selected: false,
-                    zone: card.zone.clone(),
-                    tapped: card.tapped,
-                    image: TextureCache::get_card_texture(card).await,
-                    modifiers: card.modifiers.clone(),
-                    damage_taken: 0,
-                });
-            }
-        }
-
-        self.card_rects = displays;
-        Ok(())
     }
 }

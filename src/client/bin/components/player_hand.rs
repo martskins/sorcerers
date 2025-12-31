@@ -1,37 +1,45 @@
 use crate::{
+    clicks_enabled,
     components::Component,
-    config::{site_dimensions, spell_dimensions},
+    config::{hand_rect, site_dimensions, spell_dimensions},
     render::CardRect,
     scene::game::Status,
     texture_cache::TextureCache,
 };
 use macroquad::{
     color::{Color, DARKGREEN, WHITE},
+    input::{MouseButton, is_mouse_button_released},
     math::{Rect, Vec2},
     shapes::{DrawRectangleParams, draw_rectangle, draw_rectangle_ex, draw_rectangle_lines},
     texture::{DrawTextureParams, draw_texture_ex},
 };
-use sorcerers::card::{RenderableCard, Zone};
+use sorcerers::{
+    card::{RenderableCard, Zone},
+    networking::{self, message::ClientMessage},
+};
 
 #[derive(Debug)]
 pub struct PlayerHandComponent {
-    pub player_id: uuid::Uuid,
-    pub rect: Rect,
-    pub rects: Vec<CardRect>,
-    pub status: Status,
+    game_id: uuid::Uuid,
+    player_id: uuid::Uuid,
+    rects: Vec<CardRect>,
+    client: networking::client::Client,
+    visible: bool,
 }
 
 impl PlayerHandComponent {
-    pub fn new(rect: Rect, player_id: &uuid::Uuid) -> Self {
+    pub fn new(game_id: &uuid::Uuid, player_id: &uuid::Uuid, client: networking::client::Client) -> Self {
         Self {
-            rect,
+            game_id: game_id.clone(),
             player_id: player_id.clone(),
             rects: Vec::new(),
-            status: Status::Idle,
+            client,
+            visible: true,
         }
     }
 
     async fn compute_rects(&mut self, cards: &[RenderableCard]) -> anyhow::Result<()> {
+        let rect = hand_rect();
         let spell_count = cards
             .iter()
             .filter(|c| c.zone == Zone::Hand)
@@ -64,8 +72,8 @@ impl PlayerHandComponent {
         let total_width = spells_width + if site_count > 0 { card_spacing + site_dim.x } else { 0.0 };
 
         // Center horizontally in hand area
-        let start_x = self.rect.x + (self.rect.w - total_width) / 2.0;
-        let spells_y = self.rect.y + self.rect.h / 2.0 - spell_dim.y / 2.0;
+        let start_x = rect.x + (rect.w - total_width) / 2.0;
+        let spells_y = rect.y + rect.h / 2.0 - spell_dim.y / 2.0;
 
         // Spells row
         for (idx, card) in cards
@@ -95,7 +103,7 @@ impl PlayerHandComponent {
         // Sites column, stacked vertically to the right of spells
         if site_count > 0 {
             let sites_x = start_x + spells_width + card_spacing;
-            let sites_start_y = self.rect.y + self.rect.h / 2.0 - spell_dim.y / 2.0;
+            let sites_start_y = rect.y + rect.h / 2.0 - spell_dim.y / 2.0;
             for (idx, card) in cards
                 .iter()
                 .filter(|c| c.zone == Zone::Hand)
@@ -128,14 +136,14 @@ impl PlayerHandComponent {
 
 #[async_trait::async_trait]
 impl Component for PlayerHandComponent {
-    async fn update(&mut self, cards: &[RenderableCard], status: Status) -> anyhow::Result<()> {
-        self.status = status;
+    async fn update(&mut self, cards: &[RenderableCard], _status: Status) -> anyhow::Result<()> {
         self.compute_rects(cards).await
     }
 
-    async fn render(&mut self) {
+    async fn render(&mut self, status: &mut Status) {
+        let rect = hand_rect();
         let bg_color = Color::new(0.15, 0.18, 0.22, 0.85);
-        draw_rectangle(self.rect.x, self.rect.y, self.rect.w, self.rect.h, bg_color);
+        draw_rectangle(rect.x, rect.y, rect.w, rect.h, bg_color);
 
         for card_rect in &self.rects {
             if card_rect.zone != Zone::Hand {
@@ -144,7 +152,7 @@ impl Component for PlayerHandComponent {
 
             let mut scale = 1.0;
             if card_rect.is_selected || card_rect.is_hovered {
-                if let Status::SelectingCard { preview: false, .. } = &self.status {
+                if let Status::SelectingCard { preview: false, .. } = status {
                     scale = 1.2;
                 }
             }
@@ -166,7 +174,7 @@ impl Component for PlayerHandComponent {
 
             if let Status::SelectingCard {
                 cards, preview: false, ..
-            } = &self.status
+            } = &status
             {
                 if !cards.contains(&card_rect.id) {
                     draw_rectangle_ex(
@@ -183,5 +191,117 @@ impl Component for PlayerHandComponent {
                 }
             }
         }
+    }
+
+    fn process_input(&mut self, in_turn: bool, status: &mut Status) {
+        let mouse_position = macroquad::input::mouse_position();
+        if !clicks_enabled() {
+            return;
+        }
+
+        if let Status::SelectingAction { .. } = &status {
+            return;
+        }
+
+        if !in_turn {
+            return;
+        }
+
+        let mut hovered_card_index = None;
+        for (idx, card_display) in self.rects.iter().enumerate() {
+            if card_display.rect.contains(mouse_position.into()) {
+                hovered_card_index = Some(idx);
+            };
+        }
+
+        for card in &mut self.rects {
+            card.is_hovered = false;
+        }
+
+        if let Some(idx) = hovered_card_index {
+            self.rects.get_mut(idx).unwrap().is_hovered = true;
+        }
+
+        match &status {
+            Status::Idle => {
+                for card_rect in &mut self
+                    .rects
+                    .iter_mut()
+                    .filter(|c| c.zone.is_in_realm() || c.zone == Zone::Hand)
+                {
+                    if card_rect.is_hovered && is_mouse_button_released(MouseButton::Left) {
+                        self.client
+                            .send(ClientMessage::ClickCard {
+                                card_id: card_rect.id.clone(),
+                                player_id: self.player_id,
+                                game_id: self.game_id,
+                            })
+                            .unwrap();
+                    };
+                }
+            }
+            Status::SelectingCard {
+                cards, preview: true, ..
+            } => {
+                let valid_cards: Vec<&CardRect> = self.rects.iter().filter(|c| cards.contains(&c.id)).collect();
+                let mut selected_id = None;
+                for card in valid_cards {
+                    if card.rect.contains(mouse_position.into()) && is_mouse_button_released(MouseButton::Left) {
+                        selected_id = Some(card.id.clone());
+                    }
+                }
+
+                if let Some(id) = selected_id {
+                    let card = self.rects.iter_mut().find(|c| c.id == id).unwrap();
+                    card.is_selected = !card.is_selected;
+
+                    if card.is_selected {
+                        self.client
+                            .send(ClientMessage::PickCard {
+                                player_id: self.player_id.clone(),
+                                game_id: self.game_id.clone(),
+                                card_id: id.clone(),
+                            })
+                            .unwrap();
+
+                        *status = Status::Idle;
+                    }
+                }
+            }
+
+            Status::SelectingCard {
+                cards, preview: false, ..
+            } => {
+                let valid_cards: Vec<&CardRect> = self.rects.iter().filter(|c| cards.contains(&c.id)).collect();
+                let mut selected_id = None;
+                for card in valid_cards {
+                    if card.rect.contains(mouse_position.into()) && is_mouse_button_released(MouseButton::Left) {
+                        selected_id = Some(card.id.clone());
+                    }
+                }
+
+                if let Some(id) = selected_id {
+                    let card = self.rects.iter_mut().find(|c| c.id == id).unwrap();
+                    card.is_selected = !card.is_selected;
+
+                    if card.is_selected {
+                        self.client
+                            .send(ClientMessage::PickCard {
+                                player_id: self.player_id.clone(),
+                                game_id: self.game_id.clone(),
+                                card_id: id.clone(),
+                            })
+                            .unwrap();
+
+                        *status = Status::Idle;
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn toggle_visibility(&mut self) {
+        self.visible = !self.visible;
     }
 }

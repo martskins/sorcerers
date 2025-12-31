@@ -22,7 +22,7 @@ use sorcerers::{
 
 const FONT_SIZE: f32 = 24.0;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum SelectionOverlayBehaviour {
     Preview,
     Pick,

@@ -2,7 +2,7 @@ use sorcerers::networking::message::ServerMessage;
 
 pub mod game;
 pub mod menu;
-mod selection_overlay;
+pub mod selection_overlay;
 
 #[derive(Debug)]
 pub enum Scene {
@@ -35,7 +35,10 @@ impl Scene {
     pub async fn process_input(&mut self) -> Option<Scene> {
         match self {
             Scene::Menu(menu) => menu.process_input().await,
-            Scene::Game(_) => None,
+            Scene::Game(game) => {
+                game.process_input();
+                None
+            }
         }
     }
 }
