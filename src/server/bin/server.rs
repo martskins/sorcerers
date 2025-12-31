@@ -1,9 +1,8 @@
 use async_channel::Sender;
 use sorcerers::{
     card::{Zone, from_name_and_zone, *},
-    deck::precon,
     game::{Game, Resources},
-    networking::message::{ClientMessage, Message, ServerMessage, ToMessage},
+    networking::message::{ClientMessage, Message, PreconDeck, ServerMessage, ToMessage},
     state::State,
 };
 use std::{collections::HashMap, sync::Arc};
@@ -11,7 +10,7 @@ use tokio::{io::AsyncWriteExt, net::tcp::OwnedWriteHalf, sync::Mutex};
 
 pub struct Server {
     pub games: HashMap<uuid::Uuid, Sender<ClientMessage>>,
-    pub looking_for_match: Vec<uuid::Uuid>,
+    pub looking_for_match: Vec<(uuid::Uuid, PreconDeck)>,
     pub streams: HashMap<uuid::Uuid, Arc<Mutex<OwnedWriteHalf>>>,
 }
 
@@ -32,10 +31,19 @@ impl Server {
         match message {
             Message::ClientMessage(ClientMessage::Connect) => {
                 let player_id = uuid::Uuid::new_v4();
-                self.looking_for_match.push(player_id);
-                self.send_to_stream(ServerMessage::ConnectResponse { player_id }, Arc::clone(&stream))
-                    .await?;
+                self.send_to_stream(
+                    ServerMessage::ConnectResponse {
+                        player_id,
+                        available_decks: vec![PreconDeck::BetaFire, PreconDeck::BetaAir],
+                    },
+                    Arc::clone(&stream),
+                )
+                .await?;
                 self.streams.insert(player_id, stream);
+            }
+            Message::ClientMessage(ClientMessage::JoinQueue { player_id, deck }) => {
+                self.looking_for_match.push((player_id.clone(), deck.clone()));
+                self.streams.insert(player_id.clone(), stream);
 
                 match self.find_match() {
                     Some((player1, player2)) => {
@@ -64,12 +72,16 @@ impl Server {
         Ok(())
     }
 
-    pub async fn create_game(&mut self, player1: &uuid::Uuid, player2: &uuid::Uuid) -> anyhow::Result<()> {
+    pub async fn create_game(
+        &mut self,
+        (player1, precon1): &(uuid::Uuid, PreconDeck),
+        (player2, precon2): &(uuid::Uuid, PreconDeck),
+    ) -> anyhow::Result<()> {
         let (server_tx, server_rx) = async_channel::unbounded();
         let (client_tx, client_rx) = async_channel::unbounded::<ClientMessage>();
 
-        let (deck1, cards1) = precon::beta::fire(player1.clone());
-        let (deck2, cards2) = precon::beta::air(player2.clone());
+        let (deck1, cards1) = precon1.build(player1);
+        let (deck2, cards2) = precon2.build(player2);
         let mut state = State::new(
             Vec::new().into_iter().chain(cards1).chain(cards2).collect(),
             HashMap::from([(player1.clone(), deck1), (player2.clone(), deck2)]),
@@ -84,53 +96,51 @@ impl Server {
         state.resources.get_mut(player2).unwrap().thresholds.air = 3;
         state.cards.push(from_name_and_zone(
             Thunderstorm::NAME,
-            player1.clone(),
+            player1,
             Zone::Intersection(vec![1, 2, 6, 7]),
         ));
         state
             .cards
-            .push(from_name_and_zone(RaiseDead::NAME, player2.clone(), Zone::Hand));
+            .push(from_name_and_zone(RaiseDead::NAME, player2, Zone::Hand));
         state
             .cards
-            .push(from_name_and_zone(AridDesert::NAME, player1.clone(), Zone::Realm(3)));
+            .push(from_name_and_zone(AridDesert::NAME, player1, Zone::Realm(3)));
         state
             .cards
-            .push(from_name_and_zone(AridDesert::NAME, player1.clone(), Zone::Realm(8)));
+            .push(from_name_and_zone(AridDesert::NAME, player1, Zone::Realm(8)));
         state
             .cards
-            .push(from_name_and_zone(AridDesert::NAME, player1.clone(), Zone::Realm(7)));
+            .push(from_name_and_zone(AridDesert::NAME, player1, Zone::Realm(7)));
         state
             .cards
-            .push(from_name_and_zone(RaalDromedary::NAME, player1.clone(), Zone::Realm(7)));
+            .push(from_name_and_zone(RaalDromedary::NAME, player1, Zone::Realm(7)));
         state
             .cards
-            .push(from_name_and_zone(LuckyCharm::NAME, player1.clone(), Zone::Hand));
+            .push(from_name_and_zone(LuckyCharm::NAME, player1, Zone::Hand));
         state
             .cards
-            .push(from_name_and_zone(PitVipers::NAME, player1.clone(), Zone::Realm(8)));
+            .push(from_name_and_zone(PitVipers::NAME, player1, Zone::Realm(8)));
         state
             .cards
-            .push(from_name_and_zone(LuckyCharm::NAME, player1.clone(), Zone::Realm(8)));
+            .push(from_name_and_zone(LuckyCharm::NAME, player1, Zone::Realm(8)));
         state
             .cards
-            .push(from_name_and_zone(PlanarGate::NAME, player2.clone(), Zone::Realm(13)));
+            .push(from_name_and_zone(PlanarGate::NAME, player2, Zone::Realm(13)));
         state
             .cards
-            .push(from_name_and_zone(PlanarGate::NAME, player2.clone(), Zone::Realm(12)));
-        state.cards.push(from_name_and_zone(
-            GrandmasterWizard::NAME,
-            player2.clone(),
-            Zone::Cemetery,
-        ));
+            .push(from_name_and_zone(PlanarGate::NAME, player2, Zone::Realm(12)));
         state
             .cards
-            .push(from_name_and_zone(PitVipers::NAME, player1.clone(), Zone::Cemetery));
+            .push(from_name_and_zone(GrandmasterWizard::NAME, player2, Zone::Cemetery));
         state
             .cards
-            .push(from_name_and_zone(Thunderstorm::NAME, player2.clone(), Zone::Hand));
+            .push(from_name_and_zone(PitVipers::NAME, player1, Zone::Cemetery));
         state
             .cards
-            .push(from_name_and_zone(PlanarGate::NAME, player2.clone(), Zone::Realm(18)));
+            .push(from_name_and_zone(Thunderstorm::NAME, player2, Zone::Hand));
+        state
+            .cards
+            .push(from_name_and_zone(PlanarGate::NAME, player2, Zone::Realm(18)));
 
         let stream1 = self.streams.remove(player1).unwrap().clone();
         let stream2 = self.streams.remove(player2).unwrap().clone();
@@ -152,7 +162,7 @@ impl Server {
         Ok(())
     }
 
-    pub fn find_match(&mut self) -> Option<(uuid::Uuid, uuid::Uuid)> {
+    pub fn find_match(&mut self) -> Option<((uuid::Uuid, PreconDeck), (uuid::Uuid, PreconDeck))> {
         if self.looking_for_match.len() >= 2 {
             let player1 = self.looking_for_match.remove(0);
             let player2 = self.looking_for_match.remove(0);

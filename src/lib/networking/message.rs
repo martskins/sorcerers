@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
 use crate::{
-    card::{CardType, RenderableCard, Zone},
+    card::{Card, CardType, RenderableCard, Zone},
+    deck::{Deck, precon},
     game::{Direction, PlayerId, Resources},
 };
 use serde::{Deserialize, Serialize};
@@ -17,9 +18,32 @@ pub enum Message {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum PreconDeck {
+    BetaFire,
+    BetaAir,
+}
+
+impl PreconDeck {
+    pub fn name(&self) -> &'static str {
+        match self {
+            PreconDeck::BetaFire => "Beta - Fire",
+            PreconDeck::BetaAir => "Beta - Air",
+        }
+    }
+
+    pub fn build(&self, player_id: &PlayerId) -> (Deck, Vec<Box<dyn Card>>) {
+        match self {
+            PreconDeck::BetaFire => precon::beta::fire(player_id),
+            PreconDeck::BetaAir => precon::beta::air(player_id),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ServerMessage {
     ConnectResponse {
         player_id: PlayerId,
+        available_decks: Vec<PreconDeck>,
     },
     GameStarted {
         game_id: uuid::Uuid,
@@ -62,7 +86,7 @@ impl ServerMessage {
             ServerMessage::PickCard { player_id, .. } => player_id.clone(),
             ServerMessage::PickZone { player_id, .. } => player_id.clone(),
             ServerMessage::PickAction { player_id, .. } => player_id.clone(),
-            ServerMessage::ConnectResponse { player_id } => player_id.clone(),
+            ServerMessage::ConnectResponse { player_id, .. } => player_id.clone(),
             ServerMessage::GameStarted { .. } => uuid::Uuid::nil(),
             ServerMessage::Sync { .. } => uuid::Uuid::nil(),
         }
@@ -78,6 +102,10 @@ impl ToMessage for ServerMessage {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ClientMessage {
     Connect,
+    JoinQueue {
+        player_id: PlayerId,
+        deck: PreconDeck,
+    },
     DrawCard {
         game_id: uuid::Uuid,
         player_id: PlayerId,
@@ -120,6 +148,7 @@ impl ClientMessage {
     pub fn game_id(&self) -> uuid::Uuid {
         match self {
             ClientMessage::Connect => uuid::Uuid::nil(),
+            ClientMessage::JoinQueue { .. } => uuid::Uuid::nil(),
             ClientMessage::PickCard { game_id, .. } => game_id.clone(),
             ClientMessage::PickAction { game_id, .. } => game_id.clone(),
             ClientMessage::EndTurn { game_id, .. } => game_id.clone(),
@@ -140,6 +169,7 @@ impl ClientMessage {
             ClientMessage::ClickCard { player_id, .. } => player_id,
             ClientMessage::DrawCard { player_id, .. } => player_id,
             ClientMessage::PickDirection { player_id, .. } => player_id,
+            ClientMessage::JoinQueue { player_id, .. } => player_id,
         }
     }
 }

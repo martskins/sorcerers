@@ -90,24 +90,42 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new(player_id: uuid::Uuid, client: networking::client::Client) -> Self {
+    pub fn new(
+        id: uuid::Uuid,
+        player_id: uuid::Uuid,
+        opponent_id: uuid::Uuid,
+        is_player_one: bool,
+        cards: Vec<RenderableCard>,
+        client: networking::client::Client,
+    ) -> Self {
         let cell_rects: Vec<CellRect> = (0..20)
             .map(|i| {
-                let rect = cell_rect(i + 1, false);
+                let rect = cell_rect(i + 1, !is_player_one);
                 CellRect { id: i as u8 + 1, rect }
             })
             .collect();
+        let intersection_rects = Zone::all_intersections()
+            .into_iter()
+            .filter_map(|z| match z {
+                Zone::Intersection(locs) => {
+                    let rect = intersection_rect(&locs, !is_player_one).unwrap();
+                    Some(IntersectionRect { locations: locs, rect })
+                }
+                _ => None,
+            })
+            .collect();
+
         Self {
-            player_id: player_id,
-            opponent_id: uuid::Uuid::nil(),
+            player_id,
+            opponent_id,
             card_rects: Vec::new(),
-            cards: Vec::new(),
-            game_id: uuid::Uuid::nil(),
+            cards,
+            game_id: id,
             cell_rects,
-            intersection_rects: Vec::new(),
+            intersection_rects,
             client,
             current_player: uuid::Uuid::nil(),
-            is_player_one: false,
+            is_player_one,
             resources: HashMap::new(),
             actions: Vec::new(),
             click_enabled: true,

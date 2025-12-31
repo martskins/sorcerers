@@ -1,26 +1,55 @@
-use crate::scene::{Scene, game::Game};
+use crate::{
+    config::screen_rect,
+    scene::{Scene, game::Game},
+};
 use macroquad::{
     color::WHITE,
     math::Vec2,
+    text::draw_text,
     ui::{self, root_ui},
 };
 use sorcerers::networking::{
     self,
-    message::{ClientMessage, ServerMessage},
+    message::{ClientMessage, PreconDeck, ServerMessage},
 };
 
 #[derive(Debug)]
 pub struct Menu {
     client: networking::client::Client,
+    player_id: Option<uuid::Uuid>,
+    available_decks: Vec<PreconDeck>,
+    looking_for_match: bool,
 }
 
 impl Menu {
     pub fn new(client: networking::client::Client) -> Self {
-        Self { client }
+        Self {
+            client,
+            player_id: None,
+            available_decks: vec![],
+            looking_for_match: false,
+        }
     }
 
     pub async fn render(&mut self) -> anyhow::Result<()> {
         root_ui().label(Vec2::new(20.0, 20.0), "Menu Scene");
+
+        const FONT_SIZE: f32 = 24.0;
+        if self.looking_for_match {
+            let time = macroquad::time::get_time();
+            let dot_count = ((time * 2.0) as usize % 3) + 1;
+            let mut dots = ".".repeat(dot_count);
+            dots += &" ".repeat(3 - dot_count);
+            let message = format!("Looking for match{}", dots);
+
+            let screen_rect = screen_rect();
+            let text_dimensions = macroquad::text::measure_text(&message, None, FONT_SIZE as u16, 1.0);
+            let x = screen_rect.w / 2.0 - text_dimensions.width / 2.0;
+            let y = screen_rect.h / 2.0 - text_dimensions.height / 2.0;
+
+            draw_text(&message, x, y, 32.0, WHITE);
+        }
+
         Ok(())
     }
 
@@ -30,14 +59,98 @@ impl Menu {
 
     pub async fn process_message(&mut self, msg: &ServerMessage) -> anyhow::Result<Option<Scene>> {
         match msg {
-            ServerMessage::ConnectResponse { player_id } => {
-                Ok(Some(Scene::Game(Game::new(player_id.clone(), self.client.clone()))))
+            ServerMessage::ConnectResponse {
+                player_id,
+                available_decks,
+            } => {
+                self.available_decks = available_decks.clone();
+                self.player_id = Some(player_id.clone());
+                Ok(None)
+            }
+            ServerMessage::GameStarted {
+                player1,
+                player2,
+                game_id,
+                cards,
+            } => {
+                let opponent_id = if player1 == &self.player_id.unwrap() {
+                    player2.clone()
+                } else {
+                    player1.clone()
+                };
+
+                let player_id = self.player_id.unwrap();
+                Ok(Some(Scene::Game(Game::new(
+                    game_id.clone(),
+                    player_id,
+                    opponent_id,
+                    &player_id == player1,
+                    cards.clone(),
+                    self.client.clone(),
+                ))))
             }
             _ => Ok(None),
         }
     }
 
-    pub async fn process_input(&mut self) -> Option<Scene> {
+    pub async fn pick_deck_scene(&mut self) -> Option<Scene> {
+        let button_size = Vec2::new(300.0, 60.0);
+        let screen_w = macroquad::window::screen_width();
+        let screen_h = macroquad::window::screen_height();
+        let button_style = root_ui()
+            .style_builder()
+            .font_size(32)
+            .text_color(WHITE)
+            .text_color_hovered(WHITE)
+            .text_color_clicked(WHITE)
+            .color(macroquad::color::Color::from_rgba(30, 144, 255, 255)) // DodgerBlue
+            .color_hovered(macroquad::color::Color::from_rgba(65, 105, 225, 255)) // RoyalBlue
+            .color_clicked(macroquad::color::Color::from_rgba(25, 25, 112, 255)) // MidnightBlue
+            .build();
+
+        let skin = ui::Skin {
+            button_style,
+            ..root_ui().default_skin()
+        };
+
+        root_ui().push_skin(&skin);
+
+        let spacing = 20.0;
+        let total_height =
+            self.available_decks.len() as f32 * button_size.y + (self.available_decks.len() as f32 - 1.0) * spacing;
+        let start_y = screen_h / 2.0 - total_height / 2.0;
+
+        let mut chose_deck = false;
+        for (i, deck) in self.available_decks.iter().enumerate() {
+            let button_pos = Vec2::new(
+                screen_w / 2.0 - button_size.x / 2.0,
+                start_y + i as f32 * (button_size.y + spacing),
+            );
+            let clicked = ui::widgets::Button::new(deck.name())
+                .position(button_pos)
+                .size(button_size)
+                .ui(&mut ui::root_ui());
+            if clicked {
+                chose_deck = true;
+                self.client
+                    .send(ClientMessage::JoinQueue {
+                        player_id: self.player_id.unwrap().clone(),
+                        deck: deck.clone(),
+                    })
+                    .unwrap();
+                root_ui().pop_skin();
+            }
+        }
+
+        if chose_deck {
+            self.looking_for_match = true;
+        }
+
+        root_ui().pop_skin();
+        None
+    }
+
+    pub async fn start_scene(&mut self) -> Option<Scene> {
         let button_size = Vec2::new(300.0, 60.0);
         let screen_w = macroquad::window::screen_width();
         let screen_h = macroquad::window::screen_height();
@@ -75,5 +188,17 @@ impl Menu {
 
         root_ui().pop_skin();
         None
+    }
+
+    pub async fn process_input(&mut self) -> Option<Scene> {
+        if self.looking_for_match {
+            return None;
+        }
+
+        if self.available_decks.is_empty() {
+            self.start_scene().await
+        } else {
+            self.pick_deck_scene().await
+        }
     }
 }

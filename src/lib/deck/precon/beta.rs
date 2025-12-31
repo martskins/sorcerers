@@ -4,7 +4,7 @@ use crate::{
     game::PlayerId,
 };
 
-pub fn fire(player_id: PlayerId) -> (Deck, Vec<Box<dyn Card>>) {
+pub fn fire(player_id: &PlayerId) -> (Deck, Vec<Box<dyn Card>>) {
     let spells = vec![
         (2, "Pit Vipers"),
         (2, "Raal Dromedary"),
@@ -63,7 +63,7 @@ pub fn fire(player_id: PlayerId) -> (Deck, Vec<Box<dyn Card>>) {
     (deck, vec![avatar].into_iter().chain(spells).chain(sites).collect())
 }
 
-pub fn air(player_id: PlayerId) -> (Deck, Vec<Box<dyn Card>>) {
+pub fn air(player_id: &PlayerId) -> (Deck, Vec<Box<dyn Card>>) {
     let spells = vec![
         (1, "Sling Pixies"),
         (2, "Snow Leopard"),
