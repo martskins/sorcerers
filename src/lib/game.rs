@@ -649,6 +649,7 @@ pub struct Game {
     pub players: Vec<PlayerId>,
     pub state: State,
     pub streams: HashMap<PlayerId, Arc<Mutex<OwnedWriteHalf>>>,
+    pub effect_log: Vec<Effect>,
     client_receiver: Receiver<ClientMessage>,
     server_receiver: Receiver<ServerMessage>,
 }
@@ -669,6 +670,7 @@ impl Game {
             players: vec![player1, player2],
             streams: HashMap::from([(player1, addr1), (player2, addr2)]),
             client_receiver: receiver,
+            effect_log: Vec::new(),
             server_receiver,
         }
     }
@@ -980,9 +982,12 @@ impl Game {
                 return Ok(());
             }
 
-            let effect = self.state.effects.remove(0);
+            let effect = self.state.effects.pop_back();
             if let Some(effect) = effect {
                 effect.apply(&mut self.state).await?;
+                if let Some(description) = effect.description(&self.state) {
+                    self.broadcast(&ServerMessage::LogEvent { description }).await?;
+                }
             }
         }
 

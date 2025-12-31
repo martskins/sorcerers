@@ -41,6 +41,9 @@ impl PreconDeck {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ServerMessage {
+    LogEvent {
+        description: String,
+    },
     ConnectResponse {
         player_id: PlayerId,
         available_decks: Vec<PreconDeck>,
@@ -82,6 +85,7 @@ pub enum ServerMessage {
 impl ServerMessage {
     pub fn player_id(&self) -> uuid::Uuid {
         match self {
+            ServerMessage::LogEvent { .. } => uuid::Uuid::nil(),
             ServerMessage::PickDirection { player_id, .. } => player_id.clone(),
             ServerMessage::PickCard { player_id, .. } => player_id.clone(),
             ServerMessage::PickZone { player_id, .. } => player_id.clone(),

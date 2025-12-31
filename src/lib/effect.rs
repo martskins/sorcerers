@@ -1,6 +1,6 @@
 use crate::{
     card::{Card, Modifier, Plane, SiteBase, Zone},
-    game::{Action, BaseAction, Direction, PlayerId, Thresholds, pick_action, pick_card},
+    game::{Action, BaseAction, Direction, PlayerAction, PlayerId, Thresholds, pick_action, pick_card},
     query::{CardQuery, EffectQuery, ZoneQuery},
     state::{Phase, State},
 };
@@ -214,41 +214,71 @@ impl Effect {
         }
     }
 
-    pub fn name(&self, state: &State) -> String {
+    pub fn description(&self, state: &State) -> Option<String> {
         match self {
-            Effect::ShootProjectile { .. } => "ShootProjectile".to_string(),
-            Effect::AddCard { .. } => "AddCard".to_string(),
-            Effect::AddModifier { .. } => "AddModifier".to_string(),
-            Effect::AddCounter { .. } => "AddCounter".to_string(),
-            Effect::TeleportCard { .. } => "TeleportCard".to_string(),
-            Effect::MoveCard { .. } => "MoveCard".to_string(),
-            Effect::DrawCard { .. } => "DrawCard".to_string(),
-            Effect::DrawSite { .. } => "DrawSite".to_string(),
-            Effect::DrawSpell { .. } => "DrawSpell".to_string(),
-            Effect::PlayMagic { .. } => "PlayMagic".to_string(),
-            Effect::PlayCard { .. } => "PlayCard".to_string(),
-            Effect::SummonCard { .. } => "SummonCard".to_string(),
-            Effect::TapCard { .. } => "TapCard".to_string(),
-            Effect::PreEndTurn { .. } => "PrepareEndTurn".to_string(),
-            Effect::EndTurn { .. } => "EndTurn".to_string(),
-            Effect::StartTurn { .. } => "StartTurn".to_string(),
-            Effect::RemoveResources { .. } => "RemoveResources".to_string(),
-            Effect::AddResources { .. } => "AddResources".to_string(),
-            Effect::Attack { .. } => "Attack".to_string(),
-            Effect::TakeDamage { card_id, from, damage } => {
-                let attacker = state.get_card(from).map_or("Unknown", |c| c.get_name());
-                let defender = state.get_card(card_id).map_or("Unknown", |c| c.get_name());
-                format!("TakeDamage: {} deals {} damage to {}", attacker, damage, defender)
+            Effect::ShootProjectile {
+                player_id,
+                shooter,
+                damage,
+                direction,
+                ..
+            } => {
+                let shooter_card = state.get_card(shooter).unwrap().get_name();
+                Some(format!(
+                    "Player {} shoots a projectile for {} damage from {} in direction {}",
+                    player_id,
+                    damage,
+                    shooter_card,
+                    direction.get_name()
+                ))
             }
-            Effect::BuryCard { .. } => "BuryCard".to_string(),
-            Effect::BanishCard { .. } => "BanishCard".to_string(),
-            Effect::SetCardData { .. } => "SetCardData".to_string(),
-            Effect::RangedStrike { .. } => "RangedStrike".to_string(),
-            Effect::DealDamageToTarget { .. } => "DealDamageToTarget".to_string(),
-            Effect::TeleportUnitToZone { .. } => "TeleportUnitToZone".to_string(),
-            Effect::RearrangeDeck { .. } => "RearrangeDeck".to_string(),
-            Effect::Burrow { .. } => "Burrow".to_string(),
-            Effect::Submerge { .. } => "Submerge".to_string(),
+            Effect::AddCard { .. } => None,
+            Effect::AddModifier { .. } => None,
+            Effect::AddCounter { .. } => None,
+            Effect::TeleportCard { .. } => None,
+            Effect::MoveCard { .. } => None,
+            Effect::DrawCard { .. } => None,
+            Effect::DrawSite { player_id, .. } => Some(format!("Player {} draws a site", player_id)),
+            Effect::DrawSpell { player_id, .. } => Some(format!("Player {} draws a spell", player_id)),
+            Effect::PlayMagic { .. } => None,
+            Effect::PlayCard {
+                player_id,
+                card_id,
+                zone,
+            } => {
+                let card = state.get_card(card_id).unwrap().get_name();
+                Some(format!("Player {} plays {} in zone {:?}", player_id, card, zone))
+            }
+            Effect::SummonCard { .. } => None,
+            Effect::TapCard { .. } => None,
+            Effect::PreEndTurn { .. } => None,
+            Effect::EndTurn { .. } => None,
+            Effect::StartTurn { .. } => None,
+            Effect::RemoveResources { .. } => None,
+            Effect::AddResources { .. } => None,
+            Effect::Attack { .. } => None,
+            Effect::TakeDamage { card_id, from, damage } => {
+                let attacker = state.get_card(from).unwrap().get_name();
+                let defender = state.get_card(card_id).unwrap().get_name();
+                Some(format!("{} takes {} damage from {}", defender, damage, attacker))
+            }
+            Effect::BuryCard { card_id, .. } => {
+                let card = state.get_card(card_id).unwrap();
+                let player = card.get_controller_id();
+                Some(format!("{} buries {}", player, card.get_name()))
+            }
+            Effect::BanishCard { card_id, .. } => {
+                let card = state.get_card(card_id).unwrap();
+                let player = card.get_controller_id();
+                Some(format!("{} banishes {}", player, card.get_name()))
+            }
+            Effect::SetCardData { .. } => None,
+            Effect::RangedStrike { .. } => None,
+            Effect::DealDamageToTarget { .. } => None,
+            Effect::TeleportUnitToZone { .. } => None,
+            Effect::RearrangeDeck { .. } => None,
+            Effect::Burrow { .. } => None,
+            Effect::Submerge { .. } => None,
         }
     }
 

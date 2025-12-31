@@ -16,6 +16,53 @@ pub enum Phase {
 }
 
 #[derive(Debug)]
+pub struct EffectLog {
+    pub queue: VecDeque<Effect>,
+    pub idx: usize,
+    pub len: usize,
+}
+
+impl EffectLog {
+    pub fn new() -> Self {
+        EffectLog {
+            queue: VecDeque::new(),
+            idx: 0,
+            len: 0,
+        }
+    }
+
+    pub fn push_back(&mut self, effect: Effect) {
+        self.len += 1;
+        self.queue.push_back(effect);
+    }
+
+    pub fn push_front(&mut self, effect: Effect) {
+        self.len += 1;
+        self.queue.push_front(effect);
+    }
+
+    pub fn extend(&mut self, effects: Vec<Effect>) {
+        self.len += effects.len();
+        self.queue.extend(effects);
+    }
+
+    pub fn pop_front(&mut self) -> Option<Effect> {
+        self.idx = self.idx.saturating_add(1);
+        self.len = self.len.saturating_sub(1);
+        self.queue.pop_front()
+    }
+
+    pub fn pop_back(&mut self) -> Option<Effect> {
+        self.len = self.len.saturating_sub(1);
+        self.queue.pop_back()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.queue.is_empty()
+    }
+}
+
+#[derive(Debug)]
 pub struct State {
     pub turns: usize,
     pub cards: Vec<Box<dyn Card>>,
@@ -25,7 +72,7 @@ pub struct State {
     pub phase: Phase,
     pub waiting_for_input: bool,
     pub current_player: PlayerId,
-    pub effects: VecDeque<Effect>,
+    pub effects: EffectLog,
     pub player_one: PlayerId,
     pub server_tx: Sender<ServerMessage>,
     pub client_rx: Receiver<ClientMessage>,
@@ -47,7 +94,7 @@ impl State {
             phase: Phase::Main,
             current_player: uuid::Uuid::nil(),
             waiting_for_input: false,
-            effects: VecDeque::new(),
+            effects: EffectLog::new(),
             player_one: uuid::Uuid::nil(),
             server_tx,
             client_rx,
@@ -104,7 +151,7 @@ impl State {
             phase: self.phase.clone(),
             current_player: self.current_player,
             waiting_for_input: self.waiting_for_input,
-            effects: VecDeque::new(), // Effects are not needed in the snapshot
+            effects: EffectLog::new(),
             player_one: self.player_one,
             server_tx: self.server_tx.clone(),
             client_rx: self.client_rx.clone(),

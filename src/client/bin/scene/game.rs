@@ -205,6 +205,10 @@ impl Game {
 
     pub async fn process_message(&mut self, message: &ServerMessage) -> anyhow::Result<Option<Scene>> {
         match message {
+            ServerMessage::LogEvent { description } => {
+                println!("Game Log: {}", description);
+                Ok(None)
+            }
             ServerMessage::PickZone { zones, .. } => {
                 self.status = Status::SelectingZone { zones: zones.clone() };
                 Ok(None)
