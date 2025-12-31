@@ -1,17 +1,17 @@
 use crate::{
+    clicks_enabled,
+    components::{Component, player_hand::PlayerHandComponent, realm::RealmComponent},
     config::*,
     render::{CardRect, CellRect, IntersectionRect},
     scene::{Scene, selection_overlay::SelectionOverlay},
+    set_clicks_enabled,
     texture_cache::TextureCache,
 };
 use macroquad::{
-    color::{BLUE, Color, DARKGREEN, GRAY, GREEN, RED, WHITE},
+    color::{BLUE, Color, RED, WHITE},
     input::{MouseButton, is_mouse_button_released, mouse_position},
     math::{Rect, RectOffset, Vec2},
-    shapes::{
-        DrawRectangleParams, draw_circle, draw_circle_lines, draw_line, draw_rectangle, draw_rectangle_ex,
-        draw_rectangle_lines, draw_triangle_lines,
-    },
+    shapes::{draw_line, draw_rectangle, draw_triangle_lines},
     text::draw_text,
     texture::{DrawTextureParams, draw_texture_ex},
     ui::{self, hash},
@@ -19,14 +19,15 @@ use macroquad::{
 };
 use rand::SeedableRng;
 use sorcerers::{
-    card::{CardType, Modifier, Plane, RenderableCard, Zone},
+    card::{CardType, Plane, RenderableCard, Zone},
     game::{Element, PlayerId, Resources},
     networking::{
         self,
         message::{ClientMessage, ServerMessage},
     },
 };
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
+use tokio::sync::Mutex;
 
 use super::selection_overlay::SelectionOverlayBehaviour;
 
@@ -34,23 +35,7 @@ const FONT_SIZE: f32 = 24.0;
 const THRESHOLD_SYMBOL_SPACING: f32 = 18.0;
 const SYMBOL_SIZE: f32 = 20.0;
 
-fn draw_vortex_icon(x: f32, y: f32, size: f32, color: Color) {
-    use macroquad::shapes::draw_line;
-    let turns = 2.0;
-    let segments = 24;
-    let mut prev = (x + size / 2.0, y + size / 2.0);
-    for i in 1..=segments {
-        let t = i as f32 / segments as f32;
-        let angle = turns * std::f32::consts::TAU * t;
-        let radius = (size / 2.0) * t;
-        let px = x + size / 2.0 + radius * angle.cos();
-        let py = y + size / 2.0 + radius * angle.sin();
-        draw_line(prev.0, prev.1, px, py, 2.0, color);
-        prev = (px, py);
-    }
-}
-
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Status {
     Idle,
     SelectingAction {
@@ -79,14 +64,10 @@ pub struct Game {
     pub client: networking::client::Client,
     pub current_player: PlayerId,
     pub is_player_one: bool,
-    // click_enabled is set to false whenever a Button is click to prevent the release of the mouse
-    // button from triggering other actions in the same frame. This happens because buttons in
-    // macroquad respond to mouse button presses and our game mostly responds to mouse button
-    // releases, so a single click can trigger two actions.
-    click_enabled: bool,
     card_selection_overlay: Option<SelectionOverlay>,
     actions: Vec<String>,
     status: Status,
+    components: Vec<Box<dyn Component>>,
 }
 
 impl Game {
@@ -116,7 +97,7 @@ impl Game {
             .collect();
 
         Self {
-            player_id,
+            player_id: player_id.clone(),
             opponent_id,
             card_rects: Vec::new(),
             cards,
@@ -128,9 +109,12 @@ impl Game {
             is_player_one,
             resources: HashMap::new(),
             actions: Vec::new(),
-            click_enabled: true,
             card_selection_overlay: None,
             status: Status::Idle,
+            components: vec![
+                Box::new(PlayerHandComponent::new(hand_rect(), &player_id)),
+                Box::new(RealmComponent::new(realm_rect(), &player_id, is_player_one)),
+            ],
         }
     }
 
@@ -139,6 +123,10 @@ impl Game {
     }
 
     pub async fn update(&mut self) -> anyhow::Result<()> {
+        for component in &mut self.components {
+            component.update(&self.cards, self.status.clone()).await?;
+        }
+
         let mouse_position = mouse_position().into();
         self.resize_cells().await?;
         self.compute_hand_rects().await?;
@@ -148,7 +136,7 @@ impl Game {
         // Update click_enabled at the end of the update cycle so that we don't process the release
         // event in the same frame as the one that re-enables clicking.
         if is_mouse_button_released(MouseButton::Left) {
-            self.click_enabled = true;
+            set_clicks_enabled(true);
         }
 
         if self.card_selection_overlay.is_some() {
@@ -190,12 +178,12 @@ impl Game {
             return Ok(());
         }
 
-        self.render_background().await;
-        self.render_grid().await;
         self.render_gui().await?;
-        self.render_player_hand().await;
+        for component in &mut self.components {
+            component.render().await;
+        }
+
         self.render_card_preview().await?;
-        self.render_realm().await;
         if self.card_selection_overlay.is_some() {
             let overlay = self.card_selection_overlay.as_mut().unwrap();
             overlay.render();
@@ -483,7 +471,7 @@ impl Game {
         let is_idle = matches!(self.status, Status::Idle);
         if is_in_turn && is_idle {
             if ui::root_ui().button(Vec2::new(screen_rect.w - 100.0, screen_rect.h - 40.0), "Pass Turn") {
-                self.click_enabled = false;
+                set_clicks_enabled(false);
                 self.client.send(ClientMessage::EndTurn {
                     player_id: self.player_id.clone(),
                     game_id: self.game_id.clone(),
@@ -543,7 +531,7 @@ impl Game {
                                         action_idx: idx,
                                     })
                                     .unwrap();
-                                self.click_enabled = false;
+                                set_clicks_enabled(false);
                                 self.status = Status::Idle;
                             }
                         }
@@ -589,7 +577,7 @@ impl Game {
     }
 
     fn handle_card_click(&mut self, mouse_position: Vec2) {
-        if !self.click_enabled {
+        if !clicks_enabled() {
             return;
         }
 
@@ -702,7 +690,7 @@ impl Game {
 
         match &self.status {
             Status::SelectingZone { zones } => {
-                if !self.click_enabled {
+                if !clicks_enabled() {
                     return;
                 }
 
@@ -762,99 +750,6 @@ impl Game {
         }
     }
 
-    async fn render_grid(&mut self) {
-        let grid_color = WHITE;
-        let grid_thickness = 1.0;
-        for cell in &self.cell_rects {
-            let rect = cell.rect;
-            draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, grid_thickness, grid_color);
-            draw_text(&cell.id.to_string(), rect.x + 5.0, rect.y + 15.0, 12.0, GRAY);
-
-            match &self.status {
-                Status::SelectingZone { zones } => {
-                    let intersections: Vec<&Zone> = zones
-                        .iter()
-                        .filter(|z| match z {
-                            Zone::Intersection(locations) => locations.contains(&cell.id),
-                            _ => false,
-                        })
-                        .collect();
-                    let can_pick_intersection = !intersections.is_empty();
-                    if can_pick_intersection {
-                        // TODO:
-                    }
-
-                    let can_pick_zone = zones.iter().find(|i| i == &&Zone::Realm(cell.id)).is_some();
-                    if can_pick_zone {
-                        draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, 5.0, GREEN);
-                    }
-                }
-                Status::SelectingCard { preview: true, .. } | Status::SelectingAction { .. } => {
-                    continue;
-                }
-                Status::SelectingCard { preview: false, .. } | Status::Idle => {}
-            }
-
-            if self.card_selection_overlay.is_some() {
-                continue;
-            }
-
-            // Draw a UI button at the top right corner as a placeholder for an icon
-            let button_size = 18.0;
-            let button_x = rect.x + rect.w - button_size - 4.0;
-            let button_y = rect.y + 4.0;
-            let button_pos = Vec2::new(button_x, button_y);
-            let button_dim = Vec2::new(button_size, button_size);
-            let button = ui::widgets::Button::new("+")
-                .position(button_pos)
-                .size(button_dim)
-                .ui(&mut ui::root_ui());
-
-            if button {
-                self.click_enabled = false;
-                let renderables = self
-                    .cards
-                    .iter()
-                    .filter(|c| c.zone == Zone::Realm(cell.id))
-                    .collect::<Vec<&RenderableCard>>();
-                let prompt = format!("Viewing cards on location {}", cell.id);
-                self.card_selection_overlay = Some(
-                    SelectionOverlay::new(
-                        self.client.clone(),
-                        &self.game_id,
-                        &self.player_id,
-                        renderables,
-                        &prompt,
-                        SelectionOverlayBehaviour::Preview,
-                    )
-                    .await,
-                );
-            }
-        }
-
-        for intersection in &self.intersection_rects {
-            match &self.status {
-                Status::SelectingZone { zones } => {
-                    let rect = intersection.rect;
-                    let can_pick_zone = zones
-                        .iter()
-                        .find(|z| match z {
-                            Zone::Intersection(locations) => locations == &intersection.locations,
-                            _ => false,
-                        })
-                        .is_some();
-                    if can_pick_zone {
-                        draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, 5.0, GREEN);
-                    }
-                }
-                Status::SelectingCard { preview: true, .. } | Status::SelectingAction { .. } => {
-                    continue;
-                }
-                Status::SelectingCard { preview: false, .. } | Status::Idle => {}
-            }
-        }
-    }
-
     pub fn wrap_text(text: &str, max_width: f32, font_size: u16) -> String {
         use macroquad::text::measure_text;
         let mut lines = Vec::new();
@@ -879,189 +774,6 @@ impl Game {
             }
         }
         lines.join("\n")
-    }
-
-    pub fn draw_card(card_rect: &CardRect, player: bool) {
-        let rect = card_rect.rect;
-        draw_texture_ex(
-            &card_rect.image,
-            rect.x,
-            rect.y,
-            WHITE,
-            DrawTextureParams {
-                dest_size: Some(Vec2::new(rect.w, rect.h) * CARD_IN_PLAY_SCALE),
-                rotation: card_rect.rotation(),
-                ..Default::default()
-            },
-        );
-
-        let mut sleeve_color = DARKGREEN;
-        if !player {
-            sleeve_color = RED;
-        }
-
-        // Draw rectangle border rotated around the center
-        let w = rect.w * CARD_IN_PLAY_SCALE;
-        let h = rect.h * CARD_IN_PLAY_SCALE;
-        let cx = rect.x + w / 2.0;
-        let cy = rect.y + h / 2.0;
-        let corners = [
-            Vec2::new(-w / 2.0, -h / 2.0),
-            Vec2::new(w / 2.0, -h / 2.0),
-            Vec2::new(w / 2.0, h / 2.0),
-            Vec2::new(-w / 2.0, h / 2.0),
-        ];
-        let rotated: Vec<Vec2> = corners
-            .iter()
-            .map(|corner| {
-                let (sin, cos) = card_rect.rotation().sin_cos();
-                Vec2::new(
-                    cos * corner.x - sin * corner.y + cx,
-                    sin * corner.x + cos * corner.y + cy,
-                )
-            })
-            .collect();
-        for i in 0..4 {
-            draw_line(
-                rotated[i].x,
-                rotated[i].y,
-                rotated[(i + 1) % 4].x,
-                rotated[(i + 1) % 4].y,
-                2.0,
-                sleeve_color,
-            );
-        }
-
-        if card_rect.modifiers.contains(&Modifier::SummoningSickness) {
-            let icon_size = 22.0;
-            let scale = CARD_IN_PLAY_SCALE;
-            let x = card_rect.rect.x + card_rect.rect.w * scale - icon_size - 4.0;
-            let y = card_rect.rect.y + 4.0;
-            draw_vortex_icon(x, y, icon_size, BLUE);
-        }
-
-        if card_rect.modifiers.contains(&Modifier::Disabled) {
-            let icon_size = 15.0;
-            let x = card_rect.rect.x + card_rect.rect.w - 30.0 - 5.0;
-            let y = card_rect.rect.y + 4.0;
-            let cx = x + icon_size / 2.0;
-            let cy = y + icon_size / 2.0;
-            draw_circle_lines(cx, cy, icon_size / 2.0, 3.0, WHITE);
-            draw_line(x + 4.0, y + icon_size - 4.0, x + icon_size - 4.0, y + 4.0, 3.0, WHITE);
-        }
-
-        // Draw damage taken indicator if damage_taken > 0
-        if card_rect.damage_taken > 0 {
-            let circle_radius = 8.0;
-            let circle_x = rect.x + w - circle_radius - 3.0;
-            let circle_y = rect.y + circle_radius - 3.0;
-            draw_circle(
-                circle_x + circle_radius,
-                circle_y + circle_radius,
-                circle_radius - 2.0,
-                RED,
-            );
-            let dmg_text = card_rect.damage_taken.to_string();
-            let text_dims = macroquad::text::measure_text(&dmg_text, None, 12, 1.0);
-            draw_text(
-                &dmg_text,
-                circle_x + circle_radius - text_dims.width / 2.0,
-                circle_y + circle_radius + text_dims.height / 2.8,
-                12.0,
-                WHITE,
-            );
-        }
-    }
-
-    async fn render_realm(&mut self) {
-        for card in &self.card_rects {
-            if !card.zone.is_in_realm() {
-                continue;
-            }
-
-            Game::draw_card(card, card.owner_id == self.player_id);
-
-            if let Status::SelectingCard {
-                cards, preview: false, ..
-            } = &self.status
-            {
-                if !self.click_enabled {
-                    return;
-                }
-
-                if !cards.contains(&card.id) {
-                    draw_rectangle_ex(
-                        card.rect.x,
-                        card.rect.y,
-                        card.rect.w * CARD_IN_PLAY_SCALE,
-                        card.rect.h * CARD_IN_PLAY_SCALE,
-                        DrawRectangleParams {
-                            color: Color::new(100.0, 100.0, 100.0, 0.6),
-                            rotation: card.rotation(),
-                            ..Default::default()
-                        },
-                    );
-                }
-            }
-        }
-    }
-
-    async fn render_player_hand(&self) {
-        let hand_rect = hand_rect();
-        let bg_color = Color::new(0.15, 0.18, 0.22, 0.85);
-        draw_rectangle(hand_rect.x, hand_rect.y, hand_rect.w, hand_rect.h, bg_color);
-
-        for card_rect in &self.card_rects {
-            if card_rect.zone != Zone::Hand {
-                continue;
-            }
-
-            let mut scale = 1.0;
-            if card_rect.is_selected || card_rect.is_hovered {
-                if let Status::SelectingCard { preview: false, .. } = &self.status {
-                    scale = 1.2;
-                }
-            }
-
-            let rect = card_rect.rect;
-            draw_texture_ex(
-                &card_rect.image,
-                rect.x,
-                rect.y,
-                WHITE,
-                DrawTextureParams {
-                    dest_size: Some(Vec2::new(rect.w, rect.h) * scale),
-                    rotation: card_rect.rotation().clone(),
-                    ..Default::default()
-                },
-            );
-
-            draw_rectangle_lines(rect.x, rect.y, rect.w * scale, rect.h * scale, 5.0, DARKGREEN);
-
-            if let Status::SelectingCard {
-                cards, preview: false, ..
-            } = &self.status
-            {
-                if !cards.contains(&card_rect.id) {
-                    draw_rectangle_ex(
-                        rect.x,
-                        rect.y,
-                        rect.w * scale,
-                        rect.h * scale,
-                        DrawRectangleParams {
-                            color: Color::new(200.0, 200.0, 200.0, 0.6),
-                            rotation: card_rect.rotation(),
-                            ..Default::default()
-                        },
-                    );
-                }
-            }
-        }
-    }
-
-    async fn render_background(&self) {
-        let rect = realm_rect();
-        draw_rectangle(rect.x, rect.y, rect.w, rect.h, Color::new(0.08, 0.12, 0.18, 1.0));
     }
 
     async fn compute_realm_rects(&mut self) -> anyhow::Result<()> {

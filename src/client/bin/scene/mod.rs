@@ -1,6 +1,6 @@
 use sorcerers::networking::message::ServerMessage;
 
-mod game;
+pub mod game;
 pub mod menu;
 mod selection_overlay;
 

@@ -1,7 +1,9 @@
 use crate::{
+    clicks_enabled,
     config::{card_height, card_width},
-    render::CardRect,
+    render::{self, CardRect},
     scene::game::Game,
+    set_clicks_enabled,
     texture_cache::TextureCache,
 };
 use macroquad::{
@@ -35,7 +37,6 @@ pub struct SelectionOverlay {
     player_id: PlayerId,
     game_id: uuid::Uuid,
     client: networking::client::Client,
-    click_enabled: bool,
 }
 
 impl SelectionOverlay {
@@ -91,7 +92,6 @@ impl SelectionOverlay {
             behaviour,
             player_id: player_id.clone(),
             close: false,
-            click_enabled: false,
         }
     }
 
@@ -101,7 +101,7 @@ impl SelectionOverlay {
 
     pub fn update(&mut self) {
         if is_mouse_button_released(MouseButton::Left) {
-            self.click_enabled = true;
+            set_clicks_enabled(true);
         }
     }
 
@@ -155,7 +155,7 @@ impl SelectionOverlay {
         );
 
         for rect in &self.rects {
-            Game::draw_card(rect, rect.owner_id == self.player_id);
+            render::draw_card(rect, rect.owner_id == self.player_id);
         }
 
         if self.behaviour == SelectionOverlayBehaviour::Preview {
@@ -178,7 +178,7 @@ impl SelectionOverlay {
         let mouse_vec = Vec2::new(mouse_position.0, mouse_position.1);
 
         for rect in &mut self.rects {
-            if !self.click_enabled {
+            if !clicks_enabled() {
                 continue;
             }
 

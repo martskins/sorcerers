@@ -1,11 +1,30 @@
 mod client;
+pub mod components;
 mod config;
 mod render;
 mod scene;
 mod texture_cache;
 
+use std::sync::{LazyLock, Mutex};
+
 use crate::{client::Client, texture_cache::TextureCache};
 use macroquad::prelude::*;
+
+// CLICK_ENABLED is set to false whenever a Button is click to prevent the release of the mouse
+// button from triggering other actions in the same frame. This happens because buttons in
+// macroquad respond to mouse button presses and our game mostly responds to mouse button
+// releases, so a single click can trigger two actions.
+static CLICK_ENABLED: LazyLock<Mutex<bool>> = LazyLock::new(|| Mutex::new(true));
+
+pub fn set_clicks_enabled(enabled: bool) {
+    let mut click_enabled = CLICK_ENABLED.lock().unwrap();
+    *click_enabled = enabled;
+}
+
+pub fn clicks_enabled() -> bool {
+    let click_enabled = CLICK_ENABLED.lock().unwrap();
+    *click_enabled
+}
 
 fn window_conf() -> Conf {
     Conf {
