@@ -6,6 +6,7 @@ use crate::{
     state::{Phase, State},
 };
 use async_channel::{Receiver, Sender};
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, iter::Sum, sync::Arc};
 use tokio::{io::AsyncWriteExt, net::tcp::OwnedWriteHalf, sync::Mutex};
@@ -986,7 +987,12 @@ impl Game {
             if let Some(effect) = effect {
                 effect.apply(&mut self.state).await?;
                 if let Some(description) = effect.description(&self.state) {
-                    self.broadcast(&ServerMessage::LogEvent { description }).await?;
+                    self.broadcast(&ServerMessage::LogEvent {
+                        id: uuid::Uuid::new_v4(),
+                        description,
+                        datetime: Utc::now(),
+                    })
+                    .await?;
                 }
             }
         }

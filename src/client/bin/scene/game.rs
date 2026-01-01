@@ -1,5 +1,5 @@
 use crate::{
-    components::{Component, player_hand::PlayerHandComponent, realm::RealmComponent},
+    components::{Component, event_log::EventLogComponent, player_hand::PlayerHandComponent, realm::RealmComponent},
     config::*,
     render::{CardRect, CellRect, IntersectionRect},
     scene::{Scene, selection_overlay::SelectionOverlay},
@@ -55,6 +55,42 @@ pub enum Status {
 }
 
 #[derive(Debug)]
+pub struct Event {
+    pub id: uuid::Uuid,
+    pub description: String,
+    pub datetime: chrono::DateTime<chrono::Utc>,
+}
+
+impl Event {
+    fn formatted_datetime(&self) -> String {
+        self.datetime.format("%H:%M:%S").to_string()
+    }
+
+    pub fn formatted(&self) -> String {
+        format!("{}: {}", self.formatted_datetime(), self.description)
+    }
+}
+
+#[derive(Debug)]
+pub struct GameData {
+    pub cards: Vec<RenderableCard>,
+    pub events: Vec<Event>,
+    pub status: Status,
+    pub unseen_events: usize,
+}
+
+impl GameData {
+    pub fn new(cards: Vec<RenderableCard>) -> Self {
+        Self {
+            cards,
+            events: Vec::new(),
+            status: Status::Idle,
+            unseen_events: 0,
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct Game {
     pub player_id: PlayerId,
     pub opponent_id: PlayerId,
@@ -62,15 +98,14 @@ pub struct Game {
     pub card_rects: Vec<CardRect>,
     pub cell_rects: Vec<CellRect>,
     pub intersection_rects: Vec<IntersectionRect>,
-    pub cards: Vec<RenderableCard>,
     pub resources: HashMap<PlayerId, Resources>,
     pub client: networking::client::Client,
     pub current_player: PlayerId,
     pub is_player_one: bool,
     card_selection_overlay: Option<SelectionOverlay>,
     actions: Vec<String>,
-    status: Status,
     components: Vec<Box<dyn Component>>,
+    data: GameData,
 }
 
 impl Game {
@@ -103,7 +138,6 @@ impl Game {
             player_id: player_id.clone(),
             opponent_id,
             card_rects: Vec::new(),
-            cards,
             game_id: game_id.clone(),
             cell_rects,
             intersection_rects,
@@ -113,7 +147,6 @@ impl Game {
             resources: HashMap::new(),
             actions: Vec::new(),
             card_selection_overlay: None,
-            status: Status::Idle,
             components: vec![
                 Box::new(PlayerHandComponent::new(&game_id, &player_id, client.clone())),
                 Box::new(RealmComponent::new(
@@ -122,7 +155,9 @@ impl Game {
                     !is_player_one,
                     client.clone(),
                 )),
+                Box::new(EventLogComponent::new()),
             ],
+            data: GameData::new(cards),
         }
     }
 
@@ -132,7 +167,7 @@ impl Game {
 
     pub async fn update(&mut self) -> anyhow::Result<()> {
         for component in &mut self.components {
-            component.update(&self.cards, self.status.clone()).await?;
+            component.update(&mut self.data).await?;
         }
 
         // Update click_enabled at the end of the update cycle so that we don't process the release
@@ -146,9 +181,9 @@ impl Game {
             behaviour,
             prev_status,
             prompt,
-        } = &self.status
+        } = &self.data.status
         {
-            let renderables = self.cards.iter().filter(|c| cards.contains(&c.id)).collect();
+            let renderables = self.data.cards.iter().filter(|c| cards.contains(&c.id)).collect();
             self.card_selection_overlay = Some(
                 SelectionOverlay::new(
                     self.client.clone(),
@@ -160,7 +195,7 @@ impl Game {
                 )
                 .await,
             );
-            self.status = *prev_status.clone();
+            self.data.status = *prev_status.clone();
         }
 
         if self.card_selection_overlay.is_some() {
@@ -169,7 +204,7 @@ impl Game {
 
             if overlay.should_close() {
                 self.card_selection_overlay = None;
-                self.status = Status::Idle;
+                self.data.status = Status::Idle;
             }
         }
 
@@ -195,7 +230,7 @@ impl Game {
 
         self.render_gui().await?;
         for component in &mut self.components {
-            component.render(&mut self.status).await;
+            component.render(&mut self.data).await;
         }
 
         self.render_card_preview().await?;
@@ -208,25 +243,33 @@ impl Game {
 
     pub async fn process_message(&mut self, message: &ServerMessage) -> anyhow::Result<Option<Scene>> {
         match message {
-            ServerMessage::LogEvent { description } => {
-                println!("Game Log: {}", description);
+            ServerMessage::LogEvent {
+                id,
+                description,
+                datetime,
+            } => {
+                self.data.events.push(Event {
+                    id: id.clone(),
+                    description: description.clone(),
+                    datetime: datetime.clone(),
+                });
                 Ok(None)
             }
             ServerMessage::PickZone { zones, .. } => {
-                self.status = Status::SelectingZone { zones: zones.clone() };
+                self.data.status = Status::SelectingZone { zones: zones.clone() };
                 Ok(None)
             }
             ServerMessage::PickCard {
                 cards, prompt, preview, ..
             } => {
-                self.status = Status::SelectingCard {
+                self.data.status = Status::SelectingCard {
                     cards: cards.clone(),
                     preview: preview.clone(),
                     prompt: prompt.clone(),
                 };
 
                 if *preview {
-                    let renderables = self.cards.iter().filter(|c| cards.contains(&c.id)).collect();
+                    let renderables = self.data.cards.iter().filter(|c| cards.contains(&c.id)).collect();
                     self.card_selection_overlay = Some(
                         SelectionOverlay::new(
                             self.client.clone(),
@@ -243,7 +286,7 @@ impl Game {
             }
             ServerMessage::PickAction { prompt, actions, .. } => {
                 self.actions = actions.clone();
-                self.status = Status::SelectingAction {
+                self.data.status = Status::SelectingAction {
                     prompt: prompt.to_string(),
                 };
                 Ok(None)
@@ -310,7 +353,7 @@ impl Game {
                     (_, _) => std::cmp::Ordering::Equal,
                 });
 
-                self.cards = cards.clone();
+                self.data.cards = cards.clone();
                 self.current_player = current_player.clone();
                 self.resources = resources.clone();
                 Ok(None)
@@ -327,7 +370,7 @@ impl Game {
         }
 
         for component in &mut self.components {
-            component.process_input(self.current_player == self.player_id, &mut self.status);
+            component.process_input(self.current_player == self.player_id, &mut self.data.status);
         }
     }
 
@@ -405,7 +448,8 @@ impl Game {
         );
         let cards_in_hand = format!(
             "{}",
-            self.cards
+            self.data
+                .cards
                 .iter()
                 .filter(|c| &c.owner_id == player_id)
                 .filter(|c| c.zone == Zone::Hand)
@@ -440,13 +484,30 @@ impl Game {
         );
         let cards_in_cemetery = format!(
             "{}",
-            self.cards
+            self.data
+                .cards
                 .iter()
                 .filter(|c| &c.owner_id == player_id)
                 .filter(|c| c.zone == Zone::Cemetery)
                 .count()
         );
         draw_text(&cards_in_cemetery, x + 165.0, health_text_y, FONT_SIZE, WHITE);
+
+        if &self.player_id == player_id {
+            let message_texture = TextureCache::get_texture("assets/icons/message.png").await;
+            draw_texture_ex(
+                &message_texture,
+                x + 140.0,
+                icon_y - 20.0,
+                WHITE,
+                DrawTextureParams {
+                    dest_size: Some(Vec2::new(ICON_SIZE, ICON_SIZE)),
+                    ..Default::default()
+                },
+            );
+            let unseen_messages = format!("{}", self.data.unseen_events);
+            draw_text(&unseen_messages, x + 165.0, icon_y, FONT_SIZE, WHITE);
+        }
 
         let thresholds_y: f32 = y + 10.0 + 20.0 + 20.0;
         let fire_x = x;
@@ -484,7 +545,7 @@ impl Game {
         draw_text(turn_label, screen_rect.w / 2.0 - 50.0, 30.0, FONT_SIZE, WHITE);
 
         let is_in_turn = self.current_player == self.player_id;
-        let is_idle = matches!(self.status, Status::Idle);
+        let is_idle = matches!(self.data.status, Status::Idle);
         if is_in_turn && is_idle {
             if ui::root_ui().button(Vec2::new(screen_rect.w - 100.0, screen_rect.h - 40.0), "Pass Turn") {
                 set_clicks_enabled(false);
@@ -495,7 +556,7 @@ impl Game {
             }
         }
 
-        match self.status {
+        match self.data.status {
             Status::SelectingAction { ref prompt } => {
                 // Draw semi-transparent overlay behind the action selection window
                 draw_rectangle(
@@ -548,7 +609,7 @@ impl Game {
                                     })
                                     .unwrap();
                                 set_clicks_enabled(false);
-                                self.status = Status::Idle;
+                                self.data.status = Status::Idle;
                             }
                         }
                     },
@@ -563,7 +624,7 @@ impl Game {
     }
 
     async fn render_card_preview(&self) -> anyhow::Result<()> {
-        if let Status::SelectingCard { preview: true, .. } = &self.status {
+        if let Status::SelectingCard { preview: true, .. } = &self.data.status {
             return Ok(());
         }
 
@@ -592,10 +653,10 @@ impl Game {
         Ok(())
     }
 
-    pub fn wrap_text(text: &str, max_width: f32, font_size: u16) -> String {
+    pub fn wrap_text<S: AsRef<str>>(text: S, max_width: f32, font_size: u16) -> String {
         use macroquad::text::measure_text;
         let mut lines = Vec::new();
-        for paragraph in text.split('\n') {
+        for paragraph in text.as_ref().split('\n') {
             let mut current = String::new();
             for word in paragraph.split_whitespace() {
                 let test = if current.is_empty() {

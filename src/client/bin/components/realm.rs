@@ -3,7 +3,10 @@ use crate::{
     components::Component,
     config::{CARD_IN_PLAY_SCALE, cell_rect, intersection_rect, realm_rect, site_dimensions, spell_dimensions},
     render::{self, CardRect, CellRect, IntersectionRect},
-    scene::{game::Status, selection_overlay::SelectionOverlayBehaviour},
+    scene::{
+        game::{GameData, Status},
+        selection_overlay::SelectionOverlayBehaviour,
+    },
     set_clicks_enabled,
     texture_cache::TextureCache,
 };
@@ -150,7 +153,7 @@ impl RealmComponent {
         Ok(())
     }
 
-    async fn render_grid(&mut self, status: &mut Status) {
+    async fn render_grid(&mut self, data: &mut GameData) {
         let grid_color = WHITE;
         let grid_thickness = 1.0;
         for cell in &self.cell_rects {
@@ -158,7 +161,7 @@ impl RealmComponent {
             draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, grid_thickness, grid_color);
             draw_text(&cell.id.to_string(), rect.x + 5.0, rect.y + 15.0, 12.0, GRAY);
 
-            match &status {
+            match &data.status {
                 Status::SelectingZone { zones } => {
                     let intersections: Vec<&Zone> = zones
                         .iter()
@@ -210,16 +213,16 @@ impl RealmComponent {
                 let prompt = format!("Viewing cards on location {}", cell.id);
                 let new_status = Status::ViewingCards {
                     cards: to_preview,
-                    prev_status: Box::new(status.clone()),
+                    prev_status: Box::new(data.status.clone()),
                     prompt: prompt.clone(),
                     behaviour: SelectionOverlayBehaviour::Preview,
                 };
-                *status = new_status;
+                data.status = new_status;
             }
         }
 
         for intersection in &self.intersection_rects {
-            match &status {
+            match &data.status {
                 Status::SelectingZone { zones } => {
                     let rect = intersection.rect;
                     let can_pick_zone = zones
@@ -429,17 +432,19 @@ impl RealmComponent {
 
 #[async_trait::async_trait]
 impl Component for RealmComponent {
-    async fn update(&mut self, cards: &[RenderableCard], _status: Status) -> anyhow::Result<()> {
+    async fn update(&mut self, data: &mut GameData) -> anyhow::Result<()> {
+        self.compute_rects(&data.cards).await?;
+
         for cell in &mut self.cell_rects {
             cell.rect = cell_rect(cell.id, self.mirrored);
         }
 
-        self.compute_rects(cards).await
+        Ok(())
     }
 
-    async fn render(&mut self, status: &mut Status) {
+    async fn render(&mut self, data: &mut GameData) {
         self.render_background();
-        self.render_grid(status).await;
+        self.render_grid(data).await;
 
         for card in &self.cards {
             if !card.zone.is_in_realm() {
@@ -450,7 +455,7 @@ impl Component for RealmComponent {
 
             if let Status::SelectingCard {
                 cards, preview: false, ..
-            } = &status
+            } = &data.status
             {
                 if !clicks_enabled() {
                     return;

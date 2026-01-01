@@ -42,7 +42,9 @@ impl PreconDeck {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ServerMessage {
     LogEvent {
+        id: uuid::Uuid,
         description: String,
+        datetime: chrono::DateTime<chrono::Utc>,
     },
     ConnectResponse {
         player_id: PlayerId,

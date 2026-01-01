@@ -91,6 +91,10 @@ impl Card for LuckyCharm {
     fn card_query_override(&self, state: &State, query: &CardQuery) -> Option<CardQuery> {
         match query {
             CardQuery::RandomTarget { possible_targets } => {
+                if possible_targets.is_empty() {
+                    return None;
+                }
+
                 let targets = vec![
                     possible_targets.choose(&mut rand::rng()).unwrap().clone(),
                     possible_targets.choose(&mut rand::rng()).unwrap().clone(),
@@ -107,6 +111,10 @@ impl Card for LuckyCharm {
                     .iter()
                     .map(|c| c.get_id().clone())
                     .collect::<Vec<_>>();
+                if options.is_empty() {
+                    return None;
+                }
+
                 let zones = vec![
                     options.choose(&mut rand::rng()).unwrap().clone(),
                     options.choose(&mut rand::rng()).unwrap().clone(),

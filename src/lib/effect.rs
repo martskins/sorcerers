@@ -167,6 +167,14 @@ pub enum Effect {
     },
 }
 
+fn player_name(player_id: &uuid::Uuid, state: &State) -> &'static str {
+    if player_id == &state.player_one {
+        "Player 1"
+    } else {
+        "Player 2"
+    }
+}
+
 impl Effect {
     pub fn banish_card(card_id: &uuid::Uuid, from: &Zone) -> Self {
         Effect::BanishCard {
@@ -225,8 +233,8 @@ impl Effect {
             } => {
                 let shooter_card = state.get_card(shooter).unwrap().get_name();
                 Some(format!(
-                    "Player {} shoots a projectile for {} damage from {} in direction {}",
-                    player_id,
+                    "{} shoots a projectile for {} damage from {} in direction {}",
+                    player_name(player_id, state),
                     damage,
                     shooter_card,
                     direction.get_name()
@@ -238,8 +246,14 @@ impl Effect {
             Effect::TeleportCard { .. } => None,
             Effect::MoveCard { .. } => None,
             Effect::DrawCard { .. } => None,
-            Effect::DrawSite { player_id, .. } => Some(format!("Player {} draws a site", player_id)),
-            Effect::DrawSpell { player_id, .. } => Some(format!("Player {} draws a spell", player_id)),
+            Effect::DrawSite { player_id, count } => {
+                let sites = if *count == 1 { "site" } else { "sites" };
+                Some(format!("{} draws {} {}", player_name(player_id, state), count, sites))
+            }
+            Effect::DrawSpell { player_id, count } => {
+                let spells = if *count == 1 { "site" } else { "sites" };
+                Some(format!("{} draws {} {}", player_name(player_id, state), count, spells))
+            }
             Effect::PlayMagic { .. } => None,
             Effect::PlayCard {
                 player_id,
@@ -247,7 +261,12 @@ impl Effect {
                 zone,
             } => {
                 let card = state.get_card(card_id).unwrap().get_name();
-                Some(format!("Player {} plays {} in zone {:?}", player_id, card, zone))
+                Some(format!(
+                    "{} plays {} in zone {:?}",
+                    player_name(player_id, state),
+                    card,
+                    zone
+                ))
             }
             Effect::SummonCard { .. } => None,
             Effect::TapCard { .. } => None,
@@ -256,7 +275,20 @@ impl Effect {
             Effect::StartTurn { .. } => None,
             Effect::RemoveResources { .. } => None,
             Effect::AddResources { .. } => None,
-            Effect::Attack { .. } => None,
+            Effect::Attack {
+                attacker_id,
+                defender_id,
+            } => {
+                let attacker = state.get_card(attacker_id).unwrap();
+                let defender = state.get_card(defender_id).unwrap();
+                let player = player_name(attacker.get_controller_id(), state);
+                Some(format!(
+                    "{} attacks {} with {}",
+                    player,
+                    defender.get_name(),
+                    attacker.get_name()
+                ))
+            }
             Effect::TakeDamage { card_id, from, damage } => {
                 let attacker = state.get_card(from).unwrap().get_name();
                 let defender = state.get_card(card_id).unwrap().get_name();
@@ -265,12 +297,12 @@ impl Effect {
             Effect::BuryCard { card_id, .. } => {
                 let card = state.get_card(card_id).unwrap();
                 let player = card.get_controller_id();
-                Some(format!("{} buries {}", player, card.get_name()))
+                Some(format!("{} buries {}", player_name(player, state), card.get_name()))
             }
             Effect::BanishCard { card_id, .. } => {
                 let card = state.get_card(card_id).unwrap();
                 let player = card.get_controller_id();
-                Some(format!("{} banishes {}", player, card.get_name()))
+                Some(format!("{} banishes {}", player_name(player, state), card.get_name()))
             }
             Effect::SetCardData { .. } => None,
             Effect::RangedStrike { .. } => None,

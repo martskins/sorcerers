@@ -3,7 +3,7 @@ use crate::{
     components::Component,
     config::{hand_rect, site_dimensions, spell_dimensions},
     render::CardRect,
-    scene::game::Status,
+    scene::game::{GameData, Status},
     texture_cache::TextureCache,
 };
 use macroquad::{
@@ -136,11 +136,11 @@ impl PlayerHandComponent {
 
 #[async_trait::async_trait]
 impl Component for PlayerHandComponent {
-    async fn update(&mut self, cards: &[RenderableCard], _status: Status) -> anyhow::Result<()> {
-        self.compute_rects(cards).await
+    async fn update(&mut self, data: &mut GameData) -> anyhow::Result<()> {
+        self.compute_rects(&data.cards).await
     }
 
-    async fn render(&mut self, status: &mut Status) {
+    async fn render(&mut self, data: &mut GameData) {
         let rect = hand_rect();
         let bg_color = Color::new(0.15, 0.18, 0.22, 0.85);
         draw_rectangle(rect.x, rect.y, rect.w, rect.h, bg_color);
@@ -152,7 +152,7 @@ impl Component for PlayerHandComponent {
 
             let mut scale = 1.0;
             if card_rect.is_selected || card_rect.is_hovered {
-                if let Status::SelectingCard { preview: false, .. } = status {
+                if let Status::SelectingCard { preview: false, .. } = data.status {
                     scale = 1.2;
                 }
             }
@@ -174,7 +174,7 @@ impl Component for PlayerHandComponent {
 
             if let Status::SelectingCard {
                 cards, preview: false, ..
-            } = &status
+            } = &data.status
             {
                 if !cards.contains(&card_rect.id) {
                     draw_rectangle_ex(
