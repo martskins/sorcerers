@@ -1,12 +1,10 @@
 use crate::{
-    components::{Component, ComponentAction},
+    components::{Component, ComponentCommand, ComponentType},
     scene::game::{Game, GameData},
 };
 use macroquad::{
-    color::LIGHTGRAY,
-    math::Vec2,
+    math::{Rect, Vec2},
     ui::{self},
-    window::screen_width,
 };
 
 const EVENT_LOG_WINDOW: u64 = 10;
@@ -15,13 +13,15 @@ const EVENT_LOG_WINDOW: u64 = 10;
 pub struct EventLogComponent {
     visible: bool,
     last_message_seen: uuid::Uuid,
+    rect: Rect,
 }
 
 impl EventLogComponent {
-    pub fn new() -> Self {
+    pub fn new(rect: Rect) -> Self {
         Self {
             visible: true,
             last_message_seen: uuid::Uuid::nil(),
+            rect,
         }
     }
 }
@@ -58,31 +58,33 @@ impl Component for EventLogComponent {
             return Ok(());
         }
 
-        let window_width: f32 = screen_width() * 0.8;
-        let visible =
-            macroquad::ui::widgets::Window::new(EVENT_LOG_WINDOW, Vec2::new(0.0, 0.0), Vec2::new(window_width, 100.0))
-                .movable(true)
-                .label("Event Log")
-                .titlebar(true)
-                .close_button(true)
-                .ui(&mut ui::root_ui(), |ui| {
-                    for event in &data.events {
-                        let lines: Vec<String> = Game::wrap_text(event.formatted(), window_width - 10.0, FONT_SIZE)
-                            .lines()
-                            .map(|line| line.to_string())
-                            .collect();
-                        for line in lines {
-                            ui.label(None, &line);
-                        }
-                    }
-                });
+        let visible = macroquad::ui::widgets::Window::new(
+            EVENT_LOG_WINDOW,
+            Vec2::new(self.rect.x, self.rect.y),
+            Vec2::new(self.rect.w, self.rect.h),
+        )
+        .movable(true)
+        .label("Event Log")
+        .titlebar(true)
+        .close_button(true)
+        .ui(&mut ui::root_ui(), |ui| {
+            for event in &data.events {
+                let lines: Vec<String> = Game::wrap_text(event.formatted(), self.rect.w - 10.0, FONT_SIZE)
+                    .lines()
+                    .map(|line| line.to_string())
+                    .collect();
+                for line in lines {
+                    ui.label(None, &line);
+                }
+            }
+        });
 
         self.visible = visible;
 
         Ok(())
     }
 
-    fn process_input(&mut self, _in_turn: bool, _data: &mut GameData) -> anyhow::Result<Option<ComponentAction>> {
+    fn process_input(&mut self, _in_turn: bool, _data: &mut GameData) -> anyhow::Result<Option<ComponentCommand>> {
         Ok(None)
     }
 
@@ -90,11 +92,23 @@ impl Component for EventLogComponent {
         self.visible = !self.visible;
     }
 
-    fn process_action(&mut self, action: &ComponentAction) {
-        match action {
-            ComponentAction::OpenEventLog => {
-                self.visible = true;
+    fn process_command(&mut self, command: &ComponentCommand) {
+        match command {
+            ComponentCommand::SetVisibility {
+                component_type: ComponentType::EventLog,
+                visible,
+            } => {
+                self.visible = *visible;
             }
+            ComponentCommand::SetRect {
+                component_type: ComponentType::EventLog,
+                rect,
+            } => self.rect = rect.clone(),
+            _ => {}
         }
+    }
+
+    fn get_component_type(&self) -> ComponentType {
+        ComponentType::EventLog
     }
 }

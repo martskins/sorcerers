@@ -1,10 +1,9 @@
 use crate::{
     components::{
-        Component, event_log::EventLogComponent, player_hand::PlayerHandComponent,
+        Component, ComponentCommand, ComponentType, event_log::EventLogComponent, player_hand::PlayerHandComponent,
         player_status::PlayerStatusComponent, realm::RealmComponent,
     },
     config::*,
-    render::{CardRect, CellRect, IntersectionRect},
     scene::{Scene, selection_overlay::SelectionOverlay},
     set_clicks_enabled,
     texture_cache::TextureCache,
@@ -12,10 +11,9 @@ use crate::{
 use macroquad::{
     color::{Color, WHITE},
     input::{MouseButton, is_mouse_button_released},
-    math::{RectOffset, Vec2},
+    math::{Rect, RectOffset, Vec2},
     shapes::draw_rectangle,
     text::draw_text,
-    texture::{DrawTextureParams, draw_texture_ex},
     ui::{self, hash},
     window::{screen_height, screen_width},
 };
@@ -100,9 +98,6 @@ pub struct Game {
     pub player_id: PlayerId,
     pub opponent_id: PlayerId,
     pub game_id: uuid::Uuid,
-    pub card_rects: Vec<CardRect>,
-    pub cell_rects: Vec<CellRect>,
-    pub intersection_rects: Vec<IntersectionRect>,
     pub resources: HashMap<PlayerId, Resources>,
     pub client: networking::client::Client,
     pub current_player: PlayerId,
@@ -122,35 +117,10 @@ impl Game {
         cards: Vec<RenderableCard>,
         client: networking::client::Client,
     ) -> Self {
-        let cell_rects: Vec<CellRect> = (0..20)
-            .map(|i| {
-                let rect = cell_rect(i + 1, !is_player_one);
-                CellRect { id: i as u8 + 1, rect }
-            })
-            .collect();
-        let intersection_rects = Zone::all_intersections()
-            .into_iter()
-            .filter_map(|z| match z {
-                Zone::Intersection(locs) => {
-                    let rect = intersection_rect(&locs, !is_player_one).unwrap();
-                    Some(IntersectionRect { locations: locs, rect })
-                }
-                _ => None,
-            })
-            .collect();
-
-        // const BASE_X: f32 = 20.0;
-        // let player_y: f32 = screen_rect.h - 90.0;
-        // self.render_player_card(BASE_X, player_y, &self.player_id).await;
-        //
-        // const OPPONENT_Y: f32 = 25.0;
         Self {
             player_id: player_id.clone(),
             opponent_id,
-            card_rects: Vec::new(),
             game_id: game_id.clone(),
-            cell_rects,
-            intersection_rects,
             client: client.clone(),
             current_player: uuid::Uuid::nil(),
             is_player_one,
@@ -158,14 +128,20 @@ impl Game {
             actions: Vec::new(),
             card_selection_overlay: None,
             components: vec![
-                Box::new(PlayerHandComponent::new(&game_id, &player_id, client.clone())),
+                Box::new(PlayerHandComponent::new(
+                    &game_id,
+                    &player_id,
+                    client.clone(),
+                    hand_rect(),
+                )),
                 Box::new(RealmComponent::new(
                     &game_id,
                     &player_id,
                     !is_player_one,
                     client.clone(),
+                    realm_rect(),
                 )),
-                Box::new(EventLogComponent::new()),
+                Box::new(EventLogComponent::new(event_log_rect())),
                 Box::new(PlayerStatusComponent::new(
                     Vec2::new(20.0, screen_rect().h - 90.0),
                     player_id.clone(),
@@ -183,6 +159,17 @@ impl Game {
     pub async fn update(&mut self) -> anyhow::Result<()> {
         for component in &mut self.components {
             component.update(&mut self.data).await?;
+
+            let rect = match component.get_component_type() {
+                ComponentType::EventLog => event_log_rect(),
+                ComponentType::PlayerStatus => Rect::new(0.0, 0.0, realm_rect().x, screen_height()),
+                ComponentType::PlayerHand => hand_rect(),
+                ComponentType::Realm => realm_rect(),
+            };
+            component.process_command(&ComponentCommand::SetRect {
+                component_type: component.get_component_type(),
+                rect,
+            });
         }
 
         // Update click_enabled at the end of the update cycle so that we don't process the release
@@ -248,7 +235,6 @@ impl Game {
             component.render(&mut self.data).await?;
         }
 
-        self.render_card_preview().await?;
         if self.card_selection_overlay.is_some() {
             let overlay = self.card_selection_overlay.as_mut().unwrap();
             overlay.render();
@@ -313,34 +299,13 @@ impl Game {
                 cards,
                 ..
             } => {
-                // Flip the board for player 2. Use player1 instead of the is_player_one method
-                // because state is not set at this point.
                 self.is_player_one = player1 == &self.player_id;
+                self.game_id = game_id.clone();
                 self.opponent_id = if self.is_player_one {
                     player2.clone()
                 } else {
                     player1.clone()
                 };
-                if !self.is_player_one {
-                    for cell in &mut self.cell_rects {
-                        let new_id: i8 = cell.id as i8 - 21;
-                        cell.id = new_id.abs() as u8;
-                    }
-                }
-
-                let intersection_rects = Zone::all_intersections()
-                    .into_iter()
-                    .filter_map(|z| match z {
-                        Zone::Intersection(locs) => {
-                            let rect = intersection_rect(&locs, !self.is_player_one).unwrap();
-                            Some(IntersectionRect { locations: locs, rect })
-                        }
-                        _ => None,
-                    })
-                    .collect();
-                self.intersection_rects = intersection_rects;
-                self.game_id = game_id.clone();
-                // TODO: Fix so client doesn't hang
                 TextureCache::load_cache(cards).await;
                 Ok(None)
             }
@@ -393,7 +358,7 @@ impl Game {
 
         for action in component_actions {
             for component in &mut self.components {
-                component.process_action(&action);
+                component.process_command(&action);
             }
         }
     }
@@ -482,36 +447,6 @@ impl Game {
                 ui::root_ui().pop_skin();
             }
             _ => {}
-        }
-
-        Ok(())
-    }
-
-    async fn render_card_preview(&self) -> anyhow::Result<()> {
-        if let Status::SelectingCard { preview: true, .. } = &self.data.status {
-            return Ok(());
-        }
-
-        let selected_card = self.card_rects.iter().find(|card_display| card_display.is_hovered);
-        let screen_rect = screen_rect();
-        if let Some(card_display) = selected_card {
-            const PREVIEW_SCALE: f32 = 2.7;
-            let mut rect = card_display.rect;
-            rect.w *= PREVIEW_SCALE;
-            rect.h *= PREVIEW_SCALE;
-
-            let preview_x = 20.0;
-            let preview_y = screen_rect.h - rect.h - 20.0;
-            draw_texture_ex(
-                &card_display.image,
-                preview_x,
-                preview_y,
-                WHITE,
-                DrawTextureParams {
-                    dest_size: Some(Vec2::new(rect.w, rect.h)),
-                    ..Default::default()
-                },
-            );
         }
 
         Ok(())

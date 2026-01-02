@@ -12,7 +12,7 @@ use sorcerers::{
 };
 
 use crate::{
-    components::{Component, ComponentAction},
+    components::{Component, ComponentCommand, ComponentType},
     scene::game::GameData,
     texture_cache::TextureCache,
 };
@@ -190,13 +190,30 @@ impl Component for PlayerStatusComponent {
         self.visible = !self.visible;
     }
 
-    fn process_input(&mut self, _in_turn: bool, _data: &mut GameData) -> anyhow::Result<Option<ComponentAction>> {
+    fn process_input(&mut self, _in_turn: bool, _data: &mut GameData) -> anyhow::Result<Option<ComponentCommand>> {
         let mouse_position = macroquad::input::mouse_position();
         let clicked = macroquad::input::is_mouse_button_released(MouseButton::Left);
         if clicked && self.icon_rect(&Icon::Message).contains(mouse_position.into()) {
-            return Ok(Some(ComponentAction::OpenEventLog));
+            return Ok(Some(ComponentCommand::SetVisibility {
+                component_type: ComponentType::EventLog,
+                visible: true,
+            }));
         }
 
         Ok(None)
+    }
+
+    fn process_command(&mut self, command: &ComponentCommand) {
+        match command {
+            ComponentCommand::SetRect {
+                component_type: ComponentType::PlayerStatus,
+                rect: _,
+            } => {}
+            _ => {}
+        }
+    }
+
+    fn get_component_type(&self) -> ComponentType {
+        ComponentType::PlayerStatus
     }
 }

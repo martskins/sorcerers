@@ -1,7 +1,7 @@
 use crate::{
     clicks_enabled,
-    components::{Component, ComponentAction},
-    config::{hand_rect, site_dimensions, spell_dimensions},
+    components::{Component, ComponentCommand, ComponentType},
+    config::CARD_ASPECT_RATIO,
     render::CardRect,
     scene::game::{GameData, Status},
     texture_cache::TextureCache,
@@ -25,21 +25,38 @@ pub struct PlayerHandComponent {
     rects: Vec<CardRect>,
     client: networking::client::Client,
     visible: bool,
+    rect: Rect,
 }
 
 impl PlayerHandComponent {
-    pub fn new(game_id: &uuid::Uuid, player_id: &uuid::Uuid, client: networking::client::Client) -> Self {
+    pub fn new(game_id: &uuid::Uuid, player_id: &uuid::Uuid, client: networking::client::Client, rect: Rect) -> Self {
         Self {
             game_id: game_id.clone(),
             player_id: player_id.clone(),
             rects: Vec::new(),
             client,
             visible: true,
+            rect,
         }
     }
 
+    fn card_width(&self) -> f32 {
+        self.card_height() * CARD_ASPECT_RATIO
+    }
+
+    fn card_height(&self) -> f32 {
+        self.rect.h * 0.8
+    }
+
+    fn spell_dimensions(&self) -> Vec2 {
+        Vec2::new(self.card_width(), self.card_height())
+    }
+
+    pub fn site_dimensions(&self) -> Vec2 {
+        Vec2::new(self.card_height(), self.card_width())
+    }
+
     async fn compute_rects(&mut self, cards: &[RenderableCard]) -> anyhow::Result<()> {
-        let rect = hand_rect();
         let spell_count = cards
             .iter()
             .filter(|c| c.zone == Zone::Hand)
@@ -57,8 +74,8 @@ impl PlayerHandComponent {
         let mut displays: Vec<CardRect> = Vec::new();
 
         // Layout parameters
-        let spell_dim = spell_dimensions();
-        let site_dim = site_dimensions();
+        let spell_dim = self.spell_dimensions();
+        let site_dim = self.site_dimensions();
         let card_spacing = 20.0;
 
         // Calculate total width for spells (horizontal row)
@@ -72,8 +89,8 @@ impl PlayerHandComponent {
         let total_width = spells_width + if site_count > 0 { card_spacing + site_dim.x } else { 0.0 };
 
         // Center horizontally in hand area
-        let start_x = rect.x + (rect.w - total_width) / 2.0;
-        let spells_y = rect.y + rect.h / 2.0 - spell_dim.y / 2.0;
+        let start_x = self.rect.x + (self.rect.w - total_width) / 2.0;
+        let spells_y = self.rect.y + self.rect.h / 2.0 - spell_dim.y / 2.0;
 
         // Spells row
         for (idx, card) in cards
@@ -103,7 +120,7 @@ impl PlayerHandComponent {
         // Sites column, stacked vertically to the right of spells
         if site_count > 0 {
             let sites_x = start_x + spells_width + card_spacing;
-            let sites_start_y = rect.y + rect.h / 2.0 - spell_dim.y / 2.0;
+            let sites_start_y = self.rect.y + self.rect.h / 2.0 - spell_dim.y / 2.0;
             for (idx, card) in cards
                 .iter()
                 .filter(|c| c.zone == Zone::Hand)
@@ -141,9 +158,8 @@ impl Component for PlayerHandComponent {
     }
 
     async fn render(&mut self, data: &mut GameData) -> anyhow::Result<()> {
-        let rect = hand_rect();
         let bg_color = Color::new(0.15, 0.18, 0.22, 0.85);
-        draw_rectangle(rect.x, rect.y, rect.w, rect.h, bg_color);
+        draw_rectangle(self.rect.x, self.rect.y, self.rect.w, self.rect.h, bg_color);
 
         for card_rect in &self.rects {
             if card_rect.zone != Zone::Hand {
@@ -195,7 +211,7 @@ impl Component for PlayerHandComponent {
         Ok(())
     }
 
-    fn process_input(&mut self, in_turn: bool, data: &mut GameData) -> anyhow::Result<Option<ComponentAction>> {
+    fn process_input(&mut self, in_turn: bool, data: &mut GameData) -> anyhow::Result<Option<ComponentCommand>> {
         let mouse_position = macroquad::input::mouse_position();
         if !clicks_enabled() {
             return Ok(None);
@@ -307,5 +323,19 @@ impl Component for PlayerHandComponent {
 
     fn toggle_visibility(&mut self) {
         self.visible = !self.visible;
+    }
+
+    fn process_command(&mut self, command: &ComponentCommand) {
+        match command {
+            ComponentCommand::SetRect {
+                component_type: ComponentType::PlayerHand,
+                rect,
+            } => self.rect = rect.clone(),
+            _ => {}
+        }
+    }
+
+    fn get_component_type(&self) -> ComponentType {
+        ComponentType::PlayerHand
     }
 }

@@ -1,9 +1,7 @@
 use crate::{
     clicks_enabled,
-    components::{Component, ComponentAction},
-    config::{
-        CARD_IN_PLAY_SCALE, cell_rect, intersection_rect, realm_rect, screen_rect, site_dimensions, spell_dimensions,
-    },
+    components::{Component, ComponentCommand, ComponentType},
+    config::{CARD_ASPECT_RATIO, CARD_IN_PLAY_SCALE},
     render::{self, CardRect, CellRect, IntersectionRect},
     scene::{
         game::{GameData, Status},
@@ -27,6 +25,61 @@ use sorcerers::{
     networking::{self, message::ClientMessage},
 };
 
+fn cell_rect(realm_rect: &Rect, id: u8, mirror: bool) -> Rect {
+    // id 1 is bottom left, id 5 is bottom right, id 16 is top right
+    let idx = id - 1;
+    let mut col = idx % 5;
+    let mut row = 3 - (idx / 5); // invert row for bottom-up indexing
+
+    if mirror {
+        col = 4 - col; // mirror horizontally
+    }
+    if mirror {
+        row = 3 - row; // mirror vertically
+    }
+
+    Rect::new(
+        realm_rect.x + col as f32 * (realm_rect.w / 5.0),
+        realm_rect.y + row as f32 * (realm_rect.h / 4.0),
+        realm_rect.w / 5.0,
+        realm_rect.h / 4.0,
+    )
+}
+
+fn intersection_rect(realm_rect: &Rect, locations: &[u8], mirror: bool) -> Option<Rect> {
+    let base_rect = cell_rect(realm_rect, 1, mirror);
+    let width = spell_dimensions(&base_rect).x * CARD_IN_PLAY_SCALE;
+    let height = spell_dimensions(&base_rect).y * CARD_IN_PLAY_SCALE;
+    let cell_width = realm_rect.w / 5.0;
+    let start_rect = if mirror {
+        cell_rect(realm_rect, locations[locations.len() - 1], mirror)
+    } else {
+        cell_rect(realm_rect, locations[0], mirror)
+    };
+    Some(Rect::new(
+        start_rect.x + cell_width - width / 2.0,
+        start_rect.y - height / 2.0,
+        width,
+        height,
+    ))
+}
+
+fn card_width(cell_rect: &Rect) -> f32 {
+    cell_rect.w / 2.5
+}
+
+fn card_height(cell_rect: &Rect) -> f32 {
+    card_width(cell_rect) / CARD_ASPECT_RATIO
+}
+
+fn spell_dimensions(cell_rect: &Rect) -> Vec2 {
+    Vec2::new(card_width(cell_rect), card_height(cell_rect))
+}
+
+pub fn site_dimensions(cell_rect: &Rect) -> Vec2 {
+    Vec2::new(card_height(cell_rect), card_width(cell_rect))
+}
+
 #[derive(Debug)]
 pub struct RealmComponent {
     game_id: uuid::Uuid,
@@ -37,6 +90,7 @@ pub struct RealmComponent {
     mirrored: bool,
     client: networking::client::Client,
     visible: bool,
+    rect: Rect,
 }
 
 impl RealmComponent {
@@ -45,10 +99,11 @@ impl RealmComponent {
         player_id: &uuid::Uuid,
         mirrored: bool,
         client: networking::client::Client,
+        rect: Rect,
     ) -> Self {
         let cell_rects: Vec<CellRect> = (0..20)
             .map(|i| {
-                let rect = cell_rect(i + 1, mirrored);
+                let rect = cell_rect(&rect, i + 1, mirrored);
                 CellRect { id: i as u8 + 1, rect }
             })
             .collect();
@@ -56,7 +111,7 @@ impl RealmComponent {
             .into_iter()
             .filter_map(|z| match z {
                 Zone::Intersection(locs) => {
-                    let rect = intersection_rect(&locs, mirrored).unwrap();
+                    let rect = intersection_rect(&rect, &locs, mirrored).unwrap();
                     Some(IntersectionRect { locations: locs, rect })
                 }
                 _ => None,
@@ -72,6 +127,7 @@ impl RealmComponent {
             mirrored,
             client,
             visible: true,
+            rect,
         }
     }
 
@@ -84,9 +140,9 @@ impl RealmComponent {
             match &card.zone {
                 Zone::Realm(square) => {
                     let cell_rect = self.cell_rects.iter().find(|c| &c.id == square).unwrap().rect;
-                    let mut dimensions = spell_dimensions();
+                    let mut dimensions = spell_dimensions(&cell_rect);
                     if card.card_type == CardType::Site {
-                        dimensions = site_dimensions();
+                        dimensions = site_dimensions(&cell_rect);
                     }
 
                     let mut rect = Rect::new(
@@ -97,7 +153,6 @@ impl RealmComponent {
                     );
 
                     // Add jitter to position
-                    // let mut rng = thread_rng();
                     let jitter_x: f32 = rng.random_range(-12.0..12.0);
                     let jitter_y: f32 = rng.random_range(-12.0..12.0);
                     rect.x += jitter_x;
@@ -127,9 +182,12 @@ impl RealmComponent {
                         .find(|c| &c.locations == locs)
                         .unwrap()
                         .rect;
-                    let mut dimensions = spell_dimensions();
+                    // Use a grid cell as a reference for the spell dimensions instead of the
+                    // intersection rect itself, as the intersection rect is smaller and the card
+                    // would be too small.
+                    let mut dimensions = spell_dimensions(&self.cell_rects[0].rect);
                     if card.card_type == CardType::Site {
-                        dimensions = site_dimensions();
+                        dimensions = site_dimensions(&rect);
                     }
 
                     let mut rect = Rect::new(rect.x, rect.y, dimensions.x, dimensions.y);
@@ -260,7 +318,7 @@ impl RealmComponent {
     }
 
     fn render_background(&self) {
-        let rect = realm_rect();
+        let rect = self.rect;
         draw_rectangle(rect.x, rect.y, rect.w, rect.h, Color::new(0.08, 0.12, 0.18, 1.0));
     }
 
@@ -448,7 +506,7 @@ impl RealmComponent {
         }
 
         let hovered_card = self.cards.iter().find(|card_display| card_display.is_hovered);
-        let screen_rect = screen_rect();
+        let screen_rect = crate::config::screen_rect();
         if let Some(card) = hovered_card {
             const PREVIEW_SCALE: f32 = 2.7;
             let mut rect = card.rect;
@@ -479,7 +537,7 @@ impl Component for RealmComponent {
         self.compute_rects(&data.cards).await?;
 
         for cell in &mut self.cell_rects {
-            cell.rect = cell_rect(cell.id, self.mirrored);
+            cell.rect = cell_rect(&self.rect, cell.id, self.mirrored);
         }
 
         Ok(())
@@ -524,7 +582,7 @@ impl Component for RealmComponent {
         Ok(())
     }
 
-    fn process_input(&mut self, in_turn: bool, data: &mut GameData) -> anyhow::Result<Option<ComponentAction>> {
+    fn process_input(&mut self, in_turn: bool, data: &mut GameData) -> anyhow::Result<Option<ComponentCommand>> {
         let mouse_position = macroquad::input::mouse_position().into();
         self.handle_square_click(mouse_position, in_turn, &mut data.status);
         self.handle_card_click(mouse_position, in_turn, &mut data.status);
@@ -534,5 +592,19 @@ impl Component for RealmComponent {
 
     fn toggle_visibility(&mut self) {
         self.visible = !self.visible;
+    }
+
+    fn process_command(&mut self, command: &ComponentCommand) {
+        match command {
+            ComponentCommand::SetRect {
+                component_type: ComponentType::Realm,
+                rect,
+            } => self.rect = rect.clone(),
+            _ => {}
+        }
+    }
+
+    fn get_component_type(&self) -> ComponentType {
+        ComponentType::Realm
     }
 }
