@@ -74,12 +74,13 @@ impl Card for LuckyCharm {
 
     fn zone_query_override(&self, _state: &State, query: &ZoneQuery) -> Option<ZoneQuery> {
         match query {
-            ZoneQuery::Random { options } => {
+            ZoneQuery::Random { options, .. } => {
                 let zones = vec![
                     options.choose(&mut rand::rng()).unwrap().clone(),
                     options.choose(&mut rand::rng()).unwrap().clone(),
                 ];
                 Some(ZoneQuery::FromOptions {
+                    id: uuid::Uuid::new_v4(),
                     options: zones,
                     prompt: Some("Lucky Charm: Choose a zone".to_string()),
                 })
@@ -90,7 +91,7 @@ impl Card for LuckyCharm {
 
     fn card_query_override(&self, state: &State, query: &CardQuery) -> Option<CardQuery> {
         match query {
-            CardQuery::RandomTarget { possible_targets } => {
+            CardQuery::RandomTarget { possible_targets, .. } => {
                 if possible_targets.is_empty() {
                     return None;
                 }
@@ -100,12 +101,13 @@ impl Card for LuckyCharm {
                     possible_targets.choose(&mut rand::rng()).unwrap().clone(),
                 ];
                 Some(CardQuery::FromOptions {
+                    id: uuid::Uuid::new_v4(),
                     options: targets,
                     prompt: Some("Lucky Charm: Choose a target".to_string()),
                     preview: true,
                 })
             }
-            CardQuery::RandomUnitInZone { zone } => {
+            CardQuery::RandomUnitInZone { zone, .. } => {
                 let options = zone
                     .get_units(state, None)
                     .iter()
@@ -120,6 +122,7 @@ impl Card for LuckyCharm {
                     options.choose(&mut rand::rng()).unwrap().clone(),
                 ];
                 Some(CardQuery::FromOptions {
+                    id: uuid::Uuid::new_v4(),
                     options: zones,
                     prompt: Some("Lucky Charm: Choose a unit".to_string()),
                     preview: true,

@@ -5,10 +5,9 @@ mod render;
 mod scene;
 mod texture_cache;
 
-use std::sync::{LazyLock, Mutex};
-
 use crate::{client::Client, texture_cache::TextureCache};
 use macroquad::prelude::*;
+use std::sync::{LazyLock, Mutex};
 
 // CLICK_ENABLED is set to false whenever a Button is click to prevent the release of the mouse
 // button from triggering other actions in the same frame. This happens because buttons in

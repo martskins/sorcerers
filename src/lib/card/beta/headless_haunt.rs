@@ -87,6 +87,7 @@ impl Card for HeadlessHaunt {
             card_id: self.get_id().clone(),
             from: self.get_zone().clone(),
             to: ZoneQuery::Random {
+                id: uuid::Uuid::new_v4(),
                 options: Zone::all_realm(),
             },
             tap: false,

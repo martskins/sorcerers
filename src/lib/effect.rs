@@ -223,7 +223,7 @@ impl Effect {
         }
     }
 
-    pub fn description(&self, state: &State) -> Option<String> {
+    pub async fn description(&self, state: &State) -> Option<String> {
         match self {
             Effect::ShootProjectile {
                 player_id,
@@ -246,25 +246,28 @@ impl Effect {
             Effect::AddCounter { .. } => None,
             Effect::TeleportCard { .. } => None,
             Effect::MoveCard {
+                player_id,
                 to,
                 through_path,
                 card_id,
                 ..
             } => {
+                // XXX: Calling resolve here should result in us getting the result from the cache,
+                // as the effect should have been applied already.
                 let card = state.get_card(card_id).unwrap().get_name();
                 match through_path {
                     Some(path) => Some(format!(
                         "{} moves {} to {} through path {}",
                         player_name(&state.current_player, state),
                         card,
-                        path.last().unwrap(),
+                        to.resolve(player_id, state).await,
                         path.iter().map(|c| format!("{}", c)).collect::<Vec<_>>().join(" -> "),
                     )),
                     None => Some(format!(
-                        "{} moves {} to {:?}",
+                        "{} moves {} to {}",
                         player_name(&state.current_player, state),
                         card,
-                        to,
+                        to.resolve(player_id, state).await,
                     )),
                 }
             }
@@ -285,7 +288,7 @@ impl Effect {
             } => {
                 let card = state.get_card(card_id).unwrap().get_name();
                 Some(format!(
-                    "{} plays {} in zone {:?}",
+                    "{} plays {} in zone {}",
                     player_name(player_id, state),
                     card,
                     zone
@@ -483,7 +486,12 @@ impl Effect {
                 Some(path) => {
                     for zone in path {
                         let snapshot = state.snapshot();
-                        let zone = ZoneQuery::Specific(zone.clone()).resolve(player_id, state).await;
+                        let zone = ZoneQuery::Specific {
+                            id: uuid::Uuid::new_v4(),
+                            zone: zone.clone(),
+                        }
+                        .resolve(player_id, state)
+                        .await;
                         let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
                         card.set_zone(zone.clone());
                         if *tap {
@@ -568,7 +576,10 @@ impl Effect {
                     player_id: card.get_controller_id().clone(),
                     card_id: card.get_id().clone(),
                     from: card.get_zone().clone(),
-                    to: ZoneQuery::Specific(Zone::Cemetery),
+                    to: ZoneQuery::Specific {
+                        id: uuid::Uuid::new_v4(),
+                        zone: Zone::Cemetery,
+                    },
                     tap: false,
                     plane: Plane::None,
                     through_path: None,
@@ -710,7 +721,10 @@ impl Effect {
                         player_id: attacker.get_controller_id().clone(),
                         card_id: attacker_id.clone(),
                         from: attacker.get_zone().clone(),
-                        to: ZoneQuery::Specific(defender.get_zone().clone()),
+                        to: ZoneQuery::Specific {
+                            id: uuid::Uuid::new_v4(),
+                            zone: defender.get_zone().clone(),
+                        },
                         tap: true,
                         plane: attacker.get_base().plane.clone(),
                         through_path: None,
@@ -807,7 +821,10 @@ impl Effect {
                     player_id: player_id.clone(),
                     card_id: unit_id.clone(),
                     from: unit.get_zone().clone(),
-                    to: ZoneQuery::Specific(zone),
+                    to: ZoneQuery::Specific {
+                        id: uuid::Uuid::new_v4(),
+                        zone,
+                    },
                     tap: false,
                     plane: Plane::Surface,
                     through_path: None,

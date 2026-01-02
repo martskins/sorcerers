@@ -1,12 +1,14 @@
 mod server;
 
 use crate::server::Server;
-use sorcerers::networking::message::Message;
+use sorcerers::{networking::message::Message, query::QueryCache};
 use std::{net::SocketAddr, sync::Arc};
 use tokio::{io::AsyncReadExt, net::TcpListener, sync::Mutex};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    QueryCache::init();
+
     let socket = TcpListener::bind("0.0.0.0:8080".parse::<SocketAddr>().unwrap()).await?;
     let server = Arc::new(Mutex::new(Server::new()));
     loop {

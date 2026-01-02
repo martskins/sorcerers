@@ -82,7 +82,9 @@ impl Server {
 
         let (deck1, cards1) = precon1.build(player1);
         let (deck2, cards2) = precon2.build(player2);
+        // TODO: clean this up
         let mut state = State::new(
+            uuid::Uuid::new_v4(), // replaced later
             Vec::new().into_iter().chain(cards1).chain(cards2).collect(),
             HashMap::from([(player1.clone(), deck1), (player2.clone(), deck2)]),
             server_tx.clone(),
@@ -150,6 +152,7 @@ impl Server {
             server_tx,
             server_rx,
         );
+        state.game_id = game.id;
         game.state = state;
         let game_id = game.id;
         self.games.insert(game_id, client_tx);

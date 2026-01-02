@@ -1164,7 +1164,7 @@ mod tests {
 
         let (server_tx, _) = async_channel::unbounded();
         let (_, client_rx) = async_channel::unbounded();
-        let state = State::new(cards, HashMap::new(), server_tx, client_rx);
+        let state = State::new(uuid::Uuid::new_v4(), cards, HashMap::new(), server_tx, client_rx);
         let paths = card.get_valid_move_paths(&state, &Zone::Realm(14));
         assert_eq!(paths.len(), 2, "Expected 2 paths, got {:?}", paths);
         assert!(paths.contains(&vec![Zone::Realm(8), Zone::Realm(9), Zone::Realm(14)]));
@@ -1186,7 +1186,7 @@ mod tests {
 
         let (server_tx, _) = async_channel::unbounded();
         let (_, client_rx) = async_channel::unbounded();
-        let state = State::new(cards, HashMap::new(), server_tx, client_rx);
+        let state = State::new(uuid::Uuid::new_v4(), cards, HashMap::new(), server_tx, client_rx);
         let paths = card.get_valid_move_paths(&state, &Zone::Realm(14));
         assert_eq!(paths.len(), 3, "Expected 3 valid paths, got {:?}", paths);
         assert!(paths.contains(&vec![Zone::Realm(8), Zone::Realm(9), Zone::Realm(14)]));
@@ -1209,7 +1209,7 @@ mod tests {
 
         let (server_tx, _) = async_channel::unbounded();
         let (_, client_rx) = async_channel::unbounded();
-        let state = State::new(cards, HashMap::new(), server_tx, client_rx);
+        let state = State::new(uuid::Uuid::new_v4(), cards, HashMap::new(), server_tx, client_rx);
         let paths = card.get_valid_move_paths(&state, &Zone::Realm(15));
         assert_eq!(paths.len(), 3, "Expected 2 paths, got {:?}", paths);
         assert!(paths.contains(&vec![Zone::Realm(8), Zone::Realm(9), Zone::Realm(10), Zone::Realm(15)]));

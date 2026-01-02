@@ -651,7 +651,10 @@ impl Action for UnitAction {
                     player_id: player_id.clone(),
                     card_id: card_id.clone(),
                     from: card.get_zone().clone(),
-                    to: ZoneQuery::Specific(zone),
+                    to: ZoneQuery::Specific {
+                        id: uuid::Uuid::new_v4(),
+                        zone,
+                    },
                     tap: true,
                     plane: card.get_base().plane.clone(),
                     through_path: Some(path),
@@ -693,9 +696,16 @@ impl Game {
         server_sender: Sender<ServerMessage>,
         server_receiver: Receiver<ServerMessage>,
     ) -> Self {
+        let game_id = uuid::Uuid::new_v4();
         Game {
-            id: uuid::Uuid::new_v4(),
-            state: State::new(Vec::new(), HashMap::new(), server_sender.clone(), receiver.clone()),
+            id: game_id.clone(),
+            state: State::new(
+                game_id,
+                Vec::new(),
+                HashMap::new(),
+                server_sender.clone(),
+                receiver.clone(),
+            ),
             players: vec![player1, player2],
             streams: HashMap::from([(player1, addr1), (player2, addr2)]),
             client_receiver: receiver,
@@ -1000,7 +1010,10 @@ impl Game {
                 player_id: player_id.clone(),
                 card_id: avatar_id,
                 from: Zone::Spellbook,
-                to: ZoneQuery::Specific(Zone::Realm(square)),
+                to: ZoneQuery::Specific {
+                    id: uuid::Uuid::new_v4(),
+                    zone: Zone::Realm(square),
+                },
                 tap: false,
                 plane: Plane::Surface,
                 through_path: None,
@@ -1018,7 +1031,7 @@ impl Game {
             let effect = self.state.effects.pop_back();
             if let Some(effect) = effect {
                 effect.apply(&mut self.state).await?;
-                if let Some(description) = effect.description(&self.state) {
+                if let Some(description) = effect.description(&self.state).await {
                     self.broadcast(&ServerMessage::LogEvent {
                         id: uuid::Uuid::new_v4(),
                         description,

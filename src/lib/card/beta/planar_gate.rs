@@ -87,8 +87,12 @@ impl Card for PlanarGate {
                 id: uuid::Uuid::new_v4(),
                 modifier: Modifier::Voidwalk,
                 expires_on_effect: Some(EffectQuery::EnterZone {
-                    card: CardQuery::Specific(card_id.clone()),
+                    card: CardQuery::Specific {
+                        id: uuid::Uuid::new_v4(),
+                        card_id: card_id.clone(),
+                    },
                     zone: ZoneQuery::AnySite {
+                        id: uuid::Uuid::new_v4(),
                         controlled_by: None,
                         prompt: None,
                     },

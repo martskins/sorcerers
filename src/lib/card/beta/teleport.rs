@@ -65,10 +65,12 @@ impl Card for Teleport {
         vec![Effect::TeleportUnitToZone {
             player_id: self.get_owner_id().clone(),
             unit_query: CardQuery::OwnedBy {
+                id: uuid::Uuid::new_v4(),
                 owner: self.get_owner_id().clone(),
                 prompt: Some("Teleport: Choose an ally to teleport".to_string()),
             },
             zone_query: ZoneQuery::AnySite {
+                id: uuid::Uuid::new_v4(),
                 controlled_by: None,
                 prompt: Some("Teleport: Choose site to teleport to".to_string()),
             },

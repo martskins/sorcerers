@@ -31,7 +31,10 @@ impl Deck {
             player_id: self.player_id.clone(),
             card_id: card_id.unwrap(),
             from: Zone::Atlasbook,
-            to: ZoneQuery::Specific(Zone::Hand),
+            to: ZoneQuery::Specific {
+                id: uuid::Uuid::new_v4(),
+                zone: Zone::Hand,
+            },
             tap: false,
             plane: Plane::None,
             through_path: None,
@@ -44,7 +47,10 @@ impl Deck {
             player_id: self.player_id.clone(),
             card_id: card_id.unwrap(),
             from: Zone::Spellbook,
-            to: ZoneQuery::Specific(Zone::Hand),
+            to: ZoneQuery::Specific {
+                id: uuid::Uuid::new_v4(),
+                zone: Zone::Hand,
+            },
             tap: false,
             plane: Plane::None,
             through_path: None,

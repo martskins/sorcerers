@@ -79,6 +79,7 @@ impl Card for ChainLightning {
             effects.push(Effect::DealDamageToTarget {
                 player_id: self.get_owner_id().clone(),
                 query: CardQuery::InZone {
+                    id: uuid::Uuid::new_v4(),
                     zone: picked_zone.clone(),
                     owner: None,
                     prompt: Some("Chain Lightning: Pick a unit to deal 2 damage to".to_string()),

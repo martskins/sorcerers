@@ -103,6 +103,7 @@ impl Card for Thunderstorm {
             Effect::DealDamageToTarget {
                 player_id: self.get_controller_id().clone(),
                 query: CardQuery::RandomTarget {
+                    id: uuid::Uuid::new_v4(),
                     possible_targets: units,
                 },
                 from: self.get_id().clone(),
@@ -113,6 +114,7 @@ impl Card for Thunderstorm {
                 card_id: self.get_id().clone(),
                 from: self.get_zone().clone(),
                 to: ZoneQuery::FromOptions {
+                    id: uuid::Uuid::new_v4(),
                     options: zones,
                     prompt: Some("Pick a zone to move Thunderstorm to".to_string()),
                 },

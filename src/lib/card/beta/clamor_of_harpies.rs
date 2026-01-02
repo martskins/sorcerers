@@ -128,7 +128,10 @@ impl Card for ClamorOfHarpies {
             player_id: self.get_owner_id().clone(),
             card_id,
             from: card.get_zone().clone(),
-            to: ZoneQuery::Specific(self.get_zone().clone()),
+            to: ZoneQuery::Specific {
+                id: uuid::Uuid::new_v4(),
+                zone: self.get_zone().clone(),
+            },
             tap: false,
             plane: self.card_base.plane.clone(),
             through_path: None,
