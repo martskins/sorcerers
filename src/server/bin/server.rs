@@ -119,10 +119,7 @@ impl Server {
             .push(from_name_and_zone(LuckyCharm::NAME, player1, Zone::Hand));
         state
             .cards
-            .push(from_name_and_zone(PitVipers::NAME, player1, Zone::Realm(8)));
-        state
-            .cards
-            .push(from_name_and_zone(LuckyCharm::NAME, player1, Zone::Realm(8)));
+            .push(from_name_and_zone(RimlandNomads::NAME, player1, Zone::Realm(8)));
         state
             .cards
             .push(from_name_and_zone(PlanarGate::NAME, player2, Zone::Realm(13)));

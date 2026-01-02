@@ -91,6 +91,7 @@ impl Card for HeadlessHaunt {
             },
             tap: false,
             plane: Plane::Surface,
+            through_path: None,
         }]
     }
 }

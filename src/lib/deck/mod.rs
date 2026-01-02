@@ -34,6 +34,7 @@ impl Deck {
             to: ZoneQuery::Specific(Zone::Hand),
             tap: false,
             plane: Plane::None,
+            through_path: None,
         }]
     }
 
@@ -46,6 +47,7 @@ impl Deck {
             to: ZoneQuery::Specific(Zone::Hand),
             tap: false,
             plane: Plane::None,
+            through_path: None,
         }]
     }
 

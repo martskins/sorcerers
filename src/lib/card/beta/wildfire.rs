@@ -119,6 +119,7 @@ impl Card for Wildfire {
             to: ZoneQuery::Specific(picked_zone.clone()),
             tap: false,
             plane: self.card_base.plane.clone(),
+            through_path: None,
         });
 
         effects

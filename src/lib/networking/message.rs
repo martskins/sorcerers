@@ -72,6 +72,11 @@ pub enum ServerMessage {
         player_id: PlayerId,
         actions: Vec<String>,
     },
+    PickPath {
+        prompt: String,
+        player_id: PlayerId,
+        paths: Vec<Vec<Zone>>,
+    },
     PickZone {
         prompt: String,
         player_id: PlayerId,
@@ -92,6 +97,7 @@ impl ServerMessage {
             ServerMessage::PickCard { player_id, .. } => player_id.clone(),
             ServerMessage::PickZone { player_id, .. } => player_id.clone(),
             ServerMessage::PickAction { player_id, .. } => player_id.clone(),
+            ServerMessage::PickPath { player_id, .. } => player_id.clone(),
             ServerMessage::ConnectResponse { player_id, .. } => player_id.clone(),
             ServerMessage::GameStarted { .. } => uuid::Uuid::nil(),
             ServerMessage::Sync { .. } => uuid::Uuid::nil(),
@@ -132,7 +138,12 @@ pub enum ClientMessage {
         player_id: PlayerId,
         card_id: uuid::Uuid,
     },
-    PickSquare {
+    PickPath {
+        game_id: uuid::Uuid,
+        player_id: PlayerId,
+        path: Vec<Zone>,
+    },
+    PickZone {
         game_id: uuid::Uuid,
         player_id: PlayerId,
         zone: Zone,
@@ -158,7 +169,8 @@ impl ClientMessage {
             ClientMessage::PickCard { game_id, .. } => game_id.clone(),
             ClientMessage::PickAction { game_id, .. } => game_id.clone(),
             ClientMessage::EndTurn { game_id, .. } => game_id.clone(),
-            ClientMessage::PickSquare { game_id, .. } => game_id.clone(),
+            ClientMessage::PickZone { game_id, .. } => game_id.clone(),
+            ClientMessage::PickPath { game_id, .. } => game_id.clone(),
             ClientMessage::ClickCard { game_id, .. } => game_id.clone(),
             ClientMessage::DrawCard { game_id, .. } => game_id.clone(),
             ClientMessage::PickDirection { game_id, .. } => game_id.clone(),
@@ -171,7 +183,8 @@ impl ClientMessage {
             ClientMessage::PickCard { player_id, .. } => player_id,
             ClientMessage::PickAction { player_id, .. } => player_id,
             ClientMessage::EndTurn { player_id, .. } => player_id,
-            ClientMessage::PickSquare { player_id, .. } => player_id,
+            ClientMessage::PickZone { player_id, .. } => player_id,
+            ClientMessage::PickPath { player_id, .. } => player_id,
             ClientMessage::ClickCard { player_id, .. } => player_id,
             ClientMessage::DrawCard { player_id, .. } => player_id,
             ClientMessage::PickDirection { player_id, .. } => player_id,

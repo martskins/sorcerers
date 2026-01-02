@@ -356,9 +356,9 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         vec![]
     }
 
-    fn get_zones_within_steps(&self, state: &State, steps: u8) -> Vec<Zone> {
+    fn get_zones_within_steps_of(&self, state: &State, steps: u8, zone: &Zone) -> Vec<Zone> {
         let mut visited = Vec::new();
-        let mut to_visit = vec![(self.get_zone().clone(), 0)];
+        let mut to_visit = vec![(zone.clone(), 0)];
 
         while let Some((current_zone, current_step)) = to_visit.pop() {
             if current_step > steps {
@@ -390,6 +390,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         }
 
         visited
+    }
+
+    fn get_zones_within_steps(&self, state: &State, steps: u8) -> Vec<Zone> {
+        self.get_zones_within_steps_of(state, steps, self.get_zone())
     }
 
     fn set_status(&mut self, _status: &Box<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
@@ -584,6 +588,59 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             Zone::Realm(sq) => Some(*sq),
             _ => None,
         }
+    }
+
+    fn get_valid_move_paths(&self, state: &State, to: &Zone) -> Vec<Vec<Zone>> {
+        let from = self.get_zone().clone();
+        let valid_zones = self.get_valid_move_zones(state);
+        if !valid_zones.contains(&to) {
+            return vec![];
+        }
+
+        // Calculate max steps allowed
+        let mut max_steps = 1;
+        let movement_mods = self
+            .get_modifiers(state)
+            .into_iter()
+            .filter(|m| matches!(m, Modifier::Movement(_)));
+        for mov in movement_mods {
+            if let Modifier::Movement(s) = mov {
+                if s + 1 > max_steps {
+                    max_steps = s + 1;
+                }
+            }
+        }
+
+        // Helper: returns true if next is traversable from current
+        let is_traversable =
+            |current: &Zone, next: &Zone| self.get_zones_within_steps_of(state, 1, current).contains(next);
+
+        // BFS for all paths from 'from' to 'to' within max_steps
+        let mut paths = Vec::new();
+        let mut queue: Vec<(Vec<Zone>, Zone)> = vec![(vec![from.clone()], from.clone())];
+
+        while let Some((path, current)) = queue.pop() {
+            if &current == to {
+                if path.len() - 1 <= max_steps.into() {
+                    paths.push(path.clone());
+                }
+                continue;
+            }
+            if path.len() - 1 >= max_steps.into() {
+                continue;
+            }
+            for next in valid_zones.iter() {
+                if path.contains(next) || &current == next {
+                    continue;
+                }
+                if is_traversable(&current, next) {
+                    let mut new_path = path.clone();
+                    new_path.push(next.clone());
+                    queue.push((new_path, next.clone()));
+                }
+            }
+        }
+        paths
     }
 
     fn get_valid_move_zones(&self, state: &State) -> Vec<Zone> {
@@ -1063,4 +1120,81 @@ pub fn from_name_and_zone(name: &str, player_id: &PlayerId, zone: Zone) -> Box<d
     let mut card = from_name(name, player_id);
     card.set_zone(zone);
     card
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use crate::{
+        card::{Card, Modifier, RimlandNomads, Zone},
+        state::State,
+    };
+
+    #[test]
+    fn test_get_valid_move_paths_movement_plus_1() {
+        let player_id = uuid::Uuid::new_v4();
+        let mut card = RimlandNomads::new(player_id.clone());
+        card.set_zone(Zone::Realm(8));
+
+        let mut cards: Vec<Box<dyn Card>> = (1..=20)
+            .into_iter()
+            .map(|sq| super::from_name_and_zone("Arid Desert", &player_id, Zone::Realm(sq)))
+            .collect();
+        cards.push(Box::new(card.clone()));
+
+        let (server_tx, _) = async_channel::unbounded();
+        let (_, client_rx) = async_channel::unbounded();
+        let state = State::new(cards, HashMap::new(), server_tx, client_rx);
+        let paths = card.get_valid_move_paths(&state, &Zone::Realm(14));
+        assert_eq!(paths.len(), 2, "Expected 2 paths, got {:?}", paths);
+        assert!(paths.contains(&vec![Zone::Realm(8), Zone::Realm(9), Zone::Realm(14)]));
+        assert!(paths.contains(&vec![Zone::Realm(8), Zone::Realm(13), Zone::Realm(14)]));
+    }
+
+    #[test]
+    fn test_get_valid_move_paths_movement_plus_1_airborne() {
+        let player_id = uuid::Uuid::new_v4();
+        let mut card = RimlandNomads::new(player_id.clone());
+        card.set_zone(Zone::Realm(8));
+        card.add_modifier(Modifier::Airborne);
+
+        let mut cards: Vec<Box<dyn Card>> = (1..=20)
+            .into_iter()
+            .map(|sq| super::from_name_and_zone("Arid Desert", &player_id, Zone::Realm(sq)))
+            .collect();
+        cards.push(Box::new(card.clone()));
+
+        let (server_tx, _) = async_channel::unbounded();
+        let (_, client_rx) = async_channel::unbounded();
+        let state = State::new(cards, HashMap::new(), server_tx, client_rx);
+        let paths = card.get_valid_move_paths(&state, &Zone::Realm(14));
+        assert_eq!(paths.len(), 3, "Expected 3 valid paths, got {:?}", paths);
+        assert!(paths.contains(&vec![Zone::Realm(8), Zone::Realm(9), Zone::Realm(14)]));
+        assert!(paths.contains(&vec![Zone::Realm(8), Zone::Realm(14)]));
+        assert!(paths.contains(&vec![Zone::Realm(8), Zone::Realm(13), Zone::Realm(14)]));
+    }
+
+    #[test]
+    fn test_get_valid_move_paths_movement_plus_2() {
+        let player_id = uuid::Uuid::new_v4();
+        let mut card = RimlandNomads::new(player_id.clone());
+        card.set_zone(Zone::Realm(8));
+        card.add_modifier(Modifier::Movement(2));
+
+        let mut cards: Vec<Box<dyn Card>> = (1..=20)
+            .into_iter()
+            .map(|sq| super::from_name_and_zone("Arid Desert", &player_id, Zone::Realm(sq)))
+            .collect();
+        cards.push(Box::new(card.clone()));
+
+        let (server_tx, _) = async_channel::unbounded();
+        let (_, client_rx) = async_channel::unbounded();
+        let state = State::new(cards, HashMap::new(), server_tx, client_rx);
+        let paths = card.get_valid_move_paths(&state, &Zone::Realm(15));
+        assert_eq!(paths.len(), 3, "Expected 2 paths, got {:?}", paths);
+        assert!(paths.contains(&vec![Zone::Realm(8), Zone::Realm(9), Zone::Realm(10), Zone::Realm(15)]));
+        assert!(paths.contains(&vec![Zone::Realm(8), Zone::Realm(9), Zone::Realm(14), Zone::Realm(15)]));
+        assert!(paths.contains(&vec![Zone::Realm(8), Zone::Realm(13), Zone::Realm(14), Zone::Realm(15)]));
+    }
 }

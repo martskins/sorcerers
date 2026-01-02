@@ -243,19 +243,22 @@ impl RealmComponent {
             draw_text(&cell.id.to_string(), rect.x + 5.0, rect.y + 15.0, 12.0, GRAY);
 
             match &data.status {
-                Status::SelectingZone { zones } => {
-                    let intersections: Vec<&Zone> = zones
-                        .iter()
-                        .filter(|z| match z {
-                            Zone::Intersection(locations) => locations.contains(&cell.id),
-                            _ => false,
-                        })
-                        .collect();
-                    let can_pick_intersection = !intersections.is_empty();
-                    if can_pick_intersection {
-                        // TODO:
+                Status::SelectingPath { paths } => {
+                    for (idx, path) in paths.iter().enumerate() {
+                        let can_pick_path = path.iter().find(|i| i == &&Zone::Realm(cell.id)).is_some();
+                        if can_pick_path {
+                            draw_rectangle_lines(
+                                rect.x,
+                                rect.y,
+                                rect.w,
+                                rect.h,
+                                5.0,
+                                Color::new(idx as f32 / paths.len() as f32, 0.5, 1.0, 1.0),
+                            );
+                        }
                     }
-
+                }
+                Status::SelectingZone { zones } => {
                     let can_pick_zone = zones.iter().find(|i| i == &&Zone::Realm(cell.id)).is_some();
                     if can_pick_zone {
                         draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, 5.0, GREEN);
@@ -319,6 +322,7 @@ impl RealmComponent {
                 }
                 Status::SelectingCard { preview: true, .. }
                 | Status::SelectingAction { .. }
+                | Status::SelectingPath { .. }
                 | Status::ViewingCards { .. } => {
                     continue;
                 }
@@ -358,7 +362,7 @@ impl RealmComponent {
                         let square = self.cell_rects[idx].id;
                         if is_mouse_button_released(MouseButton::Left) {
                             self.client
-                                .send(ClientMessage::PickSquare {
+                                .send(ClientMessage::PickZone {
                                     player_id: self.player_id.clone(),
                                     game_id: self.game_id.clone(),
                                     zone: Zone::Realm(square),
@@ -387,7 +391,7 @@ impl RealmComponent {
                         if is_mouse_button_released(MouseButton::Left) {
                             println!("Picking intersection at locations {:?}", cell.locations);
                             self.client
-                                .send(ClientMessage::PickSquare {
+                                .send(ClientMessage::PickZone {
                                     player_id: self.player_id.clone(),
                                     game_id: self.game_id.clone(),
                                     zone: Zone::Intersection(locs),

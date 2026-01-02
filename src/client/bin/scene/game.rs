@@ -43,6 +43,9 @@ pub enum Status {
         preview: bool,
         prompt: String,
     },
+    SelectingPath {
+        paths: Vec<Vec<Zone>>,
+    },
     SelectingZone {
         zones: Vec<Zone>,
     },
@@ -256,6 +259,10 @@ impl Game {
             }
             ServerMessage::PickZone { zones, .. } => {
                 self.data.status = Status::SelectingZone { zones: zones.clone() };
+                Ok(None)
+            }
+            ServerMessage::PickPath { paths, .. } => {
+                self.data.status = Status::SelectingPath { paths: paths.clone() };
                 Ok(None)
             }
             ServerMessage::PickCard {

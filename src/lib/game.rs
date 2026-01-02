@@ -169,6 +169,26 @@ pub async fn pick_option(player_id: &PlayerId, actions: &[String], state: &State
     }
 }
 
+pub async fn pick_path(player_id: &PlayerId, paths: &[Vec<Zone>], state: &State, prompt: &str) -> Vec<Zone> {
+    state
+        .get_sender()
+        .send(ServerMessage::PickPath {
+            prompt: prompt.to_string(),
+            player_id: player_id.clone(),
+            paths: paths.to_vec(),
+        })
+        .await
+        .unwrap();
+
+    loop {
+        let msg = state.get_receiver().recv().await.unwrap();
+        match msg {
+            ClientMessage::PickPath { path, .. } => break path,
+            _ => panic!("expected PickPath, got {:?}", msg),
+        }
+    }
+}
+
 pub async fn pick_zone(player_id: &PlayerId, zones: &[Zone], state: &State, prompt: &str) -> Zone {
     state
         .get_sender()
@@ -183,7 +203,7 @@ pub async fn pick_zone(player_id: &PlayerId, zones: &[Zone], state: &State, prom
     loop {
         let msg = state.get_receiver().recv().await.unwrap();
         match msg {
-            ClientMessage::PickSquare { zone, .. } => break zone,
+            ClientMessage::PickZone { zone, .. } => break zone,
             _ => panic!("expected PickSquare, got {:?}", msg),
         }
     }
@@ -619,6 +639,14 @@ impl Action for UnitAction {
                 let zones = card.get_valid_move_zones(state);
                 let prompt = "Pick a zone to move to";
                 let zone = pick_zone(player_id, &zones, state, prompt).await;
+                let paths = card.get_valid_move_paths(state, &zone);
+                let path = if paths.len() > 1 {
+                    let prompt = "Pick a path to move along";
+                    pick_path(player_id, &paths, state, prompt).await
+                } else {
+                    paths.first().unwrap().to_vec()
+                };
+                println!("Picked path: {:?}", path);
                 vec![Effect::MoveCard {
                     player_id: player_id.clone(),
                     card_id: card_id.clone(),
@@ -626,6 +654,7 @@ impl Action for UnitAction {
                     to: ZoneQuery::Specific(zone),
                     tap: true,
                     plane: card.get_base().plane.clone(),
+                    through_path: Some(path),
                 }]
             }
             UnitAction::Burrow => {
@@ -726,7 +755,7 @@ impl Game {
             | ClientMessage::PickAction { .. }
             | ClientMessage::PickDirection { .. }
             | ClientMessage::PickCard { .. }
-            | ClientMessage::PickSquare { .. } => {
+            | ClientMessage::PickZone { .. } => {
                 self.state.waiting_for_input = false;
             }
             _ => {}
@@ -974,6 +1003,7 @@ impl Game {
                 to: ZoneQuery::Specific(Zone::Realm(square)),
                 tap: false,
                 plane: Plane::Surface,
+                through_path: None,
             });
         }
         effects

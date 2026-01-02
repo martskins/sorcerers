@@ -118,6 +118,7 @@ impl Card for Thunderstorm {
                 },
                 tap: false,
                 plane: Plane::Surface,
+                through_path: None,
             },
         ];
 

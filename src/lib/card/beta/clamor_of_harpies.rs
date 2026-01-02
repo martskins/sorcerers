@@ -131,6 +131,7 @@ impl Card for ClamorOfHarpies {
             to: ZoneQuery::Specific(self.get_zone().clone()),
             tap: false,
             plane: self.card_base.plane.clone(),
+            through_path: None,
         }];
         effects.extend(action.on_select(Some(card.get_id()), self.get_owner_id(), state).await);
         effects
