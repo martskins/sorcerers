@@ -35,6 +35,7 @@ const FONT_SIZE: f32 = 24.0;
 pub enum Status {
     Idle,
     SelectingAction {
+        actions: Vec<String>,
         prompt: String,
     },
     SelectingCard {
@@ -70,6 +71,15 @@ impl Event {
     }
 }
 
+fn component_rect(component_type: ComponentType) -> Rect {
+    match component_type {
+        ComponentType::EventLog => event_log_rect(),
+        ComponentType::PlayerStatus => Rect::new(0.0, 0.0, realm_rect().x, screen_height()),
+        ComponentType::PlayerHand => hand_rect(),
+        ComponentType::Realm => realm_rect(),
+    }
+}
+
 #[derive(Debug)]
 pub struct GameData {
     pub player_id: PlayerId,
@@ -95,15 +105,12 @@ impl GameData {
 
 #[derive(Debug)]
 pub struct Game {
-    pub player_id: PlayerId,
-    pub opponent_id: PlayerId,
-    pub game_id: uuid::Uuid,
-    pub resources: HashMap<PlayerId, Resources>,
-    pub client: networking::client::Client,
-    pub current_player: PlayerId,
-    pub is_player_one: bool,
+    opponent_id: PlayerId,
+    game_id: uuid::Uuid,
+    client: networking::client::Client,
+    current_player: PlayerId,
+    is_player_one: bool,
     card_selection_overlay: Option<SelectionOverlay>,
-    actions: Vec<String>,
     components: Vec<Box<dyn Component>>,
     data: GameData,
 }
@@ -118,35 +125,32 @@ impl Game {
         client: networking::client::Client,
     ) -> Self {
         Self {
-            player_id: player_id.clone(),
             opponent_id,
             game_id: game_id.clone(),
             client: client.clone(),
             current_player: uuid::Uuid::nil(),
             is_player_one,
-            resources: HashMap::new(),
-            actions: Vec::new(),
             card_selection_overlay: None,
             components: vec![
+                Box::new(PlayerStatusComponent::new(Vec2::new(20.0, 25.0), opponent_id.clone())),
+                Box::new(PlayerStatusComponent::new(
+                    Vec2::new(20.0, screen_rect().h - 90.0),
+                    player_id.clone(),
+                )),
                 Box::new(PlayerHandComponent::new(
                     &game_id,
                     &player_id,
                     client.clone(),
-                    hand_rect(),
+                    component_rect(ComponentType::PlayerHand),
                 )),
                 Box::new(RealmComponent::new(
                     &game_id,
                     &player_id,
                     !is_player_one,
                     client.clone(),
-                    realm_rect(),
+                    component_rect(ComponentType::Realm),
                 )),
-                Box::new(EventLogComponent::new(event_log_rect())),
-                Box::new(PlayerStatusComponent::new(
-                    Vec2::new(20.0, screen_rect().h - 90.0),
-                    player_id.clone(),
-                )),
-                Box::new(PlayerStatusComponent::new(Vec2::new(20.0, 25.0), opponent_id.clone())),
+                Box::new(EventLogComponent::new(component_rect(ComponentType::EventLog))),
             ],
             data: GameData::new(&player_id, cards),
         }
@@ -160,15 +164,9 @@ impl Game {
         for component in &mut self.components {
             component.update(&mut self.data).await?;
 
-            let rect = match component.get_component_type() {
-                ComponentType::EventLog => event_log_rect(),
-                ComponentType::PlayerStatus => Rect::new(0.0, 0.0, realm_rect().x, screen_height()),
-                ComponentType::PlayerHand => hand_rect(),
-                ComponentType::Realm => realm_rect(),
-            };
             component.process_command(&ComponentCommand::SetRect {
                 component_type: component.get_component_type(),
-                rect,
+                rect: component_rect(component.get_component_type()),
             });
         }
 
@@ -190,7 +188,7 @@ impl Game {
                 SelectionOverlay::new(
                     self.client.clone(),
                     &self.game_id,
-                    &self.player_id,
+                    &self.data.player_id,
                     renderables,
                     prompt,
                     behaviour.clone(),
@@ -275,7 +273,7 @@ impl Game {
                         SelectionOverlay::new(
                             self.client.clone(),
                             &self.game_id,
-                            &self.player_id,
+                            &self.data.player_id,
                             renderables,
                             prompt,
                             SelectionOverlayBehaviour::Pick,
@@ -286,9 +284,9 @@ impl Game {
                 Ok(None)
             }
             ServerMessage::PickAction { prompt, actions, .. } => {
-                self.actions = actions.clone();
                 self.data.status = Status::SelectingAction {
                     prompt: prompt.to_string(),
+                    actions: actions.clone(),
                 };
                 Ok(None)
             }
@@ -299,7 +297,7 @@ impl Game {
                 cards,
                 ..
             } => {
-                self.is_player_one = player1 == &self.player_id;
+                self.is_player_one = player1 == &self.data.player_id;
                 self.game_id = game_id.clone();
                 self.opponent_id = if self.is_player_one {
                     player2.clone()
@@ -335,7 +333,7 @@ impl Game {
 
                 self.data.cards = cards.clone();
                 self.current_player = current_player.clone();
-                self.resources = resources.clone();
+                self.data.resources = resources.clone();
                 Ok(None)
             }
             _ => Ok(None),
@@ -351,7 +349,9 @@ impl Game {
 
         let mut component_actions = vec![];
         for component in &mut self.components {
-            if let Ok(Some(action)) = component.process_input(self.current_player == self.player_id, &mut self.data) {
+            if let Ok(Some(action)) =
+                component.process_input(self.current_player == self.data.player_id, &mut self.data)
+            {
                 component_actions.push(action);
             }
         }
@@ -365,7 +365,7 @@ impl Game {
 
     async fn render_gui(&mut self) -> anyhow::Result<()> {
         let screen_rect = screen_rect();
-        let turn_label = if self.is_players_turn(&self.player_id) {
+        let turn_label = if self.is_players_turn(&self.data.player_id) {
             "Your Turn"
         } else {
             "Opponent's Turn"
@@ -373,20 +373,23 @@ impl Game {
 
         draw_text(turn_label, screen_rect.w / 2.0 - 50.0, 30.0, FONT_SIZE, WHITE);
 
-        let is_in_turn = self.current_player == self.player_id;
+        let is_in_turn = self.current_player == self.data.player_id;
         let is_idle = matches!(self.data.status, Status::Idle);
         if is_in_turn && is_idle {
             if ui::root_ui().button(Vec2::new(screen_rect.w - 100.0, screen_rect.h - 40.0), "Pass Turn") {
                 set_clicks_enabled(false);
                 self.client.send(ClientMessage::EndTurn {
-                    player_id: self.player_id.clone(),
+                    player_id: self.data.player_id.clone(),
                     game_id: self.game_id.clone(),
                 })?;
             }
         }
 
         match self.data.status {
-            Status::SelectingAction { ref prompt } => {
+            Status::SelectingAction {
+                ref prompt,
+                ref actions,
+            } => {
                 // Draw semi-transparent overlay behind the action selection window
                 draw_rectangle(
                     0.0,
@@ -409,7 +412,8 @@ impl Game {
 
                 let prompt = prompt.clone();
                 let button_height = 30.0;
-                let window_size = Vec2::new(400.0, (button_height + 10.0) * self.actions.len() as f32 + 20.0 + 50.0);
+                let window_size = Vec2::new(400.0, (button_height + 10.0) * actions.len() as f32 + 20.0 + 50.0);
+                let actions = actions.clone();
                 ui::root_ui().window(
                     hash!(),
                     Vec2::new(
@@ -422,7 +426,7 @@ impl Game {
                             .position(Vec2::new(5.0, 5.0))
                             .multiline(10.0)
                             .ui(ui);
-                        for (idx, action) in self.actions.iter().enumerate() {
+                        for (idx, action) in actions.iter().enumerate() {
                             let button_pos =
                                 Vec2::new(window_size.x * 0.1, (button_height + 10.0) * (idx as f32 + 1.0));
                             let clicked = ui::widgets::Button::new(action.as_str())
@@ -433,7 +437,7 @@ impl Game {
                                 self.client
                                     .send(ClientMessage::PickAction {
                                         game_id: self.game_id,
-                                        player_id: self.player_id,
+                                        player_id: self.data.player_id,
                                         action_idx: idx,
                                     })
                                     .unwrap();

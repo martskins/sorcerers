@@ -647,10 +647,9 @@ impl Action for UnitAction {
 
 pub struct Game {
     pub id: uuid::Uuid,
-    pub players: Vec<PlayerId>,
     pub state: State,
-    pub streams: HashMap<PlayerId, Arc<Mutex<OwnedWriteHalf>>>,
-    pub effect_log: Vec<Effect>,
+    players: Vec<PlayerId>,
+    streams: HashMap<PlayerId, Arc<Mutex<OwnedWriteHalf>>>,
     client_receiver: Receiver<ClientMessage>,
     server_receiver: Receiver<ServerMessage>,
 }
@@ -671,7 +670,6 @@ impl Game {
             players: vec![player1, player2],
             streams: HashMap::from([(player1, addr1), (player2, addr2)]),
             client_receiver: receiver,
-            effect_log: Vec::new(),
             server_receiver,
         }
     }
@@ -679,6 +677,10 @@ impl Game {
     pub async fn start(&mut self) -> anyhow::Result<()> {
         self.state.effects.extend(self.place_avatars());
         self.state.effects.extend(self.draw_initial_six());
+
+        // Process effects before starting the game so players don't see the initial setup in the event log
+        self.process_effects().await?;
+
         self.broadcast(&ServerMessage::GameStarted {
             player1: self.players[0].clone(),
             player2: self.players[1].clone(),

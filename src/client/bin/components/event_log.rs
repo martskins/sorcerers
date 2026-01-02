@@ -19,7 +19,7 @@ pub struct EventLogComponent {
 impl EventLogComponent {
     pub fn new(rect: Rect) -> Self {
         Self {
-            visible: true,
+            visible: false,
             last_message_seen: uuid::Uuid::nil(),
             rect,
         }

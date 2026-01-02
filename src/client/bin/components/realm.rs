@@ -26,7 +26,17 @@ use sorcerers::{
 };
 
 fn cell_rect(realm_rect: &Rect, id: u8, mirror: bool) -> Rect {
-    // id 1 is bottom left, id 5 is bottom right, id 16 is top right
+    // The grid layout looks like the following from player's 1 perspective (for player 2, the
+    // board is flipped both horizontally and vertically):
+    // ________________________
+    // |16 | 17 | 18 | 19 | 20 |
+    // |---|----|----|----|----|
+    // |11 | 12 | 13 | 14 | 15 |
+    // |---|----|----|----|----|
+    // |6  | 7  | 8  | 9  | 10 |
+    // |---|----|----|----|----|
+    // |1  | 2  | 3  | 4  | 5  |
+    // |-----------------------|
     let idx = id - 1;
     let mut col = idx % 5;
     let mut row = 3 - (idx / 5); // invert row for bottom-up indexing
