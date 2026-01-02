@@ -234,6 +234,93 @@ impl RealmComponent {
         Ok(())
     }
 
+    fn render_paths(&mut self, data: &mut GameData) {
+        use macroquad::input::mouse_position;
+
+        match &data.status {
+            Status::SelectingPath { paths } => {
+                let mouse = {
+                    let (mx, my) = mouse_position();
+                    Vec2::new(mx, my)
+                };
+
+                // Find the path closest to the mouse (by minimum distance to any segment)
+                let mut closest_idx = None;
+                let mut closest_dist = f32::MAX;
+
+                let mut path_points: Vec<Vec<Vec2>> = Vec::new();
+
+                for path in paths {
+                    let mut points = Vec::new();
+                    for zone in path {
+                        if let Zone::Realm(id) = zone {
+                            if let Some(cell_rect) = self.cell_rects.iter().find(|c| c.id == *id) {
+                                let center = Vec2::new(
+                                    cell_rect.rect.x + cell_rect.rect.w / 2.0,
+                                    cell_rect.rect.y + cell_rect.rect.h / 2.0,
+                                );
+                                points.push(center);
+                            }
+                        }
+                    }
+                    path_points.push(points);
+                }
+
+                for (idx, points) in path_points.iter().enumerate() {
+                    for pair in points.windows(2) {
+                        let (start, end) = (pair[0], pair[1]);
+                        // Distance from mouse to segment
+                        let seg = end - start;
+                        let t = ((mouse - start).dot(seg) / seg.length_squared()).clamp(0.0, 1.0);
+                        let proj = start + seg * t;
+                        let dist = (mouse - proj).length();
+                        if dist < closest_dist {
+                            closest_dist = dist;
+                            closest_idx = Some(idx);
+                        }
+                    }
+                }
+
+                let path_colors: [Color; 10] = [
+                    Color::new(1.0, 0.8, 0.2, 1.0), // yellow
+                    Color::new(0.2, 0.6, 1.0, 1.0), // blue
+                    Color::new(0.6, 0.2, 1.0, 1.0), // purple
+                    Color::new(1.0, 0.5, 0.0, 1.0), // orange
+                    Color::new(0.9, 0.2, 1.0, 1.0), // magenta
+                    Color::new(0.0, 0.8, 1.0, 1.0), // cyan
+                    Color::new(1.0, 0.6, 0.7, 1.0), // pink
+                    Color::new(0.6, 0.6, 1.0, 1.0), // light blue
+                    Color::new(0.8, 0.8, 0.3, 1.0), // light yellow
+                    Color::new(0.7, 0.4, 1.0, 1.0), // violet
+                ];
+
+                for (idx, points) in path_points.iter().enumerate() {
+                    let color = path_colors[idx % path_colors.len()];
+                    let thickness = if Some(idx) == closest_idx { 4.0 } else { 1.0 };
+
+                    if points.len() >= 2 {
+                        // Draw lines between consecutive points
+                        for pair in points.windows(2) {
+                            let (start, end) = (pair[0], pair[1]);
+                            macroquad::shapes::draw_line(start.x, start.y, end.x, end.y, thickness, color);
+                        }
+                        // Draw arrowhead at the end
+                        let tip = points[points.len() - 1];
+                        let prev = points[points.len() - 2];
+                        let dir = (tip - prev).normalize();
+                        let perp = Vec2::new(-dir.y, dir.x);
+                        let arrow_len = 12.0;
+                        let arrow_width = 6.0;
+                        let left = tip - dir * arrow_len + perp * arrow_width;
+                        let right = tip - dir * arrow_len - perp * arrow_width;
+                        macroquad::shapes::draw_triangle(tip, left, right, color);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
     async fn render_grid(&mut self, data: &mut GameData) {
         let grid_color = WHITE;
         let grid_thickness = 1.0;
@@ -243,21 +330,6 @@ impl RealmComponent {
             draw_text(&cell.id.to_string(), rect.x + 5.0, rect.y + 15.0, 12.0, GRAY);
 
             match &data.status {
-                Status::SelectingPath { paths } => {
-                    for (idx, path) in paths.iter().enumerate() {
-                        let can_pick_path = path.iter().find(|i| i == &&Zone::Realm(cell.id)).is_some();
-                        if can_pick_path {
-                            draw_rectangle_lines(
-                                rect.x,
-                                rect.y,
-                                rect.w,
-                                rect.h,
-                                5.0,
-                                Color::new(idx as f32 / paths.len() as f32, 0.5, 1.0, 1.0),
-                            );
-                        }
-                    }
-                }
                 Status::SelectingZone { zones } => {
                     let can_pick_zone = zones.iter().find(|i| i == &&Zone::Realm(cell.id)).is_some();
                     if can_pick_zone {
@@ -266,6 +338,7 @@ impl RealmComponent {
                 }
                 Status::SelectingCard { preview: true, .. }
                 | Status::SelectingAction { .. }
+                | Status::SelectingPath { .. }
                 | Status::ViewingCards { .. } => {
                     continue;
                 }
@@ -592,6 +665,8 @@ impl Component for RealmComponent {
                 }
             }
         }
+
+        self.render_paths(data);
 
         Ok(())
     }

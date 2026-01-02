@@ -526,7 +526,7 @@ impl Effect {
                     to: ZoneQuery::Specific(Zone::Cemetery),
                     tap: false,
                     plane: Plane::None,
-            through_path: None,
+                    through_path: None,
                 });
                 state.effects.extend(effects);
             }
@@ -668,7 +668,7 @@ impl Effect {
                         to: ZoneQuery::Specific(defender.get_zone().clone()),
                         tap: true,
                         plane: attacker.get_base().plane.clone(),
-            through_path: None,
+                        through_path: None,
                     },
                     Effect::TakeDamage {
                         card_id: defender_id.clone(),
@@ -765,7 +765,7 @@ impl Effect {
                     to: ZoneQuery::Specific(zone),
                     tap: false,
                     plane: Plane::Surface,
-            through_path: None,
+                    through_path: None,
                 });
             }
             Effect::RearrangeDeck { spells, sites } => {
