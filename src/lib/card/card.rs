@@ -64,6 +64,25 @@ pub enum Zone {
     Intersection(Vec<u8>),
 }
 
+impl std::fmt::Display for Zone {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Zone::None => write!(f, "None"),
+            Zone::Hand => write!(f, "Hand"),
+            Zone::Spellbook => write!(f, "Spellbook"),
+            Zone::Atlasbook => write!(f, "Atlasbook"),
+            Zone::Realm(sq) => write!(f, "{}", sq),
+            Zone::Cemetery => write!(f, "Cemetery"),
+            Zone::Banish => write!(f, "Banish"),
+            Zone::Intersection(locs) => write!(
+                f,
+                "Intersection of ({})",
+                locs.iter().map(|c| c.to_string()).collect::<Vec<String>>().join(",")
+            ),
+        }
+    }
+}
+
 impl Zone {
     pub fn is_in_realm(&self) -> bool {
         match self {

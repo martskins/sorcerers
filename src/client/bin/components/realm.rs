@@ -274,7 +274,7 @@ impl RealmComponent {
                         let t = ((mouse - start).dot(seg) / seg.length_squared()).clamp(0.0, 1.0);
                         let proj = start + seg * t;
                         let dist = (mouse - proj).length();
-                        if dist < closest_dist {
+                        if dist < closest_dist && dist < 20.0 {
                             closest_dist = dist;
                             closest_idx = Some(idx);
                         }
@@ -587,6 +587,62 @@ impl RealmComponent {
         }
     }
 
+    fn handle_path_click(&mut self, mouse_position: Vec2, in_turn: bool, status: &mut Status) {
+        use macroquad::input::is_mouse_button_released;
+        if !in_turn {
+            return;
+        }
+
+        if let Status::SelectingPath { paths } = &status {
+            let mut path_points: Vec<Vec<Vec2>> = Vec::new();
+            for path in paths {
+                let mut points = Vec::new();
+                for zone in path {
+                    if let Zone::Realm(id) = zone {
+                        if let Some(cell_rect) = self.cell_rects.iter().find(|c| c.id == id.clone()) {
+                            let center = Vec2::new(
+                                cell_rect.rect.x + cell_rect.rect.w / 2.0,
+                                cell_rect.rect.y + cell_rect.rect.h / 2.0,
+                            );
+                            points.push(center);
+                        }
+                    }
+                }
+                path_points.push(points);
+            }
+
+            // Find closest path to mouse
+            let mut closest_idx = None;
+            let mut closest_dist = f32::MAX;
+            for (idx, points) in path_points.iter().enumerate() {
+                for pair in points.windows(2) {
+                    let (start, end) = (pair[0], pair[1]);
+                    let seg = end - start;
+                    let t = ((mouse_position - start).dot(seg) / seg.length_squared()).clamp(0.0, 1.0);
+                    let proj = start + seg * t;
+                    let dist = (mouse_position - proj).length();
+                    if dist < closest_dist && dist < 20.0 {
+                        closest_dist = dist;
+                        closest_idx = Some(idx);
+                    }
+                }
+            }
+
+            if let Some(idx) = closest_idx {
+                if is_mouse_button_released(MouseButton::Left) {
+                    self.client
+                        .send(ClientMessage::PickPath {
+                            player_id: self.player_id.clone(),
+                            game_id: self.game_id.clone(),
+                            path: paths[idx].clone(),
+                        })
+                        .unwrap();
+                    *status = Status::Idle;
+                }
+            }
+        }
+    }
+
     async fn render_card_preview(&self, data: &mut GameData) -> anyhow::Result<()> {
         if let Status::SelectingCard { preview: true, .. } = &data.status {
             return Ok(());
@@ -675,6 +731,7 @@ impl Component for RealmComponent {
         let mouse_position = macroquad::input::mouse_position().into();
         self.handle_square_click(mouse_position, in_turn, &mut data.status);
         self.handle_card_click(mouse_position, in_turn, &mut data.status);
+        self.handle_path_click(mouse_position, in_turn, &mut data.status);
 
         Ok(None)
     }

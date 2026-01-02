@@ -646,7 +646,7 @@ impl Action for UnitAction {
                 } else {
                     paths.first().unwrap().to_vec()
                 };
-                println!("Picked path: {:?}", path);
+
                 vec![Effect::MoveCard {
                     player_id: player_id.clone(),
                     card_id: card_id.clone(),

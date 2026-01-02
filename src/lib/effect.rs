@@ -245,7 +245,29 @@ impl Effect {
             Effect::AddModifier { .. } => None,
             Effect::AddCounter { .. } => None,
             Effect::TeleportCard { .. } => None,
-            Effect::MoveCard { .. } => None,
+            Effect::MoveCard {
+                to,
+                through_path,
+                card_id,
+                ..
+            } => {
+                let card = state.get_card(card_id).unwrap().get_name();
+                match through_path {
+                    Some(path) => Some(format!(
+                        "{} moves {} to {} through path {}",
+                        player_name(&state.current_player, state),
+                        card,
+                        path.last().unwrap(),
+                        path.iter().map(|c| format!("{}", c)).collect::<Vec<_>>().join(" -> "),
+                    )),
+                    None => Some(format!(
+                        "{} moves {} to {:?}",
+                        player_name(&state.current_player, state),
+                        card,
+                        to,
+                    )),
+                }
+            }
             Effect::DrawCard { .. } => None,
             Effect::DrawSite { player_id, count } => {
                 let sites = if *count == 1 { "site" } else { "sites" };
@@ -455,25 +477,48 @@ impl Effect {
                 from,
                 to,
                 tap,
+                through_path,
                 ..
-            } => {
-                let snapshot = state.snapshot();
-                let zone = to.resolve(player_id, state).await;
-                let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
-                card.set_zone(zone.clone());
-                if *tap {
-                    card.get_base_mut().tapped = true;
-                }
+            } => match through_path {
+                Some(path) => {
+                    for zone in path {
+                        let snapshot = state.snapshot();
+                        let zone = ZoneQuery::Specific(zone.clone()).resolve(player_id, state).await;
+                        let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
+                        card.set_zone(zone.clone());
+                        if *tap {
+                            card.get_base_mut().tapped = true;
+                        }
 
-                let card = state.cards.iter().find(|c| c.get_id() == card_id).unwrap();
-                let mut effects = card.on_move(&snapshot, from, &zone).await;
-                effects.extend(card.on_visit_zone(&snapshot, &zone).await);
-                if let Some(site) = zone.get_site(state) {
-                    effects.extend(site.on_card_enter(state, card_id));
-                }
+                        let card = state.cards.iter().find(|c| c.get_id() == card_id).unwrap();
+                        let mut effects = card.on_move(&snapshot, from, &zone).await;
+                        effects.extend(card.on_visit_zone(&snapshot, &zone).await);
+                        if let Some(site) = zone.get_site(state) {
+                            effects.extend(site.on_card_enter(state, card_id));
+                        }
 
-                state.effects.extend(effects);
-            }
+                        state.effects.extend(effects);
+                    }
+                }
+                None => {
+                    let snapshot = state.snapshot();
+                    let zone = to.resolve(player_id, state).await;
+                    let card = state.cards.iter_mut().find(|c| c.get_id() == card_id).unwrap();
+                    card.set_zone(zone.clone());
+                    if *tap {
+                        card.get_base_mut().tapped = true;
+                    }
+
+                    let card = state.cards.iter().find(|c| c.get_id() == card_id).unwrap();
+                    let mut effects = card.on_move(&snapshot, from, &zone).await;
+                    effects.extend(card.on_visit_zone(&snapshot, &zone).await);
+                    if let Some(site) = zone.get_site(state) {
+                        effects.extend(site.on_card_enter(state, card_id));
+                    }
+
+                    state.effects.extend(effects);
+                }
+            },
             Effect::DrawSite { player_id, count } => {
                 let deck = state.decks.get_mut(player_id).unwrap();
                 for _ in 0..*count {
