@@ -245,7 +245,7 @@ impl Game {
 
         self.render_gui().await?;
         for component in &mut self.components {
-            component.render(&mut self.data).await;
+            component.render(&mut self.data).await?;
         }
 
         self.render_card_preview().await?;

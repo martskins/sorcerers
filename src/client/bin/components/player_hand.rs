@@ -140,7 +140,7 @@ impl Component for PlayerHandComponent {
         self.compute_rects(&data.cards).await
     }
 
-    async fn render(&mut self, data: &mut GameData) {
+    async fn render(&mut self, data: &mut GameData) -> anyhow::Result<()> {
         let rect = hand_rect();
         let bg_color = Color::new(0.15, 0.18, 0.22, 0.85);
         draw_rectangle(rect.x, rect.y, rect.w, rect.h, bg_color);
@@ -191,6 +191,8 @@ impl Component for PlayerHandComponent {
                 }
             }
         }
+
+        Ok(())
     }
 
     fn process_input(&mut self, in_turn: bool, data: &mut GameData) {

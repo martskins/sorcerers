@@ -1,7 +1,9 @@
 use crate::{
     clicks_enabled,
     components::Component,
-    config::{CARD_IN_PLAY_SCALE, cell_rect, intersection_rect, realm_rect, site_dimensions, spell_dimensions},
+    config::{
+        CARD_IN_PLAY_SCALE, cell_rect, intersection_rect, realm_rect, screen_rect, site_dimensions, spell_dimensions,
+    },
     render::{self, CardRect, CellRect, IntersectionRect},
     scene::{
         game::{GameData, Status},
@@ -16,6 +18,7 @@ use macroquad::{
     math::{Rect, Vec2},
     shapes::{DrawRectangleParams, draw_rectangle, draw_rectangle_ex, draw_rectangle_lines},
     text::draw_text,
+    texture::{DrawTextureParams, draw_texture_ex},
     ui,
 };
 use rand::SeedableRng;
@@ -73,9 +76,9 @@ impl RealmComponent {
     }
 
     async fn compute_rects(&mut self, cards: &[RenderableCard]) -> anyhow::Result<()> {
-        self.cards.clear();
-
         use rand::Rng;
+
+        let mut new_cards = Vec::new();
         let mut rng = rand::rngs::SmallRng::seed_from_u64(1);
         for card in cards {
             match &card.zone {
@@ -100,14 +103,18 @@ impl RealmComponent {
                     rect.x += jitter_x;
                     rect.y += jitter_y;
 
-                    self.cards.push(CardRect {
+                    new_cards.push(CardRect {
                         id: card.id,
                         owner_id: card.owner_id,
                         zone: card.zone.clone(),
                         tapped: card.tapped,
                         image: TextureCache::get_card_texture(&card).await,
                         rect,
-                        is_hovered: false,
+                        is_hovered: self
+                            .cards
+                            .iter()
+                            .find(|c| c.id == card.id)
+                            .map_or(false, |c| c.is_hovered),
                         is_selected: false,
                         modifiers: card.modifiers.clone(),
                         damage_taken: card.damage_taken,
@@ -133,14 +140,18 @@ impl RealmComponent {
                     rect.x += jitter_x;
                     rect.y += jitter_y;
 
-                    self.cards.push(CardRect {
+                    new_cards.push(CardRect {
                         id: card.id,
                         owner_id: card.owner_id,
                         zone: card.zone.clone(),
                         tapped: card.tapped,
                         image: TextureCache::get_card_texture(&card).await,
                         rect,
-                        is_hovered: false,
+                        is_hovered: self
+                            .cards
+                            .iter()
+                            .find(|c| c.id == card.id)
+                            .map_or(false, |c| c.is_hovered),
                         is_selected: false,
                         modifiers: card.modifiers.clone(),
                         damage_taken: card.damage_taken,
@@ -149,6 +160,8 @@ impl RealmComponent {
                 _ => {}
             }
         }
+
+        self.cards = new_cards;
 
         Ok(())
     }
@@ -336,8 +349,8 @@ impl RealmComponent {
         }
 
         let mut hovered_card_index = None;
-        for (idx, card_display) in self.cards.iter().enumerate() {
-            if card_display.rect.contains(mouse_position.into()) {
+        for (idx, card) in self.cards.iter().enumerate() {
+            if card.rect.contains(mouse_position.into()) {
                 hovered_card_index = Some(idx);
             };
         }
@@ -428,6 +441,36 @@ impl RealmComponent {
             _ => {}
         }
     }
+
+    async fn render_card_preview(&self, data: &mut GameData) -> anyhow::Result<()> {
+        if let Status::SelectingCard { preview: true, .. } = &data.status {
+            return Ok(());
+        }
+
+        let hovered_card = self.cards.iter().find(|card_display| card_display.is_hovered);
+        let screen_rect = screen_rect();
+        if let Some(card) = hovered_card {
+            const PREVIEW_SCALE: f32 = 2.7;
+            let mut rect = card.rect;
+            rect.w *= PREVIEW_SCALE;
+            rect.h *= PREVIEW_SCALE;
+
+            let preview_x = 20.0;
+            let preview_y = screen_rect.h - rect.h - 20.0;
+            draw_texture_ex(
+                &card.image,
+                preview_x,
+                preview_y,
+                WHITE,
+                DrawTextureParams {
+                    dest_size: Some(Vec2::new(rect.w, rect.h)),
+                    ..Default::default()
+                },
+            );
+        }
+
+        Ok(())
+    }
 }
 
 #[async_trait::async_trait]
@@ -442,9 +485,10 @@ impl Component for RealmComponent {
         Ok(())
     }
 
-    async fn render(&mut self, data: &mut GameData) {
+    async fn render(&mut self, data: &mut GameData) -> anyhow::Result<()> {
         self.render_background();
         self.render_grid(data).await;
+        self.render_card_preview(data).await?;
 
         for card in &self.cards {
             if !card.zone.is_in_realm() {
@@ -458,7 +502,7 @@ impl Component for RealmComponent {
             } = &data.status
             {
                 if !clicks_enabled() {
-                    return;
+                    return Ok(());
                 }
 
                 if !cards.contains(&card.id) {
@@ -476,6 +520,8 @@ impl Component for RealmComponent {
                 }
             }
         }
+
+        Ok(())
     }
 
     fn process_input(&mut self, in_turn: bool, data: &mut GameData) {

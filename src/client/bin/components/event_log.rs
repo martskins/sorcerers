@@ -1,6 +1,6 @@
 use crate::{
     components::Component,
-    scene::game::{Game, GameData, Status},
+    scene::game::{Game, GameData},
 };
 use macroquad::{
     math::Vec2,
@@ -52,9 +52,9 @@ impl Component for EventLogComponent {
         Ok(())
     }
 
-    async fn render(&mut self, data: &mut GameData) {
+    async fn render(&mut self, data: &mut GameData) -> anyhow::Result<()> {
         if !self.visible {
-            return;
+            return Ok(());
         }
 
         let window_width: f32 = screen_width() * 0.8;
@@ -77,9 +77,11 @@ impl Component for EventLogComponent {
                 });
 
         self.visible = visible;
+
+        Ok(())
     }
 
-    fn process_input(&mut self, in_turn: bool, data: &mut GameData) {}
+    fn process_input(&mut self, _in_turn: bool, _data: &mut GameData) {}
 
     fn toggle_visibility(&mut self) {
         self.visible = !self.visible;

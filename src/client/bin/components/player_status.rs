@@ -10,11 +10,7 @@ use sorcerers::{
     game::{Element, Resources},
 };
 
-use crate::{
-    components::Component,
-    scene::game::{GameData, Status},
-    texture_cache::TextureCache,
-};
+use crate::{components::Component, scene::game::GameData, texture_cache::TextureCache};
 
 #[derive(Debug)]
 pub struct PlayerStatusComponent {
@@ -77,11 +73,11 @@ fn render_threshold(x: f32, y: f32, value: u8, element: Element) {
 
 #[async_trait::async_trait]
 impl Component for PlayerStatusComponent {
-    async fn update(&mut self, data: &mut GameData) -> anyhow::Result<()> {
+    async fn update(&mut self, _data: &mut GameData) -> anyhow::Result<()> {
         Ok(())
     }
 
-    async fn render(&mut self, data: &mut GameData) {
+    async fn render(&mut self, data: &mut GameData) -> anyhow::Result<()> {
         let resources = data.resources.get(&self.player_id).cloned().unwrap_or(Resources::new());
         let player_name = if data.player_id == self.player_id {
             "You"
@@ -202,11 +198,13 @@ impl Component for PlayerStatusComponent {
         let water_x = earth_x + SYMBOL_SIZE + THRESHOLD_SYMBOL_SPACING + 5.0;
         let water_y = thresholds_y;
         render_threshold(water_x, water_y, resources.thresholds.water, Element::Water);
+
+        Ok(())
     }
 
     fn toggle_visibility(&mut self) {
         self.visible = !self.visible;
     }
 
-    fn process_input(&mut self, in_turn: bool, data: &mut GameData) {}
+    fn process_input(&mut self, _in_turn: bool, _data: &mut GameData) {}
 }
