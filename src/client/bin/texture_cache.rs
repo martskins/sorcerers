@@ -1,10 +1,7 @@
 use macroquad::texture::Texture2D;
 use sorcerers::card::RenderableCard;
-use std::{
-    collections::HashMap,
-    path::Path,
-    sync::{OnceLock, RwLock},
-};
+use std::{collections::HashMap, path::Path, sync::OnceLock};
+use tokio::sync::RwLock;
 
 static TEXTURE_CACHE: OnceLock<RwLock<TextureCache>> = OnceLock::new();
 
@@ -37,11 +34,11 @@ impl TextureCache {
     }
 
     pub async fn get_texture(path: &str) -> Texture2D {
-        if let Some(tex) = TEXTURE_CACHE.get().unwrap().read().unwrap().inner.get(path) {
+        if let Some(tex) = TEXTURE_CACHE.get().unwrap().read().await.inner.get(path) {
             return tex.clone();
         }
 
-        let mut cache = TEXTURE_CACHE.get().unwrap().write().unwrap();
+        let mut cache = TEXTURE_CACHE.get().unwrap().write().await;
         let new_path = path.to_string();
         let texture = macroquad::texture::load_texture(&new_path).await.unwrap();
         cache.inner.insert(path.to_string(), texture.clone());
@@ -49,7 +46,7 @@ impl TextureCache {
     }
 
     async fn texture_for_card(card: &RenderableCard) -> Texture2D {
-        if let Some(tex) = TEXTURE_CACHE.get().unwrap().read().unwrap().inner.get(card.get_name()) {
+        if let Some(tex) = TEXTURE_CACHE.get().unwrap().read().await.inner.get(card.get_name()) {
             return tex.clone();
         }
 
@@ -65,7 +62,7 @@ impl TextureCache {
 
     async fn get_card_image_from_disk(name: &str, path: &str) -> anyhow::Result<Texture2D> {
         let texture = macroquad::texture::load_texture(path).await?;
-        let mut cache = TEXTURE_CACHE.get().unwrap().write().unwrap();
+        let mut cache = TEXTURE_CACHE.get().unwrap().write().await;
         cache.inner.insert(name.to_string(), texture.clone());
         Ok(texture)
     }
@@ -105,7 +102,7 @@ impl TextureCache {
 
         let bytes = response.bytes().await.unwrap();
         let texture = macroquad::texture::Texture2D::from_file_with_format(&bytes, None);
-        let mut cache = TEXTURE_CACHE.get().unwrap().write().unwrap();
+        let mut cache = TEXTURE_CACHE.get().unwrap().write().await;
         cache.inner.insert(name_for_url.to_string(), texture.clone());
 
         let save_path = format!("assets/images/cache/{}.png", card_name);

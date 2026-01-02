@@ -2,6 +2,7 @@ use crate::scene::game::{GameData, Status};
 
 pub mod event_log;
 pub mod player_hand;
+pub mod player_status;
 pub mod realm;
 
 #[async_trait::async_trait]

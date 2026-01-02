@@ -1,5 +1,8 @@
 use crate::{
-    components::{Component, event_log::EventLogComponent, player_hand::PlayerHandComponent, realm::RealmComponent},
+    components::{
+        Component, event_log::EventLogComponent, player_hand::PlayerHandComponent,
+        player_status::PlayerStatusComponent, realm::RealmComponent,
+    },
     config::*,
     render::{CardRect, CellRect, IntersectionRect},
     scene::{Scene, selection_overlay::SelectionOverlay},
@@ -7,10 +10,10 @@ use crate::{
     texture_cache::TextureCache,
 };
 use macroquad::{
-    color::{BLUE, Color, RED, WHITE},
+    color::{Color, WHITE},
     input::{MouseButton, is_mouse_button_released},
     math::{RectOffset, Vec2},
-    shapes::{draw_line, draw_rectangle, draw_triangle_lines},
+    shapes::draw_rectangle,
     text::draw_text,
     texture::{DrawTextureParams, draw_texture_ex},
     ui::{self, hash},
@@ -18,7 +21,7 @@ use macroquad::{
 };
 use sorcerers::{
     card::{CardType, Plane, RenderableCard, Zone},
-    game::{Element, PlayerId, Resources},
+    game::{PlayerId, Resources},
     networking::{
         self,
         message::{ClientMessage, ServerMessage},
@@ -29,8 +32,6 @@ use std::collections::HashMap;
 use super::selection_overlay::SelectionOverlayBehaviour;
 
 const FONT_SIZE: f32 = 24.0;
-const THRESHOLD_SYMBOL_SPACING: f32 = 18.0;
-const SYMBOL_SIZE: f32 = 20.0;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Status {
@@ -73,19 +74,23 @@ impl Event {
 
 #[derive(Debug)]
 pub struct GameData {
+    pub player_id: PlayerId,
     pub cards: Vec<RenderableCard>,
     pub events: Vec<Event>,
     pub status: Status,
     pub unseen_events: usize,
+    pub resources: HashMap<PlayerId, Resources>,
 }
 
 impl GameData {
-    pub fn new(cards: Vec<RenderableCard>) -> Self {
+    pub fn new(player_id: &uuid::Uuid, cards: Vec<RenderableCard>) -> Self {
         Self {
+            player_id: player_id.clone(),
             cards,
             events: Vec::new(),
             status: Status::Idle,
             unseen_events: 0,
+            resources: HashMap::new(),
         }
     }
 }
@@ -134,6 +139,11 @@ impl Game {
             })
             .collect();
 
+        // const BASE_X: f32 = 20.0;
+        // let player_y: f32 = screen_rect.h - 90.0;
+        // self.render_player_card(BASE_X, player_y, &self.player_id).await;
+        //
+        // const OPPONENT_Y: f32 = 25.0;
         Self {
             player_id: player_id.clone(),
             opponent_id,
@@ -156,8 +166,13 @@ impl Game {
                     client.clone(),
                 )),
                 Box::new(EventLogComponent::new()),
+                Box::new(PlayerStatusComponent::new(
+                    Vec2::new(20.0, screen_rect().h - 90.0),
+                    player_id.clone(),
+                )),
+                Box::new(PlayerStatusComponent::new(Vec2::new(20.0, 25.0), opponent_id.clone())),
             ],
-            data: GameData::new(cards),
+            data: GameData::new(&player_id, cards),
         }
     }
 
@@ -374,168 +389,8 @@ impl Game {
         }
     }
 
-    fn render_threshold(x: f32, y: f32, value: u8, element: Element) {
-        let text_offset_y = SYMBOL_SIZE * 0.8;
-        draw_text(&value.to_string(), x, y + text_offset_y, FONT_SIZE, WHITE);
-
-        const PURPLE: Color = Color::new(0.6, 0.2, 0.8, 1.0);
-        const BROWN: Color = Color::new(0.6, 0.4, 0.2, 1.0);
-        let element_color = match element {
-            Element::Fire => RED,
-            Element::Air => PURPLE,
-            Element::Earth => BROWN,
-            Element::Water => BLUE,
-        };
-
-        if element == Element::Earth || element == Element::Water {
-            let v1 = Vec2::new(x + THRESHOLD_SYMBOL_SPACING, y);
-            let v2 = Vec2::new(x + THRESHOLD_SYMBOL_SPACING + SYMBOL_SIZE / 2.0, y + SYMBOL_SIZE);
-            let v3 = Vec2::new(x + THRESHOLD_SYMBOL_SPACING + SYMBOL_SIZE, y);
-            draw_triangle_lines(v1, v2, v3, 3.0, element_color);
-        } else {
-            let v1 = Vec2::new(x + THRESHOLD_SYMBOL_SPACING, y + SYMBOL_SIZE);
-            let v2 = Vec2::new(x + THRESHOLD_SYMBOL_SPACING + SYMBOL_SIZE / 2.0, y);
-            let v3 = Vec2::new(x + THRESHOLD_SYMBOL_SPACING + SYMBOL_SIZE, y + SYMBOL_SIZE);
-            draw_triangle_lines(v1, v2, v3, 3.0, element_color);
-        }
-
-        if element == Element::Air || element == Element::Earth {
-            let line_offset_y: f32 = SYMBOL_SIZE / 2.0;
-            draw_line(
-                x + THRESHOLD_SYMBOL_SPACING,
-                y + line_offset_y,
-                x + THRESHOLD_SYMBOL_SPACING + SYMBOL_SIZE,
-                y + line_offset_y,
-                2.0,
-                element_color,
-            );
-        }
-    }
-
-    async fn render_player_card(&self, x: f32, y: f32, player_id: &uuid::Uuid) {
-        let resources = self.resources.get(&self.player_id).cloned().unwrap_or(Resources::new());
-        let player_name = if &self.player_id == player_id { "You" } else { "Them" };
-        draw_text(player_name, x, y, FONT_SIZE, WHITE);
-
-        const ICON_SIZE: f32 = 20.0;
-        const NAME_BOTTOM_MARGIN: f32 = 7.0;
-        let icon_y = y + NAME_BOTTOM_MARGIN;
-        let health_text_y: f32 = y + NAME_BOTTOM_MARGIN + 20.0;
-        let heart_texture = TextureCache::get_texture("assets/icons/heart.png").await;
-        draw_texture_ex(
-            &heart_texture,
-            x,
-            icon_y + 5.0,
-            WHITE,
-            DrawTextureParams {
-                dest_size: Some(Vec2::new(ICON_SIZE - 5.0, ICON_SIZE - 5.0)),
-                ..Default::default()
-            },
-        );
-        let health = format!("{}", resources.health);
-        draw_text(&health, x + 22.0, health_text_y, FONT_SIZE, WHITE);
-
-        let cards_texture = TextureCache::get_texture("assets/icons/cards.png").await;
-        draw_texture_ex(
-            &cards_texture,
-            x + 52.0,
-            icon_y + 2.0,
-            WHITE,
-            DrawTextureParams {
-                dest_size: Some(Vec2::new(ICON_SIZE, ICON_SIZE)),
-                ..Default::default()
-            },
-        );
-        let cards_in_hand = format!(
-            "{}",
-            self.data
-                .cards
-                .iter()
-                .filter(|c| &c.owner_id == player_id)
-                .filter(|c| c.zone == Zone::Hand)
-                .count()
-        );
-        draw_text(&cards_in_hand, x + 77.0, health_text_y, FONT_SIZE, WHITE);
-
-        let potion_texture = TextureCache::get_texture("assets/icons/potion.png").await;
-        draw_texture_ex(
-            &potion_texture,
-            x + 95.0,
-            icon_y + 4.0,
-            WHITE,
-            DrawTextureParams {
-                dest_size: Some(Vec2::new(ICON_SIZE, ICON_SIZE)),
-                ..Default::default()
-            },
-        );
-        let mana_text = format!("{}", resources.mana);
-        draw_text(&mana_text, x + 120.0, health_text_y, FONT_SIZE, WHITE);
-
-        let tombstone_texture = TextureCache::get_texture("assets/icons/tombstone.png").await;
-        draw_texture_ex(
-            &tombstone_texture,
-            x + 140.0,
-            icon_y + 5.0,
-            WHITE,
-            DrawTextureParams {
-                dest_size: Some(Vec2::new(ICON_SIZE, ICON_SIZE)),
-                ..Default::default()
-            },
-        );
-        let cards_in_cemetery = format!(
-            "{}",
-            self.data
-                .cards
-                .iter()
-                .filter(|c| &c.owner_id == player_id)
-                .filter(|c| c.zone == Zone::Cemetery)
-                .count()
-        );
-        draw_text(&cards_in_cemetery, x + 165.0, health_text_y, FONT_SIZE, WHITE);
-
-        if &self.player_id == player_id {
-            let message_texture = TextureCache::get_texture("assets/icons/message.png").await;
-            draw_texture_ex(
-                &message_texture,
-                x + 140.0,
-                icon_y - 20.0,
-                WHITE,
-                DrawTextureParams {
-                    dest_size: Some(Vec2::new(ICON_SIZE, ICON_SIZE)),
-                    ..Default::default()
-                },
-            );
-            let unseen_messages = format!("{}", self.data.unseen_events);
-            draw_text(&unseen_messages, x + 165.0, icon_y, FONT_SIZE, WHITE);
-        }
-
-        let thresholds_y: f32 = y + 10.0 + 20.0 + 20.0;
-        let fire_x = x;
-        let fire_y = thresholds_y;
-        Game::render_threshold(fire_x, fire_y, resources.thresholds.fire, Element::Fire);
-
-        let air_x = fire_x + SYMBOL_SIZE + THRESHOLD_SYMBOL_SPACING + 5.0;
-        let air_y = thresholds_y;
-        Game::render_threshold(air_x, air_y, resources.thresholds.air, Element::Air);
-
-        let earth_x = air_x + SYMBOL_SIZE + THRESHOLD_SYMBOL_SPACING + 5.0;
-        let earth_y = thresholds_y;
-        Game::render_threshold(earth_x, earth_y, resources.thresholds.earth, Element::Earth);
-
-        let water_x = earth_x + SYMBOL_SIZE + THRESHOLD_SYMBOL_SPACING + 5.0;
-        let water_y = thresholds_y;
-        Game::render_threshold(water_x, water_y, resources.thresholds.water, Element::Water);
-    }
-
     async fn render_gui(&mut self) -> anyhow::Result<()> {
         let screen_rect = screen_rect();
-        const BASE_X: f32 = 20.0;
-        let player_y: f32 = screen_rect.h - 90.0;
-        self.render_player_card(BASE_X, player_y, &self.player_id).await;
-
-        const OPPONENT_Y: f32 = 25.0;
-        self.render_player_card(BASE_X, OPPONENT_Y, &self.opponent_id).await;
-
         let turn_label = if self.is_players_turn(&self.player_id) {
             "Your Turn"
         } else {
