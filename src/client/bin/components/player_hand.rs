@@ -193,13 +193,13 @@ impl Component for PlayerHandComponent {
         }
     }
 
-    fn process_input(&mut self, in_turn: bool, status: &mut Status) {
+    fn process_input(&mut self, in_turn: bool, data: &mut GameData) {
         let mouse_position = macroquad::input::mouse_position();
         if !clicks_enabled() {
             return;
         }
 
-        if let Status::SelectingAction { .. } = &status {
+        if let Status::SelectingAction { .. } = &data.status {
             return;
         }
 
@@ -222,7 +222,7 @@ impl Component for PlayerHandComponent {
             self.rects.get_mut(idx).unwrap().is_hovered = true;
         }
 
-        match &status {
+        match &data.status {
             Status::Idle => {
                 for card_rect in &mut self
                     .rects
@@ -264,7 +264,7 @@ impl Component for PlayerHandComponent {
                             })
                             .unwrap();
 
-                        *status = Status::Idle;
+                        data.status = Status::Idle;
                     }
                 }
             }
@@ -293,7 +293,7 @@ impl Component for PlayerHandComponent {
                             })
                             .unwrap();
 
-                        *status = Status::Idle;
+                        data.status = Status::Idle;
                     }
                 }
             }

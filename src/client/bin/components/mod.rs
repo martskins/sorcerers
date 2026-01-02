@@ -10,5 +10,5 @@ pub trait Component: std::fmt::Debug {
     async fn update(&mut self, data: &mut GameData) -> anyhow::Result<()>;
     async fn render(&mut self, data: &mut GameData);
     fn toggle_visibility(&mut self);
-    fn process_input(&mut self, in_turn: bool, status: &mut Status);
+    fn process_input(&mut self, in_turn: bool, data: &mut GameData);
 }

@@ -385,7 +385,7 @@ impl Game {
         }
 
         for component in &mut self.components {
-            component.process_input(self.current_player == self.player_id, &mut self.data.status);
+            component.process_input(self.current_player == self.player_id, &mut self.data);
         }
     }
 

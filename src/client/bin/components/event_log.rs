@@ -79,7 +79,7 @@ impl Component for EventLogComponent {
         self.visible = visible;
     }
 
-    fn process_input(&mut self, in_turn: bool, status: &mut Status) {}
+    fn process_input(&mut self, in_turn: bool, data: &mut GameData) {}
 
     fn toggle_visibility(&mut self) {
         self.visible = !self.visible;

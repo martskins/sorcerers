@@ -208,5 +208,5 @@ impl Component for PlayerStatusComponent {
         self.visible = !self.visible;
     }
 
-    fn process_input(&mut self, in_turn: bool, status: &mut Status) {}
+    fn process_input(&mut self, in_turn: bool, data: &mut GameData) {}
 }

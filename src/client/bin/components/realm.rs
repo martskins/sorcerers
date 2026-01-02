@@ -478,10 +478,10 @@ impl Component for RealmComponent {
         }
     }
 
-    fn process_input(&mut self, in_turn: bool, status: &mut Status) {
+    fn process_input(&mut self, in_turn: bool, data: &mut GameData) {
         let mouse_position = macroquad::input::mouse_position().into();
-        self.handle_square_click(mouse_position, in_turn, status);
-        self.handle_card_click(mouse_position, in_turn, status);
+        self.handle_square_click(mouse_position, in_turn, &mut data.status);
+        self.handle_card_click(mouse_position, in_turn, &mut data.status);
     }
 
     fn toggle_visibility(&mut self) {
