@@ -65,6 +65,7 @@ impl EffectLog {
 #[derive(Debug)]
 pub struct State {
     pub game_id: uuid::Uuid,
+    pub player_ids: Vec<PlayerId>,
     pub turns: usize,
     pub cards: Vec<Box<dyn Card>>,
     pub decks: HashMap<PlayerId, Deck>,
@@ -82,6 +83,7 @@ pub struct State {
 impl State {
     pub fn new(
         game_id: uuid::Uuid,
+        player_ids: Vec<PlayerId>,
         cards: Vec<Box<dyn Card>>,
         decks: HashMap<PlayerId, Deck>,
         server_tx: Sender<ServerMessage>,
@@ -89,6 +91,7 @@ impl State {
     ) -> Self {
         State {
             game_id,
+            player_ids,
             cards,
             decks,
             turns: 0,
@@ -147,6 +150,7 @@ impl State {
     pub fn snapshot(&self) -> State {
         State {
             game_id: self.game_id.clone(),
+            player_ids: self.player_ids.clone(),
             cards: self.cards.iter().map(|c| c.clone_box()).collect(),
             decks: self.decks.clone(),
             turns: 0,

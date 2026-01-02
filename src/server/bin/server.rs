@@ -85,6 +85,7 @@ impl Server {
         // TODO: clean this up
         let mut state = State::new(
             uuid::Uuid::new_v4(), // replaced later
+            vec![player1.clone(), player2.clone()],
             Vec::new().into_iter().chain(cards1).chain(cards2).collect(),
             HashMap::from([(player1.clone(), deck1), (player2.clone(), deck2)]),
             server_tx.clone(),

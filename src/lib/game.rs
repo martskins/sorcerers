@@ -149,11 +149,11 @@ pub async fn pick_action<'a>(
     }
 }
 
-pub async fn pick_option(player_id: &PlayerId, actions: &[String], state: &State, prompt: &str) -> usize {
+pub async fn pick_option(player_id: &PlayerId, actions: &[String], state: &State, prompt: impl AsRef<str>) -> usize {
     state
         .get_sender()
         .send(ServerMessage::PickAction {
-            prompt: prompt.to_string(),
+            prompt: prompt.as_ref().to_string(),
             player_id: player_id.clone(),
             actions: actions.to_vec(),
         })
@@ -647,18 +647,100 @@ impl Action for UnitAction {
                     paths.first().unwrap().to_vec()
                 };
 
-                vec![Effect::MoveCard {
-                    player_id: player_id.clone(),
-                    card_id: card_id.clone(),
-                    from: card.get_zone().clone(),
-                    to: ZoneQuery::Specific {
-                        id: uuid::Uuid::new_v4(),
-                        zone,
-                    },
-                    tap: true,
-                    plane: card.get_base().plane.clone(),
-                    through_path: Some(path),
-                }]
+                let opponent_id = state.player_ids.iter().find(|id| id != &player_id).unwrap();
+                let interceptors: Vec<(uuid::Uuid, Zone)> = state
+                    .cards
+                    .iter()
+                    .filter(|c| c.get_controller_id() == opponent_id)
+                    .filter(|c| c.is_unit())
+                    .filter(|c| matches!(c.get_zone(), Zone::Realm(_)))
+                    .filter_map(|c| {
+                        for zone in &path {
+                            if c.get_valid_move_zones(state).contains(&zone) {
+                                return Some((c.get_id().clone(), zone.clone()));
+                            }
+                        }
+
+                        None
+                    })
+                    .collect();
+                let mut interceptor: Option<(uuid::Uuid, Zone)> = None;
+                if !interceptors.is_empty() {
+                    let mut options = interceptors
+                        .iter()
+                        .map(|(id, zone)| {
+                            let interceptor_card = state.get_card(id).unwrap();
+                            format!(
+                                "{} from {} at {}",
+                                interceptor_card.get_name(),
+                                interceptor_card.get_zone(),
+                                zone
+                            )
+                        })
+                        .collect::<Vec<String>>();
+                    options.push("Do not intercept".to_string());
+
+                    let action_idx = pick_option(
+                        opponent_id,
+                        &options,
+                        state,
+                        format!("Intercept {} with...", card.get_name()),
+                    )
+                    .await;
+                    if action_idx < interceptors.len() {
+                        interceptor = Some(interceptors[action_idx].clone());
+                    }
+                }
+
+                let mut effects = Vec::new();
+                for (idx, zone) in path.iter().enumerate() {
+                    if idx + 1 >= path.len() {
+                        break;
+                    }
+
+                    let to_zone = path[idx + 1].clone();
+                    effects.push(Effect::MoveCard {
+                        player_id: player_id.clone(),
+                        card_id: card_id.clone(),
+                        from: zone.clone(),
+                        to: ZoneQuery::Specific {
+                            id: uuid::Uuid::new_v4(),
+                            zone: to_zone.clone(),
+                        },
+                        tap: true,
+                        plane: card.get_base().plane.clone(),
+                        through_path: None,
+                    });
+
+                    if let Some((interceptor_id, zone)) = &interceptor {
+                        if &to_zone != zone {
+                            continue;
+                        }
+
+                        let interceptor_card = state.get_card(&interceptor_id).unwrap();
+                        effects.push(Effect::MoveCard {
+                            player_id: opponent_id.clone(),
+                            card_id: interceptor_id.clone(),
+                            from: interceptor_card.get_zone().clone(),
+                            to: ZoneQuery::Specific {
+                                id: uuid::Uuid::new_v4(),
+                                zone: zone.clone(),
+                            },
+                            tap: true,
+                            plane: card.get_base().plane.clone(),
+                            through_path: None,
+                        });
+                        effects.push(Effect::Attack {
+                            attacker_id: interceptor_id.clone(),
+                            defender_id: card_id.clone(),
+                        });
+
+                        break;
+                    }
+                }
+
+                effects.reverse();
+                effects
             }
             UnitAction::Burrow => {
                 let card_id = card_id.unwrap();
@@ -701,6 +783,7 @@ impl Game {
             id: game_id.clone(),
             state: State::new(
                 game_id,
+                vec![player1.clone(), player2.clone()],
                 Vec::new(),
                 HashMap::new(),
                 server_sender.clone(),
