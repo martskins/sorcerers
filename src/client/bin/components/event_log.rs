@@ -1,8 +1,9 @@
 use crate::{
-    components::Component,
+    components::{Component, ComponentAction},
     scene::game::{Game, GameData},
 };
 use macroquad::{
+    color::LIGHTGRAY,
     math::Vec2,
     ui::{self},
     window::screen_width,
@@ -81,9 +82,19 @@ impl Component for EventLogComponent {
         Ok(())
     }
 
-    fn process_input(&mut self, _in_turn: bool, _data: &mut GameData) {}
+    fn process_input(&mut self, _in_turn: bool, _data: &mut GameData) -> anyhow::Result<Option<ComponentAction>> {
+        Ok(None)
+    }
 
     fn toggle_visibility(&mut self) {
         self.visible = !self.visible;
+    }
+
+    fn process_action(&mut self, action: &ComponentAction) {
+        match action {
+            ComponentAction::OpenEventLog => {
+                self.visible = true;
+            }
+        }
     }
 }

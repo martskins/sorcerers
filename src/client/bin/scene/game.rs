@@ -384,8 +384,17 @@ impl Game {
             return;
         }
 
+        let mut component_actions = vec![];
         for component in &mut self.components {
-            component.process_input(self.current_player == self.player_id, &mut self.data);
+            if let Ok(Some(action)) = component.process_input(self.current_player == self.player_id, &mut self.data) {
+                component_actions.push(action);
+            }
+        }
+
+        for action in component_actions {
+            for component in &mut self.components {
+                component.process_action(&action);
+            }
         }
     }
 

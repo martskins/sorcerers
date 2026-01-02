@@ -1,6 +1,6 @@
 use crate::{
     clicks_enabled,
-    components::Component,
+    components::{Component, ComponentAction},
     config::{hand_rect, site_dimensions, spell_dimensions},
     render::CardRect,
     scene::game::{GameData, Status},
@@ -195,18 +195,18 @@ impl Component for PlayerHandComponent {
         Ok(())
     }
 
-    fn process_input(&mut self, in_turn: bool, data: &mut GameData) {
+    fn process_input(&mut self, in_turn: bool, data: &mut GameData) -> anyhow::Result<Option<ComponentAction>> {
         let mouse_position = macroquad::input::mouse_position();
         if !clicks_enabled() {
-            return;
+            return Ok(None);
         }
 
         if let Status::SelectingAction { .. } = &data.status {
-            return;
+            return Ok(None);
         }
 
         if !in_turn {
-            return;
+            return Ok(None);
         }
 
         let mut hovered_card_index = None;
@@ -301,6 +301,8 @@ impl Component for PlayerHandComponent {
             }
             _ => {}
         }
+
+        Ok(None)
     }
 
     fn toggle_visibility(&mut self) {

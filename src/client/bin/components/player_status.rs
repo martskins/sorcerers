@@ -1,22 +1,35 @@
 use macroquad::{
     color::{BLUE, Color, RED, WHITE},
-    math::Vec2,
+    input::MouseButton,
+    math::{Rect, Vec2},
     shapes::{draw_line, draw_triangle_lines},
     text::draw_text,
-    texture::{DrawTextureParams, draw_texture_ex},
+    texture::{DrawTextureParams, Texture2D, draw_texture_ex},
 };
 use sorcerers::{
     card::Zone,
     game::{Element, Resources},
 };
 
-use crate::{components::Component, scene::game::GameData, texture_cache::TextureCache};
+use crate::{
+    components::{Component, ComponentAction},
+    scene::game::GameData,
+    texture_cache::TextureCache,
+};
 
 #[derive(Debug)]
 pub struct PlayerStatusComponent {
     pub position: Vec2,
     pub visible: bool,
     pub player_id: uuid::Uuid,
+}
+
+enum Icon {
+    Heart,
+    Cards,
+    Potion,
+    Tombstone,
+    Message,
 }
 
 impl PlayerStatusComponent {
@@ -26,6 +39,42 @@ impl PlayerStatusComponent {
             visible: true,
             player_id,
         }
+    }
+
+    fn icon_rect(&self, icon: &Icon) -> Rect {
+        match icon {
+            &Icon::Heart => Rect::new(self.position.x, self.position.y + 7.0, 20.0, 20.0),
+            &Icon::Cards => Rect::new(self.position.x + 52.0, self.position.y + 4.0, 20.0, 20.0),
+            &Icon::Potion => Rect::new(self.position.x + 95.0, self.position.y + 6.0, 20.0, 20.0),
+            &Icon::Tombstone => Rect::new(self.position.x + 140.0, self.position.y + 7.0, 20.0, 20.0),
+            &Icon::Message => Rect::new(self.position.x + 140.0, self.position.y - 13.0, 20.0, 20.0),
+        }
+    }
+
+    async fn icon_texture(icon: &Icon) -> Texture2D {
+        match icon {
+            &Icon::Heart => TextureCache::get_texture("assets/icons/heart.png").await,
+            &Icon::Cards => TextureCache::get_texture("assets/icons/cards.png").await,
+            &Icon::Potion => TextureCache::get_texture("assets/icons/potion.png").await,
+            &Icon::Tombstone => TextureCache::get_texture("assets/icons/tombstone.png").await,
+            &Icon::Message => TextureCache::get_texture("assets/icons/message.png").await,
+        }
+    }
+
+    async fn draw_icon(&self, icon: &Icon, text: &str) {
+        let texture = Self::icon_texture(icon).await;
+        let rect = self.icon_rect(icon);
+        draw_texture_ex(
+            &texture,
+            rect.x,
+            rect.y,
+            WHITE,
+            DrawTextureParams {
+                dest_size: Some(Vec2::new(rect.w, rect.h)),
+                ..Default::default()
+            },
+        );
+        draw_text(text, rect.x + rect.w + 5.0, rect.y + rect.h - 5.0, FONT_SIZE, WHITE);
     }
 }
 
@@ -86,35 +135,9 @@ impl Component for PlayerStatusComponent {
         };
         draw_text(player_name, self.position.x, self.position.y, FONT_SIZE, WHITE);
 
-        const ICON_SIZE: f32 = 20.0;
-        const NAME_BOTTOM_MARGIN: f32 = 7.0;
-        let icon_y = self.position.y + NAME_BOTTOM_MARGIN;
-        let health_text_y: f32 = self.position.y + NAME_BOTTOM_MARGIN + 20.0;
-        let heart_texture = TextureCache::get_texture("assets/icons/heart.png").await;
-        draw_texture_ex(
-            &heart_texture,
-            self.position.x,
-            icon_y + 5.0,
-            WHITE,
-            DrawTextureParams {
-                dest_size: Some(Vec2::new(ICON_SIZE - 5.0, ICON_SIZE - 5.0)),
-                ..Default::default()
-            },
-        );
         let health = format!("{}", resources.health);
-        draw_text(&health, self.position.x + 22.0, health_text_y, FONT_SIZE, WHITE);
+        Self::draw_icon(self, &Icon::Heart, &health).await;
 
-        let cards_texture = TextureCache::get_texture("assets/icons/cards.png").await;
-        draw_texture_ex(
-            &cards_texture,
-            self.position.x + 52.0,
-            icon_y + 2.0,
-            WHITE,
-            DrawTextureParams {
-                dest_size: Some(Vec2::new(ICON_SIZE, ICON_SIZE)),
-                ..Default::default()
-            },
-        );
         let cards_in_hand = format!(
             "{}",
             data.cards
@@ -123,33 +146,11 @@ impl Component for PlayerStatusComponent {
                 .filter(|c| c.zone == Zone::Hand)
                 .count()
         );
-        draw_text(&cards_in_hand, self.position.x + 77.0, health_text_y, FONT_SIZE, WHITE);
+        Self::draw_icon(self, &Icon::Cards, &cards_in_hand).await;
 
-        let potion_texture = TextureCache::get_texture("assets/icons/potion.png").await;
-        draw_texture_ex(
-            &potion_texture,
-            self.position.x + 95.0,
-            icon_y + 4.0,
-            WHITE,
-            DrawTextureParams {
-                dest_size: Some(Vec2::new(ICON_SIZE, ICON_SIZE)),
-                ..Default::default()
-            },
-        );
         let mana_text = format!("{}", resources.mana);
-        draw_text(&mana_text, self.position.x + 120.0, health_text_y, FONT_SIZE, WHITE);
+        Self::draw_icon(self, &Icon::Potion, &mana_text).await;
 
-        let tombstone_texture = TextureCache::get_texture("assets/icons/tombstone.png").await;
-        draw_texture_ex(
-            &tombstone_texture,
-            self.position.x + 140.0,
-            icon_y + 5.0,
-            WHITE,
-            DrawTextureParams {
-                dest_size: Some(Vec2::new(ICON_SIZE, ICON_SIZE)),
-                ..Default::default()
-            },
-        );
         let cards_in_cemetery = format!(
             "{}",
             data.cards
@@ -158,28 +159,11 @@ impl Component for PlayerStatusComponent {
                 .filter(|c| c.zone == Zone::Cemetery)
                 .count()
         );
-        draw_text(
-            &cards_in_cemetery,
-            self.position.x + 165.0,
-            health_text_y,
-            FONT_SIZE,
-            WHITE,
-        );
+        Self::draw_icon(self, &Icon::Tombstone, &cards_in_cemetery).await;
 
         if data.player_id == self.player_id {
-            let message_texture = TextureCache::get_texture("assets/icons/message.png").await;
-            draw_texture_ex(
-                &message_texture,
-                self.position.x + 140.0,
-                icon_y - 20.0,
-                WHITE,
-                DrawTextureParams {
-                    dest_size: Some(Vec2::new(ICON_SIZE, ICON_SIZE)),
-                    ..Default::default()
-                },
-            );
             let unseen_messages = format!("{}", data.unseen_events);
-            draw_text(&unseen_messages, self.position.x + 165.0, icon_y, FONT_SIZE, WHITE);
+            Self::draw_icon(self, &Icon::Message, &unseen_messages).await;
         }
 
         let thresholds_y: f32 = self.position.y + 10.0 + 20.0 + 20.0;
@@ -206,5 +190,13 @@ impl Component for PlayerStatusComponent {
         self.visible = !self.visible;
     }
 
-    fn process_input(&mut self, _in_turn: bool, _data: &mut GameData) {}
+    fn process_input(&mut self, _in_turn: bool, _data: &mut GameData) -> anyhow::Result<Option<ComponentAction>> {
+        let mouse_position = macroquad::input::mouse_position();
+        let clicked = macroquad::input::is_mouse_button_released(MouseButton::Left);
+        if clicked && self.icon_rect(&Icon::Message).contains(mouse_position.into()) {
+            return Ok(Some(ComponentAction::OpenEventLog));
+        }
+
+        Ok(None)
+    }
 }

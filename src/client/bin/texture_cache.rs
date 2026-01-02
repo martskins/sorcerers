@@ -20,17 +20,13 @@ impl TextureCache {
     }
 
     pub async fn get_card_texture(card: &RenderableCard) -> Texture2D {
-        tokio::runtime::Runtime::new()
-            .unwrap()
-            .block_on(async { TextureCache::texture_for_card(card).await })
+        TextureCache::texture_for_card(card).await
     }
 
     pub async fn load_cache(cards: &[RenderableCard]) {
-        tokio::runtime::Runtime::new().unwrap().block_on(async {
-            for card in cards {
-                _ = TextureCache::texture_for_card(card).await;
-            }
-        })
+        for card in cards {
+            _ = TextureCache::texture_for_card(card).await;
+        }
     }
 
     pub async fn get_texture(path: &str) -> Texture2D {

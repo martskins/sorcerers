@@ -1,6 +1,6 @@
 use crate::{
     clicks_enabled,
-    components::Component,
+    components::{Component, ComponentAction},
     config::{
         CARD_IN_PLAY_SCALE, cell_rect, intersection_rect, realm_rect, screen_rect, site_dimensions, spell_dimensions,
     },
@@ -524,10 +524,12 @@ impl Component for RealmComponent {
         Ok(())
     }
 
-    fn process_input(&mut self, in_turn: bool, data: &mut GameData) {
+    fn process_input(&mut self, in_turn: bool, data: &mut GameData) -> anyhow::Result<Option<ComponentAction>> {
         let mouse_position = macroquad::input::mouse_position().into();
         self.handle_square_click(mouse_position, in_turn, &mut data.status);
         self.handle_card_click(mouse_position, in_turn, &mut data.status);
+
+        Ok(None)
     }
 
     fn toggle_visibility(&mut self) {
