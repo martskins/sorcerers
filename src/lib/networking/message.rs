@@ -124,6 +124,7 @@ impl ToMessage for ServerMessage {
 pub enum ClientMessage {
     Connect,
     JoinQueue {
+        player_name: String,
         player_id: PlayerId,
         deck: PreconDeck,
     },

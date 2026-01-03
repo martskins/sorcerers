@@ -168,12 +168,8 @@ pub enum Effect {
     },
 }
 
-fn player_name(player_id: &uuid::Uuid, state: &State) -> &'static str {
-    if player_id == &state.player_one {
-        "Player 1"
-    } else {
-        "Player 2"
-    }
+fn player_name<'a>(player_id: &uuid::Uuid, state: &'a State) -> &'a str {
+    state.players.iter().find(|p| &p.id == player_id).unwrap().name.as_str()
 }
 
 impl Effect {
@@ -297,7 +293,7 @@ impl Effect {
             Effect::SummonCard { .. } => None,
             Effect::TapCard { .. } => None,
             Effect::PreEndTurn { .. } => None,
-            Effect::EndTurn { .. } => None,
+            Effect::EndTurn { player_id, .. } => Some(format!("{} passes the turn", player_name(player_id, state))),
             Effect::StartTurn { .. } => None,
             Effect::RemoveResources { .. } => None,
             Effect::AddResources { .. } => None,

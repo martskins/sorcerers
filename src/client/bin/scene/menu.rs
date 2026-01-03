@@ -6,7 +6,7 @@ use macroquad::{
     color::WHITE,
     math::Vec2,
     text::draw_text,
-    ui::{self, root_ui},
+    ui::{self, hash, root_ui},
 };
 use sorcerers::networking::{
     self,
@@ -19,6 +19,8 @@ pub struct Menu {
     player_id: Option<uuid::Uuid>,
     available_decks: Vec<PreconDeck>,
     looking_for_match: bool,
+    shake_input_until: Option<chrono::DateTime<chrono::Utc>>,
+    player_name: String,
 }
 
 impl Menu {
@@ -28,12 +30,12 @@ impl Menu {
             player_id: None,
             available_decks: vec![],
             looking_for_match: false,
+            shake_input_until: None,
+            player_name: String::new(),
         }
     }
 
     pub async fn render(&mut self) -> anyhow::Result<()> {
-        root_ui().label(Vec2::new(20.0, 20.0), "Menu Scene");
-
         const FONT_SIZE: f32 = 24.0;
         if self.looking_for_match {
             let time = macroquad::time::get_time();
@@ -134,6 +136,7 @@ impl Menu {
                 chose_deck = true;
                 self.client
                     .send(ClientMessage::JoinQueue {
+                        player_name: self.player_name.clone(),
                         player_id: self.player_id.unwrap().clone(),
                         deck: deck.clone(),
                     })
@@ -156,8 +159,24 @@ impl Menu {
         let screen_h = macroquad::window::screen_height();
         let button_pos = Vec2::new(
             screen_w / 2.0 - button_size.x / 2.0,
+            screen_h / 2.0 - button_size.y / 2.0 + 70.0,
+        );
+        let mut input_pos = Vec2::new(
+            screen_w / 2.0 - button_size.x / 2.0,
             screen_h / 2.0 - button_size.y / 2.0,
         );
+
+        if let Some(shake_until) = self.shake_input_until {
+            let now = chrono::Utc::now();
+            if now < shake_until {
+                let elapsed = (shake_until - now).num_milliseconds() as f32;
+                let shake_magnitude = 3.0 * (elapsed / 300.0);
+                let shake_x = (macroquad::rand::gen_range(-1.0, 1.0)) * shake_magnitude;
+                input_pos.x += shake_x;
+            } else {
+                self.shake_input_until = None;
+            }
+        }
 
         // Style the button to be more prominent
         let button_style = root_ui()
@@ -170,20 +189,38 @@ impl Menu {
             .color_hovered(macroquad::color::Color::from_rgba(65, 105, 225, 255)) // RoyalBlue
             .color_clicked(macroquad::color::Color::from_rgba(25, 25, 112, 255)) // MidnightBlue
             .build();
+        let editbox_style = root_ui().style_builder().font_size(30).build();
+        let label_style = root_ui().style_builder().font_size(30).text_color(WHITE).build();
 
         let skin = ui::Skin {
             button_style,
+            editbox_style,
+            label_style,
             ..root_ui().default_skin()
         };
 
         root_ui().push_skin(&skin);
+
+        ui::widgets::Label::new("Enter your name")
+            .position(Vec2::new(input_pos.x, input_pos.y - 30.0))
+            .ui(&mut ui::root_ui());
+
+        ui::widgets::InputText::new(hash!())
+            .position(input_pos)
+            .size(button_size)
+            .margin(Vec2::new(0.0, 10.0))
+            .ui(&mut ui::root_ui(), &mut self.player_name);
 
         let clicked = ui::widgets::Button::new("Search for Match")
             .position(button_pos)
             .size(button_size)
             .ui(&mut ui::root_ui());
         if clicked {
-            self.client.send(ClientMessage::Connect).unwrap();
+            if self.player_name.is_empty() {
+                self.shake_input_until = Some(chrono::Utc::now() + chrono::Duration::milliseconds(500));
+            } else {
+                self.client.send(ClientMessage::Connect).unwrap();
+            }
         }
 
         root_ui().pop_skin();

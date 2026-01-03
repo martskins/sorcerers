@@ -1147,7 +1147,7 @@ mod tests {
 
     use crate::{
         card::{Card, Modifier, RimlandNomads, Zone},
-        state::State,
+        state::{Player, State},
     };
 
     #[test]
@@ -1156,6 +1156,14 @@ mod tests {
         let mut card = RimlandNomads::new(player_id.clone());
         card.set_zone(Zone::Realm(8));
 
+        let player1 = Player {
+            id: player_id.clone(),
+            name: "Player 1".to_string(),
+        };
+        let player2 = Player {
+            id: player_id.clone(),
+            name: "Player 1".to_string(),
+        };
         let mut cards: Vec<Box<dyn Card>> = (1..=20)
             .into_iter()
             .map(|sq| super::from_name_and_zone("Arid Desert", &player_id, Zone::Realm(sq)))
@@ -1166,7 +1174,7 @@ mod tests {
         let (_, client_rx) = async_channel::unbounded();
         let state = State::new(
             uuid::Uuid::new_v4(),
-            vec![player_id, uuid::Uuid::new_v4()],
+            vec![player1, player2],
             cards,
             HashMap::new(),
             server_tx,
@@ -1185,6 +1193,14 @@ mod tests {
         card.set_zone(Zone::Realm(8));
         card.add_modifier(Modifier::Airborne);
 
+        let player1 = Player {
+            id: player_id.clone(),
+            name: "Player 1".to_string(),
+        };
+        let player2 = Player {
+            id: player_id.clone(),
+            name: "Player 1".to_string(),
+        };
         let mut cards: Vec<Box<dyn Card>> = (1..=20)
             .into_iter()
             .map(|sq| super::from_name_and_zone("Arid Desert", &player_id, Zone::Realm(sq)))
@@ -1195,7 +1211,7 @@ mod tests {
         let (_, client_rx) = async_channel::unbounded();
         let state = State::new(
             uuid::Uuid::new_v4(),
-            vec![player_id, uuid::Uuid::new_v4()],
+            vec![player1, player2],
             cards,
             HashMap::new(),
             server_tx,
@@ -1215,6 +1231,14 @@ mod tests {
         card.set_zone(Zone::Realm(8));
         card.add_modifier(Modifier::Movement(2));
 
+        let player1 = Player {
+            id: player_id.clone(),
+            name: "Player 1".to_string(),
+        };
+        let player2 = Player {
+            id: player_id.clone(),
+            name: "Player 1".to_string(),
+        };
         let mut cards: Vec<Box<dyn Card>> = (1..=20)
             .into_iter()
             .map(|sq| super::from_name_and_zone("Arid Desert", &player_id, Zone::Realm(sq)))
@@ -1225,7 +1249,7 @@ mod tests {
         let (_, client_rx) = async_channel::unbounded();
         let state = State::new(
             uuid::Uuid::new_v4(),
-            vec![player_id, uuid::Uuid::new_v4()],
+            vec![player1, player2],
             cards,
             HashMap::new(),
             server_tx,

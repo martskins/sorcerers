@@ -3,7 +3,7 @@ use crate::{
     effect::Effect,
     networking::message::{ClientMessage, ServerMessage, ToMessage},
     query::ZoneQuery,
-    state::{Phase, State},
+    state::{Phase, Player, State},
 };
 use async_channel::{Receiver, Sender};
 use chrono::Utc;
@@ -455,7 +455,7 @@ pub fn get_adjacent_zones(zone: &Zone) -> Vec<Zone> {
                 intersections.push(Zone::Intersection(locs.iter().map(|l| l.saturating_sub(5)).collect()));
             }
 
-            dbg!(intersections)
+            intersections
         }
         _ => vec![],
     }
@@ -668,11 +668,11 @@ impl Action for UnitAction {
                     paths.first().unwrap().to_vec()
                 };
 
-                let opponent_id = state.player_ids.iter().find(|id| id != &player_id).unwrap();
+                let opponent = state.players.iter().find(|p| &p.id != player_id).unwrap();
                 let interceptors: Vec<(uuid::Uuid, Zone)> = state
                     .cards
                     .iter()
-                    .filter(|c| c.get_controller_id() == opponent_id)
+                    .filter(|c| c.get_controller_id() == &opponent.id)
                     .filter(|c| c.is_unit())
                     .filter(|c| matches!(c.get_zone(), Zone::Realm(_)))
                     .filter_map(|c| {
@@ -709,7 +709,7 @@ impl Action for UnitAction {
                     .await;
 
                     let action_idx = pick_option(
-                        opponent_id,
+                        &opponent.id,
                         &options,
                         state,
                         format!("Intercept {} with...", card.get_name()),
@@ -749,7 +749,7 @@ impl Action for UnitAction {
 
                         let interceptor_card = state.get_card(&interceptor_id).unwrap();
                         effects.push(Effect::MoveCard {
-                            player_id: opponent_id.clone(),
+                            player_id: opponent.id.clone(),
                             card_id: interceptor_id.clone(),
                             from: interceptor_card.get_zone().clone(),
                             to: ZoneQuery::Specific {
@@ -792,7 +792,7 @@ impl Action for UnitAction {
 pub struct Game {
     pub id: uuid::Uuid,
     pub state: State,
-    players: Vec<PlayerId>,
+    players: Vec<Player>,
     streams: HashMap<PlayerId, Arc<Mutex<OwnedWriteHalf>>>,
     client_receiver: Receiver<ClientMessage>,
     server_receiver: Receiver<ServerMessage>,
@@ -800,8 +800,8 @@ pub struct Game {
 
 impl Game {
     pub fn new(
-        player1: uuid::Uuid,
-        player2: uuid::Uuid,
+        player1: Player,
+        player2: Player,
         addr1: Arc<Mutex<OwnedWriteHalf>>,
         addr2: Arc<Mutex<OwnedWriteHalf>>,
         receiver: Receiver<ClientMessage>,
@@ -819,8 +819,8 @@ impl Game {
                 server_sender.clone(),
                 receiver.clone(),
             ),
-            players: vec![player1, player2],
-            streams: HashMap::from([(player1, addr1), (player2, addr2)]),
+            players: vec![player1.clone(), player2.clone()],
+            streams: HashMap::from([(player1.id, addr1), (player2.id, addr2)]),
             client_receiver: receiver,
             server_receiver,
         }
@@ -834,8 +834,8 @@ impl Game {
         self.process_effects().await?;
 
         self.broadcast(&ServerMessage::GameStarted {
-            player1: self.players[0].clone(),
-            player2: self.players[1].clone(),
+            player1: self.players[0].id.clone(),
+            player2: self.players[1].id.clone(),
             game_id: self.id.clone(),
             cards: self.renderables_from_cards(),
         })
@@ -997,18 +997,18 @@ impl Game {
                 let current_index = self
                     .players
                     .iter()
-                    .position(|p| p == &self.state.current_player)
+                    .position(|p| p.id == self.state.current_player)
                     .unwrap();
                 let current_player = self.state.current_player.clone();
                 let next_player = self.players.iter().cycle().skip(current_index + 1).next().unwrap();
-                self.state.current_player = next_player.clone();
+                self.state.current_player = next_player.id.clone();
                 self.state.turns += 1;
                 let effects = vec![
                     Effect::EndTurn {
                         player_id: current_player,
                     },
                     Effect::StartTurn {
-                        player_id: next_player.clone(),
+                        player_id: next_player.id.clone(),
                     },
                 ];
                 self.state.effects.extend(effects);
@@ -1095,14 +1095,14 @@ impl Game {
 
     pub fn draw_initial_six(&self) -> Vec<Effect> {
         let mut effects = Vec::new();
-        for player_id in &self.players {
+        for player in &self.players {
             effects.push(Effect::DrawSite {
-                player_id: player_id.clone(),
+                player_id: player.id.clone(),
                 count: 3,
             });
 
             effects.push(Effect::DrawSpell {
-                player_id: player_id.clone(),
+                player_id: player.id.clone(),
                 count: 3,
             });
         }
