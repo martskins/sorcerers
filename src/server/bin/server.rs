@@ -114,8 +114,39 @@ impl Server {
             ),
         ];
         let mut game = Game::new(players, client_rx, server_tx, server_rx);
-        let game_id = game.id;
-        self.games.insert(game_id, client_tx);
+        let player_one = game.state.players[0].id.clone();
+        let player_two = game.state.players[1].id.clone();
+        game.state.cards.push(sorcerers::card::from_name_and_zone(
+            "Gothic Tower",
+            &player_one,
+            sorcerers::card::Zone::Realm(3),
+        ));
+        game.state.cards.push(sorcerers::card::from_name_and_zone(
+            "Gothic Tower",
+            &player_one,
+            sorcerers::card::Zone::Realm(13),
+        ));
+        game.state.cards.push(sorcerers::card::from_name_and_zone(
+            "Mountain Pass",
+            &player_one,
+            sorcerers::card::Zone::Realm(8),
+        ));
+        game.state.cards.push(sorcerers::card::from_name_and_zone(
+            "Gothic Tower",
+            &player_two,
+            sorcerers::card::Zone::Realm(18),
+        ));
+        game.state.cards.push(sorcerers::card::from_name_and_zone(
+            "Spectral Stalker",
+            &player_one,
+            sorcerers::card::Zone::Realm(8),
+        ));
+        game.state.cards.push(sorcerers::card::from_name_and_zone(
+            "Spire Lich",
+            &player_one,
+            sorcerers::card::Zone::Realm(13),
+        ));
+        self.games.insert(game.id.clone(), client_tx);
         tokio::spawn(async move {
             game.start().await.unwrap();
         });

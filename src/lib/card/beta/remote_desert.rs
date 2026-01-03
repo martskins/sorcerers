@@ -98,4 +98,8 @@ impl Card for RemoteDesert {
     fn get_site_base_mut(&mut self) -> Option<&mut SiteBase> {
         Some(&mut self.site_base)
     }
+
+    fn get_site(&self) -> Option<&dyn Site> {
+        Some(self)
+    }
 }

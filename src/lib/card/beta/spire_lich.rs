@@ -18,7 +18,7 @@ impl SpireLich {
             unit_base: UnitBase {
                 power: 1,
                 toughness: 1,
-                modifiers: vec![Modifier::Airborne],
+                modifiers: vec![],
                 types: vec![MinionType::Undead],
                 ..Default::default()
             },
@@ -29,7 +29,7 @@ impl SpireLich {
                 zone: Zone::Spellbook,
                 mana_cost: 3,
                 required_thresholds: Thresholds::parse("A"),
-                plane: Plane::Air,
+                plane: Plane::Surface,
                 rarity: Rarity::Ordinary,
                 controller_id: owner_id.clone(),
             },

@@ -96,4 +96,8 @@ impl Card for DarkTower {
             health: 0,
         }]
     }
+
+    fn get_site(&self) -> Option<&dyn Site> {
+        Some(self)
+    }
 }

@@ -121,4 +121,8 @@ impl Card for Vesuvius {
     fn get_actions(&self, _state: &State) -> Vec<Box<dyn Action>> {
         vec![Box::new(VesuviusAction::UseAbility)]
     }
+
+    fn get_site(&self) -> Option<&dyn Site> {
+        Some(self)
+    }
 }

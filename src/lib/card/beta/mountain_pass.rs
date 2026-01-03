@@ -36,7 +36,7 @@ impl MountainPass {
 }
 
 impl Site for MountainPass {
-    fn can_be_entered_by(&self, _card: &Box<dyn Card>, _from: &Zone, plane: &Plane, state: &State) -> bool {
+    fn can_be_entered_by(&self, card_id: &uuid::Uuid, _from: &Zone, plane: &Plane, state: &State) -> bool {
         let minions_atop = self
             .get_zone()
             .get_minions(state, None)
@@ -44,7 +44,9 @@ impl Site for MountainPass {
             .filter(|c| c.get_base().plane == Plane::Surface)
             .count();
 
-        plane != &Plane::Surface || minions_atop == 0
+        let card = state.get_card(card_id).unwrap();
+        let ground_movement = card.get_plane(state) == &Plane::Surface && plane == &Plane::Surface;
+        !ground_movement || minions_atop == 0
     }
 }
 
@@ -85,5 +87,8 @@ impl Card for MountainPass {
     fn get_site_base_mut(&mut self) -> Option<&mut SiteBase> {
         Some(&mut self.site_base)
     }
-    // TODO: Implement special ability
+
+    fn get_site(&self) -> Option<&dyn Site> {
+        Some(self)
+    }
 }

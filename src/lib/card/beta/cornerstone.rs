@@ -86,4 +86,8 @@ impl Card for Cornerstone {
         valid_zones.extend(valid_corners);
         valid_zones
     }
+
+    fn get_site(&self) -> Option<&dyn Site> {
+        Some(self)
+    }
 }

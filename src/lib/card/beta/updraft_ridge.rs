@@ -85,4 +85,8 @@ impl Card for UpdraftRidge {
             .collect();
         vec![(Modifier::Movement(1), units)]
     }
+
+    fn get_site(&self) -> Option<&dyn Site> {
+        Some(self)
+    }
 }

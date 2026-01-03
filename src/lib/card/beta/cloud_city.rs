@@ -185,4 +185,8 @@ impl Card for CloudCity {
 
         Ok(())
     }
+
+    fn get_site(&self) -> Option<&dyn Site> {
+        Some(self)
+    }
 }

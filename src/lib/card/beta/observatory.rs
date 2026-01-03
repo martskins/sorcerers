@@ -111,4 +111,8 @@ impl Card for Observatory {
             sites: deck.sites.clone(),
         }]
     }
+
+    fn get_site(&self) -> Option<&dyn Site> {
+        Some(self)
+    }
 }

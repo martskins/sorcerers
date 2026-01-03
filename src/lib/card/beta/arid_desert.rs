@@ -98,4 +98,8 @@ impl Card for AridDesert {
         }
         effects
     }
+
+    fn get_site(&self) -> Option<&dyn Site> {
+        Some(self)
+    }
 }

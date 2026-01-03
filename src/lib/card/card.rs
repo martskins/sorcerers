@@ -46,6 +46,7 @@ impl Edition {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Plane {
     None,
+    Void,
     Air,
     Surface,
     Burrowed,
@@ -414,8 +415,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             }
         }
 
-        let is_minion = matches!(self.get_card_type(), CardType::Minion);
-        if is_minion && !self.has_modifier(state, &Modifier::Voidwalk) {
+        println!("Visited zones: {:?}", visited);
+        if self.is_unit() && !self.has_modifier(state, &Modifier::Voidwalk) {
             visited = visited
                 .iter()
                 .filter(|z| z.get_site(state).is_some())
@@ -545,7 +546,11 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         }
     }
 
-    fn get_plane(&self) -> &Plane {
+    fn get_plane(&self, state: &State) -> &Plane {
+        if self.get_zone().get_site(state).is_none() {
+            return &Plane::Void;
+        }
+
         &self.get_base().plane
     }
 
@@ -665,6 +670,14 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     fn get_valid_move_zones(&self, state: &State) -> Vec<Zone> {
         self.get_zones_within_steps(state, self.get_steps_per_movement(state))
+            .iter()
+            .filter(|z| {
+                z.get_site(state).map_or(false, |c| {
+                    c.can_be_entered_by(self.get_id(), self.get_zone(), self.get_plane(state), state)
+                })
+            })
+            .cloned()
+            .collect()
     }
 
     fn get_valid_attack_targets(&self, state: &State, ranged: bool) -> Vec<uuid::Uuid> {
@@ -1019,7 +1032,7 @@ pub trait Site: Card {
         vec![]
     }
 
-    fn can_be_entered_by(&self, _card: &Box<dyn Card>, _from: &Zone, _plane: &Plane, _state: &State) -> bool {
+    fn can_be_entered_by(&self, _card: &uuid::Uuid, _from: &Zone, _plane: &Plane, _state: &State) -> bool {
         true
     }
 }

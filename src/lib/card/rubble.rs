@@ -76,4 +76,8 @@ impl Card for Rubble {
     fn is_token(&self) -> bool {
         true
     }
+
+    fn get_site(&self) -> Option<&dyn Site> {
+        Some(self)
+    }
 }
