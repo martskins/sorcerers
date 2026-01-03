@@ -284,6 +284,12 @@ impl Sum for Thresholds {
     }
 }
 
+impl Into<Thresholds> for &str {
+    fn into(self) -> Thresholds {
+        Thresholds::parse(self)
+    }
+}
+
 impl Thresholds {
     pub fn new() -> Self {
         Thresholds {
@@ -325,7 +331,8 @@ impl Resources {
         }
     }
 
-    pub fn has_resources(&self, mana: u8, threshold: Thresholds) -> bool {
+    pub fn has_resources(&self, mana: u8, threshold: impl Into<Thresholds>) -> bool {
+        let threshold = threshold.into();
         self.mana >= mana
             && self.thresholds.fire >= threshold.fire
             && self.thresholds.air >= threshold.air

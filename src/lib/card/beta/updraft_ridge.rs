@@ -1,6 +1,7 @@
 use crate::{
-    card::{Card, CardBase, Edition, Plane, Rarity, SiteBase, SiteType, Zone},
+    card::{Card, CardBase, Edition, Modifier, Plane, Rarity, SiteBase, SiteType, Zone},
     game::{PlayerId, Thresholds},
+    state::State,
 };
 
 #[derive(Debug, Clone)]
@@ -72,5 +73,14 @@ impl Card for UpdraftRidge {
         Some(&mut self.site_base)
     }
 
-    // TODO: Implement ability
+    fn area_modifiers(&self, state: &State) -> Vec<(Modifier, Vec<uuid::Uuid>)> {
+        let units: Vec<uuid::Uuid> = self
+            .get_zone()
+            .get_units(state, None)
+            .iter()
+            .filter(|c| c.has_modifier(state, &Modifier::Airborne))
+            .map(|c| c.get_id().clone())
+            .collect();
+        vec![(Modifier::Movement(1), units)]
+    }
 }

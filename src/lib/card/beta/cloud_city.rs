@@ -1,12 +1,93 @@
 use crate::{
     card::{Card, CardBase, Edition, Plane, Rarity, SiteBase, Zone},
-    game::{PlayerId, Thresholds},
+    effect::Effect,
+    game::{Action, PlayerId, Thresholds, pick_zone},
+    query::ZoneQuery,
+    state::State,
 };
+
+#[derive(Debug, Clone)]
+enum CloudCityAction {
+    FlyToVoid,
+}
+
+#[async_trait::async_trait]
+impl Action for CloudCityAction {
+    fn get_name(&self) -> &str {
+        match self {
+            CloudCityAction::FlyToVoid => "Fly to nearby void",
+        }
+    }
+
+    async fn on_select(&self, card_id: Option<&uuid::Uuid>, player_id: &PlayerId, state: &State) -> Vec<Effect> {
+        match self {
+            CloudCityAction::FlyToVoid => {
+                let card = state.get_card(card_id.unwrap()).unwrap();
+                let nearby_voids: Vec<Zone> = card
+                    .get_zone()
+                    .get_nearby()
+                    .iter()
+                    .filter(|z| z.get_site(state).is_none())
+                    .cloned()
+                    .collect();
+                if nearby_voids.is_empty() {
+                    return vec![];
+                }
+
+                let picked_void = pick_zone(
+                    card.get_controller_id(),
+                    &nearby_voids,
+                    state,
+                    "Pick a nearby void to fly to",
+                )
+                .await;
+
+                let mut effects = vec![
+                    Effect::MoveCard {
+                        player_id: player_id.clone(),
+                        card_id: card.get_id().clone(),
+                        from: card.get_zone().clone(),
+                        to: ZoneQuery::Specific {
+                            id: uuid::Uuid::new_v4(),
+                            zone: picked_void.clone(),
+                        },
+                        tap: false,
+                        plane: Plane::Surface,
+                        through_path: None,
+                    },
+                    Effect::SetCardData {
+                        card_id: card.get_id().clone(),
+                        data: Box::new(true),
+                    },
+                ];
+
+                let units_on_site = state.get_units_in_zone(card.get_zone());
+                for unit in units_on_site {
+                    effects.push(Effect::MoveCard {
+                        player_id: player_id.clone(),
+                        card_id: unit.get_id().clone(),
+                        from: card.get_zone().clone(),
+                        to: ZoneQuery::Specific {
+                            id: uuid::Uuid::new_v4(),
+                            zone: picked_void.clone(),
+                        },
+                        tap: false,
+                        plane: unit.get_base().plane.clone(),
+                        through_path: None,
+                    });
+                }
+
+                effects
+            }
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct CloudCity {
     pub site_base: SiteBase,
     pub card_base: CardBase,
+    moved_this_turn: bool,
 }
 
 impl CloudCity {
@@ -30,6 +111,7 @@ impl CloudCity {
                 rarity: Rarity::Unique,
                 controller_id: owner_id.clone(),
             },
+            moved_this_turn: false,
         }
     }
 }
@@ -71,5 +153,34 @@ impl Card for CloudCity {
     fn get_site_base_mut(&mut self) -> Option<&mut SiteBase> {
         Some(&mut self.site_base)
     }
-    // TODO: Implement ability
+
+    async fn on_turn_end(&self, _state: &State) -> Vec<Effect> {
+        if self.moved_this_turn {
+            return vec![Effect::SetCardData {
+                card_id: self.get_id().clone(),
+                data: Box::new(false),
+            }];
+        }
+
+        vec![]
+    }
+
+    fn get_actions(&self, state: &State) -> Vec<Box<dyn Action>> {
+        if !state
+            .get_player_resources(self.get_controller_id())
+            .has_resources(0, "AAA")
+        {
+            return vec![];
+        }
+
+        vec![Box::new(CloudCityAction::FlyToVoid)]
+    }
+
+    fn set_data(&mut self, data: &Box<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
+        if let Some(moved) = data.downcast_ref::<bool>() {
+            self.moved_this_turn = *moved;
+        }
+
+        Ok(())
+    }
 }

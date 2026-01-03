@@ -616,21 +616,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             return vec![];
         }
 
-        // Calculate max steps allowed
-        let mut max_steps = 1;
-        let movement_mods = self
-            .get_modifiers(state)
-            .into_iter()
-            .filter(|m| matches!(m, Modifier::Movement(_)));
-        for mov in movement_mods {
-            if let Modifier::Movement(s) = mov {
-                if s + 1 > max_steps {
-                    max_steps = s + 1;
-                }
-            }
-        }
-
-        // Helper: returns true if next is traversable from current
+        let max_steps = self.get_steps_per_movement(state);
         let is_traversable =
             |current: &Zone, next: &Zone| self.get_zones_within_steps_of(state, 1, current).contains(next);
 
@@ -662,21 +648,21 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         paths
     }
 
-    fn get_valid_move_zones(&self, state: &State) -> Vec<Zone> {
-        let mut extra_steps = 0;
-        let movement_mods = self
+    fn get_steps_per_movement(&self, state: &State) -> u8 {
+        let extra_steps: u8 = self
             .get_modifiers(state)
             .into_iter()
-            .filter(|m| matches!(m, Modifier::Movement(_)));
-        for mov in movement_mods {
-            if let Modifier::Movement(s) = mov {
-                if s > extra_steps {
-                    extra_steps = s;
-                }
-            }
-        }
+            .map(|m| match m {
+                Modifier::Movement(s) => s,
+                _ => 0,
+            })
+            .sum();
 
-        self.get_zones_within_steps(state, extra_steps + 1)
+        extra_steps + 1
+    }
+
+    fn get_valid_move_zones(&self, state: &State) -> Vec<Zone> {
+        self.get_zones_within_steps(state, self.get_steps_per_movement(state))
     }
 
     fn get_valid_attach_targets(&self, state: &State) -> Vec<uuid::Uuid> {
