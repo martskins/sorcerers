@@ -77,7 +77,6 @@ impl SelectionOverlay {
                 image: textures[idx].clone(),
                 rect: Rect::new(x, cards_y, size.x, size.y),
                 is_hovered: false,
-                is_selected: false,
                 modifiers: card.modifiers.clone(),
                 damage_taken: card.damage_taken,
             };

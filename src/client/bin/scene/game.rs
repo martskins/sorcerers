@@ -80,7 +80,7 @@ impl Event {
 fn component_rect(component_type: ComponentType) -> Rect {
     match component_type {
         ComponentType::EventLog => event_log_rect(),
-        ComponentType::PlayerStatus => Rect::new(0.0, 0.0, realm_rect().x, screen_height()),
+        ComponentType::PlayerStatus => Rect::new(20.0, 25.0, realm_rect().x, 60.0),
         ComponentType::PlayerHand => hand_rect(),
         ComponentType::Realm => realm_rect(),
     }
@@ -138,16 +138,15 @@ impl Game {
             is_player_one,
             card_selection_overlay: None,
             components: vec![
-                Box::new(PlayerStatusComponent::new(Vec2::new(20.0, 25.0), opponent_id.clone())),
                 Box::new(PlayerStatusComponent::new(
-                    Vec2::new(20.0, screen_rect().h - 90.0),
-                    player_id.clone(),
+                    component_rect(ComponentType::PlayerStatus),
+                    opponent_id.clone(),
+                    false,
                 )),
-                Box::new(PlayerHandComponent::new(
-                    &game_id,
-                    &player_id,
-                    client.clone(),
-                    component_rect(ComponentType::PlayerHand),
+                Box::new(PlayerStatusComponent::new(
+                    component_rect(ComponentType::PlayerStatus),
+                    player_id.clone(),
+                    true,
                 )),
                 Box::new(RealmComponent::new(
                     &game_id,
@@ -155,6 +154,12 @@ impl Game {
                     !is_player_one,
                     client.clone(),
                     component_rect(ComponentType::Realm),
+                )),
+                Box::new(PlayerHandComponent::new(
+                    &game_id,
+                    &player_id,
+                    client.clone(),
+                    component_rect(ComponentType::PlayerHand),
                 )),
                 Box::new(EventLogComponent::new(component_rect(ComponentType::EventLog))),
             ],

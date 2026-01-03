@@ -19,9 +19,10 @@ use crate::{
 
 #[derive(Debug)]
 pub struct PlayerStatusComponent {
-    pub position: Vec2,
-    pub visible: bool,
-    pub player_id: uuid::Uuid,
+    visible: bool,
+    player_id: uuid::Uuid,
+    player: bool,
+    rect: Rect,
 }
 
 enum Icon {
@@ -33,21 +34,22 @@ enum Icon {
 }
 
 impl PlayerStatusComponent {
-    pub fn new(position: Vec2, player_id: uuid::Uuid) -> Self {
+    pub fn new(rect: Rect, player_id: uuid::Uuid, player: bool) -> Self {
         Self {
-            position,
             visible: true,
             player_id,
+            rect,
+            player,
         }
     }
 
     fn icon_rect(&self, icon: &Icon) -> Rect {
         match icon {
-            &Icon::Heart => Rect::new(self.position.x, self.position.y + 7.0, 20.0, 20.0),
-            &Icon::Cards => Rect::new(self.position.x + 52.0, self.position.y + 4.0, 20.0, 20.0),
-            &Icon::Potion => Rect::new(self.position.x + 95.0, self.position.y + 6.0, 20.0, 20.0),
-            &Icon::Tombstone => Rect::new(self.position.x + 140.0, self.position.y + 7.0, 20.0, 20.0),
-            &Icon::Message => Rect::new(self.position.x + 140.0, self.position.y - 13.0, 20.0, 20.0),
+            &Icon::Heart => Rect::new(self.rect.x, self.rect.y + 7.0, 20.0, 20.0),
+            &Icon::Cards => Rect::new(self.rect.x + 52.0, self.rect.y + 4.0, 20.0, 20.0),
+            &Icon::Potion => Rect::new(self.rect.x + 95.0, self.rect.y + 6.0, 20.0, 20.0),
+            &Icon::Tombstone => Rect::new(self.rect.x + 140.0, self.rect.y + 7.0, 20.0, 20.0),
+            &Icon::Message => Rect::new(self.rect.x + 140.0, self.rect.y - 13.0, 20.0, 20.0),
         }
     }
 
@@ -133,7 +135,7 @@ impl Component for PlayerStatusComponent {
         } else {
             "Them"
         };
-        draw_text(player_name, self.position.x, self.position.y, FONT_SIZE, WHITE);
+        draw_text(player_name, self.rect.x, self.rect.y, FONT_SIZE, WHITE);
 
         let health = format!("{}", resources.health);
         Self::draw_icon(self, &Icon::Heart, &health).await;
@@ -166,8 +168,8 @@ impl Component for PlayerStatusComponent {
             Self::draw_icon(self, &Icon::Message, &unseen_messages).await;
         }
 
-        let thresholds_y: f32 = self.position.y + 10.0 + 20.0 + 20.0;
-        let fire_x = self.position.x;
+        let thresholds_y: f32 = self.rect.y + 10.0 + 20.0 + 20.0;
+        let fire_x = self.rect.x;
         let fire_y = thresholds_y;
         render_threshold(fire_x, fire_y, resources.thresholds.fire, Element::Fire);
 
@@ -207,8 +209,13 @@ impl Component for PlayerStatusComponent {
         match command {
             ComponentCommand::SetRect {
                 component_type: ComponentType::PlayerStatus,
-                rect: _,
-            } => {}
+                rect,
+            } => {
+                self.rect = rect.clone();
+                if self.player {
+                    self.rect.y = crate::config::screen_rect().h - 90.0;
+                }
+            }
             _ => {}
         }
     }

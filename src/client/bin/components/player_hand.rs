@@ -2,7 +2,7 @@ use crate::{
     clicks_enabled,
     components::{Component, ComponentCommand, ComponentType},
     config::CARD_ASPECT_RATIO,
-    render::CardRect,
+    render::{self, CardRect},
     scene::game::{GameData, Status},
     texture_cache::TextureCache,
 };
@@ -157,31 +157,8 @@ impl PlayerHandComponent {
     }
 
     async fn render_card_preview(&self, data: &mut GameData) -> anyhow::Result<()> {
-        if let Status::SelectingCard { preview: true, .. } = &data.status {
-            return Ok(());
-        }
-
-        let hovered_card = self.rects.iter().find(|rect| rect.is_hovered);
-        let screen_rect = crate::config::screen_rect();
-        if let Some(card) = hovered_card {
-            println!("Rendering preview for card {:?}", card.id);
-            const PREVIEW_SCALE: f32 = 2.7;
-            let mut rect = card.rect;
-            rect.w *= PREVIEW_SCALE;
-            rect.h *= PREVIEW_SCALE;
-
-            let preview_x = 20.0;
-            let preview_y = screen_rect.h - rect.h - 20.0;
-            draw_texture_ex(
-                &card.image,
-                preview_x,
-                preview_y,
-                WHITE,
-                DrawTextureParams {
-                    dest_size: Some(Vec2::new(rect.w, rect.h)),
-                    ..Default::default()
-                },
-            );
+        if let Some(card) = self.rects.iter().find(|card| card.is_hovered) {
+            render::render_card_preview(card, data).await?;
         }
 
         Ok(())
@@ -309,20 +286,15 @@ impl Component for PlayerHandComponent {
                 }
 
                 if let Some(id) = selected_id {
-                    let card = self.rects.iter_mut().find(|c| c.id == id).unwrap();
-                    card.is_selected = !card.is_selected;
+                    self.client
+                        .send(ClientMessage::PickCard {
+                            player_id: self.player_id.clone(),
+                            game_id: self.game_id.clone(),
+                            card_id: id.clone(),
+                        })
+                        .unwrap();
 
-                    if card.is_selected {
-                        self.client
-                            .send(ClientMessage::PickCard {
-                                player_id: self.player_id.clone(),
-                                game_id: self.game_id.clone(),
-                                card_id: id.clone(),
-                            })
-                            .unwrap();
-
-                        data.status = Status::Idle;
-                    }
+                    data.status = Status::Idle;
                 }
             }
 
@@ -338,20 +310,15 @@ impl Component for PlayerHandComponent {
                 }
 
                 if let Some(id) = selected_id {
-                    let card = self.rects.iter_mut().find(|c| c.id == id).unwrap();
-                    card.is_selected = !card.is_selected;
+                    self.client
+                        .send(ClientMessage::PickCard {
+                            player_id: self.player_id.clone(),
+                            game_id: self.game_id.clone(),
+                            card_id: id.clone(),
+                        })
+                        .unwrap();
 
-                    if card.is_selected {
-                        self.client
-                            .send(ClientMessage::PickCard {
-                                player_id: self.player_id.clone(),
-                                game_id: self.game_id.clone(),
-                                card_id: id.clone(),
-                            })
-                            .unwrap();
-
-                        data.status = Status::Idle;
-                    }
+                    data.status = Status::Idle;
                 }
             }
             _ => {}

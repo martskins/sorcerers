@@ -16,7 +16,6 @@ use macroquad::{
     math::{Rect, Vec2},
     shapes::{DrawRectangleParams, draw_rectangle, draw_rectangle_ex, draw_rectangle_lines},
     text::draw_text,
-    texture::{DrawTextureParams, draw_texture_ex},
     ui,
 };
 use rand::SeedableRng;
@@ -180,7 +179,6 @@ impl RealmComponent {
                             .iter()
                             .find(|c| c.id == card.id)
                             .map_or(false, |c| c.is_hovered),
-                        is_selected: false,
                         modifiers: card.modifiers.clone(),
                         damage_taken: card.damage_taken,
                     });
@@ -220,7 +218,6 @@ impl RealmComponent {
                             .iter()
                             .find(|c| c.id == card.id)
                             .map_or(false, |c| c.is_hovered),
-                        is_selected: false,
                         modifiers: card.modifiers.clone(),
                         damage_taken: card.damage_taken,
                     });
@@ -540,20 +537,15 @@ impl RealmComponent {
                 }
 
                 if let Some(id) = selected_id {
-                    let card = self.cards.iter_mut().find(|c| c.id == id).unwrap();
-                    card.is_selected = !card.is_selected;
+                    self.client
+                        .send(ClientMessage::PickCard {
+                            player_id: self.player_id.clone(),
+                            game_id: self.game_id.clone(),
+                            card_id: id.clone(),
+                        })
+                        .unwrap();
 
-                    if card.is_selected {
-                        self.client
-                            .send(ClientMessage::PickCard {
-                                player_id: self.player_id.clone(),
-                                game_id: self.game_id.clone(),
-                                card_id: id.clone(),
-                            })
-                            .unwrap();
-
-                        *status = Status::Idle;
-                    }
+                    *status = Status::Idle;
                 }
             }
 
@@ -569,20 +561,15 @@ impl RealmComponent {
                 }
 
                 if let Some(id) = selected_id {
-                    let card = self.cards.iter_mut().find(|c| c.id == id).unwrap();
-                    card.is_selected = !card.is_selected;
+                    self.client
+                        .send(ClientMessage::PickCard {
+                            player_id: self.player_id.clone(),
+                            game_id: self.game_id.clone(),
+                            card_id: id.clone(),
+                        })
+                        .unwrap();
 
-                    if card.is_selected {
-                        self.client
-                            .send(ClientMessage::PickCard {
-                                player_id: self.player_id.clone(),
-                                game_id: self.game_id.clone(),
-                                card_id: id.clone(),
-                            })
-                            .unwrap();
-
-                        *status = Status::Idle;
-                    }
+                    *status = Status::Idle;
                 }
             }
             _ => {}
@@ -646,30 +633,8 @@ impl RealmComponent {
     }
 
     async fn render_card_preview(&self, data: &mut GameData) -> anyhow::Result<()> {
-        if let Status::SelectingCard { preview: true, .. } = &data.status {
-            return Ok(());
-        }
-
-        let hovered_card = self.cards.iter().find(|card| card.is_hovered);
-        let screen_rect = crate::config::screen_rect();
-        if let Some(card) = hovered_card {
-            const PREVIEW_SCALE: f32 = 2.7;
-            let mut rect = card.rect;
-            rect.w *= PREVIEW_SCALE;
-            rect.h *= PREVIEW_SCALE;
-
-            let preview_x = 20.0;
-            let preview_y = screen_rect.h - rect.h - 20.0;
-            draw_texture_ex(
-                &card.image,
-                preview_x,
-                preview_y,
-                WHITE,
-                DrawTextureParams {
-                    dest_size: Some(Vec2::new(rect.w, rect.h)),
-                    ..Default::default()
-                },
-            );
+        if let Some(card) = self.cards.iter().find(|card| card.is_hovered) {
+            render::render_card_preview(card, data).await?;
         }
 
         Ok(())
@@ -691,7 +656,6 @@ impl Component for RealmComponent {
     async fn render(&mut self, data: &mut GameData) -> anyhow::Result<()> {
         self.render_background();
         self.render_grid(data).await;
-        self.render_card_preview(data).await?;
 
         for card in &self.cards {
             if !card.zone.is_in_realm() {
@@ -724,6 +688,7 @@ impl Component for RealmComponent {
             }
         }
 
+        self.render_card_preview(data).await?;
         self.render_paths(data);
 
         Ok(())

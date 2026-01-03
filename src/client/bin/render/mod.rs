@@ -10,7 +10,10 @@ use sorcerers::{
     game::PlayerId,
 };
 
-use crate::config::CARD_IN_PLAY_SCALE;
+use crate::{
+    config::{CARD_IN_PLAY_SCALE, realm_rect},
+    scene::game::{GameData, Status},
+};
 
 #[derive(Debug, Clone)]
 pub struct CardRect {
@@ -153,4 +156,33 @@ pub fn draw_card(card_rect: &CardRect, is_ally: bool) {
             WHITE,
         );
     }
+}
+
+pub async fn render_card_preview(card: &CardRect, data: &mut GameData) -> anyhow::Result<()> {
+    if let Status::SelectingCard { preview: true, .. } = &data.status {
+        return Ok(());
+    }
+
+    let screen_rect = crate::config::screen_rect();
+    let mut rect = card.rect;
+    let mut preview_scale: f32 = realm_rect().x / card.rect.w;
+    if rect.w > rect.h {
+        preview_scale = realm_rect().x / card.rect.h;
+    }
+
+    rect.w *= preview_scale;
+    rect.h *= preview_scale;
+    let preview_y = screen_rect.h / 2.0 - rect.h / 2.0;
+    draw_texture_ex(
+        &card.image,
+        0.0,
+        preview_y,
+        WHITE,
+        DrawTextureParams {
+            dest_size: Some(Vec2::new(rect.w, rect.h)),
+            ..Default::default()
+        },
+    );
+
+    Ok(())
 }
