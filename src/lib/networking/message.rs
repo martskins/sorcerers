@@ -41,6 +41,13 @@ impl PreconDeck {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ServerMessage {
+    Resume {
+        player_id: PlayerId,
+    },
+    Wait {
+        player_id: PlayerId,
+        prompt: String,
+    },
     LogEvent {
         id: uuid::Uuid,
         description: String,
@@ -93,6 +100,8 @@ impl ServerMessage {
     pub fn player_id(&self) -> uuid::Uuid {
         match self {
             ServerMessage::LogEvent { .. } => uuid::Uuid::nil(),
+            ServerMessage::Resume { player_id, .. } => player_id.clone(),
+            ServerMessage::Wait { player_id, .. } => player_id.clone(),
             ServerMessage::PickDirection { player_id, .. } => player_id.clone(),
             ServerMessage::PickCard { player_id, .. } => player_id.clone(),
             ServerMessage::PickZone { player_id, .. } => player_id.clone(),

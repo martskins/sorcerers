@@ -34,6 +34,9 @@ const FONT_SIZE: f32 = 24.0;
 #[derive(Debug, PartialEq, Clone)]
 pub enum Status {
     Idle,
+    Waiting {
+        prompt: String,
+    },
     SelectingAction {
         actions: Vec<String>,
         prompt: String,
@@ -240,11 +243,37 @@ impl Game {
             let overlay = self.card_selection_overlay.as_mut().unwrap();
             overlay.render();
         }
+
+        if let Status::Waiting { ref prompt } = self.data.status {
+            draw_rectangle(
+                0.0,
+                0.0,
+                screen_width(),
+                screen_height(),
+                Color::new(0.0, 0.0, 0.0, 0.6),
+            );
+
+            let screen_rect = screen_rect();
+            let text_dimensions = macroquad::text::measure_text(prompt, None, FONT_SIZE as u16, 1.0);
+            let x = screen_rect.w / 2.0 - text_dimensions.width / 2.0;
+            let y = screen_rect.h / 2.0 - text_dimensions.height / 2.0;
+
+            draw_text(prompt, x, y, FONT_SIZE, WHITE);
+        }
+
         Ok(())
     }
 
     pub async fn process_message(&mut self, message: &ServerMessage) -> anyhow::Result<Option<Scene>> {
         match message {
+            ServerMessage::Resume { .. } => {
+                self.data.status = Status::Idle;
+                Ok(None)
+            }
+            ServerMessage::Wait { prompt, .. } => {
+                self.data.status = Status::Waiting { prompt: prompt.clone() };
+                Ok(None)
+            }
             ServerMessage::LogEvent {
                 id,
                 description,
@@ -348,6 +377,10 @@ impl Game {
     }
 
     pub fn process_input(&mut self) {
+        if let Status::Waiting { .. } = self.data.status {
+            return;
+        }
+
         if self.card_selection_overlay.is_some() {
             let overlay = self.card_selection_overlay.as_mut().unwrap();
             overlay.process_input();

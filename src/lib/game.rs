@@ -149,6 +149,27 @@ pub async fn pick_action<'a>(
     }
 }
 
+pub async fn resume(player_id: &PlayerId, state: &State) {
+    state
+        .get_sender()
+        .send(ServerMessage::Resume {
+            player_id: player_id.clone(),
+        })
+        .await
+        .unwrap();
+}
+
+pub async fn wait_for_opponent(player_id: &PlayerId, state: &State, prompt: impl AsRef<str>) {
+    state
+        .get_sender()
+        .send(ServerMessage::Wait {
+            player_id: player_id.clone(),
+            prompt: prompt.as_ref().to_string(),
+        })
+        .await
+        .unwrap();
+}
+
 pub async fn pick_option(player_id: &PlayerId, actions: &[String], state: &State, prompt: impl AsRef<str>) -> usize {
     state
         .get_sender()
@@ -680,6 +701,13 @@ impl Action for UnitAction {
                         .collect::<Vec<String>>();
                     options.push("Do not intercept".to_string());
 
+                    wait_for_opponent(
+                        player_id,
+                        state,
+                        format!("Wait for opponent to choose whether to intersect"),
+                    )
+                    .await;
+
                     let action_idx = pick_option(
                         opponent_id,
                         &options,
@@ -690,6 +718,8 @@ impl Action for UnitAction {
                     if action_idx < interceptors.len() {
                         interceptor = Some(interceptors[action_idx].clone());
                     }
+
+                    resume(player_id, state).await;
                 }
 
                 let mut effects = Vec::new();
