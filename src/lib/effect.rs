@@ -391,7 +391,7 @@ impl Effect {
         for (card_id, to_remove) in card_counters_to_remove {
             let card_mut = state.get_card_mut(&card_id).unwrap();
             for counter_id in to_remove {
-                card_mut.remove_counter(&counter_id);
+                card_mut.remove_power_counter(&counter_id);
             }
         }
     }

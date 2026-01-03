@@ -328,6 +328,11 @@ where
     }
 }
 
+/// The `Card` trait defines the core interface for all cards in Sorcerers.
+/// It provides methods for accessing card properties, handling game logic, and interacting with the game state.
+///
+/// Card represents all types of cards in the game, including avatars, sites, minions, etc.
+/// Implementors should override relevant methods for their specific card type.
 #[async_trait::async_trait]
 pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     fn get_name(&self) -> &str;
@@ -338,48 +343,58 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     fn get_base(&self) -> &CardBase;
     fn get_base_mut(&mut self) -> &mut CardBase;
 
+    /// When resolving a CardQuery, this method allows the card to override the query. A useful
+    /// usecase for this method is for example overriding the valid targets of a spell when there's
+    /// a card in play that affects targeting.
     fn card_query_override(&self, _state: &State, _query: &CardQuery) -> Option<CardQuery> {
         None
     }
 
+    /// When resolving a ZoneQuery, this method allows the card to override the query. A useful
+    /// usecase for this method is for example overriding the zones that the player can pick from
+    /// when the there's a card in play that affects zone selection.
     fn zone_query_override(&self, _state: &State, _query: &ZoneQuery) -> Option<ZoneQuery> {
         None
     }
 
+    /// When resolving an effect, this methods allows a card in play to replace that event with a
+    /// different set of effects.
     fn replace_effect(&self, _state: &State, _effect: &Effect) -> Option<Vec<Effect>> {
         None
     }
 
-    fn remove_counter(&mut self, id: &uuid::Uuid) {
+    /// Removes the power counter with the given ID from the card.
+    fn remove_power_counter(&mut self, id: &uuid::Uuid) {
         if let Some(ub) = self.get_unit_base_mut() {
             ub.power_counters.retain(|c| &c.id != id);
         }
     }
 
+    /// Removes the modifier counter with the given ID from the card.
     fn remove_modifier_counter(&mut self, id: &uuid::Uuid) {
         if let Some(ub) = self.get_unit_base_mut() {
             ub.modifier_counters.retain(|c| &c.id != id);
         }
     }
 
+    /// Returns the ID of the player who controls this card.
     fn get_controller_id(&self) -> &PlayerId {
         &self.get_base().controller_id
     }
 
+    /// Sets the controller ID of this card.
     fn set_controller_id(&mut self, controller_id: &PlayerId) {
         self.get_base_mut().controller_id = controller_id.clone();
     }
 
+    /// Returns a list of effects that must be applied after this card attacks.
     async fn after_attack(&self, _state: &State) -> Vec<Effect> {
         vec![]
     }
 
-    fn set_data(&mut self, _data: &Box<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
-        Err(anyhow::anyhow!("set_data not implemented for {}", self.get_name()))
-    }
-
+    /// Returns a list of effects that must be applied when this card is defending against an
+    /// attack.
     fn on_defend(&self, state: &State, attacker_id: &uuid::Uuid) -> Vec<Effect> {
-        // Only units can retaliate
         if let Some(power) = self.get_power(&state) {
             return vec![Effect::TakeDamage {
                 card_id: attacker_id.clone(),
@@ -391,6 +406,16 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         vec![]
     }
 
+    /// Sets custom data for the card. By default, this method returns an error indicating that
+    /// the operation is not implemented for the specific card type.
+    /// If a card needs to hold specific data, and you need to modify it, override this method with
+    /// a method that downcasts the data to the appropriate type and sets it on the card.
+    fn set_data(&mut self, _data: &Box<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
+        Err(anyhow::anyhow!("set_data not implemented for {}", self.get_name()))
+    }
+
+    /// Returns the zones that are within the given steps of the specified zone, using this card as
+    /// the reference for movement capabilities.
     fn get_zones_within_steps_of(&self, state: &State, steps: u8, zone: &Zone) -> Vec<Zone> {
         let mut visited = Vec::new();
         let mut to_visit = vec![(zone.clone(), 0)];
@@ -415,7 +440,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             }
         }
 
-        println!("Visited zones: {:?}", visited);
         if self.is_unit() && !self.has_modifier(state, &Modifier::Voidwalk) {
             visited = visited
                 .iter()
@@ -427,10 +451,14 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         visited
     }
 
+    /// Returns the zones that are within the given steps of this card's current zone.
     fn get_zones_within_steps(&self, state: &State, steps: u8) -> Vec<Zone> {
         self.get_zones_within_steps_of(state, steps, self.get_zone())
     }
 
+    /// Base take damage behaviour for cards. This method MUST NOT BE OVERRIDEN by specific card
+    /// types. Instead, specific card types should override `on_take_damage`, and can use
+    /// base_take_damage to get the default behaviour.
     fn base_take_damage(&mut self, state: &State, from: &uuid::Uuid, damage: u8) -> Vec<Effect> {
         if self.is_unit() {
             // Avatar is a sub-type of unit
@@ -464,6 +492,9 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         vec![]
     }
 
+    /// Base on-summon behaviour for site cards. This method MUST NOT BE OVERRIDEN by specific card
+    /// implementations. Instead, specific card types should override `on_summon`, and can use
+    /// base_site_on_summon to get the default behaviour.
     fn base_site_on_summon(&self, _state: &State) -> Vec<Effect> {
         vec![Effect::AddResources {
             player_id: self.get_owner_id().clone(),
@@ -546,6 +577,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         }
     }
 
+    /// Retuns the plane the card is currently on. If the card is not in a zone with a site, it is
+    /// in the void.
     fn get_plane(&self, state: &State) -> &Plane {
         if self.get_zone().get_site(state).is_none() {
             return &Plane::Void;
@@ -554,6 +587,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         &self.get_base().plane
     }
 
+    /// Returns the amount of damage taken by the card. Defaults to 0 for non-unit cards.
     fn get_damage_taken(&self) -> u8 {
         if self.is_unit() {
             return self.get_unit_base().unwrap().damage;
@@ -562,6 +596,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         0
     }
 
+    /// Returns the type of the card.
     fn get_card_type(&self) -> CardType {
         if self.is_site() {
             CardType::Site
@@ -578,10 +613,12 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         }
     }
 
+    /// Returns the valid zones where this card can be played in.
     fn get_valid_play_zones(&self, state: &State) -> Vec<Zone> {
         self.default_get_valid_play_zones(state)
     }
 
+    /// Returns whether the card has the given modifier.
     fn has_modifier(&self, _state: &State, modifier: &Modifier) -> bool {
         if self
             .get_unit_base()
@@ -600,6 +637,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             .is_some()
     }
 
+    /// Returns the elements associated to this card.
     fn get_elements(&self, state: &State) -> Vec<Element> {
         let mut elements = Vec::new();
         let thresholds = self.get_required_thresholds(state);
@@ -618,6 +656,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         elements
     }
 
+    /// Returns all valid move paths from the card's current zone to the given zone. The paths
+    /// include the starting, ending and all intermediate zones.
     fn get_valid_move_paths(&self, state: &State, to: &Zone) -> Vec<Vec<Zone>> {
         let from = self.get_zone().clone();
         let valid_zones = self.get_valid_move_zones(state);
@@ -655,6 +695,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         paths
     }
 
+    /// Returns the number of steps this card can move per movement action.
     fn get_steps_per_movement(&self, state: &State) -> u8 {
         let extra_steps: u8 = self
             .get_modifiers(state)
@@ -668,6 +709,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         extra_steps + 1
     }
 
+    /// Returns the valid zones this card can move to from its current zone.
     fn get_valid_move_zones(&self, state: &State) -> Vec<Zone> {
         self.get_zones_within_steps(state, self.get_steps_per_movement(state))
             .iter()
@@ -680,6 +722,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             .collect()
     }
 
+    /// Returns the valid attack targets for this card.
     fn get_valid_attack_targets(&self, state: &State, ranged: bool) -> Vec<uuid::Uuid> {
         state
             .cards
@@ -705,6 +748,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             .collect()
     }
 
+    /// Returns the toughness of the card. Returns None for non-unit cards.
     fn get_toughness(&self, _state: &State) -> Option<u8> {
         let base = self.get_unit_base();
         if base.is_none() {
@@ -719,6 +763,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Some(toughness)
     }
 
+    /// Returns all modifiers currently applied to the card.
     fn get_modifiers(&self, state: &State) -> Vec<Modifier> {
         self.base_get_modifiers(state)
     }
@@ -771,26 +816,32 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         self.base_get_power(state)
     }
 
+    /// Returns the required thresholds to play this card.
     fn get_required_thresholds(&self, _state: &State) -> &Thresholds {
         &self.get_base().required_thresholds
     }
 
+    /// Returns the mana cost to play this card.
     fn get_mana_cost(&self, _state: &State) -> u8 {
         self.get_base().mana_cost
     }
 
+    /// Returns the avatar base if the card is an avatar, None otherwise.
     fn get_avatar_base(&self) -> Option<&AvatarBase> {
         None
     }
 
+    /// Returns a mutable reference to the avatar base if the card is an avatar, None otherwise.
     fn get_avatar_base_mut(&mut self) -> Option<&mut AvatarBase> {
         None
     }
 
+    /// Returns the site base if the card is a site, None otherwise.
     fn get_site_base(&self) -> Option<&SiteBase> {
         None
     }
 
+    /// Returns a mutable reference to the site base if the card is a site, None otherwise.
     fn get_site(&self) -> Option<&dyn Site> {
         None
     }
@@ -985,6 +1036,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         actions
     }
 
+    /// Returns the available actions for this card, given the current game state.
     fn get_actions(&self, state: &State) -> Vec<Box<dyn Action>> {
         if self.is_avatar() {
             return self.base_avatar_actions(state);
@@ -995,6 +1047,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         vec![]
     }
 
+    /// Returns the modifiers that this card provides to other cards in the game.
     fn area_modifiers(&self, _state: &State) -> Vec<(Modifier, Vec<uuid::Uuid>)> {
         vec![]
     }
