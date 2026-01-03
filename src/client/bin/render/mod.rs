@@ -21,7 +21,6 @@ pub struct CardRect {
     pub image: Texture2D,
     pub rect: Rect,
     pub is_hovered: bool,
-    pub is_selected: bool,
     pub modifiers: Vec<Modifier>,
     pub damage_taken: u8,
 }

@@ -650,7 +650,7 @@ impl RealmComponent {
             return Ok(());
         }
 
-        let hovered_card = self.cards.iter().find(|card_display| card_display.is_hovered);
+        let hovered_card = self.cards.iter().find(|card| card.is_hovered);
         let screen_rect = crate::config::screen_rect();
         if let Some(card) = hovered_card {
             const PREVIEW_SCALE: f32 = 2.7;

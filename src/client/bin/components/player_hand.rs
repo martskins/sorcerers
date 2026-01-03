@@ -71,7 +71,7 @@ impl PlayerHandComponent {
             .filter(|c| c.is_site())
             .count();
 
-        let mut displays: Vec<CardRect> = Vec::new();
+        let mut rects: Vec<CardRect> = Vec::new();
 
         // Layout parameters
         let spell_dim = self.spell_dimensions();
@@ -103,12 +103,15 @@ impl PlayerHandComponent {
             let x = start_x + idx as f32 * (spell_dim.x + card_spacing);
             let rect = Rect::new(x, spells_y, spell_dim.x, spell_dim.y);
 
-            displays.push(CardRect {
+            rects.push(CardRect {
                 id: card.id,
                 owner_id: card.owner_id,
                 rect,
-                is_hovered: false,
-                is_selected: false,
+                is_hovered: self
+                    .rects
+                    .iter()
+                    .find(|r| r.id == card.id)
+                    .map_or(false, |r| r.is_hovered),
                 zone: card.zone.clone(),
                 tapped: card.tapped,
                 image: TextureCache::get_card_texture(card).await,
@@ -131,12 +134,15 @@ impl PlayerHandComponent {
                 let y = sites_start_y + idx as f32 * 20.0;
                 let rect = Rect::new(sites_x, y, site_dim.x, site_dim.y);
 
-                displays.push(CardRect {
+                rects.push(CardRect {
                     id: card.id,
                     owner_id: card.owner_id,
                     rect,
-                    is_hovered: false,
-                    is_selected: false,
+                    is_hovered: self
+                        .rects
+                        .iter()
+                        .find(|r| r.id == card.id)
+                        .map_or(false, |r| r.is_hovered),
                     zone: card.zone.clone(),
                     tapped: card.tapped,
                     image: TextureCache::get_card_texture(card).await,
@@ -146,7 +152,38 @@ impl PlayerHandComponent {
             }
         }
 
-        self.rects = displays;
+        self.rects = rects;
+        Ok(())
+    }
+
+    async fn render_card_preview(&self, data: &mut GameData) -> anyhow::Result<()> {
+        if let Status::SelectingCard { preview: true, .. } = &data.status {
+            return Ok(());
+        }
+
+        let hovered_card = self.rects.iter().find(|rect| rect.is_hovered);
+        let screen_rect = crate::config::screen_rect();
+        if let Some(card) = hovered_card {
+            println!("Rendering preview for card {:?}", card.id);
+            const PREVIEW_SCALE: f32 = 2.7;
+            let mut rect = card.rect;
+            rect.w *= PREVIEW_SCALE;
+            rect.h *= PREVIEW_SCALE;
+
+            let preview_x = 20.0;
+            let preview_y = screen_rect.h - rect.h - 20.0;
+            draw_texture_ex(
+                &card.image,
+                preview_x,
+                preview_y,
+                WHITE,
+                DrawTextureParams {
+                    dest_size: Some(Vec2::new(rect.w, rect.h)),
+                    ..Default::default()
+                },
+            );
+        }
+
         Ok(())
     }
 }
@@ -167,7 +204,7 @@ impl Component for PlayerHandComponent {
             }
 
             let mut scale = 1.0;
-            if card_rect.is_selected || card_rect.is_hovered {
+            if card_rect.is_hovered {
                 if let Status::SelectingCard { preview: false, .. } = data.status {
                     scale = 1.2;
                 }
@@ -207,6 +244,8 @@ impl Component for PlayerHandComponent {
                 }
             }
         }
+
+        self.render_card_preview(data).await?;
 
         Ok(())
     }
