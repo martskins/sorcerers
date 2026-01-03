@@ -1,9 +1,8 @@
 use async_channel::Sender;
 use sorcerers::{
-    card::{Zone, from_name_and_zone, *},
-    game::{Game, Resources},
+    game::Game,
     networking::message::{ClientMessage, Message, PreconDeck, ServerMessage, ToMessage},
-    state::{Player, State},
+    state::{Player, PlayerWithDeck},
 };
 use std::{collections::HashMap, sync::Arc};
 use tokio::{io::AsyncWriteExt, net::tcp::OwnedWriteHalf, sync::Mutex};
@@ -92,79 +91,29 @@ impl Server {
 
         let (deck1, cards1) = deck1.build(&player1.id);
         let (deck2, cards2) = deck2.build(&player2.id);
-        // TODO: clean this up
-        let mut state = State::new(
-            uuid::Uuid::new_v4(), // replaced later
-            vec![player1.clone(), player2.clone()],
-            Vec::new().into_iter().chain(cards1).chain(cards2).collect(),
-            HashMap::from([(player1.id.clone(), deck1), (player2.id.clone(), deck2)]),
-            server_tx.clone(),
-            client_rx.clone(),
-        );
-        state.current_player = player1.id.clone();
-        state.player_one = player1.id.clone();
-        state.resources.insert(player1.id.clone(), Resources::new());
-        state.resources.insert(player2.id.clone(), Resources::new());
-
-        state.resources.get_mut(&player2.id).unwrap().thresholds.air = 3;
-        state.cards.push(from_name_and_zone(
-            Thunderstorm::NAME,
-            &player1.id,
-            Zone::Intersection(vec![1, 2, 6, 7]),
-        ));
-        state
-            .cards
-            .push(from_name_and_zone(RaiseDead::NAME, &player2.id, Zone::Hand));
-        state
-            .cards
-            .push(from_name_and_zone(AridDesert::NAME, &player1.id, Zone::Realm(3)));
-        state
-            .cards
-            .push(from_name_and_zone(AridDesert::NAME, &player1.id, Zone::Realm(8)));
-        state
-            .cards
-            .push(from_name_and_zone(AridDesert::NAME, &player1.id, Zone::Realm(7)));
-        state
-            .cards
-            .push(from_name_and_zone(RaalDromedary::NAME, &player1.id, Zone::Realm(7)));
-        state
-            .cards
-            .push(from_name_and_zone(LuckyCharm::NAME, &player1.id, Zone::Hand));
-        state
-            .cards
-            .push(from_name_and_zone(RimlandNomads::NAME, &player1.id, Zone::Realm(8)));
-        state
-            .cards
-            .push(from_name_and_zone(PlanarGate::NAME, &player2.id, Zone::Realm(13)));
-        state
-            .cards
-            .push(from_name_and_zone(PlanarGate::NAME, &player2.id, Zone::Realm(12)));
-        state
-            .cards
-            .push(from_name_and_zone(GrandmasterWizard::NAME, &player2.id, Zone::Cemetery));
-        state
-            .cards
-            .push(from_name_and_zone(PitVipers::NAME, &player1.id, Zone::Cemetery));
-        state
-            .cards
-            .push(from_name_and_zone(Thunderstorm::NAME, &player2.id, Zone::Hand));
-        state
-            .cards
-            .push(from_name_and_zone(PlanarGate::NAME, &player2.id, Zone::Realm(18)));
 
         let stream1 = self.streams.remove(&player1.id).unwrap().clone();
         let stream2 = self.streams.remove(&player2.id).unwrap().clone();
-        let mut game = Game::new(
-            player1.clone(),
-            player2.clone(),
-            stream1,
-            stream2,
-            client_rx,
-            server_tx,
-            server_rx,
-        );
-        state.game_id = game.id;
-        game.state = state;
+
+        let players = vec![
+            (
+                PlayerWithDeck {
+                    player: player1.clone(),
+                    deck: deck1,
+                    cards: cards1,
+                },
+                stream1,
+            ),
+            (
+                PlayerWithDeck {
+                    player: player2.clone(),
+                    deck: deck2,
+                    cards: cards2,
+                },
+                stream2,
+            ),
+        ];
+        let mut game = Game::new(players, client_rx, server_tx, server_rx);
         let game_id = game.id;
         self.games.insert(game_id, client_tx);
         tokio::spawn(async move {

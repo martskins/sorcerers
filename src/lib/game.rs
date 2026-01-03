@@ -3,7 +3,7 @@ use crate::{
     effect::Effect,
     networking::message::{ClientMessage, ServerMessage, ToMessage},
     query::ZoneQuery,
-    state::{Phase, Player, State},
+    state::{Phase, PlayerWithDeck, State},
 };
 use async_channel::{Receiver, Sender};
 use chrono::Utc;
@@ -792,7 +792,6 @@ impl Action for UnitAction {
 pub struct Game {
     pub id: uuid::Uuid,
     pub state: State,
-    players: Vec<Player>,
     streams: HashMap<PlayerId, Arc<Mutex<OwnedWriteHalf>>>,
     client_receiver: Receiver<ClientMessage>,
     server_receiver: Receiver<ServerMessage>,
@@ -800,27 +799,22 @@ pub struct Game {
 
 impl Game {
     pub fn new(
-        player1: Player,
-        player2: Player,
-        addr1: Arc<Mutex<OwnedWriteHalf>>,
-        addr2: Arc<Mutex<OwnedWriteHalf>>,
+        players_with_streams: Vec<(PlayerWithDeck, Arc<Mutex<OwnedWriteHalf>>)>,
         receiver: Receiver<ClientMessage>,
         server_sender: Sender<ServerMessage>,
         server_receiver: Receiver<ServerMessage>,
     ) -> Self {
         let game_id = uuid::Uuid::new_v4();
+        let mut streams = HashMap::new();
+        for player in &players_with_streams {
+            streams.insert(player.0.player.id.clone(), player.1.clone());
+        }
+        let players = players_with_streams.into_iter().map(|p| p.0).collect();
+
         Game {
             id: game_id.clone(),
-            state: State::new(
-                game_id,
-                vec![player1.clone(), player2.clone()],
-                Vec::new(),
-                HashMap::new(),
-                server_sender.clone(),
-                receiver.clone(),
-            ),
-            players: vec![player1.clone(), player2.clone()],
-            streams: HashMap::from([(player1.id, addr1), (player2.id, addr2)]),
+            streams,
+            state: State::new(game_id, players, server_sender.clone(), receiver.clone()),
             client_receiver: receiver,
             server_receiver,
         }
@@ -834,8 +828,8 @@ impl Game {
         self.process_effects().await?;
 
         self.broadcast(&ServerMessage::GameStarted {
-            player1: self.players[0].id.clone(),
-            player2: self.players[1].id.clone(),
+            player1: self.state.players[0].id.clone(),
+            player2: self.state.players[1].id.clone(),
             game_id: self.id.clone(),
             cards: self.renderables_from_cards(),
         })
@@ -995,12 +989,20 @@ impl Game {
             // actioned the pre-end turn changes, so no action is needed.
             if self.state.current_player == player_id && !self.state.waiting_for_input {
                 let current_index = self
+                    .state
                     .players
                     .iter()
                     .position(|p| p.id == self.state.current_player)
                     .unwrap();
                 let current_player = self.state.current_player.clone();
-                let next_player = self.players.iter().cycle().skip(current_index + 1).next().unwrap();
+                let next_player = self
+                    .state
+                    .players
+                    .iter()
+                    .cycle()
+                    .skip(current_index + 1)
+                    .next()
+                    .unwrap();
                 self.state.current_player = next_player.id.clone();
                 self.state.turns += 1;
                 let effects = vec![
@@ -1095,7 +1097,7 @@ impl Game {
 
     pub fn draw_initial_six(&self) -> Vec<Effect> {
         let mut effects = Vec::new();
-        for player in &self.players {
+        for player in &self.state.players {
             effects.push(Effect::DrawSite {
                 player_id: player.id.clone(),
                 count: 3,

@@ -1143,43 +1143,51 @@ pub fn from_name_and_zone(name: &str, player_id: &PlayerId, zone: Zone) -> Box<d
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
     use crate::{
         card::{Card, Modifier, RimlandNomads, Zone},
-        state::{Player, State},
+        deck::Deck,
+        state::{Player, PlayerWithDeck, State},
     };
+
+    fn setup_game() -> State {
+        let player_one_id = uuid::Uuid::new_v4();
+        let player_two_id = uuid::Uuid::new_v4();
+        let cards: Vec<Box<dyn Card>> = (1..=20)
+            .into_iter()
+            .map(|sq| super::from_name_and_zone("Arid Desert", &player_one_id, Zone::Realm(sq)))
+            .collect();
+
+        let player1 = PlayerWithDeck {
+            player: Player {
+                id: player_one_id.clone(),
+                name: "Player 1".to_string(),
+            },
+            deck: Deck::new(&player_one_id, vec![], vec![], uuid::Uuid::nil()),
+            cards,
+        };
+        let player2 = PlayerWithDeck {
+            player: Player {
+                id: player_two_id,
+                name: "Player 1".to_string(),
+            },
+            deck: Deck::new(&player_two_id, vec![], vec![], uuid::Uuid::nil()),
+            cards: vec![],
+        };
+
+        let players = vec![player1, player2];
+        let (server_tx, _) = async_channel::unbounded();
+        let (_, client_rx) = async_channel::unbounded();
+        State::new(uuid::Uuid::new_v4(), players, server_tx, client_rx)
+    }
 
     #[test]
     fn test_get_valid_move_paths_movement_plus_1() {
-        let player_id = uuid::Uuid::new_v4();
+        let mut state = setup_game();
+        let player_id = state.players[0].id.clone();
         let mut card = RimlandNomads::new(player_id.clone());
         card.set_zone(Zone::Realm(8));
+        state.cards.push(Box::new(card.clone()));
 
-        let player1 = Player {
-            id: player_id.clone(),
-            name: "Player 1".to_string(),
-        };
-        let player2 = Player {
-            id: player_id.clone(),
-            name: "Player 1".to_string(),
-        };
-        let mut cards: Vec<Box<dyn Card>> = (1..=20)
-            .into_iter()
-            .map(|sq| super::from_name_and_zone("Arid Desert", &player_id, Zone::Realm(sq)))
-            .collect();
-        cards.push(Box::new(card.clone()));
-
-        let (server_tx, _) = async_channel::unbounded();
-        let (_, client_rx) = async_channel::unbounded();
-        let state = State::new(
-            uuid::Uuid::new_v4(),
-            vec![player1, player2],
-            cards,
-            HashMap::new(),
-            server_tx,
-            client_rx,
-        );
         let paths = card.get_valid_move_paths(&state, &Zone::Realm(14));
         assert_eq!(paths.len(), 2, "Expected 2 paths, got {:?}", paths);
         assert!(paths.contains(&vec![Zone::Realm(8), Zone::Realm(9), Zone::Realm(14)]));
@@ -1188,35 +1196,13 @@ mod tests {
 
     #[test]
     fn test_get_valid_move_paths_movement_plus_1_airborne() {
-        let player_id = uuid::Uuid::new_v4();
+        let mut state = setup_game();
+        let player_id = state.players[0].id.clone();
         let mut card = RimlandNomads::new(player_id.clone());
         card.set_zone(Zone::Realm(8));
         card.add_modifier(Modifier::Airborne);
+        state.cards.push(Box::new(card.clone()));
 
-        let player1 = Player {
-            id: player_id.clone(),
-            name: "Player 1".to_string(),
-        };
-        let player2 = Player {
-            id: player_id.clone(),
-            name: "Player 1".to_string(),
-        };
-        let mut cards: Vec<Box<dyn Card>> = (1..=20)
-            .into_iter()
-            .map(|sq| super::from_name_and_zone("Arid Desert", &player_id, Zone::Realm(sq)))
-            .collect();
-        cards.push(Box::new(card.clone()));
-
-        let (server_tx, _) = async_channel::unbounded();
-        let (_, client_rx) = async_channel::unbounded();
-        let state = State::new(
-            uuid::Uuid::new_v4(),
-            vec![player1, player2],
-            cards,
-            HashMap::new(),
-            server_tx,
-            client_rx,
-        );
         let paths = card.get_valid_move_paths(&state, &Zone::Realm(14));
         assert_eq!(paths.len(), 3, "Expected 3 valid paths, got {:?}", paths);
         assert!(paths.contains(&vec![Zone::Realm(8), Zone::Realm(9), Zone::Realm(14)]));
@@ -1226,35 +1212,13 @@ mod tests {
 
     #[test]
     fn test_get_valid_move_paths_movement_plus_2() {
-        let player_id = uuid::Uuid::new_v4();
+        let mut state = setup_game();
+        let player_id = state.players[0].id.clone();
         let mut card = RimlandNomads::new(player_id.clone());
         card.set_zone(Zone::Realm(8));
         card.add_modifier(Modifier::Movement(2));
+        state.cards.push(Box::new(card.clone()));
 
-        let player1 = Player {
-            id: player_id.clone(),
-            name: "Player 1".to_string(),
-        };
-        let player2 = Player {
-            id: player_id.clone(),
-            name: "Player 1".to_string(),
-        };
-        let mut cards: Vec<Box<dyn Card>> = (1..=20)
-            .into_iter()
-            .map(|sq| super::from_name_and_zone("Arid Desert", &player_id, Zone::Realm(sq)))
-            .collect();
-        cards.push(Box::new(card.clone()));
-
-        let (server_tx, _) = async_channel::unbounded();
-        let (_, client_rx) = async_channel::unbounded();
-        let state = State::new(
-            uuid::Uuid::new_v4(),
-            vec![player1, player2],
-            cards,
-            HashMap::new(),
-            server_tx,
-            client_rx,
-        );
         let paths = card.get_valid_move_paths(&state, &Zone::Realm(15));
         assert_eq!(paths.len(), 3, "Expected 2 paths, got {:?}", paths);
         assert!(paths.contains(&vec![Zone::Realm(8), Zone::Realm(9), Zone::Realm(10), Zone::Realm(15)]));

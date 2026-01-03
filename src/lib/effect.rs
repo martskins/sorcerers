@@ -248,20 +248,20 @@ impl Effect {
                 card_id,
                 ..
             } => {
-                // XXX: Calling resolve here should result in us getting the result from the cache,
+                // Calling resolve here should result in us getting the result from the cache,
                 // as the effect should have been applied already.
                 let card = state.get_card(card_id).unwrap().get_name();
                 match through_path {
                     Some(path) => Some(format!(
                         "{} moves {} to {} through path {}",
-                        player_name(&state.current_player, state),
+                        player_name(&player_id, state),
                         card,
                         to.resolve(player_id, state).await,
                         path.iter().map(|c| format!("{}", c)).collect::<Vec<_>>().join(" -> "),
                     )),
                     None => Some(format!(
                         "{} moves {} to {}",
-                        player_name(&state.current_player, state),
+                        player_name(&player_id, state),
                         card,
                         to.resolve(player_id, state).await,
                     )),

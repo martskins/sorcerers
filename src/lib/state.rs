@@ -68,6 +68,12 @@ pub struct Player {
     pub name: String,
 }
 
+pub struct PlayerWithDeck {
+    pub player: Player,
+    pub deck: Deck,
+    pub cards: Vec<Box<dyn Card>>,
+}
+
 #[derive(Debug)]
 pub struct State {
     pub game_id: uuid::Uuid,
@@ -89,25 +95,36 @@ pub struct State {
 impl State {
     pub fn new(
         game_id: uuid::Uuid,
-        players: Vec<Player>,
-        cards: Vec<Box<dyn Card>>,
-        decks: HashMap<PlayerId, Deck>,
+        players_with_decks: Vec<PlayerWithDeck>,
         server_tx: Sender<ServerMessage>,
         client_rx: Receiver<ClientMessage>,
     ) -> Self {
+        let mut cards: Vec<Box<dyn Card>> = Vec::new();
+        let mut decks = HashMap::new();
+        let resources = players_with_decks
+            .iter()
+            .map(|p| (p.player.id.clone(), Resources::new()))
+            .collect();
+        let players = players_with_decks.iter().map(|p| p.player.clone()).collect();
+        let player_one = players_with_decks[0].player.id.clone();
+        for player in players_with_decks {
+            cards.extend(player.cards);
+            decks.insert(player.player.id.clone(), player.deck);
+        }
+
         State {
             game_id,
             players,
             cards,
             decks,
             turns: 0,
-            resources: HashMap::new(),
+            resources,
             input_status: InputStatus::None,
             phase: Phase::Main,
-            current_player: uuid::Uuid::nil(),
+            current_player: player_one,
             waiting_for_input: false,
             effects: EffectLog::new(),
-            player_one: uuid::Uuid::nil(),
+            player_one,
             server_tx,
             client_rx,
         }

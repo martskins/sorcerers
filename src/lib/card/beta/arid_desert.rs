@@ -88,8 +88,8 @@ impl Card for AridDesert {
         let prompt = "Red Desert: Pick a site to deal 1 damage to all atop units";
         let picked_card_id = pick_card(self.get_owner_id(), &site_ids, state, prompt).await;
         let site = state.get_card(&picked_card_id).unwrap();
-        // TODO: filter atop units only
         let units = state.get_minions_in_zone(site.get_zone());
+        let units = units.iter().filter(|c| c.get_base().plane == Plane::Surface);
         let mut effects = vec![];
         for unit in units {
             effects.push(Effect::take_damage(&unit.get_id(), site.get_id(), 1));
