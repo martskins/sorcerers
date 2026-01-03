@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, Modifier, Plane, Rarity, SiteBase, SiteType, Zone},
+    card::{Card, CardBase, Edition, Modifier, Plane, Rarity, Site, SiteBase, SiteType, Zone},
     game::{PlayerId, Thresholds},
     state::State,
 };
@@ -34,6 +34,8 @@ impl UpdraftRidge {
         }
     }
 }
+
+impl Site for UpdraftRidge {}
 
 #[async_trait::async_trait]
 impl Card for UpdraftRidge {

@@ -1,6 +1,7 @@
 use crate::{
-    card::{Card, CardBase, Edition, Plane, Rarity, SiteBase, SiteType, Zone},
+    card::{Card, CardBase, Edition, Plane, Rarity, Site, SiteBase, SiteType, Zone},
     game::{PlayerId, Thresholds},
+    state::State,
 };
 
 #[derive(Debug, Clone)]
@@ -31,6 +32,19 @@ impl MountainPass {
                 controller_id: owner_id.clone(),
             },
         }
+    }
+}
+
+impl Site for MountainPass {
+    fn can_be_entered_by(&self, _card: &Box<dyn Card>, _from: &Zone, plane: &Plane, state: &State) -> bool {
+        let minions_atop = self
+            .get_zone()
+            .get_minions(state, None)
+            .iter()
+            .filter(|c| c.get_base().plane == Plane::Surface)
+            .count();
+
+        plane != &Plane::Surface || minions_atop == 0
     }
 }
 

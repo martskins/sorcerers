@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, Plane, Rarity, SiteBase, Zone},
+    card::{Card, CardBase, Edition, Plane, Rarity, Site, SiteBase, Zone},
     effect::Effect,
     game::{Action, PlayerId, Thresholds, pick_zone},
     query::ZoneQuery,
@@ -115,6 +115,8 @@ impl CloudCity {
         }
     }
 }
+
+impl Site for CloudCity {}
 
 #[async_trait::async_trait]
 impl Card for CloudCity {

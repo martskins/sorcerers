@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, Modifier, Plane, Rarity, SiteBase, SiteType, Zone},
+    card::{Card, CardBase, Edition, Modifier, Plane, Rarity, Site, SiteBase, SiteType, Zone},
     effect::{Effect, ModifierCounter},
     game::{PlayerId, Thresholds},
     query::{CardQuery, EffectQuery, ZoneQuery},
@@ -34,6 +34,34 @@ impl PlanarGate {
                 controller_id: owner_id.clone(),
             },
         }
+    }
+}
+
+impl Site for PlanarGate {
+    fn on_card_enter(&self, state: &State, card_id: &uuid::Uuid) -> Vec<Effect> {
+        let card = state.get_card(card_id).unwrap();
+        if !card.is_minion() {
+            return vec![];
+        }
+
+        vec![Effect::AddModifier {
+            card_id: card_id.clone(),
+            counter: ModifierCounter {
+                id: uuid::Uuid::new_v4(),
+                modifier: Modifier::Voidwalk,
+                expires_on_effect: Some(EffectQuery::EnterZone {
+                    card: CardQuery::Specific {
+                        id: uuid::Uuid::new_v4(),
+                        card_id: card_id.clone(),
+                    },
+                    zone: ZoneQuery::AnySite {
+                        id: uuid::Uuid::new_v4(),
+                        controlled_by: None,
+                        prompt: None,
+                    },
+                }),
+            },
+        }]
     }
 }
 
@@ -73,31 +101,5 @@ impl Card for PlanarGate {
 
     fn get_site_base_mut(&mut self) -> Option<&mut SiteBase> {
         Some(&mut self.site_base)
-    }
-
-    fn on_card_enter(&self, state: &State, card_id: &uuid::Uuid) -> Vec<Effect> {
-        let card = state.get_card(card_id).unwrap();
-        if !card.is_minion() {
-            return vec![];
-        }
-
-        vec![Effect::AddModifier {
-            card_id: card_id.clone(),
-            counter: ModifierCounter {
-                id: uuid::Uuid::new_v4(),
-                modifier: Modifier::Voidwalk,
-                expires_on_effect: Some(EffectQuery::EnterZone {
-                    card: CardQuery::Specific {
-                        id: uuid::Uuid::new_v4(),
-                        card_id: card_id.clone(),
-                    },
-                    zone: ZoneQuery::AnySite {
-                        id: uuid::Uuid::new_v4(),
-                        controlled_by: None,
-                        prompt: None,
-                    },
-                }),
-            },
-        }]
     }
 }

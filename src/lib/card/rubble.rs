@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, Plane, Rarity, SiteBase, Zone},
+    card::{Card, CardBase, Edition, Plane, Rarity, Site, SiteBase, Zone},
     game::{PlayerId, Thresholds},
 };
 
@@ -33,6 +33,8 @@ impl Rubble {
         }
     }
 }
+
+impl Site for Rubble {}
 
 impl Card for Rubble {
     fn get_name(&self) -> &str {

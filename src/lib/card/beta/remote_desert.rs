@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, Plane, Rarity, SiteBase, SiteType, Zone},
+    card::{Card, CardBase, Edition, Plane, Rarity, Site, SiteBase, SiteType, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds, pick_card},
     state::State,
@@ -35,6 +35,8 @@ impl RemoteDesert {
         }
     }
 }
+
+impl Site for RemoteDesert {}
 
 #[async_trait::async_trait]
 impl Card for RemoteDesert {

@@ -906,11 +906,11 @@ impl Game {
                             return Ok(());
                         }
 
-                        let units = card.get_valid_attach_targets(&self.state);
+                        let units = card.get_artifact().unwrap().get_valid_attach_targets(&self.state);
                         let picked_card_id =
                             pick_card(player_id, &units, &self.state, "Pick a unit to attach the relic to").await;
                         let artifact = self.state.get_card_mut(card_id).unwrap();
-                        artifact.get_relic_base_mut().unwrap().attached_to = Some(picked_card_id.clone());
+                        artifact.get_artifact_base_mut().unwrap().attached_to = Some(picked_card_id.clone());
                     }
                     (CardType::Minion, Zone::Hand) | (CardType::Aura, Zone::Hand) => {
                         let resources = self.state.resources.get(&player_id).unwrap();

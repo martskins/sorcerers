@@ -1,5 +1,5 @@
 use crate::{
-    card::{AuraBase, Card, CardBase, Edition, Plane, Rarity, Zone},
+    card::{Aura, AuraBase, Card, CardBase, Edition, Plane, Rarity, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds, pick_zone},
     query::ZoneQuery,
@@ -34,6 +34,8 @@ impl Wildfire {
         }
     }
 }
+
+impl Aura for Wildfire {}
 
 #[async_trait::async_trait]
 impl Card for Wildfire {

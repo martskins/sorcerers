@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, Plane, Rarity, SiteBase, Zone},
+    card::{Card, CardBase, Edition, Plane, Rarity, Site, SiteBase, Zone},
     game::{PlayerId, Thresholds},
     state::State,
 };
@@ -34,6 +34,8 @@ impl Cornerstone {
         }
     }
 }
+
+impl Site for Cornerstone {}
 
 impl Card for Cornerstone {
     fn get_name(&self) -> &str {

@@ -131,6 +131,22 @@ impl Zone {
         get_nearby_zones(self)
     }
 
+    pub fn get_minions<'a>(&self, state: &'a State, owner_id: Option<&uuid::Uuid>) -> Vec<&'a Box<dyn Card>> {
+        state
+            .get_cards_in_zone(self)
+            .iter()
+            .filter(|c| c.is_minion())
+            .filter(|c| {
+                if let Some(owner_id) = owner_id {
+                    c.get_owner_id() == owner_id
+                } else {
+                    true
+                }
+            })
+            .cloned()
+            .collect::<Vec<&Box<dyn Card>>>()
+    }
+
     pub fn get_units<'a>(&self, state: &'a State, owner_id: Option<&uuid::Uuid>) -> Vec<&'a Box<dyn Card>> {
         state
             .get_cards_in_zone(self)
@@ -147,8 +163,13 @@ impl Zone {
             .collect::<Vec<&Box<dyn Card>>>()
     }
 
-    pub fn get_site<'a>(&self, state: &'a State) -> Option<&'a Box<dyn Card>> {
-        state.get_cards_in_zone(self).iter().find(|c| c.is_site()).cloned()
+    pub fn get_site<'a>(&self, state: &'a State) -> Option<&'a dyn Site> {
+        state
+            .get_cards_in_zone(self)
+            .iter()
+            .find(|c| c.is_site())
+            .map_or(None, |c| c.get_site())
+            .clone()
     }
 
     pub fn get_nearby_units<'a>(&self, state: &'a State, owner_id: Option<&uuid::Uuid>) -> Vec<&'a Box<dyn Card>> {
@@ -340,12 +361,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         }
     }
 
-    /// on_card_enter is used on sites and it emits the effects that happen when a card enters the
-    /// site.
-    fn on_card_enter(&self, _state: &State, _card_id: &uuid::Uuid) -> Vec<Effect> {
-        vec![]
-    }
-
     fn get_controller_id(&self) -> &PlayerId {
         &self.get_base().controller_id
     }
@@ -413,10 +428,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     fn get_zones_within_steps(&self, state: &State, steps: u8) -> Vec<Zone> {
         self.get_zones_within_steps_of(state, steps, self.get_zone())
-    }
-
-    fn set_status(&mut self, _status: &Box<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
-        Err(anyhow::anyhow!("set_status not implemented for {}", self.get_name()))
     }
 
     fn base_take_damage(&mut self, state: &State, from: &uuid::Uuid, damage: u8) -> Vec<Effect> {
@@ -602,13 +613,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         elements
     }
 
-    fn get_square(&self) -> Option<u8> {
-        match self.get_zone() {
-            Zone::Realm(sq) => Some(*sq),
-            _ => None,
-        }
-    }
-
     fn get_valid_move_paths(&self, state: &State, to: &Zone) -> Vec<Vec<Zone>> {
         let from = self.get_zone().clone();
         let valid_zones = self.get_valid_move_zones(state);
@@ -620,10 +624,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         let is_traversable =
             |current: &Zone, next: &Zone| self.get_zones_within_steps_of(state, 1, current).contains(next);
 
-        // BFS for all paths from 'from' to 'to' within max_steps
         let mut paths = Vec::new();
         let mut queue: Vec<(Vec<Zone>, Zone)> = vec![(vec![from.clone()], from.clone())];
-
         while let Some((path, current)) = queue.pop() {
             if &current == to {
                 if path.len() - 1 <= max_steps.into() {
@@ -663,19 +665,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     fn get_valid_move_zones(&self, state: &State) -> Vec<Zone> {
         self.get_zones_within_steps(state, self.get_steps_per_movement(state))
-    }
-
-    fn get_valid_attach_targets(&self, state: &State) -> Vec<uuid::Uuid> {
-        match self.get_card_type() {
-            CardType::Artifact => state
-                .cards
-                .iter()
-                .filter(|c| c.is_unit())
-                .filter(|c| c.get_controller_id() == self.get_owner_id())
-                .map(|c| c.get_id().clone())
-                .collect(),
-            _ => vec![],
-        }
     }
 
     fn get_valid_attack_targets(&self, state: &State, ranged: bool) -> Vec<uuid::Uuid> {
@@ -789,6 +778,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         None
     }
 
+    fn get_site(&self) -> Option<&dyn Site> {
+        None
+    }
+
     fn get_site_base_mut(&mut self) -> Option<&mut SiteBase> {
         None
     }
@@ -809,11 +802,15 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         None
     }
 
-    fn get_relic_base_mut(&mut self) -> Option<&mut ArtifactBase> {
+    fn get_artifact_base_mut(&mut self) -> Option<&mut ArtifactBase> {
         None
     }
 
     fn get_artifact_base(&self) -> Option<&ArtifactBase> {
+        None
+    }
+
+    fn get_artifact(&self) -> Option<&dyn Artifact> {
         None
     }
 
@@ -1017,6 +1014,16 @@ pub struct SiteBase {
     pub types: Vec<SiteType>,
 }
 
+pub trait Site: Card {
+    fn on_card_enter(&self, _state: &State, _card_id: &uuid::Uuid) -> Vec<Effect> {
+        vec![]
+    }
+
+    fn can_be_entered_by(&self, _card: &Box<dyn Card>, _from: &Zone, _plane: &Plane, _state: &State) -> bool {
+        true
+    }
+}
+
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum Modifier {
     Disabled,
@@ -1076,6 +1083,21 @@ pub enum Rarity {
 #[derive(Debug, Clone)]
 pub struct ArtifactBase {
     pub attached_to: Option<uuid::Uuid>,
+}
+
+pub trait Artifact: Card {
+    fn get_valid_attach_targets(&self, state: &State) -> Vec<uuid::Uuid> {
+        match self.get_card_type() {
+            CardType::Artifact => state
+                .cards
+                .iter()
+                .filter(|c| c.is_unit())
+                .filter(|c| c.get_controller_id() == self.get_owner_id())
+                .map(|c| c.get_id().clone())
+                .collect(),
+            _ => vec![],
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

@@ -68,7 +68,7 @@ impl Card for LuckyCharm {
         Some(&self.relic_base)
     }
 
-    fn get_relic_base_mut(&mut self) -> Option<&mut ArtifactBase> {
+    fn get_artifact_base_mut(&mut self) -> Option<&mut ArtifactBase> {
         Some(&mut self.relic_base)
     }
 

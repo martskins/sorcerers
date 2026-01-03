@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, Plane, Rarity, Rubble, SiteBase, Zone},
+    card::{Card, CardBase, Edition, Plane, Rarity, Rubble, Site, SiteBase, Zone},
     effect::Effect,
     game::{Action, PlayerId, Thresholds},
     state::State,
@@ -47,6 +47,8 @@ impl Action for VesuviusAction {
         }
     }
 }
+
+impl Site for Vesuvius {}
 
 #[derive(Debug, Clone)]
 pub struct Vesuvius {

@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, Plane, Rarity, SiteBase, SiteType, Zone},
+    card::{Card, CardBase, Edition, Plane, Rarity, Site, SiteBase, SiteType, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds},
     state::State,
@@ -35,6 +35,8 @@ impl LoneTower {
         }
     }
 }
+
+impl Site for LoneTower {}
 
 #[async_trait::async_trait]
 impl Card for LoneTower {
