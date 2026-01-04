@@ -13,6 +13,7 @@ pub enum Socket {
 
 #[derive(Debug)]
 pub struct Client {
+    local_mode: bool,
     reader: Arc<Mutex<TcpStream>>,
     writer: Arc<Mutex<TcpStream>>,
 }
@@ -20,6 +21,7 @@ pub struct Client {
 impl Clone for Client {
     fn clone(&self) -> Self {
         Client {
+            local_mode: self.local_mode.clone(),
             reader: Arc::clone(&self.reader),
             writer: Arc::clone(&self.writer),
         }
@@ -30,9 +32,14 @@ impl Client {
     pub fn connect(addr: &str) -> anyhow::Result<Self> {
         let stream = std::net::TcpStream::connect(addr).unwrap();
         Ok(Client {
+            local_mode: addr == "127.0.0.1:5000",
             reader: Arc::new(Mutex::new(stream.try_clone().unwrap())),
             writer: Arc::new(Mutex::new(stream)),
         })
+    }
+
+    pub fn is_in_local_mode(&self) -> bool {
+        self.local_mode
     }
 
     pub fn send<T: ToMessage>(&self, message: T) -> anyhow::Result<()> {

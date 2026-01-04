@@ -4,7 +4,7 @@ use crate::{
     scene::{Scene, game::Game},
 };
 use macroquad::{
-    color::WHITE,
+    color::{ORANGE, WHITE},
     math::Vec2,
     text::draw_text,
     ui::{self, hash, root_ui},
@@ -78,6 +78,11 @@ impl Menu {
     }
 
     pub async fn render(&mut self) -> anyhow::Result<()> {
+        if self.client.is_in_local_mode() {
+            let message = "Warning: Running in local mode!";
+            draw_text(&message, 10.0, 20.0, 24.0, ORANGE);
+        }
+
         const FONT_SIZE: f32 = 24.0;
         if self.looking_for_match {
             let time = macroquad::time::get_time();
