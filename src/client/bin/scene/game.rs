@@ -360,10 +360,12 @@ impl Game {
                     (Plane::Air, Plane::Air)
                     | (Plane::Burrowed, Plane::Burrowed)
                     | (Plane::Submerged, Plane::Submerged) => std::cmp::Ordering::Equal,
-                    (Plane::Surface, Plane::Surface) => match (&a.card_type, &b.card_type) {
-                        (CardType::Site, _) => std::cmp::Ordering::Less,
+                    (Plane::Surface, Plane::Surface) => dbg!(match (&a.card_type, &b.card_type) {
+                        (CardType::Site, CardType::Site) => std::cmp::Ordering::Equal,
+                        (CardType::Site, _) => std::cmp::Ordering::Greater,
+                        (_, CardType::Site) => std::cmp::Ordering::Less,
                         (_, _) => std::cmp::Ordering::Equal,
-                    },
+                    }),
                     (Plane::Air, _) => std::cmp::Ordering::Greater,
                     (Plane::Surface, Plane::Air) => std::cmp::Ordering::Less,
                     (Plane::Surface, _) => std::cmp::Ordering::Greater,

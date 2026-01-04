@@ -28,7 +28,7 @@ impl Battlemage {
                 mana_cost: 0,
                 required_thresholds: Thresholds::new(),
                 plane: Plane::Surface,
-                rarity: Rarity::Ordinary,
+                rarity: Rarity::Unique,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
             },
