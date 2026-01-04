@@ -45,9 +45,10 @@ impl QueryCache {
                 let cards: Vec<uuid::Uuid> = zone
                     .get_units(state, owner.as_ref())
                     .iter()
+                    .filter(|c| c.can_be_targetted_by(state, player_id))
                     .map(|c| c.get_id().clone())
                     .collect();
-                pick_card(player_id, &cards, state, prompt.as_ref().map_or("Pick a zone", |v| v)).await
+                pick_card(player_id, &cards, state, prompt.as_ref().map_or("Pick a card", |v| v)).await
             }
             CardQuery::NearZone {
                 zone, owner, prompt, ..
@@ -55,18 +56,20 @@ impl QueryCache {
                 let cards: Vec<uuid::Uuid> = zone
                     .get_nearby_units(state, owner.as_ref())
                     .iter()
+                    .filter(|c| c.can_be_targetted_by(state, player_id))
                     .map(|c| c.get_id().clone())
                     .collect();
-                pick_card(player_id, &cards, state, prompt.as_ref().map_or("Pick a zone", |v| v)).await
+                pick_card(player_id, &cards, state, prompt.as_ref().map_or("Pick a card", |v| v)).await
             }
             CardQuery::OwnedBy { owner, prompt, .. } => {
                 let cards: Vec<uuid::Uuid> = state
                     .cards
                     .iter()
                     .filter(|c| c.get_owner_id() == owner)
+                    .filter(|c| c.can_be_targetted_by(state, player_id))
                     .map(|c| c.get_id().clone())
                     .collect();
-                pick_card(player_id, &cards, state, prompt.as_ref().map_or("Pick a zone", |v| v)).await
+                pick_card(player_id, &cards, state, prompt.as_ref().map_or("Pick a card", |v| v)).await
             }
             CardQuery::RandomTarget { possible_targets, .. } => {
                 for card in &state.cards {

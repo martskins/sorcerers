@@ -729,6 +729,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             .iter()
             .filter(|c| c.get_owner_id() != self.get_owner_id())
             .filter(|c| c.is_unit() || c.is_site())
+            .filter(|c| c.can_be_targetted_by(state, self.get_controller_id()))
             .filter(|c| {
                 let same_plane = c.get_base().plane == self.get_base().plane;
                 let ranged_on_airborne =
@@ -901,6 +902,14 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         }
 
         vec![]
+    }
+
+    fn can_be_targetted_by(&self, state: &State, player_id: &PlayerId) -> bool {
+        if self.has_modifier(state, &Modifier::Stealth) && self.get_owner_id() != player_id {
+            return false;
+        }
+
+        true
     }
 
     fn is_token(&self) -> bool {
