@@ -1,8 +1,6 @@
 use crate::scene::Scene;
 use crate::{config::SCREEN_RECT, scene::menu::Menu};
 use macroquad::prelude::*;
-use macroquad::telemetry::ZoneGuard;
-use macroquad_profiler::ProfilerParams;
 use sorcerers::networking;
 use sorcerers::networking::message::{Message, ServerMessage};
 use std::sync::RwLock;
@@ -16,8 +14,8 @@ pub struct Client {
 }
 
 impl Client {
-    pub fn new() -> anyhow::Result<Self> {
-        let client = networking::client::Client::new("127.0.0.1:8080")?;
+    pub fn new(server_url: &str) -> anyhow::Result<Self> {
+        let client = networking::client::Client::connect(server_url)?;
         let scene = Scene::Menu(Menu::new(client.clone()));
 
         let rect = Rect::new(0.0, 0.0, screen_width(), screen_height());
@@ -25,7 +23,7 @@ impl Client {
         Ok(Client { scene, client })
     }
 
-    pub fn start(&mut self, sender: UnboundedSender<ServerMessage>) -> anyhow::Result<()> {
+    pub fn start(&self, sender: UnboundedSender<ServerMessage>) -> anyhow::Result<()> {
         let receiver = self.client.clone();
         std::thread::spawn(|| {
             let rt = Runtime::new().unwrap();
@@ -52,7 +50,6 @@ impl Client {
     }
 
     fn dimensions_changed(&self) -> bool {
-        let _ = ZoneGuard::new("Dimensions changed");
         let dimensions = SCREEN_RECT.get().unwrap();
         let current_screen = dimensions.read().unwrap().clone();
         current_screen.w != screen_width() || current_screen.h != screen_height()
@@ -71,9 +68,6 @@ impl Client {
 
     async fn render(&mut self) -> anyhow::Result<()> {
         clear_background(BLACK);
-        macroquad_profiler::profiler(ProfilerParams {
-            fps_counter_pos: Vec2::new(10.0, 200.0),
-        });
         self.scene.render().await
     }
 

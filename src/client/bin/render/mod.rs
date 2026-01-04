@@ -4,6 +4,7 @@ use macroquad::{
     shapes::{draw_circle, draw_circle_lines, draw_line},
     text::draw_text,
     texture::{DrawTextureParams, Texture2D, draw_texture_ex},
+    ui,
 };
 use sorcerers::{
     card::{Modifier, Zone},
@@ -185,4 +186,26 @@ pub async fn render_card_preview(card: &CardRect, data: &mut GameData) -> anyhow
     );
 
     Ok(())
+}
+
+pub fn menu_skin() -> ui::Skin {
+    let button_style = ui::root_ui()
+        .style_builder()
+        .font_size(32)
+        .text_color(WHITE)
+        .text_color_hovered(WHITE)
+        .text_color_clicked(WHITE)
+        .color(macroquad::color::Color::from_rgba(30, 144, 255, 255))
+        .color_hovered(macroquad::color::Color::from_rgba(65, 105, 225, 255))
+        .color_clicked(macroquad::color::Color::from_rgba(25, 25, 112, 255))
+        .build();
+    let editbox_style = ui::root_ui().style_builder().font_size(30).build();
+    let label_style = ui::root_ui().style_builder().font_size(30).text_color(WHITE).build();
+
+    ui::Skin {
+        button_style,
+        editbox_style,
+        label_style,
+        ..ui::root_ui().default_skin()
+    }
 }

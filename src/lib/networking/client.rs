@@ -27,7 +27,7 @@ impl Clone for Client {
 }
 
 impl Client {
-    pub fn new(addr: &str) -> anyhow::Result<Self> {
+    pub fn connect(addr: &str) -> anyhow::Result<Self> {
         let stream = std::net::TcpStream::connect(addr).unwrap();
         Ok(Client {
             reader: Arc::new(Mutex::new(stream.try_clone().unwrap())),

@@ -27,8 +27,7 @@ pub fn clicks_enabled() -> bool {
 
 fn window_conf() -> Conf {
     Conf {
-        window_title: "Sorcerer".to_owned(),
-        // fullscreen: true,
+        window_title: "Sorcerers".to_owned(),
         window_width: 1024,
         window_height: 768,
         window_resizable: true,
@@ -40,7 +39,8 @@ fn window_conf() -> Conf {
 async fn main() -> anyhow::Result<()> {
     TextureCache::init();
 
-    let mut client = Client::new().unwrap();
+    let server_url: String = std::env::var("SORCERERS_SERVER_URL").unwrap_or("127.0.0.1:5000".to_string());
+    let mut client = Client::new(&server_url).unwrap();
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
     client.start(tx).unwrap();
 

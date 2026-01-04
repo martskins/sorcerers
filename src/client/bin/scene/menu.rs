@@ -1,5 +1,6 @@
 use crate::{
     config::screen_rect,
+    render::menu_skin,
     scene::{Scene, game::Game},
 };
 use macroquad::{
@@ -8,9 +9,10 @@ use macroquad::{
     text::draw_text,
     ui::{self, hash, root_ui},
 };
+use sorcerers::networking::message::ServerMessage;
 use sorcerers::networking::{
     self,
-    message::{ClientMessage, PreconDeck, ServerMessage},
+    message::{ClientMessage, PreconDeck},
 };
 
 #[derive(Debug)]
@@ -33,26 +35,6 @@ impl Menu {
             shake_input_until: None,
             player_name: String::new(),
         }
-    }
-
-    pub async fn render(&mut self) -> anyhow::Result<()> {
-        const FONT_SIZE: f32 = 24.0;
-        if self.looking_for_match {
-            let time = macroquad::time::get_time();
-            let dot_count = ((time * 2.0) as usize % 3) + 1;
-            let mut dots = ".".repeat(dot_count);
-            dots += &" ".repeat(3 - dot_count);
-            let message = format!("Looking for match{}", dots);
-
-            let screen_rect = screen_rect();
-            let text_dimensions = macroquad::text::measure_text(&message, None, FONT_SIZE as u16, 1.0);
-            let x = screen_rect.w / 2.0 - text_dimensions.width / 2.0;
-            let y = screen_rect.h / 2.0 - text_dimensions.height / 2.0;
-
-            draw_text(&message, x, y, 32.0, WHITE);
-        }
-
-        Ok(())
     }
 
     pub async fn update(&mut self) -> anyhow::Result<()> {
@@ -95,26 +77,32 @@ impl Menu {
         }
     }
 
-    pub async fn pick_deck_scene(&mut self) -> Option<Scene> {
+    pub async fn render(&mut self) -> anyhow::Result<()> {
+        const FONT_SIZE: f32 = 24.0;
+        if self.looking_for_match {
+            let time = macroquad::time::get_time();
+            let dot_count = ((time * 2.0) as usize % 3) + 1;
+            let mut dots = ".".repeat(dot_count);
+            dots += &" ".repeat(3 - dot_count);
+            let message = format!("Looking for match{}", dots);
+
+            let screen_rect = screen_rect();
+            let text_dimensions = macroquad::text::measure_text(&message, None, FONT_SIZE as u16, 1.0);
+            let x = screen_rect.w / 2.0 - text_dimensions.width / 2.0;
+            let y = screen_rect.h / 2.0 - text_dimensions.height / 2.0;
+
+            draw_text(&message, x, y, 32.0, WHITE);
+        }
+
+        Ok(())
+    }
+
+    async fn render_deck_list(&mut self) -> Option<Scene> {
         let button_size = Vec2::new(300.0, 60.0);
         let screen_w = macroquad::window::screen_width();
         let screen_h = macroquad::window::screen_height();
-        let button_style = root_ui()
-            .style_builder()
-            .font_size(32)
-            .text_color(WHITE)
-            .text_color_hovered(WHITE)
-            .text_color_clicked(WHITE)
-            .color(macroquad::color::Color::from_rgba(30, 144, 255, 255)) // DodgerBlue
-            .color_hovered(macroquad::color::Color::from_rgba(65, 105, 225, 255)) // RoyalBlue
-            .color_clicked(macroquad::color::Color::from_rgba(25, 25, 112, 255)) // MidnightBlue
-            .build();
 
-        let skin = ui::Skin {
-            button_style,
-            ..root_ui().default_skin()
-        };
-
+        let skin = menu_skin();
         root_ui().push_skin(&skin);
 
         let spacing = 20.0;
@@ -153,7 +141,7 @@ impl Menu {
         None
     }
 
-    pub async fn start_scene(&mut self) -> Option<Scene> {
+    async fn render_lobby_form(&mut self) -> Option<Scene> {
         let button_size = Vec2::new(300.0, 60.0);
         let screen_w = macroquad::window::screen_width();
         let screen_h = macroquad::window::screen_height();
@@ -178,27 +166,7 @@ impl Menu {
             }
         }
 
-        // Style the button to be more prominent
-        let button_style = root_ui()
-            .style_builder()
-            .font_size(32)
-            .text_color(WHITE)
-            .text_color_hovered(WHITE)
-            .text_color_clicked(WHITE)
-            .color(macroquad::color::Color::from_rgba(30, 144, 255, 255)) // DodgerBlue
-            .color_hovered(macroquad::color::Color::from_rgba(65, 105, 225, 255)) // RoyalBlue
-            .color_clicked(macroquad::color::Color::from_rgba(25, 25, 112, 255)) // MidnightBlue
-            .build();
-        let editbox_style = root_ui().style_builder().font_size(30).build();
-        let label_style = root_ui().style_builder().font_size(30).text_color(WHITE).build();
-
-        let skin = ui::Skin {
-            button_style,
-            editbox_style,
-            label_style,
-            ..root_ui().default_skin()
-        };
-
+        let skin = menu_skin();
         root_ui().push_skin(&skin);
 
         ui::widgets::Label::new("Enter your name")
@@ -233,9 +201,9 @@ impl Menu {
         }
 
         if self.available_decks.is_empty() {
-            self.start_scene().await
+            self.render_lobby_form().await
         } else {
-            self.pick_deck_scene().await
+            self.render_deck_list().await
         }
     }
 }

@@ -9,7 +9,7 @@ use tokio::{io::AsyncReadExt, net::TcpListener, sync::Mutex};
 async fn main() -> anyhow::Result<()> {
     QueryCache::init();
 
-    let socket = TcpListener::bind("0.0.0.0:8080".parse::<SocketAddr>().unwrap()).await?;
+    let socket = TcpListener::bind("0.0.0.0:5000".parse::<SocketAddr>().unwrap()).await?;
     let server = Arc::new(Mutex::new(Server::new()));
     loop {
         let (stream, _) = socket.accept().await?;
