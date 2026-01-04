@@ -30,6 +30,7 @@ impl RemoteDesert {
                 required_thresholds: Thresholds::new(),
                 plane: Plane::Surface,
                 rarity: Rarity::Ordinary,
+                edition: Edition::Beta,
                 controller_id: owner_id.clone(),
             },
         }
@@ -52,22 +53,6 @@ impl Card for RemoteDesert {
         &self.card_base
     }
 
-    fn is_tapped(&self) -> bool {
-        self.card_base.tapped
-    }
-
-    fn get_owner_id(&self) -> &PlayerId {
-        &self.card_base.owner_id
-    }
-
-    fn get_edition(&self) -> Edition {
-        Edition::Beta
-    }
-
-    fn get_id(&self) -> &uuid::Uuid {
-        &self.card_base.id
-    }
-
     async fn genesis(&self, state: &State) -> Vec<Effect> {
         let site_ids = self
             .get_zone()
@@ -80,7 +65,7 @@ impl Card for RemoteDesert {
         }
 
         let prompt = "Remote Desert: Pick a site to deal 1 damage to all atop units";
-        let picked_card_id = pick_card(self.get_owner_id(), &site_ids, state, prompt).await;
+        let picked_card_id = pick_card(self.get_controller_id(), &site_ids, state, prompt).await;
         let site = state.get_card(&picked_card_id).unwrap();
         let units = state.get_minions_in_zone(site.get_zone());
         let units = units.iter().filter(|c| c.get_base().plane == Plane::Surface);

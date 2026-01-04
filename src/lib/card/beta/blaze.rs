@@ -25,6 +25,7 @@ impl Blaze {
                 required_thresholds: Thresholds::parse("F"),
                 plane: Plane::Surface,
                 rarity: Rarity::Exceptional,
+                edition: Edition::Beta,
                 controller_id: owner_id.clone(),
             },
         }
@@ -45,31 +46,16 @@ impl Card for Blaze {
         &self.card_base
     }
 
-    fn is_tapped(&self) -> bool {
-        self.card_base.tapped
-    }
-
-    fn get_owner_id(&self) -> &PlayerId {
-        &self.card_base.owner_id
-    }
-
-    fn get_edition(&self) -> Edition {
-        Edition::Beta
-    }
-
-    fn get_id(&self) -> &uuid::Uuid {
-        &self.card_base.id
-    }
-
     async fn on_cast(&mut self, state: &State, _caster_id: &uuid::Uuid) -> Vec<Effect> {
         let units = state
             .cards
             .iter()
             .filter(|c| c.is_unit())
+            .filter(|c| c.get_controller_id() == self.get_controller_id())
             .map(|c| c.get_id().clone())
             .collect::<Vec<uuid::Uuid>>();
         let prompt = "Blaze: Pick an ally";
-        let picked_card = pick_card(self.get_owner_id(), &units, state, prompt).await;
+        let picked_card = pick_card(self.get_controller_id(), &units, state, prompt).await;
         vec![
             Effect::AddModifier {
                 card_id: picked_card.clone(),

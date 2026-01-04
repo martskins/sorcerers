@@ -30,6 +30,7 @@ impl Observatory {
                 required_thresholds: Thresholds::new(),
                 plane: Plane::Surface,
                 rarity: Rarity::Elite,
+                edition: Edition::Beta,
                 controller_id: owner_id.clone(),
             },
         }
@@ -52,22 +53,6 @@ impl Card for Observatory {
         &self.card_base
     }
 
-    fn is_tapped(&self) -> bool {
-        self.card_base.tapped
-    }
-
-    fn get_owner_id(&self) -> &PlayerId {
-        &self.card_base.owner_id
-    }
-
-    fn get_edition(&self) -> Edition {
-        Edition::Beta
-    }
-
-    fn get_id(&self) -> &uuid::Uuid {
-        &self.card_base.id
-    }
-
     fn get_site_base(&self) -> Option<&SiteBase> {
         Some(&self.site_base)
     }
@@ -77,7 +62,7 @@ impl Card for Observatory {
     }
 
     async fn genesis(&self, state: &State) -> Vec<Effect> {
-        let deck = state.decks.get(self.get_owner_id()).unwrap().clone();
+        let deck = state.decks.get(self.get_controller_id()).unwrap().clone();
         let mut spells = deck.spells.clone();
         let mut cards = vec![];
         for _ in 0..3 {
@@ -94,7 +79,7 @@ impl Card for Observatory {
                 _ => unreachable!(),
             };
             let picked_card_id = pick_card_with_preview(
-                self.get_owner_id(),
+                self.get_controller_id(),
                 &cards,
                 state,
                 &format!("Pick a spell to put back into your spellbook, {}", position),

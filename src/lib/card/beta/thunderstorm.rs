@@ -27,6 +27,7 @@ impl Thunderstorm {
                 required_thresholds: Thresholds::parse("AA"),
                 plane: Plane::Surface,
                 rarity: Rarity::Exceptional,
+                edition: Edition::Beta,
                 controller_id: owner_id.clone(),
             },
             aura_base: AuraBase {},
@@ -53,22 +54,6 @@ impl Card for Thunderstorm {
 
     fn get_aura_base(&self) -> Option<&AuraBase> {
         Some(&self.aura_base)
-    }
-
-    fn is_tapped(&self) -> bool {
-        self.card_base.tapped
-    }
-
-    fn get_owner_id(&self) -> &PlayerId {
-        &self.card_base.owner_id
-    }
-
-    fn get_edition(&self) -> Edition {
-        Edition::Beta
-    }
-
-    fn get_id(&self) -> &uuid::Uuid {
-        &self.card_base.id
     }
 
     fn get_valid_play_zones(&self, _state: &State) -> Vec<Zone> {

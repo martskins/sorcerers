@@ -27,6 +27,7 @@ impl Wildfire {
                 required_thresholds: Thresholds::parse("F"),
                 plane: Plane::Surface,
                 rarity: Rarity::Exceptional,
+                edition: Edition::Beta,
                 controller_id: owner_id.clone(),
             },
             aura_base: AuraBase {},
@@ -53,22 +54,6 @@ impl Card for Wildfire {
 
     fn get_aura_base(&self) -> Option<&AuraBase> {
         Some(&self.aura_base)
-    }
-
-    fn is_tapped(&self) -> bool {
-        self.card_base.tapped
-    }
-
-    fn get_owner_id(&self) -> &PlayerId {
-        &self.card_base.owner_id
-    }
-
-    fn get_edition(&self) -> Edition {
-        Edition::Beta
-    }
-
-    fn get_id(&self) -> &uuid::Uuid {
-        &self.card_base.id
     }
 
     fn set_data(&mut self, data: &Box<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {

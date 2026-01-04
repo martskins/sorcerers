@@ -1,7 +1,8 @@
 use crate::{
     card::{Card, CardBase, Edition, MinionType, Modifier, Plane, Rarity, UnitBase, Zone},
     effect::Effect,
-    game::{Action, PlayerId, Thresholds, pick_card},
+    game::{Action, PlayerId, Thresholds},
+    query::CardQuery,
     state::State,
 };
 
@@ -16,7 +17,7 @@ impl Action for NimbusJinnAction {
         todo!()
     }
 
-    async fn on_select(&self, card_id: Option<&uuid::Uuid>, player_id: &PlayerId, state: &State) -> Vec<Effect> {
+    async fn on_select(&self, card_id: Option<&uuid::Uuid>, _player_id: &PlayerId, state: &State) -> Vec<Effect> {
         match self {
             NimbusJinnAction::DealDamage => {
                 let card_id = card_id.unwrap();
@@ -31,11 +32,14 @@ impl Action for NimbusJinnAction {
                     return vec![];
                 }
 
-                let picked_card = pick_card(player_id, &units, state, "Pick a unit to deal 3 damage to").await;
-                vec![Effect::TakeDamage {
-                    card_id: picked_card.clone(),
+                vec![Effect::DealDamageToTarget {
                     from: card_id.clone(),
                     damage: 3,
+                    player_id: card.get_controller_id().clone(),
+                    query: CardQuery::RandomTarget {
+                        id: uuid::Uuid::new_v4(),
+                        possible_targets: units,
+                    },
                 }]
             }
         }
@@ -69,6 +73,7 @@ impl NimbusJinn {
                 required_thresholds: Thresholds::parse("AA"),
                 plane: Plane::Air,
                 rarity: Rarity::Elite,
+                edition: Edition::Beta,
                 controller_id: owner_id.clone(),
             },
         }
@@ -87,22 +92,6 @@ impl Card for NimbusJinn {
 
     fn get_base(&self) -> &CardBase {
         &self.card_base
-    }
-
-    fn is_tapped(&self) -> bool {
-        self.card_base.tapped
-    }
-
-    fn get_owner_id(&self) -> &PlayerId {
-        &self.card_base.owner_id
-    }
-
-    fn get_edition(&self) -> Edition {
-        Edition::Beta
-    }
-
-    fn get_id(&self) -> &uuid::Uuid {
-        &self.card_base.id
     }
 
     fn get_unit_base(&self) -> Option<&UnitBase> {

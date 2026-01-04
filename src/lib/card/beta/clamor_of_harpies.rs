@@ -62,6 +62,7 @@ impl ClamorOfHarpies {
                 required_thresholds: Thresholds::parse("F"),
                 plane: Plane::Surface,
                 rarity: Rarity::Exceptional,
+                edition: Edition::Beta,
                 controller_id: owner_id.clone(),
             },
         }
@@ -82,22 +83,6 @@ impl Card for ClamorOfHarpies {
         &self.card_base
     }
 
-    fn is_tapped(&self) -> bool {
-        self.card_base.tapped
-    }
-
-    fn get_owner_id(&self) -> &PlayerId {
-        &self.card_base.owner_id
-    }
-
-    fn get_edition(&self) -> Edition {
-        Edition::Beta
-    }
-
-    fn get_id(&self) -> &uuid::Uuid {
-        &self.card_base.id
-    }
-
     fn get_unit_base(&self) -> Option<&UnitBase> {
         Some(&self.unit_base)
     }
@@ -111,21 +96,22 @@ impl Card for ClamorOfHarpies {
             .cards
             .iter()
             .filter(|c| c.is_unit())
+            .filter(|c| c.can_be_targetted_by(state, self.get_controller_id()))
             .filter(|c| c.get_zone().is_in_realm())
             .filter(|c| c.get_power(state).unwrap_or(0) < self.get_power(state).unwrap_or(0))
             .map(|c| c.get_id().clone())
             .collect();
         let prompt = "Clamor of Harpies: Pick a unit to bring here";
-        let card_id = pick_card(self.get_owner_id(), &valid_cards, state, prompt).await;
+        let card_id = pick_card(self.get_controller_id(), &valid_cards, state, prompt).await;
         let card = state.get_card(&card_id).unwrap();
         let actions: Vec<Box<dyn Action>> = vec![
             Box::new(ClamorOfHarpiesAction::Strike),
             Box::new(ClamorOfHarpiesAction::DoNotStrike),
         ];
         let prompt = "Clamor of Harpies: Strike selected unit?";
-        let action = pick_action(self.get_owner_id(), &actions, state, prompt).await;
+        let action = pick_action(self.get_controller_id(), &actions, state, prompt).await;
         let mut effects = vec![Effect::MoveCard {
-            player_id: self.get_owner_id().clone(),
+            player_id: self.get_controller_id().clone(),
             card_id,
             from: card.get_zone().clone(),
             to: ZoneQuery::Specific {
@@ -136,7 +122,11 @@ impl Card for ClamorOfHarpies {
             plane: self.card_base.plane.clone(),
             through_path: None,
         }];
-        effects.extend(action.on_select(Some(card.get_id()), self.get_owner_id(), state).await);
+        effects.extend(
+            action
+                .on_select(Some(card.get_id()), self.get_controller_id(), state)
+                .await,
+        );
         effects
     }
 }

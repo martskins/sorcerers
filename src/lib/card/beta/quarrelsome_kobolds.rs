@@ -32,6 +32,7 @@ impl QuarrelsomeKobolds {
                 required_thresholds: Thresholds::parse("F"),
                 plane: Plane::Surface,
                 rarity: Rarity::Exceptional,
+                edition: Edition::Beta,
                 controller_id: owner_id.clone(),
             },
         }
@@ -52,22 +53,6 @@ impl Card for QuarrelsomeKobolds {
         &self.card_base
     }
 
-    fn is_tapped(&self) -> bool {
-        self.card_base.tapped
-    }
-
-    fn get_owner_id(&self) -> &PlayerId {
-        &self.card_base.owner_id
-    }
-
-    fn get_edition(&self) -> Edition {
-        Edition::Beta
-    }
-
-    fn get_id(&self) -> &uuid::Uuid {
-        &self.card_base.id
-    }
-
     fn get_unit_base(&self) -> Option<&UnitBase> {
         Some(&self.unit_base)
     }
@@ -77,7 +62,7 @@ impl Card for QuarrelsomeKobolds {
     }
 
     async fn on_turn_end(&self, state: &State) -> Vec<Effect> {
-        if &state.current_player != self.get_owner_id() {
+        if &state.current_player != self.get_controller_id() {
             return vec![];
         }
 
@@ -88,13 +73,14 @@ impl Card for QuarrelsomeKobolds {
             let units_in_zone = state
                 .get_units_in_zone(&zone)
                 .iter()
+                .filter(|c| c.can_be_targetted_by(state, self.get_controller_id()))
                 .map(|c| c.get_id().clone())
                 .collect::<Vec<uuid::Uuid>>();
             units.extend(units_in_zone);
         }
 
         let prompt = "Quarrelsome Kobolds: Pick a unit to deal damage to";
-        let picked_unit = pick_card(self.get_owner_id(), &units, state, prompt).await;
+        let picked_unit = pick_card(self.get_controller_id(), &units, state, prompt).await;
         vec![Effect::take_damage(
             &picked_unit,
             self.get_id(),

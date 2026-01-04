@@ -426,6 +426,7 @@ impl Effect {
                     let units = state
                         .get_units_in_zone(&zone)
                         .iter()
+                        .filter(|c| c.can_be_targetted_by(state, player_id))
                         .map(|c| c.get_id().clone())
                         .collect::<Vec<_>>();
                     if units.is_empty() {
@@ -495,7 +496,7 @@ impl Effect {
                         }
 
                         let card = state.cards.iter().find(|c| c.get_id() == card_id).unwrap();
-                        let mut effects = card.on_move(&snapshot, from, &zone).await;
+                        let mut effects = card.on_move(&snapshot, path).await;
                         effects.extend(card.on_visit_zone(&snapshot, &zone).await);
                         if let Some(site) = zone.get_site(state) {
                             effects.extend(site.on_card_enter(state, card_id));
@@ -514,7 +515,8 @@ impl Effect {
                     }
 
                     let card = state.cards.iter().find(|c| c.get_id() == card_id).unwrap();
-                    let mut effects = card.on_move(&snapshot, from, &zone).await;
+                    let path = vec![from.clone(), zone.clone()];
+                    let mut effects = card.on_move(&snapshot, &path).await;
                     effects.extend(card.on_visit_zone(&snapshot, &zone).await);
                     if let Some(site) = zone.get_site(state) {
                         effects.extend(site.on_card_enter(state, card_id));

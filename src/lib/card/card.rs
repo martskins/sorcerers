@@ -336,12 +336,20 @@ where
 #[async_trait::async_trait]
 pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     fn get_name(&self) -> &str;
-    fn get_edition(&self) -> Edition;
-    fn get_owner_id(&self) -> &PlayerId;
-    fn is_tapped(&self) -> bool;
-    fn get_id(&self) -> &uuid::Uuid;
     fn get_base(&self) -> &CardBase;
     fn get_base_mut(&mut self) -> &mut CardBase;
+
+    fn get_edition(&self) -> &Edition {
+        &self.get_base().edition
+    }
+
+    fn is_tapped(&self) -> bool {
+        self.get_base().tapped
+    }
+
+    fn get_id(&self) -> &uuid::Uuid {
+        &self.get_base().id
+    }
 
     /// When resolving a CardQuery, this method allows the card to override the query. A useful
     /// usecase for this method is for example overriding the valid targets of a spell when there's
@@ -375,6 +383,11 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         if let Some(ub) = self.get_unit_base_mut() {
             ub.modifier_counters.retain(|c| &c.id != id);
         }
+    }
+
+    /// Returns the ID of the player who owns this card.
+    fn get_owner_id(&self) -> &PlayerId {
+        &self.get_base().owner_id
     }
 
     /// Returns the ID of the player who controls this card.
@@ -723,7 +736,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     /// Returns the valid attack targets for this card.
-    fn get_valid_attack_targets(&self, state: &State, ranged: bool) -> Vec<uuid::Uuid> {
+    fn get_valid_attack_targets_from_zone(&self, state: &State, ranged: bool, zone: &Zone) -> Vec<uuid::Uuid> {
         state
             .cards
             .iter()
@@ -737,16 +750,21 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 let airborne_on_surface = self.get_base().plane == Plane::Air && c.get_base().plane == Plane::Surface;
                 return same_plane || ranged_on_airborne || airborne_on_surface;
             })
-            .filter(|c| {
+            .filter(|_| {
                 let attacker_is_airborne = self.has_modifier(state, &Modifier::Airborne);
                 if !attacker_is_airborne {
-                    return c.get_zone().is_adjacent(&self.get_zone());
+                    return zone.is_adjacent(&self.get_zone());
                 }
 
-                return c.get_zone().is_nearby(&self.get_zone());
+                return zone.is_nearby(&self.get_zone());
             })
             .map(|c| c.get_id().clone())
             .collect()
+    }
+
+    /// Returns the valid attack targets for this card.
+    fn get_valid_attack_targets(&self, state: &State, ranged: bool) -> Vec<uuid::Uuid> {
+        self.get_valid_attack_targets_from_zone(state, ranged, self.get_zone())
     }
 
     /// Returns the toughness of the card. Returns None for non-unit cards.
@@ -963,12 +981,12 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         false
     }
 
-    async fn on_move(&self, state: &State, from: &Zone, to: &Zone) -> Vec<Effect> {
+    async fn on_move(&self, state: &State, path: &[Zone]) -> Vec<Effect> {
         state
             .cards
             .iter()
             .flat_map(|c| c.get_modifiers(state))
-            .flat_map(|m| m.on_move(self.get_id(), state, from, to))
+            .flat_map(|m| m.on_move(self.get_id(), state, &path))
             .collect()
     }
 
@@ -1119,14 +1137,24 @@ pub enum Modifier {
 }
 
 impl Modifier {
-    fn on_move(&self, card_id: &uuid::Uuid, state: &State, from: &Zone, _to: &Zone) -> Vec<Effect> {
+    fn on_move(&self, card_id: &uuid::Uuid, state: &State, path: &[Zone]) -> Vec<Effect> {
         match self {
             Modifier::Blaze(burn) => {
+                if path.len() <= 1 {
+                    return vec![];
+                }
+
                 let mut effects = vec![];
-                let units = state.get_units_in_zone(from);
-                for unit in units {
-                    let card = state.get_card(card_id).unwrap();
-                    effects.push(Effect::take_damage(unit.get_id(), card.get_id(), *burn));
+                for zone in path {
+                    if zone == path.last().unwrap() {
+                        break;
+                    }
+
+                    let units = state.get_units_in_zone(&zone);
+                    for unit in units {
+                        let card = state.get_card(card_id).unwrap();
+                        effects.push(Effect::take_damage(unit.get_id(), card.get_id(), *burn));
+                    }
                 }
 
                 effects
@@ -1185,6 +1213,7 @@ pub struct CardBase {
     pub required_thresholds: Thresholds,
     pub plane: Plane,
     pub rarity: Rarity,
+    pub edition: Edition,
     pub controller_id: PlayerId,
 }
 

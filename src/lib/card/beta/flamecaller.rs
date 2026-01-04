@@ -92,6 +92,7 @@ impl Flamecaller {
                 required_thresholds: Thresholds::new(),
                 plane: Plane::Surface,
                 rarity: Rarity::Ordinary,
+                edition: Edition::Beta,
                 controller_id: owner_id.clone(),
             },
             avatar_base: AvatarBase {},
@@ -126,22 +127,6 @@ impl Card for Flamecaller {
 
     fn get_avatar_base_mut(&mut self) -> Option<&mut AvatarBase> {
         Some(&mut self.avatar_base)
-    }
-
-    fn is_tapped(&self) -> bool {
-        self.card_base.tapped
-    }
-
-    fn get_owner_id(&self) -> &PlayerId {
-        &self.card_base.owner_id
-    }
-
-    fn get_edition(&self) -> Edition {
-        Edition::Beta
-    }
-
-    fn get_id(&self) -> &uuid::Uuid {
-        &self.card_base.id
     }
 
     fn get_actions(&self, state: &State) -> Vec<Box<dyn Action>> {

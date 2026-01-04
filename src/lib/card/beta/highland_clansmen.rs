@@ -30,6 +30,7 @@ impl HighlandClansmen {
                 required_thresholds: Thresholds::parse("A"),
                 plane: Plane::Air,
                 rarity: Rarity::Ordinary,
+                edition: Edition::Beta,
                 controller_id: owner_id.clone(),
             },
         }
@@ -48,22 +49,6 @@ impl Card for HighlandClansmen {
 
     fn get_base(&self) -> &CardBase {
         &self.card_base
-    }
-
-    fn is_tapped(&self) -> bool {
-        self.card_base.tapped
-    }
-
-    fn get_owner_id(&self) -> &PlayerId {
-        &self.card_base.owner_id
-    }
-
-    fn get_edition(&self) -> Edition {
-        Edition::Beta
-    }
-
-    fn get_id(&self) -> &uuid::Uuid {
-        &self.card_base.id
     }
 
     fn get_unit_base(&self) -> Option<&UnitBase> {

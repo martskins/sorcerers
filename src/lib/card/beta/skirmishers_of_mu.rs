@@ -1,7 +1,7 @@
 use crate::{
     card::{Card, CardBase, Edition, MinionType, Modifier, Plane, Rarity, UnitBase, Zone},
     effect::Effect,
-    game::{PlayerId, Thresholds, pick_card, pick_option},
+    game::{PlayerId, Thresholds, pick_card, pick_option, pick_zone},
     state::State,
 };
 
@@ -32,6 +32,7 @@ impl SkirmishersOfMu {
                 required_thresholds: Thresholds::parse("AA"),
                 plane: Plane::Air,
                 rarity: Rarity::Exceptional,
+                edition: Edition::Beta,
                 controller_id: owner_id.clone(),
             },
         }
@@ -52,22 +53,6 @@ impl Card for SkirmishersOfMu {
         &self.card_base
     }
 
-    fn is_tapped(&self) -> bool {
-        self.card_base.tapped
-    }
-
-    fn get_owner_id(&self) -> &PlayerId {
-        &self.card_base.owner_id
-    }
-
-    fn get_edition(&self) -> Edition {
-        Edition::Beta
-    }
-
-    fn get_id(&self) -> &uuid::Uuid {
-        &self.card_base.id
-    }
-
     fn get_unit_base(&self) -> Option<&UnitBase> {
         Some(&self.unit_base)
     }
@@ -76,20 +61,33 @@ impl Card for SkirmishersOfMu {
         Some(&mut self.unit_base)
     }
 
-    async fn on_move(&self, state: &State, _from: &Zone, _to: &Zone) -> Vec<Effect> {
+    async fn on_move(&self, state: &State, path: &[Zone]) -> Vec<Effect> {
         let actions = vec!["Yes".to_string(), "No".to_string()];
-        let picked_option = pick_option(self.get_owner_id(), &actions, state, "Ranged strike?").await;
+        let picked_option = pick_option(self.get_controller_id(), &actions, state, "Ranged strike?").await;
         if actions[picked_option] == "No" {
             return vec![];
         }
 
-        let units: Vec<uuid::Uuid> = self
-            .get_zone()
+        let picked_zone = pick_zone(
+            self.get_controller_id(),
+            &path,
+            state,
+            "Skirmishers of Mu: Pick a zone to perform a ranged strike from",
+        )
+        .await;
+
+        let units: Vec<uuid::Uuid> = picked_zone
             .get_nearby_units(state, None)
             .iter()
             .map(|c| c.get_id().clone())
             .collect();
-        let target_unit = pick_card(self.get_owner_id(), &units, state, "Pick a target for Ranged Strike:").await;
+        let target_unit = pick_card(
+            self.get_controller_id(),
+            &units,
+            state,
+            "Pick a target for Ranged Strike:",
+        )
+        .await;
         vec![Effect::RangedStrike {
             attacker_id: self.get_id().clone(),
             defender_id: target_unit,
