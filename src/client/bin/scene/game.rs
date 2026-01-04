@@ -109,6 +109,32 @@ impl GameData {
     }
 }
 
+// Takes a slice of cards and returns a cloned, sorted vec with the cards sorted so that cards that
+// are submerged or burrowed are first in the vec, then sites, then cards on the surface and then
+// cards in the air.
+fn sort_cards(cards: &[RenderableCard]) -> Vec<RenderableCard> {
+    let mut cards = cards.to_vec();
+    cards.sort_by(|a, b| {
+        let plane_cmp = a.plane.cmp(&b.plane);
+        if plane_cmp != std::cmp::Ordering::Equal {
+            return plane_cmp;
+        }
+
+        if let Plane::Surface = a.plane {
+            match (&a.card_type, &b.card_type) {
+                (CardType::Site, CardType::Site) => std::cmp::Ordering::Equal,
+                (CardType::Site, _) => std::cmp::Ordering::Less,
+                (_, CardType::Site) => std::cmp::Ordering::Greater,
+                _ => std::cmp::Ordering::Equal,
+            }
+        } else {
+            std::cmp::Ordering::Equal
+        }
+    });
+
+    cards
+}
+
 #[derive(Debug)]
 pub struct Game {
     opponent_id: PlayerId,
@@ -353,28 +379,7 @@ impl Game {
                 current_player,
                 resources,
             } => {
-                // Sort so that cards that are submerged or burrowed are drawn first, then sites, then
-                // cards on the surface and then cards in the air.
-                let mut cards = cards.clone();
-                cards.sort_by(|a, b| match (&a.plane, &b.plane) {
-                    (Plane::Air, Plane::Air)
-                    | (Plane::Burrowed, Plane::Burrowed)
-                    | (Plane::Submerged, Plane::Submerged) => std::cmp::Ordering::Equal,
-                    (Plane::Surface, Plane::Surface) => dbg!(match (&a.card_type, &b.card_type) {
-                        (CardType::Site, CardType::Site) => std::cmp::Ordering::Equal,
-                        (CardType::Site, _) => std::cmp::Ordering::Greater,
-                        (_, CardType::Site) => std::cmp::Ordering::Less,
-                        (_, _) => std::cmp::Ordering::Equal,
-                    }),
-                    (Plane::Air, _) => std::cmp::Ordering::Greater,
-                    (Plane::Surface, Plane::Air) => std::cmp::Ordering::Less,
-                    (Plane::Surface, _) => std::cmp::Ordering::Greater,
-                    (Plane::Burrowed, Plane::Air) => std::cmp::Ordering::Less,
-                    (Plane::Burrowed, Plane::Surface) => std::cmp::Ordering::Less,
-                    (_, _) => std::cmp::Ordering::Equal,
-                });
-
-                self.data.cards = cards.clone();
+                self.data.cards = sort_cards(cards);
                 self.current_player = current_player.clone();
                 self.data.resources = resources.clone();
                 Ok(None)
