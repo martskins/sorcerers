@@ -44,11 +44,13 @@ fn cell_rect(realm_rect: &Rect, id: u8, mirror: bool) -> Rect {
         row = 3 - row; // mirror vertically
     }
 
+    let cell_width = realm_rect.w / 5.0;
+    let cell_height = realm_rect.h / 4.0;
     Rect::new(
-        realm_rect.x + col as f32 * (realm_rect.w / 5.0),
-        realm_rect.y + row as f32 * (realm_rect.h / 4.0),
-        realm_rect.w / 5.0,
-        realm_rect.h / 4.0,
+        realm_rect.x + col as f32 * cell_width,
+        realm_rect.y + row as f32 * cell_height,
+        cell_width,
+        cell_height,
     )
 }
 

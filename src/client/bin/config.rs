@@ -47,5 +47,5 @@ pub fn realm_rect() -> Rect {
     } else if x > max_x {
         x = max_x;
     }
-    Rect::new(x, 0.0, screen_rect.w - 200.0, screen_rect.h - hand_space_height()) // Last parame is the hand's area height
+    Rect::new(x, 0.0, screen_rect.w - x, screen_rect.h - hand_space_height())
 }
