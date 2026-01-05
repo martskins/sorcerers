@@ -77,7 +77,7 @@ impl Menu {
         }
     }
 
-    pub async fn render(&mut self) -> anyhow::Result<()> {
+    pub async fn render(&mut self) -> anyhow::Result<Option<Scene>> {
         if self.client.is_in_local_mode() {
             let message = "Warning: Running in local mode!";
             draw_text(&message, 10.0, 20.0, 24.0, ORANGE);
@@ -99,7 +99,7 @@ impl Menu {
             draw_text(&message, x, y, 32.0, WHITE);
         }
 
-        Ok(())
+        Ok(None)
     }
 
     async fn render_deck_list(&mut self) -> Option<Scene> {

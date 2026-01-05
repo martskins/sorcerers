@@ -37,7 +37,10 @@ async fn main() -> anyhow::Result<()> {
             }
         }
 
-        client.step().await.unwrap();
+        if let Some(scene) = client.step().await? {
+            client.scene = scene;
+        }
+
         next_frame().await;
     }
 }

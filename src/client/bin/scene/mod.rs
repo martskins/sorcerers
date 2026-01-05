@@ -11,7 +11,7 @@ pub enum Scene {
 }
 
 impl Scene {
-    pub async fn render(&mut self) -> anyhow::Result<()> {
+    pub async fn render(&mut self) -> anyhow::Result<Option<Scene>> {
         match self {
             Scene::Menu(menu) => menu.render().await,
             Scene::Game(game) => game.render().await,

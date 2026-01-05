@@ -42,11 +42,10 @@ impl Client {
         Ok(())
     }
 
-    pub async fn step(&mut self) -> anyhow::Result<()> {
+    pub async fn step(&mut self) -> anyhow::Result<Option<Scene>> {
         self.process_input().await;
         self.update().await?;
-        self.render().await?;
-        Ok(())
+        Ok(self.render().await?)
     }
 
     fn dimensions_changed(&self) -> bool {
@@ -66,7 +65,7 @@ impl Client {
         Ok(())
     }
 
-    async fn render(&mut self) -> anyhow::Result<()> {
+    async fn render(&mut self) -> anyhow::Result<Option<Scene>> {
         clear_background(BLACK);
         self.scene.render().await
     }

@@ -10,8 +10,10 @@ use tokio::{io::AsyncWriteExt, net::tcp::OwnedWriteHalf, sync::Mutex};
 
 pub struct Server {
     pub games: HashMap<uuid::Uuid, Sender<ClientMessage>>,
+    pub game_players: HashMap<uuid::Uuid, Vec<Player>>,
     pub looking_for_match: Vec<(uuid::Uuid, (Player, PreconDeck))>,
     pub streams: HashMap<uuid::Uuid, Arc<Mutex<OwnedWriteHalf>>>,
+    pub addr_to_player: HashMap<std::net::SocketAddr, uuid::Uuid>,
 }
 
 impl Server {
@@ -20,6 +22,8 @@ impl Server {
             looking_for_match: Vec::new(),
             streams: HashMap::new(),
             games: HashMap::new(),
+            game_players: HashMap::new(),
+            addr_to_player: HashMap::new(),
         }
     }
 
@@ -27,6 +31,7 @@ impl Server {
         &mut self,
         message: &Message,
         stream: Arc<Mutex<OwnedWriteHalf>>,
+        addr: &std::net::SocketAddr,
     ) -> anyhow::Result<()> {
         match message {
             Message::ClientMessage(ClientMessage::Connect) => {
@@ -40,6 +45,7 @@ impl Server {
                 )
                 .await?;
                 self.streams.insert(player_id, stream);
+                self.addr_to_player.insert(addr.clone(), player_id);
             }
             Message::ClientMessage(ClientMessage::JoinQueue {
                 player_id,
@@ -58,6 +64,30 @@ impl Server {
                         self.create_game(&player1.0, player1.1, &player2.0, player2.1).await?;
                     }
                     None => {}
+                }
+            }
+            Message::ClientMessage(ClientMessage::Disconnect) => {
+                let player_id = self.addr_to_player.get(addr).cloned().unwrap_or(uuid::Uuid::nil());
+                self.looking_for_match.retain(|(id, _)| id != &player_id);
+                self.streams.retain(|_, s| !Arc::ptr_eq(s, &stream));
+
+                if player_id == uuid::Uuid::nil() {
+                    return Ok(());
+                }
+
+                let game_id = self
+                    .game_players
+                    .iter()
+                    .find(|(_, players)| players.iter().any(|p| p.id == player_id))
+                    .map(|(game_id, _)| game_id.clone());
+                if let Some(game_id) = game_id {
+                    if let Some(tx) = self.games.get_mut(&game_id) {
+                        tx.send(ClientMessage::PlayerDisconnected {
+                            game_id: game_id.clone(),
+                            player_id,
+                        })
+                        .await?;
+                    }
                 }
             }
             Message::ClientMessage(msg) => {
@@ -116,6 +146,8 @@ impl Server {
         ];
         let mut game = Game::new(players, client_rx, server_tx, server_rx);
         self.games.insert(game.id.clone(), client_tx);
+        self.game_players
+            .insert(game.id.clone(), vec![player1.clone(), player2.clone()]);
         let player_one = game.state.players[0].id.clone();
         let player_two = game.state.players[1].id.clone();
         game.state.cards.push(from_name_and_zone(
@@ -163,6 +195,7 @@ impl Server {
         tokio::spawn(async move {
             game.start().await.unwrap();
         });
+
         Ok(())
     }
 

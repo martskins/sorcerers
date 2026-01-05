@@ -902,6 +902,13 @@ impl Game {
     async fn handle_message(&mut self, message: &ClientMessage) -> anyhow::Result<()> {
         self.maybe_unblock_effects(message);
         match message {
+            ClientMessage::PlayerDisconnected { player_id, .. } => {
+                self.streams.retain(|pid, _| pid != player_id);
+                self.broadcast(&ServerMessage::PlayerDisconnected {
+                    player_id: player_id.clone(),
+                })
+                .await?;
+            }
             ClientMessage::ClickCard { player_id, card_id, .. } => {
                 let card = self.state.cards.iter().find(|c| c.get_id() == card_id).unwrap();
                 if card.get_owner_id() != player_id {

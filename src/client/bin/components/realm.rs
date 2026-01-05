@@ -371,6 +371,7 @@ impl RealmComponent {
                     }
                 }
                 Status::SelectingCard { preview: true, .. }
+                | Status::GameAborted { .. }
                 | Status::SelectingAction { .. }
                 | Status::Waiting { .. }
                 | Status::SelectingPath { .. }
@@ -399,6 +400,7 @@ impl RealmComponent {
                 Status::SelectingCard { preview: true, .. }
                 | Status::Waiting { .. }
                 | Status::SelectingAction { .. }
+                | Status::GameAborted { .. }
                 | Status::SelectingPath { .. }
                 | Status::ViewingCards { .. } => {
                     continue;

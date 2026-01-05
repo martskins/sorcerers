@@ -6,7 +6,7 @@ use crate::{
     config::*,
     input::Mouse,
     render,
-    scene::{Scene, selection_overlay::SelectionOverlay},
+    scene::{Scene, menu::Menu, selection_overlay::SelectionOverlay},
     texture_cache::TextureCache,
 };
 use macroquad::{
@@ -58,6 +58,9 @@ pub enum Status {
         prompt: String,
         prev_status: Box<Status>,
         behaviour: SelectionOverlayBehaviour,
+    },
+    GameAborted {
+        reason: String,
     },
 }
 
@@ -254,7 +257,7 @@ impl Game {
         Ok(())
     }
 
-    pub async fn render(&mut self) -> anyhow::Result<()> {
+    pub async fn render(&mut self) -> anyhow::Result<Option<Scene>> {
         if self.game_id.is_nil() {
             let time = macroquad::time::get_time();
             let dot_count = ((time * 2.0) as usize % 3) + 1;
@@ -268,41 +271,33 @@ impl Game {
             let y = screen_rect.h / 2.0 - text_dimensions.height / 2.0;
 
             draw_text(&message, x, y, 32.0, WHITE);
-            return Ok(());
+            return Ok(None);
         }
 
         for component in &mut self.components {
             component.render(&mut self.data).await?;
         }
-        self.render_gui().await?;
+
+        if let Some(scene) = self.render_gui().await? {
+            return Ok(Some(scene));
+        }
 
         if self.card_selection_overlay.is_some() {
             let overlay = self.card_selection_overlay.as_mut().unwrap();
             overlay.render();
         }
 
-        if let Status::Waiting { ref prompt } = self.data.status {
-            draw_rectangle(
-                0.0,
-                0.0,
-                screen_width(),
-                screen_height(),
-                Color::new(0.0, 0.0, 0.0, 0.6),
-            );
-
-            let screen_rect = screen_rect();
-            let text_dimensions = macroquad::text::measure_text(prompt, None, FONT_SIZE as u16, 1.0);
-            let x = screen_rect.w / 2.0 - text_dimensions.width / 2.0;
-            let y = screen_rect.h / 2.0 - text_dimensions.height / 2.0;
-
-            draw_text(prompt, x, y, FONT_SIZE, WHITE);
-        }
-
-        Ok(())
+        Ok(None)
     }
 
     pub async fn process_message(&mut self, message: &ServerMessage) -> anyhow::Result<Option<Scene>> {
         match message {
+            ServerMessage::PlayerDisconnected { player_id, .. } => {
+                self.data.status = Status::GameAborted {
+                    reason: format!("Player {} disconnected.", player_id),
+                };
+                Ok(None)
+            }
             ServerMessage::Resume { .. } => {
                 self.data.status = Status::Idle;
                 Ok(None)
@@ -432,7 +427,7 @@ impl Game {
         }
     }
 
-    async fn render_gui(&mut self) -> anyhow::Result<()> {
+    async fn render_gui(&mut self) -> anyhow::Result<Option<Scene>> {
         let screen_rect = screen_rect();
         let turn_label = if self.is_players_turn(&self.data.player_id) {
             "Your Turn"
@@ -454,30 +449,44 @@ impl Game {
             }
         }
 
-        match self.data.status {
+        let needs_overlay = matches!(
+            &self.data.status,
+            Status::Waiting { .. } | Status::SelectingAction { .. } | Status::GameAborted { .. }
+        );
+        if needs_overlay {
+            draw_rectangle(
+                0.0,
+                0.0,
+                screen_width(),
+                screen_height(),
+                Color::new(0.0, 0.0, 0.0, 0.8),
+            );
+
+            let window_style = ui::root_ui()
+                .style_builder()
+                .background_margin(RectOffset::new(10.0, 10.0, 10.0, 10.0))
+                .build();
+            let skin = ui::Skin {
+                window_style,
+                ..ui::root_ui().default_skin()
+            };
+
+            ui::root_ui().push_skin(&skin);
+        }
+
+        let new_scene = match self.data.status {
+            Status::Waiting { ref prompt } => {
+                let text_dimensions = macroquad::text::measure_text(prompt, None, FONT_SIZE as u16, 1.0);
+                let x = screen_rect.w / 2.0 - text_dimensions.width / 2.0;
+                let y = screen_rect.h / 2.0 - text_dimensions.height / 2.0;
+
+                draw_text(prompt, x, y, FONT_SIZE, WHITE);
+                None
+            }
             Status::SelectingAction {
                 ref prompt,
                 ref actions,
             } => {
-                draw_rectangle(
-                    0.0,
-                    0.0,
-                    screen_width(),
-                    screen_height(),
-                    Color::new(0.0, 0.0, 0.0, 0.6),
-                );
-
-                let window_style = ui::root_ui()
-                    .style_builder()
-                    .background_margin(RectOffset::new(10.0, 10.0, 10.0, 10.0))
-                    .build();
-                let skin = ui::Skin {
-                    window_style,
-                    ..ui::root_ui().default_skin()
-                };
-
-                ui::root_ui().push_skin(&skin);
-
                 let button_height = 30.0;
                 let window_width = 400.0;
                 let font_size = 16;
@@ -521,11 +530,46 @@ impl Game {
                     },
                 );
 
-                ui::root_ui().pop_skin();
+                None
             }
-            _ => {}
-        }
+            Status::GameAborted { ref reason } => {
+                let mut scene = None;
+                let button_height = 30.0;
+                let window_width = 400.0;
+                let font_size = 16;
+                let prompt = render::wrap_text(reason, window_width - 10.0, font_size);
+                let label_padding = 10.0;
+                let label_height = prompt.lines().count() as f32 * (font_size as f32 + 4.0) + label_padding;
+                let window_size = Vec2::new(window_width, button_height + 10.0 + 20.0 + label_height);
+                ui::root_ui().window(
+                    hash!(),
+                    Vec2::new(
+                        screen_width() / 2.0 - window_size.x / 2.0,
+                        screen_height() / 2.0 - window_size.y / 2.0,
+                    ),
+                    window_size,
+                    |ui| {
+                        render::multiline_label(&prompt, Vec2::new(5.0, 5.0), font_size, ui);
+                        let button_pos = Vec2::new(window_size.x * 0.1, label_height);
+                        let clicked = ui::widgets::Button::new("Ok")
+                            .position(button_pos)
+                            .size(Vec2::new(window_size.x * 0.8, button_height))
+                            .ui(ui);
+                        if clicked {
+                            scene = Some(Scene::Menu(Menu::new(self.client.clone())));
+                            Mouse::set_enabled(false);
+                            self.data.status = Status::Idle;
+                        }
+                    },
+                );
 
-        Ok(())
+                scene
+            }
+            _ => None,
+        };
+
+        ui::root_ui().pop_skin();
+
+        Ok(new_scene)
     }
 }

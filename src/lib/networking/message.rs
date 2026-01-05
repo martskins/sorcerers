@@ -41,6 +41,9 @@ impl PreconDeck {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ServerMessage {
+    PlayerDisconnected {
+        player_id: PlayerId,
+    },
     Resume {
         player_id: PlayerId,
     },
@@ -117,6 +120,7 @@ impl ServerMessage {
             ServerMessage::GameStarted { .. } => uuid::Uuid::nil(),
             ServerMessage::Sync { .. } => uuid::Uuid::nil(),
             ServerMessage::ForceSync { player_id, .. } => player_id.clone(),
+            ServerMessage::PlayerDisconnected { player_id } => player_id.clone(),
         }
     }
 }
@@ -130,6 +134,11 @@ impl ToMessage for ServerMessage {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ClientMessage {
     Connect,
+    Disconnect,
+    PlayerDisconnected {
+        game_id: uuid::Uuid,
+        player_id: PlayerId,
+    },
     JoinQueue {
         player_name: String,
         player_id: PlayerId,
@@ -182,7 +191,9 @@ impl ClientMessage {
     pub fn game_id(&self) -> uuid::Uuid {
         match self {
             ClientMessage::Connect => uuid::Uuid::nil(),
+            ClientMessage::Disconnect => uuid::Uuid::nil(),
             ClientMessage::JoinQueue { .. } => uuid::Uuid::nil(),
+            ClientMessage::PlayerDisconnected { game_id, .. } => game_id.clone(),
             ClientMessage::PickCard { game_id, .. } => game_id.clone(),
             ClientMessage::PickAction { game_id, .. } => game_id.clone(),
             ClientMessage::EndTurn { game_id, .. } => game_id.clone(),
@@ -197,6 +208,8 @@ impl ClientMessage {
     pub fn player_id(&self) -> &PlayerId {
         match self {
             ClientMessage::Connect => &NIL,
+            ClientMessage::Disconnect => &NIL,
+            ClientMessage::PlayerDisconnected { player_id, .. } => player_id,
             ClientMessage::PickCard { player_id, .. } => player_id,
             ClientMessage::PickAction { player_id, .. } => player_id,
             ClientMessage::EndTurn { player_id, .. } => player_id,
