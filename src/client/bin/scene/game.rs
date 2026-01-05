@@ -270,10 +270,10 @@ impl Game {
             return Ok(());
         }
 
-        self.render_gui().await?;
         for component in &mut self.components {
             component.render(&mut self.data).await?;
         }
+        self.render_gui().await?;
 
         if self.card_selection_overlay.is_some() {
             let overlay = self.card_selection_overlay.as_mut().unwrap();

@@ -7,7 +7,7 @@ use macroquad::{
     ui,
 };
 use sorcerers::{
-    card::{Modifier, Zone},
+    card::{CardType, Modifier, Zone},
     game::PlayerId,
 };
 
@@ -27,6 +27,7 @@ pub struct CardRect {
     pub is_hovered: bool,
     pub modifiers: Vec<Modifier>,
     pub damage_taken: u8,
+    pub card_type: CardType,
 }
 
 impl CardRect {

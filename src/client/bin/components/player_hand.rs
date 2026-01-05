@@ -117,6 +117,7 @@ impl PlayerHandComponent {
                 image: TextureCache::get_card_texture(card).await,
                 modifiers: card.modifiers.clone(),
                 damage_taken: card.damage_taken.clone(),
+                card_type: card.card_type.clone(),
             });
         }
 
@@ -152,6 +153,7 @@ impl PlayerHandComponent {
                     image: TextureCache::get_card_texture(card).await,
                     modifiers: card.modifiers.clone(),
                     damage_taken: 0,
+                    card_type: card.card_type.clone(),
                 });
             }
         }

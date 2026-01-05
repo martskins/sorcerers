@@ -3,25 +3,23 @@ use crate::{
     config::CARD_ASPECT_RATIO,
     input::Mouse,
     render::{self, CardRect, CellRect, IntersectionRect},
-    scene::{
-        game::{GameData, Status},
-        selection_overlay::SelectionOverlayBehaviour,
-    },
+    scene::game::{GameData, Status},
     texture_cache::TextureCache,
 };
 use macroquad::{
     color::{Color, GRAY, GREEN, WHITE},
     input::{MouseButton, is_mouse_button_released, mouse_position},
     math::{Rect, Vec2},
-    shapes::{DrawRectangleParams, draw_rectangle, draw_rectangle_ex, draw_rectangle_lines},
+    shapes::{DrawRectangleParams, draw_rectangle_ex, draw_rectangle_lines},
     text::draw_text,
-    ui,
 };
 use rand::SeedableRng;
 use sorcerers::{
     card::{CardType, RenderableCard, Zone},
     networking::{self, message::ClientMessage},
 };
+
+const OCCUPIED_ZONE_BACKGROUND_COLOR: Color = Color::new(0.08, 0.12, 0.18, 1.0);
 
 fn cell_rect(realm_rect: &Rect, id: u8, mirror: bool) -> Rect {
     // The grid layout looks like the following from player's 1 perspective (for player 2, the
@@ -190,6 +188,7 @@ impl RealmComponent {
                         is_hovered: existing_card.map_or(false, |c| c.is_hovered),
                         modifiers: card.modifiers.clone(),
                         damage_taken: card.damage_taken,
+                        card_type: card.card_type.clone(),
                     });
                 }
                 Zone::Intersection(locs) => {
@@ -229,6 +228,7 @@ impl RealmComponent {
                             .map_or(false, |c| c.is_hovered),
                         modifiers: card.modifiers.clone(),
                         damage_taken: card.damage_taken,
+                        card_type: card.card_type.clone(),
                     });
                 }
                 _ => {}
@@ -330,8 +330,34 @@ impl RealmComponent {
     async fn render_grid(&mut self, data: &mut GameData) {
         let grid_color = WHITE;
         let grid_thickness = 1.0;
+
+        let occupied_zones: Vec<u8> = self
+            .cards
+            .iter()
+            .filter(|c| c.card_type == CardType::Site)
+            .filter_map(|c| match &c.zone {
+                Zone::Realm(loc) => Some(*loc),
+                _ => None,
+            })
+            .collect();
         for cell in &self.cell_rects {
             let rect = cell.rect;
+            let mut background_color = OCCUPIED_ZONE_BACKGROUND_COLOR;
+            if !occupied_zones.contains(&cell.id) {
+                background_color.a = 0.4;
+            }
+
+            draw_rectangle_ex(
+                rect.x,
+                rect.y,
+                rect.w,
+                rect.h,
+                DrawRectangleParams {
+                    color: background_color,
+                    ..Default::default()
+                },
+            );
+
             draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, grid_thickness, grid_color);
             draw_text(&cell.id.to_string(), rect.x + 5.0, rect.y + 15.0, 12.0, GRAY);
 
@@ -352,37 +378,37 @@ impl RealmComponent {
                 Status::SelectingCard { preview: false, .. } | Status::Idle => {}
             }
 
-            // Draw a UI button at the top right corner as a placeholder for an icon
-            let button_size = 18.0;
-            let button_x = rect.x + rect.w - button_size - 4.0;
-            let button_y = rect.y + 4.0;
-            let button_pos = Vec2::new(button_x, button_y);
-            let button_dim = Vec2::new(button_size, button_size);
-            let button = ui::widgets::Button::new("+")
-                .position(button_pos)
-                .size(button_dim)
-                .ui(&mut ui::root_ui());
-
-            let to_preview = self
-                .cards
-                .iter()
-                .filter(|c| match &c.zone {
-                    Zone::Realm(loc) => loc == &cell.id,
-                    _ => false,
-                })
-                .map(|c| c.id.clone())
-                .collect::<Vec<uuid::Uuid>>();
-            if button {
-                Mouse::set_enabled(false);
-                let prompt = format!("Viewing cards on location {}", cell.id);
-                let new_status = Status::ViewingCards {
-                    cards: to_preview,
-                    prev_status: Box::new(data.status.clone()),
-                    prompt: prompt.clone(),
-                    behaviour: SelectionOverlayBehaviour::Preview,
-                };
-                data.status = new_status;
-            }
+            // // Draw a UI button at the top right corner as a placeholder for an icon
+            // let button_size = 18.0;
+            // let button_x = rect.x + rect.w - button_size - 4.0;
+            // let button_y = rect.y + 4.0;
+            // let button_pos = Vec2::new(button_x, button_y);
+            // let button_dim = Vec2::new(button_size, button_size);
+            // let button = ui::widgets::Button::new("+")
+            //     .position(button_pos)
+            //     .size(button_dim)
+            //     .ui(&mut ui::root_ui());
+            //
+            // let to_preview = self
+            //     .cards
+            //     .iter()
+            //     .filter(|c| match &c.zone {
+            //         Zone::Realm(loc) => loc == &cell.id,
+            //         _ => false,
+            //     })
+            //     .map(|c| c.id.clone())
+            //     .collect::<Vec<uuid::Uuid>>();
+            // if button {
+            //     Mouse::set_enabled(false);
+            //     let prompt = format!("Viewing cards on location {}", cell.id);
+            //     let new_status = Status::ViewingCards {
+            //         cards: to_preview,
+            //         prev_status: Box::new(data.status.clone()),
+            //         prompt: prompt.clone(),
+            //         behaviour: SelectionOverlayBehaviour::Preview,
+            //     };
+            //     data.status = new_status;
+            // }
         }
 
         for intersection in &self.intersection_rects {
@@ -410,11 +436,6 @@ impl RealmComponent {
                 Status::SelectingCard { preview: false, .. } | Status::Idle => {}
             }
         }
-    }
-
-    fn render_background(&self) {
-        let rect = self.rect;
-        draw_rectangle(rect.x, rect.y, rect.w, rect.h, Color::new(0.08, 0.12, 0.18, 1.0));
     }
 
     fn handle_square_click(&mut self, mouse_position: Vec2, in_turn: bool, status: &mut Status) {
@@ -680,7 +701,6 @@ impl Component for RealmComponent {
     }
 
     async fn render(&mut self, data: &mut GameData) -> anyhow::Result<()> {
-        self.render_background();
         self.render_grid(data).await;
 
         for card in &mut self.cards {
