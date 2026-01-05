@@ -1,65 +1,20 @@
-use async_channel::{Receiver, Sender};
-
 use crate::{
-    card::{Card, Zone},
+    card::{Card, RenderableCard, Zone},
     deck::Deck,
     effect::Effect,
     game::{InputStatus, PlayerId, Resources},
     networking::message::{ClientMessage, ServerMessage},
 };
-use std::collections::{HashMap, VecDeque};
+use async_channel::{Receiver, Sender};
+use std::{
+    collections::{HashMap, VecDeque},
+    sync::Arc,
+};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Phase {
     Main,
     PreEndTurn { player_id: PlayerId },
-}
-
-#[derive(Debug)]
-pub struct EffectLog {
-    pub queue: VecDeque<Effect>,
-    pub idx: usize,
-    pub len: usize,
-}
-
-impl EffectLog {
-    pub fn new() -> Self {
-        EffectLog {
-            queue: VecDeque::new(),
-            idx: 0,
-            len: 0,
-        }
-    }
-
-    pub fn push_back(&mut self, effect: Effect) {
-        self.len += 1;
-        self.queue.push_back(effect);
-    }
-
-    pub fn push_front(&mut self, effect: Effect) {
-        self.len += 1;
-        self.queue.push_front(effect);
-    }
-
-    pub fn extend(&mut self, effects: Vec<Effect>) {
-        self.len += effects.len();
-        self.queue.extend(effects);
-    }
-
-    pub fn pop_front(&mut self) -> Option<Effect> {
-        self.idx = self.idx.saturating_add(1);
-        self.len = self.len.saturating_sub(1);
-        self.queue.pop_front()
-    }
-
-    pub fn pop_back(&mut self) -> Option<Effect> {
-        self.len = self.len.saturating_sub(1);
-        self.queue.pop_back()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.queue.is_empty()
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -86,7 +41,7 @@ pub struct State {
     pub phase: Phase,
     pub waiting_for_input: bool,
     pub current_player: PlayerId,
-    pub effects: EffectLog,
+    pub effects: VecDeque<Arc<Effect>>,
     pub player_one: PlayerId,
     pub server_tx: Sender<ServerMessage>,
     pub client_rx: Receiver<ClientMessage>,
@@ -123,10 +78,51 @@ impl State {
             phase: Phase::Main,
             current_player: player_one,
             waiting_for_input: false,
-            effects: EffectLog::new(),
+            effects: VecDeque::new(),
             player_one,
             server_tx,
             client_rx,
+        }
+    }
+
+    pub async fn apply_effects_without_log(&mut self) -> anyhow::Result<()> {
+        while !self.effects.is_empty() {
+            if self.waiting_for_input {
+                return Ok(());
+            }
+
+            let effect = self.effects.pop_back();
+            if let Some(effect) = effect {
+                effect.apply(self).await?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn renderables_from_cards(&self) -> Vec<RenderableCard> {
+        self.cards
+            .iter()
+            .map(|c| RenderableCard {
+                id: c.get_id().clone(),
+                name: c.get_name().to_string(),
+                owner_id: c.get_owner_id().clone(),
+                tapped: c.is_tapped(),
+                edition: c.get_edition().clone(),
+                zone: c.get_zone().clone(),
+                card_type: c.get_card_type().clone(),
+                modifiers: c.get_modifiers(&self),
+                plane: c.get_plane(&self).clone(),
+                damage_taken: c.get_damage_taken(),
+            })
+            .collect()
+    }
+
+    pub fn into_sync(&self) -> ServerMessage {
+        ServerMessage::Sync {
+            cards: self.renderables_from_cards(),
+            resources: self.resources.clone(),
+            current_player: self.current_player.clone(),
         }
     }
 
@@ -182,7 +178,7 @@ impl State {
             phase: self.phase.clone(),
             current_player: self.current_player,
             waiting_for_input: self.waiting_for_input,
-            effects: EffectLog::new(),
+            effects: self.effects.clone(),
             player_one: self.player_one,
             server_tx: self.server_tx.clone(),
             client_rx: self.client_rx.clone(),

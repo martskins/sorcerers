@@ -94,6 +94,12 @@ pub enum ServerMessage {
         player_id: PlayerId,
         directions: Vec<Direction>,
     },
+    ForceSync {
+        player_id: PlayerId,
+        cards: Vec<RenderableCard>,
+        resources: HashMap<PlayerId, Resources>,
+        current_player: PlayerId,
+    },
 }
 
 impl ServerMessage {
@@ -110,6 +116,7 @@ impl ServerMessage {
             ServerMessage::ConnectResponse { player_id, .. } => player_id.clone(),
             ServerMessage::GameStarted { .. } => uuid::Uuid::nil(),
             ServerMessage::Sync { .. } => uuid::Uuid::nil(),
+            ServerMessage::ForceSync { player_id, .. } => player_id.clone(),
         }
     }
 }

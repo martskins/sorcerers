@@ -229,6 +229,31 @@ pub async fn pick_zone(player_id: &PlayerId, zones: &[Zone], state: &State, prom
         }
     }
 }
+// Sends a ForceSync message to the specified player with the provided game state. This can be used
+// to temporarily override the state of the game for the player, which is useful in cases where the
+// state needs to be mutated as part of the card resolution process.
+pub async fn force_sync(player_id: &PlayerId, state: &State) {
+    let sync_msg = state.into_sync();
+    match sync_msg {
+        ServerMessage::Sync {
+            cards,
+            resources,
+            current_player,
+        } => {
+            state
+                .get_sender()
+                .send(ServerMessage::ForceSync {
+                    player_id: player_id.clone(),
+                    cards: cards,
+                    resources: resources,
+                    current_player: current_player,
+                })
+                .await
+                .unwrap();
+        }
+        _ => panic!("expected Sync message, got {:?}", sync_msg),
+    }
+}
 
 pub async fn pick_direction(player_id: &PlayerId, directions: &[Direction], state: &State, prompt: &str) -> Direction {
     state
@@ -828,8 +853,12 @@ impl Game {
     }
 
     pub async fn start(&mut self) -> anyhow::Result<()> {
-        self.state.effects.extend(self.place_avatars());
-        self.state.effects.extend(self.draw_initial_six());
+        self.state
+            .effects
+            .extend(self.place_avatars().into_iter().map(|e| e.into()));
+        self.state
+            .effects
+            .extend(self.draw_initial_six().into_iter().map(|e| e.into()));
 
         // Process effects before starting the game so players don't see the initial setup in the event log
         self.process_effects().await?;
@@ -924,7 +953,7 @@ impl Game {
                         let zone = pick_zone(player_id, &zones, &self.state, prompt).await;
                         self.state
                             .effects
-                            .push_back(Effect::play_card(player_id, card_id, &zone));
+                            .push_back(Effect::play_card(player_id, card_id, &zone).into());
                     }
                     (CardType::Magic, Zone::Hand) => {
                         let resources = self.state.resources.get(&player_id).unwrap();
@@ -943,12 +972,15 @@ impl Game {
                         let prompt = "Pick a spellcaster to cast the spell";
                         let caster_id = pick_card(player_id, &spellcasters, &self.state, prompt).await;
                         let caster = self.state.get_card(&caster_id).unwrap();
-                        self.state.effects.push_back(Effect::PlayMagic {
-                            player_id: player_id.clone(),
-                            card_id: card_id.clone(),
-                            caster_id,
-                            from: caster.get_zone().clone(),
-                        });
+                        self.state.effects.push_back(
+                            Effect::PlayMagic {
+                                player_id: player_id.clone(),
+                                card_id: card_id.clone(),
+                                caster_id,
+                                from: caster.get_zone().clone(),
+                            }
+                            .into(),
+                        );
                     }
                     (_, Zone::Realm(_)) => {
                         let unit_disabled =
@@ -966,15 +998,18 @@ impl Game {
                         let prompt = format!("{}: Pick action", card.get_name());
                         let action = pick_action(player_id, &actions, &self.state, &prompt).await;
                         let effects = action.on_select(Some(card.get_id()), player_id, &self.state).await;
-                        self.state.effects.extend(effects);
+                        self.state.effects.extend(effects.into_iter().map(|e| e.into()));
                     }
                     _ => {}
                 }
             }
             ClientMessage::EndTurn { player_id, .. } => {
-                self.state.effects.push_back(Effect::PreEndTurn {
-                    player_id: player_id.clone(),
-                });
+                self.state.effects.push_back(
+                    Effect::PreEndTurn {
+                        player_id: player_id.clone(),
+                    }
+                    .into(),
+                );
             }
             _ => {}
         }
@@ -1020,7 +1055,7 @@ impl Game {
                         player_id: next_player.id.clone(),
                     },
                 ];
-                self.state.effects.extend(effects);
+                self.state.effects.extend(effects.into_iter().map(|e| e.into()));
             }
         }
 
@@ -1069,13 +1104,7 @@ impl Game {
     }
 
     pub async fn send_sync(&self) -> anyhow::Result<()> {
-        let msg = ServerMessage::Sync {
-            cards: self.renderables_from_cards(),
-            resources: self.state.resources.clone(),
-            current_player: self.state.current_player.clone(),
-        };
-
-        self.broadcast(&msg).await?;
+        self.broadcast(&self.state.into_sync()).await?;
         Ok(())
     }
 

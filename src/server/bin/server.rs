@@ -1,5 +1,6 @@
 use async_channel::Sender;
 use sorcerers::{
+    card::from_name_and_zone,
     game::Game,
     networking::message::{ClientMessage, Message, PreconDeck, ServerMessage, ToMessage},
     state::{Player, PlayerWithDeck},
@@ -115,6 +116,50 @@ impl Server {
         ];
         let mut game = Game::new(players, client_rx, server_tx, server_rx);
         self.games.insert(game.id.clone(), client_tx);
+        let player_one = game.state.players[0].id.clone();
+        let player_two = game.state.players[1].id.clone();
+        game.state.cards.push(from_name_and_zone(
+            "Chain Lightning",
+            &player_one,
+            sorcerers::card::Zone::Hand,
+        ));
+        game.state.cards.push(from_name_and_zone(
+            "Lone Tower",
+            &player_one,
+            sorcerers::card::Zone::Realm(3),
+        ));
+        game.state.cards.push(from_name_and_zone(
+            "Lone Tower",
+            &player_one,
+            sorcerers::card::Zone::Realm(8),
+        ));
+        game.state.cards.push(from_name_and_zone(
+            "Kite Archer",
+            &player_two,
+            sorcerers::card::Zone::Realm(8),
+        ));
+        game.state.cards.push(from_name_and_zone(
+            "Arid Desert",
+            &player_two,
+            sorcerers::card::Zone::Realm(13),
+        ));
+        game.state.cards.push(from_name_and_zone(
+            "Arid Desert",
+            &player_two,
+            sorcerers::card::Zone::Realm(18),
+        ));
+        game.state.cards.push(from_name_and_zone(
+            "Rimland Nomads",
+            &player_two,
+            sorcerers::card::Zone::Realm(13),
+        ));
+        let resources = game
+            .state
+            .resources
+            .entry(player_one)
+            .or_insert(sorcerers::game::Resources::new());
+        resources.mana = 6;
+        resources.thresholds.air = 3;
         tokio::spawn(async move {
             game.start().await.unwrap();
         });

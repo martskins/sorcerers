@@ -1,8 +1,7 @@
 use crate::{
     card::{Card, CardBase, Edition, Plane, Rarity, Zone},
     effect::Effect,
-    game::{PlayerId, Thresholds, pick_option, pick_zone},
-    query::CardQuery,
+    game::{PlayerId, Thresholds, force_sync, pick_card, pick_option},
     state::State,
 };
 
@@ -51,35 +50,52 @@ impl Card for ChainLightning {
         let mut effects = vec![];
         let mut last_hit_zone = caster.get_zone().clone();
         let mut first_pick = true;
+        let mut local_state = state.snapshot();
         loop {
-            // TODO: This is horribly implemented. We may need a specific ChainLightning effect.
-            let zones = last_hit_zone.get_nearby();
-            let picked_zone = pick_zone(
+            let units_nearby = last_hit_zone
+                .get_nearby_units(state, None)
+                .iter()
+                .map(|c| c.get_id().clone())
+                .collect::<Vec<_>>();
+            let picked_card = pick_card(
                 self.get_owner_id(),
-                &zones,
-                state,
-                "Chain Lightning: Pick a nearby zone",
+                &units_nearby,
+                &local_state,
+                "Chain Lightning: Pick a unit to deal 2 damage to",
             )
             .await;
-            effects.push(Effect::DealDamageToTarget {
-                player_id: self.get_owner_id().clone(),
-                query: CardQuery::InZone {
-                    id: uuid::Uuid::new_v4(),
-                    zone: picked_zone.clone(),
-                    owner: None,
-                    prompt: Some("Chain Lightning: Pick a unit to deal 2 damage to".to_string()),
-                },
-                from: caster_id.clone(),
+            let effect = Effect::TakeDamage {
+                card_id: picked_card,
+                from: self.get_id().clone(),
                 damage: 2,
-            });
+            };
+
+            // apply the effect the the local_state to keep track of the updated zones
+            // and then apply all effects on that state so that any death triggers are handled and
+            // the local_state reflects the game state after applying damage.
+            effect.apply(&mut local_state).await.unwrap();
+            local_state.apply_effects_without_log().await.unwrap();
+
+            effects.push(effect);
 
             if !first_pick {
-                effects.push(Effect::RemoveResources {
-                    player_id: self.get_owner_id().clone(),
+                let effect = Effect::RemoveResources {
+                    player_id: self.get_controller_id().clone(),
                     mana: 2,
                     thresholds: Thresholds::new(),
                     health: 0,
-                });
+                };
+                effect.apply(&mut local_state).await.unwrap();
+                effects.push(effect);
+            }
+
+            force_sync(self.get_controller_id(), &local_state).await;
+
+            let can_afford_next_hit = local_state
+                .get_player_resources(self.get_controller_id())
+                .has_resources(2, "");
+            if !can_afford_next_hit {
+                break;
             }
 
             let options = vec!["Yes".to_string(), "No".to_string()];
@@ -94,7 +110,7 @@ impl Card for ChainLightning {
                 break;
             }
 
-            last_hit_zone = picked_zone;
+            last_hit_zone = state.get_card(&picked_card).unwrap().get_zone().clone();
             first_pick = false;
         }
 

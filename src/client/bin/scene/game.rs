@@ -389,6 +389,17 @@ impl Game {
                 self.data.resources = resources.clone();
                 Ok(None)
             }
+            ServerMessage::ForceSync {
+                cards,
+                current_player,
+                resources,
+                ..
+            } => {
+                self.data.cards = sort_cards(cards);
+                self.current_player = current_player.clone();
+                self.data.resources = resources.clone();
+                Ok(None)
+            }
             _ => Ok(None),
         }
     }
