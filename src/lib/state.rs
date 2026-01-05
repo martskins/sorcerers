@@ -85,6 +85,26 @@ impl State {
         }
     }
 
+    pub fn get_interceptors_for_move(&self, path: &[Zone], controller_id: &PlayerId) -> Vec<(uuid::Uuid, Zone)> {
+        self.cards
+            .iter()
+            .filter(|c| c.get_controller_id() == controller_id)
+            .filter(|c| c.is_unit())
+            .filter(|c| matches!(c.get_zone(), Zone::Realm(_)))
+            .flat_map(|c| {
+                let valid_moves = c.get_valid_move_zones(self);
+                let mut intercepts = vec![];
+                for zone in path {
+                    if valid_moves.contains(&zone) {
+                        intercepts.push((c.get_id().clone(), zone.clone()));
+                    }
+                }
+
+                intercepts
+            })
+            .collect()
+    }
+
     pub async fn apply_effects_without_log(&mut self) -> anyhow::Result<()> {
         while !self.effects.is_empty() {
             if self.waiting_for_input {
@@ -183,5 +203,119 @@ impl State {
             server_tx: self.server_tx.clone(),
             client_rx: self.client_rx.clone(),
         }
+    }
+
+    #[cfg(test)]
+    pub fn new_mock_state(zones_with_sites: impl AsRef<[Zone]>) -> State {
+        use crate::card::from_name_and_zone;
+
+        let player_one_id = uuid::Uuid::new_v4();
+        let player_two_id = uuid::Uuid::new_v4();
+        let cards: Vec<Box<dyn Card>> = zones_with_sites
+            .as_ref()
+            .into_iter()
+            .map(|z| from_name_and_zone("Arid Desert", &player_one_id, z.clone()))
+            .collect();
+
+        let player1 = PlayerWithDeck {
+            player: Player {
+                id: player_one_id.clone(),
+                name: "Player 1".to_string(),
+            },
+            deck: Deck::new(&player_one_id, vec![], vec![], uuid::Uuid::nil()),
+            cards,
+        };
+        let player2 = PlayerWithDeck {
+            player: Player {
+                id: player_two_id,
+                name: "Player 1".to_string(),
+            },
+            deck: Deck::new(&player_two_id, vec![], vec![], uuid::Uuid::nil()),
+            cards: vec![],
+        };
+
+        let players = vec![player1, player2];
+        let (server_tx, _) = async_channel::unbounded();
+        let (_, client_rx) = async_channel::unbounded();
+        State::new(uuid::Uuid::new_v4(), players, server_tx, client_rx)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::card::{HeadlessHaunt, KiteArcher, NimbusJinn, RimlandNomads};
+
+    #[test]
+    fn test_inteceptors() {
+        let mut state = State::new_mock_state(Zone::all_realm());
+        let player_id = state.players[0].id.clone();
+        let mut rimland_nomads = RimlandNomads::new(player_id.clone());
+        rimland_nomads.set_zone(Zone::Realm(8));
+        state.cards.push(Box::new(rimland_nomads.clone()));
+
+        let opponent_id = state.players[1].id.clone();
+        let mut kite_archer = KiteArcher::new(opponent_id.clone());
+        kite_archer.set_zone(Zone::Realm(12));
+        state.cards.push(Box::new(kite_archer.clone()));
+
+        let path = vec![Zone::Realm(8), Zone::Realm(13), Zone::Realm(18)];
+        let interceptors = state.get_interceptors_for_move(&path, &opponent_id);
+        assert_eq!(interceptors.len(), 1);
+        assert_eq!(&interceptors[0].0, kite_archer.get_id());
+    }
+
+    #[test]
+    fn test_no_inteceptors() {
+        let mut state = State::new_mock_state(Zone::all_realm());
+        let player_id = state.players[0].id.clone();
+        let mut rimland_nomads = RimlandNomads::new(player_id.clone());
+        rimland_nomads.set_zone(Zone::Realm(8));
+        state.cards.push(Box::new(rimland_nomads.clone()));
+
+        let opponent_id = state.players[1].id.clone();
+        let mut kite_archer = KiteArcher::new(opponent_id.clone());
+        kite_archer.set_zone(Zone::Realm(11));
+        state.cards.push(Box::new(kite_archer.clone()));
+
+        let path = vec![Zone::Realm(8), Zone::Realm(13), Zone::Realm(18)];
+        let interceptors = state.get_interceptors_for_move(&path, &opponent_id);
+        assert_eq!(interceptors.len(), 0);
+    }
+
+    #[test]
+    fn test_voidwalking_interceptor() {
+        let mut state = State::new_mock_state(vec![Zone::Realm(8), Zone::Realm(13), Zone::Realm(18)]);
+        let player_id = state.players[0].id.clone();
+        let mut rimland_nomads = RimlandNomads::new(player_id.clone());
+        rimland_nomads.set_zone(Zone::Realm(8));
+        state.cards.push(Box::new(rimland_nomads.clone()));
+
+        let opponent_id = state.players[1].id.clone();
+        let mut headless_haunt = HeadlessHaunt::new(opponent_id.clone());
+        headless_haunt.set_zone(Zone::Realm(12));
+        state.cards.push(Box::new(headless_haunt.clone()));
+
+        let path = vec![Zone::Realm(8), Zone::Realm(13), Zone::Realm(18)];
+        let interceptors = state.get_interceptors_for_move(&path, &opponent_id);
+        assert_eq!(interceptors.len(), 1);
+    }
+
+    #[test]
+    fn test_airborne_interceptor() {
+        let mut state = State::new_mock_state(Zone::all_realm());
+        let player_id = state.players[0].id.clone();
+        let mut rimland_nomads = RimlandNomads::new(player_id.clone());
+        rimland_nomads.set_zone(Zone::Realm(8));
+        state.cards.push(Box::new(rimland_nomads.clone()));
+
+        let opponent_id = state.players[1].id.clone();
+        let mut headless_haunt = NimbusJinn::new(opponent_id.clone());
+        headless_haunt.set_zone(Zone::Realm(12));
+        state.cards.push(Box::new(headless_haunt.clone()));
+
+        let path = vec![Zone::Realm(8), Zone::Realm(13), Zone::Realm(18)];
+        let interceptors = state.get_interceptors_for_move(&path, &opponent_id);
+        assert_eq!(interceptors.len(), 3);
     }
 }

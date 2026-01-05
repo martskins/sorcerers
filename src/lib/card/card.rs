@@ -1261,45 +1261,12 @@ pub fn from_name_and_zone(name: &str, player_id: &PlayerId, zone: Zone) -> Box<d
 mod tests {
     use crate::{
         card::{ApprenticeWizard, Card, Modifier, RimlandNomads, Zone},
-        deck::Deck,
-        state::{Player, PlayerWithDeck, State},
+        state::State,
     };
-
-    fn setup_state(zones_with_sites: impl AsRef<[Zone]>) -> State {
-        let player_one_id = uuid::Uuid::new_v4();
-        let player_two_id = uuid::Uuid::new_v4();
-        let cards: Vec<Box<dyn Card>> = zones_with_sites
-            .as_ref()
-            .into_iter()
-            .map(|z| super::from_name_and_zone("Arid Desert", &player_one_id, z.clone()))
-            .collect();
-
-        let player1 = PlayerWithDeck {
-            player: Player {
-                id: player_one_id.clone(),
-                name: "Player 1".to_string(),
-            },
-            deck: Deck::new(&player_one_id, vec![], vec![], uuid::Uuid::nil()),
-            cards,
-        };
-        let player2 = PlayerWithDeck {
-            player: Player {
-                id: player_two_id,
-                name: "Player 1".to_string(),
-            },
-            deck: Deck::new(&player_two_id, vec![], vec![], uuid::Uuid::nil()),
-            cards: vec![],
-        };
-
-        let players = vec![player1, player2];
-        let (server_tx, _) = async_channel::unbounded();
-        let (_, client_rx) = async_channel::unbounded();
-        State::new(uuid::Uuid::new_v4(), players, server_tx, client_rx)
-    }
 
     #[test]
     fn test_get_valid_move_paths_movement_plus_1() {
-        let mut state = setup_state(Zone::all_realm());
+        let mut state = State::new_mock_state(Zone::all_realm());
         let player_id = state.players[0].id.clone();
         let mut card = RimlandNomads::new(player_id.clone());
         card.set_zone(Zone::Realm(8));
@@ -1313,7 +1280,7 @@ mod tests {
 
     #[test]
     fn test_get_valid_move_paths_movement_plus_1_airborne() {
-        let mut state = setup_state(Zone::all_realm());
+        let mut state = State::new_mock_state(Zone::all_realm());
         let player_id = state.players[0].id.clone();
         let mut card = RimlandNomads::new(player_id.clone());
         card.set_zone(Zone::Realm(8));
@@ -1329,7 +1296,7 @@ mod tests {
 
     #[test]
     fn test_get_valid_move_paths_movement_plus_2() {
-        let mut state = setup_state(Zone::all_realm());
+        let mut state = State::new_mock_state(Zone::all_realm());
         let player_id = state.players[0].id.clone();
         let mut card = RimlandNomads::new(player_id.clone());
         card.set_zone(Zone::Realm(8));
@@ -1345,7 +1312,7 @@ mod tests {
 
     #[test]
     fn test_get_valid_move_zones_basic_movement() {
-        let mut state = setup_state(Zone::all_realm());
+        let mut state = State::new_mock_state(Zone::all_realm());
         let player_id = state.players[0].id.clone();
         let mut card = ApprenticeWizard::new(player_id.clone());
         card.set_zone(Zone::Realm(8));
@@ -1366,7 +1333,7 @@ mod tests {
 
     #[test]
     fn test_get_valid_move_zones_movement_plus_1() {
-        let mut state = setup_state(Zone::all_realm());
+        let mut state = State::new_mock_state(Zone::all_realm());
         let player_id = state.players[0].id.clone();
         let mut card = ApprenticeWizard::new(player_id.clone());
         card.set_zone(Zone::Realm(8));
@@ -1396,7 +1363,7 @@ mod tests {
     #[test]
     fn test_get_valid_move_zones_basic_movement_with_voids() {
         let zones_with_sites = vec![Zone::Realm(3), Zone::Realm(8), Zone::Realm(9)];
-        let mut state = setup_state(zones_with_sites);
+        let mut state = State::new_mock_state(zones_with_sites);
         let player_id = state.players[0].id.clone();
         let mut card = ApprenticeWizard::new(player_id.clone());
         card.set_zone(Zone::Realm(8));
@@ -1420,7 +1387,7 @@ mod tests {
             Zone::Realm(12),
             Zone::Realm(13),
         ];
-        let mut state = setup_state(zones_with_sites);
+        let mut state = State::new_mock_state(zones_with_sites);
         let player_id = state.players[0].id.clone();
         let mut card = ApprenticeWizard::new(player_id.clone());
         card.set_zone(Zone::Realm(8));
@@ -1445,7 +1412,7 @@ mod tests {
     #[test]
     fn test_get_valid_move_zones_basic_movement_with_voidwalk() {
         let zones_with_sites = vec![Zone::Realm(3), Zone::Realm(8), Zone::Realm(9)];
-        let mut state = setup_state(zones_with_sites);
+        let mut state = State::new_mock_state(zones_with_sites);
         let player_id = state.players[0].id.clone();
         let mut card = ApprenticeWizard::new(player_id.clone());
         card.set_zone(Zone::Realm(8));
@@ -1467,7 +1434,7 @@ mod tests {
 
     #[test]
     fn test_get_valid_move_zones_airborne() {
-        let mut state = setup_state(Zone::all_realm());
+        let mut state = State::new_mock_state(Zone::all_realm());
         let player_id = state.players[0].id.clone();
         let mut card = ApprenticeWizard::new(player_id.clone());
         card.set_zone(Zone::Realm(8));
@@ -1502,7 +1469,7 @@ mod tests {
             Zone::Realm(12),
             Zone::Realm(13),
         ];
-        let mut state = setup_state(zones_with_sites);
+        let mut state = State::new_mock_state(zones_with_sites);
         let player_id = state.players[0].id.clone();
         let mut card = ApprenticeWizard::new(player_id.clone());
         card.set_zone(Zone::Realm(8));
@@ -1538,7 +1505,7 @@ mod tests {
             Zone::Realm(13),
             Zone::Realm(14),
         ];
-        let mut state = setup_state(zones_with_sites);
+        let mut state = State::new_mock_state(zones_with_sites);
         let player_id = state.players[0].id.clone();
         let mut card = ApprenticeWizard::new(player_id.clone());
         card.set_zone(Zone::Realm(8));

@@ -701,22 +701,7 @@ impl Action for UnitAction {
                 };
 
                 let opponent = state.players.iter().find(|p| &p.id != player_id).unwrap();
-                let interceptors: Vec<(uuid::Uuid, Zone)> = state
-                    .cards
-                    .iter()
-                    .filter(|c| c.get_controller_id() == &opponent.id)
-                    .filter(|c| c.is_unit())
-                    .filter(|c| matches!(c.get_zone(), Zone::Realm(_)))
-                    .filter_map(|c| {
-                        for zone in &path {
-                            if c.get_valid_move_zones(state).contains(&zone) {
-                                return Some((c.get_id().clone(), zone.clone()));
-                            }
-                        }
-
-                        None
-                    })
-                    .collect();
+                let interceptors = state.get_interceptors_for_move(&path, &opponent.id);
                 let mut interceptor: Option<(uuid::Uuid, Zone)> = None;
                 if !interceptors.is_empty() {
                     let mut options = interceptors
