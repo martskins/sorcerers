@@ -1,9 +1,8 @@
 use crate::{
-    clicks_enabled,
     config::{card_height, card_width},
+    input::Mouse,
     render::{self, CardRect},
     scene::game::Game,
-    set_clicks_enabled,
     texture_cache::TextureCache,
 };
 use macroquad::{
@@ -100,12 +99,11 @@ impl SelectionOverlay {
 
     pub fn update(&mut self) {
         if is_mouse_button_released(MouseButton::Left) {
-            set_clicks_enabled(true);
+            Mouse::set_enabled(true);
         }
     }
 
     pub fn render(&mut self) {
-        // Draw semi-transparent overlay
         draw_rectangle(
             0.0,
             0.0,
@@ -125,7 +123,6 @@ impl SelectionOverlay {
 
         ui::root_ui().push_skin(&skin);
 
-        // Find the RenderableCards for the given card IDs
         let card_count = self.rects.len();
         let card_width = card_width() * 2.0;
         let card_height = card_height() * 2.0;
@@ -177,7 +174,7 @@ impl SelectionOverlay {
         let mouse_vec = Vec2::new(mouse_position.0, mouse_position.1);
 
         for rect in &mut self.rects {
-            if !clicks_enabled() {
+            if !Mouse::is_enabled() {
                 continue;
             }
 

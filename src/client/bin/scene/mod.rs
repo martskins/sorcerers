@@ -36,7 +36,7 @@ impl Scene {
         match self {
             Scene::Menu(menu) => menu.process_input().await,
             Scene::Game(game) => {
-                game.process_input();
+                game.process_input().await;
                 None
             }
         }

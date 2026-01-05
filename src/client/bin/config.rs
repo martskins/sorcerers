@@ -6,7 +6,6 @@ use macroquad::{
 };
 
 pub static SCREEN_RECT: OnceLock<RwLock<Rect>> = OnceLock::new();
-pub const CARD_IN_PLAY_SCALE: f32 = 0.6;
 pub const CARD_ASPECT_RATIO: f32 = 384.0 / 537.0;
 
 pub fn card_width() -> f32 {

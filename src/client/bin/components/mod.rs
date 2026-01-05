@@ -33,6 +33,6 @@ pub trait Component: std::fmt::Debug {
     async fn render(&mut self, data: &mut GameData) -> anyhow::Result<()>;
     fn toggle_visibility(&mut self);
     fn process_input(&mut self, in_turn: bool, data: &mut GameData) -> anyhow::Result<Option<ComponentCommand>>;
-    fn process_command(&mut self, command: &ComponentCommand);
+    async fn process_command(&mut self, command: &ComponentCommand);
     fn get_component_type(&self) -> ComponentType;
 }

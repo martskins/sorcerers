@@ -205,7 +205,7 @@ impl Component for PlayerStatusComponent {
         Ok(None)
     }
 
-    fn process_command(&mut self, command: &ComponentCommand) {
+    async fn process_command(&mut self, command: &ComponentCommand) {
         match command {
             ComponentCommand::SetRect {
                 component_type: ComponentType::PlayerStatus,

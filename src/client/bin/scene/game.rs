@@ -4,13 +4,13 @@ use crate::{
         player_status::PlayerStatusComponent, realm::RealmComponent,
     },
     config::*,
+    input::Mouse,
     scene::{Scene, selection_overlay::SelectionOverlay},
-    set_clicks_enabled,
     texture_cache::TextureCache,
 };
 use macroquad::{
     color::{Color, WHITE},
-    input::{MouseButton, is_mouse_button_released},
+    input::{MouseButton, is_mouse_button_pressed, is_mouse_button_released},
     math::{Rect, RectOffset, Vec2},
     shapes::draw_rectangle,
     text::draw_text,
@@ -201,16 +201,21 @@ impl Game {
         for component in &mut self.components {
             component.update(&mut self.data).await?;
 
-            component.process_command(&ComponentCommand::SetRect {
-                component_type: component.get_component_type(),
-                rect: component_rect(component.get_component_type()),
-            });
+            component
+                .process_command(&ComponentCommand::SetRect {
+                    component_type: component.get_component_type(),
+                    rect: component_rect(component.get_component_type()),
+                })
+                .await;
         }
 
-        // Update click_enabled at the end of the update cycle so that we don't process the release
-        // event in the same frame as the one that re-enables clicking.
+        if is_mouse_button_pressed(MouseButton::Left) {
+            Mouse::left_button_ressed();
+        }
+
         if is_mouse_button_released(MouseButton::Left) {
-            set_clicks_enabled(true);
+            Mouse::left_button_released();
+            Mouse::set_enabled(true);
         }
 
         if let Status::ViewingCards {
@@ -388,7 +393,7 @@ impl Game {
         }
     }
 
-    pub fn process_input(&mut self) {
+    pub async fn process_input(&mut self) {
         if let Status::Waiting { .. } = self.data.status {
             return;
         }
@@ -410,7 +415,7 @@ impl Game {
 
         for action in component_actions {
             for component in &mut self.components {
-                component.process_command(&action);
+                component.process_command(&action).await;
             }
         }
     }
@@ -429,7 +434,7 @@ impl Game {
         let is_idle = matches!(self.data.status, Status::Idle);
         if is_in_turn && is_idle {
             if ui::root_ui().button(Vec2::new(screen_rect.w - 100.0, screen_rect.h - 40.0), "Pass Turn") {
-                set_clicks_enabled(false);
+                Mouse::set_enabled(false);
                 self.client.send(ClientMessage::EndTurn {
                     player_id: self.data.player_id.clone(),
                     game_id: self.game_id.clone(),
@@ -493,7 +498,7 @@ impl Game {
                                         action_idx: idx,
                                     })
                                     .unwrap();
-                                set_clicks_enabled(false);
+                                Mouse::set_enabled(false);
                                 self.data.status = Status::Idle;
                             }
                         }

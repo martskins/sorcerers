@@ -12,7 +12,7 @@ use sorcerers::{
 };
 
 use crate::{
-    config::{CARD_IN_PLAY_SCALE, realm_rect},
+    config::realm_rect,
     scene::game::{GameData, Status},
 };
 
@@ -75,7 +75,7 @@ pub fn draw_card(card_rect: &CardRect, is_ally: bool) {
         rect.y,
         WHITE,
         DrawTextureParams {
-            dest_size: Some(Vec2::new(rect.w, rect.h) * CARD_IN_PLAY_SCALE),
+            dest_size: Some(Vec2::new(rect.w, rect.h)),
             rotation: card_rect.rotation(),
             ..Default::default()
         },
@@ -87,8 +87,8 @@ pub fn draw_card(card_rect: &CardRect, is_ally: bool) {
     }
 
     // Draw rectangle border rotated around the center
-    let w = rect.w * CARD_IN_PLAY_SCALE;
-    let h = rect.h * CARD_IN_PLAY_SCALE;
+    let w = rect.w;
+    let h = rect.h;
     let cx = rect.x + w / 2.0;
     let cy = rect.y + h / 2.0;
     let corners = [
@@ -120,7 +120,7 @@ pub fn draw_card(card_rect: &CardRect, is_ally: bool) {
 
     if card_rect.modifiers.contains(&Modifier::SummoningSickness) {
         let icon_size = 22.0;
-        let scale = CARD_IN_PLAY_SCALE;
+        let scale = 1.0;
         let x = card_rect.rect.x + card_rect.rect.w * scale - icon_size - 4.0;
         let y = card_rect.rect.y + 4.0;
         draw_vortex_icon(x, y, icon_size, BLUE);

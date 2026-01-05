@@ -1,14 +1,14 @@
 use crate::{
-    clicks_enabled,
     components::{Component, ComponentCommand, ComponentType},
     config::CARD_ASPECT_RATIO,
+    input::Mouse,
     render::{self, CardRect},
     scene::game::{GameData, Status},
     texture_cache::TextureCache,
 };
 use macroquad::{
     color::{Color, DARKGREEN, WHITE},
-    input::{MouseButton, is_mouse_button_released},
+    input::{MouseButton, is_mouse_button_released, mouse_position},
     math::{Rect, Vec2},
     shapes::{DrawRectangleParams, draw_rectangle, draw_rectangle_ex, draw_rectangle_lines},
     texture::{DrawTextureParams, draw_texture_ex},
@@ -22,10 +22,11 @@ use sorcerers::{
 pub struct PlayerHandComponent {
     game_id: uuid::Uuid,
     player_id: uuid::Uuid,
-    rects: Vec<CardRect>,
+    cards: Vec<CardRect>,
     client: networking::client::Client,
     visible: bool,
     rect: Rect,
+    last_mouse_pos: Vec2,
 }
 
 impl PlayerHandComponent {
@@ -33,10 +34,11 @@ impl PlayerHandComponent {
         Self {
             game_id: game_id.clone(),
             player_id: player_id.clone(),
-            rects: Vec::new(),
+            cards: Vec::new(),
             client,
             visible: true,
             rect,
+            last_mouse_pos: mouse_position().into(),
         }
     }
 
@@ -71,28 +73,21 @@ impl PlayerHandComponent {
             .filter(|c| c.is_site())
             .count();
 
-        let mut rects: Vec<CardRect> = Vec::new();
-
-        // Layout parameters
         let spell_dim = self.spell_dimensions();
         let site_dim = self.site_dimensions();
         let card_spacing = 20.0;
 
-        // Calculate total width for spells (horizontal row)
         let spells_width = if spell_count > 0 {
             spell_count as f32 * spell_dim.x + (spell_count as f32 - 1.0) * card_spacing
         } else {
             0.0
         };
 
-        // Combined width for centering: spells row + spacing + site card width (if any sites)
         let total_width = spells_width + if site_count > 0 { card_spacing + site_dim.x } else { 0.0 };
-
-        // Center horizontally in hand area
         let start_x = self.rect.x + (self.rect.w - total_width) / 2.0;
         let spells_y = self.rect.y + self.rect.h / 2.0 - spell_dim.y / 2.0;
 
-        // Spells row
+        let mut rects: Vec<CardRect> = Vec::new();
         for (idx, card) in cards
             .iter()
             .filter(|c| c.zone == Zone::Hand)
@@ -100,6 +95,11 @@ impl PlayerHandComponent {
             .filter(|c| c.is_spell())
             .enumerate()
         {
+            if let Some(card) = self.cards.iter().find(|c| c.id == card.id) {
+                rects.push(card.clone());
+                continue;
+            }
+
             let x = start_x + idx as f32 * (spell_dim.x + card_spacing);
             let rect = Rect::new(x, spells_y, spell_dim.x, spell_dim.y);
 
@@ -108,7 +108,7 @@ impl PlayerHandComponent {
                 owner_id: card.owner_id,
                 rect,
                 is_hovered: self
-                    .rects
+                    .cards
                     .iter()
                     .find(|r| r.id == card.id)
                     .map_or(false, |r| r.is_hovered),
@@ -120,7 +120,6 @@ impl PlayerHandComponent {
             });
         }
 
-        // Sites column, stacked vertically to the right of spells
         if site_count > 0 {
             let sites_x = start_x + spells_width + card_spacing;
             let sites_start_y = self.rect.y + self.rect.h / 2.0 - spell_dim.y / 2.0;
@@ -131,6 +130,11 @@ impl PlayerHandComponent {
                 .filter(|c| c.is_site())
                 .enumerate()
             {
+                if let Some(card) = self.cards.iter().find(|c| c.id == card.id) {
+                    rects.push(card.clone());
+                    continue;
+                }
+
                 let y = sites_start_y + idx as f32 * 20.0;
                 let rect = Rect::new(sites_x, y, site_dim.x, site_dim.y);
 
@@ -139,7 +143,7 @@ impl PlayerHandComponent {
                     owner_id: card.owner_id,
                     rect,
                     is_hovered: self
-                        .rects
+                        .cards
                         .iter()
                         .find(|r| r.id == card.id)
                         .map_or(false, |r| r.is_hovered),
@@ -152,12 +156,12 @@ impl PlayerHandComponent {
             }
         }
 
-        self.rects = rects;
+        self.cards = rects;
         Ok(())
     }
 
     async fn render_card_preview(&self, data: &mut GameData) -> anyhow::Result<()> {
-        if let Some(card) = self.rects.iter().find(|card| card.is_hovered) {
+        if let Some(card) = self.cards.iter().find(|card| card.is_hovered) {
             render::render_card_preview(card, data).await?;
         }
 
@@ -168,14 +172,40 @@ impl PlayerHandComponent {
 #[async_trait::async_trait]
 impl Component for PlayerHandComponent {
     async fn update(&mut self, data: &mut GameData) -> anyhow::Result<()> {
-        self.compute_rects(&data.cards).await
+        let new_mouse_pos: Vec2 = mouse_position().into();
+        let mouse_delta = new_mouse_pos - self.last_mouse_pos;
+
+        self.compute_rects(&data.cards).await?;
+
+        let mut dragging_card: Option<uuid::Uuid> = None;
+        for card in &mut self.cards {
+            if card.is_hovered && Mouse::dragging() {
+                dragging_card = Some(card.id.clone());
+            }
+        }
+
+        if let Some(card_id) = dragging_card {
+            if let Some(card) = self.cards.iter_mut().find(|c| c.id == card_id) {
+                if card.zone == Zone::Hand {
+                    let min_x = self.rect.x;
+                    let max_x = self.rect.x + self.rect.w - card.rect.w;
+                    let min_y = self.rect.y;
+                    let max_y = self.rect.y + self.rect.h - card.rect.h;
+                    card.rect.x = (card.rect.x + mouse_delta.x).clamp(min_x, max_x);
+                    card.rect.y = (card.rect.y + mouse_delta.y).clamp(min_y, max_y);
+                }
+            }
+        }
+
+        self.last_mouse_pos = new_mouse_pos;
+        Ok(())
     }
 
     async fn render(&mut self, data: &mut GameData) -> anyhow::Result<()> {
         let bg_color = Color::new(0.15, 0.18, 0.22, 0.85);
         draw_rectangle(self.rect.x, self.rect.y, self.rect.w, self.rect.h, bg_color);
 
-        for card_rect in &self.rects {
+        for card_rect in &self.cards {
             if card_rect.zone != Zone::Hand {
                 continue;
             }
@@ -229,7 +259,7 @@ impl Component for PlayerHandComponent {
 
     fn process_input(&mut self, in_turn: bool, data: &mut GameData) -> anyhow::Result<Option<ComponentCommand>> {
         let mouse_position = macroquad::input::mouse_position();
-        if !clicks_enabled() {
+        if !Mouse::is_enabled() {
             return Ok(None);
         }
 
@@ -242,24 +272,24 @@ impl Component for PlayerHandComponent {
         }
 
         let mut hovered_card_index = None;
-        for (idx, card_display) in self.rects.iter().enumerate() {
+        for (idx, card_display) in self.cards.iter().enumerate() {
             if card_display.rect.contains(mouse_position.into()) {
                 hovered_card_index = Some(idx);
             };
         }
 
-        for card in &mut self.rects {
+        for card in &mut self.cards {
             card.is_hovered = false;
         }
 
         if let Some(idx) = hovered_card_index {
-            self.rects.get_mut(idx).unwrap().is_hovered = true;
+            self.cards.get_mut(idx).unwrap().is_hovered = true;
         }
 
         match &data.status {
             Status::Idle => {
                 for card_rect in &mut self
-                    .rects
+                    .cards
                     .iter_mut()
                     .filter(|c| c.zone.is_in_realm() || c.zone == Zone::Hand)
                 {
@@ -277,7 +307,7 @@ impl Component for PlayerHandComponent {
             Status::SelectingCard {
                 cards, preview: true, ..
             } => {
-                let valid_cards: Vec<&CardRect> = self.rects.iter().filter(|c| cards.contains(&c.id)).collect();
+                let valid_cards: Vec<&CardRect> = self.cards.iter().filter(|c| cards.contains(&c.id)).collect();
                 let mut selected_id = None;
                 for card in valid_cards {
                     if card.rect.contains(mouse_position.into()) && is_mouse_button_released(MouseButton::Left) {
@@ -301,7 +331,7 @@ impl Component for PlayerHandComponent {
             Status::SelectingCard {
                 cards, preview: false, ..
             } => {
-                let valid_cards: Vec<&CardRect> = self.rects.iter().filter(|c| cards.contains(&c.id)).collect();
+                let valid_cards: Vec<&CardRect> = self.cards.iter().filter(|c| cards.contains(&c.id)).collect();
                 let mut selected_id = None;
                 for card in valid_cards {
                     if card.rect.contains(mouse_position.into()) && is_mouse_button_released(MouseButton::Left) {
@@ -331,7 +361,7 @@ impl Component for PlayerHandComponent {
         self.visible = !self.visible;
     }
 
-    fn process_command(&mut self, command: &ComponentCommand) {
+    async fn process_command(&mut self, command: &ComponentCommand) {
         match command {
             ComponentCommand::SetRect {
                 component_type: ComponentType::PlayerHand,

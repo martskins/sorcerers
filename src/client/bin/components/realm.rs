@@ -1,18 +1,17 @@
 use crate::{
-    clicks_enabled,
     components::{Component, ComponentCommand, ComponentType},
-    config::{CARD_ASPECT_RATIO, CARD_IN_PLAY_SCALE},
+    config::CARD_ASPECT_RATIO,
+    input::Mouse,
     render::{self, CardRect, CellRect, IntersectionRect},
     scene::{
         game::{GameData, Status},
         selection_overlay::SelectionOverlayBehaviour,
     },
-    set_clicks_enabled,
     texture_cache::TextureCache,
 };
 use macroquad::{
     color::{Color, GRAY, GREEN, WHITE},
-    input::{MouseButton, is_mouse_button_released},
+    input::{MouseButton, is_mouse_button_released, mouse_position},
     math::{Rect, Vec2},
     shapes::{DrawRectangleParams, draw_rectangle, draw_rectangle_ex, draw_rectangle_lines},
     text::draw_text,
@@ -57,8 +56,8 @@ fn cell_rect(realm_rect: &Rect, id: u8, mirror: bool) -> Rect {
 
 fn intersection_rect(realm_rect: &Rect, locations: &[u8], mirror: bool) -> Option<Rect> {
     let base_rect = cell_rect(realm_rect, 1, mirror);
-    let width = spell_dimensions(&base_rect).x * CARD_IN_PLAY_SCALE;
-    let height = spell_dimensions(&base_rect).y * CARD_IN_PLAY_SCALE;
+    let width = spell_dimensions(&base_rect).x;
+    let height = spell_dimensions(&base_rect).y;
     let cell_width = realm_rect.w / 5.0;
     let start_rect = if mirror {
         cell_rect(realm_rect, locations[locations.len() - 1], mirror)
@@ -74,7 +73,7 @@ fn intersection_rect(realm_rect: &Rect, locations: &[u8], mirror: bool) -> Optio
 }
 
 fn card_width(cell_rect: &Rect) -> f32 {
-    cell_rect.w / 2.5
+    cell_rect.w / 3.5
 }
 
 fn card_height(cell_rect: &Rect) -> f32 {
@@ -100,6 +99,7 @@ pub struct RealmComponent {
     client: networking::client::Client,
     visible: bool,
     rect: Rect,
+    last_mouse_pos: Vec2,
 }
 
 impl RealmComponent {
@@ -137,6 +137,7 @@ impl RealmComponent {
             client,
             visible: true,
             rect,
+            last_mouse_pos: mouse_position().into(),
         }
     }
 
@@ -146,6 +147,17 @@ impl RealmComponent {
         let mut new_cards = Vec::new();
         let mut rng = rand::rngs::SmallRng::seed_from_u64(1);
         for card in cards {
+            let mut existing_card = self.cards.iter_mut().find(|c| c.id == card.id);
+            if let Some(existing_card) = existing_card.as_mut() {
+                if card.zone == existing_card.zone {
+                    existing_card.tapped = card.tapped;
+                    existing_card.modifiers = card.modifiers.clone();
+                    existing_card.damage_taken = card.damage_taken;
+                    new_cards.push(existing_card.clone());
+                    continue;
+                }
+            }
+
             match &card.zone {
                 Zone::Realm(square) => {
                     let cell_rect = self.cell_rects.iter().find(|c| &c.id == square).unwrap().rect;
@@ -174,11 +186,7 @@ impl RealmComponent {
                         tapped: card.tapped,
                         image: TextureCache::get_card_texture(&card).await,
                         rect,
-                        is_hovered: self
-                            .cards
-                            .iter()
-                            .find(|c| c.id == card.id)
-                            .map_or(false, |c| c.is_hovered),
+                        is_hovered: existing_card.map_or(false, |c| c.is_hovered),
                         modifiers: card.modifiers.clone(),
                         damage_taken: card.damage_taken,
                     });
@@ -364,7 +372,7 @@ impl RealmComponent {
                 .map(|c| c.id.clone())
                 .collect::<Vec<uuid::Uuid>>();
             if button {
-                set_clicks_enabled(false);
+                Mouse::set_enabled(false);
                 let prompt = format!("Viewing cards on location {}", cell.id);
                 let new_status = Status::ViewingCards {
                     cards: to_preview,
@@ -419,7 +427,7 @@ impl RealmComponent {
 
         match &status {
             Status::SelectingZone { zones } => {
-                if !clicks_enabled() {
+                if !Mouse::is_enabled() {
                     return;
                 }
 
@@ -461,7 +469,6 @@ impl RealmComponent {
                     if cell.rect.contains(mouse_position.into()) {
                         let locs = self.intersection_rects[idx].locations.clone();
                         if is_mouse_button_released(MouseButton::Left) {
-                            println!("Picking intersection at locations {:?}", cell.locations);
                             self.client
                                 .send(ClientMessage::PickZone {
                                     player_id: self.player_id.clone(),
@@ -484,7 +491,7 @@ impl RealmComponent {
             return;
         }
 
-        if !clicks_enabled() {
+        if !Mouse::is_enabled() {
             return;
         }
 
@@ -514,7 +521,7 @@ impl RealmComponent {
                     .iter_mut()
                     .filter(|c| c.zone.is_in_realm() || c.zone == Zone::Hand)
                 {
-                    if rect.is_hovered && is_mouse_button_released(MouseButton::Left) {
+                    if rect.is_hovered && Mouse::is_clicked() {
                         self.client
                             .send(ClientMessage::ClickCard {
                                 card_id: rect.id.clone(),
@@ -531,7 +538,7 @@ impl RealmComponent {
                 let valid_cards: Vec<&CardRect> = self.cards.iter().filter(|c| cards.contains(&c.id)).collect();
                 let mut selected_id = None;
                 for card in valid_cards {
-                    if card.rect.contains(mouse_position.into()) && is_mouse_button_released(MouseButton::Left) {
+                    if card.rect.contains(mouse_position.into()) && Mouse::is_clicked() {
                         selected_id = Some(card.id.clone());
                     }
                 }
@@ -555,7 +562,7 @@ impl RealmComponent {
                 let valid_cards: Vec<&CardRect> = self.cards.iter().filter(|c| cards.contains(&c.id)).collect();
                 let mut selected_id = None;
                 for card in valid_cards {
-                    if card.rect.contains(mouse_position.into()) && is_mouse_button_released(MouseButton::Left) {
+                    if card.rect.contains(mouse_position.into()) && Mouse::is_clicked() {
                         selected_id = Some(card.id.clone());
                     }
                 }
@@ -644,12 +651,38 @@ impl RealmComponent {
 #[async_trait::async_trait]
 impl Component for RealmComponent {
     async fn update(&mut self, data: &mut GameData) -> anyhow::Result<()> {
+        let new_mouse_pos: Vec2 = mouse_position().into();
+        let mouse_delta = new_mouse_pos - self.last_mouse_pos;
+
         self.compute_rects(&data.cards).await?;
 
         for cell in &mut self.cell_rects {
             cell.rect = cell_rect(&self.rect, cell.id, self.mirrored);
         }
 
+        let mut dragging_card: Option<uuid::Uuid> = None;
+        for card in &mut self.cards {
+            if card.is_hovered && Mouse::dragging() {
+                dragging_card = Some(card.id.clone());
+            }
+        }
+
+        if let Some(card_id) = dragging_card {
+            if let Some(card) = self.cards.iter_mut().find(|c| c.id == card_id) {
+                if let Zone::Realm(cell_id) = &card.zone {
+                    if let Some(cell) = self.cell_rects.iter().find(|c| &c.id == cell_id) {
+                        let min_x = cell.rect.x;
+                        let max_x = cell.rect.x + cell.rect.w - card.rect.w;
+                        let min_y = cell.rect.y;
+                        let max_y = cell.rect.y + cell.rect.h - card.rect.h;
+                        card.rect.x = (card.rect.x + mouse_delta.x).clamp(min_x, max_x);
+                        card.rect.y = (card.rect.y + mouse_delta.y).clamp(min_y, max_y);
+                    }
+                }
+            }
+        }
+
+        self.last_mouse_pos = mouse_position().into();
         Ok(())
     }
 
@@ -657,7 +690,7 @@ impl Component for RealmComponent {
         self.render_background();
         self.render_grid(data).await;
 
-        for card in &self.cards {
+        for card in &mut self.cards {
             if !card.zone.is_in_realm() {
                 continue;
             }
@@ -668,7 +701,7 @@ impl Component for RealmComponent {
                 cards, preview: false, ..
             } = &data.status
             {
-                if !clicks_enabled() {
+                if !Mouse::is_enabled() {
                     return Ok(());
                 }
 
@@ -676,8 +709,8 @@ impl Component for RealmComponent {
                     draw_rectangle_ex(
                         card.rect.x,
                         card.rect.y,
-                        card.rect.w * CARD_IN_PLAY_SCALE,
-                        card.rect.h * CARD_IN_PLAY_SCALE,
+                        card.rect.w,
+                        card.rect.h,
                         DrawRectangleParams {
                             color: Color::new(100.0, 100.0, 100.0, 0.6),
                             rotation: card.rotation(),
@@ -707,12 +740,14 @@ impl Component for RealmComponent {
         self.visible = !self.visible;
     }
 
-    fn process_command(&mut self, command: &ComponentCommand) {
+    async fn process_command(&mut self, command: &ComponentCommand) {
         match command {
             ComponentCommand::SetRect {
                 component_type: ComponentType::Realm,
                 rect,
-            } => self.rect = rect.clone(),
+            } => {
+                self.rect = rect.clone();
+            }
             _ => {}
         }
     }
