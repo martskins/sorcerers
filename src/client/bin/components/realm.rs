@@ -679,12 +679,44 @@ impl Component for RealmComponent {
             render::draw_card(card, card.owner_id == self.player_id);
 
             if let Status::SelectingCard {
-                cards, preview: false, ..
+                cards,
+                prompt,
+                preview: false,
+                ..
             } = &data.status
             {
                 if !Mouse::enabled() {
                     return Ok(());
                 }
+
+                let text_size = 32.0;
+                let text_metrics = macroquad::text::measure_text(prompt, None, text_size as u16, 1.0);
+                let text_width = text_metrics.width;
+                let text_height = text_metrics.height;
+                let rect_w = self.rect.w;
+                let rect_h = text_height + 20.0;
+
+                let steps = 16;
+                for i in 0..steps {
+                    let t = i as f32 / steps as f32;
+                    let alpha = 0.7 * (1.0 - t); // fade out as it goes down
+                    let y = t * rect_h;
+                    let h = rect_h / steps as f32;
+                    draw_rectangle_ex(
+                        self.rect.x,
+                        y,
+                        rect_w,
+                        h,
+                        DrawRectangleParams {
+                            color: Color::new(0.15, 0.18, 0.22, alpha as f32),
+                            ..Default::default()
+                        },
+                    );
+                }
+
+                let text_x = self.rect.x + self.rect.w / 2.0 - text_width / 2.0;
+                let text_y = text_height + 5.0;
+                draw_text(prompt, text_x, text_y, text_size, WHITE);
 
                 if !cards.contains(&card.id) {
                     draw_rectangle_ex(

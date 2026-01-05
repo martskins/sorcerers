@@ -5,6 +5,7 @@ use crate::{
     },
     config::*,
     input::Mouse,
+    render,
     scene::{Scene, selection_overlay::SelectionOverlay},
     texture_cache::TextureCache,
 };
@@ -436,10 +437,10 @@ impl Game {
         let turn_label = if self.is_players_turn(&self.data.player_id) {
             "Your Turn"
         } else {
-            "Opponent's Turn"
+            "Their Turn"
         };
 
-        draw_text(turn_label, screen_rect.w / 2.0 - 50.0, 30.0, FONT_SIZE, WHITE);
+        draw_text(turn_label, 10.0, 120.0, FONT_SIZE, WHITE);
 
         let is_in_turn = self.current_player == self.data.player_id;
         let is_idle = matches!(self.data.status, Status::Idle);
@@ -458,7 +459,6 @@ impl Game {
                 ref prompt,
                 ref actions,
             } => {
-                // Draw semi-transparent overlay behind the action selection window
                 draw_rectangle(
                     0.0,
                     0.0,
@@ -478,9 +478,16 @@ impl Game {
 
                 ui::root_ui().push_skin(&skin);
 
-                let prompt = prompt.clone();
                 let button_height = 30.0;
-                let window_size = Vec2::new(400.0, (button_height + 10.0) * actions.len() as f32 + 20.0 + 50.0);
+                let window_width = 400.0;
+                let font_size = 16;
+                let prompt = render::wrap_text(prompt, window_width - 10.0, font_size);
+                let label_padding = 10.0;
+                let label_height = prompt.lines().count() as f32 * (font_size as f32 + 4.0) + label_padding;
+                let window_size = Vec2::new(
+                    window_width,
+                    (button_height + 10.0) * actions.len() as f32 + 20.0 + 50.0,
+                );
                 let actions = actions.clone();
                 ui::root_ui().window(
                     hash!(),
@@ -490,13 +497,11 @@ impl Game {
                     ),
                     window_size,
                     |ui| {
-                        ui::widgets::Label::new(&prompt)
-                            .position(Vec2::new(5.0, 5.0))
-                            .multiline(10.0)
-                            .ui(ui);
+                        render::multiline_label(&prompt, Vec2::new(5.0, 5.0), font_size, ui);
+
                         for (idx, action) in actions.iter().enumerate() {
                             let button_pos =
-                                Vec2::new(window_size.x * 0.1, (button_height + 10.0) * (idx as f32 + 1.0));
+                                Vec2::new(window_size.x * 0.1, (button_height + 10.0) * idx as f32 + label_height);
                             let clicked = ui::widgets::Button::new(action.as_str())
                                 .position(button_pos)
                                 .size(Vec2::new(window_size.x * 0.8, button_height))
@@ -522,31 +527,5 @@ impl Game {
         }
 
         Ok(())
-    }
-
-    pub fn wrap_text<S: AsRef<str>>(text: S, max_width: f32, font_size: u16) -> String {
-        use macroquad::text::measure_text;
-        let mut lines = Vec::new();
-        for paragraph in text.as_ref().split('\n') {
-            let mut current = String::new();
-            for word in paragraph.split_whitespace() {
-                let test = if current.is_empty() {
-                    word.to_string()
-                } else {
-                    format!("{} {}", current, word)
-                };
-                let dims = measure_text(&test, None, font_size, 1.0);
-                if dims.width > max_width && !current.is_empty() {
-                    lines.push(current.clone());
-                    current = word.to_string();
-                } else {
-                    current = test;
-                }
-            }
-            if !current.is_empty() {
-                lines.push(current);
-            }
-        }
-        lines.join("\n")
     }
 }

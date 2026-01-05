@@ -2,7 +2,6 @@ use crate::{
     config::{card_height, card_width},
     input::Mouse,
     render::{self, CardRect},
-    scene::game::Game,
     texture_cache::TextureCache,
 };
 use macroquad::{
@@ -141,7 +140,7 @@ impl SelectionOverlay {
         let cards_start_x = (screen_width() - cards_area_width) / 2.0;
         let cards_y = (screen_height() - card_height) / 2.0 + 30.0;
 
-        let wrapped_text = Game::wrap_text(&self.prompt, screen_width() - 20.0, FONT_SIZE as u16);
+        let wrapped_text = render::wrap_text(&self.prompt, screen_width() - 20.0, FONT_SIZE as u16);
         macroquad::text::draw_multiline_text(
             &wrapped_text,
             cards_start_x - 50.0,

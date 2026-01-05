@@ -210,3 +210,38 @@ pub fn menu_skin() -> ui::Skin {
         ..ui::root_ui().default_skin()
     }
 }
+
+pub fn wrap_text<S: AsRef<str>>(text: S, max_width: f32, font_size: u16) -> String {
+    use macroquad::text::measure_text;
+
+    let mut lines = Vec::new();
+    for paragraph in text.as_ref().split('\n') {
+        let mut current = String::new();
+        for word in paragraph.split_whitespace() {
+            let test = if current.is_empty() {
+                word.to_string()
+            } else {
+                format!("{} {}", current, word)
+            };
+            let dims = measure_text(&test, None, font_size, 1.0);
+            if dims.width > max_width && !current.is_empty() {
+                lines.push(current.clone());
+                current = word.to_string();
+            } else {
+                current = test;
+            }
+        }
+        if !current.is_empty() {
+            lines.push(current);
+        }
+    }
+
+    lines.join("\n")
+}
+
+pub fn multiline_label(text: &str, pos: Vec2, font_size: u16, ui: &mut ui::Ui) {
+    for (idx, line) in text.lines().enumerate() {
+        let line_pos = pos + Vec2::new(0.0, idx as f32 * (font_size as f32 + 4.0));
+        ui::widgets::Label::new(line).position(line_pos).ui(ui);
+    }
+}

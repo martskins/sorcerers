@@ -1,6 +1,7 @@
 use crate::{
     components::{Component, ComponentCommand, ComponentType},
-    scene::game::{Game, GameData},
+    render,
+    scene::game::GameData,
 };
 use macroquad::{
     math::{Rect, Vec2},
@@ -69,7 +70,7 @@ impl Component for EventLogComponent {
         .close_button(true)
         .ui(&mut ui::root_ui(), |ui| {
             for event in &data.events {
-                let lines: Vec<String> = Game::wrap_text(event.formatted(), self.rect.w - 10.0, FONT_SIZE)
+                let lines: Vec<String> = render::wrap_text(event.formatted(), self.rect.w - 10.0, FONT_SIZE)
                     .lines()
                     .map(|line| line.to_string())
                     .collect();
