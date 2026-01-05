@@ -377,38 +377,6 @@ impl RealmComponent {
                 }
                 Status::SelectingCard { preview: false, .. } | Status::Idle => {}
             }
-
-            // // Draw a UI button at the top right corner as a placeholder for an icon
-            // let button_size = 18.0;
-            // let button_x = rect.x + rect.w - button_size - 4.0;
-            // let button_y = rect.y + 4.0;
-            // let button_pos = Vec2::new(button_x, button_y);
-            // let button_dim = Vec2::new(button_size, button_size);
-            // let button = ui::widgets::Button::new("+")
-            //     .position(button_pos)
-            //     .size(button_dim)
-            //     .ui(&mut ui::root_ui());
-            //
-            // let to_preview = self
-            //     .cards
-            //     .iter()
-            //     .filter(|c| match &c.zone {
-            //         Zone::Realm(loc) => loc == &cell.id,
-            //         _ => false,
-            //     })
-            //     .map(|c| c.id.clone())
-            //     .collect::<Vec<uuid::Uuid>>();
-            // if button {
-            //     Mouse::set_enabled(false);
-            //     let prompt = format!("Viewing cards on location {}", cell.id);
-            //     let new_status = Status::ViewingCards {
-            //         cards: to_preview,
-            //         prev_status: Box::new(data.status.clone()),
-            //         prompt: prompt.clone(),
-            //         behaviour: SelectionOverlayBehaviour::Preview,
-            //     };
-            //     data.status = new_status;
-            // }
         }
 
         for intersection in &self.intersection_rects {
