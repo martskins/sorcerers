@@ -53,7 +53,7 @@ pub enum Plane {
     Air,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Serialize, Deserialize)]
 pub enum Zone {
     None,
     Hand,
@@ -727,6 +727,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         self.get_zones_within_steps(state, self.get_steps_per_movement(state))
             .iter()
             .filter(|z| {
+                if self.has_modifier(state, &Modifier::Voidwalk) {
+                    return true;
+                }
+
                 z.get_site(state).map_or(false, |c| {
                     c.can_be_entered_by(self.get_id(), self.get_zone(), self.get_plane(state), state)
                 })
@@ -1256,17 +1260,18 @@ pub fn from_name_and_zone(name: &str, player_id: &PlayerId, zone: Zone) -> Box<d
 #[cfg(test)]
 mod tests {
     use crate::{
-        card::{Card, Modifier, RimlandNomads, Zone},
+        card::{ApprenticeWizard, Card, Modifier, RimlandNomads, Zone},
         deck::Deck,
         state::{Player, PlayerWithDeck, State},
     };
 
-    fn setup_game() -> State {
+    fn setup_state(zones_with_sites: impl AsRef<[Zone]>) -> State {
         let player_one_id = uuid::Uuid::new_v4();
         let player_two_id = uuid::Uuid::new_v4();
-        let cards: Vec<Box<dyn Card>> = (1..=20)
+        let cards: Vec<Box<dyn Card>> = zones_with_sites
+            .as_ref()
             .into_iter()
-            .map(|sq| super::from_name_and_zone("Arid Desert", &player_one_id, Zone::Realm(sq)))
+            .map(|z| super::from_name_and_zone("Arid Desert", &player_one_id, z.clone()))
             .collect();
 
         let player1 = PlayerWithDeck {
@@ -1294,7 +1299,7 @@ mod tests {
 
     #[test]
     fn test_get_valid_move_paths_movement_plus_1() {
-        let mut state = setup_game();
+        let mut state = setup_state(Zone::all_realm());
         let player_id = state.players[0].id.clone();
         let mut card = RimlandNomads::new(player_id.clone());
         card.set_zone(Zone::Realm(8));
@@ -1308,7 +1313,7 @@ mod tests {
 
     #[test]
     fn test_get_valid_move_paths_movement_plus_1_airborne() {
-        let mut state = setup_game();
+        let mut state = setup_state(Zone::all_realm());
         let player_id = state.players[0].id.clone();
         let mut card = RimlandNomads::new(player_id.clone());
         card.set_zone(Zone::Realm(8));
@@ -1324,7 +1329,7 @@ mod tests {
 
     #[test]
     fn test_get_valid_move_paths_movement_plus_2() {
-        let mut state = setup_game();
+        let mut state = setup_state(Zone::all_realm());
         let player_id = state.players[0].id.clone();
         let mut card = RimlandNomads::new(player_id.clone());
         card.set_zone(Zone::Realm(8));
@@ -1336,5 +1341,225 @@ mod tests {
         assert!(paths.contains(&vec![Zone::Realm(8), Zone::Realm(9), Zone::Realm(10), Zone::Realm(15)]));
         assert!(paths.contains(&vec![Zone::Realm(8), Zone::Realm(9), Zone::Realm(14), Zone::Realm(15)]));
         assert!(paths.contains(&vec![Zone::Realm(8), Zone::Realm(13), Zone::Realm(14), Zone::Realm(15)]));
+    }
+
+    #[test]
+    fn test_get_valid_move_zones_basic_movement() {
+        let mut state = setup_state(Zone::all_realm());
+        let player_id = state.players[0].id.clone();
+        let mut card = ApprenticeWizard::new(player_id.clone());
+        card.set_zone(Zone::Realm(8));
+        state.cards.push(Box::new(card.clone()));
+
+        let mut zones = card.get_valid_move_zones(&state);
+        zones.sort();
+        let mut expected = vec![
+            Zone::Realm(8),
+            Zone::Realm(7),
+            Zone::Realm(9),
+            Zone::Realm(3),
+            Zone::Realm(13),
+        ];
+        expected.sort();
+        assert_eq!(zones, expected);
+    }
+
+    #[test]
+    fn test_get_valid_move_zones_movement_plus_1() {
+        let mut state = setup_state(Zone::all_realm());
+        let player_id = state.players[0].id.clone();
+        let mut card = ApprenticeWizard::new(player_id.clone());
+        card.set_zone(Zone::Realm(8));
+        card.add_modifier(Modifier::Movement(1));
+        state.cards.push(Box::new(card.clone()));
+
+        let mut zones = card.get_valid_move_zones(&state);
+        zones.sort();
+        let mut expected = vec![
+            Zone::Realm(8),
+            Zone::Realm(7),
+            Zone::Realm(9),
+            Zone::Realm(3),
+            Zone::Realm(13),
+            Zone::Realm(18),
+            Zone::Realm(6),
+            Zone::Realm(10),
+            Zone::Realm(12),
+            Zone::Realm(14),
+            Zone::Realm(2),
+            Zone::Realm(4),
+        ];
+        expected.sort();
+        assert_eq!(zones, expected);
+    }
+
+    #[test]
+    fn test_get_valid_move_zones_basic_movement_with_voids() {
+        let zones_with_sites = vec![Zone::Realm(3), Zone::Realm(8), Zone::Realm(9)];
+        let mut state = setup_state(zones_with_sites);
+        let player_id = state.players[0].id.clone();
+        let mut card = ApprenticeWizard::new(player_id.clone());
+        card.set_zone(Zone::Realm(8));
+        state.cards.push(Box::new(card.clone()));
+
+        let mut zones = card.get_valid_move_zones(&state);
+        zones.sort();
+        let mut expected = vec![Zone::Realm(8), Zone::Realm(9), Zone::Realm(3)];
+        expected.sort();
+        assert_eq!(zones, expected);
+    }
+
+    #[test]
+    fn test_get_valid_move_zones_movement_plus_1_with_voids() {
+        let zones_with_sites = vec![
+            Zone::Realm(2),
+            Zone::Realm(3),
+            Zone::Realm(4),
+            Zone::Realm(8),
+            Zone::Realm(9),
+            Zone::Realm(12),
+            Zone::Realm(13),
+        ];
+        let mut state = setup_state(zones_with_sites);
+        let player_id = state.players[0].id.clone();
+        let mut card = ApprenticeWizard::new(player_id.clone());
+        card.set_zone(Zone::Realm(8));
+        card.add_modifier(Modifier::Movement(1));
+        state.cards.push(Box::new(card.clone()));
+
+        let mut zones = card.get_valid_move_zones(&state);
+        zones.sort();
+        let mut expected = vec![
+            Zone::Realm(2),
+            Zone::Realm(3),
+            Zone::Realm(4),
+            Zone::Realm(8),
+            Zone::Realm(9),
+            Zone::Realm(12),
+            Zone::Realm(13),
+        ];
+        expected.sort();
+        assert_eq!(zones, expected);
+    }
+
+    #[test]
+    fn test_get_valid_move_zones_basic_movement_with_voidwalk() {
+        let zones_with_sites = vec![Zone::Realm(3), Zone::Realm(8), Zone::Realm(9)];
+        let mut state = setup_state(zones_with_sites);
+        let player_id = state.players[0].id.clone();
+        let mut card = ApprenticeWizard::new(player_id.clone());
+        card.set_zone(Zone::Realm(8));
+        card.add_modifier(Modifier::Voidwalk);
+        state.cards.push(Box::new(card.clone()));
+
+        let mut zones = card.get_valid_move_zones(&state);
+        zones.sort();
+        let mut expected = vec![
+            Zone::Realm(8),
+            Zone::Realm(7),
+            Zone::Realm(9),
+            Zone::Realm(3),
+            Zone::Realm(13),
+        ];
+        expected.sort();
+        assert_eq!(zones, expected);
+    }
+
+    #[test]
+    fn test_get_valid_move_zones_airborne() {
+        let mut state = setup_state(Zone::all_realm());
+        let player_id = state.players[0].id.clone();
+        let mut card = ApprenticeWizard::new(player_id.clone());
+        card.set_zone(Zone::Realm(8));
+        card.add_modifier(Modifier::Airborne);
+        state.cards.push(Box::new(card.clone()));
+
+        let mut zones = card.get_valid_move_zones(&state);
+        zones.sort();
+        let mut expected = vec![
+            Zone::Realm(8),
+            Zone::Realm(7),
+            Zone::Realm(9),
+            Zone::Realm(3),
+            Zone::Realm(13),
+            Zone::Realm(12),
+            Zone::Realm(14),
+            Zone::Realm(2),
+            Zone::Realm(4),
+        ];
+        expected.sort();
+        assert_eq!(zones, expected);
+    }
+
+    #[test]
+    fn test_get_valid_move_zones_airborne_with_voids() {
+        let zones_with_sites = vec![
+            Zone::Realm(2),
+            Zone::Realm(3),
+            Zone::Realm(4),
+            Zone::Realm(8),
+            Zone::Realm(9),
+            Zone::Realm(12),
+            Zone::Realm(13),
+        ];
+        let mut state = setup_state(zones_with_sites);
+        let player_id = state.players[0].id.clone();
+        let mut card = ApprenticeWizard::new(player_id.clone());
+        card.set_zone(Zone::Realm(8));
+        card.add_modifier(Modifier::Airborne);
+        state.cards.push(Box::new(card.clone()));
+
+        let mut zones = card.get_valid_move_zones(&state);
+        zones.sort();
+
+        let mut expected = vec![
+            Zone::Realm(2),
+            Zone::Realm(3),
+            Zone::Realm(4),
+            Zone::Realm(8),
+            Zone::Realm(9),
+            Zone::Realm(12),
+            Zone::Realm(13),
+        ];
+        expected.sort();
+        assert_eq!(zones, expected);
+    }
+
+    #[test]
+    fn test_get_valid_move_zones_airborne_and_voidwalk() {
+        let zones_with_sites = vec![
+            Zone::Realm(2),
+            Zone::Realm(3),
+            Zone::Realm(4),
+            Zone::Realm(7),
+            Zone::Realm(8),
+            Zone::Realm(9),
+            Zone::Realm(12),
+            Zone::Realm(13),
+            Zone::Realm(14),
+        ];
+        let mut state = setup_state(zones_with_sites);
+        let player_id = state.players[0].id.clone();
+        let mut card = ApprenticeWizard::new(player_id.clone());
+        card.set_zone(Zone::Realm(8));
+        card.add_modifier(Modifier::Airborne);
+        card.add_modifier(Modifier::Voidwalk);
+        state.cards.push(Box::new(card.clone()));
+
+        let mut zones = card.get_valid_move_zones(&state);
+        zones.sort();
+        let mut expected = vec![
+            Zone::Realm(8),
+            Zone::Realm(7),
+            Zone::Realm(9),
+            Zone::Realm(3),
+            Zone::Realm(13),
+            Zone::Realm(12),
+            Zone::Realm(14),
+            Zone::Realm(2),
+            Zone::Realm(4),
+        ];
+        expected.sort();
+        assert_eq!(zones, expected);
     }
 }
