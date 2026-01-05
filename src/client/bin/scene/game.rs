@@ -210,11 +210,11 @@ impl Game {
         }
 
         if is_mouse_button_pressed(MouseButton::Left) {
-            Mouse::left_button_ressed();
+            Mouse::record_press();
         }
 
         if is_mouse_button_released(MouseButton::Left) {
-            Mouse::left_button_released();
+            Mouse::record_release();
             Mouse::set_enabled(true);
         }
 

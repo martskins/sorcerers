@@ -166,19 +166,20 @@ impl RealmComponent {
                         dimensions = site_dimensions(&cell_rect);
                     }
 
-                    let mut rect = Rect::new(
-                        cell_rect.x + (cell_rect.w - dimensions.x) / 2.0,
-                        cell_rect.y + (cell_rect.h - dimensions.y) / 2.0,
-                        dimensions.x,
-                        dimensions.y,
-                    );
+                    let mut pos_x = cell_rect.x + (cell_rect.w - dimensions.x) / 2.0;
+                    let mut pos_y = cell_rect.y + (cell_rect.h - dimensions.y) / 2.0;
+                    if card.card_type == CardType::Site {
+                        pos_x = cell_rect.x;
+                        pos_y = cell_rect.y + cell_rect.h - dimensions.y;
+                    } else {
+                        // Add jitter to position
+                        let jitter_x: f32 = rng.random_range(-12.0..12.0);
+                        let jitter_y: f32 = rng.random_range(-12.0..12.0);
+                        pos_x += jitter_x;
+                        pos_y += jitter_y;
+                    }
 
-                    // Add jitter to position
-                    let jitter_x: f32 = rng.random_range(-12.0..12.0);
-                    let jitter_y: f32 = rng.random_range(-12.0..12.0);
-                    rect.x += jitter_x;
-                    rect.y += jitter_y;
-
+                    let rect = Rect::new(pos_x, pos_y, dimensions.x, dimensions.y);
                     new_cards.push(CardRect {
                         id: card.id,
                         owner_id: card.owner_id,
@@ -427,10 +428,6 @@ impl RealmComponent {
 
         match &status {
             Status::SelectingZone { zones } => {
-                if !Mouse::is_enabled() {
-                    return;
-                }
-
                 let zones = zones.clone();
                 for (idx, cell) in self.cell_rects.iter().enumerate() {
                     let can_pick_zone = zones.iter().find(|i| i == &&Zone::Realm(cell.id)).is_some();
@@ -491,10 +488,6 @@ impl RealmComponent {
             return;
         }
 
-        if !Mouse::is_enabled() {
-            return;
-        }
-
         if let Status::SelectingAction { .. } = &status {
             return;
         }
@@ -521,7 +514,7 @@ impl RealmComponent {
                     .iter_mut()
                     .filter(|c| c.zone.is_in_realm() || c.zone == Zone::Hand)
                 {
-                    if rect.is_hovered && Mouse::is_clicked() {
+                    if rect.is_hovered && Mouse::clicked() {
                         self.client
                             .send(ClientMessage::ClickCard {
                                 card_id: rect.id.clone(),
@@ -538,7 +531,7 @@ impl RealmComponent {
                 let valid_cards: Vec<&CardRect> = self.cards.iter().filter(|c| cards.contains(&c.id)).collect();
                 let mut selected_id = None;
                 for card in valid_cards {
-                    if card.rect.contains(mouse_position.into()) && Mouse::is_clicked() {
+                    if card.rect.contains(mouse_position.into()) && Mouse::clicked() {
                         selected_id = Some(card.id.clone());
                     }
                 }
@@ -562,7 +555,7 @@ impl RealmComponent {
                 let valid_cards: Vec<&CardRect> = self.cards.iter().filter(|c| cards.contains(&c.id)).collect();
                 let mut selected_id = None;
                 for card in valid_cards {
-                    if card.rect.contains(mouse_position.into()) && Mouse::is_clicked() {
+                    if card.rect.contains(mouse_position.into()) && Mouse::clicked() {
                         selected_id = Some(card.id.clone());
                     }
                 }
@@ -701,7 +694,7 @@ impl Component for RealmComponent {
                 cards, preview: false, ..
             } = &data.status
             {
-                if !Mouse::is_enabled() {
+                if !Mouse::enabled() {
                     return Ok(());
                 }
 
@@ -728,6 +721,10 @@ impl Component for RealmComponent {
     }
 
     fn process_input(&mut self, in_turn: bool, data: &mut GameData) -> anyhow::Result<Option<ComponentCommand>> {
+        if !Mouse::enabled() {
+            return Ok(None);
+        }
+
         let mouse_position = macroquad::input::mouse_position().into();
         self.handle_square_click(mouse_position, in_turn, &mut data.status);
         self.handle_card_click(mouse_position, in_turn, &mut data.status);

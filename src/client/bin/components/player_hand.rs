@@ -259,7 +259,7 @@ impl Component for PlayerHandComponent {
 
     fn process_input(&mut self, in_turn: bool, data: &mut GameData) -> anyhow::Result<Option<ComponentCommand>> {
         let mouse_position = macroquad::input::mouse_position();
-        if !Mouse::is_enabled() {
+        if !Mouse::enabled() {
             return Ok(None);
         }
 

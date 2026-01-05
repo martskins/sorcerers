@@ -19,18 +19,18 @@ impl Mouse {
         }
     }
 
-    pub fn left_button_released() {
+    pub fn record_release() {
         let mut mouse_status = MOUSE_STATUS.lock().unwrap();
         mouse_status.last_left_button_press = None;
     }
 
-    pub fn left_button_ressed() {
+    pub fn record_press() {
         let mut mouse_status = MOUSE_STATUS.lock().unwrap();
         mouse_status.last_left_button_press = Some(chrono::Utc::now());
         mouse_status.last_click_position = Some(mouse_position().into());
     }
 
-    pub fn is_clicked() -> bool {
+    pub fn clicked() -> bool {
         !Mouse::dragging() && is_mouse_button_released(MouseButton::Left)
     }
 
@@ -54,7 +54,7 @@ impl Mouse {
         mouse_status.enabled = enabled;
     }
 
-    pub fn is_enabled() -> bool {
+    pub fn enabled() -> bool {
         MOUSE_STATUS.lock().unwrap().enabled
     }
 }

@@ -174,7 +174,7 @@ impl SelectionOverlay {
         let mouse_vec = Vec2::new(mouse_position.0, mouse_position.1);
 
         for rect in &mut self.rects {
-            if !Mouse::is_enabled() {
+            if !Mouse::enabled() {
                 continue;
             }
 
