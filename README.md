@@ -8,12 +8,11 @@ This project is **not affiliated with, endorsed by, or associated with** the cre
 
 ## Features
 
-Sorcerers Online lets you play Sorcery: Contested Realm with friends in a multiplayer environment, featuring an easy-to-use interface and automated enforcement of game rules.
+Sorcerers lets you play Sorcery: Contested Realm with friends in a multiplayer environment, featuring an easy-to-use interface and automated enforcement of game rules.
 
-```
 ## Getting Started
 
-To install Sorcerers Online, download the source code and install it using Cargo:
+To install Sorcerers, download the source code and install it using Cargo:
 
 ```sh
 cargo install --path .
