@@ -45,19 +45,19 @@ impl Card for ConeOfFlame {
         &self.card_base
     }
 
-    async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> Vec<Effect> {
+    async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
         let prompt = "Cone of Flame: Pick a direction to cast the spell:";
-        let dir = pick_direction(self.get_owner_id(), &CARDINAL_DIRECTIONS, state, prompt).await;
-        let caster = state.get_card(caster_id).unwrap();
+        let dir = pick_direction(self.get_owner_id(), &CARDINAL_DIRECTIONS, state, prompt).await?;
+        let caster = state.get_card(caster_id);
         let zone = caster.get_zone();
         let zone_dmg = vec![
             (zone.zone_in_direction_and_steps(&dir, 1), 5),
             (zone.zone_in_direction_and_steps(&dir, 2), 3),
             (zone.zone_in_direction_and_steps(&dir, 3), 1),
-            (zone.zone_in_direction_and_steps(&dir.rotate(1), 1), 3),
-            (zone.zone_in_direction_and_steps(&dir.rotate(1), 2), 1),
-            (zone.zone_in_direction_and_steps(&dir.rotate(7), 1), 3),
-            (zone.zone_in_direction_and_steps(&dir.rotate(7), 2), 1),
+            (zone.zone_in_direction_and_steps(&dir.rotate(1)?, 1), 3),
+            (zone.zone_in_direction_and_steps(&dir.rotate(1)?, 2), 1),
+            (zone.zone_in_direction_and_steps(&dir.rotate(7)?, 1), 3),
+            (zone.zone_in_direction_and_steps(&dir.rotate(7)?, 2), 1),
         ];
 
         let mut effects = vec![];
@@ -72,6 +72,6 @@ impl Card for ConeOfFlame {
                 effects.push(Effect::take_damage(unit.get_id(), self.get_id(), dmg));
             }
         }
-        effects
+        Ok(effects)
     }
 }

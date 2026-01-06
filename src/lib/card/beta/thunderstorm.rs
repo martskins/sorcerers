@@ -68,9 +68,9 @@ impl Card for Thunderstorm {
         Ok(())
     }
 
-    async fn on_turn_end(&self, state: &State) -> Vec<Effect> {
+    async fn on_turn_end(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         if &state.current_player != self.get_controller_id() {
-            return vec![];
+            return Ok(vec![]);
         }
 
         let zones = self.get_valid_move_zones(state);
@@ -121,7 +121,7 @@ impl Card for Thunderstorm {
             });
         }
 
-        effects
+        Ok(effects)
     }
 
     fn get_aura(&self) -> Option<&dyn Aura> {

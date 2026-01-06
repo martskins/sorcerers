@@ -45,15 +45,15 @@ impl Card for MinorExplosion {
         &self.card_base
     }
 
-    async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> Vec<Effect> {
-        let caster = state.get_card(caster_id).unwrap();
+    async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
+        let caster = state.get_card(caster_id);
         let valid_zones = caster.get_zones_within_steps(state, 2);
         let prompt = "Pick a zone to center Minor Explosion:";
-        let zone = pick_zone(self.get_owner_id(), &valid_zones, state, prompt).await;
+        let zone = pick_zone(self.get_owner_id(), &valid_zones, state, prompt).await?;
         let units = state.get_units_in_zone(&zone);
-        units
+        Ok(units
             .iter()
             .map(|c| Effect::take_damage(c.get_id(), self.get_id(), 3))
-            .collect()
+            .collect())
     }
 }

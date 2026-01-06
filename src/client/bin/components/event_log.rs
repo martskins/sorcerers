@@ -85,7 +85,11 @@ impl Component for EventLogComponent {
         Ok(())
     }
 
-    fn process_input(&mut self, _in_turn: bool, _data: &mut GameData) -> anyhow::Result<Option<ComponentCommand>> {
+    async fn process_input(
+        &mut self,
+        _in_turn: bool,
+        _data: &mut GameData,
+    ) -> anyhow::Result<Option<ComponentCommand>> {
         Ok(None)
     }
 

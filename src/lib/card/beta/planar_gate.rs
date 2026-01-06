@@ -40,7 +40,7 @@ impl PlanarGate {
 
 impl Site for PlanarGate {
     fn on_card_enter(&self, state: &State, card_id: &uuid::Uuid) -> Vec<Effect> {
-        let card = state.get_card(card_id).unwrap();
+        let card = state.get_card(card_id);
         if !card.is_minion() {
             return vec![];
         }

@@ -118,6 +118,7 @@ impl PlayerHandComponent {
                 modifiers: card.modifiers.clone(),
                 damage_taken: card.damage_taken.clone(),
                 card_type: card.card_type.clone(),
+                attached_to: card.attached_to.clone(),
             });
         }
 
@@ -154,6 +155,7 @@ impl PlayerHandComponent {
                     modifiers: card.modifiers.clone(),
                     damage_taken: 0,
                     card_type: card.card_type.clone(),
+                    attached_to: card.attached_to.clone(),
                 });
             }
         }
@@ -181,7 +183,7 @@ impl Component for PlayerHandComponent {
 
         let mut dragging_card: Option<uuid::Uuid> = None;
         for card in &mut self.cards {
-            if card.is_hovered && Mouse::dragging() {
+            if card.is_hovered && Mouse::dragging().await {
                 dragging_card = Some(card.id.clone());
             }
         }
@@ -214,9 +216,7 @@ impl Component for PlayerHandComponent {
 
             let mut scale = 1.0;
             if card_rect.is_hovered {
-                if let Status::SelectingCard { preview: false, .. } = data.status {
-                    scale = 1.2;
-                }
+                scale = 1.1;
             }
 
             let rect = card_rect.rect;
@@ -259,9 +259,9 @@ impl Component for PlayerHandComponent {
         Ok(())
     }
 
-    fn process_input(&mut self, in_turn: bool, data: &mut GameData) -> anyhow::Result<Option<ComponentCommand>> {
+    async fn process_input(&mut self, in_turn: bool, data: &mut GameData) -> anyhow::Result<Option<ComponentCommand>> {
         let mouse_position = macroquad::input::mouse_position();
-        if !Mouse::enabled() {
+        if !Mouse::enabled().await {
             return Ok(None);
         }
 

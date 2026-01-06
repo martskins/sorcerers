@@ -61,7 +61,7 @@ impl Card for DarkTower {
         Some(&mut self.site_base)
     }
 
-    async fn genesis(&self, state: &State) -> Vec<Effect> {
+    async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let count = state
             .cards
             .iter()
@@ -71,15 +71,15 @@ impl Card for DarkTower {
             .filter(|c| c.get_name() == Self::NAME)
             .count();
         if count > 0 {
-            return vec![];
+            return Ok(vec![]);
         }
 
-        vec![Effect::AddResources {
+        Ok(vec![Effect::AddResources {
             player_id: self.get_owner_id().clone(),
             mana: 1,
             thresholds: Thresholds::new(),
             health: 0,
-        }]
+        }])
     }
 
     fn get_site(&self) -> Option<&dyn Site> {

@@ -58,7 +58,7 @@ impl Direction {
         }
     }
 
-    pub fn rotate(&self, times: u8) -> Direction {
+    pub fn rotate(&self, times: u8) -> anyhow::Result<Direction> {
         let directions = [
             Direction::Up,
             Direction::TopRight,
@@ -69,9 +69,12 @@ impl Direction {
             Direction::Left,
             Direction::TopLeft,
         ];
-        let idx = directions.iter().position(|d| d == self).unwrap();
-        let new_idx = (idx + times as usize) % directions.len();
-        directions[new_idx].clone()
+        if let Some(idx) = directions.iter().position(|d| d == self) {
+            let new_idx = (idx + times as usize) % directions.len();
+            return Ok(directions[new_idx].clone());
+        }
+
+        Err(anyhow::anyhow!("Invalid direction for rotation"))
     }
 }
 
@@ -82,7 +85,7 @@ pub async fn pick_card_with_preview(
     card_ids: &[uuid::Uuid],
     state: &State,
     prompt: &str,
-) -> uuid::Uuid {
+) -> anyhow::Result<uuid::Uuid> {
     state
         .get_sender()
         .send(ServerMessage::PickCard {
@@ -91,19 +94,23 @@ pub async fn pick_card_with_preview(
             cards: card_ids.to_vec(),
             preview: true,
         })
-        .await
-        .unwrap();
+        .await?;
 
     loop {
-        let msg = state.get_receiver().recv().await.unwrap();
+        let msg = state.get_receiver().recv().await?;
         match msg {
-            ClientMessage::PickCard { card_id, .. } => break card_id,
+            ClientMessage::PickCard { card_id, .. } => break Ok(card_id),
             _ => unreachable!(),
         }
     }
 }
 
-pub async fn pick_card(player_id: &PlayerId, card_ids: &[uuid::Uuid], state: &State, prompt: &str) -> uuid::Uuid {
+pub async fn pick_card(
+    player_id: &PlayerId,
+    card_ids: &[uuid::Uuid],
+    state: &State,
+    prompt: &str,
+) -> anyhow::Result<uuid::Uuid> {
     state
         .get_sender()
         .send(ServerMessage::PickCard {
@@ -112,13 +119,12 @@ pub async fn pick_card(player_id: &PlayerId, card_ids: &[uuid::Uuid], state: &St
             cards: card_ids.to_vec(),
             preview: false,
         })
-        .await
-        .unwrap();
+        .await?;
 
     loop {
-        let msg = state.get_receiver().recv().await.unwrap();
+        let msg = state.get_receiver().recv().await?;
         match msg {
-            ClientMessage::PickCard { card_id, .. } => break card_id,
+            ClientMessage::PickCard { card_id, .. } => break Ok(card_id),
             _ => unreachable!(),
         }
     }
@@ -126,10 +132,10 @@ pub async fn pick_card(player_id: &PlayerId, card_ids: &[uuid::Uuid], state: &St
 
 pub async fn pick_action<'a>(
     player_id: &PlayerId,
-    actions: &'a [Box<dyn Action>],
+    actions: &'a [Box<dyn CardAction>],
     state: &State,
     prompt: &str,
-) -> &'a Box<dyn Action> {
+) -> anyhow::Result<&'a Box<dyn CardAction>> {
     state
         .get_sender()
         .send(ServerMessage::PickAction {
@@ -137,40 +143,46 @@ pub async fn pick_action<'a>(
             player_id: player_id.clone(),
             actions: actions.iter().map(|c| c.get_name().to_string()).collect(),
         })
-        .await
-        .unwrap();
+        .await?;
 
     loop {
-        let msg = state.get_receiver().recv().await.unwrap();
+        let msg = state.get_receiver().recv().await?;
         match msg {
-            ClientMessage::PickAction { action_idx, .. } => break &actions[action_idx],
+            ClientMessage::PickAction { action_idx, .. } => break Ok(&actions[action_idx]),
             _ => panic!("expected PickAction, got {:?}", msg),
         }
     }
 }
 
-pub async fn resume(player_id: &PlayerId, state: &State) {
+pub async fn resume(player_id: &PlayerId, state: &State) -> anyhow::Result<()> {
     state
         .get_sender()
         .send(ServerMessage::Resume {
             player_id: player_id.clone(),
         })
-        .await
-        .unwrap();
+        .await?;
+
+    Ok(())
 }
 
-pub async fn wait_for_opponent(player_id: &PlayerId, state: &State, prompt: impl AsRef<str>) {
+pub async fn wait_for_opponent(player_id: &PlayerId, state: &State, prompt: impl AsRef<str>) -> anyhow::Result<()> {
     state
         .get_sender()
         .send(ServerMessage::Wait {
             player_id: player_id.clone(),
             prompt: prompt.as_ref().to_string(),
         })
-        .await
-        .unwrap();
+        .await?;
+
+    Ok(())
 }
 
-pub async fn pick_option(player_id: &PlayerId, actions: &[String], state: &State, prompt: impl AsRef<str>) -> usize {
+pub async fn pick_option(
+    player_id: &PlayerId,
+    actions: &[String],
+    state: &State,
+    prompt: impl AsRef<str>,
+) -> anyhow::Result<usize> {
     state
         .get_sender()
         .send(ServerMessage::PickAction {
@@ -178,19 +190,23 @@ pub async fn pick_option(player_id: &PlayerId, actions: &[String], state: &State
             player_id: player_id.clone(),
             actions: actions.to_vec(),
         })
-        .await
-        .unwrap();
+        .await?;
 
     loop {
-        let msg = state.get_receiver().recv().await.unwrap();
+        let msg = state.get_receiver().recv().await?;
         match msg {
-            ClientMessage::PickAction { action_idx, .. } => break action_idx,
+            ClientMessage::PickAction { action_idx, .. } => break Ok(action_idx),
             _ => panic!("expected PickAction, got {:?}", msg),
         }
     }
 }
 
-pub async fn pick_path(player_id: &PlayerId, paths: &[Vec<Zone>], state: &State, prompt: &str) -> Vec<Zone> {
+pub async fn pick_path(
+    player_id: &PlayerId,
+    paths: &[Vec<Zone>],
+    state: &State,
+    prompt: &str,
+) -> anyhow::Result<Vec<Zone>> {
     state
         .get_sender()
         .send(ServerMessage::PickPath {
@@ -198,19 +214,18 @@ pub async fn pick_path(player_id: &PlayerId, paths: &[Vec<Zone>], state: &State,
             player_id: player_id.clone(),
             paths: paths.to_vec(),
         })
-        .await
-        .unwrap();
+        .await?;
 
     loop {
-        let msg = state.get_receiver().recv().await.unwrap();
+        let msg = state.get_receiver().recv().await?;
         match msg {
-            ClientMessage::PickPath { path, .. } => break path,
+            ClientMessage::PickPath { path, .. } => break Ok(path),
             _ => panic!("expected PickPath, got {:?}", msg),
         }
     }
 }
 
-pub async fn pick_zone(player_id: &PlayerId, zones: &[Zone], state: &State, prompt: &str) -> Zone {
+pub async fn pick_zone(player_id: &PlayerId, zones: &[Zone], state: &State, prompt: &str) -> anyhow::Result<Zone> {
     state
         .get_sender()
         .send(ServerMessage::PickZone {
@@ -218,13 +233,12 @@ pub async fn pick_zone(player_id: &PlayerId, zones: &[Zone], state: &State, prom
             player_id: player_id.clone(),
             zones: zones.to_vec(),
         })
-        .await
-        .unwrap();
+        .await?;
 
     loop {
-        let msg = state.get_receiver().recv().await.unwrap();
+        let msg = state.get_receiver().recv().await?;
         match msg {
-            ClientMessage::PickZone { zone, .. } => break zone,
+            ClientMessage::PickZone { zone, .. } => break Ok(zone),
             _ => panic!("expected PickSquare, got {:?}", msg),
         }
     }
@@ -232,7 +246,7 @@ pub async fn pick_zone(player_id: &PlayerId, zones: &[Zone], state: &State, prom
 // Sends a ForceSync message to the specified player with the provided game state. This can be used
 // to temporarily override the state of the game for the player, which is useful in cases where the
 // state needs to be mutated as part of the card resolution process.
-pub async fn force_sync(player_id: &PlayerId, state: &State) {
+pub async fn force_sync(player_id: &PlayerId, state: &State) -> anyhow::Result<()> {
     let sync_msg = state.into_sync();
     match sync_msg {
         ServerMessage::Sync {
@@ -248,14 +262,20 @@ pub async fn force_sync(player_id: &PlayerId, state: &State) {
                     resources: resources,
                     current_player: current_player,
                 })
-                .await
-                .unwrap();
+                .await?;
         }
         _ => panic!("expected Sync message, got {:?}", sync_msg),
     }
+
+    Ok(())
 }
 
-pub async fn pick_direction(player_id: &PlayerId, directions: &[Direction], state: &State, prompt: &str) -> Direction {
+pub async fn pick_direction(
+    player_id: &PlayerId,
+    directions: &[Direction],
+    state: &State,
+    prompt: &str,
+) -> anyhow::Result<Direction> {
     state
         .get_sender()
         .send(ServerMessage::PickAction {
@@ -263,14 +283,13 @@ pub async fn pick_direction(player_id: &PlayerId, directions: &[Direction], stat
             player_id: player_id.clone(),
             actions: directions.iter().map(|c| c.get_name()).collect(),
         })
-        .await
-        .unwrap();
+        .await?;
 
     let board_flipped = &state.player_one != player_id;
     loop {
-        let msg = state.get_receiver().recv().await.unwrap();
+        let msg = state.get_receiver().recv().await?;
         match msg {
-            ClientMessage::PickAction { action_idx, .. } => break directions[action_idx].normalise(board_flipped),
+            ClientMessage::PickAction { action_idx, .. } => break Ok(directions[action_idx].normalise(board_flipped)),
             _ => panic!("expected PickAction, got {:?}", msg),
         }
     }
@@ -405,7 +424,7 @@ pub fn get_nearby_zones(zone: &Zone) -> Vec<Zone> {
                 ],
             };
             adjacent.extend(diagonals);
-            adjacent.retain(|s| s.get_square().unwrap() <= 20);
+            adjacent.retain(|s| s.get_square().unwrap_or(0) <= 20);
             adjacent
         }
         Zone::Intersection(sqs) => {
@@ -468,7 +487,7 @@ pub fn get_adjacent_zones(zone: &Zone) -> Vec<Zone> {
                     Zone::Realm(square),
                 ],
             };
-            adjacent.retain(|s| s.get_square().unwrap() <= 20);
+            adjacent.retain(|s| s.get_square().unwrap_or(0) <= 20);
             adjacent
         }
         Zone::Intersection(locs) => {
@@ -494,26 +513,27 @@ pub fn get_adjacent_zones(zone: &Zone) -> Vec<Zone> {
 }
 
 pub trait CloneBoxedAction {
-    fn clone_boxed_action(&self) -> Box<dyn Action>;
+    fn clone_boxed_action(&self) -> Box<dyn CardAction>;
 }
 
 impl<T> CloneBoxedAction for T
 where
-    T: 'static + Action + Clone,
+    T: 'static + CardAction + Clone,
 {
-    fn clone_boxed_action(&self) -> Box<dyn Action> {
+    fn clone_boxed_action(&self) -> Box<dyn CardAction> {
         Box::new(self.clone())
     }
 }
 
 #[async_trait::async_trait]
-pub trait Action: std::fmt::Debug + Send + Sync + CloneBoxedAction {
+pub trait CardAction: std::fmt::Debug + Send + Sync + CloneBoxedAction {
     fn get_name(&self) -> &str;
-    async fn on_select(&self, card_id: Option<&uuid::Uuid>, player_id: &PlayerId, state: &State) -> Vec<Effect>;
+    async fn on_select(&self, card_id: &uuid::Uuid, player_id: &PlayerId, state: &State)
+    -> anyhow::Result<Vec<Effect>>;
 }
 
-impl Clone for Box<dyn Action> {
-    fn clone(&self) -> Box<dyn Action> {
+impl Clone for Box<dyn CardAction> {
+    fn clone(&self) -> Box<dyn CardAction> {
         self.clone_boxed_action()
     }
 }
@@ -532,7 +552,7 @@ pub enum InputStatus {
     },
     SelectingAction {
         player_id: PlayerId,
-        actions: Vec<Box<dyn Action>>,
+        actions: Vec<Box<dyn CardAction>>,
         card_id: Option<uuid::Uuid>,
     },
     PlayingSite {
@@ -558,15 +578,33 @@ pub enum InputStatus {
 }
 
 #[derive(Debug, Clone)]
+pub struct CancelAction;
+
+#[async_trait::async_trait]
+impl CardAction for CancelAction {
+    fn get_name(&self) -> &str {
+        "Cancel"
+    }
+
+    async fn on_select(
+        &self,
+        _card_id: &uuid::Uuid,
+        _player_id: &PlayerId,
+        _state: &State,
+    ) -> anyhow::Result<Vec<Effect>> {
+        Ok(vec![])
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum BaseAction {
     DrawSite,
     DrawSpell,
     Cancel,
 }
 
-#[async_trait::async_trait]
-impl Action for BaseAction {
-    fn get_name(&self) -> &str {
+impl BaseAction {
+    pub fn get_name(&self) -> &str {
         match self {
             BaseAction::Cancel => "Cancel",
             BaseAction::DrawSite => "Draw Site",
@@ -574,17 +612,17 @@ impl Action for BaseAction {
         }
     }
 
-    async fn on_select(&self, _: Option<&uuid::Uuid>, player_id: &PlayerId, _: &State) -> Vec<Effect> {
+    pub async fn on_select(&self, player_id: &PlayerId, _: &State) -> anyhow::Result<Vec<Effect>> {
         match self {
-            BaseAction::DrawSite => vec![Effect::DrawSite {
+            BaseAction::DrawSite => Ok(vec![Effect::DrawSite {
                 player_id: player_id.clone(),
                 count: 1,
-            }],
-            BaseAction::DrawSpell => vec![Effect::DrawSpell {
+            }]),
+            BaseAction::DrawSpell => Ok(vec![Effect::DrawSpell {
                 player_id: player_id.clone(),
                 count: 1,
-            }],
-            BaseAction::Cancel => vec![],
+            }]),
+            BaseAction::Cancel => Ok(vec![]),
         }
     }
 }
@@ -596,7 +634,7 @@ pub enum AvatarAction {
 }
 
 #[async_trait::async_trait]
-impl Action for AvatarAction {
+impl CardAction for AvatarAction {
     fn get_name(&self) -> &str {
         match self {
             AvatarAction::PlaySite => "Play Site",
@@ -604,7 +642,12 @@ impl Action for AvatarAction {
         }
     }
 
-    async fn on_select(&self, card_id: Option<&uuid::Uuid>, player_id: &PlayerId, state: &State) -> Vec<Effect> {
+    async fn on_select(
+        &self,
+        card_id: &uuid::Uuid,
+        player_id: &PlayerId,
+        state: &State,
+    ) -> anyhow::Result<Vec<Effect>> {
         match self {
             AvatarAction::PlaySite => {
                 let cards: Vec<uuid::Uuid> = state
@@ -616,25 +659,23 @@ impl Action for AvatarAction {
                     .map(|c| c.get_id().clone())
                     .collect();
                 let prompt = "Pick a site to play";
-                let picked_card_id = pick_card(player_id, &cards, state, prompt).await;
-                let picked_card = state.get_card(&picked_card_id).unwrap();
+                let picked_card_id = pick_card(player_id, &cards, state, prompt).await?;
+                let picked_card = state.get_card(&picked_card_id);
                 let zones = picked_card.get_valid_play_zones(state);
                 let prompt = "Pick a zone to play the site";
-                let zone = pick_zone(player_id, &zones, state, prompt).await;
-                vec![
+                let zone = pick_zone(player_id, &zones, state, prompt).await?;
+                Ok(vec![
                     Effect::play_card(player_id, &picked_card_id, &zone),
-                    Effect::tap_card(card_id.unwrap()),
-                ]
+                    Effect::tap_card(card_id),
+                ])
             }
-            AvatarAction::DrawSite => {
-                vec![
-                    Effect::DrawSite {
-                        player_id: player_id.clone(),
-                        count: 1,
-                    },
-                    Effect::tap_card(card_id.unwrap()),
-                ]
-            }
+            AvatarAction::DrawSite => Ok(vec![
+                Effect::DrawSite {
+                    player_id: player_id.clone(),
+                    count: 1,
+                },
+                Effect::tap_card(card_id),
+            ]),
         }
     }
 }
@@ -650,7 +691,7 @@ pub enum UnitAction {
 }
 
 #[async_trait::async_trait]
-impl Action for UnitAction {
+impl CardAction for UnitAction {
     fn get_name(&self) -> &str {
         match self {
             UnitAction::Move => "Move",
@@ -662,52 +703,58 @@ impl Action for UnitAction {
         }
     }
 
-    async fn on_select(&self, card_id: Option<&uuid::Uuid>, player_id: &PlayerId, state: &State) -> Vec<Effect> {
+    async fn on_select(
+        &self,
+        card_id: &uuid::Uuid,
+        player_id: &PlayerId,
+        state: &State,
+    ) -> anyhow::Result<Vec<Effect>> {
         match self {
             UnitAction::RangedAttack => {
-                let card_id = card_id.unwrap();
-                let card = state.get_card(card_id).unwrap();
+                let card = state.get_card(card_id);
                 let cards = card.get_valid_attack_targets(state, true);
                 let prompt = "Pick a unit to attack";
-                let picked_card_id = pick_card(player_id, &cards, state, prompt).await;
-                vec![Effect::RangedStrike {
+                let picked_card_id = pick_card(player_id, &cards, state, prompt).await?;
+                Ok(vec![Effect::RangedStrike {
                     attacker_id: card_id.clone(),
                     defender_id: picked_card_id,
-                }]
+                }])
             }
             UnitAction::Attack => {
-                let card_id = card_id.unwrap();
-                let card = state.get_card(card_id).unwrap();
+                let card = state.get_card(card_id);
                 let cards = card.get_valid_attack_targets(state, false);
                 let prompt = "Pick a unit to attack";
-                let picked_card_id = pick_card(player_id, &cards, state, prompt).await;
-                vec![Effect::Attack {
+                let picked_card_id = pick_card(player_id, &cards, state, prompt).await?;
+                Ok(vec![Effect::Attack {
                     attacker_id: card_id.clone(),
                     defender_id: picked_card_id,
-                }]
+                }])
             }
             UnitAction::Move => {
-                let card_id = card_id.unwrap();
-                let card = state.get_card(card_id).unwrap();
+                let card = state.get_card(card_id);
                 let zones = card.get_valid_move_zones(state);
                 let prompt = "Pick a zone to move to";
-                let zone = pick_zone(player_id, &zones, state, prompt).await;
+                let zone = pick_zone(player_id, &zones, state, prompt).await?;
                 let paths = card.get_valid_move_paths(state, &zone);
                 let path = if paths.len() > 1 {
                     let prompt = "Pick a path to move along";
-                    pick_path(player_id, &paths, state, prompt).await
+                    pick_path(player_id, &paths, state, prompt).await?
                 } else {
-                    paths.first().unwrap().to_vec()
+                    paths.first().ok_or(anyhow::anyhow!("no paths found"))?.to_vec()
                 };
 
-                let opponent = state.players.iter().find(|p| &p.id != player_id).unwrap();
+                let opponent = state
+                    .players
+                    .iter()
+                    .find(|p| &p.id != player_id)
+                    .ok_or(anyhow::anyhow!("opponent not found"))?;
                 let interceptors = state.get_interceptors_for_move(&path, &opponent.id);
                 let mut interceptor: Option<(uuid::Uuid, Zone)> = None;
                 if !interceptors.is_empty() {
                     let mut options = interceptors
                         .iter()
                         .map(|(id, zone)| {
-                            let interceptor_card = state.get_card(id).unwrap();
+                            let interceptor_card = state.get_card(id);
                             format!(
                                 "{} from {} at {}",
                                 interceptor_card.get_name(),
@@ -723,7 +770,7 @@ impl Action for UnitAction {
                         state,
                         format!("Wait for opponent to choose whether to intersect"),
                     )
-                    .await;
+                    .await?;
 
                     let action_idx = pick_option(
                         &opponent.id,
@@ -731,12 +778,12 @@ impl Action for UnitAction {
                         state,
                         format!("Intercept {} with...", card.get_name()),
                     )
-                    .await;
+                    .await?;
                     if action_idx < interceptors.len() {
                         interceptor = Some(interceptors[action_idx].clone());
                     }
 
-                    resume(player_id, state).await;
+                    resume(player_id, state).await?;
                 }
 
                 let mut effects = Vec::new();
@@ -764,7 +811,7 @@ impl Action for UnitAction {
                             continue;
                         }
 
-                        let interceptor_card = state.get_card(&interceptor_id).unwrap();
+                        let interceptor_card = state.get_card(&interceptor_id);
                         effects.push(Effect::MoveCard {
                             player_id: opponent.id.clone(),
                             card_id: interceptor_id.clone(),
@@ -787,21 +834,15 @@ impl Action for UnitAction {
                 }
 
                 effects.reverse();
-                effects
+                Ok(effects)
             }
-            UnitAction::Burrow => {
-                let card_id = card_id.unwrap();
-                vec![Effect::Burrow {
-                    card_id: card_id.clone(),
-                }]
-            }
-            UnitAction::Submerge => {
-                let card_id = card_id.unwrap();
-                vec![Effect::Submerge {
-                    card_id: card_id.clone(),
-                }]
-            }
-            UnitAction::Defend => vec![],
+            UnitAction::Burrow => Ok(vec![Effect::Burrow {
+                card_id: card_id.clone(),
+            }]),
+            UnitAction::Submerge => Ok(vec![Effect::Submerge {
+                card_id: card_id.clone(),
+            }]),
+            UnitAction::Defend => Ok(vec![]),
         }
     }
 }
@@ -862,9 +903,10 @@ impl Game {
         let receiver = self.server_receiver.clone();
         tokio::spawn(async move {
             loop {
-                let message = receiver.recv().await.unwrap();
-                let stream = streams.get(&message.player_id()).unwrap();
-                Self::send(Arc::clone(stream), &message).await.unwrap();
+                if let Ok(message) = receiver.recv().await {
+                    let stream = streams.get(&message.player_id()).unwrap();
+                    Self::send(Arc::clone(stream), &message).await.unwrap();
+                }
             }
         });
 
@@ -910,7 +952,7 @@ impl Game {
                 .await?;
             }
             ClientMessage::ClickCard { player_id, card_id, .. } => {
-                let card = self.state.cards.iter().find(|c| c.get_id() == card_id).unwrap();
+                let card = self.state.get_card(card_id);
                 if card.get_owner_id() != player_id {
                     return Ok(());
                 }
@@ -921,20 +963,34 @@ impl Game {
 
                 match (card.get_card_type(), card.get_zone()) {
                     (CardType::Artifact, Zone::Hand) => {
-                        let resources = self.state.resources.get(&player_id).unwrap();
+                        let resources = self
+                            .state
+                            .resources
+                            .get(&player_id)
+                            .ok_or(anyhow::anyhow!("No resources found for player"))?;
                         let can_afford = resources.can_afford(card, &self.state);
                         if !can_afford {
                             return Ok(());
                         }
 
-                        let units = card.get_artifact().unwrap().get_valid_attach_targets(&self.state);
+                        let units = card
+                            .get_artifact()
+                            .ok_or(anyhow::anyhow!("artifact card does not implement artifact"))?
+                            .get_valid_attach_targets(&self.state);
                         let picked_card_id =
-                            pick_card(player_id, &units, &self.state, "Pick a unit to attach the relic to").await;
-                        let artifact = self.state.get_card_mut(card_id).unwrap();
-                        artifact.get_artifact_base_mut().unwrap().attached_to = Some(picked_card_id.clone());
+                            pick_card(player_id, &units, &self.state, "Pick a unit to attach the relic to").await?;
+                        let artifact = self.state.get_card_mut(card_id);
+                        artifact
+                            .get_artifact_base_mut()
+                            .ok_or(anyhow::anyhow!("artifact card has no base artifact component"))?
+                            .attached_to = Some(picked_card_id.clone());
                     }
                     (CardType::Minion, Zone::Hand) | (CardType::Aura, Zone::Hand) => {
-                        let resources = self.state.resources.get(&player_id).unwrap();
+                        let resources = self
+                            .state
+                            .resources
+                            .get(&player_id)
+                            .ok_or(anyhow::anyhow!("No resources found for player"))?;
                         let can_afford = resources.can_afford(card, &self.state);
                         if !can_afford {
                             return Ok(());
@@ -942,13 +998,17 @@ impl Game {
 
                         let zones = card.get_valid_play_zones(&self.state);
                         let prompt = "Pick a zone to play the card";
-                        let zone = pick_zone(player_id, &zones, &self.state, prompt).await;
+                        let zone = pick_zone(player_id, &zones, &self.state, prompt).await?;
                         self.state
                             .effects
                             .push_back(Effect::play_card(player_id, card_id, &zone).into());
                     }
                     (CardType::Magic, Zone::Hand) => {
-                        let resources = self.state.resources.get(&player_id).unwrap();
+                        let resources = self
+                            .state
+                            .resources
+                            .get(&player_id)
+                            .ok_or(anyhow::anyhow!("No resources found for player"))?;
                         let can_afford = resources.can_afford(card, &self.state);
                         if !can_afford {
                             return Ok(());
@@ -962,8 +1022,8 @@ impl Game {
                             .map(|c| c.get_id().clone())
                             .collect();
                         let prompt = "Pick a spellcaster to cast the spell";
-                        let caster_id = pick_card(player_id, &spellcasters, &self.state, prompt).await;
-                        let caster = self.state.get_card(&caster_id).unwrap();
+                        let caster_id = pick_card(player_id, &spellcasters, &self.state, prompt).await?;
+                        let caster = self.state.get_card(&caster_id);
                         self.state.effects.push_back(
                             Effect::PlayMagic {
                                 player_id: player_id.clone(),
@@ -981,15 +1041,15 @@ impl Game {
                             return Ok(());
                         }
 
-                        let mut actions = card.get_actions(&self.state);
+                        let mut actions = card.get_actions(&self.state)?;
                         if actions.is_empty() {
                             return Ok(());
                         }
 
-                        actions.push(Box::new(BaseAction::Cancel));
+                        actions.push(Box::new(CancelAction));
                         let prompt = format!("{}: Pick action", card.get_name());
-                        let action = pick_action(player_id, &actions, &self.state, &prompt).await;
-                        let effects = action.on_select(Some(card.get_id()), player_id, &self.state).await;
+                        let action = pick_action(player_id, &actions, &self.state, &prompt).await?;
+                        let effects = action.on_select(card.get_id(), player_id, &self.state).await?;
                         self.state.effects.extend(effects.into_iter().map(|e| e.into()));
                     }
                     _ => {}
@@ -1027,7 +1087,7 @@ impl Game {
                     .players
                     .iter()
                     .position(|p| p.id == self.state.current_player)
-                    .unwrap();
+                    .unwrap_or_default();
                 let current_player = self.state.current_player.clone();
                 let next_player = self
                     .state
@@ -1036,7 +1096,7 @@ impl Game {
                     .cycle()
                     .skip(current_index + 1)
                     .next()
-                    .unwrap();
+                    .ok_or(anyhow::anyhow!("No next player found"))?;
                 self.state.current_player = next_player.id.clone();
                 self.state.turns += 1;
                 let effects = vec![
@@ -1057,18 +1117,17 @@ impl Game {
             .cards
             .iter()
             .filter(|c| c.is_artifact())
-            .filter(|c| c.get_artifact_base().unwrap().attached_to.is_some())
-            .map(|c| {
-                (
-                    c.get_id().clone(),
-                    c.get_artifact_base().unwrap().attached_to.unwrap().clone(),
-                )
-            })
+            .filter_map(
+                |c| match c.get_artifact_base().expect("artifact to have a base").attached_to {
+                    Some(attached_to) => Some((c.get_id().clone(), attached_to.clone())),
+                    None => None,
+                },
+            )
             .collect();
         for (artifact_id, unit_id) in attached_artifacts {
-            let unit = self.state.get_card(&unit_id).unwrap();
+            let unit = self.state.get_card(&unit_id);
             let zone = unit.get_zone().clone();
-            let artifact = self.state.get_card_mut(&artifact_id).unwrap();
+            let artifact = self.state.get_card_mut(&artifact_id);
             artifact.set_zone(zone);
         }
 
@@ -1090,7 +1149,10 @@ impl Game {
                 card_type: c.get_card_type().clone(),
                 modifiers: c.get_modifiers(&self.state),
                 plane: c.get_plane(&self.state).clone(),
-                damage_taken: c.get_damage_taken(),
+                damage_taken: c.get_damage_taken().unwrap_or(0),
+                attached_to: c
+                    .get_artifact()
+                    .and_then(|c| c.get_attached_to().unwrap_or_default().clone()),
             })
             .collect()
     }
@@ -1103,7 +1165,7 @@ impl Game {
     async fn send(stream: Arc<Mutex<OwnedWriteHalf>>, message: &ServerMessage) -> anyhow::Result<()> {
         let bytes = rmp_serde::to_vec(&message.to_message())?;
         let mut stream = stream.lock().await;
-        stream.write_all(&bytes).await.unwrap();
+        stream.write_all(&bytes).await?;
 
         Ok(())
     }
@@ -1174,7 +1236,7 @@ impl Game {
             let effect = self.state.effects.pop_back();
             if let Some(effect) = effect {
                 effect.apply(&mut self.state).await?;
-                if let Some(description) = effect.description(&self.state).await {
+                if let Ok(Some(description)) = effect.description(&self.state).await {
                     self.broadcast(&ServerMessage::LogEvent {
                         id: uuid::Uuid::new_v4(),
                         description,

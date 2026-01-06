@@ -12,7 +12,7 @@ use tokio::{io::AsyncReadExt, net::TcpListener, sync::Mutex};
 async fn main() -> anyhow::Result<()> {
     QueryCache::init();
 
-    let socket = TcpListener::bind("0.0.0.0:5000".parse::<SocketAddr>().unwrap()).await?;
+    let socket = TcpListener::bind("0.0.0.0:5000".parse::<SocketAddr>()?).await?;
     let server = Arc::new(Mutex::new(Server::new()));
     loop {
         let (stream, addr) = socket.accept().await?;
@@ -22,28 +22,26 @@ async fn main() -> anyhow::Result<()> {
             let writer = Arc::new(Mutex::new(writer));
             loop {
                 let mut buf = vec![0; 32000];
-                match reader.read(&mut buf).await {
-                    Ok(0) => {
-                        let mut server = server_clone.lock().await;
-                        server
-                            .process_message(
-                                &Message::ClientMessage(ClientMessage::Disconnect),
-                                Arc::clone(&writer),
-                                &addr,
-                            )
-                            .await
-                            .unwrap();
-                        break;
-                    }
-                    Ok(_) => {
-                        let msg: Message = rmp_serde::from_slice(&buf).unwrap();
-                        let mut server = server_clone.lock().await;
-                        server.process_message(&msg, Arc::clone(&writer), &addr).await.unwrap();
-                    }
-                    Err(e) => {
-                        println!("{:?}", e.kind());
-                    }
+                let read_bytes = reader.read(&mut buf).await.expect("read from socket");
+                if read_bytes == 0 {
+                    let mut server = server_clone.lock().await;
+                    server
+                        .process_message(
+                            &Message::ClientMessage(ClientMessage::Disconnect),
+                            Arc::clone(&writer),
+                            &addr,
+                        )
+                        .await
+                        .expect("message to be processed");
+                    break;
                 }
+
+                let msg: Message = rmp_serde::from_slice(&buf).expect("valid message");
+                let mut server = server_clone.lock().await;
+                server
+                    .process_message(&msg, Arc::clone(&writer), &addr)
+                    .await
+                    .expect("message to be processed");
             }
         });
     }

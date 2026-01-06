@@ -1,5 +1,6 @@
 use macroquad::prelude::*;
-use std::sync::{LazyLock, Mutex};
+use std::sync::LazyLock;
+use tokio::sync::Mutex;
 
 static MOUSE_STATUS: LazyLock<Mutex<Mouse>> = LazyLock::new(|| Mutex::new(Mouse::new()));
 
@@ -19,23 +20,23 @@ impl Mouse {
         }
     }
 
-    pub fn record_release() {
-        let mut mouse_status = MOUSE_STATUS.lock().unwrap();
+    pub async fn record_release() {
+        let mut mouse_status = MOUSE_STATUS.lock().await;
         mouse_status.last_left_button_press = None;
     }
 
-    pub fn record_press() {
-        let mut mouse_status = MOUSE_STATUS.lock().unwrap();
+    pub async fn record_press() {
+        let mut mouse_status = MOUSE_STATUS.lock().await;
         mouse_status.last_left_button_press = Some(chrono::Utc::now());
         mouse_status.last_click_position = Some(mouse_position().into());
     }
 
-    pub fn clicked() -> bool {
-        !Mouse::dragging() && is_mouse_button_released(MouseButton::Left)
+    pub async fn clicked() -> bool {
+        !Mouse::dragging().await && is_mouse_button_released(MouseButton::Left)
     }
 
-    pub fn dragging() -> bool {
-        let mouse_status = MOUSE_STATUS.lock().unwrap();
+    pub async fn dragging() -> bool {
+        let mouse_status = MOUSE_STATUS.lock().await;
         if mouse_status.last_left_button_press.is_none() {
             return false;
         }
@@ -49,12 +50,12 @@ impl Mouse {
         false
     }
 
-    pub fn set_enabled(enabled: bool) {
-        let mut mouse_status = MOUSE_STATUS.lock().unwrap();
+    pub async fn set_enabled(enabled: bool) {
+        let mut mouse_status = MOUSE_STATUS.lock().await;
         mouse_status.enabled = enabled;
     }
 
-    pub fn enabled() -> bool {
-        MOUSE_STATUS.lock().unwrap().enabled
+    pub async fn enabled() -> bool {
+        MOUSE_STATUS.lock().await.enabled
     }
 }

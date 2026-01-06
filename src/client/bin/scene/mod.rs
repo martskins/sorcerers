@@ -32,12 +32,12 @@ impl Scene {
         }
     }
 
-    pub async fn process_input(&mut self) -> Option<Scene> {
+    pub async fn process_input(&mut self) -> anyhow::Result<Option<Scene>> {
         match self {
             Scene::Menu(menu) => menu.process_input().await,
             Scene::Game(game) => {
-                game.process_input().await;
-                None
+                game.process_input().await?;
+                Ok(None)
             }
         }
     }

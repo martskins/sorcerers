@@ -133,7 +133,10 @@ impl State {
                 card_type: c.get_card_type().clone(),
                 modifiers: c.get_modifiers(&self),
                 plane: c.get_plane(&self).clone(),
-                damage_taken: c.get_damage_taken(),
+                damage_taken: c.get_damage_taken().unwrap_or(0),
+                attached_to: c
+                    .get_artifact()
+                    .and_then(|c| c.get_attached_to().unwrap_or_default().clone()),
             })
             .collect()
     }
@@ -154,12 +157,18 @@ impl State {
         self.server_tx.clone()
     }
 
-    pub fn get_card_mut(&mut self, card_id: &uuid::Uuid) -> Option<&mut Box<dyn Card>> {
-        self.cards.iter_mut().find(|c| c.get_id() == card_id)
+    pub fn get_card_mut(&mut self, card_id: &uuid::Uuid) -> &mut Box<dyn Card> {
+        self.cards
+            .iter_mut()
+            .find(|c| c.get_id() == card_id)
+            .expect("failed to get card")
     }
 
-    pub fn get_card(&self, card_id: &uuid::Uuid) -> Option<&Box<dyn Card>> {
-        self.cards.iter().find(|c| c.get_id() == card_id)
+    pub fn get_card(&self, card_id: &uuid::Uuid) -> &Box<dyn Card> {
+        self.cards
+            .iter()
+            .find(|c| c.get_id() == card_id)
+            .expect("failed to get card")
     }
 
     pub fn get_minions_in_zone(&self, zone: &Zone) -> Vec<&Box<dyn Card>> {
@@ -182,8 +191,18 @@ impl State {
         self.cards.iter().filter(|c| c.get_zone() == zone).collect()
     }
 
-    pub fn get_player_resources(&self, player_id: &PlayerId) -> &Resources {
-        self.resources.get(player_id).unwrap()
+    pub fn get_player_resources_mut(&mut self, player_id: &PlayerId) -> anyhow::Result<&mut Resources> {
+        Ok(self
+            .resources
+            .get_mut(player_id)
+            .ok_or(anyhow::anyhow!("failed to get player resources"))?)
+    }
+
+    pub fn get_player_resources(&self, player_id: &PlayerId) -> anyhow::Result<&Resources> {
+        Ok(self
+            .resources
+            .get(player_id)
+            .ok_or(anyhow::anyhow!("failed to get player resources"))?)
     }
 
     pub fn snapshot(&self) -> State {

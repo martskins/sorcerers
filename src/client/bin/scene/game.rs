@@ -214,12 +214,12 @@ impl Game {
         }
 
         if is_mouse_button_pressed(MouseButton::Left) {
-            Mouse::record_press();
+            Mouse::record_press().await;
         }
 
         if is_mouse_button_released(MouseButton::Left) {
-            Mouse::record_release();
-            Mouse::set_enabled(true);
+            Mouse::record_release().await;
+            Mouse::set_enabled(true).await;
         }
 
         if let Status::ViewingCards {
@@ -244,9 +244,8 @@ impl Game {
             self.data.status = *prev_status.clone();
         }
 
-        if self.card_selection_overlay.is_some() {
-            let overlay = self.card_selection_overlay.as_mut().unwrap();
-            overlay.update();
+        if let Some(overlay) = &mut self.card_selection_overlay {
+            overlay.update().await;
 
             if overlay.should_close() {
                 self.card_selection_overlay = None;
@@ -282,8 +281,7 @@ impl Game {
             return Ok(Some(scene));
         }
 
-        if self.card_selection_overlay.is_some() {
-            let overlay = self.card_selection_overlay.as_mut().unwrap();
+        if let Some(overlay) = &mut self.card_selection_overlay {
             overlay.render();
         }
 
@@ -400,21 +398,20 @@ impl Game {
         }
     }
 
-    pub async fn process_input(&mut self) {
+    pub async fn process_input(&mut self) -> anyhow::Result<()> {
         if let Status::Waiting { .. } = self.data.status {
-            return;
+            return Ok(());
         }
 
-        if self.card_selection_overlay.is_some() {
-            let overlay = self.card_selection_overlay.as_mut().unwrap();
-            overlay.process_input();
-            return;
+        if let Some(overlay) = &mut self.card_selection_overlay {
+            return overlay.process_input().await;
         }
 
         let mut component_actions = vec![];
         for component in &mut self.components {
-            if let Ok(Some(action)) =
-                component.process_input(self.current_player == self.data.player_id, &mut self.data)
+            if let Ok(Some(action)) = component
+                .process_input(self.current_player == self.data.player_id, &mut self.data)
+                .await
             {
                 component_actions.push(action);
             }
@@ -425,6 +422,8 @@ impl Game {
                 component.process_command(&action).await;
             }
         }
+
+        Ok(())
     }
 
     async fn render_gui(&mut self) -> anyhow::Result<Option<Scene>> {
@@ -441,7 +440,7 @@ impl Game {
         let is_idle = matches!(self.data.status, Status::Idle);
         if is_in_turn && is_idle {
             if ui::root_ui().button(Vec2::new(screen_rect.w - 100.0, screen_rect.h - 40.0), "Pass Turn") {
-                Mouse::set_enabled(false);
+                Mouse::set_enabled(false).await;
                 self.client.send(ClientMessage::EndTurn {
                     player_id: self.data.player_id.clone(),
                     game_id: self.game_id.clone(),
@@ -498,6 +497,7 @@ impl Game {
                     (button_height + 10.0) * actions.len() as f32 + 20.0 + 50.0,
                 );
                 let actions = actions.clone();
+                let mut disable_mouse = false;
                 ui::root_ui().window(
                     hash!(),
                     Vec2::new(
@@ -522,13 +522,17 @@ impl Game {
                                         player_id: self.data.player_id,
                                         action_idx: idx,
                                     })
-                                    .unwrap();
-                                Mouse::set_enabled(false);
+                                    .expect("PickAction to be sent");
+                                disable_mouse = true;
                                 self.data.status = Status::Idle;
                             }
                         }
                     },
                 );
+
+                if disable_mouse {
+                    Mouse::set_enabled(false).await;
+                }
 
                 None
             }
@@ -541,6 +545,7 @@ impl Game {
                 let label_padding = 10.0;
                 let label_height = prompt.lines().count() as f32 * (font_size as f32 + 4.0) + label_padding;
                 let window_size = Vec2::new(window_width, button_height + 10.0 + 20.0 + label_height);
+                let mut disable_mouse = false;
                 ui::root_ui().window(
                     hash!(),
                     Vec2::new(
@@ -557,11 +562,15 @@ impl Game {
                             .ui(ui);
                         if clicked {
                             scene = Some(Scene::Menu(Menu::new(self.client.clone())));
-                            Mouse::set_enabled(false);
+                            disable_mouse = true;
                             self.data.status = Status::Idle;
                         }
                     },
                 );
+
+                if disable_mouse {
+                    Mouse::set_enabled(false).await;
+                }
 
                 scene
             }

@@ -57,13 +57,17 @@ impl Menu {
                 game_id,
                 cards,
             } => {
-                let opponent_id = if player1 == &self.player_id.unwrap() {
+                if self.player_id.is_none() {
+                    return Err(anyhow::anyhow!("Received GameStarted without a player_id"));
+                }
+
+                let player_id = self.player_id.expect("player_id should be set");
+                let opponent_id = if player1 == &player_id {
                     player2.clone()
                 } else {
                     player1.clone()
                 };
 
-                let player_id = self.player_id.unwrap();
                 Ok(Some(Scene::Game(Game::new(
                     game_id.clone(),
                     player_id,
@@ -102,7 +106,7 @@ impl Menu {
         Ok(None)
     }
 
-    async fn render_deck_list(&mut self) -> Option<Scene> {
+    async fn render_deck_list(&mut self) -> anyhow::Result<Option<Scene>> {
         let button_size = Vec2::new(300.0, 60.0);
         let screen_w = macroquad::window::screen_width();
         let screen_h = macroquad::window::screen_height();
@@ -127,13 +131,11 @@ impl Menu {
                 .ui(&mut ui::root_ui());
             if clicked {
                 chose_deck = true;
-                self.client
-                    .send(ClientMessage::JoinQueue {
-                        player_name: self.player_name.clone(),
-                        player_id: self.player_id.unwrap().clone(),
-                        deck: deck.clone(),
-                    })
-                    .unwrap();
+                self.client.send(ClientMessage::JoinQueue {
+                    player_name: self.player_name.clone(),
+                    player_id: self.player_id.expect("player id should be set").clone(),
+                    deck: deck.clone(),
+                })?;
                 root_ui().pop_skin();
             }
         }
@@ -143,10 +145,10 @@ impl Menu {
         }
 
         root_ui().pop_skin();
-        None
+        Ok(None)
     }
 
-    async fn render_lobby_form(&mut self) -> Option<Scene> {
+    async fn render_lobby_form(&mut self) -> anyhow::Result<Option<Scene>> {
         let button_size = Vec2::new(300.0, 60.0);
         let screen_w = macroquad::window::screen_width();
         let screen_h = macroquad::window::screen_height();
@@ -192,17 +194,17 @@ impl Menu {
             if self.player_name.is_empty() {
                 self.shake_input_until = Some(chrono::Utc::now() + chrono::Duration::milliseconds(500));
             } else {
-                self.client.send(ClientMessage::Connect).unwrap();
+                self.client.send(ClientMessage::Connect)?;
             }
         }
 
         root_ui().pop_skin();
-        None
+        Ok(None)
     }
 
-    pub async fn process_input(&mut self) -> Option<Scene> {
+    pub async fn process_input(&mut self) -> anyhow::Result<Option<Scene>> {
         if self.looking_for_match {
-            return None;
+            return Ok(None);
         }
 
         if self.available_decks.is_empty() {

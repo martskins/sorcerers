@@ -61,7 +61,7 @@ impl Card for InfernalLegion {
         Some(&mut self.unit_base)
     }
 
-    async fn on_turn_end(&self, state: &State) -> Vec<Effect> {
+    async fn on_turn_end(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let adjacent_units: Vec<uuid::Uuid> = self
             .get_zone()
             .get_adjacent()
@@ -77,6 +77,6 @@ impl Card for InfernalLegion {
                 damage: 3,
             });
         }
-        effects
+        Ok(effects)
     }
 }

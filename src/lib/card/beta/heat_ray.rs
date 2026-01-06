@@ -45,11 +45,11 @@ impl Card for HeatRay {
         &self.card_base
     }
 
-    async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> Vec<Effect> {
-        let caster = state.get_card(caster_id).unwrap();
+    async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
+        let caster = state.get_card(caster_id);
         let prompt = "Heat Ray: Pick a direction to cast the spell:";
-        let direction = pick_direction(self.get_owner_id(), &CARDINAL_DIRECTIONS, state, prompt).await;
-        vec![Effect::ShootProjectile {
+        let direction = pick_direction(self.get_owner_id(), &CARDINAL_DIRECTIONS, state, prompt).await?;
+        Ok(vec![Effect::ShootProjectile {
             player_id: self.get_owner_id().clone(),
             shooter: caster.get_id().clone(),
             from_zone: caster.get_zone().clone(),
@@ -57,6 +57,6 @@ impl Card for HeatRay {
             damage: 2,
             piercing: true,
             splash_damage: None,
-        }]
+        }])
     }
 }

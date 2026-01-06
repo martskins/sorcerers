@@ -1,14 +1,12 @@
-use std::{collections::HashMap, sync::OnceLock};
-
-use rand::seq::IndexedRandom;
-use tokio::sync::RwLock;
-
 use crate::{
     card::Zone,
     effect::Effect,
     game::{PlayerId, pick_card, pick_card_with_preview, pick_zone},
     state::State,
 };
+use rand::seq::IndexedRandom;
+use std::{collections::HashMap, sync::OnceLock};
+use tokio::sync::RwLock;
 
 static QUERY_CACHE: OnceLock<RwLock<QueryCache>> = OnceLock::new();
 
@@ -32,9 +30,16 @@ impl QueryCache {
         QUERY_CACHE.get_or_init(|| RwLock::new(QueryCache::new()));
     }
 
-    pub async fn resolve_card(qry: &CardQuery, player_id: &PlayerId, state: &State) -> uuid::Uuid {
-        if let Some(cached) = QUERY_CACHE.get().unwrap().read().await.card_queries.get(&qry.get_id()) {
-            return cached.clone();
+    pub async fn resolve_card(qry: &CardQuery, player_id: &PlayerId, state: &State) -> anyhow::Result<uuid::Uuid> {
+        if let Some(cached) = QUERY_CACHE
+            .get()
+            .expect("to get lock")
+            .read()
+            .await
+            .card_queries
+            .get(&qry.get_id())
+        {
+            return Ok(cached.clone());
         }
 
         let card_id = match qry {
@@ -48,7 +53,7 @@ impl QueryCache {
                     .filter(|c| c.can_be_targetted_by(state, player_id))
                     .map(|c| c.get_id().clone())
                     .collect();
-                pick_card(player_id, &cards, state, prompt.as_ref().map_or("Pick a card", |v| v)).await
+                pick_card(player_id, &cards, state, prompt.as_ref().map_or("Pick a card", |v| v)).await?
             }
             CardQuery::NearZone {
                 zone, owner, prompt, ..
@@ -59,7 +64,7 @@ impl QueryCache {
                     .filter(|c| c.can_be_targetted_by(state, player_id))
                     .map(|c| c.get_id().clone())
                     .collect();
-                pick_card(player_id, &cards, state, prompt.as_ref().map_or("Pick a card", |v| v)).await
+                pick_card(player_id, &cards, state, prompt.as_ref().map_or("Pick a card", |v| v)).await?
             }
             CardQuery::OwnedBy { owner, prompt, .. } => {
                 let cards: Vec<uuid::Uuid> = state
@@ -69,21 +74,24 @@ impl QueryCache {
                     .filter(|c| c.can_be_targetted_by(state, player_id))
                     .map(|c| c.get_id().clone())
                     .collect();
-                pick_card(player_id, &cards, state, prompt.as_ref().map_or("Pick a card", |v| v)).await
+                pick_card(player_id, &cards, state, prompt.as_ref().map_or("Pick a card", |v| v)).await?
             }
             CardQuery::RandomTarget { possible_targets, .. } => {
                 for card in &state.cards {
                     if let Some(query) = card.card_query_override(state, qry) {
-                        return Box::pin(query.resolve(player_id, state)).await;
+                        return Ok(Box::pin(query.resolve(player_id, state)).await?);
                     }
                 }
 
-                possible_targets.choose(&mut rand::rng()).unwrap().clone()
+                possible_targets
+                    .choose(&mut rand::rng())
+                    .ok_or(anyhow::anyhow!("failed to get random card"))?
+                    .clone()
             }
             CardQuery::RandomUnitInZone { zone, .. } => {
                 for card in &state.cards {
                     if let Some(query) = card.card_query_override(state, qry) {
-                        return Box::pin(query.resolve(player_id, state)).await;
+                        return Ok(Box::pin(query.resolve(player_id, state)).await?);
                     }
                 }
 
@@ -92,7 +100,10 @@ impl QueryCache {
                     .iter()
                     .map(|c| c.get_id().clone())
                     .collect();
-                cards.choose(&mut rand::rng()).unwrap().clone()
+                cards
+                    .choose(&mut rand::rng())
+                    .ok_or(anyhow::anyhow!("failed to get random card"))?
+                    .clone()
             }
             CardQuery::FromOptions {
                 options,
@@ -110,11 +121,11 @@ impl QueryCache {
                     .await;
                 }
 
-                pick_card(player_id, &options, state, prompt.as_ref().unwrap_or(&String::new())).await
+                pick_card(player_id, &options, state, prompt.as_ref().unwrap_or(&String::new())).await?
             }
         };
 
-        let mut cache = QUERY_CACHE.get().unwrap().write().await;
+        let mut cache = QUERY_CACHE.get().expect("lock to be obtained").write().await;
         cache.card_queries.insert(qry.get_id().clone(), card_id.clone());
         cache
             .game_queries
@@ -122,12 +133,19 @@ impl QueryCache {
             .or_insert(Vec::new())
             .push(qry.get_id().clone());
 
-        card_id
+        Ok(card_id)
     }
 
-    pub async fn resolve_zone(qry: &ZoneQuery, player_id: &PlayerId, state: &State) -> Zone {
-        if let Some(cached) = QUERY_CACHE.get().unwrap().read().await.zone_queries.get(&qry.get_id()) {
-            return cached.clone();
+    pub async fn resolve_zone(qry: &ZoneQuery, player_id: &PlayerId, state: &State) -> anyhow::Result<Zone> {
+        if let Some(cached) = QUERY_CACHE
+            .get()
+            .expect("lock to be obtained")
+            .read()
+            .await
+            .zone_queries
+            .get(&qry.get_id())
+        {
+            return Ok(cached.clone());
         }
 
         let zone = match qry {
@@ -138,7 +156,7 @@ impl QueryCache {
                     state,
                     prompt.as_ref().map_or("Pick a zone", |v| v),
                 )
-                .await
+                .await?
             }
             ZoneQuery::Specific { zone, .. } => zone.clone(),
             ZoneQuery::AnySite { prompt, .. } => {
@@ -150,23 +168,26 @@ impl QueryCache {
                     .map(|c| c.get_zone().clone())
                     .collect::<Vec<Zone>>();
                 sites.dedup();
-                pick_zone(player_id, &sites, state, prompt.as_ref().map_or("Pick a zone", |v| v)).await
+                pick_zone(player_id, &sites, state, prompt.as_ref().map_or("Pick a zone", |v| v)).await?
             }
             ZoneQuery::Random { options, .. } => {
                 for card in &state.cards {
                     if let Some(query) = card.zone_query_override(state, qry) {
-                        return Box::pin(query.resolve(player_id, state)).await;
+                        return Ok(Box::pin(query.resolve(player_id, state)).await?);
                     }
                 }
 
-                options.choose(&mut rand::rng()).unwrap().clone()
+                options
+                    .choose(&mut rand::rng())
+                    .expect("failed to get random zone")
+                    .clone()
             }
             ZoneQuery::FromOptions { options, prompt, .. } => {
-                pick_zone(player_id, options, state, prompt.as_ref().map_or("Pick a zone", |v| v)).await
+                pick_zone(player_id, options, state, prompt.as_ref().map_or("Pick a zone", |v| v)).await?
             }
         };
 
-        let mut cache = QUERY_CACHE.get().unwrap().write().await;
+        let mut cache = QUERY_CACHE.get().expect("failed to get random zone").write().await;
         cache.zone_queries.insert(qry.get_id().clone(), zone.clone());
         cache
             .game_queries
@@ -174,7 +195,7 @@ impl QueryCache {
             .or_insert(Vec::new())
             .push(qry.get_id().clone());
 
-        zone
+        Ok(zone)
     }
 
     pub async fn clear_game_cache(game_id: &uuid::Uuid) {
@@ -271,13 +292,13 @@ impl ZoneQuery {
                 sites
             }
             ZoneQuery::Random { options, .. } => {
-                vec![options.choose(&mut rand::rng()).unwrap().clone()]
+                vec![options.choose(&mut rand::rng()).expect("failed to get random zone").clone()]
             }
             ZoneQuery::FromOptions { options, .. } => options.clone(),
         }
     }
 
-    pub async fn resolve(&self, player_id: &PlayerId, state: &State) -> Zone {
+    pub async fn resolve(&self, player_id: &PlayerId, state: &State) -> anyhow::Result<Zone> {
         QueryCache::resolve_zone(self, player_id, state).await
     }
 }
@@ -359,7 +380,7 @@ impl CardQuery {
         }
     }
 
-    pub async fn resolve(&self, player_id: &PlayerId, state: &State) -> uuid::Uuid {
+    pub async fn resolve(&self, player_id: &PlayerId, state: &State) -> anyhow::Result<uuid::Uuid> {
         QueryCache::resolve_card(self, player_id, state).await
     }
 }
@@ -371,7 +392,7 @@ pub enum EffectQuery {
 }
 
 impl EffectQuery {
-    pub async fn matches(&self, effect: &Effect, state: &State) -> bool {
+    pub async fn matches(&self, effect: &Effect, state: &State) -> anyhow::Result<bool> {
         match (self, effect) {
             (
                 EffectQuery::EnterZone { card, zone },
@@ -381,11 +402,11 @@ impl EffectQuery {
             ) => {
                 let cards = card.options(state);
                 let zones = zone.options(state);
-                let zone = to.resolve(player_id, state).await;
-                return cards.contains(card_id) && zones.contains(&zone);
+                let zone = to.resolve(player_id, state).await?;
+                Ok(cards.contains(card_id) && zones.contains(&zone))
             }
-            (EffectQuery::TurnEnd, Effect::EndTurn { .. }) => true,
-            _ => false,
+            (EffectQuery::TurnEnd, Effect::EndTurn { .. }) => Ok(true),
+            _ => Ok(false),
         }
     }
 }

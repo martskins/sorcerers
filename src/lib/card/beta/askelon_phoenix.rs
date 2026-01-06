@@ -61,13 +61,13 @@ impl Card for AskelonPhoenix {
         Some(&mut self.unit_base)
     }
 
-    fn on_take_damage(&mut self, state: &State, from: &uuid::Uuid, damage: u8) -> Vec<Effect> {
-        let attacker = state.get_card(from).unwrap();
+    fn on_take_damage(&mut self, state: &State, from: &uuid::Uuid, damage: u8) -> anyhow::Result<Vec<Effect>> {
+        let attacker = state.get_card(from);
         if attacker.get_elements(state).contains(&Element::Fire) {
-            return vec![Effect::AddCounter {
+            return Ok(vec![Effect::AddCounter {
                 card_id: self.get_id().clone(),
                 counter: Counter::new(1, 1, Some(EffectQuery::TurnEnd)),
-            }];
+            }]);
         }
 
         let ub = self.get_unit_base_mut().unwrap();
@@ -77,6 +77,6 @@ impl Card for AskelonPhoenix {
         if ub.damage >= self.get_toughness(state).unwrap_or(0) || attacker.has_modifier(state, &Modifier::Lethal) {
             effects.push(Effect::bury_card(self.get_id(), self.get_zone()));
         }
-        effects
+        Ok(effects)
     }
 }

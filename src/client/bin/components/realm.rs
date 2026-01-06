@@ -120,8 +120,7 @@ impl RealmComponent {
             .into_iter()
             .filter_map(|z| match z {
                 Zone::Intersection(locs) => {
-                    let rect = intersection_rect(&rect, &locs, mirrored).unwrap();
-                    Some(IntersectionRect { locations: locs, rect })
+                    intersection_rect(&rect, &locs, mirrored).map(|rect| IntersectionRect { locations: locs, rect })
                 }
                 _ => None,
             })
@@ -160,78 +159,79 @@ impl RealmComponent {
 
             match &card.zone {
                 Zone::Realm(square) => {
-                    let cell_rect = self.cell_rects.iter().find(|c| &c.id == square).unwrap().rect;
-                    let mut dimensions = spell_dimensions(&cell_rect);
-                    if card.card_type == CardType::Site {
-                        dimensions = site_dimensions(&cell_rect);
-                    }
+                    if let Some(cell) = self.cell_rects.iter().find(|c| &c.id == square) {
+                        let rect = cell.rect;
+                        let mut dimensions = spell_dimensions(&rect);
+                        if card.card_type == CardType::Site {
+                            dimensions = site_dimensions(&rect);
+                        }
 
-                    let mut pos_x = cell_rect.x + (cell_rect.w - dimensions.x) / 2.0;
-                    let mut pos_y = cell_rect.y + (cell_rect.h - dimensions.y) / 2.0;
-                    if card.card_type == CardType::Site {
-                        pos_x = cell_rect.x;
-                        pos_y = cell_rect.y + cell_rect.h - dimensions.y;
-                    } else {
-                        // Add jitter to position
-                        let jitter_x: f32 = rng.random_range(-12.0..12.0);
-                        let jitter_y: f32 = rng.random_range(-12.0..12.0);
-                        pos_x += jitter_x;
-                        pos_y += jitter_y;
-                    }
+                        let mut pos_x = rect.x + (rect.w - dimensions.x) / 2.0;
+                        let mut pos_y = rect.y + (rect.h - dimensions.y) / 2.0;
+                        if card.card_type == CardType::Site {
+                            pos_x = rect.x;
+                            pos_y = rect.y + rect.h - dimensions.y;
+                        } else {
+                            // Add jitter to position
+                            let jitter_x: f32 = rng.random_range(-12.0..12.0);
+                            let jitter_y: f32 = rng.random_range(-12.0..12.0);
+                            pos_x += jitter_x;
+                            pos_y += jitter_y;
+                        }
 
-                    let rect = Rect::new(pos_x, pos_y, dimensions.x, dimensions.y);
-                    new_cards.push(CardRect {
-                        id: card.id,
-                        owner_id: card.owner_id,
-                        zone: card.zone.clone(),
-                        tapped: card.tapped,
-                        image: TextureCache::get_card_texture(&card).await,
-                        rect,
-                        is_hovered: existing_card.map_or(false, |c| c.is_hovered),
-                        modifiers: card.modifiers.clone(),
-                        damage_taken: card.damage_taken,
-                        card_type: card.card_type.clone(),
-                    });
+                        let rect = Rect::new(pos_x, pos_y, dimensions.x, dimensions.y);
+                        new_cards.push(CardRect {
+                            id: card.id,
+                            owner_id: card.owner_id,
+                            zone: card.zone.clone(),
+                            tapped: card.tapped,
+                            image: TextureCache::get_card_texture(&card).await,
+                            rect,
+                            is_hovered: existing_card.map_or(false, |c| c.is_hovered),
+                            modifiers: card.modifiers.clone(),
+                            damage_taken: card.damage_taken,
+                            card_type: card.card_type.clone(),
+                            attached_to: card.attached_to.clone(),
+                        });
+                    }
                 }
                 Zone::Intersection(locs) => {
-                    let rect = self
-                        .intersection_rects
-                        .iter()
-                        .find(|c| &c.locations == locs)
-                        .unwrap()
-                        .rect;
-                    // Use a grid cell as a reference for the spell dimensions instead of the
-                    // intersection rect itself, as the intersection rect is smaller and the card
-                    // would be too small.
-                    let mut dimensions = spell_dimensions(&self.cell_rects[0].rect);
-                    if card.card_type == CardType::Site {
-                        dimensions = site_dimensions(&rect);
+                    if let Some(intersection) = self.intersection_rects.iter().find(|c| &c.locations == locs) {
+                        let rect = intersection.rect;
+                        // Use a grid cell as a reference for the spell dimensions instead of the
+                        // intersection rect itself, as the intersection rect is smaller and the card
+                        // would be too small.
+                        let mut dimensions = spell_dimensions(&self.cell_rects[0].rect);
+                        if card.card_type == CardType::Site {
+                            dimensions = site_dimensions(&rect);
+                        }
+
+                        let mut rect = Rect::new(rect.x, rect.y, dimensions.x, dimensions.y);
+
+                        // Add jitter to position
+                        let jitter_x: f32 = rng.random_range(-2.0..2.0);
+                        let jitter_y: f32 = rng.random_range(-2.0..2.0);
+                        rect.x += jitter_x;
+                        rect.y += jitter_y;
+
+                        new_cards.push(CardRect {
+                            id: card.id,
+                            owner_id: card.owner_id,
+                            zone: card.zone.clone(),
+                            tapped: card.tapped,
+                            image: TextureCache::get_card_texture(&card).await,
+                            rect,
+                            is_hovered: self
+                                .cards
+                                .iter()
+                                .find(|c| c.id == card.id)
+                                .map_or(false, |c| c.is_hovered),
+                            modifiers: card.modifiers.clone(),
+                            damage_taken: card.damage_taken,
+                            card_type: card.card_type.clone(),
+                            attached_to: card.attached_to.clone(),
+                        });
                     }
-
-                    let mut rect = Rect::new(rect.x, rect.y, dimensions.x, dimensions.y);
-
-                    // Add jitter to position
-                    let jitter_x: f32 = rng.random_range(-2.0..2.0);
-                    let jitter_y: f32 = rng.random_range(-2.0..2.0);
-                    rect.x += jitter_x;
-                    rect.y += jitter_y;
-
-                    new_cards.push(CardRect {
-                        id: card.id,
-                        owner_id: card.owner_id,
-                        zone: card.zone.clone(),
-                        tapped: card.tapped,
-                        image: TextureCache::get_card_texture(&card).await,
-                        rect,
-                        is_hovered: self
-                            .cards
-                            .iter()
-                            .find(|c| c.id == card.id)
-                            .map_or(false, |c| c.is_hovered),
-                        modifiers: card.modifiers.clone(),
-                        damage_taken: card.damage_taken,
-                        card_type: card.card_type.clone(),
-                    });
                 }
                 _ => {}
             }
@@ -410,13 +410,18 @@ impl RealmComponent {
         }
     }
 
-    fn handle_square_click(&mut self, mouse_position: Vec2, in_turn: bool, status: &mut Status) {
+    async fn handle_square_click(
+        &mut self,
+        mouse_position: Vec2,
+        in_turn: bool,
+        status: &mut Status,
+    ) -> anyhow::Result<()> {
         if !in_turn {
-            return;
+            return Ok(());
         }
 
         if let Status::SelectingAction { .. } = &status {
-            return;
+            return Ok(());
         }
 
         match &status {
@@ -431,13 +436,11 @@ impl RealmComponent {
                     if cell.rect.contains(mouse_position.into()) {
                         let square = self.cell_rects[idx].id;
                         if is_mouse_button_released(MouseButton::Left) {
-                            self.client
-                                .send(ClientMessage::PickZone {
-                                    player_id: self.player_id.clone(),
-                                    game_id: self.game_id.clone(),
-                                    zone: Zone::Realm(square),
-                                })
-                                .unwrap();
+                            self.client.send(ClientMessage::PickZone {
+                                player_id: self.player_id.clone(),
+                                game_id: self.game_id.clone(),
+                                zone: Zone::Realm(square),
+                            })?;
 
                             *status = Status::Idle;
                         }
@@ -459,13 +462,11 @@ impl RealmComponent {
                     if cell.rect.contains(mouse_position.into()) {
                         let locs = self.intersection_rects[idx].locations.clone();
                         if is_mouse_button_released(MouseButton::Left) {
-                            self.client
-                                .send(ClientMessage::PickZone {
-                                    player_id: self.player_id.clone(),
-                                    game_id: self.game_id.clone(),
-                                    zone: Zone::Intersection(locs),
-                                })
-                                .unwrap();
+                            self.client.send(ClientMessage::PickZone {
+                                player_id: self.player_id.clone(),
+                                game_id: self.game_id.clone(),
+                                zone: Zone::Intersection(locs),
+                            })?;
 
                             *status = Status::Idle;
                         }
@@ -474,15 +475,22 @@ impl RealmComponent {
             }
             _ => {}
         }
+
+        Ok(())
     }
 
-    fn handle_card_click(&mut self, mouse_position: Vec2, in_turn: bool, status: &mut Status) {
+    async fn handle_card_click(
+        &mut self,
+        mouse_position: Vec2,
+        in_turn: bool,
+        status: &mut Status,
+    ) -> anyhow::Result<()> {
         if !in_turn {
-            return;
+            return Ok(());
         }
 
         if let Status::SelectingAction { .. } = &status {
-            return;
+            return Ok(());
         }
 
         let mut hovered_card_index = None;
@@ -497,7 +505,10 @@ impl RealmComponent {
         }
 
         if let Some(idx) = hovered_card_index {
-            self.cards.get_mut(idx).unwrap().is_hovered = true;
+            self.cards
+                .get_mut(idx)
+                .ok_or(anyhow::anyhow!("failed to get card rect"))?
+                .is_hovered = true;
         }
 
         match &status {
@@ -507,14 +518,12 @@ impl RealmComponent {
                     .iter_mut()
                     .filter(|c| c.zone.is_in_realm() || c.zone == Zone::Hand)
                 {
-                    if rect.is_hovered && Mouse::clicked() {
-                        self.client
-                            .send(ClientMessage::ClickCard {
-                                card_id: rect.id.clone(),
-                                player_id: self.player_id,
-                                game_id: self.game_id,
-                            })
-                            .unwrap();
+                    if rect.is_hovered && Mouse::clicked().await {
+                        self.client.send(ClientMessage::ClickCard {
+                            card_id: rect.id.clone(),
+                            player_id: self.player_id,
+                            game_id: self.game_id,
+                        })?;
                     };
                 }
             }
@@ -524,19 +533,17 @@ impl RealmComponent {
                 let valid_cards: Vec<&CardRect> = self.cards.iter().filter(|c| cards.contains(&c.id)).collect();
                 let mut selected_id = None;
                 for card in valid_cards {
-                    if card.rect.contains(mouse_position.into()) && Mouse::clicked() {
+                    if card.rect.contains(mouse_position.into()) && Mouse::clicked().await {
                         selected_id = Some(card.id.clone());
                     }
                 }
 
                 if let Some(id) = selected_id {
-                    self.client
-                        .send(ClientMessage::PickCard {
-                            player_id: self.player_id.clone(),
-                            game_id: self.game_id.clone(),
-                            card_id: id.clone(),
-                        })
-                        .unwrap();
+                    self.client.send(ClientMessage::PickCard {
+                        player_id: self.player_id.clone(),
+                        game_id: self.game_id.clone(),
+                        card_id: id.clone(),
+                    })?;
 
                     *status = Status::Idle;
                 }
@@ -548,31 +555,36 @@ impl RealmComponent {
                 let valid_cards: Vec<&CardRect> = self.cards.iter().filter(|c| cards.contains(&c.id)).collect();
                 let mut selected_id = None;
                 for card in valid_cards {
-                    if card.rect.contains(mouse_position.into()) && Mouse::clicked() {
+                    if card.rect.contains(mouse_position.into()) && Mouse::clicked().await {
                         selected_id = Some(card.id.clone());
                     }
                 }
 
                 if let Some(id) = selected_id {
-                    self.client
-                        .send(ClientMessage::PickCard {
-                            player_id: self.player_id.clone(),
-                            game_id: self.game_id.clone(),
-                            card_id: id.clone(),
-                        })
-                        .unwrap();
+                    self.client.send(ClientMessage::PickCard {
+                        player_id: self.player_id.clone(),
+                        game_id: self.game_id.clone(),
+                        card_id: id.clone(),
+                    })?;
 
                     *status = Status::Idle;
                 }
             }
             _ => {}
         }
+
+        Ok(())
     }
 
-    fn handle_path_click(&mut self, mouse_position: Vec2, in_turn: bool, status: &mut Status) {
+    async fn handle_path_click(
+        &mut self,
+        mouse_position: Vec2,
+        in_turn: bool,
+        status: &mut Status,
+    ) -> anyhow::Result<()> {
         use macroquad::input::is_mouse_button_released;
         if !in_turn {
-            return;
+            return Ok(());
         }
 
         if let Status::SelectingPath { paths } = &status {
@@ -612,17 +624,17 @@ impl RealmComponent {
 
             if let Some(idx) = closest_idx {
                 if is_mouse_button_released(MouseButton::Left) {
-                    self.client
-                        .send(ClientMessage::PickPath {
-                            player_id: self.player_id.clone(),
-                            game_id: self.game_id.clone(),
-                            path: paths[idx].clone(),
-                        })
-                        .unwrap();
+                    self.client.send(ClientMessage::PickPath {
+                        player_id: self.player_id.clone(),
+                        game_id: self.game_id.clone(),
+                        path: paths[idx].clone(),
+                    })?;
                     *status = Status::Idle;
                 }
             }
         }
+
+        Ok(())
     }
 
     async fn render_card_preview(&self, data: &mut GameData) -> anyhow::Result<()> {
@@ -648,7 +660,7 @@ impl Component for RealmComponent {
 
         let mut dragging_card: Option<uuid::Uuid> = None;
         for card in &mut self.cards {
-            if card.is_hovered && Mouse::dragging() {
+            if card.is_hovered && Mouse::dragging().await {
                 dragging_card = Some(card.id.clone());
             }
         }
@@ -661,8 +673,25 @@ impl Component for RealmComponent {
                         let max_x = cell.rect.x + cell.rect.w - card.rect.w;
                         let min_y = cell.rect.y;
                         let max_y = cell.rect.y + cell.rect.h - card.rect.h;
-                        card.rect.x = (card.rect.x + mouse_delta.x).clamp(min_x, max_x);
-                        card.rect.y = (card.rect.y + mouse_delta.y).clamp(min_y, max_y);
+                        let new_x = (card.rect.x + mouse_delta.x).clamp(min_x, max_x);
+                        let new_y = (card.rect.y + mouse_delta.y).clamp(min_y, max_y);
+                        let delta_x = new_x - card.rect.x;
+                        let delta_y = new_y - card.rect.y;
+                        card.rect.x = new_x;
+                        card.rect.y = new_y;
+
+                        let attached_cards: Vec<uuid::Uuid> = self
+                            .cards
+                            .iter()
+                            .filter(|c| c.attached_to == dragging_card)
+                            .map(|c| c.id.clone())
+                            .collect();
+                        for attached_card_id in attached_cards {
+                            if let Some(attached_card) = self.cards.iter_mut().find(|c| c.id == attached_card_id) {
+                                attached_card.rect.x += delta_x;
+                                attached_card.rect.y += delta_y;
+                            }
+                        }
                     }
                 }
             }
@@ -689,7 +718,7 @@ impl Component for RealmComponent {
                 ..
             } = &data.status
             {
-                if !Mouse::enabled() {
+                if !Mouse::enabled().await {
                     return Ok(());
                 }
 
@@ -744,15 +773,18 @@ impl Component for RealmComponent {
         Ok(())
     }
 
-    fn process_input(&mut self, in_turn: bool, data: &mut GameData) -> anyhow::Result<Option<ComponentCommand>> {
-        if !Mouse::enabled() {
+    async fn process_input(&mut self, in_turn: bool, data: &mut GameData) -> anyhow::Result<Option<ComponentCommand>> {
+        if !Mouse::enabled().await {
             return Ok(None);
         }
 
         let mouse_position = macroquad::input::mouse_position().into();
-        self.handle_square_click(mouse_position, in_turn, &mut data.status);
-        self.handle_card_click(mouse_position, in_turn, &mut data.status);
-        self.handle_path_click(mouse_position, in_turn, &mut data.status);
+        self.handle_square_click(mouse_position, in_turn, &mut data.status)
+            .await?;
+        self.handle_card_click(mouse_position, in_turn, &mut data.status)
+            .await?;
+        self.handle_path_click(mouse_position, in_turn, &mut data.status)
+            .await?;
 
         Ok(None)
     }

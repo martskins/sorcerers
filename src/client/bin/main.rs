@@ -25,7 +25,7 @@ async fn main() -> anyhow::Result<()> {
     TextureCache::init();
 
     let server_url: String = std::env::var("SORCERERS_SERVER_URL").unwrap_or("127.0.0.1:5000".to_string());
-    let mut client = Client::new(&server_url).unwrap();
+    let mut client = Client::new(&server_url)?;
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
     client.start(tx).unwrap();
 

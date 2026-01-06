@@ -26,35 +26,39 @@ impl Deck {
     }
 
     pub fn draw_site(&mut self) -> Vec<Effect> {
-        let card_id = self.sites.pop();
-        vec![Effect::MoveCard {
-            player_id: self.player_id.clone(),
-            card_id: card_id.unwrap(),
-            from: Zone::Atlasbook,
-            to: ZoneQuery::Specific {
-                id: uuid::Uuid::new_v4(),
-                zone: Zone::Hand,
-            },
-            tap: false,
-            plane: Plane::None,
-            through_path: None,
-        }]
+        match self.sites.pop() {
+            Some(card_id) => vec![Effect::MoveCard {
+                player_id: self.player_id.clone(),
+                card_id: card_id,
+                from: Zone::Atlasbook,
+                to: ZoneQuery::Specific {
+                    id: uuid::Uuid::new_v4(),
+                    zone: Zone::Hand,
+                },
+                tap: false,
+                plane: Plane::None,
+                through_path: None,
+            }],
+            None => vec![],
+        }
     }
 
     pub fn draw_spell(&mut self) -> Vec<Effect> {
-        let card_id = self.spells.pop();
-        vec![Effect::MoveCard {
-            player_id: self.player_id.clone(),
-            card_id: card_id.unwrap(),
-            from: Zone::Spellbook,
-            to: ZoneQuery::Specific {
-                id: uuid::Uuid::new_v4(),
-                zone: Zone::Hand,
-            },
-            tap: false,
-            plane: Plane::None,
-            through_path: None,
-        }]
+        match self.spells.pop() {
+            Some(card_id) => vec![Effect::MoveCard {
+                player_id: self.player_id.clone(),
+                card_id,
+                from: Zone::Spellbook,
+                to: ZoneQuery::Specific {
+                    id: uuid::Uuid::new_v4(),
+                    zone: Zone::Hand,
+                },
+                tap: false,
+                plane: Plane::None,
+                through_path: None,
+            }],
+            None => vec![],
+        }
     }
 
     pub fn shuffle(&mut self) {

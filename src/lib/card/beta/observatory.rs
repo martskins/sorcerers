@@ -61,7 +61,7 @@ impl Card for Observatory {
         Some(&mut self.site_base)
     }
 
-    async fn genesis(&self, state: &State) -> Vec<Effect> {
+    async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let deck = state.decks.get(self.get_controller_id()).unwrap().clone();
         let mut spells = deck.spells.clone();
         let mut cards = vec![];
@@ -84,17 +84,17 @@ impl Card for Observatory {
                 state,
                 &format!("Pick a spell to put back into your spellbook, {}", position),
             )
-            .await;
+            .await?;
             spells.push(picked_card_id.clone());
 
             let idx = cards.iter().position(|id| id == &picked_card_id).unwrap();
             cards.remove(idx);
         }
 
-        vec![Effect::RearrangeDeck {
+        Ok(vec![Effect::RearrangeDeck {
             spells: spells,
             sites: deck.sites.clone(),
-        }]
+        }])
     }
 
     fn get_site(&self) -> Option<&dyn Site> {

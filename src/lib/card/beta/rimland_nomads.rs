@@ -60,15 +60,15 @@ impl Card for RimlandNomads {
         Some(&mut self.unit_base)
     }
 
-    fn on_take_damage(&mut self, state: &State, from: &uuid::Uuid, damage: u8) -> Vec<Effect> {
-        let dealer = state.get_card(from).unwrap();
+    fn on_take_damage(&mut self, state: &State, from: &uuid::Uuid, damage: u8) -> anyhow::Result<Vec<Effect>> {
+        let dealer = state.get_card(from);
         let dealer_is_desert = dealer
             .get_site_base()
             .unwrap_or(&SiteBase::default())
             .types
             .contains(&SiteType::Desert);
         if dealer_is_desert {
-            return vec![];
+            return Ok(vec![]);
         }
 
         self.base_take_damage(state, from, damage)

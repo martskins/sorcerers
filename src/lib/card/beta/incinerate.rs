@@ -45,8 +45,8 @@ impl Card for Incinerate {
         &self.card_base
     }
 
-    async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> Vec<Effect> {
-        let caster = state.get_card(caster_id).unwrap();
+    async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
+        let caster = state.get_card(caster_id);
         let mut zones: Vec<Zone> = state
             .cards
             .iter()
@@ -59,7 +59,7 @@ impl Card for Incinerate {
         zones.push(caster.get_zone().clone());
 
         let prompt = "Incinerate: Pick a zone to deal 4 damage to all other units in that zone";
-        let picked_zone = pick_zone(self.get_owner_id(), &zones, state, prompt).await;
+        let picked_zone = pick_zone(self.get_owner_id(), &zones, state, prompt).await?;
         let units = state.get_units_in_zone(&picked_zone);
         let mut effects = vec![];
         for unit in units {
@@ -69,6 +69,6 @@ impl Card for Incinerate {
 
             effects.push(Effect::take_damage(unit.get_id(), self.get_id(), 4));
         }
-        effects
+        Ok(effects)
     }
 }

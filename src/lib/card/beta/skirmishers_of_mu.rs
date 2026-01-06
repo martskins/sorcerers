@@ -61,11 +61,11 @@ impl Card for SkirmishersOfMu {
         Some(&mut self.unit_base)
     }
 
-    async fn on_move(&self, state: &State, path: &[Zone]) -> Vec<Effect> {
+    async fn on_move(&self, state: &State, path: &[Zone]) -> anyhow::Result<Vec<Effect>> {
         let actions = vec!["Yes".to_string(), "No".to_string()];
-        let picked_option = pick_option(self.get_controller_id(), &actions, state, "Ranged strike?").await;
+        let picked_option = pick_option(self.get_controller_id(), &actions, state, "Ranged strike?").await?;
         if actions[picked_option] == "No" {
-            return vec![];
+            return Ok(vec![]);
         }
 
         let picked_zone = pick_zone(
@@ -74,7 +74,7 @@ impl Card for SkirmishersOfMu {
             state,
             "Skirmishers of Mu: Pick a zone to perform a ranged strike from",
         )
-        .await;
+        .await?;
 
         let units: Vec<uuid::Uuid> = picked_zone
             .get_nearby_units(state, None)
@@ -87,10 +87,10 @@ impl Card for SkirmishersOfMu {
             state,
             "Pick a target for Ranged Strike:",
         )
-        .await;
-        vec![Effect::RangedStrike {
+        .await?;
+        Ok(vec![Effect::RangedStrike {
             attacker_id: self.get_id().clone(),
             defender_id: target_unit,
-        }]
+        }])
     }
 }

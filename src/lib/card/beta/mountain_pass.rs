@@ -45,7 +45,7 @@ impl Site for MountainPass {
             .filter(|c| c.get_base().plane == Plane::Surface)
             .count();
 
-        let card = state.get_card(card_id).unwrap();
+        let card = state.get_card(card_id);
         let ground_movement = card.get_plane(state) == &Plane::Surface && plane == &Plane::Surface;
         !ground_movement || minions_atop == 0
     }

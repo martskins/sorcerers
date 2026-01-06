@@ -1,7 +1,7 @@
 use crate::{
     card::{Card, CardBase, Edition, MinionType, Modifier, Plane, Rarity, UnitBase, Zone},
     effect::Effect,
-    game::{Action, PlayerId, Thresholds},
+    game::{CardAction, PlayerId, Thresholds},
     query::CardQuery,
     state::State,
 };
@@ -12,16 +12,20 @@ enum NimbusJinnAction {
 }
 
 #[async_trait::async_trait]
-impl Action for NimbusJinnAction {
+impl CardAction for NimbusJinnAction {
     fn get_name(&self) -> &str {
         todo!()
     }
 
-    async fn on_select(&self, card_id: Option<&uuid::Uuid>, _player_id: &PlayerId, state: &State) -> Vec<Effect> {
+    async fn on_select(
+        &self,
+        card_id: &uuid::Uuid,
+        _player_id: &PlayerId,
+        state: &State,
+    ) -> anyhow::Result<Vec<Effect>> {
         match self {
             NimbusJinnAction::DealDamage => {
-                let card_id = card_id.unwrap();
-                let card = state.get_card(card_id).unwrap();
+                let card = state.get_card(card_id);
                 let units = state
                     .get_units_in_zone(card.get_zone())
                     .iter()
@@ -29,10 +33,10 @@ impl Action for NimbusJinnAction {
                     .map(|c| c.get_id().clone())
                     .collect::<Vec<uuid::Uuid>>();
                 if units.len() == 0 {
-                    return vec![];
+                    return Ok(vec![]);
                 }
 
-                vec![Effect::DealDamageToTarget {
+                Ok(vec![Effect::DealDamageToTarget {
                     from: card_id.clone(),
                     damage: 3,
                     player_id: card.get_controller_id().clone(),
@@ -40,7 +44,7 @@ impl Action for NimbusJinnAction {
                         id: uuid::Uuid::new_v4(),
                         possible_targets: units,
                     },
-                }]
+                }])
             }
         }
     }
@@ -102,9 +106,9 @@ impl Card for NimbusJinn {
         Some(&mut self.unit_base)
     }
 
-    fn get_actions(&self, state: &State) -> Vec<Box<dyn Action>> {
+    fn get_actions(&self, state: &State) -> anyhow::Result<Vec<Box<dyn CardAction>>> {
         let mut actions = self.base_unit_actions(state);
         actions.push(Box::new(NimbusJinnAction::DealDamage));
-        actions
+        Ok(actions)
     }
 }

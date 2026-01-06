@@ -45,8 +45,8 @@ impl Card for ChainLightning {
         &self.card_base
     }
 
-    async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> Vec<Effect> {
-        let caster = state.get_card(caster_id).unwrap();
+    async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
+        let caster = state.get_card(caster_id);
         let mut effects = vec![];
         let mut last_hit_zone = caster.get_zone().clone();
         let mut first_pick = true;
@@ -63,7 +63,7 @@ impl Card for ChainLightning {
                 &local_state,
                 "Chain Lightning: Pick a unit to deal 2 damage to",
             )
-            .await;
+            .await?;
             let effect = Effect::TakeDamage {
                 card_id: picked_card,
                 from: self.get_id().clone(),
@@ -89,31 +89,31 @@ impl Card for ChainLightning {
                 effects.push(effect);
             }
 
-            force_sync(self.get_controller_id(), &local_state).await;
+            force_sync(self.get_controller_id(), &local_state).await?;
 
             let can_afford_next_hit = local_state
-                .get_player_resources(self.get_controller_id())
+                .get_player_resources(self.get_controller_id())?
                 .has_resources(2, "");
             if !can_afford_next_hit {
                 break;
             }
 
             let options = vec!["Yes".to_string(), "No".to_string()];
-            let pick_option = pick_option(
+            let picked_option = pick_option(
                 self.get_owner_id(),
                 &options,
                 state,
                 "Chain Lightning: Pay 2 to deal an additional 2 damage to another unit?",
             )
-            .await;
-            if options[pick_option] == "No" {
+            .await?;
+            if options[picked_option] == "No" {
                 break;
             }
 
-            last_hit_zone = state.get_card(&picked_card).unwrap().get_zone().clone();
+            last_hit_zone = state.get_card(&picked_card).get_zone().clone();
             first_pick = false;
         }
 
-        effects
+        Ok(effects)
     }
 }

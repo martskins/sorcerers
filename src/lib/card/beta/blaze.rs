@@ -46,7 +46,7 @@ impl Card for Blaze {
         &self.card_base
     }
 
-    async fn on_cast(&mut self, state: &State, _caster_id: &uuid::Uuid) -> Vec<Effect> {
+    async fn on_cast(&mut self, state: &State, _caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
         let units = state
             .cards
             .iter()
@@ -55,8 +55,8 @@ impl Card for Blaze {
             .map(|c| c.get_id().clone())
             .collect::<Vec<uuid::Uuid>>();
         let prompt = "Blaze: Pick an ally";
-        let picked_card = pick_card(self.get_controller_id(), &units, state, prompt).await;
-        vec![
+        let picked_card = pick_card(self.get_controller_id(), &units, state, prompt).await?;
+        Ok(vec![
             Effect::AddModifier {
                 card_id: picked_card.clone(),
                 counter: ModifierCounter {
@@ -73,6 +73,6 @@ impl Card for Blaze {
                     expires_on_effect: Some(EffectQuery::TurnEnd),
                 },
             },
-        ]
+        ])
     }
 }

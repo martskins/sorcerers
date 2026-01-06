@@ -46,8 +46,8 @@ impl Card for Teleport {
         &self.card_base
     }
 
-    async fn on_cast(&mut self, _state: &State, _caster_id: &uuid::Uuid) -> Vec<Effect> {
-        vec![Effect::TeleportUnitToZone {
+    async fn on_cast(&mut self, _state: &State, _caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
+        Ok(vec![Effect::TeleportUnitToZone {
             player_id: self.get_owner_id().clone(),
             unit_query: CardQuery::OwnedBy {
                 id: uuid::Uuid::new_v4(),
@@ -59,6 +59,6 @@ impl Card for Teleport {
                 controlled_by: None,
                 prompt: Some("Teleport: Choose site to teleport to".to_string()),
             },
-        }]
+        }])
     }
 }

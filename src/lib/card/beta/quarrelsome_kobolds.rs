@@ -61,9 +61,9 @@ impl Card for QuarrelsomeKobolds {
         Some(&mut self.unit_base)
     }
 
-    async fn on_turn_end(&self, state: &State) -> Vec<Effect> {
+    async fn on_turn_end(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         if &state.current_player != self.get_controller_id() {
-            return vec![];
+            return Ok(vec![]);
         }
 
         let zone = self.get_zone();
@@ -80,11 +80,11 @@ impl Card for QuarrelsomeKobolds {
         }
 
         let prompt = "Quarrelsome Kobolds: Pick a unit to deal damage to";
-        let picked_unit = pick_card(self.get_controller_id(), &units, state, prompt).await;
-        vec![Effect::take_damage(
+        let picked_unit = pick_card(self.get_controller_id(), &units, state, prompt).await?;
+        Ok(vec![Effect::take_damage(
             &picked_unit,
             self.get_id(),
             self.get_power(state).unwrap(),
-        )]
+        )])
     }
 }

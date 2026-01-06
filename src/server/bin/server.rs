@@ -92,7 +92,11 @@ impl Server {
             }
             Message::ClientMessage(msg) => {
                 let game_id = msg.game_id();
-                self.games.get_mut(&game_id).unwrap().send(msg.clone()).await?;
+                self.games
+                    .get_mut(&game_id)
+                    .ok_or(anyhow::anyhow!("failed to get game by game id"))?
+                    .send(msg.clone())
+                    .await?;
             }
             _ => {}
         }
@@ -123,8 +127,16 @@ impl Server {
         let (deck1, cards1) = deck1.build(&player1.id);
         let (deck2, cards2) = deck2.build(&player2.id);
 
-        let stream1 = self.streams.remove(&player1.id).unwrap().clone();
-        let stream2 = self.streams.remove(&player2.id).unwrap().clone();
+        let stream1 = self
+            .streams
+            .remove(&player1.id)
+            .ok_or(anyhow::anyhow!("failed to get player1 stream"))?
+            .clone();
+        let stream2 = self
+            .streams
+            .remove(&player2.id)
+            .ok_or(anyhow::anyhow!("failed to get player2 stream"))?
+            .clone();
 
         let players = vec![
             (
@@ -165,11 +177,11 @@ impl Server {
             &player_one,
             sorcerers::card::Zone::Realm(8),
         ));
-        game.state.cards.push(from_name_and_zone(
-            "Kite Archer",
-            &player_two,
-            sorcerers::card::Zone::Realm(8),
-        ));
+        let kite_archer = from_name_and_zone("Kite Archer", &player_two, sorcerers::card::Zone::Realm(8));
+        let mut lucky_charm = from_name_and_zone("Lucky Charm", &player_two, sorcerers::card::Zone::Realm(1));
+        lucky_charm.get_artifact_base_mut().unwrap().attached_to = Some(kite_archer.get_id().clone());
+        game.state.cards.push(lucky_charm);
+        game.state.cards.push(kite_archer);
         game.state.cards.push(from_name_and_zone(
             "Arid Desert",
             &player_two,
@@ -193,7 +205,7 @@ impl Server {
         resources.mana = 6;
         resources.thresholds.air = 3;
         tokio::spawn(async move {
-            game.start().await.unwrap();
+            game.start().await.expect("game to start");
         });
 
         Ok(())

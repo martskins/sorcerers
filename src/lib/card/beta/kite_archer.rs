@@ -62,16 +62,16 @@ impl Card for KiteArcher {
         Some(&mut self.unit_base)
     }
 
-    async fn after_attack(&self, state: &State) -> Vec<Effect> {
+    async fn after_attack(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let actions = vec!["Yes".to_string(), "No".to_string()];
-        let picked_action = pick_option(self.get_owner_id(), &actions, state, "Take Step").await;
+        let picked_action = pick_option(self.get_owner_id(), &actions, state, "Take Step").await?;
         if actions[picked_action] == "No" {
-            return vec![];
+            return Ok(vec![]);
         }
 
         let zones = self.get_zone().get_adjacent();
-        let picked_zone = pick_zone(self.get_owner_id(), &zones, state, "Choose to step to").await;
-        vec![Effect::MoveCard {
+        let picked_zone = pick_zone(self.get_owner_id(), &zones, state, "Choose to step to").await?;
+        Ok(vec![Effect::MoveCard {
             player_id: self.get_owner_id().clone(),
             card_id: self.get_id().clone(),
             from: self.get_zone().clone(),
@@ -82,6 +82,6 @@ impl Card for KiteArcher {
             tap: false,
             plane: self.card_base.plane.clone(),
             through_path: None,
-        }]
+        }])
     }
 }

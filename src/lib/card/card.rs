@@ -2,7 +2,7 @@ use crate::{
     card::beta,
     effect::{Counter, Effect, ModifierCounter},
     game::{
-        Action, AvatarAction, Direction, Element, PlayerId, Thresholds, UnitAction, are_adjacent, are_nearby,
+        AvatarAction, CardAction, Direction, Element, PlayerId, Thresholds, UnitAction, are_adjacent, are_nearby,
         get_adjacent_zones, get_nearby_zones,
     },
     query::{CardQuery, ZoneQuery},
@@ -291,6 +291,7 @@ pub struct RenderableCard {
     pub card_type: CardType,
     pub modifiers: Vec<Modifier>,
     pub damage_taken: u8,
+    pub attached_to: Option<uuid::Uuid>,
 }
 
 impl RenderableCard {
@@ -401,8 +402,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     // Returns a list of effects that must be applied after this card attacks.
-    async fn after_attack(&self, _state: &State) -> Vec<Effect> {
-        vec![]
+    async fn after_attack(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
+        Ok(vec![])
     }
 
     // Returns a list of effects that must be applied when this card is defending against an
@@ -472,49 +473,54 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     // Base take damage behaviour for cards. This method MUST NOT BE OVERRIDEN by specific card
     // types. Instead, specific card types should override `on_take_damage`, and can use
     // base_take_damage to get the default behaviour.
-    fn base_take_damage(&mut self, state: &State, from: &uuid::Uuid, damage: u8) -> Vec<Effect> {
+    fn base_take_damage(&mut self, state: &State, from: &uuid::Uuid, damage: u8) -> anyhow::Result<Vec<Effect>> {
         if self.is_unit() {
             // Avatar is a sub-type of unit
             if self.is_avatar() {
-                return vec![Effect::RemoveResources {
+                return Ok(vec![Effect::RemoveResources {
                     player_id: self.get_owner_id().clone(),
                     mana: 0,
                     thresholds: Thresholds::new(),
                     health: damage,
-                }];
+                }]);
             }
 
-            let ub = self.get_unit_base_mut().unwrap();
+            let ub = self
+                .get_unit_base_mut()
+                .ok_or(anyhow::anyhow!("unit card has no unit base"))?;
             ub.damage += damage;
 
-            let attacker = state.cards.iter().find(|c| c.get_id() == from).unwrap();
+            let attacker = state.get_card(from);
             if ub.damage >= self.get_toughness(state).unwrap_or(0) || attacker.has_modifier(state, &Modifier::Lethal) {
-                return vec![Effect::bury_card(self.get_id(), self.get_zone())];
+                return Ok(vec![Effect::bury_card(self.get_id(), self.get_zone())]);
             }
 
-            return vec![];
+            return Ok(vec![]);
         } else if self.is_site() {
-            return vec![Effect::RemoveResources {
+            return Ok(vec![Effect::RemoveResources {
                 player_id: self.get_owner_id().clone(),
                 mana: 0,
                 thresholds: Thresholds::new(),
                 health: damage,
-            }];
+            }]);
         }
 
-        vec![]
+        Ok(vec![])
     }
 
     // Base on-summon behaviour for site cards. This method MUST NOT BE OVERRIDEN by specific card
     // implementations. Instead, specific card types should override `on_summon`, and can use
     // base_site_on_summon to get the default behaviour.
-    fn base_site_on_summon(&self, _state: &State) -> Vec<Effect> {
-        vec![Effect::AddResources {
+    fn base_site_on_summon(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
+        Ok(vec![Effect::AddResources {
             player_id: self.get_owner_id().clone(),
-            mana: self.get_site_base().unwrap().provided_mana,
+            mana: self
+                .get_site_base()
+                .ok_or(anyhow::anyhow!("site card has no site base"))?
+                .provided_mana,
             thresholds: self.get_site_base().unwrap().provided_thresholds.clone(),
             health: 0,
-        }]
+        }])
     }
 
     fn default_get_valid_play_zones(&self, state: &State) -> Vec<Zone> {
@@ -601,12 +607,15 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     // Returns the amount of damage taken by the card. Defaults to 0 for non-unit cards.
-    fn get_damage_taken(&self) -> u8 {
+    fn get_damage_taken(&self) -> anyhow::Result<u8> {
         if self.is_unit() {
-            return self.get_unit_base().unwrap().damage;
+            return Ok(self
+                .get_unit_base()
+                .ok_or(anyhow::anyhow!("unit card has no unit base"))?
+                .damage);
         }
 
-        0
+        Ok(0)
     }
 
     // Returns the type of the card.
@@ -773,17 +782,16 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     // Returns the toughness of the card. Returns None for non-unit cards.
     fn get_toughness(&self, _state: &State) -> Option<u8> {
-        let base = self.get_unit_base();
-        if base.is_none() {
-            return None;
+        match self.get_unit_base() {
+            Some(base) => {
+                let mut toughness = base.toughness;
+                for counter in &base.power_counters {
+                    toughness = toughness.saturating_add_signed(counter.toughness);
+                }
+                Some(toughness)
+            }
+            None => None,
         }
-
-        let base = base.unwrap();
-        let mut toughness = base.toughness;
-        for counter in &base.power_counters {
-            toughness = toughness.saturating_add_signed(counter.toughness);
-        }
-        Some(toughness)
     }
 
     // Returns all modifiers currently applied to the card.
@@ -792,47 +800,45 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     fn base_get_modifiers(&self, state: &State) -> Vec<Modifier> {
-        let base = self.get_unit_base();
-        if base.is_none() {
-            return vec![];
-        }
-
-        let base = base.unwrap();
-        let mut modifiers = base.modifiers.clone();
-        for counter in &base.modifier_counters {
-            modifiers.push(counter.modifier.clone());
-        }
-
-        let area_mods: Vec<Modifier> = state
-            .cards
-            .iter()
-            .filter(|c| c.get_zone().is_in_realm())
-            .flat_map(|c| c.area_modifiers(state))
-            .filter_map(|(modif, units)| {
-                if units.contains(self.get_id()) {
-                    Some(modif)
-                } else {
-                    None
+        match self.get_unit_base() {
+            Some(base) => {
+                let mut modifiers = base.modifiers.clone();
+                for counter in &base.modifier_counters {
+                    modifiers.push(counter.modifier.clone());
                 }
-            })
-            .collect();
 
-        modifiers.extend(area_mods);
-        modifiers
+                let area_mods: Vec<Modifier> = state
+                    .cards
+                    .iter()
+                    .filter(|c| c.get_zone().is_in_realm())
+                    .flat_map(|c| c.area_modifiers(state))
+                    .filter_map(|(modif, units)| {
+                        if units.contains(self.get_id()) {
+                            Some(modif)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+
+                modifiers.extend(area_mods);
+                modifiers
+            }
+            None => vec![],
+        }
     }
 
     fn base_get_power(&self, _state: &State) -> Option<u8> {
-        let base = self.get_unit_base();
-        if base.is_none() {
-            return None;
+        match self.get_unit_base() {
+            Some(base) => {
+                let mut power = base.power;
+                for counter in &base.power_counters {
+                    power = power.saturating_add_signed(counter.power);
+                }
+                Some(power)
+            }
+            None => None,
         }
-
-        let base = base.unwrap();
-        let mut power = base.power;
-        for counter in &base.power_counters {
-            power = power.saturating_add_signed(counter.power);
-        }
-        Some(power)
     }
 
     fn get_power(&self, state: &State) -> Option<u8> {
@@ -909,8 +915,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         self.get_base_mut().zone = zone;
     }
 
-    async fn genesis(&self, _state: &State) -> Vec<Effect> {
-        vec![]
+    async fn genesis(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
+        Ok(vec![])
     }
 
     fn deathrite(&self, _state: &State, _from: &Zone) -> Vec<Effect> {
@@ -985,20 +991,20 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         false
     }
 
-    async fn on_move(&self, state: &State, path: &[Zone]) -> Vec<Effect> {
-        state
+    async fn on_move(&self, state: &State, path: &[Zone]) -> anyhow::Result<Vec<Effect>> {
+        Ok(state
             .cards
             .iter()
             .flat_map(|c| c.get_modifiers(state))
-            .flat_map(|m| m.on_move(self.get_id(), state, &path))
-            .collect()
+            .flat_map(|m| m.on_move(self.get_id(), state, &path).unwrap_or(vec![]))
+            .collect())
     }
 
-    async fn on_visit_zone(&self, _state: &State, _to: &Zone) -> Vec<Effect> {
-        vec![]
+    async fn on_visit_zone(&self, _state: &State, _to: &Zone) -> anyhow::Result<Vec<Effect>> {
+        Ok(vec![])
     }
 
-    fn on_take_damage(&mut self, state: &State, from: &uuid::Uuid, damage: u8) -> Vec<Effect> {
+    fn on_take_damage(&mut self, state: &State, from: &uuid::Uuid, damage: u8) -> anyhow::Result<Vec<Effect>> {
         self.base_take_damage(state, from, damage)
     }
 
@@ -1006,8 +1012,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         vec![]
     }
 
-    async fn on_turn_end(&self, _state: &State) -> Vec<Effect> {
-        vec![]
+    async fn on_turn_end(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
+        Ok(vec![])
     }
 
     fn remove_modifier(&mut self, modifier: Modifier) {
@@ -1022,20 +1028,20 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         }
     }
 
-    fn on_summon(&mut self, state: &State) -> Vec<Effect> {
+    fn on_summon(&mut self, state: &State) -> anyhow::Result<Vec<Effect>> {
         if self.is_site() {
             return self.base_site_on_summon(state);
         }
 
-        vec![]
+        Ok(vec![])
     }
 
-    async fn on_cast(&mut self, _state: &State, _caster_id: &uuid::Uuid) -> Vec<Effect> {
-        vec![]
+    async fn on_cast(&mut self, _state: &State, _caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
+        Ok(vec![])
     }
 
-    fn base_avatar_actions(&self, state: &State) -> Vec<Box<dyn Action>> {
-        let mut actions: Vec<Box<dyn Action>> = self.base_unit_actions(state);
+    fn base_avatar_actions(&self, state: &State) -> Vec<Box<dyn CardAction>> {
+        let mut actions: Vec<Box<dyn CardAction>> = self.base_unit_actions(state);
         actions.push(Box::new(AvatarAction::DrawSite));
         if state
             .cards
@@ -1050,8 +1056,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         actions
     }
 
-    fn base_unit_actions(&self, state: &State) -> Vec<Box<dyn Action>> {
-        let mut actions: Vec<Box<dyn Action>> = vec![Box::new(UnitAction::Attack), Box::new(UnitAction::Move)];
+    fn base_unit_actions(&self, state: &State) -> Vec<Box<dyn CardAction>> {
+        let mut actions: Vec<Box<dyn CardAction>> = vec![Box::new(UnitAction::Attack), Box::new(UnitAction::Move)];
         if self.has_modifier(state, &Modifier::Ranged) {
             actions.push(Box::new(UnitAction::RangedAttack));
         }
@@ -1068,14 +1074,14 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     // Returns the available actions for this card, given the current game state.
-    fn get_actions(&self, state: &State) -> Vec<Box<dyn Action>> {
+    fn get_actions(&self, state: &State) -> anyhow::Result<Vec<Box<dyn CardAction>>> {
         if self.is_avatar() {
-            return self.base_avatar_actions(state);
+            return Ok(self.base_avatar_actions(state));
         } else if self.is_unit() {
-            return self.base_unit_actions(state);
+            return Ok(self.base_unit_actions(state));
         }
 
-        vec![]
+        Ok(vec![])
     }
 
     // Returns the modifiers that this card provides to other cards in the game.
@@ -1141,11 +1147,11 @@ pub enum Modifier {
 }
 
 impl Modifier {
-    fn on_move(&self, card_id: &uuid::Uuid, state: &State, path: &[Zone]) -> Vec<Effect> {
+    fn on_move(&self, card_id: &uuid::Uuid, state: &State, path: &[Zone]) -> anyhow::Result<Vec<Effect>> {
         match self {
             Modifier::Blaze(burn) => {
                 if path.len() <= 1 {
-                    return vec![];
+                    return Ok(vec![]);
                 }
 
                 let mut effects = vec![];
@@ -1156,14 +1162,14 @@ impl Modifier {
 
                     let units = state.get_units_in_zone(&zone);
                     for unit in units {
-                        let card = state.get_card(card_id).unwrap();
+                        let card = state.get_card(card_id);
                         effects.push(Effect::take_damage(unit.get_id(), card.get_id(), *burn));
                     }
                 }
 
-                effects
+                Ok(effects)
             }
-            _ => vec![],
+            _ => Ok(vec![]),
         }
     }
 }
@@ -1204,6 +1210,14 @@ pub trait Artifact: Card {
                 .collect(),
             _ => vec![],
         }
+    }
+
+    fn get_attached_to(&self) -> anyhow::Result<Option<uuid::Uuid>> {
+        Ok(self
+            .get_artifact_base()
+            .ok_or(anyhow::anyhow!("artifact card has no base"))?
+            .attached_to
+            .clone())
     }
 }
 

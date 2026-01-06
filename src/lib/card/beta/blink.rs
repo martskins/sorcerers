@@ -45,8 +45,8 @@ impl Card for Blink {
         &self.card_base
     }
 
-    async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> Vec<Effect> {
-        let caster = state.get_card(caster_id).unwrap();
+    async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
+        let caster = state.get_card(caster_id);
         let cards = state
             .cards
             .iter()
@@ -54,12 +54,12 @@ impl Card for Blink {
             .filter(|c| c.get_id() != caster_id)
             .map(|c| c.get_id().clone())
             .collect::<Vec<_>>();
-        let picked_card = pick_card(self.get_controller_id(), &cards, state, "Pick an ally to teleport").await;
+        let picked_card = pick_card(self.get_controller_id(), &cards, state, "Pick an ally to teleport").await?;
 
-        let zone = state.get_card(&picked_card).unwrap().get_zone();
+        let zone = state.get_card(&picked_card).get_zone();
         let zones = zone.get_nearby();
-        let picked_zone = pick_zone(self.get_controller_id(), &zones, state, "Pick a zone to teleport to").await;
-        vec![
+        let picked_zone = pick_zone(self.get_controller_id(), &zones, state, "Pick a zone to teleport to").await?;
+        Ok(vec![
             Effect::TeleportCard {
                 card_id: picked_card.clone(),
                 from: zone.clone(),
@@ -69,6 +69,6 @@ impl Card for Blink {
                 player_id: self.get_controller_id().clone(),
                 count: 1,
             },
-        ]
+        ])
     }
 }

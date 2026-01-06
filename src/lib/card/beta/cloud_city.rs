@@ -1,7 +1,7 @@
 use crate::{
     card::{Card, CardBase, Edition, Plane, Rarity, Site, SiteBase, Zone},
     effect::Effect,
-    game::{Action, PlayerId, Thresholds, pick_zone},
+    game::{CardAction, PlayerId, Thresholds, pick_zone},
     query::ZoneQuery,
     state::State,
 };
@@ -12,17 +12,22 @@ enum CloudCityAction {
 }
 
 #[async_trait::async_trait]
-impl Action for CloudCityAction {
+impl CardAction for CloudCityAction {
     fn get_name(&self) -> &str {
         match self {
             CloudCityAction::FlyToVoid => "Fly to nearby void",
         }
     }
 
-    async fn on_select(&self, card_id: Option<&uuid::Uuid>, player_id: &PlayerId, state: &State) -> Vec<Effect> {
+    async fn on_select(
+        &self,
+        card_id: &uuid::Uuid,
+        player_id: &PlayerId,
+        state: &State,
+    ) -> anyhow::Result<Vec<Effect>> {
         match self {
             CloudCityAction::FlyToVoid => {
-                let card = state.get_card(card_id.unwrap()).unwrap();
+                let card = state.get_card(card_id);
                 let nearby_voids: Vec<Zone> = card
                     .get_zone()
                     .get_nearby()
@@ -31,7 +36,7 @@ impl Action for CloudCityAction {
                     .cloned()
                     .collect();
                 if nearby_voids.is_empty() {
-                    return vec![];
+                    return Ok(vec![]);
                 }
 
                 let picked_void = pick_zone(
@@ -40,7 +45,7 @@ impl Action for CloudCityAction {
                     state,
                     "Pick a nearby void to fly to",
                 )
-                .await;
+                .await?;
 
                 let mut effects = vec![
                     Effect::MoveCard {
@@ -77,7 +82,7 @@ impl Action for CloudCityAction {
                     });
                 }
 
-                effects
+                Ok(effects)
             }
         }
     }
@@ -141,26 +146,26 @@ impl Card for CloudCity {
         Some(&mut self.site_base)
     }
 
-    async fn on_turn_end(&self, _state: &State) -> Vec<Effect> {
+    async fn on_turn_end(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
         if self.moved_this_turn {
-            return vec![Effect::SetCardData {
+            return Ok(vec![Effect::SetCardData {
                 card_id: self.get_id().clone(),
                 data: Box::new(false),
-            }];
+            }]);
         }
 
-        vec![]
+        Ok(vec![])
     }
 
-    fn get_actions(&self, state: &State) -> Vec<Box<dyn Action>> {
+    fn get_actions(&self, state: &State) -> anyhow::Result<Vec<Box<dyn CardAction>>> {
         if !state
-            .get_player_resources(self.get_controller_id())
+            .get_player_resources(self.get_controller_id())?
             .has_resources(0, "AAA")
         {
-            return vec![];
+            return Ok(vec![]);
         }
 
-        vec![Box::new(CloudCityAction::FlyToVoid)]
+        Ok(vec![Box::new(CloudCityAction::FlyToVoid)])
     }
 
     fn set_data(&mut self, data: &Box<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {

@@ -1,7 +1,7 @@
 use crate::{
     card::{AvatarBase, Card, CardBase, Edition, Plane, Rarity, UnitBase, Zone},
     effect::Effect,
-    game::{Action, CARDINAL_DIRECTIONS, Element, PlayerId, Thresholds, pick_direction},
+    game::{CARDINAL_DIRECTIONS, CardAction, Element, PlayerId, Thresholds, pick_direction},
     state::State,
 };
 
@@ -11,7 +11,7 @@ enum FlamecallerAction {
 }
 
 #[async_trait::async_trait]
-impl Action for FlamecallerAction {
+impl CardAction for FlamecallerAction {
     fn get_name(&self) -> &str {
         match self {
             FlamecallerAction::ShootProjectile => "Shoot Projectile",
@@ -20,10 +20,10 @@ impl Action for FlamecallerAction {
 
     async fn on_select(
         &self,
-        card_id: Option<&uuid::Uuid>,
+        card_id: &uuid::Uuid,
         _player_id: &PlayerId,
         state: &State,
-    ) -> Vec<crate::effect::Effect> {
+    ) -> anyhow::Result<Vec<Effect>> {
         match self {
             FlamecallerAction::ShootProjectile => {
                 let fire_minions = state
@@ -41,26 +41,26 @@ impl Action for FlamecallerAction {
                     .map(|c| c.get_required_thresholds(state).clone())
                     .sum::<Thresholds>()
                     .fire;
-                let avatar = state.get_card(card_id.unwrap()).unwrap();
+                let avatar = state.get_card(card_id);
                 let prompt = "Flamecaller: Pick a direction to shoot the projectile:";
-                let direction = pick_direction(avatar.get_owner_id(), &CARDINAL_DIRECTIONS, state, prompt).await;
+                let direction = pick_direction(avatar.get_owner_id(), &CARDINAL_DIRECTIONS, state, prompt).await?;
                 let mut effects = vec![
                     Effect::ShootProjectile {
                         player_id: avatar.get_owner_id().clone(),
                         from_zone: avatar.get_zone().clone(),
-                        shooter: card_id.unwrap().clone(),
+                        shooter: card_id.clone(),
                         direction,
                         damage,
                         piercing: false,
                         splash_damage: None,
                     },
-                    Effect::tap_card(card_id.unwrap()),
+                    Effect::tap_card(card_id),
                 ];
                 for minion_id in fire_minions {
                     effects.push(Effect::banish_card(&minion_id, &Zone::Cemetery));
                 }
 
-                effects
+                Ok(effects)
             }
         }
     }
@@ -129,9 +129,9 @@ impl Card for Flamecaller {
         Some(&mut self.avatar_base)
     }
 
-    fn get_actions(&self, state: &State) -> Vec<Box<dyn Action>> {
+    fn get_actions(&self, state: &State) -> anyhow::Result<Vec<Box<dyn CardAction>>> {
         let mut actions = self.base_avatar_actions(state);
         actions.push(Box::new(FlamecallerAction::ShootProjectile));
-        actions
+        Ok(actions)
     }
 }

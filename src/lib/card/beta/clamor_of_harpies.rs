@@ -1,7 +1,7 @@
 use crate::{
     card::{Card, CardBase, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
     effect::Effect,
-    game::{Action, PlayerId, Thresholds, pick_action, pick_card},
+    game::{CardAction, PlayerId, Thresholds, pick_action, pick_card},
     query::ZoneQuery,
     state::State,
 };
@@ -13,7 +13,7 @@ enum ClamorOfHarpiesAction {
 }
 
 #[async_trait::async_trait]
-impl Action for ClamorOfHarpiesAction {
+impl CardAction for ClamorOfHarpiesAction {
     fn get_name(&self) -> &str {
         match self {
             ClamorOfHarpiesAction::Strike => "Strike",
@@ -21,17 +21,22 @@ impl Action for ClamorOfHarpiesAction {
         }
     }
 
-    async fn on_select(&self, card_id: Option<&uuid::Uuid>, _player_id: &PlayerId, state: &State) -> Vec<Effect> {
+    async fn on_select(
+        &self,
+        card_id: &uuid::Uuid,
+        _player_id: &PlayerId,
+        state: &State,
+    ) -> anyhow::Result<Vec<Effect>> {
         match self {
             ClamorOfHarpiesAction::Strike => {
-                let target_card = state.get_card(card_id.unwrap()).unwrap();
-                vec![Effect::take_damage(
+                let target_card = state.get_card(card_id);
+                Ok(vec![Effect::take_damage(
                     &target_card.get_id(),
-                    card_id.unwrap(),
-                    state.get_card(card_id.unwrap()).unwrap().get_power(state).unwrap(),
-                )]
+                    card_id,
+                    state.get_card(card_id).get_power(state).unwrap(),
+                )])
             }
-            ClamorOfHarpiesAction::DoNotStrike => vec![],
+            ClamorOfHarpiesAction::DoNotStrike => Ok(vec![]),
         }
     }
 }
@@ -91,7 +96,7 @@ impl Card for ClamorOfHarpies {
         Some(&mut self.unit_base)
     }
 
-    async fn genesis(&self, state: &State) -> Vec<Effect> {
+    async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let valid_cards: Vec<uuid::Uuid> = state
             .cards
             .iter()
@@ -102,14 +107,14 @@ impl Card for ClamorOfHarpies {
             .map(|c| c.get_id().clone())
             .collect();
         let prompt = "Clamor of Harpies: Pick a unit to bring here";
-        let card_id = pick_card(self.get_controller_id(), &valid_cards, state, prompt).await;
-        let card = state.get_card(&card_id).unwrap();
-        let actions: Vec<Box<dyn Action>> = vec![
+        let card_id = pick_card(self.get_controller_id(), &valid_cards, state, prompt).await?;
+        let card = state.get_card(&card_id);
+        let actions: Vec<Box<dyn CardAction>> = vec![
             Box::new(ClamorOfHarpiesAction::Strike),
             Box::new(ClamorOfHarpiesAction::DoNotStrike),
         ];
         let prompt = "Clamor of Harpies: Strike selected unit?";
-        let action = pick_action(self.get_controller_id(), &actions, state, prompt).await;
+        let action = pick_action(self.get_controller_id(), &actions, state, prompt).await?;
         let mut effects = vec![Effect::MoveCard {
             player_id: self.get_controller_id().clone(),
             card_id,
@@ -122,11 +127,7 @@ impl Card for ClamorOfHarpies {
             plane: self.card_base.plane.clone(),
             through_path: None,
         }];
-        effects.extend(
-            action
-                .on_select(Some(card.get_id()), self.get_controller_id(), state)
-                .await,
-        );
-        effects
+        effects.extend(action.on_select(card.get_id(), self.get_controller_id(), state).await?);
+        Ok(effects)
     }
 }

@@ -1,7 +1,7 @@
 use crate::{
     card::{Card, CardBase, Edition, MinionType, Modifier, Plane, Rarity, UnitBase, Zone},
     effect::Effect,
-    game::{Action, BaseAction, PlayerId, Thresholds, pick_action},
+    game::{BaseAction, PlayerId, Thresholds, pick_option},
     state::State,
 };
 
@@ -71,33 +71,34 @@ impl Card for WayfaringPilgrim {
         Ok(())
     }
 
-    async fn on_visit_zone(&self, state: &State, to: &Zone) -> Vec<Effect> {
+    async fn on_visit_zone(&self, state: &State, to: &Zone) -> anyhow::Result<Vec<Effect>> {
         if !to.is_in_realm() {
-            return vec![];
+            return Ok(vec![]);
         }
 
         let is_corner = [1, 5, 16, 20].contains(&to.get_square().unwrap());
         if !is_corner {
-            return vec![];
+            return Ok(vec![]);
         }
 
         let mut corners_visited = self.corners_visited.clone();
         if corners_visited.contains(to) {
-            return vec![];
+            return Ok(vec![]);
         }
 
         corners_visited.push(to.clone());
-        let actions: Vec<Box<dyn Action>> = vec![Box::new(BaseAction::DrawSite), Box::new(BaseAction::DrawSpell)];
+        let options: Vec<BaseAction> = vec![BaseAction::DrawSite, BaseAction::DrawSpell];
+        let option_labels: Vec<String> = options.iter().map(|a| a.get_name().to_string()).collect();
         let prompt = "Wayfaring Pilgrim: Draw a card";
-        let picked_action = pick_action(self.get_owner_id(), &actions, state, prompt).await;
-        let mut effects = picked_action
-            .on_select(Some(self.get_id()), self.get_owner_id(), state)
-            .await;
+        let picked_option_idx = pick_option(self.get_controller_id(), &option_labels, state, prompt).await?;
+        let mut effects = options[picked_option_idx]
+            .on_select(self.get_controller_id(), state)
+            .await?;
 
         effects.push(Effect::SetCardData {
             card_id: self.get_id().clone(),
             data: Box::new(corners_visited),
         });
-        effects
+        Ok(effects)
     }
 }

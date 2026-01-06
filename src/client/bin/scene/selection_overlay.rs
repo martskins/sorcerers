@@ -78,6 +78,7 @@ impl SelectionOverlay {
                 modifiers: card.modifiers.clone(),
                 damage_taken: card.damage_taken,
                 card_type: card.card_type.clone(),
+                attached_to: card.attached_to,
             };
             rects.push(rect);
         }
@@ -97,9 +98,9 @@ impl SelectionOverlay {
         self.close
     }
 
-    pub fn update(&mut self) {
+    pub async fn update(&mut self) {
         if is_mouse_button_released(MouseButton::Left) {
-            Mouse::set_enabled(true);
+            Mouse::set_enabled(true).await;
         }
     }
 
@@ -169,39 +170,37 @@ impl SelectionOverlay {
         ui::root_ui().pop_skin();
     }
 
-    pub fn process_input(&mut self) {
+    pub async fn process_input(&mut self) -> anyhow::Result<()> {
         let mouse_position = macroquad::input::mouse_position();
         let mouse_vec = Vec2::new(mouse_position.0, mouse_position.1);
 
         for rect in &mut self.rects {
-            if !Mouse::enabled() {
+            if !Mouse::enabled().await {
                 continue;
             }
 
             if rect.rect.contains(mouse_vec) && is_mouse_button_released(MouseButton::Left) {
                 match self.behaviour {
                     SelectionOverlayBehaviour::Preview => {
-                        self.client
-                            .send(ClientMessage::ClickCard {
-                                game_id: self.game_id.clone(),
-                                player_id: self.player_id.clone(),
-                                card_id: rect.id.clone(),
-                            })
-                            .unwrap();
+                        self.client.send(ClientMessage::ClickCard {
+                            game_id: self.game_id.clone(),
+                            player_id: self.player_id.clone(),
+                            card_id: rect.id.clone(),
+                        })?;
                         self.close = true;
                     }
                     SelectionOverlayBehaviour::Pick => {
-                        self.client
-                            .send(ClientMessage::PickCard {
-                                game_id: self.game_id.clone(),
-                                player_id: self.player_id.clone(),
-                                card_id: rect.id.clone(),
-                            })
-                            .unwrap();
+                        self.client.send(ClientMessage::PickCard {
+                            game_id: self.game_id.clone(),
+                            player_id: self.player_id.clone(),
+                            card_id: rect.id.clone(),
+                        })?;
                         self.close = true;
                     }
                 }
             }
         }
+
+        Ok(())
     }
 }

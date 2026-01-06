@@ -28,6 +28,7 @@ pub struct CardRect {
     pub modifiers: Vec<Modifier>,
     pub damage_taken: u8,
     pub card_type: CardType,
+    pub attached_to: Option<uuid::Uuid>,
 }
 
 impl CardRect {
@@ -70,13 +71,18 @@ fn draw_vortex_icon(x: f32, y: f32, size: f32, color: Color) {
 
 pub fn draw_card(card_rect: &CardRect, is_ally: bool) {
     let rect = card_rect.rect;
+    let mut scale = 1.0;
+    if card_rect.is_hovered {
+        scale = 1.1;
+    }
+
     draw_texture_ex(
         &card_rect.image,
         rect.x,
         rect.y,
         WHITE,
         DrawTextureParams {
-            dest_size: Some(Vec2::new(rect.w, rect.h)),
+            dest_size: Some(Vec2::new(rect.w, rect.h) * scale),
             rotation: card_rect.rotation(),
             ..Default::default()
         },
@@ -88,8 +94,8 @@ pub fn draw_card(card_rect: &CardRect, is_ally: bool) {
     }
 
     // Draw rectangle border rotated around the center
-    let w = rect.w;
-    let h = rect.h;
+    let w = rect.w * scale;
+    let h = rect.h * scale;
     let cx = rect.x + w / 2.0;
     let cy = rect.y + h / 2.0;
     let corners = [

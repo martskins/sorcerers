@@ -53,7 +53,7 @@ impl Card for ShiftingSands {
         &self.card_base
     }
 
-    async fn genesis(&self, state: &State) -> Vec<Effect> {
+    async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let mut effects = vec![];
         let nearby_sites: Vec<&Box<dyn Card>> = self
             .get_zone()
@@ -63,9 +63,9 @@ impl Card for ShiftingSands {
             .filter(|c| c.get_site_base().unwrap().types.contains(&SiteType::Desert))
             .collect();
         for site in nearby_sites {
-            effects.extend(site.genesis(state).await);
+            effects.extend(site.genesis(state).await?);
         }
-        effects
+        Ok(effects)
     }
 
     fn get_site_base(&self) -> Option<&SiteBase> {

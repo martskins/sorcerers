@@ -61,7 +61,7 @@ impl Card for AridDesert {
         Some(&mut self.site_base)
     }
 
-    async fn genesis(&self, state: &State) -> Vec<Effect> {
+    async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let site_ids = self
             .get_zone()
             .get_nearby_sites(state, None)
@@ -69,19 +69,20 @@ impl Card for AridDesert {
             .map(|c| c.get_id().clone())
             .collect::<Vec<uuid::Uuid>>();
         if site_ids.is_empty() {
-            return vec![];
+            return Ok(vec![]);
         }
 
         let prompt = "Red Desert: Pick a site to deal 1 damage to all atop units";
-        let picked_card_id = pick_card(self.get_owner_id(), &site_ids, state, prompt).await;
-        let site = state.get_card(&picked_card_id).unwrap();
+        let picked_card_id = pick_card(self.get_owner_id(), &site_ids, state, prompt).await?;
+        let site = state.get_card(&picked_card_id);
         let units = state.get_minions_in_zone(site.get_zone());
         let units = units.iter().filter(|c| c.get_base().plane == Plane::Surface);
         let mut effects = vec![];
         for unit in units {
             effects.push(Effect::take_damage(&unit.get_id(), site.get_id(), 1));
         }
-        effects
+
+        Ok(effects)
     }
 
     fn get_site(&self) -> Option<&dyn Site> {

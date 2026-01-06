@@ -1,7 +1,7 @@
 use rand::seq::IndexedRandom;
 
 use crate::{
-    card::{ArtifactBase, Card, CardBase, Edition, Plane, Rarity, Zone},
+    card::{Artifact, ArtifactBase, Card, CardBase, Edition, Plane, Rarity, Zone},
     game::{PlayerId, Thresholds},
     query::{CardQuery, ZoneQuery},
     state::State,
@@ -9,7 +9,7 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct LuckyCharm {
-    pub relic_base: ArtifactBase,
+    pub artifact_base: ArtifactBase,
     pub card_base: CardBase,
 }
 
@@ -18,7 +18,7 @@ impl LuckyCharm {
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
-            relic_base: ArtifactBase { attached_to: None },
+            artifact_base: ArtifactBase { attached_to: None },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
@@ -35,6 +35,8 @@ impl LuckyCharm {
     }
 }
 
+impl Artifact for LuckyCharm {}
+
 #[async_trait::async_trait]
 impl Card for LuckyCharm {
     fn get_name(&self) -> &str {
@@ -50,11 +52,15 @@ impl Card for LuckyCharm {
     }
 
     fn get_artifact_base(&self) -> Option<&ArtifactBase> {
-        Some(&self.relic_base)
+        Some(&self.artifact_base)
     }
 
     fn get_artifact_base_mut(&mut self) -> Option<&mut ArtifactBase> {
-        Some(&mut self.relic_base)
+        Some(&mut self.artifact_base)
+    }
+
+    fn get_artifact(&self) -> Option<&dyn Artifact> {
+        Some(self)
     }
 
     fn zone_query_override(&self, _state: &State, query: &ZoneQuery) -> Option<ZoneQuery> {

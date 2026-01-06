@@ -1,7 +1,7 @@
 use crate::{
     card::{Card, CardBase, Edition, Plane, Rarity, Rubble, Site, SiteBase, Zone},
     effect::Effect,
-    game::{Action, PlayerId, Thresholds},
+    game::{CardAction, PlayerId, Thresholds},
     state::State,
 };
 
@@ -11,17 +11,17 @@ enum VesuviusAction {
 }
 
 #[async_trait::async_trait]
-impl Action for VesuviusAction {
+impl CardAction for VesuviusAction {
     fn get_name(&self) -> &str {
         match self {
             VesuviusAction::UseAbility => "Use Vesuvius Ability",
         }
     }
 
-    async fn on_select(&self, card_id: Option<&uuid::Uuid>, _: &PlayerId, state: &State) -> Vec<Effect> {
+    async fn on_select(&self, card_id: &uuid::Uuid, _: &PlayerId, state: &State) -> anyhow::Result<Vec<Effect>> {
         match self {
             VesuviusAction::UseAbility => {
-                let card = state.get_card(card_id.unwrap()).unwrap();
+                let card = state.get_card(card_id);
                 let site_ids: Vec<uuid::Uuid> = card
                     .get_zone()
                     .get_nearby_sites(state, None)
@@ -36,13 +36,13 @@ impl Action for VesuviusAction {
                     Effect::play_card(card.get_owner_id(), &rubble_id, card.get_zone()),
                 ];
                 for site_id in site_ids {
-                    let site = state.get_card(&site_id).unwrap();
+                    let site = state.get_card(&site_id);
                     let units = state.get_units_in_zone(site.get_zone());
                     for unit in units {
                         effects.push(Effect::take_damage(unit.get_id(), card.get_id(), 3));
                     }
                 }
-                effects
+                Ok(effects)
             }
         }
     }
@@ -103,8 +103,8 @@ impl Card for Vesuvius {
         Some(&mut self.site_base)
     }
 
-    fn get_actions(&self, _state: &State) -> Vec<Box<dyn Action>> {
-        vec![Box::new(VesuviusAction::UseAbility)]
+    fn get_actions(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn CardAction>>> {
+        Ok(vec![Box::new(VesuviusAction::UseAbility)])
     }
 
     fn get_site(&self) -> Option<&dyn Site> {

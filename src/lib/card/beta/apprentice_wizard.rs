@@ -66,10 +66,10 @@ impl Card for ApprenticeWizard {
         Some(&mut self.unit_base)
     }
 
-    async fn genesis(&self, _state: &State) -> Vec<Effect> {
-        vec![Effect::DrawSpell {
+    async fn genesis(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
+        Ok(vec![Effect::DrawSpell {
             player_id: self.get_owner_id().clone(),
             count: 1,
-        }]
+        }])
     }
 }

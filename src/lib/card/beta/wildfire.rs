@@ -64,20 +64,20 @@ impl Card for Wildfire {
         Ok(())
     }
 
-    async fn on_visit_zone(&self, _state: &State, to: &Zone) -> Vec<Effect> {
+    async fn on_visit_zone(&self, _state: &State, to: &Zone) -> anyhow::Result<Vec<Effect>> {
         let mut sites_visited = self.sites_visited.clone();
         if sites_visited.is_empty() {
             sites_visited.push(self.get_zone().clone());
         }
 
         sites_visited.push(to.clone());
-        vec![Effect::SetCardData {
+        Ok(vec![Effect::SetCardData {
             card_id: self.get_id().clone(),
             data: Box::new(sites_visited),
-        }]
+        }])
     }
 
-    async fn on_turn_end(&self, state: &State) -> Vec<Effect> {
+    async fn on_turn_end(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let zones = self
             .get_zone()
             .get_adjacent()
@@ -86,10 +86,10 @@ impl Card for Wildfire {
             .cloned()
             .collect::<Vec<Zone>>();
         if zones.is_empty() {
-            return vec![Effect::BuryCard {
+            return Ok(vec![Effect::BuryCard {
                 card_id: self.get_id().clone(),
                 from: self.get_zone().clone(),
-            }];
+            }]);
         }
 
         let mut effects: Vec<Effect> = state
@@ -98,7 +98,7 @@ impl Card for Wildfire {
             .map(|c| Effect::take_damage(c.get_id(), self.get_id(), 3))
             .collect();
         let prompt = "Wildfire: Pick a zone to move to:";
-        let picked_zone = pick_zone(self.get_owner_id(), &zones, state, prompt).await;
+        let picked_zone = pick_zone(self.get_owner_id(), &zones, state, prompt).await?;
         effects.push(Effect::MoveCard {
             player_id: self.get_owner_id().clone(),
             card_id: self.get_id().clone(),
@@ -112,7 +112,7 @@ impl Card for Wildfire {
             through_path: None,
         });
 
-        effects
+        Ok(effects)
     }
 
     fn get_valid_play_zones(&self, _state: &State) -> Vec<Zone> {

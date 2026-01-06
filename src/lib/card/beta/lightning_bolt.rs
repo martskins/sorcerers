@@ -46,10 +46,10 @@ impl Card for LightningBolt {
         &self.card_base
     }
 
-    async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> Vec<Effect> {
+    async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
         let zones = Zone::all_realm();
-        let picked_zone = pick_zone(self.get_owner_id(), &zones, state, "Lightning Bolt: Choose a zone").await;
-        vec![Effect::DealDamageToTarget {
+        let picked_zone = pick_zone(self.get_owner_id(), &zones, state, "Lightning Bolt: Choose a zone").await?;
+        Ok(vec![Effect::DealDamageToTarget {
             player_id: self.get_owner_id().clone(),
             query: CardQuery::RandomUnitInZone {
                 id: uuid::Uuid::new_v4(),
@@ -57,6 +57,6 @@ impl Card for LightningBolt {
             },
             from: caster_id.clone(),
             damage: 3,
-        }]
+        }])
     }
 }

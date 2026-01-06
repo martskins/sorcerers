@@ -61,15 +61,15 @@ impl Card for ColickyDragonettes {
         Some(&mut self.unit_base)
     }
 
-    async fn on_turn_end(&self, state: &State) -> Vec<Effect> {
+    async fn on_turn_end(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let is_current_player = &state.current_player == self.get_owner_id();
         if !is_current_player {
-            return vec![];
+            return Ok(vec![]);
         }
 
         let prompt = "Colicky Dragonettes: Choose a direction to shoot a projectile";
-        let direction = pick_direction(self.get_owner_id(), &CARDINAL_DIRECTIONS, state, prompt).await;
-        vec![Effect::ShootProjectile {
+        let direction = pick_direction(self.get_owner_id(), &CARDINAL_DIRECTIONS, state, prompt).await?;
+        Ok(vec![Effect::ShootProjectile {
             player_id: self.get_owner_id().clone(),
             shooter: self.get_id().clone(),
             from_zone: self.get_zone().clone(),
@@ -77,6 +77,6 @@ impl Card for ColickyDragonettes {
             damage: 1,
             piercing: false,
             splash_damage: None,
-        }]
+        }])
     }
 }

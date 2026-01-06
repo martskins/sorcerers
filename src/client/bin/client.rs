@@ -43,7 +43,7 @@ impl Client {
     }
 
     pub async fn step(&mut self) -> anyhow::Result<Option<Scene>> {
-        self.process_input().await;
+        self.process_input().await?;
         self.update().await?;
         Ok(self.render().await?)
     }
@@ -70,10 +70,12 @@ impl Client {
         self.scene.render().await
     }
 
-    async fn process_input(&mut self) {
-        let new_scene = self.scene.process_input().await;
+    async fn process_input(&mut self) -> anyhow::Result<()> {
+        let new_scene = self.scene.process_input().await?;
         if let Some(scene) = new_scene {
             self.scene = scene;
         }
+
+        Ok(())
     }
 }
