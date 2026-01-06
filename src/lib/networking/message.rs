@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{
     card::{Card, CardType, RenderableCard, Zone},
     deck::{Deck, precon},
-    game::{Direction, PlayerId, Resources},
+    game::{Direction, PlayerId, Resources, SoundEffect},
 };
 use serde::{Deserialize, Serialize};
 
@@ -41,6 +41,10 @@ impl PreconDeck {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ServerMessage {
+    PlaySoundEffect {
+        player_id: Option<PlayerId>,
+        sound_effect: SoundEffect,
+    },
     PlayerDisconnected {
         player_id: PlayerId,
     },
@@ -109,6 +113,7 @@ impl ServerMessage {
     pub fn player_id(&self) -> uuid::Uuid {
         match self {
             ServerMessage::LogEvent { .. } => uuid::Uuid::nil(),
+            ServerMessage::PlaySoundEffect { player_id, .. } => player_id.unwrap_or_default(),
             ServerMessage::Resume { player_id, .. } => player_id.clone(),
             ServerMessage::Wait { player_id, .. } => player_id.clone(),
             ServerMessage::PickDirection { player_id, .. } => player_id.clone(),

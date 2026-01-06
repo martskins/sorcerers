@@ -102,6 +102,11 @@ impl SelectionOverlay {
         if is_mouse_button_released(MouseButton::Left) {
             Mouse::set_enabled(true).await;
         }
+
+        let mouse_pos: Vec2 = macroquad::input::mouse_position().into();
+        for rect in &mut self.rects {
+            rect.is_hovered = rect.rect.contains(mouse_pos);
+        }
     }
 
     pub fn render(&mut self) {
@@ -110,7 +115,7 @@ impl SelectionOverlay {
             0.0,
             screen_width(),
             screen_height(),
-            Color::new(0.0, 0.0, 0.0, 0.6),
+            Color::new(0.0, 0.0, 0.0, 0.8),
         );
 
         let window_style = ui::root_ui()
@@ -151,6 +156,8 @@ impl SelectionOverlay {
             WHITE,
         );
 
+        let mut rects = self.rects.clone();
+        rects.sort_by_key(|f| f.is_hovered);
         for rect in &self.rects {
             render::draw_card(rect, rect.owner_id == self.player_id);
         }

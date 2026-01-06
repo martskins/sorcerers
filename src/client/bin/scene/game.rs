@@ -7,8 +7,8 @@ use crate::{
     input::Mouse,
     render,
     scene::{Scene, menu::Menu, selection_overlay::SelectionOverlay},
-    texture_cache::TextureCache,
 };
+use kira::{AudioManager, AudioManagerSettings, DefaultBackend, sound::static_sound::StaticSoundData};
 use macroquad::{
     color::{Color, WHITE},
     input::{MouseButton, is_mouse_button_pressed, is_mouse_button_released},
@@ -139,16 +139,14 @@ fn sort_cards(cards: &[RenderableCard]) -> Vec<RenderableCard> {
     cards
 }
 
-#[derive(Debug)]
 pub struct Game {
-    opponent_id: PlayerId,
     game_id: uuid::Uuid,
     client: networking::client::Client,
     current_player: PlayerId,
-    is_player_one: bool,
     card_selection_overlay: Option<SelectionOverlay>,
     components: Vec<Box<dyn Component>>,
     data: GameData,
+    audio_manager: AudioManager<DefaultBackend>,
 }
 
 impl Game {
@@ -161,11 +159,9 @@ impl Game {
         client: networking::client::Client,
     ) -> Self {
         Self {
-            opponent_id,
             game_id: game_id.clone(),
             client: client.clone(),
             current_player: uuid::Uuid::nil(),
-            is_player_one,
             card_selection_overlay: None,
             components: vec![
                 Box::new(PlayerStatusComponent::new(
@@ -194,6 +190,8 @@ impl Game {
                 Box::new(EventLogComponent::new(component_rect(ComponentType::EventLog))),
             ],
             data: GameData::new(&player_id, cards),
+            audio_manager: AudioManager::<DefaultBackend>::new(AudioManagerSettings::default())
+                .expect("AudioManager to be created"),
         }
     }
 
@@ -290,6 +288,11 @@ impl Game {
 
     pub async fn process_message(&mut self, message: &ServerMessage) -> anyhow::Result<Option<Scene>> {
         match message {
+            ServerMessage::PlaySoundEffect { .. } => {
+                let sound_data = StaticSoundData::from_file("assets/sounds/play_card.mp3")?;
+                self.audio_manager.play(sound_data.clone())?;
+                Ok(None)
+            }
             ServerMessage::PlayerDisconnected { player_id, .. } => {
                 self.data.status = Status::GameAborted {
                     reason: format!("Player {} disconnected.", player_id),
@@ -354,23 +357,6 @@ impl Game {
                     prompt: prompt.to_string(),
                     actions: actions.clone(),
                 };
-                Ok(None)
-            }
-            ServerMessage::GameStarted {
-                game_id,
-                player1,
-                player2,
-                cards,
-                ..
-            } => {
-                self.is_player_one = player1 == &self.data.player_id;
-                self.game_id = game_id.clone();
-                self.opponent_id = if self.is_player_one {
-                    player2.clone()
-                } else {
-                    player1.clone()
-                };
-                TextureCache::load_cache(cards).await;
                 Ok(None)
             }
             ServerMessage::Sync {

@@ -1,6 +1,7 @@
 use crate::{
     card::{Card, Modifier, Plane, UnitBase, Zone},
-    game::{BaseAction, Direction, PlayerAction, PlayerId, Thresholds, pick_card, pick_option},
+    game::{BaseAction, Direction, PlayerAction, PlayerId, SoundEffect, Thresholds, pick_card, pick_option},
+    networking::message::ServerMessage,
     query::{CardQuery, EffectQuery, ZoneQuery},
     state::{Phase, State},
 };
@@ -220,6 +221,15 @@ impl Effect {
                 expires_on_effect,
             },
         }
+    }
+
+    pub async fn sound_effect(&self) -> anyhow::Result<Option<SoundEffect>> {
+        let sound = match self {
+            Effect::PlayCard { .. } => Some(SoundEffect::PlayCard),
+            _ => None,
+        };
+
+        Ok(sound)
     }
 
     pub async fn description(&self, state: &State) -> anyhow::Result<Option<String>> {

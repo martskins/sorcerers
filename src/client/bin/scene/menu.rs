@@ -3,6 +3,7 @@ use crate::{
     render::menu_skin,
     scene::{Scene, game::Game},
 };
+use kira::{AudioManager, AudioManagerSettings, DefaultBackend, sound::static_sound::StaticSoundData};
 use macroquad::{
     color::{ORANGE, WHITE},
     math::Vec2,
@@ -67,6 +68,10 @@ impl Menu {
                 } else {
                     player1.clone()
                 };
+
+                let mut manager = AudioManager::<DefaultBackend>::new(AudioManagerSettings::default())?;
+                let sound_data = StaticSoundData::from_file("assets/sounds/game_start.mp3")?;
+                manager.play(sound_data.clone())?;
 
                 Ok(Some(Scene::Game(Game::new(
                     game_id.clone(),

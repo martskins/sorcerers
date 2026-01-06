@@ -7,7 +7,6 @@ use std::sync::RwLock;
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc::UnboundedSender;
 
-#[derive(Debug)]
 pub struct Client {
     pub scene: Scene,
     client: networking::client::Client,

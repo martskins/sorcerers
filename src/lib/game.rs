@@ -14,6 +14,13 @@ use tokio::{io::AsyncWriteExt, net::tcp::OwnedWriteHalf, sync::Mutex};
 pub type PlayerId = uuid::Uuid;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum SoundEffect {
+    DrawCard,
+    PlayCard,
+    Shuffle,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Direction {
     Up,
     Down,
@@ -1241,6 +1248,14 @@ impl Game {
                         id: uuid::Uuid::new_v4(),
                         description,
                         datetime: Utc::now(),
+                    })
+                    .await?;
+                }
+
+                if let Ok(Some(sound_effect)) = effect.sound_effect().await {
+                    self.broadcast(&ServerMessage::PlaySoundEffect {
+                        player_id: None,
+                        sound_effect,
                     })
                     .await?;
                 }

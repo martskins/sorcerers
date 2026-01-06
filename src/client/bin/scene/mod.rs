@@ -4,7 +4,6 @@ pub mod game;
 pub mod menu;
 pub mod selection_overlay;
 
-#[derive(Debug)]
 pub enum Scene {
     Menu(menu::Menu),
     Game(game::Game),
