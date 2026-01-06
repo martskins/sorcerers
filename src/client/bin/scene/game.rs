@@ -19,7 +19,7 @@ use macroquad::{
     window::{screen_height, screen_width},
 };
 use sorcerers::{
-    card::{CardType, Plane, CardData, Zone},
+    card::{CardData, CardType, Plane, Zone},
     game::{PlayerId, Resources},
     networking::{
         self,

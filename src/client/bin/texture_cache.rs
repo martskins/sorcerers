@@ -23,6 +23,7 @@ impl TextureCache {
         TextureCache::texture_for_card(card).await
     }
 
+    #[allow(dead_code)]
     pub async fn load_cache(cards: &[CardData]) {
         for card in cards {
             _ = TextureCache::texture_for_card(card).await;

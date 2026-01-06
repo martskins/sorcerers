@@ -1,3 +1,7 @@
+use crate::{
+    config::realm_rect,
+    scene::game::{GameData, Status},
+};
 use macroquad::{
     color::{BLUE, Color, DARKGREEN, RED, WHITE},
     math::{Rect, Vec2},
@@ -6,34 +10,19 @@ use macroquad::{
     texture::{DrawTextureParams, Texture2D, draw_texture_ex},
     ui,
 };
-use sorcerers::{
-    card::{CardType, Modifier, Zone},
-    game::PlayerId,
-};
-
-use crate::{
-    config::realm_rect,
-    scene::game::{GameData, Status},
-};
+use sorcerers::card::{CardData, Modifier};
 
 #[derive(Debug, Clone)]
 pub struct CardRect {
-    pub id: uuid::Uuid,
-    pub owner_id: PlayerId,
-    pub zone: Zone,
-    pub tapped: bool,
-    pub image: Texture2D,
     pub rect: Rect,
+    pub image: Texture2D,
     pub is_hovered: bool,
-    pub modifiers: Vec<Modifier>,
-    pub damage_taken: u8,
-    pub card_type: CardType,
-    pub attached_to: Option<uuid::Uuid>,
+    pub card: CardData,
 }
 
 impl CardRect {
     pub fn rotation(&self) -> f32 {
-        if self.tapped {
+        if self.card.tapped {
             return std::f32::consts::FRAC_PI_2;
         }
 
@@ -125,7 +114,7 @@ pub fn draw_card(card_rect: &CardRect, is_ally: bool) {
         );
     }
 
-    if card_rect.modifiers.contains(&Modifier::SummoningSickness) {
+    if card_rect.card.modifiers.contains(&Modifier::SummoningSickness) {
         let icon_size = 22.0;
         let scale = 1.0;
         let x = card_rect.rect.x + card_rect.rect.w * scale - icon_size - 4.0;
@@ -133,7 +122,7 @@ pub fn draw_card(card_rect: &CardRect, is_ally: bool) {
         draw_vortex_icon(x, y, icon_size, BLUE);
     }
 
-    if card_rect.modifiers.contains(&Modifier::Disabled) {
+    if card_rect.card.modifiers.contains(&Modifier::Disabled) {
         let icon_size = 15.0;
         let x = card_rect.rect.x + card_rect.rect.w - 30.0 - 5.0;
         let y = card_rect.rect.y + 4.0;
@@ -144,7 +133,7 @@ pub fn draw_card(card_rect: &CardRect, is_ally: bool) {
     }
 
     // Draw damage taken indicator if damage_taken > 0
-    if card_rect.damage_taken > 0 {
+    if card_rect.card.damage_taken > 0 {
         let circle_radius = 8.0;
         let circle_x = rect.x + w - circle_radius - 3.0;
         let circle_y = rect.y + circle_radius - 3.0;
@@ -154,7 +143,7 @@ pub fn draw_card(card_rect: &CardRect, is_ally: bool) {
             circle_radius - 2.0,
             RED,
         );
-        let dmg_text = card_rect.damage_taken.to_string();
+        let dmg_text = card_rect.card.damage_taken.to_string();
         let text_dims = macroquad::text::measure_text(&dmg_text, None, 12, 1.0);
         draw_text(
             &dmg_text,

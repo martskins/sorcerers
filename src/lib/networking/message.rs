@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    card::{Card, CardType, CardData, Zone},
+    card::{Card, CardData, CardType, Zone},
     deck::{Deck, precon},
     game::{Direction, PlayerId, Resources, SoundEffect},
 };

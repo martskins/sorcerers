@@ -22,7 +22,7 @@ use sorcerers::{
 pub struct PlayerHandComponent {
     game_id: uuid::Uuid,
     player_id: uuid::Uuid,
-    cards: Vec<CardRect>,
+    card_rects: Vec<CardRect>,
     client: networking::client::Client,
     visible: bool,
     rect: Rect,
@@ -34,7 +34,7 @@ impl PlayerHandComponent {
         Self {
             game_id: game_id.clone(),
             player_id: player_id.clone(),
-            cards: Vec::new(),
+            card_rects: Vec::new(),
             client,
             visible: true,
             rect,
@@ -95,8 +95,8 @@ impl PlayerHandComponent {
             .filter(|c| c.is_spell())
             .enumerate()
         {
-            if let Some(card) = self.cards.iter().find(|c| c.id == card.id) {
-                rects.push(card.clone());
+            if let Some(card_rect) = self.card_rects.iter().find(|c| c.card.id == card.id) {
+                rects.push(card_rect.clone());
                 continue;
             }
 
@@ -104,21 +104,14 @@ impl PlayerHandComponent {
             let rect = Rect::new(x, spells_y, spell_dim.x, spell_dim.y);
 
             rects.push(CardRect {
-                id: card.id,
-                owner_id: card.owner_id,
                 rect,
                 is_hovered: self
-                    .cards
+                    .card_rects
                     .iter()
-                    .find(|r| r.id == card.id)
+                    .find(|r| r.card.id == card.id)
                     .map_or(false, |r| r.is_hovered),
-                zone: card.zone.clone(),
-                tapped: card.tapped,
                 image: TextureCache::get_card_texture(card).await,
-                modifiers: card.modifiers.clone(),
-                damage_taken: card.damage_taken.clone(),
-                card_type: card.card_type.clone(),
-                attached_to: card.attached_to.clone(),
+                card: card.clone(),
             });
         }
 
@@ -132,8 +125,8 @@ impl PlayerHandComponent {
                 .filter(|c| c.is_site())
                 .enumerate()
             {
-                if let Some(card) = self.cards.iter().find(|c| c.id == card.id) {
-                    rects.push(card.clone());
+                if let Some(card_rect) = self.card_rects.iter().find(|c| c.card.id == card.id) {
+                    rects.push(card_rect.clone());
                     continue;
                 }
 
@@ -141,31 +134,24 @@ impl PlayerHandComponent {
                 let rect = Rect::new(sites_x, y, site_dim.x, site_dim.y);
 
                 rects.push(CardRect {
-                    id: card.id,
-                    owner_id: card.owner_id,
                     rect,
                     is_hovered: self
-                        .cards
+                        .card_rects
                         .iter()
-                        .find(|r| r.id == card.id)
+                        .find(|r| r.card.id == card.id)
                         .map_or(false, |r| r.is_hovered),
-                    zone: card.zone.clone(),
-                    tapped: card.tapped,
                     image: TextureCache::get_card_texture(card).await,
-                    modifiers: card.modifiers.clone(),
-                    damage_taken: 0,
-                    card_type: card.card_type.clone(),
-                    attached_to: card.attached_to.clone(),
+                    card: card.clone(),
                 });
             }
         }
 
-        self.cards = rects;
+        self.card_rects = rects;
         Ok(())
     }
 
     async fn render_card_preview(&self, data: &mut GameData) -> anyhow::Result<()> {
-        if let Some(card) = self.cards.iter().find(|card| card.is_hovered) {
+        if let Some(card) = self.card_rects.iter().find(|card| card.is_hovered) {
             render::render_card_preview(card, data).await?;
         }
 
@@ -182,21 +168,21 @@ impl Component for PlayerHandComponent {
         self.compute_rects(&data.cards).await?;
 
         let mut dragging_card: Option<uuid::Uuid> = None;
-        for card in &mut self.cards {
-            if card.is_hovered && Mouse::dragging().await {
-                dragging_card = Some(card.id.clone());
+        for card_rect in &mut self.card_rects {
+            if card_rect.is_hovered && Mouse::dragging().await {
+                dragging_card = Some(card_rect.card.id.clone());
             }
         }
 
         if let Some(card_id) = dragging_card {
-            if let Some(card) = self.cards.iter_mut().find(|c| c.id == card_id) {
-                if card.zone == Zone::Hand {
+            if let Some(card_rect) = self.card_rects.iter_mut().find(|c| c.card.id == card_id) {
+                if card_rect.card.zone == Zone::Hand {
                     let min_x = self.rect.x;
-                    let max_x = self.rect.x + self.rect.w - card.rect.w;
+                    let max_x = self.rect.x + self.rect.w - card_rect.rect.w;
                     let min_y = self.rect.y;
-                    let max_y = self.rect.y + self.rect.h - card.rect.h;
-                    card.rect.x = (card.rect.x + mouse_delta.x).clamp(min_x, max_x);
-                    card.rect.y = (card.rect.y + mouse_delta.y).clamp(min_y, max_y);
+                    let max_y = self.rect.y + self.rect.h - card_rect.rect.h;
+                    card_rect.rect.x = (card_rect.rect.x + mouse_delta.x).clamp(min_x, max_x);
+                    card_rect.rect.y = (card_rect.rect.y + mouse_delta.y).clamp(min_y, max_y);
                 }
             }
         }
@@ -209,8 +195,8 @@ impl Component for PlayerHandComponent {
         let bg_color = Color::new(0.15, 0.18, 0.22, 0.85);
         draw_rectangle(self.rect.x, self.rect.y, self.rect.w, self.rect.h, bg_color);
 
-        for card_rect in &self.cards {
-            if card_rect.zone != Zone::Hand {
+        for card_rect in &self.card_rects {
+            if card_rect.card.zone != Zone::Hand {
                 continue;
             }
 
@@ -238,7 +224,7 @@ impl Component for PlayerHandComponent {
                 cards, preview: false, ..
             } = &data.status
             {
-                if !cards.contains(&card_rect.id) {
+                if !cards.contains(&card_rect.card.id) {
                     draw_rectangle_ex(
                         rect.x,
                         rect.y,
@@ -274,31 +260,31 @@ impl Component for PlayerHandComponent {
         }
 
         let mut hovered_card_index = None;
-        for (idx, card_display) in self.cards.iter().enumerate() {
+        for (idx, card_display) in self.card_rects.iter().enumerate() {
             if card_display.rect.contains(mouse_position.into()) {
                 hovered_card_index = Some(idx);
             };
         }
 
-        for card in &mut self.cards {
+        for card in &mut self.card_rects {
             card.is_hovered = false;
         }
 
         if let Some(idx) = hovered_card_index {
-            self.cards.get_mut(idx).unwrap().is_hovered = true;
+            self.card_rects.get_mut(idx).unwrap().is_hovered = true;
         }
 
         match &data.status {
             Status::Idle => {
                 for card_rect in &mut self
-                    .cards
+                    .card_rects
                     .iter_mut()
-                    .filter(|c| c.zone.is_in_realm() || c.zone == Zone::Hand)
+                    .filter(|c| c.card.zone.is_in_realm() || c.card.zone == Zone::Hand)
                 {
                     if card_rect.is_hovered && is_mouse_button_released(MouseButton::Left) {
                         self.client
                             .send(ClientMessage::ClickCard {
-                                card_id: card_rect.id.clone(),
+                                card_id: card_rect.card.id.clone(),
                                 player_id: self.player_id,
                                 game_id: self.game_id,
                             })
@@ -309,11 +295,12 @@ impl Component for PlayerHandComponent {
             Status::SelectingCard {
                 cards, preview: true, ..
             } => {
-                let valid_cards: Vec<&CardRect> = self.cards.iter().filter(|c| cards.contains(&c.id)).collect();
+                let valid_cards: Vec<&CardRect> =
+                    self.card_rects.iter().filter(|c| cards.contains(&c.card.id)).collect();
                 let mut selected_id = None;
-                for card in valid_cards {
-                    if card.rect.contains(mouse_position.into()) && is_mouse_button_released(MouseButton::Left) {
-                        selected_id = Some(card.id.clone());
+                for card_rect in valid_cards {
+                    if card_rect.rect.contains(mouse_position.into()) && is_mouse_button_released(MouseButton::Left) {
+                        selected_id = Some(card_rect.card.id.clone());
                     }
                 }
 
@@ -333,11 +320,12 @@ impl Component for PlayerHandComponent {
             Status::SelectingCard {
                 cards, preview: false, ..
             } => {
-                let valid_cards: Vec<&CardRect> = self.cards.iter().filter(|c| cards.contains(&c.id)).collect();
+                let valid_cards: Vec<&CardRect> =
+                    self.card_rects.iter().filter(|c| cards.contains(&c.card.id)).collect();
                 let mut selected_id = None;
-                for card in valid_cards {
-                    if card.rect.contains(mouse_position.into()) && is_mouse_button_released(MouseButton::Left) {
-                        selected_id = Some(card.id.clone());
+                for card_rect in valid_cards {
+                    if card_rect.rect.contains(mouse_position.into()) && is_mouse_button_released(MouseButton::Left) {
+                        selected_id = Some(card_rect.card.id.clone());
                     }
                 }
 

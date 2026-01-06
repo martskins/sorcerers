@@ -28,7 +28,7 @@ pub enum SelectionOverlayBehaviour {
 
 #[derive(Debug)]
 pub struct SelectionOverlay {
-    rects: Vec<CardRect>,
+    card_rects: Vec<CardRect>,
     prompt: String,
     behaviour: SelectionOverlayBehaviour,
     close: bool,
@@ -61,24 +61,17 @@ impl SelectionOverlay {
         let cards_y = (screen_height() - card_height) / 2.0 + 30.0;
 
         let mut rects = Vec::with_capacity(cards.len());
-        for (idx, card) in cards.iter().enumerate() {
+        for (idx, card) in cards.into_iter().enumerate() {
             let mut size = Vec2::new(card_width, card_height);
             if card.is_site() {
                 size = Vec2::new(card_height, card_width);
             }
             let x = cards_start_x + idx as f32 * (size.x + card_spacing);
             let rect = CardRect {
-                id: card.id,
-                owner_id: card.owner_id,
-                zone: card.zone.clone(),
-                tapped: card.tapped,
                 image: textures[idx].clone(),
                 rect: Rect::new(x, cards_y, size.x, size.y),
                 is_hovered: false,
-                modifiers: card.modifiers.clone(),
-                damage_taken: card.damage_taken,
-                card_type: card.card_type.clone(),
-                attached_to: card.attached_to,
+                card: card.clone(),
             };
             rects.push(rect);
         }
@@ -86,7 +79,7 @@ impl SelectionOverlay {
         Self {
             client,
             game_id: game_id.clone(),
-            rects,
+            card_rects: rects,
             prompt: prompt.to_string(),
             behaviour,
             player_id: player_id.clone(),
@@ -104,7 +97,7 @@ impl SelectionOverlay {
         }
 
         let mouse_pos: Vec2 = macroquad::input::mouse_position().into();
-        for rect in &mut self.rects {
+        for rect in &mut self.card_rects {
             rect.is_hovered = rect.rect.contains(mouse_pos);
         }
     }
@@ -129,7 +122,7 @@ impl SelectionOverlay {
 
         ui::root_ui().push_skin(&skin);
 
-        let card_count = self.rects.len();
+        let card_count = self.card_rects.len();
         let card_width = card_width() * 2.0;
         let card_height = card_height() * 2.0;
         let card_spacing = 20.0;
@@ -156,10 +149,10 @@ impl SelectionOverlay {
             WHITE,
         );
 
-        let mut rects = self.rects.clone();
+        let mut rects = self.card_rects.clone();
         rects.sort_by_key(|f| f.is_hovered);
-        for rect in &self.rects {
-            render::draw_card(rect, rect.owner_id == self.player_id);
+        for card_rect in &self.card_rects {
+            render::draw_card(card_rect, card_rect.card.owner_id == self.player_id);
         }
 
         if self.behaviour == SelectionOverlayBehaviour::Preview {
@@ -181,7 +174,7 @@ impl SelectionOverlay {
         let mouse_position = macroquad::input::mouse_position();
         let mouse_vec = Vec2::new(mouse_position.0, mouse_position.1);
 
-        for rect in &mut self.rects {
+        for rect in &mut self.card_rects {
             if !Mouse::enabled().await {
                 continue;
             }
@@ -192,7 +185,7 @@ impl SelectionOverlay {
                         self.client.send(ClientMessage::ClickCard {
                             game_id: self.game_id.clone(),
                             player_id: self.player_id.clone(),
-                            card_id: rect.id.clone(),
+                            card_id: rect.card.id.clone(),
                         })?;
                         self.close = true;
                     }
@@ -200,7 +193,7 @@ impl SelectionOverlay {
                         self.client.send(ClientMessage::PickCard {
                             game_id: self.game_id.clone(),
                             player_id: self.player_id.clone(),
-                            card_id: rect.id.clone(),
+                            card_id: rect.card.id.clone(),
                         })?;
                         self.close = true;
                     }

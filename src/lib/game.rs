@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardType, Modifier, Plane, CardData, Zone},
+    card::{Card, CardData, CardType, Modifier, Plane, Zone},
     effect::Effect,
     networking::message::{ClientMessage, ServerMessage, ToMessage},
     query::ZoneQuery,
