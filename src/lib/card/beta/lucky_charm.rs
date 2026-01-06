@@ -63,40 +63,52 @@ impl Card for LuckyCharm {
         Some(self)
     }
 
-    fn zone_query_override(&self, _state: &State, query: &ZoneQuery) -> Option<ZoneQuery> {
+    fn zone_query_override(&self, _state: &State, query: &ZoneQuery) -> anyhow::Result<Option<ZoneQuery>> {
         match query {
             ZoneQuery::Random { options, .. } => {
                 let zones = vec![
-                    options.choose(&mut rand::rng()).unwrap().clone(),
-                    options.choose(&mut rand::rng()).unwrap().clone(),
+                    options
+                        .choose(&mut rand::rng())
+                        .ok_or(anyhow::anyhow!("failed to pick random card"))?
+                        .clone(),
+                    options
+                        .choose(&mut rand::rng())
+                        .ok_or(anyhow::anyhow!("failed to pick random card"))?
+                        .clone(),
                 ];
-                Some(ZoneQuery::FromOptions {
+                Ok(Some(ZoneQuery::FromOptions {
                     id: uuid::Uuid::new_v4(),
                     options: zones,
                     prompt: Some("Lucky Charm: Choose a zone".to_string()),
-                })
+                }))
             }
-            _ => None,
+            _ => Ok(None),
         }
     }
 
-    fn card_query_override(&self, state: &State, query: &CardQuery) -> Option<CardQuery> {
+    fn card_query_override(&self, state: &State, query: &CardQuery) -> anyhow::Result<Option<CardQuery>> {
         match query {
             CardQuery::RandomTarget { possible_targets, .. } => {
                 if possible_targets.is_empty() {
-                    return None;
+                    return Ok(None);
                 }
 
                 let targets = vec![
-                    possible_targets.choose(&mut rand::rng()).unwrap().clone(),
-                    possible_targets.choose(&mut rand::rng()).unwrap().clone(),
+                    possible_targets
+                        .choose(&mut rand::rng())
+                        .ok_or(anyhow::anyhow!("failed to pick random card"))?
+                        .clone(),
+                    possible_targets
+                        .choose(&mut rand::rng())
+                        .ok_or(anyhow::anyhow!("failed to pick random card"))?
+                        .clone(),
                 ];
-                Some(CardQuery::FromOptions {
+                Ok(Some(CardQuery::FromOptions {
                     id: uuid::Uuid::new_v4(),
                     options: targets,
                     prompt: Some("Lucky Charm: Choose a target".to_string()),
                     preview: true,
-                })
+                }))
             }
             CardQuery::RandomUnitInZone { zone, .. } => {
                 let options = zone
@@ -105,21 +117,27 @@ impl Card for LuckyCharm {
                     .map(|c| c.get_id().clone())
                     .collect::<Vec<_>>();
                 if options.is_empty() {
-                    return None;
+                    return Ok(None);
                 }
 
                 let zones = vec![
-                    options.choose(&mut rand::rng()).unwrap().clone(),
-                    options.choose(&mut rand::rng()).unwrap().clone(),
+                    options
+                        .choose(&mut rand::rng())
+                        .ok_or(anyhow::anyhow!("failed to pick random card"))?
+                        .clone(),
+                    options
+                        .choose(&mut rand::rng())
+                        .ok_or(anyhow::anyhow!("failed to pick random card"))?
+                        .clone(),
                 ];
-                Some(CardQuery::FromOptions {
+                Ok(Some(CardQuery::FromOptions {
                     id: uuid::Uuid::new_v4(),
                     options: zones,
                     prompt: Some("Lucky Charm: Choose a unit".to_string()),
                     preview: true,
-                })
+                }))
             }
-            _ => None,
+            _ => Ok(None),
         }
     }
 }

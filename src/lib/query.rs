@@ -78,7 +78,7 @@ impl QueryCache {
             }
             CardQuery::RandomTarget { possible_targets, .. } => {
                 for card in &state.cards {
-                    if let Some(query) = card.card_query_override(state, qry) {
+                    if let Some(query) = card.card_query_override(state, qry)? {
                         return Ok(Box::pin(query.resolve(player_id, state)).await?);
                     }
                 }
@@ -90,7 +90,7 @@ impl QueryCache {
             }
             CardQuery::RandomUnitInZone { zone, .. } => {
                 for card in &state.cards {
-                    if let Some(query) = card.card_query_override(state, qry) {
+                    if let Some(query) = card.card_query_override(state, qry)? {
                         return Ok(Box::pin(query.resolve(player_id, state)).await?);
                     }
                 }
@@ -172,7 +172,7 @@ impl QueryCache {
             }
             ZoneQuery::Random { options, .. } => {
                 for card in &state.cards {
-                    if let Some(query) = card.zone_query_override(state, qry) {
+                    if let Some(query) = card.zone_query_override(state, qry)? {
                         return Ok(Box::pin(query.resolve(player_id, state)).await?);
                     }
                 }
@@ -292,7 +292,12 @@ impl ZoneQuery {
                 sites
             }
             ZoneQuery::Random { options, .. } => {
-                vec![options.choose(&mut rand::rng()).expect("failed to get random zone").clone()]
+                vec![
+                    options
+                        .choose(&mut rand::rng())
+                        .expect("failed to get random zone")
+                        .clone(),
+                ]
             }
             ZoneQuery::FromOptions { options, .. } => options.clone(),
         }

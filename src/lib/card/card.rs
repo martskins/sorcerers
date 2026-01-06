@@ -355,15 +355,15 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     // When resolving a CardQuery, this method allows the card to override the query. A useful
     // usecase for this method is for example overriding the valid targets of a spell when there's
     // a card in play that affects targeting.
-    fn card_query_override(&self, _state: &State, _query: &CardQuery) -> Option<CardQuery> {
-        None
+    fn card_query_override(&self, _state: &State, _query: &CardQuery) -> anyhow::Result<Option<CardQuery>> {
+        Ok(None)
     }
 
     // When resolving a ZoneQuery, this method allows the card to override the query. A useful
     // usecase for this method is for example overriding the zones that the player can pick from
     // when the there's a card in play that affects zone selection.
-    fn zone_query_override(&self, _state: &State, _query: &ZoneQuery) -> Option<ZoneQuery> {
-        None
+    fn zone_query_override(&self, _state: &State, _query: &ZoneQuery) -> anyhow::Result<Option<ZoneQuery>> {
+        Ok(None)
     }
 
     // When resolving an effect, this methods allows a card in play to replace that event with a
