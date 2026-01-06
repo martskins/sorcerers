@@ -13,9 +13,9 @@ fn window_conf() -> Conf {
     Conf {
         window_title: "Sorcerers".to_owned(),
         high_dpi: true,
-        window_width: 1280,
-        window_height: 720,
-        // fullscreen: true,
+        // window_width: 1280,
+        // window_height: 720,
+        fullscreen: true,
         ..Default::default()
     }
 }
