@@ -169,7 +169,7 @@ impl Component for PlayerHandComponent {
 
         let mut dragging_card: Option<uuid::Uuid> = None;
         for card_rect in &mut self.card_rects {
-            if card_rect.is_hovered && Mouse::dragging().await {
+            if card_rect.is_hovered && Mouse::dragging()? {
                 dragging_card = Some(card_rect.card.id.clone());
             }
         }
@@ -247,7 +247,7 @@ impl Component for PlayerHandComponent {
 
     async fn process_input(&mut self, in_turn: bool, data: &mut GameData) -> anyhow::Result<Option<ComponentCommand>> {
         let mouse_position = macroquad::input::mouse_position();
-        if !Mouse::enabled().await {
+        if !Mouse::enabled()? {
             return Ok(None);
         }
 

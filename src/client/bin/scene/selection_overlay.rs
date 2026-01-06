@@ -91,15 +91,17 @@ impl SelectionOverlay {
         self.close
     }
 
-    pub async fn update(&mut self) {
+    pub async fn update(&mut self) -> anyhow::Result<()> {
         if is_mouse_button_released(MouseButton::Left) {
-            Mouse::set_enabled(true).await;
+            Mouse::set_enabled(true)?;
         }
 
         let mouse_pos: Vec2 = macroquad::input::mouse_position().into();
-        for rect in &mut self.card_rects {
-            rect.is_hovered = rect.rect.contains(mouse_pos);
+        for cell_rect in &mut self.card_rects {
+            cell_rect.is_hovered = cell_rect.rect.contains(mouse_pos);
         }
+
+        Ok(())
     }
 
     pub fn render(&mut self) {
@@ -175,7 +177,7 @@ impl SelectionOverlay {
         let mouse_vec = Vec2::new(mouse_position.0, mouse_position.1);
 
         for rect in &mut self.card_rects {
-            if !Mouse::enabled().await {
+            if !Mouse::enabled()? {
                 continue;
             }
 

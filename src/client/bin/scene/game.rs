@@ -212,12 +212,12 @@ impl Game {
         }
 
         if is_mouse_button_pressed(MouseButton::Left) {
-            Mouse::record_press().await;
+            Mouse::record_press()?;
         }
 
         if is_mouse_button_released(MouseButton::Left) {
-            Mouse::record_release().await;
-            Mouse::set_enabled(true).await;
+            Mouse::record_release()?;
+            Mouse::set_enabled(true)?;
         }
 
         if let Status::ViewingCards {
@@ -243,7 +243,7 @@ impl Game {
         }
 
         if let Some(overlay) = &mut self.card_selection_overlay {
-            overlay.update().await;
+            overlay.update().await?;
 
             if overlay.should_close() {
                 self.card_selection_overlay = None;
@@ -426,7 +426,7 @@ impl Game {
         let is_idle = matches!(self.data.status, Status::Idle);
         if is_in_turn && is_idle {
             if ui::root_ui().button(Vec2::new(screen_rect.w - 100.0, screen_rect.h - 40.0), "Pass Turn") {
-                Mouse::set_enabled(false).await;
+                Mouse::set_enabled(false)?;
                 self.client.send(ClientMessage::EndTurn {
                     player_id: self.data.player_id.clone(),
                     game_id: self.game_id.clone(),
@@ -517,7 +517,7 @@ impl Game {
                 );
 
                 if disable_mouse {
-                    Mouse::set_enabled(false).await;
+                    Mouse::set_enabled(false)?;
                 }
 
                 None
@@ -555,7 +555,7 @@ impl Game {
                 );
 
                 if disable_mouse {
-                    Mouse::set_enabled(false).await;
+                    Mouse::set_enabled(false)?;
                 }
 
                 scene

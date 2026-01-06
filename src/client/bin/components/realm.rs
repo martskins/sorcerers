@@ -504,7 +504,7 @@ impl RealmComponent {
                     .iter_mut()
                     .filter(|c| c.card.zone.is_in_realm() || c.card.zone == Zone::Hand)
                 {
-                    if rect.is_hovered && Mouse::clicked().await {
+                    if rect.is_hovered && Mouse::clicked()? {
                         self.client.send(ClientMessage::ClickCard {
                             card_id: rect.card.id.clone(),
                             player_id: self.player_id,
@@ -520,7 +520,7 @@ impl RealmComponent {
                     self.card_rects.iter().filter(|c| cards.contains(&c.card.id)).collect();
                 let mut selected_id = None;
                 for card in valid_cards {
-                    if card.rect.contains(mouse_position.into()) && Mouse::clicked().await {
+                    if card.rect.contains(mouse_position.into()) && Mouse::clicked()? {
                         selected_id = Some(card.card.id.clone());
                     }
                 }
@@ -543,7 +543,7 @@ impl RealmComponent {
                     self.card_rects.iter().filter(|c| cards.contains(&c.card.id)).collect();
                 let mut selected_id = None;
                 for card in valid_cards {
-                    if card.rect.contains(mouse_position.into()) && Mouse::clicked().await {
+                    if card.rect.contains(mouse_position.into()) && Mouse::clicked()? {
                         selected_id = Some(card.card.id.clone());
                     }
                 }
@@ -648,7 +648,7 @@ impl Component for RealmComponent {
 
         let mut dragging_card: Option<uuid::Uuid> = None;
         for card in &mut self.card_rects {
-            if card.is_hovered && Mouse::dragging().await {
+            if card.is_hovered && Mouse::dragging()? {
                 dragging_card = Some(card.card.id.clone());
             }
         }
@@ -708,7 +708,7 @@ impl Component for RealmComponent {
                 ..
             } = &data.status
             {
-                if !Mouse::enabled().await {
+                if !Mouse::enabled()? {
                     return Ok(());
                 }
 
@@ -764,7 +764,7 @@ impl Component for RealmComponent {
     }
 
     async fn process_input(&mut self, in_turn: bool, data: &mut GameData) -> anyhow::Result<Option<ComponentCommand>> {
-        if !Mouse::enabled().await {
+        if !Mouse::enabled()? {
             return Ok(None);
         }
 

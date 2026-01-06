@@ -30,10 +30,10 @@ impl Clone for Client {
 
 impl Client {
     pub fn connect(addr: &str) -> anyhow::Result<Self> {
-        let stream = std::net::TcpStream::connect(addr).unwrap();
+        let stream = std::net::TcpStream::connect(addr)?;
         Ok(Client {
             local_mode: addr == "127.0.0.1:5000",
-            reader: Arc::new(Mutex::new(stream.try_clone().unwrap())),
+            reader: Arc::new(Mutex::new(stream.try_clone()?)),
             writer: Arc::new(Mutex::new(stream)),
         })
     }
@@ -43,17 +43,23 @@ impl Client {
     }
 
     pub fn send<T: ToMessage>(&self, message: T) -> anyhow::Result<()> {
-        let bytes = rmp_serde::to_vec(&message.to_message()).unwrap();
-        let mut stream = self.writer.lock().unwrap();
-        stream.write_all(&bytes).unwrap();
+        let bytes = rmp_serde::to_vec(&message.to_message())?;
+        let mut stream = self
+            .writer
+            .lock()
+            .map_err(|e| anyhow::anyhow!("Failed to lock writer: {}", e))?;
+        stream.write_all(&bytes)?;
         Ok(())
     }
 
     pub fn recv(&self) -> anyhow::Result<Option<Message>> {
         let mut res = [0; 32000];
-        let mut stream = self.reader.lock().unwrap();
+        let mut stream = self
+            .reader
+            .lock()
+            .map_err(|e| anyhow::anyhow!("Failed to lock reader: {}", e))?;
         let _ = stream.read(&mut res)?;
-        let response: Message = rmp_serde::from_slice(&res).unwrap();
+        let response: Message = rmp_serde::from_slice(&res)?;
         Ok(Some(response))
     }
 }

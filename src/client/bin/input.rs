@@ -1,6 +1,5 @@
 use macroquad::prelude::*;
-use std::sync::LazyLock;
-use tokio::sync::Mutex;
+use std::sync::{LazyLock, Mutex};
 
 static MOUSE_STATUS: LazyLock<Mutex<Mouse>> = LazyLock::new(|| Mutex::new(Mouse::new()));
 
@@ -20,42 +19,56 @@ impl Mouse {
         }
     }
 
-    pub async fn record_release() {
-        let mut mouse_status = MOUSE_STATUS.lock().await;
+    pub fn record_release() -> anyhow::Result<()> {
+        let mut mouse_status = MOUSE_STATUS
+            .lock()
+            .map_err(|e| anyhow::anyhow!("failed to lock mouse status: {}", e))?;
         mouse_status.last_left_button_press = None;
+        Ok(())
     }
 
-    pub async fn record_press() {
-        let mut mouse_status = MOUSE_STATUS.lock().await;
+    pub fn record_press() -> anyhow::Result<()> {
+        let mut mouse_status = MOUSE_STATUS
+            .lock()
+            .map_err(|e| anyhow::anyhow!("failed to lock mouse status: {}", e))?;
         mouse_status.last_left_button_press = Some(chrono::Utc::now());
         mouse_status.last_click_position = Some(mouse_position().into());
+        Ok(())
     }
 
-    pub async fn clicked() -> bool {
-        !Mouse::dragging().await && is_mouse_button_released(MouseButton::Left)
+    pub fn clicked() -> anyhow::Result<bool> {
+        Ok(!Mouse::dragging()? && is_mouse_button_released(MouseButton::Left))
     }
 
-    pub async fn dragging() -> bool {
-        let mouse_status = MOUSE_STATUS.lock().await;
+    pub fn dragging() -> anyhow::Result<bool> {
+        let mouse_status = MOUSE_STATUS
+            .lock()
+            .map_err(|e| anyhow::anyhow!("failed to lock mouse status: {}", e))?;
         if mouse_status.last_left_button_press.is_none() {
-            return false;
+            return Ok(false);
         }
 
         let mouse_click_pos: Vec2 = mouse_status.last_click_position.unwrap();
         let current_mouse_pos: Vec2 = mouse_position().into();
         if mouse_click_pos.distance_squared(current_mouse_pos) > 25.0 {
-            return true;
+            return Ok(true);
         }
 
-        false
+        Ok(false)
     }
 
-    pub async fn set_enabled(enabled: bool) {
-        let mut mouse_status = MOUSE_STATUS.lock().await;
+    pub fn set_enabled(enabled: bool) -> anyhow::Result<()> {
+        let mut mouse_status = MOUSE_STATUS
+            .lock()
+            .map_err(|e| anyhow::anyhow!("failed to lock mouse status: {}", e))?;
         mouse_status.enabled = enabled;
+        Ok(())
     }
 
-    pub async fn enabled() -> bool {
-        MOUSE_STATUS.lock().await.enabled
+    pub fn enabled() -> anyhow::Result<bool> {
+        Ok(MOUSE_STATUS
+            .lock()
+            .map_err(|e| anyhow::anyhow!("failed to lock mouse status: {}", e))?
+            .enabled)
     }
 }
