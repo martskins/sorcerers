@@ -10,6 +10,11 @@ This project is **not affiliated with, endorsed by, or associated with** the cre
 
 Sorcerers lets you play Sorcery: Contested Realm with friends in a multiplayer environment, featuring an easy-to-use interface and automated enforcement of game rules.
 
+Sorcerers is very much a work in progress. Bugs, incomplete features, and missing functionality are to be expected. Currently, only two of the beta preconstructed decks are supported. The plan is to add more official decks and support for user-created decks in the future.
+
+<img width="1728" height="1117" alt="image" src="https://github.com/user-attachments/assets/997294f4-a6b0-4af5-9c82-b6f5976e7716" />
+
+
 ## Getting Started
 
 To install Sorcerers, download the source code and install it using Cargo:
