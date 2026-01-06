@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    card::{Card, CardType, RenderableCard, Zone},
+    card::{Card, CardType, CardData, Zone},
     deck::{Deck, precon},
     game::{Direction, PlayerId, Resources, SoundEffect},
 };
@@ -68,10 +68,10 @@ pub enum ServerMessage {
         game_id: uuid::Uuid,
         player1: PlayerId,
         player2: PlayerId,
-        cards: Vec<RenderableCard>,
+        cards: Vec<CardData>,
     },
     Sync {
-        cards: Vec<RenderableCard>,
+        cards: Vec<CardData>,
         resources: HashMap<PlayerId, Resources>,
         current_player: PlayerId,
     },
@@ -103,7 +103,7 @@ pub enum ServerMessage {
     },
     ForceSync {
         player_id: PlayerId,
-        cards: Vec<RenderableCard>,
+        cards: Vec<CardData>,
         resources: HashMap<PlayerId, Resources>,
         current_player: PlayerId,
     },

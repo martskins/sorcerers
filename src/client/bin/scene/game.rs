@@ -19,7 +19,7 @@ use macroquad::{
     window::{screen_height, screen_width},
 };
 use sorcerers::{
-    card::{CardType, Plane, RenderableCard, Zone},
+    card::{CardType, Plane, CardData, Zone},
     game::{PlayerId, Resources},
     networking::{
         self,
@@ -93,7 +93,7 @@ fn component_rect(component_type: ComponentType) -> Rect {
 #[derive(Debug)]
 pub struct GameData {
     pub player_id: PlayerId,
-    pub cards: Vec<RenderableCard>,
+    pub cards: Vec<CardData>,
     pub events: Vec<Event>,
     pub status: Status,
     pub unseen_events: usize,
@@ -101,7 +101,7 @@ pub struct GameData {
 }
 
 impl GameData {
-    pub fn new(player_id: &uuid::Uuid, cards: Vec<RenderableCard>) -> Self {
+    pub fn new(player_id: &uuid::Uuid, cards: Vec<CardData>) -> Self {
         Self {
             player_id: player_id.clone(),
             cards,
@@ -116,7 +116,7 @@ impl GameData {
 // Takes a slice of cards and returns a cloned, sorted vec with the cards sorted so that cards that
 // are submerged or burrowed are first in the vec, then sites, then cards on the surface and then
 // cards in the air.
-fn sort_cards(cards: &[RenderableCard]) -> Vec<RenderableCard> {
+fn sort_cards(cards: &[CardData]) -> Vec<CardData> {
     let mut cards = cards.to_vec();
     cards.sort_by(|a, b| {
         let plane_cmp = a.plane.cmp(&b.plane);
@@ -155,7 +155,7 @@ impl Game {
         player_id: uuid::Uuid,
         opponent_id: uuid::Uuid,
         is_player_one: bool,
-        cards: Vec<RenderableCard>,
+        cards: Vec<CardData>,
         client: networking::client::Client,
     ) -> Self {
         Self {

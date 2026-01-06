@@ -15,7 +15,7 @@ use macroquad::{
 };
 use rand::SeedableRng;
 use sorcerers::{
-    card::{CardType, RenderableCard, Zone},
+    card::{CardType, CardData, Zone},
     networking::{self, message::ClientMessage},
 };
 
@@ -140,7 +140,7 @@ impl RealmComponent {
         }
     }
 
-    async fn compute_rects(&mut self, cards: &[RenderableCard]) -> anyhow::Result<()> {
+    async fn compute_rects(&mut self, cards: &[CardData]) -> anyhow::Result<()> {
         use rand::Rng;
 
         let mut new_cards = Vec::new();

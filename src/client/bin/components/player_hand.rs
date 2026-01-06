@@ -14,7 +14,7 @@ use macroquad::{
     texture::{DrawTextureParams, draw_texture_ex},
 };
 use sorcerers::{
-    card::{RenderableCard, Zone},
+    card::{CardData, Zone},
     networking::{self, message::ClientMessage},
 };
 
@@ -58,7 +58,7 @@ impl PlayerHandComponent {
         Vec2::new(self.card_height(), self.card_width())
     }
 
-    async fn compute_rects(&mut self, cards: &[RenderableCard]) -> anyhow::Result<()> {
+    async fn compute_rects(&mut self, cards: &[CardData]) -> anyhow::Result<()> {
         let spell_count = cards
             .iter()
             .filter(|c| c.zone == Zone::Hand)

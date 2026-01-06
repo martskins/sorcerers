@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardType, Modifier, Plane, RenderableCard, Zone},
+    card::{Card, CardType, Modifier, Plane, CardData, Zone},
     effect::Effect,
     networking::message::{ClientMessage, ServerMessage, ToMessage},
     query::ZoneQuery,
@@ -1142,11 +1142,11 @@ impl Game {
         Ok(())
     }
 
-    fn renderables_from_cards(&self) -> Vec<RenderableCard> {
+    fn renderables_from_cards(&self) -> Vec<CardData> {
         self.state
             .cards
             .iter()
-            .map(|c| RenderableCard {
+            .map(|c| CardData {
                 id: c.get_id().clone(),
                 name: c.get_name().to_string(),
                 owner_id: c.get_owner_id().clone(),

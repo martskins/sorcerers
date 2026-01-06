@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, RenderableCard, Zone},
+    card::{Card, CardData, Zone},
     deck::Deck,
     effect::Effect,
     game::{InputStatus, PlayerId, Resources},
@@ -120,10 +120,10 @@ impl State {
         Ok(())
     }
 
-    fn renderables_from_cards(&self) -> Vec<RenderableCard> {
+    fn renderables_from_cards(&self) -> Vec<CardData> {
         self.cards
             .iter()
-            .map(|c| RenderableCard {
+            .map(|c| CardData {
                 id: c.get_id().clone(),
                 name: c.get_name().to_string(),
                 owner_id: c.get_owner_id().clone(),

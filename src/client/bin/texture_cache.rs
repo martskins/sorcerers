@@ -1,5 +1,5 @@
 use macroquad::texture::Texture2D;
-use sorcerers::card::RenderableCard;
+use sorcerers::card::CardData;
 use std::{collections::HashMap, path::Path, sync::OnceLock};
 use tokio::sync::RwLock;
 
@@ -19,11 +19,11 @@ impl TextureCache {
         TEXTURE_CACHE.get_or_init(|| RwLock::new(TextureCache::new()));
     }
 
-    pub async fn get_card_texture(card: &RenderableCard) -> Texture2D {
+    pub async fn get_card_texture(card: &CardData) -> Texture2D {
         TextureCache::texture_for_card(card).await
     }
 
-    pub async fn load_cache(cards: &[RenderableCard]) {
+    pub async fn load_cache(cards: &[CardData]) {
         for card in cards {
             _ = TextureCache::texture_for_card(card).await;
         }
@@ -41,7 +41,7 @@ impl TextureCache {
         texture
     }
 
-    async fn texture_for_card(card: &RenderableCard) -> Texture2D {
+    async fn texture_for_card(card: &CardData) -> Texture2D {
         if let Some(tex) = TEXTURE_CACHE.get().unwrap().read().await.inner.get(card.get_name()) {
             return tex.clone();
         }
@@ -63,7 +63,7 @@ impl TextureCache {
         Ok(texture)
     }
 
-    async fn download_card_image(card: &RenderableCard) -> anyhow::Result<Texture2D> {
+    async fn download_card_image(card: &CardData) -> anyhow::Result<Texture2D> {
         println!("Downloading image for {}", card.get_name());
         let set = card.get_edition().url_name();
         let card_name = card.get_name();

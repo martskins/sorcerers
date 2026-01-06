@@ -280,7 +280,7 @@ impl Zone {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RenderableCard {
+pub struct CardData {
     pub id: uuid::Uuid,
     pub name: String,
     pub owner_id: PlayerId,
@@ -294,7 +294,7 @@ pub struct RenderableCard {
     pub attached_to: Option<uuid::Uuid>,
 }
 
-impl RenderableCard {
+impl CardData {
     pub fn is_site(&self) -> bool {
         self.card_type == CardType::Site
     }

@@ -13,7 +13,7 @@ use macroquad::{
     window::{screen_height, screen_width},
 };
 use sorcerers::{
-    card::RenderableCard,
+    card::CardData,
     game::PlayerId,
     networking::{self, message::ClientMessage},
 };
@@ -42,7 +42,7 @@ impl SelectionOverlay {
         client: networking::client::Client,
         game_id: &uuid::Uuid,
         player_id: &PlayerId,
-        cards: Vec<&RenderableCard>,
+        cards: Vec<&CardData>,
         prompt: &str,
         behaviour: SelectionOverlayBehaviour,
     ) -> Self {
