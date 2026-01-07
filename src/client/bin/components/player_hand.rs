@@ -282,7 +282,7 @@ impl Component for PlayerHandComponent {
                 for card_rect in &mut self
                     .card_rects
                     .iter_mut()
-                    .filter(|c| c.card.zone.is_in_realm() || c.card.zone == Zone::Hand)
+                    .filter(|c| c.card.zone.is_in_play() || c.card.zone == Zone::Hand)
                 {
                     if card_rect.is_hovered && is_mouse_button_released(MouseButton::Left) {
                         self.client.send(ClientMessage::ClickCard {

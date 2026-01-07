@@ -1,6 +1,7 @@
 use crate::{
     card::{Card, Modifier, Plane, UnitBase, Zone},
     game::{BaseAction, Direction, PlayerAction, PlayerId, SoundEffect, Thresholds, pick_card, pick_option},
+    networking::message::ServerMessage,
     query::{CardQuery, EffectQuery, ZoneQuery},
     state::{Phase, State},
 };
@@ -104,9 +105,6 @@ pub enum Effect {
     },
     TapCard {
         card_id: uuid::Uuid,
-    },
-    PreEndTurn {
-        player_id: uuid::Uuid,
     },
     EndTurn {
         player_id: uuid::Uuid,
@@ -258,23 +256,29 @@ impl Effect {
                 to,
                 through_path,
                 card_id,
+                from,
                 ..
             } => {
                 // Calling resolve here should result in us getting the result from the cache,
                 // as the effect should have been applied already.
-                let card = state.get_card(card_id).get_name();
+                let card = state.get_card(card_id);
+                if card.get_zone() != from {
+                    return Ok(None);
+                }
+
+                let card_name = card.get_name();
                 match through_path {
                     Some(path) => Some(format!(
                         "{} moves {} to {} through path {}",
                         player_name(&player_id, state),
-                        card,
+                        card_name,
                         to.resolve(player_id, state).await?,
                         path.iter().map(|c| format!("{}", c)).collect::<Vec<_>>().join(" -> "),
                     )),
                     None => Some(format!(
                         "{} moves {} to {}",
                         player_name(&player_id, state),
-                        card,
+                        card_name,
                         to.resolve(player_id, state).await?,
                     )),
                 }
@@ -305,7 +309,6 @@ impl Effect {
             }
             Effect::SummonCard { .. } => None,
             Effect::TapCard { .. } => None,
-            Effect::PreEndTurn { .. } => None,
             Effect::EndTurn { player_id, .. } => Some(format!("{} passes the turn", player_name(player_id, state))),
             Effect::StartTurn { .. } => None,
             Effect::RemoveResources { .. } => None,
@@ -431,7 +434,7 @@ impl Effect {
             .collect();
         if !effects.is_empty() {
             for effect in effects {
-                state.effects.push_front(effect.into());
+                state.effects.push_back(effect.into());
             }
             return Ok(());
         }
@@ -485,7 +488,7 @@ impl Effect {
                 }
 
                 for effect in effects {
-                    state.effects.push_front(effect.into());
+                    state.effects.push_back(effect.into());
                 }
             }
             Effect::AddCard { card, .. } => {
@@ -506,16 +509,42 @@ impl Effect {
                 tap,
                 through_path,
                 ..
-            } => match through_path {
-                Some(path) => {
-                    for zone in path {
-                        let snapshot = state.snapshot();
-                        let zone = ZoneQuery::Specific {
-                            id: uuid::Uuid::new_v4(),
-                            zone: zone.clone(),
+            } => {
+                let card = state.get_card(card_id);
+                // Skip the move if the card is no longer in the same zone as it was originally.
+                if card.get_zone() != from {
+                    return Ok(());
+                }
+
+                match through_path {
+                    Some(path) => {
+                        for zone in path {
+                            let snapshot = state.snapshot();
+                            let zone = ZoneQuery::Specific {
+                                id: uuid::Uuid::new_v4(),
+                                zone: zone.clone(),
+                            }
+                            .resolve(player_id, state)
+                            .await?;
+                            let card = state.get_card_mut(card_id);
+                            card.set_zone(zone.clone());
+                            if *tap {
+                                card.get_base_mut().tapped = true;
+                            }
+
+                            let card = state.get_card(card_id);
+                            let mut effects = card.on_move(&snapshot, path).await?;
+                            effects.extend(card.on_visit_zone(&snapshot, &zone).await?);
+                            if let Some(site) = zone.get_site(state) {
+                                effects.extend(site.on_card_enter(state, card_id));
+                            }
+
+                            state.effects.extend(effects.into_iter().map(|e| e.into()));
                         }
-                        .resolve(player_id, state)
-                        .await?;
+                    }
+                    None => {
+                        let snapshot = state.snapshot();
+                        let zone = to.resolve(player_id, state).await?;
                         let card = state.get_card_mut(card_id);
                         card.set_zone(zone.clone());
                         if *tap {
@@ -523,7 +552,8 @@ impl Effect {
                         }
 
                         let card = state.get_card(card_id);
-                        let mut effects = card.on_move(&snapshot, path).await?;
+                        let path = vec![from.clone(), zone.clone()];
+                        let mut effects = card.on_move(&snapshot, &path).await?;
                         effects.extend(card.on_visit_zone(&snapshot, &zone).await?);
                         if let Some(site) = zone.get_site(state) {
                             effects.extend(site.on_card_enter(state, card_id));
@@ -532,26 +562,7 @@ impl Effect {
                         state.effects.extend(effects.into_iter().map(|e| e.into()));
                     }
                 }
-                None => {
-                    let snapshot = state.snapshot();
-                    let zone = to.resolve(player_id, state).await?;
-                    let card = state.get_card_mut(card_id);
-                    card.set_zone(zone.clone());
-                    if *tap {
-                        card.get_base_mut().tapped = true;
-                    }
-
-                    let card = state.get_card(card_id);
-                    let path = vec![from.clone(), zone.clone()];
-                    let mut effects = card.on_move(&snapshot, &path).await?;
-                    effects.extend(card.on_visit_zone(&snapshot, &zone).await?);
-                    if let Some(site) = zone.get_site(state) {
-                        effects.extend(site.on_card_enter(state, card_id));
-                    }
-
-                    state.effects.extend(effects.into_iter().map(|e| e.into()));
-                }
-            },
+            }
             Effect::DrawSite { player_id, count, .. } => {
                 let deck = state
                     .decks
@@ -691,6 +702,14 @@ impl Effect {
                 card.get_base_mut().tapped = true;
             }
             Effect::StartTurn { player_id, .. } => {
+                let previous_player = state.current_player.clone();
+                state
+                    .get_sender()
+                    .send(ServerMessage::Wait {
+                        player_id: previous_player.clone(),
+                        prompt: "Waiting for other player".to_string(),
+                    })
+                    .await?;
                 let cards = state
                     .cards
                     .iter_mut()
@@ -710,21 +729,30 @@ impl Effect {
                     .iter()
                     .filter(|c| c.is_site())
                     .filter(|c| c.get_owner_id() == player_id)
-                    .filter(|c| c.get_zone().is_in_realm())
+                    .filter(|c| c.get_zone().is_in_play())
                     .filter_map(|c| match c.get_site_base() {
                         Some(site_base) => Some(site_base.provided_mana),
                         None => None,
                     })
                     .sum();
-
                 let player_resources = state.get_player_resources_mut(player_id)?;
                 player_resources.mana = available_mana;
+
                 let options: Vec<BaseAction> = vec![BaseAction::DrawSite, BaseAction::DrawSpell];
                 let option_labels: Vec<String> = options.iter().map(|a| a.get_name().to_string()).collect();
                 let prompt = "Start Turn: Pick card to draw";
                 let picked_option_idx = pick_option(player_id, &option_labels, state, prompt).await?;
                 let effects = options[picked_option_idx].on_select(player_id, state).await?;
                 state.effects.extend(effects.into_iter().map(|e| e.into()));
+
+                state.current_player = player_id.clone();
+                state.turns += 1;
+                state
+                    .get_sender()
+                    .send(ServerMessage::Resume {
+                        player_id: previous_player,
+                    })
+                    .await?;
             }
             Effect::RemoveResources {
                 player_id,
@@ -741,16 +769,12 @@ impl Effect {
                 player_resources.thresholds.earth -= thresholds.earth;
                 player_resources.health -= health;
             }
-            Effect::PreEndTurn { player_id, .. } => {
-                state.phase = Phase::PreEndTurn {
-                    player_id: player_id.clone(),
-                };
-                for card in state.cards.iter().filter(|c| c.get_zone().is_in_realm()) {
+            Effect::EndTurn { player_id, .. } => {
+                for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
                     let effects = card.on_turn_end(state).await?;
                     state.effects.extend(effects.into_iter().map(|e| e.into()));
                 }
-            }
-            Effect::EndTurn { player_id, .. } => {
+
                 let resources = state
                     .resources
                     .get_mut(player_id)
@@ -764,6 +788,28 @@ impl Effect {
                         .ok_or(anyhow::anyhow!("card has no unit base component"))?
                         .damage = 0;
                 }
+
+                let current_index = state
+                    .players
+                    .iter()
+                    .position(|p| p.id == state.current_player)
+                    .unwrap_or_default();
+                let next_player = state
+                    .players
+                    .iter()
+                    .cycle()
+                    .skip(current_index + 1)
+                    .next()
+                    .ok_or(anyhow::anyhow!("No next player found"))?;
+
+                // Push StartTurn to the front of the queue so all end of turn effects are resolved
+                // first.
+                state.effects.push_front(
+                    Effect::StartTurn {
+                        player_id: next_player.id.clone(),
+                    }
+                    .into(),
+                );
             }
             Effect::AddResources {
                 player_id,
@@ -821,7 +867,7 @@ impl Effect {
                 ..
             } => {
                 let target = query.resolve(player_id, state).await?;
-                state.effects.push_front(
+                state.effects.push_back(
                     Effect::TakeDamage {
                         card_id: target,
                         from: from.clone(),
@@ -837,7 +883,7 @@ impl Effect {
                 let card = state.get_card_mut(card_id);
                 let effects = card.on_take_damage(&snapshot, from, *damage)?;
                 for effect in effects {
-                    state.effects.push_front(effect.into());
+                    state.effects.push_back(effect.into());
                 }
             }
             Effect::BanishCard { card_id, .. } => {

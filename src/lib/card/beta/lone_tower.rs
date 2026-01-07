@@ -65,7 +65,7 @@ impl Card for LoneTower {
         let count = state
             .cards
             .iter()
-            .filter(|c| c.get_zone().is_in_realm())
+            .filter(|c| c.get_zone().is_in_play())
             .filter(|c| c.get_id() != self.get_id())
             .filter(|c| c.get_controller_id() == self.get_owner_id())
             .filter(|c| c.get_name() == Self::NAME)

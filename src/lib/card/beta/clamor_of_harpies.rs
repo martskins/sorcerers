@@ -102,7 +102,7 @@ impl Card for ClamorOfHarpies {
             .iter()
             .filter(|c| c.is_unit())
             .filter(|c| c.can_be_targetted_by(state, self.get_controller_id()))
-            .filter(|c| c.get_zone().is_in_realm())
+            .filter(|c| c.get_zone().is_in_play())
             .filter(|c| {
                 c.get_power(state).unwrap_or_default().unwrap_or(0)
                     < self.get_power(state).unwrap_or_default().unwrap_or(0)

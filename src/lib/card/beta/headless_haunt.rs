@@ -63,7 +63,7 @@ impl Card for HeadlessHaunt {
     }
 
     async fn on_turn_start(&self, _state: &State) -> Vec<Effect> {
-        if !self.get_zone().is_in_realm() {
+        if !self.get_zone().is_in_play() {
             return vec![];
         }
 

@@ -1,10 +1,10 @@
 use crate::{
-    card::{Aura, Card, CardData, CardType, Modifier, Plane, Zone},
+    card::{Aura, Card, CardType, Modifier, Plane, Zone},
     effect::Effect,
     error::GameError,
     networking::message::{ClientMessage, ServerMessage, ToMessage},
     query::{QueryCache, ZoneQuery},
-    state::{Phase, PlayerWithDeck, State},
+    state::{PlayerWithDeck, State},
 };
 use async_channel::{Receiver, Sender};
 use chrono::Utc;
@@ -922,7 +922,7 @@ impl Game {
             player1: self.state.players[0].id.clone(),
             player2: self.state.players[1].id.clone(),
             game_id: self.id.clone(),
-            cards: self.renderables_from_cards(),
+            cards: self.state.data_from_cards(),
         })
         .await?;
         self.process_effects().await?;
@@ -1084,7 +1084,7 @@ impl Game {
             }
             ClientMessage::EndTurn { player_id, .. } => {
                 self.state.effects.push_back(
-                    Effect::PreEndTurn {
+                    Effect::EndTurn {
                         player_id: player_id.clone(),
                     }
                     .into(),
@@ -1135,38 +1135,38 @@ impl Game {
     pub async fn update(&mut self) -> anyhow::Result<()> {
         self.process_effects().await?;
 
-        if let Phase::PreEndTurn { player_id } = self.state.phase {
-            // If the current player is not the one ending their turn, it means we've already
-            // actioned the pre-end turn changes, so no action is needed.
-            if self.state.current_player == player_id && !self.state.waiting_for_input {
-                let current_index = self
-                    .state
-                    .players
-                    .iter()
-                    .position(|p| p.id == self.state.current_player)
-                    .unwrap_or_default();
-                let current_player = self.state.current_player.clone();
-                let next_player = self
-                    .state
-                    .players
-                    .iter()
-                    .cycle()
-                    .skip(current_index + 1)
-                    .next()
-                    .ok_or(anyhow::anyhow!("No next player found"))?;
-                self.state.current_player = next_player.id.clone();
-                self.state.turns += 1;
-                let effects = vec![
-                    Effect::EndTurn {
-                        player_id: current_player,
-                    },
-                    Effect::StartTurn {
-                        player_id: next_player.id.clone(),
-                    },
-                ];
-                self.state.effects.extend(effects.into_iter().map(|e| e.into()));
-            }
-        }
+        // if let Phase::PreEndTurn { player_id } = self.state.phase {
+        //     // If the current player is not the one ending their turn, it means we've already
+        //     // actioned the pre-end turn changes, so no action is needed.
+        //     if self.state.current_player == player_id && !self.state.waiting_for_input {
+        //         let current_index = self
+        //             .state
+        //             .players
+        //             .iter()
+        //             .position(|p| p.id == self.state.current_player)
+        //             .unwrap_or_default();
+        //         let current_player = self.state.current_player.clone();
+        //         let next_player = self
+        //             .state
+        //             .players
+        //             .iter()
+        //             .cycle()
+        //             .skip(current_index + 1)
+        //             .next()
+        //             .ok_or(anyhow::anyhow!("No next player found"))?;
+        //         self.state.current_player = next_player.id.clone();
+        //         self.state.turns += 1;
+        //         let effects = vec![
+        //             Effect::EndTurn {
+        //                 player_id: current_player,
+        //             },
+        //             Effect::StartTurn {
+        //                 player_id: next_player.id.clone(),
+        //             },
+        //         ];
+        //         self.state.effects.extend(effects.into_iter().map(|e| e.into()));
+        //     }
+        // }
 
         // Move attached artifacts to the same zone as the unit they are attached to
         let attached_artifacts: Vec<(uuid::Uuid, uuid::Uuid)> = self
@@ -1190,28 +1190,6 @@ impl Game {
 
         self.send_sync().await?;
         Ok(())
-    }
-
-    fn renderables_from_cards(&self) -> Vec<CardData> {
-        self.state
-            .cards
-            .iter()
-            .map(|c| CardData {
-                id: c.get_id().clone(),
-                name: c.get_name().to_string(),
-                owner_id: c.get_owner_id().clone(),
-                tapped: c.is_tapped(),
-                edition: c.get_edition().clone(),
-                zone: c.get_zone().clone(),
-                card_type: c.get_card_type().clone(),
-                modifiers: c.get_modifiers(&self.state).unwrap_or_default(),
-                plane: c.get_plane(&self.state).clone(),
-                damage_taken: c.get_damage_taken().unwrap_or(0),
-                attached_to: c
-                    .get_artifact()
-                    .and_then(|c| c.get_attached_to().unwrap_or_default().clone()),
-            })
-            .collect()
     }
 
     pub async fn send_sync(&self) -> anyhow::Result<()> {
@@ -1301,10 +1279,6 @@ impl Game {
 
     pub async fn process_effects(&mut self) -> anyhow::Result<()> {
         while !self.state.effects.is_empty() {
-            if self.state.waiting_for_input {
-                return Ok(());
-            }
-
             let effect = self.state.effects.pop_back();
             if let Some(effect) = effect {
                 match effect.apply(&mut self.state).await {
@@ -1336,6 +1310,7 @@ impl Game {
                 self.state.effect_log.push(effect);
 
                 Self::dispell_auras(&mut self.state).await?;
+                self.send_sync().await?;
             }
         }
 

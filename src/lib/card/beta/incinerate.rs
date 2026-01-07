@@ -50,7 +50,7 @@ impl Card for Incinerate {
         let mut zones: Vec<Zone> = state
             .cards
             .iter()
-            .filter(|c| c.get_zone().is_in_realm())
+            .filter(|c| c.get_zone().is_in_play())
             .filter(|c| c.get_owner_id() == self.get_owner_id())
             .filter(|c| c.is_unit())
             .filter(|c| c.get_unit_base().unwrap().types.contains(&MinionType::Dragon))

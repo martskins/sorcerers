@@ -502,7 +502,7 @@ impl RealmComponent {
                 for rect in &mut self
                     .card_rects
                     .iter_mut()
-                    .filter(|c| c.card.zone.is_in_realm() || c.card.zone == Zone::Hand)
+                    .filter(|c| c.card.zone.is_in_play() || c.card.zone == Zone::Hand)
                 {
                     if rect.is_hovered && Mouse::clicked()? {
                         self.client.send(ClientMessage::ClickCard {
@@ -695,7 +695,7 @@ impl Component for RealmComponent {
         self.render_grid(data).await;
 
         for card_rect in &mut self.card_rects {
-            if !card_rect.card.zone.is_in_realm() {
+            if !card_rect.card.zone.is_in_play() {
                 continue;
             }
 

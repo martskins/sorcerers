@@ -164,7 +164,7 @@ impl QueryCache {
                     .cards
                     .iter()
                     .filter(|c| c.is_site())
-                    .filter(|c| c.get_zone().is_in_realm())
+                    .filter(|c| c.get_zone().is_in_play())
                     .map(|c| c.get_zone().clone())
                     .collect::<Vec<Zone>>();
                 sites.dedup();
@@ -285,7 +285,7 @@ impl ZoneQuery {
                     .cards
                     .iter()
                     .filter(|c| c.is_site())
-                    .filter(|c| c.get_zone().is_in_realm())
+                    .filter(|c| c.get_zone().is_in_play())
                     .map(|c| c.get_zone().clone())
                     .collect::<Vec<Zone>>();
                 sites.dedup();

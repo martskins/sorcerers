@@ -85,7 +85,7 @@ impl std::fmt::Display for Zone {
 }
 
 impl Zone {
-    pub fn is_in_realm(&self) -> bool {
+    pub fn is_in_play(&self) -> bool {
         match self {
             Zone::Realm(_) | Zone::Intersection(_) => true,
             _ => false,
@@ -817,7 +817,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 let area_mods: Vec<Modifier> = state
                     .cards
                     .iter()
-                    .filter(|c| c.get_zone().is_in_realm())
+                    .filter(|c| c.get_zone().is_in_play())
                     .flat_map(|c| c.area_modifiers(state))
                     .filter_map(|(modif, units)| {
                         if units.contains(self.get_id()) {
@@ -976,7 +976,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     fn can_cast(&self, state: &State, spell: &Box<dyn Card>) -> bool {
-        if !self.get_zone().is_in_realm() {
+        if !self.get_zone().is_in_play() {
             return false;
         }
 

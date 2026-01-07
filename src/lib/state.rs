@@ -14,7 +14,7 @@ use std::{
 #[derive(Debug, PartialEq, Clone)]
 pub enum Phase {
     Main,
-    PreEndTurn { player_id: PlayerId },
+    // PreEndTurn { player_id: PlayerId },
 }
 
 #[derive(Debug, Clone)]
@@ -122,9 +122,14 @@ impl State {
         Ok(())
     }
 
-    fn renderables_from_cards(&self) -> Vec<CardData> {
+    pub fn data_from_cards(&self) -> Vec<CardData> {
         self.cards
             .iter()
+            // TODO: filter only cards in play
+            // .filter_map(|c| match c.get_zone() {
+            //     Zone::Hand | Zone::Realm(_) | Zone::Intersection(_) => Some(c),
+            //     _ => return None,
+            // })
             .map(|c| CardData {
                 id: c.get_id().clone(),
                 name: c.get_name().to_string(),
@@ -145,7 +150,7 @@ impl State {
 
     pub fn into_sync(&self) -> ServerMessage {
         ServerMessage::Sync {
-            cards: self.renderables_from_cards(),
+            cards: self.data_from_cards(),
             resources: self.resources.clone(),
             current_player: self.current_player.clone(),
         }

@@ -45,7 +45,7 @@ impl Aura for Thunderstorm {
                 _ => true,
             })
             .filter(|e| match ***e {
-                Effect::PreEndTurn { ref player_id, .. } if player_id == controller_id => true,
+                Effect::EndTurn { ref player_id, .. } if player_id == controller_id => true,
                 _ => false,
             })
             .count();
@@ -89,15 +89,6 @@ impl Card for Thunderstorm {
             })
             .collect::<Vec<uuid::Uuid>>();
         let effects = vec![
-            Effect::DealDamageToTarget {
-                player_id: self.get_controller_id().clone(),
-                query: CardQuery::RandomTarget {
-                    id: uuid::Uuid::new_v4(),
-                    possible_targets: units,
-                },
-                from: self.get_id().clone(),
-                damage: 3,
-            },
             Effect::MoveCard {
                 player_id: self.get_controller_id().clone(),
                 card_id: self.get_id().clone(),
@@ -110,6 +101,15 @@ impl Card for Thunderstorm {
                 tap: false,
                 plane: Plane::Surface,
                 through_path: None,
+            },
+            Effect::DealDamageToTarget {
+                player_id: self.get_controller_id().clone(),
+                query: CardQuery::RandomTarget {
+                    id: uuid::Uuid::new_v4(),
+                    possible_targets: units,
+                },
+                from: self.get_id().clone(),
+                damage: 3,
             },
         ];
 
