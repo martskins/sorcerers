@@ -10,9 +10,6 @@ use crate::{
 pub struct Thunderstorm {
     pub aura_base: AuraBase,
     pub card_base: CardBase,
-    // TODO: Change this to a should_dispell function that checks the effect log for end of turn effects
-    // and return true if it finds 3 of the controller's turns.
-    pub turns_remaining: u8,
 }
 
 impl Thunderstorm {
@@ -33,12 +30,29 @@ impl Thunderstorm {
                 controller_id: owner_id.clone(),
             },
             aura_base: AuraBase {},
-            turns_remaining: 3,
         }
     }
 }
 
-impl Aura for Thunderstorm {}
+impl Aura for Thunderstorm {
+    fn should_dispell(&self, state: &State) -> anyhow::Result<bool> {
+        let controller_id = self.get_controller_id();
+        let turns_in_play = state
+            .effect_log
+            .iter()
+            .skip_while(|e| match ***e {
+                Effect::PlayCard { ref card_id, .. } if card_id == self.get_id() => false,
+                _ => true,
+            })
+            .filter(|e| match ***e {
+                Effect::PreEndTurn { ref player_id, .. } if player_id == controller_id => true,
+                _ => false,
+            })
+            .count();
+
+        Ok(turns_in_play >= 3)
+    }
+}
 
 #[async_trait::async_trait]
 impl Card for Thunderstorm {
@@ -58,14 +72,6 @@ impl Card for Thunderstorm {
         Some(&self.aura_base)
     }
 
-    fn set_data(&mut self, data: &Box<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
-        if let Some(turns) = data.downcast_ref::<u8>() {
-            self.turns_remaining = *turns;
-        }
-
-        Ok(())
-    }
-
     async fn on_turn_end(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         if &state.current_player != self.get_controller_id() {
             return Ok(vec![]);
@@ -82,7 +88,7 @@ impl Card for Thunderstorm {
                     .collect::<Vec<uuid::Uuid>>()
             })
             .collect::<Vec<uuid::Uuid>>();
-        let mut effects = vec![
+        let effects = vec![
             Effect::DealDamageToTarget {
                 player_id: self.get_controller_id().clone(),
                 query: CardQuery::RandomTarget {
@@ -106,18 +112,6 @@ impl Card for Thunderstorm {
                 through_path: None,
             },
         ];
-
-        if self.turns_remaining > 1 {
-            effects.push(Effect::SetCardData {
-                card_id: self.get_id().clone(),
-                data: Box::new(self.turns_remaining - 1),
-            });
-        } else {
-            effects.push(Effect::BuryCard {
-                card_id: self.get_id().clone(),
-                from: self.get_zone().clone(),
-            });
-        }
 
         Ok(effects)
     }

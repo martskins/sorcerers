@@ -1,8 +1,9 @@
 use crate::{
-    card::{Card, CardData, CardType, Modifier, Plane, Zone},
+    card::{Aura, Card, CardData, CardType, Modifier, Plane, Zone},
     effect::Effect,
+    error::GameError,
     networking::message::{ClientMessage, ServerMessage, ToMessage},
-    query::ZoneQuery,
+    query::{QueryCache, ZoneQuery},
     state::{Phase, PlayerWithDeck, State},
 };
 use async_channel::{Receiver, Sender};
@@ -107,6 +108,9 @@ pub async fn pick_card_with_preview(
         let msg = state.get_receiver().recv().await?;
         match msg {
             ClientMessage::PickCard { card_id, .. } => break Ok(card_id),
+            ClientMessage::PlayerDisconnected { player_id, .. } => {
+                return Err(GameError::PlayerDisconnected(player_id.clone()).into());
+            }
             _ => unreachable!(),
         }
     }
@@ -132,6 +136,9 @@ pub async fn pick_card(
         let msg = state.get_receiver().recv().await?;
         match msg {
             ClientMessage::PickCard { card_id, .. } => break Ok(card_id),
+            ClientMessage::PlayerDisconnected { player_id, .. } => {
+                return Err(GameError::PlayerDisconnected(player_id.clone()).into());
+            }
             _ => unreachable!(),
         }
     }
@@ -156,6 +163,9 @@ pub async fn pick_action<'a>(
         let msg = state.get_receiver().recv().await?;
         match msg {
             ClientMessage::PickAction { action_idx, .. } => break Ok(&actions[action_idx]),
+            ClientMessage::PlayerDisconnected { player_id, .. } => {
+                return Err(GameError::PlayerDisconnected(player_id.clone()).into());
+            }
             _ => panic!("expected PickAction, got {:?}", msg),
         }
     }
@@ -203,6 +213,9 @@ pub async fn pick_option(
         let msg = state.get_receiver().recv().await?;
         match msg {
             ClientMessage::PickAction { action_idx, .. } => break Ok(action_idx),
+            ClientMessage::PlayerDisconnected { player_id, .. } => {
+                return Err(GameError::PlayerDisconnected(player_id.clone()).into());
+            }
             _ => panic!("expected PickAction, got {:?}", msg),
         }
     }
@@ -227,6 +240,9 @@ pub async fn pick_path(
         let msg = state.get_receiver().recv().await?;
         match msg {
             ClientMessage::PickPath { path, .. } => break Ok(path),
+            ClientMessage::PlayerDisconnected { player_id, .. } => {
+                return Err(GameError::PlayerDisconnected(player_id.clone()).into());
+            }
             _ => panic!("expected PickPath, got {:?}", msg),
         }
     }
@@ -246,6 +262,9 @@ pub async fn pick_zone(player_id: &PlayerId, zones: &[Zone], state: &State, prom
         let msg = state.get_receiver().recv().await?;
         match msg {
             ClientMessage::PickZone { zone, .. } => break Ok(zone),
+            ClientMessage::PlayerDisconnected { player_id, .. } => {
+                return Err(GameError::PlayerDisconnected(player_id.clone()).into());
+            }
             _ => panic!("expected PickSquare, got {:?}", msg),
         }
     }
@@ -297,6 +316,9 @@ pub async fn pick_direction(
         let msg = state.get_receiver().recv().await?;
         match msg {
             ClientMessage::PickAction { action_idx, .. } => break Ok(directions[action_idx].normalise(board_flipped)),
+            ClientMessage::PlayerDisconnected { player_id, .. } => {
+                return Err(GameError::PlayerDisconnected(player_id.clone()).into());
+            }
             _ => panic!("expected PickAction, got {:?}", msg),
         }
     }
@@ -912,7 +934,7 @@ impl Game {
             loop {
                 if let Ok(message) = receiver.recv().await {
                     let stream = streams.get(&message.player_id()).expect("stream to be found");
-                    Self::send(Arc::clone(stream), &message)
+                    Self::send_message(&message, Arc::clone(stream))
                         .await
                         .expect("message to be sent");
                 }
@@ -954,11 +976,7 @@ impl Game {
         self.maybe_unblock_effects(message);
         match message {
             ClientMessage::PlayerDisconnected { player_id, .. } => {
-                self.streams.retain(|pid, _| pid != player_id);
-                self.broadcast(&ServerMessage::PlayerDisconnected {
-                    player_id: player_id.clone(),
-                })
-                .await?;
+                self.player_disconnected(player_id).await?;
             }
             ClientMessage::ClickCard { player_id, card_id, .. } => {
                 let card = self.state.get_card(card_id);
@@ -1078,8 +1096,38 @@ impl Game {
         Ok(())
     }
 
+    pub async fn end_game(&mut self) -> anyhow::Result<()> {
+        QueryCache::clear_game_cache(&self.id).await;
+        Ok(())
+    }
+
+    pub async fn player_disconnected(&mut self, player_id: &PlayerId) -> anyhow::Result<()> {
+        self.streams.retain(|pid, _| pid != player_id);
+        self.broadcast(&ServerMessage::PlayerDisconnected {
+            player_id: player_id.clone(),
+        })
+        .await?;
+        self.end_game().await?;
+
+        Ok(())
+    }
+
     pub async fn process_message(&mut self, message: &ClientMessage) -> anyhow::Result<()> {
-        self.handle_message(message).await?;
+        match self.handle_message(message).await {
+            Ok(_) => {}
+            Err(e) => {
+                if let Some(e) = e.downcast_ref::<GameError>() {
+                    match e {
+                        GameError::PlayerDisconnected(player_id) => {
+                            self.player_disconnected(player_id).await?;
+                            return Ok(());
+                        }
+                    }
+                } else {
+                    println!("Error processing message: {:?}", e);
+                }
+            }
+        }
         self.update().await?;
         Ok(())
     }
@@ -1171,15 +1219,7 @@ impl Game {
         Ok(())
     }
 
-    async fn send(stream: Arc<Mutex<OwnedWriteHalf>>, message: &ServerMessage) -> anyhow::Result<()> {
-        let bytes = rmp_serde::to_vec(&message.to_message())?;
-        let mut stream = stream.lock().await;
-        stream.write_all(&bytes).await?;
-
-        Ok(())
-    }
-
-    async fn send_message(&self, message: &ServerMessage, stream: Arc<Mutex<OwnedWriteHalf>>) -> anyhow::Result<()> {
+    async fn send_message(message: &ServerMessage, stream: Arc<Mutex<OwnedWriteHalf>>) -> anyhow::Result<()> {
         let bytes = rmp_serde::to_vec(&message.to_message())?;
         let mut stream = stream.lock().await;
         stream.write_all(&bytes).await?;
@@ -1189,7 +1229,7 @@ impl Game {
 
     pub async fn broadcast(&self, message: &ServerMessage) -> anyhow::Result<()> {
         for stream in self.streams.values() {
-            self.send_message(message, Arc::clone(stream)).await?;
+            Self::send_message(message, Arc::clone(stream)).await?;
         }
         Ok(())
     }
@@ -1236,6 +1276,29 @@ impl Game {
         effects
     }
 
+    async fn dispell_auras(state: &mut State) -> anyhow::Result<()> {
+        let auras: Vec<&dyn Aura> = state.cards.iter().filter_map(|c| c.get_aura()).collect();
+        let mut auras_to_dispell = vec![];
+        for aura in auras {
+            if aura.should_dispell(state)? {
+                auras_to_dispell.push(aura.get_id().clone());
+            }
+        }
+
+        for aura_id in auras_to_dispell {
+            {
+                let card = state.get_card_mut(&aura_id);
+                card.set_zone(Zone::Cemetery);
+            }
+
+            let card = state.get_card(&aura_id);
+            let effects = card.deathrite(state, card.get_zone());
+            state.effects.extend(effects.into_iter().map(|e| e.into()));
+        }
+
+        Ok(())
+    }
+
     pub async fn process_effects(&mut self) -> anyhow::Result<()> {
         while !self.state.effects.is_empty() {
             if self.state.waiting_for_input {
@@ -1244,7 +1307,13 @@ impl Game {
 
             let effect = self.state.effects.pop_back();
             if let Some(effect) = effect {
-                effect.apply(&mut self.state).await?;
+                match effect.apply(&mut self.state).await {
+                    Ok(_) => {}
+                    Err(e) => {
+                        println!("Error applying effect {:?}: {:?}", effect, e);
+                    }
+                }
+
                 if let Ok(Some(description)) = effect.description(&self.state).await {
                     self.broadcast(&ServerMessage::LogEvent {
                         id: uuid::Uuid::new_v4(),
@@ -1261,6 +1330,12 @@ impl Game {
                     })
                     .await?;
                 }
+
+                // Move the effect to the effect log so we can keep track of what has happened in
+                // the game.
+                self.state.effect_log.push(effect);
+
+                Self::dispell_auras(&mut self.state).await?;
             }
         }
 

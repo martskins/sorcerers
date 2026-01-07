@@ -42,6 +42,7 @@ pub struct State {
     pub waiting_for_input: bool,
     pub current_player: PlayerId,
     pub effects: VecDeque<Arc<Effect>>,
+    pub effect_log: Vec<Arc<Effect>>,
     pub player_one: PlayerId,
     pub server_tx: Sender<ServerMessage>,
     pub client_rx: Receiver<ClientMessage>,
@@ -79,6 +80,7 @@ impl State {
             current_player: player_one,
             waiting_for_input: false,
             effects: VecDeque::new(),
+            effect_log: Vec::new(),
             player_one,
             server_tx,
             client_rx,
@@ -211,7 +213,7 @@ impl State {
             players: self.players.clone(),
             cards: self.cards.iter().map(|c| c.clone_box()).collect(),
             decks: self.decks.clone(),
-            turns: 0,
+            turns: self.turns.clone(),
             resources: self.resources.clone(),
             input_status: self.input_status.clone(),
             phase: self.phase.clone(),
@@ -221,6 +223,7 @@ impl State {
             player_one: self.player_one,
             server_tx: self.server_tx.clone(),
             client_rx: self.client_rx.clone(),
+            effect_log: self.effect_log.clone(),
         }
     }
 

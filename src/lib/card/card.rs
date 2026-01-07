@@ -737,6 +737,12 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             .get_zones_within_steps(state, self.get_steps_per_movement(state)?)
             .iter()
             .filter(|z| {
+                // If the card is not a unit, it might be an aura, in which case the result of
+                // get_zones_within_steps should be returned as is.
+                if !self.is_unit() {
+                    return true;
+                }
+
                 if self.has_modifier(state, &Modifier::Voidwalk) {
                     return true;
                 }
@@ -1243,6 +1249,10 @@ pub struct CardBase {
 pub struct AuraBase {}
 
 pub trait Aura: Card {
+    fn should_dispell(&self, _state: &State) -> anyhow::Result<bool> {
+        Ok(false)
+    }
+
     fn get_affected_zones(&self, _state: &State) -> Vec<Zone> {
         match self.get_zone() {
             z @ Zone::Realm(_) => vec![z.clone()],
