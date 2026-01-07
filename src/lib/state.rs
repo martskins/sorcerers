@@ -92,7 +92,7 @@ impl State {
             .filter(|c| c.is_unit())
             .filter(|c| matches!(c.get_zone(), Zone::Realm(_)))
             .flat_map(|c| {
-                let valid_moves = c.get_valid_move_zones(self);
+                let valid_moves = c.get_valid_move_zones(self).unwrap_or_default();
                 let mut intercepts = vec![];
                 for zone in path {
                     if valid_moves.contains(&zone) {
@@ -131,7 +131,7 @@ impl State {
                 edition: c.get_edition().clone(),
                 zone: c.get_zone().clone(),
                 card_type: c.get_card_type().clone(),
-                modifiers: c.get_modifiers(&self),
+                modifiers: c.get_modifiers(&self).unwrap_or_default(),
                 plane: c.get_plane(&self).clone(),
                 damage_taken: c.get_damage_taken().unwrap_or(0),
                 attached_to: c

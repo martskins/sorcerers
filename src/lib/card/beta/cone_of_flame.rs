@@ -62,14 +62,11 @@ impl Card for ConeOfFlame {
 
         let mut effects = vec![];
         for (zone, dmg) in zone_dmg {
-            if zone.is_none() {
-                continue;
-            }
-
-            let zone = zone.unwrap();
-            let units = state.get_units_in_zone(&zone);
-            for unit in units {
-                effects.push(Effect::take_damage(unit.get_id(), self.get_id(), dmg));
+            if let Some(zone) = zone {
+                let units = state.get_units_in_zone(&zone);
+                for unit in units {
+                    effects.push(Effect::take_damage(unit.get_id(), self.get_id(), dmg));
+                }
             }
         }
         Ok(effects)

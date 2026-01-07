@@ -115,8 +115,8 @@ impl Card for Wildfire {
         Ok(effects)
     }
 
-    fn get_valid_play_zones(&self, _state: &State) -> Vec<Zone> {
-        Zone::all_realm()
+    fn get_valid_play_zones(&self, _state: &State) -> anyhow::Result<Vec<Zone>> {
+        Ok(Zone::all_realm())
     }
 
     fn get_aura(&self) -> Option<&dyn Aura> {

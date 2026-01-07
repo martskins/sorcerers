@@ -53,7 +53,7 @@ impl PlayerStatusComponent {
         }
     }
 
-    async fn icon_texture(icon: &Icon) -> Texture2D {
+    async fn icon_texture(icon: &Icon) -> anyhow::Result<Texture2D> {
         match icon {
             &Icon::Heart => TextureCache::get_texture("assets/icons/heart.png").await,
             &Icon::Cards => TextureCache::get_texture("assets/icons/cards.png").await,
@@ -63,8 +63,8 @@ impl PlayerStatusComponent {
         }
     }
 
-    async fn draw_icon(&self, icon: &Icon, text: &str) {
-        let texture = Self::icon_texture(icon).await;
+    async fn draw_icon(&self, icon: &Icon, text: &str) -> anyhow::Result<()> {
+        let texture = Self::icon_texture(icon).await?;
         let rect = self.icon_rect(icon);
         draw_texture_ex(
             &texture,
@@ -77,6 +77,7 @@ impl PlayerStatusComponent {
             },
         );
         draw_text(text, rect.x + rect.w + 5.0, rect.y + rect.h - 5.0, FONT_SIZE, WHITE);
+        Ok(())
     }
 }
 
@@ -138,7 +139,7 @@ impl Component for PlayerStatusComponent {
         draw_text(player_name, self.rect.x, self.rect.y, FONT_SIZE, WHITE);
 
         let health = format!("{}", resources.health);
-        Self::draw_icon(self, &Icon::Heart, &health).await;
+        Self::draw_icon(self, &Icon::Heart, &health).await?;
 
         let cards_in_hand = format!(
             "{}",
@@ -148,10 +149,10 @@ impl Component for PlayerStatusComponent {
                 .filter(|c| c.zone == Zone::Hand)
                 .count()
         );
-        Self::draw_icon(self, &Icon::Cards, &cards_in_hand).await;
+        Self::draw_icon(self, &Icon::Cards, &cards_in_hand).await?;
 
         let mana_text = format!("{}", resources.mana);
-        Self::draw_icon(self, &Icon::Potion, &mana_text).await;
+        Self::draw_icon(self, &Icon::Potion, &mana_text).await?;
 
         let cards_in_cemetery = format!(
             "{}",
@@ -161,11 +162,11 @@ impl Component for PlayerStatusComponent {
                 .filter(|c| c.zone == Zone::Cemetery)
                 .count()
         );
-        Self::draw_icon(self, &Icon::Tombstone, &cards_in_cemetery).await;
+        Self::draw_icon(self, &Icon::Tombstone, &cards_in_cemetery).await?;
 
         if data.player_id == self.player_id {
             let unseen_messages = format!("{}", data.unseen_events);
-            Self::draw_icon(self, &Icon::Message, &unseen_messages).await;
+            Self::draw_icon(self, &Icon::Message, &unseen_messages).await?;
         }
 
         let thresholds_y: f32 = self.rect.y + 10.0 + 20.0 + 20.0;
@@ -209,7 +210,7 @@ impl Component for PlayerStatusComponent {
         Ok(None)
     }
 
-    async fn process_command(&mut self, command: &ComponentCommand) {
+    async fn process_command(&mut self, command: &ComponentCommand) -> anyhow::Result<()> {
         match command {
             ComponentCommand::SetRect {
                 component_type: ComponentType::PlayerStatus,
@@ -217,11 +218,13 @@ impl Component for PlayerStatusComponent {
             } => {
                 self.rect = rect.clone();
                 if self.player {
-                    self.rect.y = crate::config::screen_rect().h - 90.0;
+                    self.rect.y = crate::config::screen_rect()?.h - 90.0;
                 }
             }
             _ => {}
         }
+
+        Ok(())
     }
 
     fn get_component_type(&self) -> ComponentType {

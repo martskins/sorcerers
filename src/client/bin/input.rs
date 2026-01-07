@@ -48,10 +48,11 @@ impl Mouse {
             return Ok(false);
         }
 
-        let mouse_click_pos: Vec2 = mouse_status.last_click_position.unwrap();
-        let current_mouse_pos: Vec2 = mouse_position().into();
-        if mouse_click_pos.distance_squared(current_mouse_pos) > 25.0 {
-            return Ok(true);
+        if let Some(last_click_pos) = mouse_status.last_click_position {
+            let current_mouse_pos: Vec2 = mouse_position().into();
+            if last_click_pos.distance_squared(current_mouse_pos) > 25.0 {
+                return Ok(true);
+            }
         }
 
         Ok(false)

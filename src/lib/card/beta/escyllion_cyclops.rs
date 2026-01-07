@@ -60,8 +60,8 @@ impl Card for EscyllionCyclops {
         Some(&mut self.unit_base)
     }
 
-    fn on_defend(&self, _: &State, _: &uuid::Uuid) -> Vec<Effect> {
+    fn on_defend(&self, _: &State, _: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
         // Doesn't strike back while defending
-        vec![]
+        Ok(vec![])
     }
 }

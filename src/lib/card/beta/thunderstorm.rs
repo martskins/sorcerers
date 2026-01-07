@@ -10,6 +10,8 @@ use crate::{
 pub struct Thunderstorm {
     pub aura_base: AuraBase,
     pub card_base: CardBase,
+    // TODO: Change this to a should_dispell function that checks the effect log for end of turn effects
+    // and return true if it finds 3 of the controller's turns.
     pub turns_remaining: u8,
 }
 
@@ -56,10 +58,6 @@ impl Card for Thunderstorm {
         Some(&self.aura_base)
     }
 
-    fn get_valid_play_zones(&self, _state: &State) -> Vec<Zone> {
-        Zone::all_intersections()
-    }
-
     fn set_data(&mut self, data: &Box<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
         if let Some(turns) = data.downcast_ref::<u8>() {
             self.turns_remaining = *turns;
@@ -73,7 +71,7 @@ impl Card for Thunderstorm {
             return Ok(vec![]);
         }
 
-        let zones = self.get_valid_move_zones(state);
+        let zones = self.get_valid_move_zones(state)?;
         let affected_zones = self.get_affected_zones(state);
         let units = affected_zones
             .iter()

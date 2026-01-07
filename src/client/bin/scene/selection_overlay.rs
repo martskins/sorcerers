@@ -45,17 +45,17 @@ impl SelectionOverlay {
         cards: Vec<&CardData>,
         prompt: &str,
         behaviour: SelectionOverlayBehaviour,
-    ) -> Self {
+    ) -> anyhow::Result<Self> {
         let mut textures = Vec::with_capacity(cards.len());
         for card in &cards {
-            let texture = TextureCache::get_card_texture(card).await;
+            let texture = TextureCache::get_card_texture(card).await?;
             textures.push(texture);
         }
 
         let card_spacing = 20.0;
         let card_count = cards.len();
-        let card_width = card_width() * 2.0;
-        let card_height = card_height() * 2.0;
+        let card_width = card_width()? * 2.0;
+        let card_height = card_height()? * 2.0;
         let cards_area_width = card_count as f32 * card_width + (card_count as f32 - 1.0) * card_spacing;
         let cards_start_x = (screen_width() - cards_area_width) / 2.0;
         let cards_y = (screen_height() - card_height) / 2.0 + 30.0;
@@ -76,7 +76,7 @@ impl SelectionOverlay {
             rects.push(rect);
         }
 
-        Self {
+        Ok(Self {
             client,
             game_id: game_id.clone(),
             card_rects: rects,
@@ -84,7 +84,7 @@ impl SelectionOverlay {
             behaviour,
             player_id: player_id.clone(),
             close: false,
-        }
+        })
     }
 
     pub fn should_close(&self) -> bool {
@@ -104,7 +104,7 @@ impl SelectionOverlay {
         Ok(())
     }
 
-    pub fn render(&mut self) {
+    pub fn render(&mut self) -> anyhow::Result<()> {
         draw_rectangle(
             0.0,
             0.0,
@@ -125,8 +125,8 @@ impl SelectionOverlay {
         ui::root_ui().push_skin(&skin);
 
         let card_count = self.card_rects.len();
-        let card_width = card_width() * 2.0;
-        let card_height = card_height() * 2.0;
+        let card_width = card_width()? * 2.0;
+        let card_height = card_height()? * 2.0;
         let card_spacing = 20.0;
 
         let mut skin = ui::root_ui().default_skin();
@@ -170,6 +170,7 @@ impl SelectionOverlay {
         }
 
         ui::root_ui().pop_skin();
+        Ok(())
     }
 
     pub async fn process_input(&mut self) -> anyhow::Result<()> {

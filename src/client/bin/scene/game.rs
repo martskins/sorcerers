@@ -81,10 +81,10 @@ impl Event {
     }
 }
 
-fn component_rect(component_type: ComponentType) -> Rect {
+fn component_rect(component_type: ComponentType) -> anyhow::Result<Rect> {
     match component_type {
-        ComponentType::EventLog => event_log_rect(),
-        ComponentType::PlayerStatus => Rect::new(20.0, 25.0, realm_rect().x, 60.0),
+        ComponentType::EventLog => Ok(event_log_rect()),
+        ComponentType::PlayerStatus => Ok(Rect::new(20.0, 25.0, realm_rect()?.x, 60.0)),
         ComponentType::PlayerHand => hand_rect(),
         ComponentType::Realm => realm_rect(),
     }
@@ -157,20 +157,20 @@ impl Game {
         is_player_one: bool,
         cards: Vec<CardData>,
         client: networking::client::Client,
-    ) -> Self {
-        Self {
+    ) -> anyhow::Result<Self> {
+        Ok(Self {
             game_id: game_id.clone(),
             client: client.clone(),
             current_player: uuid::Uuid::nil(),
             card_selection_overlay: None,
             components: vec![
                 Box::new(PlayerStatusComponent::new(
-                    component_rect(ComponentType::PlayerStatus),
+                    component_rect(ComponentType::PlayerStatus)?,
                     opponent_id.clone(),
                     false,
                 )),
                 Box::new(PlayerStatusComponent::new(
-                    component_rect(ComponentType::PlayerStatus),
+                    component_rect(ComponentType::PlayerStatus)?,
                     player_id.clone(),
                     true,
                 )),
@@ -179,20 +179,20 @@ impl Game {
                     &player_id,
                     !is_player_one,
                     client.clone(),
-                    component_rect(ComponentType::Realm),
+                    component_rect(ComponentType::Realm)?,
                 )),
                 Box::new(PlayerHandComponent::new(
                     &game_id,
                     &player_id,
                     client.clone(),
-                    component_rect(ComponentType::PlayerHand),
+                    component_rect(ComponentType::PlayerHand)?,
                 )),
-                Box::new(EventLogComponent::new(component_rect(ComponentType::EventLog))),
+                Box::new(EventLogComponent::new(component_rect(ComponentType::EventLog)?)),
             ],
             data: GameData::new(&player_id, cards),
             audio_manager: AudioManager::<DefaultBackend>::new(AudioManagerSettings::default())
                 .expect("AudioManager to be created"),
-        }
+        })
     }
 
     fn is_players_turn(&self, player_id: &PlayerId) -> bool {
@@ -206,9 +206,9 @@ impl Game {
             component
                 .process_command(&ComponentCommand::SetRect {
                     component_type: component.get_component_type(),
-                    rect: component_rect(component.get_component_type()),
+                    rect: component_rect(component.get_component_type())?,
                 })
-                .await;
+                .await?;
         }
 
         if is_mouse_button_pressed(MouseButton::Left) {
@@ -237,7 +237,7 @@ impl Game {
                     prompt,
                     behaviour.clone(),
                 )
-                .await,
+                .await?,
             );
             self.data.status = *prev_status.clone();
         }
@@ -262,7 +262,7 @@ impl Game {
             dots += &" ".repeat(3 - dot_count);
             let message = format!("Looking for match{}", dots);
 
-            let screen_rect = screen_rect();
+            let screen_rect = screen_rect()?;
             let text_dimensions = macroquad::text::measure_text(&message, None, FONT_SIZE as u16, 1.0);
             let x = screen_rect.w / 2.0 - text_dimensions.width / 2.0;
             let y = screen_rect.h / 2.0 - text_dimensions.height / 2.0;
@@ -280,7 +280,7 @@ impl Game {
         }
 
         if let Some(overlay) = &mut self.card_selection_overlay {
-            overlay.render();
+            overlay.render()?;
         }
 
         Ok(None)
@@ -347,7 +347,7 @@ impl Game {
                             prompt,
                             SelectionOverlayBehaviour::Pick,
                         )
-                        .await,
+                        .await?,
                     );
                 }
                 Ok(None)
@@ -405,7 +405,7 @@ impl Game {
 
         for action in component_actions {
             for component in &mut self.components {
-                component.process_command(&action).await;
+                component.process_command(&action).await?;
             }
         }
 
@@ -413,7 +413,7 @@ impl Game {
     }
 
     async fn render_gui(&mut self) -> anyhow::Result<Option<Scene>> {
-        let screen_rect = screen_rect();
+        let screen_rect = screen_rect()?;
         let turn_label = if self.is_players_turn(&self.data.player_id) {
             "Your Turn"
         } else {

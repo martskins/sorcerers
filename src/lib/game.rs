@@ -668,7 +668,7 @@ impl CardAction for AvatarAction {
                 let prompt = "Pick a site to play";
                 let picked_card_id = pick_card(player_id, &cards, state, prompt).await?;
                 let picked_card = state.get_card(&picked_card_id);
-                let zones = picked_card.get_valid_play_zones(state);
+                let zones = picked_card.get_valid_play_zones(state)?;
                 let prompt = "Pick a zone to play the site";
                 let zone = pick_zone(player_id, &zones, state, prompt).await?;
                 Ok(vec![
@@ -739,10 +739,10 @@ impl CardAction for UnitAction {
             }
             UnitAction::Move => {
                 let card = state.get_card(card_id);
-                let zones = card.get_valid_move_zones(state);
+                let zones = card.get_valid_move_zones(state)?;
                 let prompt = "Pick a zone to move to";
                 let zone = pick_zone(player_id, &zones, state, prompt).await?;
-                let paths = card.get_valid_move_paths(state, &zone);
+                let paths = card.get_valid_move_paths(state, &zone)?;
                 let path = if paths.len() > 1 {
                     let prompt = "Pick a path to move along";
                     pick_path(player_id, &paths, state, prompt).await?
@@ -911,8 +911,10 @@ impl Game {
         tokio::spawn(async move {
             loop {
                 if let Ok(message) = receiver.recv().await {
-                    let stream = streams.get(&message.player_id()).unwrap();
-                    Self::send(Arc::clone(stream), &message).await.unwrap();
+                    let stream = streams.get(&message.player_id()).expect("stream to be found");
+                    Self::send(Arc::clone(stream), &message)
+                        .await
+                        .expect("message to be sent");
                 }
             }
         });
@@ -1003,7 +1005,7 @@ impl Game {
                             return Ok(());
                         }
 
-                        let zones = card.get_valid_play_zones(&self.state);
+                        let zones = card.get_valid_play_zones(&self.state)?;
                         let prompt = "Pick a zone to play the card";
                         let zone = pick_zone(player_id, &zones, &self.state, prompt).await?;
                         self.state
@@ -1154,7 +1156,7 @@ impl Game {
                 edition: c.get_edition().clone(),
                 zone: c.get_zone().clone(),
                 card_type: c.get_card_type().clone(),
-                modifiers: c.get_modifiers(&self.state),
+                modifiers: c.get_modifiers(&self.state).unwrap_or_default(),
                 plane: c.get_plane(&self.state).clone(),
                 damage_taken: c.get_damage_taken().unwrap_or(0),
                 attached_to: c

@@ -19,47 +19,65 @@ impl TextureCache {
         TEXTURE_CACHE.get_or_init(|| RwLock::new(TextureCache::new()));
     }
 
-    pub async fn get_card_texture(card: &CardData) -> Texture2D {
-        TextureCache::texture_for_card(card).await
-    }
-
-    #[allow(dead_code)]
-    pub async fn load_cache(cards: &[CardData]) {
-        for card in cards {
-            _ = TextureCache::texture_for_card(card).await;
-        }
-    }
-
-    pub async fn get_texture(path: &str) -> Texture2D {
-        if let Some(tex) = TEXTURE_CACHE.get().unwrap().read().await.inner.get(path) {
-            return tex.clone();
-        }
-
-        let mut cache = TEXTURE_CACHE.get().unwrap().write().await;
-        let new_path = path.to_string();
-        let texture = macroquad::texture::load_texture(&new_path).await.unwrap();
-        cache.inner.insert(path.to_string(), texture.clone());
-        texture
-    }
-
-    async fn texture_for_card(card: &CardData) -> Texture2D {
-        if let Some(tex) = TEXTURE_CACHE.get().unwrap().read().await.inner.get(card.get_name()) {
-            return tex.clone();
+    pub async fn get_card_texture(card: &CardData) -> anyhow::Result<Texture2D> {
+        if let Some(tex) = TEXTURE_CACHE
+            .get()
+            .ok_or(anyhow::anyhow!("failed to get texture cache reference"))?
+            .read()
+            .await
+            .inner
+            .get(card.get_name())
+        {
+            return Ok(tex.clone());
         }
 
         let path = format!("assets/images/cache/{}.png", card.get_name());
         if Path::new(&path).exists() {
-            return TextureCache::get_card_image_from_disk(card.get_name(), &path)
-                .await
-                .unwrap();
+            return TextureCache::get_card_image_from_disk(card.get_name(), &path).await;
         }
 
-        TextureCache::download_card_image(card).await.unwrap()
+        TextureCache::download_card_image(card).await
+    }
+
+    #[allow(dead_code)]
+    pub async fn load_cache(cards: &[CardData]) -> anyhow::Result<()> {
+        for card in cards {
+            _ = TextureCache::get_card_texture(card).await?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn get_texture(path: &str) -> anyhow::Result<Texture2D> {
+        if let Some(tex) = TEXTURE_CACHE
+            .get()
+            .ok_or(anyhow::anyhow!("failed to get texture cache reference"))?
+            .read()
+            .await
+            .inner
+            .get(path)
+        {
+            return Ok(tex.clone());
+        }
+
+        let mut cache = TEXTURE_CACHE
+            .get()
+            .ok_or(anyhow::anyhow!("failed to get texture cache reference"))?
+            .write()
+            .await;
+        let new_path = path.to_string();
+        let texture = macroquad::texture::load_texture(&new_path).await?;
+        cache.inner.insert(path.to_string(), texture.clone());
+        Ok(texture)
     }
 
     async fn get_card_image_from_disk(name: &str, path: &str) -> anyhow::Result<Texture2D> {
         let texture = macroquad::texture::load_texture(path).await?;
-        let mut cache = TEXTURE_CACHE.get().unwrap().write().await;
+        let mut cache = TEXTURE_CACHE
+            .get()
+            .ok_or(anyhow::anyhow!("failed to get texture cache reference"))?
+            .write()
+            .await;
         cache.inner.insert(name.to_string(), texture.clone());
         Ok(texture)
     }
@@ -97,9 +115,13 @@ impl TextureCache {
             ));
         }
 
-        let bytes = response.bytes().await.unwrap();
+        let bytes = response.bytes().await?;
         let texture = macroquad::texture::Texture2D::from_file_with_format(&bytes, None);
-        let mut cache = TEXTURE_CACHE.get().unwrap().write().await;
+        let mut cache = TEXTURE_CACHE
+            .get()
+            .ok_or(anyhow::anyhow!("failed to get texture cache reference"))?
+            .write()
+            .await;
         cache.inner.insert(name_for_url.to_string(), texture.clone());
 
         let save_path = format!("assets/images/cache/{}.png", card_name);

@@ -80,7 +80,7 @@ impl Menu {
                     &player_id == player1,
                     cards.clone(),
                     self.client.clone(),
-                ))))
+                )?)))
             }
             _ => Ok(None),
         }
@@ -100,7 +100,7 @@ impl Menu {
             dots += &" ".repeat(3 - dot_count);
             let message = format!("Looking for match{}", dots);
 
-            let screen_rect = screen_rect();
+            let screen_rect = screen_rect()?;
             let text_dimensions = macroquad::text::measure_text(&message, None, FONT_SIZE as u16, 1.0);
             let x = screen_rect.w / 2.0 - text_dimensions.width / 2.0;
             let y = screen_rect.h / 2.0 - text_dimensions.height / 2.0;

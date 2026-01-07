@@ -25,12 +25,12 @@ impl Client {
     pub fn start(&self, sender: UnboundedSender<ServerMessage>) -> anyhow::Result<()> {
         let receiver = self.client.clone();
         std::thread::spawn(|| {
-            let rt = Runtime::new().unwrap();
+            let rt = Runtime::new().expect("runtime to be created");
             rt.block_on(async move {
                 loop {
-                    match receiver.recv().unwrap() {
+                    match receiver.recv().expect("message should be received") {
                         Some(Message::ServerMessage(msg)) => {
-                            sender.send(msg).unwrap();
+                            sender.send(msg).expect("message should be sent");
                         }
                         _ => {}
                     }
@@ -47,15 +47,23 @@ impl Client {
         Ok(self.render().await?)
     }
 
-    fn dimensions_changed(&self) -> bool {
-        let dimensions = SCREEN_RECT.get().unwrap();
-        let current_screen = dimensions.read().unwrap().clone();
-        current_screen.w != screen_width() || current_screen.h != screen_height()
+    fn dimensions_changed(&self) -> anyhow::Result<bool> {
+        let dimensions = SCREEN_RECT
+            .get()
+            .ok_or(anyhow::anyhow!("failed to get SCREEN_RECT reference"))?;
+        let current_screen = dimensions
+            .read()
+            .map_err(|e| anyhow::anyhow!("failed to lock for write: {}", e))?;
+        Ok(current_screen.w != screen_width() || current_screen.h != screen_height())
     }
 
     async fn update(&mut self) -> anyhow::Result<()> {
-        if self.dimensions_changed() {
-            let mut dimensions = SCREEN_RECT.get().unwrap().write().unwrap();
+        if self.dimensions_changed()? {
+            let mut dimensions = SCREEN_RECT
+                .get()
+                .ok_or(anyhow::anyhow!("failed to get SCREEN_RECT reference"))?
+                .write()
+                .map_err(|e| anyhow::anyhow!("failed to lock for write: {}", e))?;
             dimensions.w = screen_width();
             dimensions.h = screen_height();
         }

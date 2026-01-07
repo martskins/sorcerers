@@ -181,7 +181,7 @@ impl RealmComponent {
 
                         let rect = Rect::new(pos_x, pos_y, dimensions.x, dimensions.y);
                         new_cards.push(CardRect {
-                            image: TextureCache::get_card_texture(&card).await,
+                            image: TextureCache::get_card_texture(&card).await?,
                             rect,
                             is_hovered: existing.map_or(false, |c| c.is_hovered),
                             card: card.clone(),
@@ -208,7 +208,7 @@ impl RealmComponent {
                         rect.y += jitter_y;
 
                         new_cards.push(CardRect {
-                            image: TextureCache::get_card_texture(&card).await,
+                            image: TextureCache::get_card_texture(&card).await?,
                             rect,
                             is_hovered: self
                                 .card_rects
@@ -783,7 +783,7 @@ impl Component for RealmComponent {
         self.visible = !self.visible;
     }
 
-    async fn process_command(&mut self, command: &ComponentCommand) {
+    async fn process_command(&mut self, command: &ComponentCommand) -> anyhow::Result<()> {
         match command {
             ComponentCommand::SetRect {
                 component_type: ComponentType::Realm,
@@ -793,6 +793,8 @@ impl Component for RealmComponent {
             }
             _ => {}
         }
+
+        Ok(())
     }
 
     fn get_component_type(&self) -> ComponentType {

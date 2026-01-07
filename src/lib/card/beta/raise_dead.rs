@@ -54,7 +54,7 @@ impl Card for RaiseDead {
         };
         let unit_id = query.resolve(self.get_owner_id(), state).await?;
         let unit = state.get_card(&unit_id);
-        let zones = unit.get_valid_play_zones(state);
+        let zones = unit.get_valid_play_zones(state)?;
         let picked_zone = pick_zone(self.get_owner_id(), &zones, state, &prompt).await?;
         Ok(vec![Effect::SummonCard {
             player_id: self.get_owner_id().clone(),

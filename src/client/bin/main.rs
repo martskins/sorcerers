@@ -27,11 +27,15 @@ async fn main() -> anyhow::Result<()> {
     let server_url: String = std::env::var("SORCERERS_SERVER_URL").unwrap_or("127.0.0.1:5000".to_string());
     let mut client = Client::new(&server_url)?;
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
-    client.start(tx).unwrap();
+    client.start(tx)?;
 
     loop {
         if let Ok(msg) = rx.try_recv() {
-            let new_scene = client.scene.process_message(&msg).await.unwrap();
+            let new_scene = client
+                .scene
+                .process_message(&msg)
+                .await
+                .expect("Failed to process message");
             if let Some(new_scene) = new_scene {
                 client.scene = new_scene;
             }

@@ -73,8 +73,8 @@ impl Card for ChainLightning {
             // apply the effect the the local_state to keep track of the updated zones
             // and then apply all effects on that state so that any death triggers are handled and
             // the local_state reflects the game state after applying damage.
-            effect.apply(&mut local_state).await.unwrap();
-            local_state.apply_effects_without_log().await.unwrap();
+            effect.apply(&mut local_state).await?;
+            local_state.apply_effects_without_log().await?;
 
             effects.push(effect);
 
@@ -85,7 +85,7 @@ impl Card for ChainLightning {
                     thresholds: Thresholds::new(),
                     health: 0,
                 };
-                effect.apply(&mut local_state).await.unwrap();
+                effect.apply(&mut local_state).await?;
                 effects.push(effect);
             }
 

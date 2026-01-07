@@ -37,9 +37,9 @@ impl SpireLich {
         }
     }
 
-    fn is_atop_tower(&self, state: &State) -> bool {
+    fn is_atop_tower(&self, state: &State) -> anyhow::Result<bool> {
         if !self.get_zone().is_in_realm() {
-            return false;
+            return Ok(false);
         }
 
         let site = state
@@ -47,12 +47,14 @@ impl SpireLich {
             .iter()
             .find(|c| c.is_site())
             .cloned();
-        if site.is_none() {
-            return false;
+        match site {
+            Some(site) => Ok(site
+                .get_site_base()
+                .ok_or(anyhow::anyhow!("{} does not have site base", site.get_name()))?
+                .types
+                .contains(&SiteType::Tower)),
+            None => Ok(false),
         }
-
-        let site = site.unwrap();
-        site.get_site_base().unwrap().types.contains(&SiteType::Tower)
     }
 }
 
@@ -78,9 +80,9 @@ impl Card for SpireLich {
         Some(&mut self.unit_base)
     }
 
-    fn get_modifiers(&self, state: &State) -> Vec<Modifier> {
+    fn get_modifiers(&self, state: &State) -> anyhow::Result<Vec<Modifier>> {
         let mut modifiers = self.base_get_modifiers(state);
-        if self.is_atop_tower(state) {
+        if self.is_atop_tower(state)? {
             modifiers.push(Modifier::Ranged);
             modifiers.push(Modifier::Spellcaster(Element::Fire));
             modifiers.push(Modifier::Spellcaster(Element::Earth));
@@ -88,14 +90,14 @@ impl Card for SpireLich {
             modifiers.push(Modifier::Spellcaster(Element::Water));
         }
 
-        modifiers
+        Ok(modifiers)
     }
 
-    fn get_power(&self, state: &State) -> Option<u8> {
+    fn get_power(&self, state: &State) -> anyhow::Result<Option<u8>> {
         let mut power = self.base_get_power(state);
-        if self.is_atop_tower(state) {
+        if self.is_atop_tower(state)? {
             power = power.map(|p| p + 2);
         }
-        power
+        Ok(power)
     }
 }

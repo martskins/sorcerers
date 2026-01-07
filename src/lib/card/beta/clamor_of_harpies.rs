@@ -33,7 +33,7 @@ impl CardAction for ClamorOfHarpiesAction {
                 Ok(vec![Effect::take_damage(
                     &target_card.get_id(),
                     card_id,
-                    state.get_card(card_id).get_power(state).unwrap(),
+                    state.get_card(card_id).get_power(state)?.unwrap_or(0),
                 )])
             }
             ClamorOfHarpiesAction::DoNotStrike => Ok(vec![]),
@@ -103,7 +103,10 @@ impl Card for ClamorOfHarpies {
             .filter(|c| c.is_unit())
             .filter(|c| c.can_be_targetted_by(state, self.get_controller_id()))
             .filter(|c| c.get_zone().is_in_realm())
-            .filter(|c| c.get_power(state).unwrap_or(0) < self.get_power(state).unwrap_or(0))
+            .filter(|c| {
+                c.get_power(state).unwrap_or_default().unwrap_or(0)
+                    < self.get_power(state).unwrap_or_default().unwrap_or(0)
+            })
             .map(|c| c.get_id().clone())
             .collect();
         let prompt = "Clamor of Harpies: Pick a unit to bring here";

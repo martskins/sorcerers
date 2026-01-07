@@ -60,14 +60,14 @@ impl Card for RoamingMonster {
         Some(&mut self.unit_base)
     }
 
-    fn get_valid_play_zones(&self, state: &State) -> Vec<Zone> {
-        (1..=20)
+    fn get_valid_play_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {
+        Ok((1..=20)
             .filter_map(
                 |z| match state.get_cards_in_zone(&Zone::Realm(z)).iter().find(|c| c.is_site()) {
                     Some(_) => Some(Zone::Realm(z)),
                     None => None,
                 },
             )
-            .collect()
+            .collect())
     }
 }

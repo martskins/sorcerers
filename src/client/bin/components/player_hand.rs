@@ -110,7 +110,7 @@ impl PlayerHandComponent {
                     .iter()
                     .find(|r| r.card.id == card.id)
                     .map_or(false, |r| r.is_hovered),
-                image: TextureCache::get_card_texture(card).await,
+                image: TextureCache::get_card_texture(card).await?,
                 card: card.clone(),
             });
         }
@@ -140,7 +140,7 @@ impl PlayerHandComponent {
                         .iter()
                         .find(|r| r.card.id == card.id)
                         .map_or(false, |r| r.is_hovered),
-                    image: TextureCache::get_card_texture(card).await,
+                    image: TextureCache::get_card_texture(card).await?,
                     card: card.clone(),
                 });
             }
@@ -271,7 +271,10 @@ impl Component for PlayerHandComponent {
         }
 
         if let Some(idx) = hovered_card_index {
-            self.card_rects.get_mut(idx).unwrap().is_hovered = true;
+            self.card_rects
+                .get_mut(idx)
+                .ok_or(anyhow::anyhow!("expected to find rect"))?
+                .is_hovered = true;
         }
 
         match &data.status {
@@ -282,13 +285,11 @@ impl Component for PlayerHandComponent {
                     .filter(|c| c.card.zone.is_in_realm() || c.card.zone == Zone::Hand)
                 {
                     if card_rect.is_hovered && is_mouse_button_released(MouseButton::Left) {
-                        self.client
-                            .send(ClientMessage::ClickCard {
-                                card_id: card_rect.card.id.clone(),
-                                player_id: self.player_id,
-                                game_id: self.game_id,
-                            })
-                            .unwrap();
+                        self.client.send(ClientMessage::ClickCard {
+                            card_id: card_rect.card.id.clone(),
+                            player_id: self.player_id,
+                            game_id: self.game_id,
+                        })?;
                     };
                 }
             }
@@ -305,13 +306,11 @@ impl Component for PlayerHandComponent {
                 }
 
                 if let Some(id) = selected_id {
-                    self.client
-                        .send(ClientMessage::PickCard {
-                            player_id: self.player_id.clone(),
-                            game_id: self.game_id.clone(),
-                            card_id: id.clone(),
-                        })
-                        .unwrap();
+                    self.client.send(ClientMessage::PickCard {
+                        player_id: self.player_id.clone(),
+                        game_id: self.game_id.clone(),
+                        card_id: id.clone(),
+                    })?;
 
                     data.status = Status::Idle;
                 }
@@ -330,13 +329,11 @@ impl Component for PlayerHandComponent {
                 }
 
                 if let Some(id) = selected_id {
-                    self.client
-                        .send(ClientMessage::PickCard {
-                            player_id: self.player_id.clone(),
-                            game_id: self.game_id.clone(),
-                            card_id: id.clone(),
-                        })
-                        .unwrap();
+                    self.client.send(ClientMessage::PickCard {
+                        player_id: self.player_id.clone(),
+                        game_id: self.game_id.clone(),
+                        card_id: id.clone(),
+                    })?;
 
                     data.status = Status::Idle;
                 }
@@ -351,7 +348,7 @@ impl Component for PlayerHandComponent {
         self.visible = !self.visible;
     }
 
-    async fn process_command(&mut self, command: &ComponentCommand) {
+    async fn process_command(&mut self, command: &ComponentCommand) -> anyhow::Result<()> {
         match command {
             ComponentCommand::SetRect {
                 component_type: ComponentType::PlayerHand,
@@ -359,6 +356,8 @@ impl Component for PlayerHandComponent {
             } => self.rect = rect.clone(),
             _ => {}
         }
+
+        Ok(())
     }
 
     fn get_component_type(&self) -> ComponentType {

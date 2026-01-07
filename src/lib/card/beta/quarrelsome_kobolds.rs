@@ -84,7 +84,7 @@ impl Card for QuarrelsomeKobolds {
         Ok(vec![Effect::take_damage(
             &picked_unit,
             self.get_id(),
-            self.get_power(state).unwrap(),
+            self.get_power(state)?.unwrap_or(0),
         )])
     }
 }

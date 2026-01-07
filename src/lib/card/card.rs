@@ -408,16 +408,16 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     // Returns a list of effects that must be applied when this card is defending against an
     // attack.
-    fn on_defend(&self, state: &State, attacker_id: &uuid::Uuid) -> Vec<Effect> {
-        if let Some(power) = self.get_power(&state) {
-            return vec![Effect::TakeDamage {
+    fn on_defend(&self, state: &State, attacker_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
+        if let Some(power) = self.get_power(&state)? {
+            return Ok(vec![Effect::TakeDamage {
                 card_id: attacker_id.clone(),
                 from: self.get_id().clone(),
                 damage: power,
-            }];
+            }]);
         }
 
-        vec![]
+        Ok(vec![])
     }
 
     // Sets custom data for the card. By default, this method returns an error indicating that
@@ -512,29 +512,29 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     // implementations. Instead, specific card types should override `on_summon`, and can use
     // base_site_on_summon to get the default behaviour.
     fn base_site_on_summon(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
+        let site_base = self
+            .get_site_base()
+            .ok_or(anyhow::anyhow!("site card has no site base"))?;
         Ok(vec![Effect::AddResources {
             player_id: self.get_owner_id().clone(),
-            mana: self
-                .get_site_base()
-                .ok_or(anyhow::anyhow!("site card has no site base"))?
-                .provided_mana,
-            thresholds: self.get_site_base().unwrap().provided_thresholds.clone(),
+            mana: site_base.provided_mana,
+            thresholds: site_base.provided_thresholds.clone(),
             health: 0,
         }])
     }
 
-    fn default_get_valid_play_zones(&self, state: &State) -> Vec<Zone> {
+    fn default_get_valid_play_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {
         match self.get_card_type() {
-            CardType::Artifact => vec![],
-            CardType::Aura => Zone::all_intersections()
+            CardType::Artifact => Ok(vec![]),
+            CardType::Aura => Ok(Zone::all_intersections()
                 .iter()
                 .filter(|z| match z {
                     Zone::Intersection(sqs) => sqs.iter().any(|_| state.cards.iter().any(|c| c.is_site())),
                     _ => false,
                 })
                 .cloned()
-                .collect(),
-            CardType::Minion => state
+                .collect()),
+            CardType::Minion => Ok(state
                 .cards
                 .iter()
                 .filter(|c| c.get_owner_id() == self.get_owner_id())
@@ -544,7 +544,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     _ => None,
                 })
                 .cloned()
-                .collect(),
+                .collect()),
             CardType::Site => {
                 let player_id = self.get_owner_id();
                 let has_played_site = state
@@ -556,10 +556,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                         .cards
                         .iter()
                         .find(|c| c.get_owner_id() == player_id && c.is_avatar())
-                        .unwrap();
+                        .ok_or(anyhow::anyhow!("player has no avatar"))?;
                     match avatar.get_zone() {
-                        z @ Zone::Realm(_) => return vec![z.clone()],
-                        _ => panic!("Avatar not in realm"),
+                        z @ Zone::Realm(_) => return Ok(vec![z.clone()]),
+                        _ => return Err(anyhow::anyhow!("Avatar not in realm")),
                     }
                 }
 
@@ -585,14 +585,14 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     })
                     .collect();
 
-                occupied_squares
+                Ok(occupied_squares
                     .iter()
                     .flat_map(|c| get_adjacent_zones(c))
                     .filter(|c| !occupied_squares.contains(&c))
                     .filter(|c| !sites.contains(&c))
-                    .collect()
+                    .collect())
             }
-            _ => vec![],
+            _ => Ok(vec![]),
         }
     }
 
@@ -636,7 +636,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     // Returns the valid zones where this card can be played in.
-    fn get_valid_play_zones(&self, state: &State) -> Vec<Zone> {
+    fn get_valid_play_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {
         self.default_get_valid_play_zones(state)
     }
 
@@ -680,14 +680,14 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     // Returns all valid move paths from the card's current zone to the given zone. The paths
     // include the starting, ending and all intermediate zones.
-    fn get_valid_move_paths(&self, state: &State, to: &Zone) -> Vec<Vec<Zone>> {
+    fn get_valid_move_paths(&self, state: &State, to: &Zone) -> anyhow::Result<Vec<Vec<Zone>>> {
         let from = self.get_zone().clone();
-        let valid_zones = self.get_valid_move_zones(state);
+        let valid_zones = self.get_valid_move_zones(state)?;
         if !valid_zones.contains(&to) {
-            return vec![];
+            return Ok(vec![]);
         }
 
-        let max_steps = self.get_steps_per_movement(state);
+        let max_steps = self.get_steps_per_movement(state)?;
         let is_traversable =
             |current: &Zone, next: &Zone| self.get_zones_within_steps_of(state, 1, current).contains(next);
 
@@ -714,13 +714,13 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 }
             }
         }
-        paths
+        Ok(paths)
     }
 
     // Returns the number of steps this card can move per movement action.
-    fn get_steps_per_movement(&self, state: &State) -> u8 {
+    fn get_steps_per_movement(&self, state: &State) -> anyhow::Result<u8> {
         let extra_steps: u8 = self
-            .get_modifiers(state)
+            .get_modifiers(state)?
             .into_iter()
             .map(|m| match m {
                 Modifier::Movement(s) => s,
@@ -728,12 +728,13 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             })
             .sum();
 
-        extra_steps + 1
+        Ok(extra_steps + 1)
     }
 
     // Returns the valid zones this card can move to from its current zone.
-    fn get_valid_move_zones(&self, state: &State) -> Vec<Zone> {
-        self.get_zones_within_steps(state, self.get_steps_per_movement(state))
+    fn get_valid_move_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {
+        Ok(self
+            .get_zones_within_steps(state, self.get_steps_per_movement(state)?)
             .iter()
             .filter(|z| {
                 if self.has_modifier(state, &Modifier::Voidwalk) {
@@ -745,7 +746,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 })
             })
             .cloned()
-            .collect()
+            .collect())
     }
 
     // Returns the valid attack targets for this card.
@@ -795,8 +796,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     // Returns all modifiers currently applied to the card.
-    fn get_modifiers(&self, state: &State) -> Vec<Modifier> {
-        self.base_get_modifiers(state)
+    fn get_modifiers(&self, state: &State) -> anyhow::Result<Vec<Modifier>> {
+        Ok(self.base_get_modifiers(state))
     }
 
     fn base_get_modifiers(&self, state: &State) -> Vec<Modifier> {
@@ -841,8 +842,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         }
     }
 
-    fn get_power(&self, state: &State) -> Option<u8> {
-        self.base_get_power(state)
+    fn get_power(&self, state: &State) -> anyhow::Result<Option<u8>> {
+        Ok(self.base_get_power(state))
     }
 
     // Returns the required thresholds to play this card.
@@ -992,12 +993,15 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     async fn on_move(&self, state: &State, path: &[Zone]) -> anyhow::Result<Vec<Effect>> {
-        Ok(state
-            .cards
-            .iter()
-            .flat_map(|c| c.get_modifiers(state))
-            .flat_map(|m| m.on_move(self.get_id(), state, &path).unwrap_or(vec![]))
-            .collect())
+        let mut all_effects = Vec::new();
+        for card in &state.cards {
+            for modif in card.get_modifiers(state)? {
+                let effects = modif.on_move(self.get_id(), state, &path)?;
+                all_effects.extend(effects);
+            }
+        }
+
+        Ok(all_effects)
     }
 
     async fn on_visit_zone(&self, _state: &State, _to: &Zone) -> anyhow::Result<Vec<Effect>> {
@@ -1286,7 +1290,9 @@ mod tests {
         card.set_zone(Zone::Realm(8));
         state.cards.push(Box::new(card.clone()));
 
-        let paths = card.get_valid_move_paths(&state, &Zone::Realm(14));
+        let paths = card
+            .get_valid_move_paths(&state, &Zone::Realm(14))
+            .expect("paths to be computed");
         assert_eq!(paths.len(), 2, "Expected 2 paths, got {:?}", paths);
         assert!(paths.contains(&vec![Zone::Realm(8), Zone::Realm(9), Zone::Realm(14)]));
         assert!(paths.contains(&vec![Zone::Realm(8), Zone::Realm(13), Zone::Realm(14)]));
@@ -1301,7 +1307,9 @@ mod tests {
         card.add_modifier(Modifier::Airborne);
         state.cards.push(Box::new(card.clone()));
 
-        let paths = card.get_valid_move_paths(&state, &Zone::Realm(14));
+        let paths = card
+            .get_valid_move_paths(&state, &Zone::Realm(14))
+            .expect("paths to be computed");
         assert_eq!(paths.len(), 3, "Expected 3 valid paths, got {:?}", paths);
         assert!(paths.contains(&vec![Zone::Realm(8), Zone::Realm(9), Zone::Realm(14)]));
         assert!(paths.contains(&vec![Zone::Realm(8), Zone::Realm(14)]));
@@ -1317,7 +1325,9 @@ mod tests {
         card.add_modifier(Modifier::Movement(2));
         state.cards.push(Box::new(card.clone()));
 
-        let paths = card.get_valid_move_paths(&state, &Zone::Realm(15));
+        let paths = card
+            .get_valid_move_paths(&state, &Zone::Realm(15))
+            .expect("paths to be computed");
         assert_eq!(paths.len(), 3, "Expected 2 paths, got {:?}", paths);
         assert!(paths.contains(&vec![Zone::Realm(8), Zone::Realm(9), Zone::Realm(10), Zone::Realm(15)]));
         assert!(paths.contains(&vec![Zone::Realm(8), Zone::Realm(9), Zone::Realm(14), Zone::Realm(15)]));
@@ -1332,7 +1342,7 @@ mod tests {
         card.set_zone(Zone::Realm(8));
         state.cards.push(Box::new(card.clone()));
 
-        let mut zones = card.get_valid_move_zones(&state);
+        let mut zones = card.get_valid_move_zones(&state).expect("zones to be computed");
         zones.sort();
         let mut expected = vec![
             Zone::Realm(8),
@@ -1354,7 +1364,7 @@ mod tests {
         card.add_modifier(Modifier::Movement(1));
         state.cards.push(Box::new(card.clone()));
 
-        let mut zones = card.get_valid_move_zones(&state);
+        let mut zones = card.get_valid_move_zones(&state).expect("zones to be computed");
         zones.sort();
         let mut expected = vec![
             Zone::Realm(8),
@@ -1383,7 +1393,7 @@ mod tests {
         card.set_zone(Zone::Realm(8));
         state.cards.push(Box::new(card.clone()));
 
-        let mut zones = card.get_valid_move_zones(&state);
+        let mut zones = card.get_valid_move_zones(&state).expect("zones to be computed");
         zones.sort();
         let mut expected = vec![Zone::Realm(8), Zone::Realm(9), Zone::Realm(3)];
         expected.sort();
@@ -1408,7 +1418,7 @@ mod tests {
         card.add_modifier(Modifier::Movement(1));
         state.cards.push(Box::new(card.clone()));
 
-        let mut zones = card.get_valid_move_zones(&state);
+        let mut zones = card.get_valid_move_zones(&state).expect("zones to be computed");
         zones.sort();
         let mut expected = vec![
             Zone::Realm(2),
@@ -1433,7 +1443,7 @@ mod tests {
         card.add_modifier(Modifier::Voidwalk);
         state.cards.push(Box::new(card.clone()));
 
-        let mut zones = card.get_valid_move_zones(&state);
+        let mut zones = card.get_valid_move_zones(&state).expect("zones to be computed");
         zones.sort();
         let mut expected = vec![
             Zone::Realm(8),
@@ -1455,7 +1465,7 @@ mod tests {
         card.add_modifier(Modifier::Airborne);
         state.cards.push(Box::new(card.clone()));
 
-        let mut zones = card.get_valid_move_zones(&state);
+        let mut zones = card.get_valid_move_zones(&state).expect("zones to be computed");
         zones.sort();
         let mut expected = vec![
             Zone::Realm(8),
@@ -1490,7 +1500,7 @@ mod tests {
         card.add_modifier(Modifier::Airborne);
         state.cards.push(Box::new(card.clone()));
 
-        let mut zones = card.get_valid_move_zones(&state);
+        let mut zones = card.get_valid_move_zones(&state).expect("zones to be computed");
         zones.sort();
 
         let mut expected = vec![
@@ -1527,7 +1537,7 @@ mod tests {
         card.add_modifier(Modifier::Voidwalk);
         state.cards.push(Box::new(card.clone()));
 
-        let mut zones = card.get_valid_move_zones(&state);
+        let mut zones = card.get_valid_move_zones(&state).expect("zones to be computed");
         zones.sort();
         let mut expected = vec![
             Zone::Realm(8),

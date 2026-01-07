@@ -97,7 +97,7 @@ impl Component for EventLogComponent {
         self.visible = !self.visible;
     }
 
-    async fn process_command(&mut self, command: &ComponentCommand) {
+    async fn process_command(&mut self, command: &ComponentCommand) -> anyhow::Result<()> {
         match command {
             ComponentCommand::SetVisibility {
                 component_type: ComponentType::EventLog,
@@ -111,6 +111,8 @@ impl Component for EventLogComponent {
             } => self.rect = rect.clone(),
             _ => {}
         }
+
+        Ok(())
     }
 
     fn get_component_type(&self) -> ComponentType {

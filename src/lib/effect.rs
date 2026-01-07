@@ -796,12 +796,12 @@ impl Effect {
                         card_id: defender_id.clone(),
                         from: attacker_id.clone(),
                         damage: attacker
-                            .get_power(&snapshot)
+                            .get_power(&snapshot)?
                             .ok_or(anyhow::anyhow!("attacker has no power"))?,
                     },
                 ];
                 effects.extend(attacker.after_attack(state).await?);
-                effects.extend(defender.on_defend(state, attacker_id).into_iter().map(|e| e.into()));
+                effects.extend(defender.on_defend(state, attacker_id)?.into_iter().map(|e| e.into()));
                 state.effects.extend(effects.into_iter().map(|e| e.into()));
             }
             Effect::DealDamageToTarget {
@@ -876,11 +876,11 @@ impl Effect {
                     card_id: defender_id.clone(),
                     from: attacker_id.clone(),
                     damage: attacker
-                        .get_power(&snapshot)
+                        .get_power(&snapshot)?
                         .ok_or(anyhow::anyhow!("attacker has no power"))?,
                 }];
                 effects.extend(attacker.after_attack(state).await?);
-                effects.extend(defender.on_defend(state, attacker_id).into_iter().map(|e| e.into()));
+                effects.extend(defender.on_defend(state, attacker_id)?.into_iter().map(|e| e.into()));
                 state.effects.extend(effects.into_iter().map(|e| e.into()));
             }
             Effect::TeleportUnitToZone {
