@@ -80,3 +80,8 @@ impl Card for ShiftingSands {
         Some(self)
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (ShiftingSands::NAME, |owner_id: PlayerId| {
+    Box::new(ShiftingSands::new(owner_id))
+});

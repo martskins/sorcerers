@@ -72,3 +72,8 @@ impl Card for Incinerate {
         Ok(effects)
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (Incinerate::NAME, |owner_id: PlayerId| {
+    Box::new(Incinerate::new(owner_id))
+});

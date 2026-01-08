@@ -58,3 +58,7 @@ impl Card for SandWorm {
         Some(&mut self.unit_base)
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (SandWorm::NAME, |owner_id: PlayerId| Box::new(SandWorm::new(owner_id)));

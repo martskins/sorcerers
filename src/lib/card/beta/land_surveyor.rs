@@ -68,3 +68,8 @@ impl Card for LandSurveyor {
         }])
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (LandSurveyor::NAME, |owner_id: PlayerId| {
+    Box::new(LandSurveyor::new(owner_id))
+});

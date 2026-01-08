@@ -85,3 +85,8 @@ impl Card for KiteArcher {
         }])
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (KiteArcher::NAME, |owner_id: PlayerId| {
+    Box::new(KiteArcher::new(owner_id))
+});

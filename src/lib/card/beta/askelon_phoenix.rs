@@ -80,3 +80,8 @@ impl Card for AskelonPhoenix {
         Ok(effects)
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (AskelonPhoenix::NAME, |owner_id: PlayerId| {
+    Box::new(AskelonPhoenix::new(owner_id))
+});

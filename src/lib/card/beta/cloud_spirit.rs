@@ -59,3 +59,8 @@ impl Card for CloudSpirit {
         Some(&mut self.unit_base)
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (CloudSpirit::NAME, |owner_id: PlayerId| {
+    Box::new(CloudSpirit::new(owner_id))
+});

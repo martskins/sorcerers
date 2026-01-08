@@ -60,3 +60,7 @@ impl Card for HeatRay {
         }])
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (HeatRay::NAME, |owner_id: PlayerId| Box::new(HeatRay::new(owner_id)));

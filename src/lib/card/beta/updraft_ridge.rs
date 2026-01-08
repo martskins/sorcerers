@@ -75,3 +75,8 @@ impl Card for UpdraftRidge {
         Some(self)
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (UpdraftRidge::NAME, |owner_id: PlayerId| {
+    Box::new(UpdraftRidge::new(owner_id))
+});

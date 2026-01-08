@@ -72,3 +72,7 @@ impl Card for Blink {
         ])
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (Blink::NAME, |owner_id: PlayerId| Box::new(Blink::new(owner_id)));

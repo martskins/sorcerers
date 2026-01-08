@@ -86,3 +86,7 @@ impl Card for LoneTower {
         Some(self)
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (LoneTower::NAME, |owner_id: PlayerId| Box::new(LoneTower::new(owner_id)));

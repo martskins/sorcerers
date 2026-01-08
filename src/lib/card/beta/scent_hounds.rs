@@ -77,3 +77,8 @@ impl Card for ScentHounds {
         Ok(effects)
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (ScentHounds::NAME, |owner_id: PlayerId| {
+    Box::new(ScentHounds::new(owner_id))
+});

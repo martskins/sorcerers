@@ -59,3 +59,7 @@ impl Card for OgreGoons {
         Some(&mut self.unit_base)
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (OgreGoons::NAME, |owner_id: PlayerId| Box::new(OgreGoons::new(owner_id)));

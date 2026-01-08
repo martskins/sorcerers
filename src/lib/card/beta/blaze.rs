@@ -76,3 +76,7 @@ impl Card for Blaze {
         ])
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (Blaze::NAME, |owner_id: PlayerId| Box::new(Blaze::new(owner_id)));

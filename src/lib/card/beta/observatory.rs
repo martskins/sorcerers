@@ -101,3 +101,8 @@ impl Card for Observatory {
         Some(self)
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (Observatory::NAME, |owner_id: PlayerId| {
+    Box::new(Observatory::new(owner_id))
+});

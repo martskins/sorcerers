@@ -68,3 +68,7 @@ impl Card for MadDash {
         Ok(effects)
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (MadDash::NAME, |owner_id: PlayerId| Box::new(MadDash::new(owner_id)));

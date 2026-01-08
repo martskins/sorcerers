@@ -70,3 +70,8 @@ impl Card for DalceanPhalanx {
         Ok(zones.iter().filter(|z| valid_zones.contains(z)).cloned().collect())
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (DalceanPhalanx::NAME, |owner_id: PlayerId| {
+    Box::new(DalceanPhalanx::new(owner_id))
+});

@@ -1,5 +1,5 @@
 use crate::{
-    card::beta,
+    card::{CARD_CONSTRUCTORS, beta},
     effect::{Counter, Effect, ModifierCounter},
     game::{
         AvatarAction, CardAction, Direction, Element, PlayerId, Thresholds, UnitAction, are_adjacent, are_nearby,
@@ -1317,11 +1317,7 @@ pub trait Aura: Card {
 pub struct AvatarBase {}
 
 pub fn from_name(name: &str, player_id: &PlayerId) -> Box<dyn Card> {
-    if let Some(card) = beta::from_beta_name(name, player_id.clone()) {
-        return card;
-    }
-
-    panic!("Card with name '{}' not found", name);
+    CARD_CONSTRUCTORS.get(name).unwrap()(player_id.clone())
 }
 
 pub fn from_name_and_zone(name: &str, player_id: &PlayerId, zone: Zone) -> Box<dyn Card> {

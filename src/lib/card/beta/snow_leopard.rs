@@ -59,3 +59,8 @@ impl Card for SnowLeopard {
         Some(&mut self.unit_base)
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (SnowLeopard::NAME, |owner_id: PlayerId| {
+    Box::new(SnowLeopard::new(owner_id))
+});

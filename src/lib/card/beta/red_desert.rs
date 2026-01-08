@@ -88,3 +88,7 @@ impl Card for RedDesert {
         Some(self)
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (RedDesert::NAME, |owner_id: PlayerId| Box::new(RedDesert::new(owner_id)));

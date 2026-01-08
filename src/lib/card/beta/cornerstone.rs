@@ -76,3 +76,8 @@ impl Card for Cornerstone {
         Some(self)
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (Cornerstone::NAME, |owner_id: PlayerId| {
+    Box::new(Cornerstone::new(owner_id))
+});

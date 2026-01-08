@@ -59,3 +59,7 @@ impl Card for WildBoars {
         Some(&mut self.unit_base)
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (WildBoars::NAME, |owner_id: PlayerId| Box::new(WildBoars::new(owner_id)));

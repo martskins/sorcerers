@@ -141,3 +141,8 @@ impl Card for LuckyCharm {
         }
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (LuckyCharm::NAME, |owner_id: PlayerId| {
+    Box::new(LuckyCharm::new(owner_id))
+});

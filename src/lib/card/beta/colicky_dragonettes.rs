@@ -80,3 +80,8 @@ impl Card for ColickyDragonettes {
         }])
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (ColickyDragonettes::NAME, |owner_id: PlayerId| {
+    Box::new(ColickyDragonettes::new(owner_id))
+});

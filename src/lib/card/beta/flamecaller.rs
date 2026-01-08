@@ -135,3 +135,8 @@ impl Card for Flamecaller {
         Ok(actions)
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (Flamecaller::NAME, |owner_id: PlayerId| {
+    Box::new(Flamecaller::new(owner_id))
+});

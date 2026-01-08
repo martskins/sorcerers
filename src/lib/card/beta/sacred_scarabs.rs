@@ -80,3 +80,8 @@ impl Card for SacredScarabs {
         effects
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (SacredScarabs::NAME, |owner_id: PlayerId| {
+    Box::new(SacredScarabs::new(owner_id))
+});

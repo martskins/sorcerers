@@ -66,3 +66,7 @@ impl Card for Sparkmage {
         Some(&mut self.avatar_base)
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (Sparkmage::NAME, |owner_id: PlayerId| Box::new(Sparkmage::new(owner_id)));

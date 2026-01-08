@@ -112,3 +112,8 @@ impl Card for NimbusJinn {
         Ok(actions)
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (NimbusJinn::NAME, |owner_id: PlayerId| {
+    Box::new(NimbusJinn::new(owner_id))
+});

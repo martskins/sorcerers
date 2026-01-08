@@ -88,3 +88,8 @@ impl Card for QuarrelsomeKobolds {
         )])
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (QuarrelsomeKobolds::NAME, |owner_id: PlayerId| {
+    Box::new(QuarrelsomeKobolds::new(owner_id))
+});

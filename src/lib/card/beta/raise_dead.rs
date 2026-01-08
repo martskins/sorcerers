@@ -63,3 +63,7 @@ impl Card for RaiseDead {
         }])
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (RaiseDead::NAME, |owner_id: PlayerId| Box::new(RaiseDead::new(owner_id)));

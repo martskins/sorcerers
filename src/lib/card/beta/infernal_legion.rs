@@ -80,3 +80,8 @@ impl Card for InfernalLegion {
         Ok(effects)
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (InfernalLegion::NAME, |owner_id: PlayerId| {
+    Box::new(InfernalLegion::new(owner_id))
+});

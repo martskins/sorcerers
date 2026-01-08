@@ -73,3 +73,8 @@ impl Card for MajorExplosion {
         Ok(effects)
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (MajorExplosion::NAME, |owner_id: PlayerId| {
+    Box::new(MajorExplosion::new(owner_id))
+});

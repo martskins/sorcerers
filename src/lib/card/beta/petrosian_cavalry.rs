@@ -58,3 +58,8 @@ impl Card for PetrosianCavalry {
         Some(&mut self.unit_base)
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (PetrosianCavalry::NAME, |owner_id: PlayerId| {
+    Box::new(PetrosianCavalry::new(owner_id))
+});

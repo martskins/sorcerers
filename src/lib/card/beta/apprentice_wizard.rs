@@ -73,3 +73,8 @@ impl Card for ApprenticeWizard {
         }])
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (ApprenticeWizard::NAME, |owner_id| {
+    Box::new(ApprenticeWizard::new(owner_id))
+});

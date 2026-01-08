@@ -86,3 +86,8 @@ impl Card for GothicTower {
         Some(self)
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (GothicTower::NAME, |owner_id: PlayerId| {
+    Box::new(GothicTower::new(owner_id))
+});

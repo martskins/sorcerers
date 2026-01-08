@@ -180,3 +180,7 @@ impl Card for CloudCity {
         Some(self)
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (CloudCity::NAME, |owner_id: PlayerId| Box::new(CloudCity::new(owner_id)));

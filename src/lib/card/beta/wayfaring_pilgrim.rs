@@ -102,3 +102,8 @@ impl Card for WayfaringPilgrim {
         Ok(effects)
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (WayfaringPilgrim::NAME, |owner_id: PlayerId| {
+    Box::new(WayfaringPilgrim::new(owner_id))
+});

@@ -80,3 +80,7 @@ impl Card for Firebolts {
         ])
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (Firebolts::NAME, |owner_id: PlayerId| Box::new(Firebolts::new(owner_id)));

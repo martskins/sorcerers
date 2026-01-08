@@ -134,3 +134,8 @@ impl Card for ClamorOfHarpies {
         Ok(effects)
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (ClamorOfHarpies::NAME, |owner_id: PlayerId| {
+    Box::new(ClamorOfHarpies::new(owner_id))
+});

@@ -60,3 +60,8 @@ impl Card for LightningBolt {
         }])
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (LightningBolt::NAME, |owner_id: PlayerId| {
+    Box::new(LightningBolt::new(owner_id))
+});

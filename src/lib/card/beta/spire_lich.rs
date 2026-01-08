@@ -101,3 +101,7 @@ impl Card for SpireLich {
         Ok(power)
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (SpireLich::NAME, |owner_id: PlayerId| Box::new(SpireLich::new(owner_id)));

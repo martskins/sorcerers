@@ -196,3 +196,7 @@ impl Card for Geomancer {
         Some(&mut self.avatar_base)
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (Geomancer::NAME, |owner_id: PlayerId| Box::new(Geomancer::new(owner_id)));

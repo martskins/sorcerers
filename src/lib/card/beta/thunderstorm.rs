@@ -120,3 +120,8 @@ impl Card for Thunderstorm {
         Some(self)
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (Thunderstorm::NAME, |owner_id: PlayerId| {
+    Box::new(Thunderstorm::new(owner_id))
+});

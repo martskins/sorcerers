@@ -59,3 +59,8 @@ impl Card for SpectralStalker {
         Some(&mut self.unit_base)
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (SpectralStalker::NAME, |owner_id: PlayerId| {
+    Box::new(SpectralStalker::new(owner_id))
+});

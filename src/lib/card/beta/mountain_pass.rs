@@ -77,3 +77,8 @@ impl Card for MountainPass {
         Some(self)
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (MountainPass::NAME, |owner_id: PlayerId| {
+    Box::new(MountainPass::new(owner_id))
+});

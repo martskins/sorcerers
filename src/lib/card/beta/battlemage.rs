@@ -66,3 +66,8 @@ impl Card for Battlemage {
         Some(&mut self.avatar_base)
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (Battlemage::NAME, |owner_id: PlayerId| {
+    Box::new(Battlemage::new(owner_id))
+});

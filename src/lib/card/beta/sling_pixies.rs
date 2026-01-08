@@ -71,3 +71,8 @@ impl Card for SlingPixies {
         self.base_take_damage(state, from, damage)
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (SlingPixies::NAME, |owner_id: PlayerId| {
+    Box::new(SlingPixies::new(owner_id))
+});

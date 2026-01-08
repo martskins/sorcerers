@@ -62,3 +62,7 @@ impl Card for Teleport {
         }])
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (Teleport::NAME, |owner_id: PlayerId| Box::new(Teleport::new(owner_id)));

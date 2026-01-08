@@ -79,3 +79,8 @@ impl Card for SlumberingGiantess {
         }])
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (SlumberingGiantess::NAME, |owner_id: PlayerId| {
+    Box::new(SlumberingGiantess::new(owner_id))
+});

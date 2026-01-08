@@ -94,3 +94,8 @@ impl Card for SkirmishersOfMu {
         }])
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (SkirmishersOfMu::NAME, |owner_id: PlayerId| {
+    Box::new(SkirmishersOfMu::new(owner_id))
+});

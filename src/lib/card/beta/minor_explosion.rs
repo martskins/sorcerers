@@ -57,3 +57,8 @@ impl Card for MinorExplosion {
             .collect())
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (MinorExplosion::NAME, |owner_id: PlayerId| {
+    Box::new(MinorExplosion::new(owner_id))
+});

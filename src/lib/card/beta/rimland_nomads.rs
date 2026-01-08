@@ -74,3 +74,8 @@ impl Card for RimlandNomads {
         self.base_take_damage(state, from, damage)
     }
 }
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (RimlandNomads::NAME, |owner_id: PlayerId| {
+    Box::new(RimlandNomads::new(owner_id))
+});
