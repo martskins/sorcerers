@@ -57,7 +57,7 @@ impl Card for Blaze {
         let prompt = "Blaze: Pick an ally";
         let picked_card = pick_card(self.get_controller_id(), &units, state, prompt).await?;
         Ok(vec![
-            Effect::AddModifier {
+            Effect::AddModifierCounter {
                 card_id: picked_card.clone(),
                 counter: ModifierCounter {
                     id: uuid::Uuid::new_v4(),
@@ -65,7 +65,7 @@ impl Card for Blaze {
                     expires_on_effect: Some(EffectQuery::TurnEnd),
                 },
             },
-            Effect::AddModifier {
+            Effect::AddModifierCounter {
                 card_id: picked_card,
                 counter: ModifierCounter {
                     id: uuid::Uuid::new_v4(),

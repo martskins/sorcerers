@@ -44,7 +44,11 @@ pub enum Effect {
         piercing: bool,
         splash_damage: Option<u8>,
     },
-    AddModifier {
+    RemoveModifier {
+        card_id: uuid::Uuid,
+        modifier: Modifier,
+    },
+    AddModifierCounter {
         card_id: uuid::Uuid,
         counter: ModifierCounter,
     },
@@ -210,7 +214,7 @@ impl Effect {
     }
 
     pub fn add_modifier(card_id: &uuid::Uuid, modifier: Modifier, expires_on_effect: Option<EffectQuery>) -> Self {
-        Effect::AddModifier {
+        Effect::AddModifierCounter {
             card_id: card_id.clone(),
             counter: ModifierCounter {
                 id: uuid::Uuid::new_v4(),
@@ -231,6 +235,7 @@ impl Effect {
 
     pub async fn description(&self, state: &State) -> anyhow::Result<Option<String>> {
         let desc = match self {
+            Effect::RemoveModifier { .. } => None,
             Effect::ShootProjectile {
                 player_id,
                 shooter,
@@ -248,7 +253,7 @@ impl Effect {
                 ))
             }
             Effect::AddCard { .. } => None,
-            Effect::AddModifier { .. } => None,
+            Effect::AddModifierCounter { .. } => None,
             Effect::AddCounter { .. } => None,
             Effect::TeleportCard { .. } => None,
             Effect::MoveCard {
@@ -440,6 +445,10 @@ impl Effect {
         }
 
         match self {
+            Effect::RemoveModifier { card_id, modifier } => {
+                let card = state.get_card_mut(card_id);
+                card.remove_modifier(modifier);
+            }
             Effect::ShootProjectile {
                 player_id,
                 shooter,
@@ -716,7 +725,7 @@ impl Effect {
                     .filter(|c| c.get_owner_id() == &state.current_player);
                 for card in cards {
                     card.get_base_mut().tapped = false;
-                    card.remove_modifier(Modifier::SummoningSickness);
+                    card.remove_modifier(&Modifier::SummoningSickness);
                 }
 
                 for card in state.cards.iter().filter(|c| c.get_owner_id() == &state.current_player) {
@@ -910,7 +919,7 @@ impl Effect {
                     base.power_counters.push(counter.clone());
                 }
             }
-            Effect::AddModifier { card_id, counter, .. } => {
+            Effect::AddModifierCounter { card_id, counter, .. } => {
                 let card = state.get_card_mut(card_id);
                 if card.is_unit() {
                     let base = card
@@ -983,6 +992,16 @@ impl Effect {
                 let card = state.get_card_mut(card_id);
                 card.get_base_mut().plane = Plane::Submerged;
             }
+        }
+
+        let area_effects: Vec<Effect> = state
+            .cards
+            .iter()
+            .filter_map(|c| c.area_effects(state).ok())
+            .flatten()
+            .collect();
+        for effect in area_effects {
+            state.effects.push_back(effect.into());
         }
 
         self.expire_counters(state).await?;

@@ -83,7 +83,6 @@ impl TextureCache {
     }
 
     async fn download_card_image(card: &CardData) -> anyhow::Result<Texture2D> {
-        println!("Downloading image for {}", card.get_name());
         let set = card.get_edition().url_name();
         let card_name = card.get_name();
         let name_for_url = card
@@ -105,7 +104,9 @@ impl TextureCache {
             "https://d27a44hjr9gen3.cloudfront.net/{}/{}-{}-{}-s.png",
             folder, set, name_for_url, after_card_name
         );
-        let response = reqwest::get(&path).await?;
+
+        println!("Downloading image for {} from {}", card.get_name(), path);
+        let response = reqwest::blocking::get(&path)?;
         if response.status() != reqwest::StatusCode::OK {
             return Err(anyhow::anyhow!(
                 "Failed to download image for {} on path {}: HTTP {}",
@@ -115,7 +116,7 @@ impl TextureCache {
             ));
         }
 
-        let bytes = response.bytes().await?;
+        let bytes = response.bytes()?;
         let texture = macroquad::texture::Texture2D::from_file_with_format(&bytes, None);
         let mut cache = TEXTURE_CACHE
             .get()

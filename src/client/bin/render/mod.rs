@@ -43,7 +43,6 @@ pub struct IntersectionRect {
 }
 
 fn draw_vortex_icon(x: f32, y: f32, size: f32, color: Color) {
-    use macroquad::shapes::draw_line;
     let turns = 2.0;
     let segments = 24;
     let mut prev = (x + size / 2.0, y + size / 2.0);
@@ -53,7 +52,7 @@ fn draw_vortex_icon(x: f32, y: f32, size: f32, color: Color) {
         let radius = (size / 2.0) * t;
         let px = x + size / 2.0 + radius * angle.cos();
         let py = y + size / 2.0 + radius * angle.sin();
-        draw_line(prev.0, prev.1, px, py, 2.0, color);
+        macroquad::shapes::draw_line(prev.0, prev.1, px, py, 2.0, color);
         prev = (px, py);
     }
 }
@@ -65,11 +64,16 @@ pub fn draw_card(card_rect: &CardRect, is_ally: bool) {
         scale = 1.1;
     }
 
+    let mut color = WHITE;
+    if card_rect.card.modifiers.contains(&Modifier::Stealth) {
+        color = Color::new(0.0, 0.0, 0.0, 0.85);
+    }
+
     draw_texture_ex(
         &card_rect.image,
         rect.x,
         rect.y,
-        WHITE,
+        color,
         DrawTextureParams {
             dest_size: Some(Vec2::new(rect.w, rect.h) * scale),
             rotation: card_rect.rotation(),

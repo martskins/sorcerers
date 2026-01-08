@@ -392,7 +392,14 @@ impl CardQuery {
 
 #[derive(Debug, Clone)]
 pub enum EffectQuery {
-    EnterZone { card: CardQuery, zone: ZoneQuery },
+    EnterZone {
+        card: CardQuery,
+        zone: ZoneQuery,
+    },
+    DamageDealt {
+        source: Option<CardQuery>,
+        target: Option<CardQuery>,
+    },
     TurnEnd,
 }
 
@@ -411,6 +418,23 @@ impl EffectQuery {
                 Ok(cards.contains(card_id) && zones.contains(&zone))
             }
             (EffectQuery::TurnEnd, Effect::EndTurn { .. }) => Ok(true),
+            (EffectQuery::DamageDealt { source, target }, Effect::TakeDamage { card_id, from, .. }) => {
+                let card = state.get_card(card_id);
+                let player_id = card.get_controller_id();
+                if let Some(source) = source {
+                    if &source.resolve(player_id, state).await? != from {
+                        return Ok(false);
+                    }
+                }
+
+                if let Some(target) = target {
+                    if &target.resolve(player_id, state).await? != card_id {
+                        return Ok(false);
+                    }
+                }
+
+                Ok(true)
+            }
             _ => Ok(false),
         }
     }

@@ -132,6 +132,24 @@ pub mod lucky_charm;
 pub use lucky_charm::*;
 pub mod thunderstorm;
 pub use thunderstorm::*;
+pub mod geomancer;
+pub use geomancer::*;
+pub mod wild_boars;
+pub use wild_boars::*;
+pub mod land_surveyor;
+pub use land_surveyor::*;
+pub mod scent_hounds;
+pub use scent_hounds::*;
+pub mod autumn_unicorn;
+pub use autumn_unicorn::*;
+pub mod belmotte_longbowmen;
+pub use belmotte_longbowmen::*;
+pub mod cave_trolls;
+pub use cave_trolls::*;
+pub mod slumbering_giantess;
+pub use slumbering_giantess::*;
+pub mod dalcean_phalanx;
+pub use dalcean_phalanx::*;
 
 use crate::{card::Card, game::PlayerId};
 
@@ -204,6 +222,15 @@ pub fn from_beta_name(name: &str, player_id: PlayerId) -> Option<Box<dyn Card>> 
         UpdraftRidge::NAME => Some(Box::new(UpdraftRidge::new(player_id))),
         LuckyCharm::NAME => Some(Box::new(LuckyCharm::new(player_id))),
         Thunderstorm::NAME => Some(Box::new(Thunderstorm::new(player_id))),
+        Geomancer::NAME => Some(Box::new(Geomancer::new(player_id))),
+        WildBoars::NAME => Some(Box::new(WildBoars::new(player_id))),
+        LandSurveyor::NAME => Some(Box::new(LandSurveyor::new(player_id))),
+        ScentHounds::NAME => Some(Box::new(ScentHounds::new(player_id))),
+        AutumnUnicorn::NAME => Some(Box::new(AutumnUnicorn::new(player_id))),
+        BelmotteLongbowmen::NAME => Some(Box::new(BelmotteLongbowmen::new(player_id))),
+        CaveTrolls::NAME => Some(Box::new(CaveTrolls::new(player_id))),
+        SlumberingGiantess::NAME => Some(Box::new(SlumberingGiantess::new(player_id))),
+        DalceanPhalanx::NAME => Some(Box::new(DalceanPhalanx::new(player_id))),
         _ => None,
     }
 }

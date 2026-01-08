@@ -731,8 +731,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(extra_steps + 1)
     }
 
-    // Returns the valid zones this card can move to from its current zone.
-    fn get_valid_move_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {
+    fn base_valid_move_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {
         Ok(self
             .get_zones_within_steps(state, self.get_steps_per_movement(state)?)
             .iter()
@@ -753,6 +752,11 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             })
             .cloned()
             .collect())
+    }
+
+    // Returns the valid zones this card can move to from its current zone.
+    fn get_valid_move_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {
+        self.base_valid_move_zones(state)
     }
 
     // Returns the valid attack targets for this card.
@@ -1026,9 +1030,9 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(vec![])
     }
 
-    fn remove_modifier(&mut self, modifier: Modifier) {
+    fn remove_modifier(&mut self, modifier: &Modifier) {
         if let Some(ub) = self.get_unit_base_mut() {
-            ub.modifiers.retain(|a| a != &modifier);
+            ub.modifiers.retain(|a| a != modifier);
         }
     }
 
@@ -1098,6 +1102,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     fn area_modifiers(&self, _state: &State) -> Vec<(Modifier, Vec<uuid::Uuid>)> {
         vec![]
     }
+
+    fn area_effects(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
+        Ok(vec![])
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -1118,6 +1126,7 @@ pub enum MinionType {
 pub enum SiteType {
     Desert,
     Tower,
+    Earth,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -1128,6 +1137,42 @@ pub struct SiteBase {
 }
 
 pub trait Site: Card {
+    fn provides(&self, element: &Element) -> anyhow::Result<Option<u8>> {
+        let site_base = self.get_site_base().ok_or(anyhow::anyhow!("site card has no base"))?;
+
+        let result = match element {
+            Element::Fire => {
+                if site_base.types.contains(&SiteType::Desert) {
+                    Some(site_base.provided_mana)
+                } else {
+                    None
+                }
+            }
+            Element::Earth => {
+                if site_base.types.contains(&SiteType::Earth) {
+                    Some(site_base.provided_mana)
+                } else {
+                    None
+                }
+            }
+            Element::Air => {
+                if site_base.types.contains(&SiteType::Tower) {
+                    Some(site_base.provided_mana)
+                } else {
+                    None
+                }
+            }
+            Element::Water => {
+                if site_base.types.contains(&SiteType::Tower) {
+                    Some(site_base.provided_mana)
+                } else {
+                    None
+                }
+            }
+        };
+
+        Ok(result)
+    }
     fn on_card_enter(&self, _state: &State, _card_id: &uuid::Uuid) -> Vec<Effect> {
         vec![]
     }

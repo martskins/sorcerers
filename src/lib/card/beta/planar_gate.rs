@@ -45,7 +45,7 @@ impl Site for PlanarGate {
             return vec![];
         }
 
-        vec![Effect::AddModifier {
+        vec![Effect::AddModifierCounter {
             card_id: card_id.clone(),
             counter: ModifierCounter {
                 id: uuid::Uuid::new_v4(),

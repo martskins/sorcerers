@@ -87,6 +87,16 @@ impl State {
         }
     }
 
+    pub fn get_opponent_id(&self, player_id: &PlayerId) -> anyhow::Result<PlayerId> {
+        for player in &self.players {
+            if &player.id != player_id {
+                return Ok(player.id.clone());
+            }
+        }
+
+        Err(anyhow::anyhow!("failed to get opponent id"))
+    }
+
     pub fn get_interceptors_for_move(&self, path: &[Zone], controller_id: &PlayerId) -> Vec<(uuid::Uuid, Zone)> {
         self.cards
             .iter()
