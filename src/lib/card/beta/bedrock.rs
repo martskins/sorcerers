@@ -1,9 +1,6 @@
-
 use crate::{
     card::{Card, CardBase, Edition, Plane, Rarity, Site, SiteBase, Zone},
-    effect::Effect,
-    game::{PlayerId, Thresholds, pick_card},
-    state::State,
+    game::{PlayerId, Thresholds},
 };
 
 #[derive(Debug, Clone)]
@@ -69,6 +66,5 @@ impl Card for Bedrock {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (Bedrock::NAME, |owner_id: PlayerId| {
-    Box::new(Bedrock::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (Bedrock::NAME, |owner_id: PlayerId| Box::new(Bedrock::new(owner_id)));

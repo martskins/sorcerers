@@ -1,8 +1,7 @@
-
 use crate::{
-    card::{Card, CardBase, Edition, Plane, Rarity, Site, SiteBase, Zone},
+    card::{Card, CardBase, Edition, FootSoldier, Plane, Rarity, Site, SiteBase, SiteType, Zone},
     effect::Effect,
-    game::{PlayerId, Thresholds, pick_card},
+    game::{BaseOption, PlayerId, Thresholds, pick_option},
     state::State,
 };
 
@@ -20,7 +19,7 @@ impl RusticVillage {
             site_base: SiteBase {
                 provided_mana: 1,
                 provided_thresholds: Thresholds::parse("E"),
-                types: vec![],
+                types: vec![SiteType::Village],
                 ..Default::default()
             },
             card_base: CardBase {
@@ -65,6 +64,36 @@ impl Card for RusticVillage {
 
     fn get_site(&self) -> Option<&dyn Site> {
         Some(self)
+    }
+
+    async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+        let options = vec![BaseOption::Yes, BaseOption::No];
+        let option_labels: Vec<String> = options.iter().map(|o| o.to_string()).collect();
+        let picked_option = pick_option(
+            self.get_controller_id(),
+            &option_labels,
+            state,
+            "Humble Village: Pay 1 to summon a foot soldier?",
+        )
+        .await?;
+        if options[picked_option] == BaseOption::No {
+            return Ok(vec![]);
+        }
+
+        let mut foot_soldier = FootSoldier::new(self.get_controller_id().clone());
+        foot_soldier.set_zone(self.get_zone().clone());
+
+        Ok(vec![
+            Effect::RemoveResources {
+                player_id: self.get_controller_id().clone(),
+                mana: 1,
+                thresholds: Thresholds::new(),
+                health: 0,
+            },
+            Effect::AddCard {
+                card: Box::new(foot_soldier),
+            },
+        ])
     }
 }
 

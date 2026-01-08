@@ -19,7 +19,7 @@ impl SlingPixies {
             unit_base: UnitBase {
                 power: 1,
                 toughness: 1,
-                modifiers: vec![Modifier::Airborne, Modifier::Ranged],
+                modifiers: vec![Modifier::Airborne, Modifier::Ranged(1)],
                 types: vec![MinionType::Fairy],
                 ..Default::default()
             },

@@ -35,6 +35,10 @@ impl Counter {
 
 #[derive(Debug)]
 pub enum Effect {
+    Heal {
+        card_id: uuid::Uuid,
+        amount: u8,
+    },
     ShootProjectile {
         player_id: uuid::Uuid,
         shooter: uuid::Uuid,
@@ -235,6 +239,10 @@ impl Effect {
 
     pub async fn description(&self, state: &State) -> anyhow::Result<Option<String>> {
         let desc = match self {
+            Effect::Heal { card_id, amount } => {
+                let card = state.get_card(card_id).get_name();
+                Some(format!("{} heals {} for {} health", card, card, amount))
+            }
             Effect::RemoveModifier { .. } => None,
             Effect::ShootProjectile {
                 player_id,
@@ -445,6 +453,13 @@ impl Effect {
         }
 
         match self {
+            Effect::Heal { card_id, amount } => {
+                let card = state.get_card_mut(card_id);
+                let unit_base = card
+                    .get_unit_base_mut()
+                    .ok_or(anyhow::anyhow!("card has no unit base"))?;
+                unit_base.toughness += amount;
+            }
             Effect::RemoveModifier { card_id, modifier } => {
                 let card = state.get_card_mut(card_id);
                 card.remove_modifier(modifier);
@@ -772,10 +787,10 @@ impl Effect {
             } => {
                 let player_resources = state.get_player_resources_mut(player_id)?;
                 player_resources.mana -= mana;
-                player_resources.thresholds.air -= thresholds.air;
-                player_resources.thresholds.water -= thresholds.water;
-                player_resources.thresholds.fire -= thresholds.fire;
-                player_resources.thresholds.earth -= thresholds.earth;
+                player_resources.thresholds.air = player_resources.thresholds.air.saturating_sub(thresholds.air);
+                player_resources.thresholds.water = player_resources.thresholds.water.saturating_sub(thresholds.water);
+                player_resources.thresholds.fire = player_resources.thresholds.fire.saturating_sub(thresholds.fire);
+                player_resources.thresholds.earth = player_resources.thresholds.earth.saturating_sub(thresholds.earth);
                 player_resources.health -= health;
             }
             Effect::EndTurn { player_id, .. } => {

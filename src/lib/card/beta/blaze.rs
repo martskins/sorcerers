@@ -62,7 +62,7 @@ impl Card for Blaze {
                 counter: ModifierCounter {
                     id: uuid::Uuid::new_v4(),
                     modifier: Modifier::Movement(2),
-                    expires_on_effect: Some(EffectQuery::TurnEnd),
+                    expires_on_effect: Some(EffectQuery::TurnEnd { player_id: None }),
                 },
             },
             Effect::AddModifierCounter {
@@ -70,7 +70,7 @@ impl Card for Blaze {
                 counter: ModifierCounter {
                     id: uuid::Uuid::new_v4(),
                     modifier: Modifier::Blaze(2),
-                    expires_on_effect: Some(EffectQuery::TurnEnd),
+                    expires_on_effect: Some(EffectQuery::TurnEnd { player_id: None }),
                 },
             },
         ])

@@ -1,8 +1,8 @@
-
 use crate::{
-    card::{Card, CardBase, Edition, Plane, Rarity, Site, SiteBase, Zone},
-    effect::Effect,
-    game::{PlayerId, Thresholds, pick_card},
+    card::{Card, CardBase, Edition, Modifier, Plane, Rarity, Site, SiteBase, Zone},
+    effect::{Effect, ModifierCounter},
+    game::{PlayerId, Thresholds},
+    query::EffectQuery,
     state::State,
 };
 
@@ -66,9 +66,30 @@ impl Card for Quagmire {
     fn get_site(&self) -> Option<&dyn Site> {
         Some(self)
     }
+
+    async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+        let effects = self
+            .get_zone()
+            .get_nearby_sites(state, None)
+            .iter()
+            .map(|s| s.get_zone().get_units(state, None))
+            .flatten()
+            .map(|u| Effect::AddModifierCounter {
+                card_id: u.get_id().clone(),
+                counter: ModifierCounter {
+                    id: uuid::Uuid::new_v4(),
+                    modifier: Modifier::Immobile,
+                    expires_on_effect: Some(EffectQuery::TurnStart {
+                        player_id: Some(self.get_controller_id().clone()),
+                    }),
+                },
+            })
+            .collect();
+
+        Ok(effects)
+    }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (Quagmire::NAME, |owner_id: PlayerId| {
-    Box::new(Quagmire::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (Quagmire::NAME, |owner_id: PlayerId| Box::new(Quagmire::new(owner_id)));

@@ -17,7 +17,7 @@ impl MidnightRogue {
             unit_base: UnitBase {
                 power: 2,
                 toughness: 2,
-                modifiers: vec![Modifier::Ranged, Modifier::Stealth],
+                modifiers: vec![Modifier::Ranged(1), Modifier::Stealth],
                 types: vec![MinionType::Mortal],
                 ..Default::default()
             },

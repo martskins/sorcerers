@@ -1,5 +1,5 @@
 use crate::{
-    card::{CARD_CONSTRUCTORS, beta},
+    card::{CARD_CONSTRUCTORS, Rubble},
     effect::{Counter, Effect, ModifierCounter},
     game::{
         AvatarAction, CardAction, Direction, Element, PlayerId, Thresholds, UnitAction, are_adjacent, are_nearby,
@@ -15,7 +15,6 @@ use std::fmt::Debug;
 pub enum CardType {
     Site,
     Avatar,
-    Token,
     Minion,
     Magic,
     Artifact,
@@ -292,6 +291,8 @@ pub struct CardData {
     pub modifiers: Vec<Modifier>,
     pub damage_taken: u8,
     pub attached_to: Option<uuid::Uuid>,
+    pub rarity: Rarity,
+    pub num_arts: usize,
 }
 
 impl CardData {
@@ -308,7 +309,7 @@ impl CardData {
     }
 
     pub fn is_token(&self) -> bool {
-        self.card_type == CardType::Token
+        self.rarity == Rarity::Token
     }
 
     pub fn get_edition(&self) -> &Edition {
@@ -640,6 +641,16 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         self.default_get_valid_play_zones(state)
     }
 
+    fn is_ranged(&self, state: &State) -> anyhow::Result<bool> {
+        for modif in self.get_modifiers(state)? {
+            if let Modifier::Ranged(_) = modif {
+                return Ok(true);
+            }
+        }
+
+        Ok(false)
+    }
+
     // Returns whether the card has the given modifier.
     fn has_modifier(&self, _state: &State, modifier: &Modifier) -> bool {
         if self
@@ -719,6 +730,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     // Returns the number of steps this card can move per movement action.
     fn get_steps_per_movement(&self, state: &State) -> anyhow::Result<u8> {
+        if self.has_modifier(state, &Modifier::Immobile) {
+            return Ok(0);
+        }
+
         let extra_steps: u8 = self
             .get_modifiers(state)?
             .into_iter()
@@ -930,14 +945,20 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(vec![])
     }
 
-    fn deathrite(&self, _state: &State, _from: &Zone) -> Vec<Effect> {
-        if self.is_site() {
-            return vec![Effect::RemoveResources {
-                player_id: self.get_owner_id().clone(),
-                mana: 0,
-                thresholds: self.get_site_base().unwrap().provided_thresholds.clone(),
-                health: 0,
-            }];
+    fn deathrite(&self, _state: &State, from: &Zone) -> Vec<Effect> {
+        if self.is_site() && from.is_in_play() {
+            let mut rubble = Rubble::new(self.get_owner_id().clone());
+            rubble.set_zone(from.clone());
+
+            return vec![
+                Effect::AddCard { card: Box::new(rubble) },
+                Effect::RemoveResources {
+                    player_id: self.get_owner_id().clone(),
+                    mana: 0,
+                    thresholds: self.get_site_base().unwrap().provided_thresholds.clone(),
+                    health: 0,
+                },
+            ];
         }
 
         vec![]
@@ -1054,8 +1075,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(vec![])
     }
 
-    fn base_avatar_actions(&self, state: &State) -> Vec<Box<dyn CardAction>> {
-        let mut actions: Vec<Box<dyn CardAction>> = self.base_unit_actions(state);
+    fn base_avatar_actions(&self, state: &State) -> anyhow::Result<Vec<Box<dyn CardAction>>> {
+        let mut actions: Vec<Box<dyn CardAction>> = self.base_unit_actions(state)?;
         actions.push(Box::new(AvatarAction::DrawSite));
         if state
             .cards
@@ -1067,12 +1088,13 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         {
             actions.push(Box::new(AvatarAction::PlaySite));
         }
-        actions
+
+        Ok(actions)
     }
 
-    fn base_unit_actions(&self, state: &State) -> Vec<Box<dyn CardAction>> {
+    fn base_unit_actions(&self, state: &State) -> anyhow::Result<Vec<Box<dyn CardAction>>> {
         let mut actions: Vec<Box<dyn CardAction>> = vec![Box::new(UnitAction::Attack), Box::new(UnitAction::Move)];
-        if self.has_modifier(state, &Modifier::Ranged) {
+        if self.is_ranged(state)? {
             actions.push(Box::new(UnitAction::RangedAttack));
         }
 
@@ -1084,15 +1106,15 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             actions.push(Box::new(UnitAction::Submerge));
         }
 
-        actions
+        Ok(actions)
     }
 
     // Returns the available actions for this card, given the current game state.
     fn get_actions(&self, state: &State) -> anyhow::Result<Vec<Box<dyn CardAction>>> {
         if self.is_avatar() {
-            return Ok(self.base_avatar_actions(state));
+            return Ok(self.base_avatar_actions(state)?);
         } else if self.is_unit() {
-            return Ok(self.base_unit_actions(state));
+            return Ok(self.base_unit_actions(state)?);
         }
 
         Ok(vec![])
@@ -1105,6 +1127,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     fn area_effects(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![])
+    }
+
+    fn get_num_arts(&self) -> usize {
+        1
     }
 }
 
@@ -1128,6 +1154,7 @@ pub enum SiteType {
     Desert,
     Tower,
     Earth,
+    Village,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -1188,7 +1215,7 @@ pub enum Modifier {
     Disabled,
     Voidwalk,
     Airborne,
-    Ranged,
+    Ranged(u8),
     Stealth,
     Lethal,
     Movement(u8),
@@ -1199,6 +1226,7 @@ pub enum Modifier {
     Charge,
     SummoningSickness,
     TakesNoDamageFromElement(Element),
+    Immobile,
     Blaze(u8), // Specific modifier for the Blaze magic
 }
 
@@ -1241,8 +1269,9 @@ pub struct UnitBase {
     pub types: Vec<MinionType>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 pub enum Rarity {
+    Token,
     Ordinary,
     Exceptional,
     Elite,

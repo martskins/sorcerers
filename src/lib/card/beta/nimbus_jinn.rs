@@ -107,7 +107,7 @@ impl Card for NimbusJinn {
     }
 
     fn get_actions(&self, state: &State) -> anyhow::Result<Vec<Box<dyn CardAction>>> {
-        let mut actions = self.base_unit_actions(state);
+        let mut actions = self.base_unit_actions(state)?;
         actions.push(Box::new(NimbusJinnAction::DealDamage));
         Ok(actions)
     }

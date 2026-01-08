@@ -154,6 +154,8 @@ impl State {
                 attached_to: c
                     .get_artifact()
                     .and_then(|c| c.get_attached_to().unwrap_or_default().clone()),
+                rarity: c.get_base().rarity.clone(),
+                num_arts: c.get_num_arts(),
             })
             .collect()
     }

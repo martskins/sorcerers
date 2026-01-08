@@ -83,7 +83,7 @@ impl Card for SpireLich {
     fn get_modifiers(&self, state: &State) -> anyhow::Result<Vec<Modifier>> {
         let mut modifiers = self.base_get_modifiers(state);
         if self.is_atop_tower(state)? {
-            modifiers.push(Modifier::Ranged);
+            modifiers.push(Modifier::Ranged(1));
             modifiers.push(Modifier::Spellcaster(Element::Fire));
             modifiers.push(Modifier::Spellcaster(Element::Earth));
             modifiers.push(Modifier::Spellcaster(Element::Air));

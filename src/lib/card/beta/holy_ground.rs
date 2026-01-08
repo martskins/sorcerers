@@ -1,8 +1,7 @@
-
 use crate::{
     card::{Card, CardBase, Edition, Plane, Rarity, Site, SiteBase, Zone},
     effect::Effect,
-    game::{PlayerId, Thresholds, pick_card},
+    game::{PlayerId, Thresholds},
     state::State,
 };
 
@@ -65,6 +64,27 @@ impl Card for HolyGround {
 
     fn get_site(&self) -> Option<&dyn Site> {
         Some(self)
+    }
+
+    async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+        let nearby_avatars: Vec<uuid::Uuid> = self
+            .get_zone()
+            .get_nearby_units(state, None)
+            .iter()
+            .filter(|c| c.is_avatar())
+            .map(|a| a.get_id())
+            .cloned()
+            .collect();
+
+        let effects = nearby_avatars
+            .iter()
+            .map(|a| Effect::Heal {
+                card_id: a.clone(),
+                amount: 3,
+            })
+            .collect();
+
+        Ok(effects)
     }
 }
 

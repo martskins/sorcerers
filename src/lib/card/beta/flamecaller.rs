@@ -130,7 +130,7 @@ impl Card for Flamecaller {
     }
 
     fn get_actions(&self, state: &State) -> anyhow::Result<Vec<Box<dyn CardAction>>> {
-        let mut actions = self.base_avatar_actions(state);
+        let mut actions = self.base_avatar_actions(state)?;
         actions.push(Box::new(FlamecallerAction::ShootProjectile));
         Ok(actions)
     }

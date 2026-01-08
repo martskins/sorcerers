@@ -1,22 +1,23 @@
 use crate::{
-    card::{Card, CardBase, Edition, Plane, Rarity, Site, SiteBase, Zone},
+    card::{Card, CardBase, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
     game::{PlayerId, Thresholds},
 };
 
 #[derive(Debug, Clone)]
-pub struct Rubble {
-    pub site_base: SiteBase,
+pub struct FootSoldier {
+    pub unit_base: UnitBase,
     pub card_base: CardBase,
 }
 
-impl Rubble {
-    pub const NAME: &'static str = "Rubble";
+impl FootSoldier {
+    pub const NAME: &'static str = "Foot Soldier";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
-            site_base: SiteBase {
-                provided_mana: 0,
-                provided_thresholds: Thresholds::parse(""),
+            unit_base: UnitBase {
+                power: 1,
+                toughness: 1,
+                types: vec![MinionType::Mortal],
                 ..Default::default()
             },
             card_base: CardBase {
@@ -35,9 +36,7 @@ impl Rubble {
     }
 }
 
-impl Site for Rubble {}
-
-impl Card for Rubble {
+impl Card for FootSoldier {
     fn get_name(&self) -> &str {
         Self::NAME
     }
@@ -50,15 +49,15 @@ impl Card for Rubble {
         &self.card_base
     }
 
-    fn get_site_base(&self) -> Option<&SiteBase> {
-        Some(&self.site_base)
+    fn get_unit_base(&self) -> Option<&UnitBase> {
+        Some(&self.unit_base)
     }
 
-    fn get_site_base_mut(&mut self) -> Option<&mut SiteBase> {
-        Some(&mut self.site_base)
+    fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
+        Some(&mut self.unit_base)
     }
 
-    fn get_site(&self) -> Option<&dyn Site> {
-        Some(self)
+    fn get_num_arts(&self) -> usize {
+        3
     }
 }

@@ -66,7 +66,7 @@ impl Card for AskelonPhoenix {
         if attacker.get_elements(state).contains(&Element::Fire) {
             return Ok(vec![Effect::AddCounter {
                 card_id: self.get_id().clone(),
-                counter: Counter::new(1, 1, Some(EffectQuery::TurnEnd)),
+                counter: Counter::new(1, 1, Some(EffectQuery::TurnEnd { player_id: None })),
             }]);
         }
 

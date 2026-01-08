@@ -63,7 +63,7 @@ impl Card for MadDash {
         effects.push(Effect::add_modifier(
             &picked_card_id,
             Modifier::Movement(1),
-            Some(EffectQuery::TurnEnd),
+            Some(EffectQuery::TurnEnd { player_id: None }),
         ));
         Ok(effects)
     }

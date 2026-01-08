@@ -606,6 +606,21 @@ pub enum InputStatus {
     },
 }
 
+#[derive(Debug, PartialEq)]
+pub enum BaseOption {
+    Yes,
+    No,
+}
+
+impl ToString for BaseOption {
+    fn to_string(&self) -> String {
+        match self {
+            BaseOption::Yes => "Yes".to_string(),
+            BaseOption::No => "No".to_string(),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct CancelAction;
 

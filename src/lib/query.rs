@@ -400,7 +400,12 @@ pub enum EffectQuery {
         source: Option<CardQuery>,
         target: Option<CardQuery>,
     },
-    TurnEnd,
+    TurnEnd {
+        player_id: Option<PlayerId>,
+    },
+    TurnStart {
+        player_id: Option<PlayerId>,
+    },
 }
 
 impl EffectQuery {
@@ -417,7 +422,36 @@ impl EffectQuery {
                 let zone = to.resolve(player_id, state).await?;
                 Ok(cards.contains(card_id) && zones.contains(&zone))
             }
-            (EffectQuery::TurnEnd, Effect::EndTurn { .. }) => Ok(true),
+            (
+                EffectQuery::TurnStart {
+                    player_id: query_player_id,
+                },
+                Effect::StartTurn {
+                    player_id: effect_player_id,
+                    ..
+                },
+            ) => {
+                if let Some(query_player_id) = query_player_id {
+                    Ok(query_player_id == effect_player_id)
+                } else {
+                    Ok(true)
+                }
+            }
+            (
+                EffectQuery::TurnEnd {
+                    player_id: query_player_id,
+                },
+                Effect::EndTurn {
+                    player_id: effect_player_id,
+                    ..
+                },
+            ) => {
+                if let Some(query_player_id) = query_player_id {
+                    Ok(query_player_id == effect_player_id)
+                } else {
+                    Ok(true)
+                }
+            }
             (EffectQuery::DamageDealt { source, target }, Effect::TakeDamage { card_id, from, .. }) => {
                 let card = state.get_card(card_id);
                 let player_id = card.get_controller_id();

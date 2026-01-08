@@ -1,7 +1,7 @@
 use crate::{
     card::{Card, CardBase, Edition, Plane, Rarity, Zone},
     effect::Effect,
-    game::{PlayerId, Thresholds, force_sync, pick_card, pick_option},
+    game::{BaseOption, PlayerId, Thresholds, force_sync, pick_card, pick_option},
     state::State,
 };
 
@@ -98,15 +98,16 @@ impl Card for ChainLightning {
                 break;
             }
 
-            let options = vec!["Yes".to_string(), "No".to_string()];
+            let options = vec![BaseOption::Yes, BaseOption::No];
+            let option_labels = options.iter().map(|o| o.to_string()).collect::<Vec<_>>();
             let picked_option = pick_option(
                 self.get_owner_id(),
-                &options,
+                &option_labels,
                 state,
                 "Chain Lightning: Pay 2 to deal an additional 2 damage to another unit?",
             )
             .await?;
-            if options[picked_option] == "No" {
+            if options[picked_option] == BaseOption::No {
                 break;
             }
 

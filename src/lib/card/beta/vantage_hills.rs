@@ -1,8 +1,6 @@
-
 use crate::{
-    card::{Card, CardBase, Edition, Plane, Rarity, Site, SiteBase, Zone},
-    effect::Effect,
-    game::{PlayerId, Thresholds, pick_card},
+    card::{Card, CardBase, Edition, Modifier, Plane, Rarity, Site, SiteBase, Zone},
+    game::{PlayerId, Thresholds},
     state::State,
 };
 
@@ -65,6 +63,18 @@ impl Card for VantageHills {
 
     fn get_site(&self) -> Option<&dyn Site> {
         Some(self)
+    }
+
+    fn area_modifiers(&self, state: &State) -> Vec<(Modifier, Vec<uuid::Uuid>)> {
+        let units_atop = self
+            .get_zone()
+            .get_units(state, None)
+            .iter()
+            .filter(|c| c.get_base().plane == Plane::Surface)
+            .map(|c| c.get_id())
+            .cloned()
+            .collect();
+        vec![(Modifier::Ranged(1), units_atop)]
     }
 }
 
