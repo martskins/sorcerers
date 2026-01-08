@@ -1,4 +1,5 @@
 use macroquad::texture::Texture2D;
+use rand::Rng;
 use sorcerers::card::CardData;
 use std::{collections::HashMap, path::Path, sync::OnceLock};
 use tokio::sync::RwLock;
@@ -100,9 +101,15 @@ impl TextureCache {
             after_card_name = "bt";
         }
 
+        let mut art_num_suffix = String::new();
+        if card.num_arts > 1 {
+            let num = rand::rng().random_range(1..card.num_arts);
+            art_num_suffix = format!("_{}", num);
+        }
+
         let path = format!(
-            "https://d27a44hjr9gen3.cloudfront.net/{}/{}-{}-{}-s.png",
-            folder, set, name_for_url, after_card_name
+            "https://d27a44hjr9gen3.cloudfront.net/{}/{}-{}{}-{}-s.png",
+            folder, set, name_for_url, art_num_suffix, after_card_name
         );
 
         println!("Downloading image for {} from {}", card.get_name(), path);
