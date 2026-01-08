@@ -59,12 +59,12 @@ fn main() -> anyhow::Result<()> {
                 };
 
                 let modifiers_str = record[8].to_string();
-                if modifiers_str.is_empty() {
+                if !modifiers_str.is_empty() {
                     minion.modifiers = modifiers_str.split(",").map(|s| s.to_string()).collect();
                 }
 
-                let types_str = record[8].to_string();
-                if types_str.is_empty() {
+                let types_str = record[6].to_string();
+                if !types_str.is_empty() {
                     minion.types = types_str.split(",").map(|s| s.to_string()).collect();
                 }
 
@@ -104,7 +104,8 @@ fn main() -> anyhow::Result<()> {
                 let mut file = std::fs::File::create(path)?;
                 file.write_all(contents.as_bytes())?;
 
-                let mut mod_file = std::fs::File::create(format!("src/lib/card/{}/mod.rs", edition))?;
+                let mod_path = format!("src/lib/card/{}/mod.rs", edition);
+                let mut mod_file = std::fs::File::options().append(true).open(mod_path)?;
                 mod_file.write_all(format!("pub mod {};\n", filename).as_bytes())?;
                 mod_file.write_all(format!("pub use {}::*;\n", filename).as_bytes())?;
             }

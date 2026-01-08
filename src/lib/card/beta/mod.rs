@@ -162,3 +162,5 @@ pub mod wraetannis_titan;
 pub use wraetannis_titan::*;
 pub mod mountain_giant;
 pub use mountain_giant::*;
+pub mod sedge_crabs;
+pub use sedge_crabs::*;
