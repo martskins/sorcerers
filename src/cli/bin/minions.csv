@@ -1,0 +1,8 @@
+name,edition,mana_cost,required_threshold,power,toughness,types,rarity,modifiers
+House Arn Bannerman,Beta,4,EE,2,2,Mortal,Exceptional,""
+Pudge Butcher,Beta,4,EE,5,5,Demon,Exceptional,""
+Amazon Warriors,Beta,5,E,5,5,Mortal,Ordinary,""
+King of the Realm,Beta,7,EEE,3,3,Mortal,Unique,""
+Wraetannis Titan,Beta,7,EE,6,6,Giant,Elite,""
+Mountain Giant,Beta,8,EEEE,8,8,Giant,Elite,""
+Sedge Crabs,Beta,1,W,3,3,Beasts,Beasts,Ordinary,""

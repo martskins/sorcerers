@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+csv = "1.4.0"
 linkme = "0.3.35"
 thiserror = "2.0.17"
 chrono = { version = "0.4.42", features = ["serde"] }
@@ -39,9 +40,9 @@ path = "src/server/bin/main.rs"
 name = "client"
 path = "src/client/bin/main.rs"
 
-# [[bin]]
-# name = "add-card"
-# path = "src/cli/bin/main.rs"
+[[bin]]
+name = "sorcerers-cli"
+path = "src/cli/bin/main.rs"
 
 [lib]
 name = "sorcerers"
