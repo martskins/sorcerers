@@ -1,5 +1,4 @@
-pub const MINION_TEMPLATE: &str = r#"
-use crate::{
+pub const MINION_TEMPLATE: &str = r#"use crate::{
     card::{Card, CardBase, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
     game::{PlayerId, Thresholds},
 };

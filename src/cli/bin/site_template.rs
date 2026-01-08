@@ -1,9 +1,6 @@
-pub const SITE_TEMPLATE: &str = r#"
-use crate::{
+pub const SITE_TEMPLATE: &str = r#"use crate::{
     card::{Card, CardBase, Edition, Plane, Rarity, Site, SiteBase, Zone},
-    effect::Effect,
-    game::{PlayerId, Thresholds, pick_card},
-    state::State,
+    game::{PlayerId, Thresholds},
 };
 
 #[derive(Debug, Clone)]
