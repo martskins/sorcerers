@@ -1120,6 +1120,7 @@ pub enum MinionType {
     Beast,
     Spirit,
     Undead,
+    Giant,
 }
 
 #[derive(Debug, PartialEq, Clone)]
