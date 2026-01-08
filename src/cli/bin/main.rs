@@ -1,8 +1,10 @@
 mod minion_template;
+mod site_template;
 
-use crate::minion_template::MINION_TEMPLATE;
 use clap::Parser;
 use convert_case::{Case, Casing};
+use minion_template::MINION_TEMPLATE;
+use site_template::SITE_TEMPLATE;
 use std::io::Write;
 
 #[derive(Parser, Clone, Debug, clap::ValueEnum)]
@@ -25,7 +27,17 @@ struct Args {
     card_type: CardType,
 }
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug)]
+struct SiteRecord {
+    name: String,
+    edition: String,
+    provided_mana: u8,
+    provided_thresholds: String,
+    types: Vec<String>,
+    rarity: String,
+}
+
+#[derive(Debug)]
 struct MinionRecord {
     name: String,
     edition: String,
@@ -112,6 +124,60 @@ fn main() -> anyhow::Result<()> {
 
             Ok(())
         }
+        CardType::Site => {
+            let mut rdr = csv::Reader::from_reader(file);
+            for record in rdr.records() {
+                let record = record?;
+                let mut site: SiteRecord = SiteRecord {
+                    name: record[0].to_string(),
+                    edition: record[1].to_string(),
+                    provided_mana: record[2].parse().unwrap(),
+                    provided_thresholds: record[3].to_string(),
+                    types: vec![],
+                    rarity: record[5].to_string(),
+                };
+
+                let types_str = record[4].to_string();
+                if !types_str.is_empty() {
+                    site.types = types_str.split(",").map(|s| s.to_string()).collect();
+                }
+
+                let edition = site.edition.to_lowercase();
+                let filename = site.name.to_case(Case::Snake);
+                let path = format!("src/lib/card/{}/{}.rs", edition, filename);
+                if std::fs::exists(&path)? {
+                    continue;
+                }
+
+                let struct_name = site.name.to_case(Case::Pascal);
+                let site_types = site
+                    .types
+                    .iter()
+                    .map(|m| format!("MinionType::{}", m))
+                    .collect::<Vec<String>>()
+                    .join(", ");
+
+                let contents = SITE_TEMPLATE
+                    .replace("{CardName}", &site.name)
+                    .replace("{StructName}", &struct_name)
+                    .replace("{SiteTypes}", &site_types)
+                    .replace("{ProvidedMana}", &site.provided_mana.to_string())
+                    .replace("{ProvidedThresholds}", &site.provided_thresholds)
+                    .replace("{Rarity}", &site.rarity)
+                    .replace("{Edition}", &site.edition);
+
+                let mut file = std::fs::File::create(path)?;
+                file.write_all(contents.as_bytes())?;
+
+                let mod_path = format!("src/lib/card/{}/mod.rs", edition);
+                let mut mod_file = std::fs::File::options().append(true).open(mod_path)?;
+                mod_file.write_all(format!("pub mod {};\n", filename).as_bytes())?;
+                mod_file.write_all(format!("pub use {}::*;\n", filename).as_bytes())?;
+            }
+
+            Ok(())
+        }
+
         _ => Err(anyhow::anyhow!("Unknown card type {:?}", args.card_type)),
     }
 }
