@@ -273,12 +273,13 @@ pub async fn pick_zone(player_id: &PlayerId, zones: &[Zone], state: &State, prom
 // to temporarily override the state of the game for the player, which is useful in cases where the
 // state needs to be mutated as part of the card resolution process.
 pub async fn force_sync(player_id: &PlayerId, state: &State) -> anyhow::Result<()> {
-    let sync_msg = state.into_sync();
+    let sync_msg = state.into_sync()?;
     match sync_msg {
         ServerMessage::Sync {
             cards,
             resources,
             current_player,
+            health,
         } => {
             state
                 .get_sender()
@@ -287,6 +288,7 @@ pub async fn force_sync(player_id: &PlayerId, state: &State) -> anyhow::Result<(
                     cards: cards,
                     resources: resources,
                     current_player: current_player,
+                    health: health,
                 })
                 .await?;
         }
@@ -391,7 +393,6 @@ impl Thresholds {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Resources {
     pub mana: u8,
-    pub health: u8,
     pub thresholds: Thresholds,
 }
 
@@ -399,7 +400,6 @@ impl Resources {
     pub fn new() -> Self {
         Resources {
             mana: 0,
-            health: 20,
             thresholds: Thresholds::new(),
         }
     }
@@ -1208,7 +1208,7 @@ impl Game {
     }
 
     pub async fn send_sync(&self) -> anyhow::Result<()> {
-        self.broadcast(&self.state.into_sync()).await?;
+        self.broadcast(&self.state.into_sync()?).await?;
         Ok(())
     }
 

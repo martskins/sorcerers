@@ -80,7 +80,7 @@ impl Flamecaller {
         Self {
             unit_base: UnitBase {
                 power: 1,
-                toughness: 1,
+                toughness: 20,
                 ..Default::default()
             },
             card_base: CardBase {

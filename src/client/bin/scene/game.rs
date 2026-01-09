@@ -100,6 +100,7 @@ pub struct GameData {
     pub status: Status,
     pub unseen_events: usize,
     pub resources: HashMap<PlayerId, Resources>,
+    pub avatar_health: HashMap<PlayerId, u8>,
 }
 
 impl GameData {
@@ -111,6 +112,7 @@ impl GameData {
             status: Status::Idle,
             unseen_events: 0,
             resources: HashMap::new(),
+            avatar_health: HashMap::new(),
         }
     }
 }
@@ -371,10 +373,12 @@ impl Game {
                 cards,
                 current_player,
                 resources,
+                health,
             } => {
                 self.data.cards = sort_cards(cards);
                 self.current_player = current_player.clone();
                 self.data.resources = resources.clone();
+                self.data.avatar_health = health.clone();
                 Ok(None)
             }
             ServerMessage::ForceSync {

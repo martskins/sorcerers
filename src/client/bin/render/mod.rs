@@ -10,7 +10,7 @@ use macroquad::{
     texture::{DrawTextureParams, Texture2D, draw_texture_ex},
     ui,
 };
-use sorcerers::card::{CardData, Modifier};
+use sorcerers::card::{CardData, CardType, Modifier};
 
 #[derive(Debug, Clone)]
 pub struct CardRect {
@@ -137,7 +137,7 @@ pub fn draw_card(card_rect: &CardRect, is_ally: bool) {
     }
 
     // Draw damage taken indicator if damage_taken > 0
-    if card_rect.card.damage_taken > 0 {
+    if card_rect.card.card_type != CardType::Avatar && card_rect.card.damage_taken > 0 {
         let circle_radius = 8.0;
         let circle_x = rect.x + w - circle_radius - 3.0;
         let circle_y = rect.y + circle_radius - 3.0;

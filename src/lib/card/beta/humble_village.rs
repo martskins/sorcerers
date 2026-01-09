@@ -85,7 +85,6 @@ impl Card for HumbleVillage {
                 player_id: self.get_controller_id().clone(),
                 mana: 1,
                 thresholds: Thresholds::new(),
-                health: 0,
             },
             Effect::SummonToken {
                 player_id: self.get_controller_id().clone(),

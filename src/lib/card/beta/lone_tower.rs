@@ -78,7 +78,6 @@ impl Card for LoneTower {
             player_id: self.get_owner_id().clone(),
             mana: 1,
             thresholds: Thresholds::new(),
-            health: 0,
         }])
     }
 

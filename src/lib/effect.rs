@@ -132,13 +132,11 @@ pub enum Effect {
         player_id: uuid::Uuid,
         mana: u8,
         thresholds: Thresholds,
-        health: u8,
     },
     AddResources {
         player_id: uuid::Uuid,
         mana: u8,
         thresholds: Thresholds,
-        health: u8,
     },
     RangedStrike {
         attacker_id: uuid::Uuid,
@@ -493,7 +491,7 @@ impl Effect {
                 let unit_base = card
                     .get_unit_base_mut()
                     .ok_or(anyhow::anyhow!("card has no unit base"))?;
-                unit_base.toughness += amount;
+                unit_base.damage = unit_base.damage.saturating_sub(*amount);
             }
             Effect::RemoveModifier { card_id, modifier } => {
                 let card = state.get_card_mut(card_id);
@@ -677,7 +675,6 @@ impl Effect {
                         player_id: card.get_owner_id().clone(),
                         mana: mana_cost,
                         thresholds: Thresholds::new(),
-                        health: 0,
                     }
                     .into(),
                 );
@@ -726,7 +723,6 @@ impl Effect {
                     player_id: card.get_owner_id().clone(),
                     mana: mana_cost,
                     thresholds: Thresholds::new(),
-                    health: 0,
                 });
                 state.effects.extend(effects.into_iter().map(|e| e.into()));
                 state.effects.extend(cast_effects.into_iter().map(|e| e.into()));
@@ -814,7 +810,6 @@ impl Effect {
                 player_id,
                 mana,
                 thresholds,
-                health,
                 ..
             } => {
                 let player_resources = state.get_player_resources_mut(player_id)?;
@@ -823,7 +818,6 @@ impl Effect {
                 player_resources.thresholds.water = player_resources.thresholds.water.saturating_sub(thresholds.water);
                 player_resources.thresholds.fire = player_resources.thresholds.fire.saturating_sub(thresholds.fire);
                 player_resources.thresholds.earth = player_resources.thresholds.earth.saturating_sub(thresholds.earth);
-                player_resources.health -= health;
             }
             Effect::EndTurn { player_id, .. } => {
                 for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
@@ -840,6 +834,10 @@ impl Effect {
 
                 let cards = state.cards.iter_mut().filter(|c| c.is_unit());
                 for card in cards {
+                    if card.is_avatar() {
+                        continue;
+                    }
+
                     card.get_unit_base_mut()
                         .ok_or(anyhow::anyhow!("card has no unit base component"))?
                         .damage = 0;
@@ -871,7 +869,6 @@ impl Effect {
                 player_id,
                 mana,
                 thresholds,
-                health,
                 ..
             } => {
                 let player_resources = state.get_player_resources_mut(player_id)?;
@@ -880,7 +877,6 @@ impl Effect {
                 player_resources.thresholds.water += thresholds.water;
                 player_resources.thresholds.fire += thresholds.fire;
                 player_resources.thresholds.earth += thresholds.earth;
-                player_resources.health += health;
             }
             Effect::Attack {
                 attacker_id,

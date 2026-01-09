@@ -83,7 +83,6 @@ impl Card for ChainLightning {
                     player_id: self.get_controller_id().clone(),
                     mana: 2,
                     thresholds: Thresholds::new(),
-                    health: 0,
                 };
                 effect.apply(&mut local_state).await?;
                 effects.push(effect);

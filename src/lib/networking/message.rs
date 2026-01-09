@@ -76,6 +76,7 @@ pub enum ServerMessage {
     Sync {
         cards: Vec<CardData>,
         resources: HashMap<PlayerId, Resources>,
+        health: HashMap<PlayerId, u8>,
         current_player: PlayerId,
     },
     PickCard {
@@ -109,6 +110,7 @@ pub enum ServerMessage {
         cards: Vec<CardData>,
         resources: HashMap<PlayerId, Resources>,
         current_player: PlayerId,
+        health: HashMap<PlayerId, u8>,
     },
 }
 

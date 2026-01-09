@@ -491,16 +491,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     // base_take_damage to get the default behaviour.
     fn base_take_damage(&mut self, state: &State, from: &uuid::Uuid, damage: u8) -> anyhow::Result<Vec<Effect>> {
         if self.is_unit() {
-            // Avatar is a sub-type of unit
-            if self.is_avatar() {
-                return Ok(vec![Effect::RemoveResources {
-                    player_id: self.get_owner_id().clone(),
-                    mana: 0,
-                    thresholds: Thresholds::new(),
-                    health: damage,
-                }]);
-            }
-
             let ub = self
                 .get_unit_base_mut()
                 .ok_or(anyhow::anyhow!("unit card has no unit base"))?;
@@ -513,11 +503,11 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
             return Ok(vec![]);
         } else if self.is_site() {
-            return Ok(vec![Effect::RemoveResources {
-                player_id: self.get_owner_id().clone(),
-                mana: 0,
-                thresholds: Thresholds::new(),
-                health: damage,
+            let avatar_id = state.get_player_avatar_id(self.get_controller_id())?;
+            return Ok(vec![Effect::TakeDamage {
+                card_id: avatar_id,
+                from: from.clone(),
+                damage,
             }]);
         }
 
@@ -535,7 +525,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             player_id: self.get_owner_id().clone(),
             mana: site_base.provided_mana,
             thresholds: site_base.provided_thresholds.clone(),
-            health: 0,
         }])
     }
 
@@ -972,7 +961,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     player_id: self.get_owner_id().clone(),
                     mana: 0,
                     thresholds: self.get_site_base().unwrap().provided_thresholds.clone(),
-                    health: 0,
                 },
             ];
         }
@@ -1105,6 +1093,20 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             actions.push(Box::new(AvatarAction::PlaySite));
         }
 
+        // TODO: should artifacts on avatars be able to provide actions?
+        // let artifacts = state
+        //     .cards
+        //     .iter()
+        //     .filter(|c| c.is_artifact())
+        //     .filter_map(|c| c.get_artifact())
+        //     .filter(|c| match c.get_bearer() {
+        //         Ok(Some(bearer_id)) => bearer_id == *self.get_id(),
+        //         _ => false,
+        //     });
+        // for artifact in artifacts {
+        //     actions.extend(artifact.get_actions(state)?);
+        // }
+
         Ok(actions)
     }
 
@@ -1121,6 +1123,20 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         if self.has_modifier(state, &Modifier::Submerge) {
             actions.push(Box::new(UnitAction::Submerge));
         }
+
+        // TODO: should artifacts on units be able to provide actions?
+        // let artifacts = state
+        //     .cards
+        //     .iter()
+        //     .filter(|c| c.is_artifact())
+        //     .filter_map(|c| c.get_artifact())
+        //     .filter(|c| match c.get_bearer() {
+        //         Ok(Some(bearer_id)) => bearer_id == *self.get_id(),
+        //         _ => false,
+        //     });
+        // for artifact in artifacts {
+        //     actions.extend(artifact.get_actions(state)?);
+        // }
 
         Ok(actions)
     }
@@ -1290,7 +1306,7 @@ pub trait Artifact: Card {
         }
     }
 
-    fn get_attached_to(&self) -> anyhow::Result<Option<uuid::Uuid>> {
+    fn get_bearer(&self) -> anyhow::Result<Option<uuid::Uuid>> {
         Ok(self
             .get_artifact_base()
             .ok_or(anyhow::anyhow!("artifact card has no base"))?

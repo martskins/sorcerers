@@ -160,19 +160,34 @@ impl State {
                 damage_taken: c.get_damage_taken().unwrap_or(0),
                 attached_to: c
                     .get_artifact()
-                    .and_then(|c| c.get_attached_to().unwrap_or_default().clone()),
+                    .and_then(|c| c.get_bearer().unwrap_or_default().clone()),
                 rarity: c.get_base().rarity.clone(),
                 num_arts: c.get_num_arts(),
             })
             .collect()
     }
 
-    pub fn into_sync(&self) -> ServerMessage {
-        ServerMessage::Sync {
+    pub fn into_sync(&self) -> anyhow::Result<ServerMessage> {
+        let mut health = HashMap::new();
+        for player in &self.players {
+            let avatar_id = self.get_player_avatar_id(&player.id)?;
+            let avatar_card = self.get_card(&avatar_id);
+            health.insert(
+                player.id.clone(),
+                avatar_card
+                    .get_unit_base()
+                    .ok_or(anyhow::anyhow!("no unit base in avatar"))?
+                    .toughness
+                    - avatar_card.get_damage_taken().unwrap_or(0),
+            );
+        }
+
+        Ok(ServerMessage::Sync {
             cards: self.data_from_cards(),
             resources: self.resources.clone(),
             current_player: self.current_player.clone(),
-        }
+            health: health,
+        })
     }
 
     pub fn get_receiver(&self) -> Receiver<ClientMessage> {

@@ -138,7 +138,7 @@ impl Component for PlayerStatusComponent {
         };
         draw_text(player_name, self.rect.x, self.rect.y, FONT_SIZE, WHITE);
 
-        let health = format!("{}", resources.health);
+        let health = format!("{}", data.avatar_health.get(&self.player_id).cloned().unwrap_or(0));
         Self::draw_icon(self, &Icon::Heart, &health).await?;
 
         let cards_in_hand = format!(
