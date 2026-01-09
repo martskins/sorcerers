@@ -66,7 +66,7 @@ pub fn draw_card(card_rect: &CardRect, is_ally: bool) {
 
     let mut color = WHITE;
     if card_rect.card.modifiers.contains(&Modifier::Stealth) {
-        color = Color::new(0.0, 0.0, 0.0, 0.85);
+        color = Color::new(1.0, 1.0, 1.0, 0.85);
     }
 
     draw_texture_ex(

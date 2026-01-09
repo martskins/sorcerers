@@ -1,8 +1,14 @@
+mod artifact_template;
+mod aura_template;
+mod magic_template;
 mod minion_template;
 mod site_template;
 
+use artifact_template::ARTIFACT_TEMPLATE;
+use aura_template::AURA_TEMPLATE;
 use clap::Parser;
 use convert_case::{Case, Casing};
+use magic_template::MAGIC_TEMPLATE;
 use minion_template::MINION_TEMPLATE;
 use site_template::SITE_TEMPLATE;
 use std::io::Write;
@@ -25,6 +31,33 @@ struct Args {
 
     #[arg(long)]
     card_type: CardType,
+}
+
+#[derive(Debug)]
+struct ArtifactRecord {
+    name: String,
+    edition: String,
+    mana_cost: u8,
+    required_thresholds: String,
+    rarity: String,
+}
+
+#[derive(Debug)]
+struct AuraRecord {
+    name: String,
+    edition: String,
+    mana_cost: u8,
+    required_thresholds: String,
+    rarity: String,
+}
+
+#[derive(Debug)]
+struct MagicRecord {
+    name: String,
+    edition: String,
+    mana_cost: u8,
+    required_thresholds: String,
+    rarity: String,
 }
 
 #[derive(Debug)]
@@ -165,6 +198,123 @@ fn main() -> anyhow::Result<()> {
                     .replace("{ProvidedThresholds}", &site.provided_thresholds)
                     .replace("{Rarity}", &site.rarity)
                     .replace("{Edition}", &site.edition);
+
+                let mut file = std::fs::File::create(path)?;
+                file.write_all(contents.as_bytes())?;
+
+                let mod_path = format!("src/lib/card/{}/mod.rs", edition);
+                let mut mod_file = std::fs::File::options().append(true).open(mod_path)?;
+                mod_file.write_all(format!("pub mod {};\n", filename).as_bytes())?;
+                mod_file.write_all(format!("pub use {}::*;\n", filename).as_bytes())?;
+            }
+
+            Ok(())
+        }
+        CardType::Magic => {
+            let mut rdr = csv::Reader::from_reader(file);
+            for record in rdr.records() {
+                let record = record?;
+                let card: MagicRecord = MagicRecord {
+                    name: record[0].to_string(),
+                    edition: record[1].to_string(),
+                    mana_cost: record[2].parse().unwrap(),
+                    required_thresholds: record[3].to_string(),
+                    rarity: record[4].to_string(),
+                };
+
+                let edition = card.edition.to_lowercase();
+                let filename = card.name.to_case(Case::Snake);
+                let path = format!("src/lib/card/{}/{}.rs", edition, filename);
+                if std::fs::exists(&path)? {
+                    continue;
+                }
+
+                let struct_name = card.name.to_case(Case::Pascal);
+                let contents = MAGIC_TEMPLATE
+                    .replace("{CardName}", &card.name)
+                    .replace("{StructName}", &struct_name)
+                    .replace("{ManaCost}", &card.mana_cost.to_string())
+                    .replace("{RequiredThresholds}", &card.required_thresholds)
+                    .replace("{Rarity}", &card.rarity)
+                    .replace("{Edition}", &card.edition);
+
+                let mut file = std::fs::File::create(path)?;
+                file.write_all(contents.as_bytes())?;
+
+                let mod_path = format!("src/lib/card/{}/mod.rs", edition);
+                let mut mod_file = std::fs::File::options().append(true).open(mod_path)?;
+                mod_file.write_all(format!("pub mod {};\n", filename).as_bytes())?;
+                mod_file.write_all(format!("pub use {}::*;\n", filename).as_bytes())?;
+            }
+
+            Ok(())
+        }
+        CardType::Artifact => {
+            let mut rdr = csv::Reader::from_reader(file);
+            for record in rdr.records() {
+                let record = record?;
+                let card: ArtifactRecord = ArtifactRecord {
+                    name: record[0].to_string(),
+                    edition: record[1].to_string(),
+                    mana_cost: record[2].parse().unwrap(),
+                    required_thresholds: record[3].to_string(),
+                    rarity: record[4].to_string(),
+                };
+
+                let edition = card.edition.to_lowercase();
+                let filename = card.name.to_case(Case::Snake);
+                let path = format!("src/lib/card/{}/{}.rs", edition, filename);
+                if std::fs::exists(&path)? {
+                    continue;
+                }
+
+                let struct_name = card.name.to_case(Case::Pascal);
+                let contents = ARTIFACT_TEMPLATE
+                    .replace("{CardName}", &card.name)
+                    .replace("{StructName}", &struct_name)
+                    .replace("{ManaCost}", &card.mana_cost.to_string())
+                    .replace("{RequiredThresholds}", &card.required_thresholds)
+                    .replace("{Rarity}", &card.rarity)
+                    .replace("{Edition}", &card.edition);
+
+                let mut file = std::fs::File::create(path)?;
+                file.write_all(contents.as_bytes())?;
+
+                let mod_path = format!("src/lib/card/{}/mod.rs", edition);
+                let mut mod_file = std::fs::File::options().append(true).open(mod_path)?;
+                mod_file.write_all(format!("pub mod {};\n", filename).as_bytes())?;
+                mod_file.write_all(format!("pub use {}::*;\n", filename).as_bytes())?;
+            }
+
+            Ok(())
+        }
+        CardType::Aura => {
+            let mut rdr = csv::Reader::from_reader(file);
+            for record in rdr.records() {
+                let record = record?;
+                let card: AuraRecord = AuraRecord {
+                    name: record[0].to_string(),
+                    edition: record[1].to_string(),
+                    mana_cost: record[2].parse().unwrap(),
+                    required_thresholds: record[3].to_string(),
+                    rarity: record[4].to_string(),
+                };
+
+                let edition = card.edition.to_lowercase();
+                let filename = card.name.to_case(Case::Snake);
+                let path = format!("src/lib/card/{}/{}.rs", edition, filename);
+                if std::fs::exists(&path)? {
+                    continue;
+                }
+
+                let struct_name = card.name.to_case(Case::Pascal);
+                let contents = AURA_TEMPLATE
+                    .replace("{CardName}", &card.name)
+                    .replace("{StructName}", &struct_name)
+                    .replace("{ManaCost}", &card.mana_cost.to_string())
+                    .replace("{RequiredThresholds}", &card.required_thresholds)
+                    .replace("{Rarity}", &card.rarity)
+                    .replace("{Edition}", &card.edition);
 
                 let mut file = std::fs::File::create(path)?;
                 file.write_all(contents.as_bytes())?;

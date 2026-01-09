@@ -1,5 +1,5 @@
 use crate::{
-    card::Zone,
+    card::{Plane, Zone},
     effect::Effect,
     game::{PlayerId, pick_card, pick_card_with_preview, pick_zone},
     state::State,
@@ -317,6 +317,7 @@ pub enum CardQuery {
     InZone {
         id: uuid::Uuid,
         zone: Zone,
+        planes: Option<Vec<Plane>>,
         owner: Option<PlayerId>,
         prompt: Option<String>,
     },
@@ -363,9 +364,18 @@ impl CardQuery {
     pub fn options(&self, state: &State) -> Vec<uuid::Uuid> {
         match self {
             CardQuery::Specific { card_id, .. } => vec![card_id.clone()],
-            CardQuery::InZone { zone, owner, .. } => zone
+            CardQuery::InZone {
+                zone, owner, planes, ..
+            } => zone
                 .get_units(state, owner.as_ref())
                 .iter()
+                .filter(|c| {
+                    if let Some(planes) = planes {
+                        planes.contains(c.get_plane(state))
+                    } else {
+                        true
+                    }
+                })
                 .map(|c| c.get_id().clone())
                 .collect(),
             CardQuery::NearZone { zone, owner, .. } => zone

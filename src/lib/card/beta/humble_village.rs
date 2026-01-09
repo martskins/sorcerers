@@ -1,6 +1,6 @@
 use crate::{
-    card::{Card, CardBase, Edition, FootSoldier, Plane, Rarity, Site, SiteBase, SiteType, Zone},
-    effect::Effect,
+    card::{Card, CardBase, Edition, Plane, Rarity, Site, SiteBase, SiteType, Zone},
+    effect::{Effect, TokenType},
     game::{BaseOption, PlayerId, Thresholds, pick_option},
     state::State,
 };
@@ -80,9 +80,6 @@ impl Card for HumbleVillage {
             return Ok(vec![]);
         }
 
-        let mut foot_soldier = FootSoldier::new(self.get_controller_id().clone());
-        foot_soldier.set_zone(self.get_zone().clone());
-
         Ok(vec![
             Effect::RemoveResources {
                 player_id: self.get_controller_id().clone(),
@@ -90,8 +87,10 @@ impl Card for HumbleVillage {
                 thresholds: Thresholds::new(),
                 health: 0,
             },
-            Effect::AddCard {
-                card: Box::new(foot_soldier),
+            Effect::SummonToken {
+                player_id: self.get_controller_id().clone(),
+                token_type: TokenType::FootSoldier,
+                zone: self.get_zone().clone(),
             },
         ])
     }

@@ -87,6 +87,13 @@ impl State {
         }
     }
 
+    pub fn get_player_avatar_id(&self, player_id: &PlayerId) -> anyhow::Result<uuid::Uuid> {
+        self.decks
+            .get(player_id)
+            .and_then(|d| Some(d.avatar.clone()))
+            .ok_or(anyhow::anyhow!("failed to get player avatar id"))
+    }
+
     pub fn get_opponent_id(&self, player_id: &PlayerId) -> anyhow::Result<PlayerId> {
         for player in &self.players {
             if &player.id != player_id {

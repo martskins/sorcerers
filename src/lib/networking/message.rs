@@ -21,6 +21,7 @@ pub enum Message {
 pub enum PreconDeck {
     BetaFire,
     BetaAir,
+    BetaEarth,
 }
 
 impl PreconDeck {
@@ -28,6 +29,7 @@ impl PreconDeck {
         match self {
             PreconDeck::BetaFire => "Beta - Fire",
             PreconDeck::BetaAir => "Beta - Air",
+            PreconDeck::BetaEarth => "Beta - Earth",
         }
     }
 
@@ -35,6 +37,7 @@ impl PreconDeck {
         match self {
             PreconDeck::BetaFire => precon::beta::fire(player_id),
             PreconDeck::BetaAir => precon::beta::air(player_id),
+            PreconDeck::BetaEarth => precon::beta::earth(player_id),
         }
     }
 }

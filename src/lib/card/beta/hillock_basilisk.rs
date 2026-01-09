@@ -64,7 +64,7 @@ impl Card for HillockBasilisk {
         let board_flipped = self.get_owner_id() != &state.player_one;
         let zone_in_front = self
             .get_zone()
-            .zone_in_direction(&Direction::Up.normalise(board_flipped));
+            .zone_in_direction(&Direction::Up.normalise(board_flipped), 1);
         if let Some(zone) = zone_in_front {
             zones.push(zone);
         }

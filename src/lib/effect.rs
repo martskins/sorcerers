@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, Modifier, Plane, UnitBase, Zone},
+    card::{Card, FootSoldier, Modifier, Plane, Rubble, UnitBase, Zone},
     game::{BaseAction, Direction, PlayerAction, PlayerId, SoundEffect, Thresholds, pick_card, pick_option},
     networking::message::ServerMessage,
     query::{CardQuery, EffectQuery, ZoneQuery},
@@ -34,7 +34,18 @@ impl Counter {
 }
 
 #[derive(Debug)]
+pub enum TokenType {
+    Rubble,
+    FootSoldier,
+}
+
+#[derive(Debug)]
 pub enum Effect {
+    SummonToken {
+        player_id: uuid::Uuid,
+        token_type: TokenType,
+        zone: Zone,
+    },
     Heal {
         card_id: uuid::Uuid,
         amount: u8,
@@ -97,9 +108,6 @@ pub enum Effect {
         card_id: uuid::Uuid,
         caster_id: uuid::Uuid,
         from: Zone,
-    },
-    AddCard {
-        card: Box<dyn crate::card::Card>,
     },
     PlayCard {
         player_id: uuid::Uuid,
@@ -239,6 +247,22 @@ impl Effect {
 
     pub async fn description(&self, state: &State) -> anyhow::Result<Option<String>> {
         let desc = match self {
+            Effect::SummonToken {
+                player_id,
+                token_type,
+                zone,
+            } => {
+                let token_name = match token_type {
+                    TokenType::Rubble => "Rubble",
+                    TokenType::FootSoldier => "Foot Soldier",
+                };
+                Some(format!(
+                    "{} summons a {} in zone {}",
+                    player_name(player_id, state),
+                    token_name,
+                    zone
+                ))
+            }
             Effect::Heal { card_id, amount } => {
                 let card = state.get_card(card_id).get_name();
                 Some(format!("{} heals {} for {} health", card, card, amount))
@@ -260,7 +284,6 @@ impl Effect {
                     direction.get_name()
                 ))
             }
-            Effect::AddCard { .. } => None,
             Effect::AddModifierCounter { .. } => None,
             Effect::AddCounter { .. } => None,
             Effect::TeleportCard { .. } => None,
@@ -453,6 +476,18 @@ impl Effect {
         }
 
         match self {
+            Effect::SummonToken {
+                player_id,
+                token_type,
+                zone,
+            } => {
+                let mut token: Box<dyn Card> = match token_type {
+                    TokenType::Rubble => Box::new(Rubble::new(player_id.clone())),
+                    TokenType::FootSoldier => Box::new(FootSoldier::new(player_id.clone())),
+                };
+                token.set_zone(zone.clone());
+                state.cards.push(token);
+            }
             Effect::Heal { card_id, amount } => {
                 let card = state.get_card_mut(card_id);
                 let unit_base = card
@@ -475,7 +510,7 @@ impl Effect {
                 ..
             } => {
                 let mut effects = vec![];
-                let mut next_zone = from_zone.zone_in_direction(direction);
+                let mut next_zone = from_zone.zone_in_direction(direction, 1);
                 while let Some(zone) = next_zone {
                     let units = state
                         .get_units_in_zone(&zone)
@@ -484,7 +519,7 @@ impl Effect {
                         .map(|c| c.get_id().clone())
                         .collect::<Vec<_>>();
                     if units.is_empty() {
-                        next_zone = zone.zone_in_direction(direction);
+                        next_zone = zone.zone_in_direction(direction, 1);
                         continue;
                     }
 
@@ -508,15 +543,12 @@ impl Effect {
                     if !piercing {
                         break;
                     }
-                    next_zone = zone.zone_in_direction(direction);
+                    next_zone = zone.zone_in_direction(direction, 1);
                 }
 
                 for effect in effects {
                     state.effects.push_back(effect.into());
                 }
-            }
-            Effect::AddCard { card, .. } => {
-                state.cards.push(card.clone_box());
             }
             Effect::TeleportCard { card_id, to, .. } => {
                 let snapshot = state.snapshot();
@@ -1001,7 +1033,7 @@ impl Effect {
             }
             Effect::Burrow { card_id, .. } => {
                 let card = state.get_card_mut(card_id);
-                card.get_base_mut().plane = Plane::Burrowed;
+                card.get_base_mut().plane = Plane::Underground;
             }
             Effect::Submerge { card_id, .. } => {
                 let card = state.get_card_mut(card_id);

@@ -232,7 +232,7 @@ impl RealmComponent {
         use macroquad::input::mouse_position;
 
         match &data.status {
-            Status::SelectingPath { paths } => {
+            Status::SelectingPath { paths, .. } => {
                 let mouse = {
                     let (mx, my) = mouse_position();
                     Vec2::new(mx, my)
@@ -350,7 +350,7 @@ impl RealmComponent {
             draw_text(&cell.id.to_string(), rect.x + 5.0, rect.y + 15.0, 12.0, GRAY);
 
             match &data.status {
-                Status::SelectingZone { zones } => {
+                Status::SelectingZone { zones, .. } => {
                     let can_pick_zone = zones.iter().find(|i| i == &&Zone::Realm(cell.id)).is_some();
                     if can_pick_zone {
                         draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, 5.0, GREEN);
@@ -370,7 +370,7 @@ impl RealmComponent {
 
         for intersection in &self.intersection_rects {
             match &data.status {
-                Status::SelectingZone { zones } => {
+                Status::SelectingZone { zones, .. } => {
                     let rect = intersection.rect;
                     let can_pick_zone = zones
                         .iter()
@@ -411,7 +411,7 @@ impl RealmComponent {
         }
 
         match &status {
-            Status::SelectingZone { zones } => {
+            Status::SelectingZone { zones, .. } => {
                 let zones = zones.clone();
                 for (idx, cell) in self.cell_rects.iter().enumerate() {
                     let can_pick_zone = zones.iter().find(|i| i == &&Zone::Realm(cell.id)).is_some();
@@ -575,7 +575,7 @@ impl RealmComponent {
             return Ok(());
         }
 
-        if let Status::SelectingPath { paths } = &status {
+        if let Status::SelectingPath { paths, .. } = &status {
             let mut path_points: Vec<Vec<Vec2>> = Vec::new();
             for path in paths {
                 let mut points = Vec::new();
@@ -628,6 +628,48 @@ impl RealmComponent {
     async fn render_card_preview(&self, data: &mut GameData) -> anyhow::Result<()> {
         if let Some(card) = self.card_rects.iter().find(|card| card.is_hovered) {
             render::render_card_preview(card, data).await?;
+        }
+
+        Ok(())
+    }
+
+    fn render_prompt(&mut self, data: &mut GameData) -> anyhow::Result<()> {
+        let prompt = match &data.status {
+            Status::SelectingZone { prompt, .. } => Some(prompt),
+            Status::SelectingCard { prompt, .. } => Some(prompt),
+            Status::SelectingPath { prompt, .. } => Some(prompt),
+            _ => None,
+        };
+
+        if let Some(prompt) = prompt {
+            let text_size = 32.0;
+            let text_metrics = macroquad::text::measure_text(prompt, None, text_size as u16, 1.0);
+            let text_width = text_metrics.width;
+            let text_height = text_metrics.height;
+            let rect_w = self.rect.w;
+            let rect_h = text_height + 20.0;
+
+            let steps = 16;
+            for i in 0..steps {
+                let t = i as f32 / steps as f32;
+                let alpha = 0.7 * (1.0 - t); // fade out as it goes down
+                let y = t * rect_h;
+                let h = rect_h / steps as f32;
+                draw_rectangle_ex(
+                    self.rect.x,
+                    y,
+                    rect_w,
+                    h,
+                    DrawRectangleParams {
+                        color: Color::new(0.15, 0.18, 0.22, alpha as f32),
+                        ..Default::default()
+                    },
+                );
+            }
+
+            let text_x = self.rect.x + self.rect.w / 2.0 - text_width / 2.0;
+            let text_y = text_height + 5.0;
+            draw_text(prompt, text_x, text_y, text_size, WHITE);
         }
 
         Ok(())
@@ -702,44 +744,12 @@ impl Component for RealmComponent {
             render::draw_card(card_rect, card_rect.card.owner_id == self.player_id);
 
             if let Status::SelectingCard {
-                cards,
-                prompt,
-                preview: false,
-                ..
+                cards, preview: false, ..
             } = &data.status
             {
                 if !Mouse::enabled()? {
                     return Ok(());
                 }
-
-                let text_size = 32.0;
-                let text_metrics = macroquad::text::measure_text(prompt, None, text_size as u16, 1.0);
-                let text_width = text_metrics.width;
-                let text_height = text_metrics.height;
-                let rect_w = self.rect.w;
-                let rect_h = text_height + 20.0;
-
-                let steps = 16;
-                for i in 0..steps {
-                    let t = i as f32 / steps as f32;
-                    let alpha = 0.7 * (1.0 - t); // fade out as it goes down
-                    let y = t * rect_h;
-                    let h = rect_h / steps as f32;
-                    draw_rectangle_ex(
-                        self.rect.x,
-                        y,
-                        rect_w,
-                        h,
-                        DrawRectangleParams {
-                            color: Color::new(0.15, 0.18, 0.22, alpha as f32),
-                            ..Default::default()
-                        },
-                    );
-                }
-
-                let text_x = self.rect.x + self.rect.w / 2.0 - text_width / 2.0;
-                let text_y = text_height + 5.0;
-                draw_text(prompt, text_x, text_y, text_size, WHITE);
 
                 if !cards.contains(&card_rect.card.id) {
                     draw_rectangle_ex(
@@ -759,6 +769,7 @@ impl Component for RealmComponent {
 
         self.render_card_preview(data).await?;
         self.render_paths(data);
+        self.render_prompt(data)?;
 
         Ok(())
     }

@@ -4,6 +4,66 @@ use crate::{
     game::PlayerId,
 };
 
+pub fn earth(player_id: &PlayerId) -> (Deck, Vec<Box<dyn Card>>) {
+    let spells = vec![
+        (2, "Wild Boars"),
+        (2, "Land Surveyor"),
+        (2, "Scent Hounds"),
+        (2, "Autumn Unicorn"),
+        (3, "Belmotte Longbowmen"),
+        (3, "Cave Trolls"),
+        (1, "Slumbering Giantess"),
+        (1, "Dalcean Phalanx"),
+        (2, "House Arn Bannerman"),
+        (1, "Pudge Butcher"),
+        (2, "Amazon Warriors"),
+        (1, "King of the Realm"),
+        (1, "Wraetannis Titan"),
+        (1, "Mountain Giant"),
+        (1, "Divine Healing"),
+        (2, "Overpower"),
+        (1, "Border Militia"),
+        (2, "Bury"),
+        (1, "Cave-In"),
+        (1, "Craterize"),
+        (1, "Entangle Terrain"),
+        (1, "Siege Ballista"),
+        (1, "Rolling Boulder"),
+        (1, "Payload Trebuchet"),
+    ];
+    let spells = spells
+        .into_iter()
+        .flat_map(|(count, name)| (0..count).map(move |_| from_name(name, player_id)))
+        .collect::<Vec<_>>();
+
+    let sites = vec![
+        (1, "Bedrock"),
+        (1, "Holy Ground"),
+        (3, "Humble Village"),
+        (2, "Quagmire"),
+        (3, "Rustic Village"),
+        (3, "Simple Village"),
+        (1, "Sinkhole"),
+        (2, "Vantage Hills"),
+    ];
+    let sites = sites
+        .into_iter()
+        .flat_map(|(count, name)| (0..count).map(move |_| from_name(name, player_id)))
+        .collect::<Vec<_>>();
+
+    let avatar = from_name("Geomancer", player_id);
+
+    let mut deck = Deck {
+        player_id: player_id.clone(),
+        sites: sites.iter().map(|c| c.get_id().clone()).collect(),
+        spells: spells.iter().map(|c| c.get_id().clone()).collect(),
+        avatar: avatar.get_id().clone(),
+    };
+    deck.shuffle();
+
+    (deck, vec![avatar].into_iter().chain(spells).chain(sites).collect())
+}
+
 pub fn fire(player_id: &PlayerId) -> (Deck, Vec<Box<dyn Card>>) {
     let spells = vec![
         (2, "Pit Vipers"),

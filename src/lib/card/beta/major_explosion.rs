@@ -52,14 +52,14 @@ impl Card for MajorExplosion {
         let zone = pick_zone(self.get_owner_id(), &zones, state, prompt).await?;
         let zone_dmg: Vec<(Option<Zone>, u8)> = vec![
             (Some(zone.clone()), 7),
-            (zone.zone_in_direction(&Direction::Up), 5),
-            (zone.zone_in_direction(&Direction::Down), 5),
-            (zone.zone_in_direction(&Direction::Left), 5),
-            (zone.zone_in_direction(&Direction::Right), 5),
-            (zone.zone_in_direction(&Direction::TopLeft), 3),
-            (zone.zone_in_direction(&Direction::TopRight), 3),
-            (zone.zone_in_direction(&Direction::BottomLeft), 3),
-            (zone.zone_in_direction(&Direction::BottomRight), 3),
+            (zone.zone_in_direction(&Direction::Up, 1), 5),
+            (zone.zone_in_direction(&Direction::Down, 1), 5),
+            (zone.zone_in_direction(&Direction::Left, 1), 5),
+            (zone.zone_in_direction(&Direction::Right, 1), 5),
+            (zone.zone_in_direction(&Direction::TopLeft, 1), 3),
+            (zone.zone_in_direction(&Direction::TopRight, 1), 3),
+            (zone.zone_in_direction(&Direction::BottomLeft, 1), 3),
+            (zone.zone_in_direction(&Direction::BottomRight, 1), 3),
         ];
         let mut effects = vec![];
         for (zone, dmg) in zone_dmg {

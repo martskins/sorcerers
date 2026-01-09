@@ -1,6 +1,6 @@
 use crate::{
-    card::{Card, CardBase, Edition, Plane, Rarity, Rubble, Site, SiteBase, Zone},
-    effect::Effect,
+    card::{Card, CardBase, Edition, Plane, Rarity, Site, SiteBase, Zone},
+    effect::{Effect, TokenType},
     game::{CardAction, PlayerId, Thresholds},
     state::State,
 };
@@ -28,12 +28,13 @@ impl CardAction for VesuviusAction {
                     .iter()
                     .map(|c| c.get_id().clone())
                     .collect();
-                let rubble = Rubble::new(card.get_owner_id().clone());
-                let rubble_id = rubble.get_id().clone();
                 let mut effects = vec![
                     Effect::bury_card(card.get_id(), card.get_zone()),
-                    Effect::AddCard { card: Box::new(rubble) },
-                    Effect::play_card(card.get_owner_id(), &rubble_id, card.get_zone()),
+                    Effect::SummonToken {
+                        player_id: card.get_controller_id().clone(),
+                        token_type: TokenType::Rubble,
+                        zone: card.get_zone().clone(),
+                    },
                 ];
                 for site_id in site_ids {
                     let site = state.get_card(&site_id);

@@ -51,13 +51,13 @@ impl Card for ConeOfFlame {
         let caster = state.get_card(caster_id);
         let zone = caster.get_zone();
         let zone_dmg = vec![
-            (zone.zone_in_direction_and_steps(&dir, 1), 5),
-            (zone.zone_in_direction_and_steps(&dir, 2), 3),
-            (zone.zone_in_direction_and_steps(&dir, 3), 1),
-            (zone.zone_in_direction_and_steps(&dir.rotate(1)?, 1), 3),
-            (zone.zone_in_direction_and_steps(&dir.rotate(1)?, 2), 1),
-            (zone.zone_in_direction_and_steps(&dir.rotate(7)?, 1), 3),
-            (zone.zone_in_direction_and_steps(&dir.rotate(7)?, 2), 1),
+            (zone.zone_in_direction(&dir, 1), 5),
+            (zone.zone_in_direction(&dir, 2), 3),
+            (zone.zone_in_direction(&dir, 3), 1),
+            (zone.zone_in_direction(&dir.rotate(1)?, 1), 3),
+            (zone.zone_in_direction(&dir.rotate(1)?, 2), 1),
+            (zone.zone_in_direction(&dir.rotate(7)?, 1), 3),
+            (zone.zone_in_direction(&dir.rotate(7)?, 2), 1),
         ];
 
         let mut effects = vec![];

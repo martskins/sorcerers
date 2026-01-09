@@ -1,7 +1,7 @@
 use crate::{
-    card::{AvatarBase, Card, CardBase, Edition, Plane, Rarity, Rubble, UnitBase, Zone, place_rubble},
-    effect::Effect,
-    game::{AvatarAction, CardAction, Element, PlayerId, Thresholds, force_sync, pick_card, pick_zone},
+    card::{AvatarBase, Card, CardBase, Edition, Plane, Rarity, Rubble, UnitBase, Zone},
+    effect::{Effect, TokenType},
+    game::{AvatarAction, CardAction, Element, PlayerId, Thresholds, pick_card, pick_zone},
     query::ZoneQuery,
     state::State,
 };
@@ -50,32 +50,29 @@ impl CardAction for GeomancerAbility {
                     Effect::tap_card(card_id).into(),
                 ];
 
-                let mut snapshot = state.snapshot();
-                for effect in &effects {
-                    effect.apply(&mut snapshot).await?;
-                }
-                snapshot.apply_effects_without_log().await?;
-                force_sync(player_id, &snapshot).await?;
-
                 let picked_site = state.get_card(&picked_card_id);
-                if picked_site
+                let is_earth_site = picked_site
                     .get_site()
                     .ok_or(anyhow::anyhow!("Not a site"))?
                     .provides(&Element::Earth)?
-                    .unwrap_or(0)
-                    > 0
-                {
+                    > 0;
+                if is_earth_site {
                     let card = state.get_card(card_id);
                     let zones = card
                         .get_zone()
                         .get_adjacent()
                         .iter()
-                        .filter(|z| z.get_site(&snapshot).is_none())
+                        .filter(|z| z.get_site(&state).is_none())
+                        .filter(|z| z != &&zone)
                         .cloned()
                         .collect::<Vec<Zone>>();
                     let picked_zone =
                         pick_zone(player_id, &zones, state, "Geomancer: Pick a void to fill with a rubble").await?;
-                    effects.extend(place_rubble(card.get_controller_id(), &picked_zone));
+                    effects.push(Effect::SummonToken {
+                        player_id: card.get_controller_id().clone(),
+                        token_type: TokenType::Rubble,
+                        zone: picked_zone.clone(),
+                    });
                 }
 
                 Ok(effects)
@@ -194,6 +191,14 @@ impl Card for Geomancer {
 
     fn get_avatar_base_mut(&mut self) -> Option<&mut AvatarBase> {
         Some(&mut self.avatar_base)
+    }
+
+    fn get_actions(&self, state: &State) -> anyhow::Result<Vec<Box<dyn CardAction>>> {
+        let mut actions = self.base_unit_actions(state)?;
+        actions.push(Box::new(GeomancerAbility::PlaySite));
+        actions.push(Box::new(GeomancerAbility::DrawSite));
+        actions.push(Box::new(GeomancerAbility::ReplaceRubble));
+        Ok(actions)
     }
 }
 

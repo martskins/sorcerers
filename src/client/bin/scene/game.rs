@@ -49,9 +49,11 @@ pub enum Status {
     },
     SelectingPath {
         paths: Vec<Vec<Zone>>,
+        prompt: String,
     },
     SelectingZone {
         zones: Vec<Zone>,
+        prompt: String,
     },
     ViewingCards {
         cards: Vec<uuid::Uuid>,
@@ -319,12 +321,18 @@ impl Game {
                 });
                 Ok(None)
             }
-            ServerMessage::PickZone { zones, .. } => {
-                self.data.status = Status::SelectingZone { zones: zones.clone() };
+            ServerMessage::PickZone { zones, prompt, .. } => {
+                self.data.status = Status::SelectingZone {
+                    zones: zones.clone(),
+                    prompt: prompt.clone(),
+                };
                 Ok(None)
             }
-            ServerMessage::PickPath { paths, .. } => {
-                self.data.status = Status::SelectingPath { paths: paths.clone() };
+            ServerMessage::PickPath { paths, prompt, .. } => {
+                self.data.status = Status::SelectingPath {
+                    paths: paths.clone(),
+                    prompt: prompt.clone(),
+                };
                 Ok(None)
             }
             ServerMessage::PickCard {

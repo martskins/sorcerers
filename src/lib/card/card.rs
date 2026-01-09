@@ -1,6 +1,6 @@
 use crate::{
-    card::{CARD_CONSTRUCTORS, Rubble},
-    effect::{Counter, Effect, ModifierCounter},
+    card::CARD_CONSTRUCTORS,
+    effect::{Counter, Effect, ModifierCounter, TokenType},
     game::{
         AvatarAction, CardAction, Direction, Element, PlayerId, Thresholds, UnitAction, are_adjacent, are_nearby,
         get_adjacent_zones, get_nearby_zones,
@@ -46,7 +46,7 @@ impl Edition {
 pub enum Plane {
     None,
     Void,
-    Burrowed,
+    Underground,
     Submerged,
     Surface,
     Air,
@@ -214,10 +214,10 @@ impl Zone {
             .collect()
     }
 
-    pub fn zone_in_direction_and_steps(&self, direction: &Direction, steps: u8) -> Option<Self> {
+    pub fn zone_in_direction(&self, direction: &Direction, steps: u8) -> Option<Self> {
         let mut current_zone = self.clone();
         for _ in 0..steps {
-            match current_zone.zone_in_direction(direction) {
+            match current_zone.step_in_direction(direction) {
                 Some(z) => current_zone = z,
                 None => return None,
             }
@@ -225,7 +225,7 @@ impl Zone {
         Some(current_zone)
     }
 
-    pub fn zone_in_direction(&self, direction: &Direction) -> Option<Self> {
+    fn step_in_direction(&self, direction: &Direction) -> Option<Self> {
         match self {
             Zone::Realm(square) => {
                 let zone = match direction {
@@ -255,7 +255,7 @@ impl Zone {
                     .iter()
                     .filter_map(|sq| {
                         let realm_zone = Zone::Realm(*sq);
-                        realm_zone.zone_in_direction(direction)?.get_square()
+                        realm_zone.zone_in_direction(direction, 1)?.get_square()
                     })
                     .collect();
 
@@ -351,6 +351,21 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     fn get_id(&self) -> &uuid::Uuid {
         &self.get_base().id
+    }
+
+    fn controller_can_pay_additional_costs(&self, _state: &State) -> anyhow::Result<bool> {
+        Ok(true)
+    }
+
+    fn can_be_played(&self, state: &State) -> anyhow::Result<bool> {
+        let resources = state.get_player_resources(self.get_controller_id())?;
+        let can_afford =
+            resources.has_resources(self.get_mana_cost(state), self.get_required_thresholds(state).clone());
+        if !can_afford {
+            return Ok(false);
+        }
+
+        self.controller_can_pay_additional_costs(state)
     }
 
     // When resolving a CardQuery, this method allows the card to override the query. A useful
@@ -896,7 +911,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         None
     }
 
-    // Returns a mutable reference to the site base if the card is a site, None otherwise.
+    // Upcasts a card to a site trait object if it is a site, None otherwise.
     fn get_site(&self) -> Option<&dyn Site> {
         None
     }
@@ -947,11 +962,12 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     fn deathrite(&self, _state: &State, from: &Zone) -> Vec<Effect> {
         if self.is_site() && from.is_in_play() {
-            let mut rubble = Rubble::new(self.get_owner_id().clone());
-            rubble.set_zone(from.clone());
-
             return vec![
-                Effect::AddCard { card: Box::new(rubble) },
+                Effect::SummonToken {
+                    player_id: self.get_controller_id().clone(),
+                    token_type: TokenType::Rubble,
+                    zone: from.clone(),
+                },
                 Effect::RemoveResources {
                     player_id: self.get_owner_id().clone(),
                     mana: 0,
@@ -1165,42 +1181,19 @@ pub struct SiteBase {
 }
 
 pub trait Site: Card {
-    fn provides(&self, element: &Element) -> anyhow::Result<Option<u8>> {
+    fn provides(&self, element: &Element) -> anyhow::Result<u8> {
         let site_base = self.get_site_base().ok_or(anyhow::anyhow!("site card has no base"))?;
 
         let result = match element {
-            Element::Fire => {
-                if site_base.types.contains(&SiteType::Desert) {
-                    Some(site_base.provided_mana)
-                } else {
-                    None
-                }
-            }
-            Element::Earth => {
-                if site_base.types.contains(&SiteType::Earth) {
-                    Some(site_base.provided_mana)
-                } else {
-                    None
-                }
-            }
-            Element::Air => {
-                if site_base.types.contains(&SiteType::Tower) {
-                    Some(site_base.provided_mana)
-                } else {
-                    None
-                }
-            }
-            Element::Water => {
-                if site_base.types.contains(&SiteType::Tower) {
-                    Some(site_base.provided_mana)
-                } else {
-                    None
-                }
-            }
+            Element::Fire => site_base.provided_thresholds.fire,
+            Element::Earth => site_base.provided_thresholds.earth,
+            Element::Air => site_base.provided_thresholds.air,
+            Element::Water => site_base.provided_thresholds.water,
         };
 
         Ok(result)
     }
+
     fn on_card_enter(&self, _state: &State, _card_id: &uuid::Uuid) -> Vec<Effect> {
         vec![]
     }
