@@ -1,7 +1,7 @@
 use crate::{
     card::{AdditionalCost, Artifact, ArtifactBase, Card, CardBase, CardType, Cost, Edition, Plane, Rarity, Zone},
     effect::Effect,
-    game::{CardAction, PlayerId, Thresholds, pick_card},
+    game::{ActivatedAbility, PlayerId, Thresholds, pick_card},
     query::CardQuery,
     state::State,
 };
@@ -10,7 +10,7 @@ use crate::{
 struct TapToDealDamage;
 
 #[async_trait::async_trait]
-impl CardAction for TapToDealDamage {
+impl ActivatedAbility for TapToDealDamage {
     fn get_name(&self) -> &str {
         "Tap to deal 3 damage to target unit"
     }
@@ -145,7 +145,7 @@ impl Card for SiegeBallista {
         Some(self)
     }
 
-    fn get_actions(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn CardAction>>> {
+    fn get_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         Ok(vec![Box::new(TapToDealDamage)])
     }
 }

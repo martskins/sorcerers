@@ -1,7 +1,7 @@
 use crate::{
     card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
     effect::Effect,
-    game::{CardAction, PlayerId},
+    game::{ActivatedAbility, PlayerId},
     query::CardQuery,
     state::State,
 };
@@ -10,7 +10,7 @@ use crate::{
 struct DealDamage;
 
 #[async_trait::async_trait]
-impl CardAction for DealDamage {
+impl ActivatedAbility for DealDamage {
     fn get_name(&self) -> &str {
         todo!()
     }
@@ -99,10 +99,10 @@ impl Card for NimbusJinn {
         Some(&mut self.unit_base)
     }
 
-    fn get_actions(&self, state: &State) -> anyhow::Result<Vec<Box<dyn CardAction>>> {
-        let mut actions = self.base_unit_actions(state)?;
-        actions.push(Box::new(DealDamage));
-        Ok(actions)
+    fn get_activated_abilities(&self, state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+        let mut activated_abilities = self.base_unit_activated_abilities(state)?;
+        activated_abilities.push(Box::new(DealDamage));
+        Ok(activated_abilities)
     }
 }
 

@@ -1,7 +1,7 @@
 use crate::{
     card::{Card, CardBase, Cost, Edition, Plane, Rarity, Site, SiteBase, Zone},
     effect::{Effect, TokenType},
-    game::{CardAction, PlayerId, Thresholds},
+    game::{ActivatedAbility, PlayerId, Thresholds},
     state::State,
 };
 
@@ -9,7 +9,7 @@ use crate::{
 struct UseAbility;
 
 #[async_trait::async_trait]
-impl CardAction for UseAbility {
+impl ActivatedAbility for UseAbility {
     fn get_name(&self) -> &str {
         "Use Vesuvius Ability"
     }
@@ -95,7 +95,7 @@ impl Card for Vesuvius {
         Some(&mut self.site_base)
     }
 
-    fn get_actions(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn CardAction>>> {
+    fn get_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         Ok(vec![Box::new(UseAbility)])
     }
 

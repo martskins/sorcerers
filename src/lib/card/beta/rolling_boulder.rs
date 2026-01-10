@@ -1,7 +1,7 @@
 use crate::{
     card::{AdditionalCost, AreaModifiers, Artifact, ArtifactBase, Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
     effect::Effect,
-    game::{CARDINAL_DIRECTIONS, CardAction, PlayerId, pick_direction},
+    game::{ActivatedAbility, CARDINAL_DIRECTIONS, PlayerId, pick_direction},
     query::{CardQuery, ZoneQuery},
     state::State,
 };
@@ -10,7 +10,7 @@ use crate::{
 struct RollBoulder(uuid::Uuid);
 
 #[async_trait::async_trait]
-impl CardAction for RollBoulder {
+impl ActivatedAbility for RollBoulder {
     fn get_name(&self) -> &str {
         "Tap to give Rolling Boulder a push"
     }
@@ -146,19 +146,19 @@ impl Card for RollingBoulder {
     }
 
     fn area_modifiers(&self, state: &State) -> AreaModifiers {
-        let granted_actions = self
+        let granted_activated_abilities = self
             .get_zone()
             .get_units(state, None)
             .iter()
             .map(|u| {
                 (
                     u.get_id().clone(),
-                    vec![Box::new(RollBoulder(self.get_id().clone())) as Box<dyn CardAction>],
+                    vec![Box::new(RollBoulder(self.get_id().clone())) as Box<dyn ActivatedAbility>],
                 )
             })
             .collect();
         AreaModifiers {
-            grants_actions: granted_actions,
+            grants_activated_abilities: granted_activated_abilities,
             ..Default::default()
         }
     }

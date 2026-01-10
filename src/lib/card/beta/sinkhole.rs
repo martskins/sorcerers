@@ -1,7 +1,7 @@
 use crate::{
     card::{Card, CardBase, Cost, Edition, Plane, Rarity, Site, SiteBase, Zone},
     effect::Effect,
-    game::{CardAction, PlayerId, Thresholds, pick_card},
+    game::{ActivatedAbility, PlayerId, Thresholds, pick_card},
     state::State,
 };
 
@@ -9,7 +9,7 @@ use crate::{
 struct DestroyNearbySite;
 
 #[async_trait::async_trait]
-impl CardAction for DestroyNearbySite {
+impl ActivatedAbility for DestroyNearbySite {
     fn get_name(&self) -> &str {
         "Destroy Nearby Site"
     }
@@ -103,7 +103,7 @@ impl Card for Sinkhole {
         Some(self)
     }
 
-    fn get_actions(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn CardAction>>> {
+    fn get_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         Ok(vec![Box::new(DestroyNearbySite)])
     }
 }

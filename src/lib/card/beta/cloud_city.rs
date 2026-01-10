@@ -1,7 +1,7 @@
 use crate::{
     card::{Card, CardBase, Cost, Edition, Plane, Rarity, Site, SiteBase, Zone},
     effect::Effect,
-    game::{CardAction, PlayerId, Thresholds, pick_zone},
+    game::{ActivatedAbility, PlayerId, Thresholds, pick_zone},
     query::ZoneQuery,
     state::State,
 };
@@ -10,7 +10,7 @@ use crate::{
 struct FlyToVoid;
 
 #[async_trait::async_trait]
-impl CardAction for FlyToVoid {
+impl ActivatedAbility for FlyToVoid {
     fn get_name(&self) -> &str {
         "Fly to nearby void"
     }
@@ -156,7 +156,7 @@ impl Card for CloudCity {
         Ok(vec![])
     }
 
-    fn get_actions(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn CardAction>>> {
+    fn get_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         Ok(vec![Box::new(FlyToVoid)])
     }
 

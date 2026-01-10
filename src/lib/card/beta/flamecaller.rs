@@ -1,7 +1,7 @@
 use crate::{
     card::{AvatarBase, Card, CardBase, Cost, Edition, Plane, Rarity, UnitBase, Zone},
     effect::Effect,
-    game::{CARDINAL_DIRECTIONS, CardAction, Element, PlayerId, Thresholds, pick_direction},
+    game::{ActivatedAbility, CARDINAL_DIRECTIONS, Element, PlayerId, Thresholds, pick_direction},
     state::State,
 };
 
@@ -9,7 +9,7 @@ use crate::{
 struct ShootProjectile;
 
 #[async_trait::async_trait]
-impl CardAction for ShootProjectile {
+impl ActivatedAbility for ShootProjectile {
     fn get_name(&self) -> &str {
         "Shoot Projectile"
     }
@@ -120,10 +120,10 @@ impl Card for Flamecaller {
         Some(&mut self.avatar_base)
     }
 
-    fn get_actions(&self, state: &State) -> anyhow::Result<Vec<Box<dyn CardAction>>> {
-        let mut actions = self.base_avatar_actions(state)?;
-        actions.push(Box::new(ShootProjectile));
-        Ok(actions)
+    fn get_activated_abilities(&self, state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+        let mut activated_abilities = self.base_avatar_activated_abilities(state)?;
+        activated_abilities.push(Box::new(ShootProjectile));
+        Ok(activated_abilities)
     }
 }
 

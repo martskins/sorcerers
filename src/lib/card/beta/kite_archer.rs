@@ -1,7 +1,7 @@
 use crate::{
     card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
     effect::Effect,
-    game::{PlayerId, pick_option, pick_zone},
+    game::{BaseOption, PlayerId, pick_option, pick_zone},
     query::ZoneQuery,
     state::State,
 };
@@ -62,9 +62,10 @@ impl Card for KiteArcher {
     }
 
     async fn after_attack(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        let actions = vec!["Yes".to_string(), "No".to_string()];
-        let picked_action = pick_option(self.get_owner_id(), &actions, state, "Take Step").await?;
-        if actions[picked_action] == "No" {
+        let options = vec![BaseOption::Yes, BaseOption::No];
+        let option_labels = options.iter().map(|o| o.to_string()).collect::<Vec<_>>();
+        let picked_action = pick_option(self.get_owner_id(), &option_labels, state, "Take Step").await?;
+        if options[picked_action] == BaseOption::No {
             return Ok(vec![]);
         }
 

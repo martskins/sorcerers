@@ -2,7 +2,7 @@ use crate::{
     card::CARD_CONSTRUCTORS,
     effect::{Counter, Effect, ModifierCounter, TokenType},
     game::{
-        AvatarAction, CardAction, Direction, Element, PlayerId, Thresholds, UnitAction, are_adjacent, are_nearby,
+        ActivatedAbility, AvatarAction, Direction, Element, PlayerId, Thresholds, UnitAction, are_adjacent, are_nearby,
         get_adjacent_zones, get_nearby_zones,
     },
     query::{CardQuery, ZoneQuery},
@@ -1197,9 +1197,9 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(vec![])
     }
 
-    fn base_avatar_actions(&self, state: &State) -> anyhow::Result<Vec<Box<dyn CardAction>>> {
-        let mut actions: Vec<Box<dyn CardAction>> = self.base_unit_actions(state)?;
-        actions.push(Box::new(AvatarAction::DrawSite));
+    fn base_avatar_activated_abilities(&self, state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+        let mut activated_abilities: Vec<Box<dyn ActivatedAbility>> = self.base_unit_activated_abilities(state)?;
+        activated_abilities.push(Box::new(AvatarAction::DrawSite));
         if state
             .cards
             .iter()
@@ -1208,13 +1208,13 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             .count()
             > 0
         {
-            actions.push(Box::new(AvatarAction::PlaySite));
+            activated_abilities.push(Box::new(AvatarAction::PlaySite));
         }
 
         for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
             let mods = card.area_modifiers(state);
-            if let Some(mods) = mods.grants_actions.get(self.get_id()) {
-                actions.extend(mods.clone());
+            if let Some(mods) = mods.grants_activated_abilities.get(self.get_id()) {
+                activated_abilities.extend(mods.clone());
             }
         }
 
@@ -1232,27 +1232,28 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         //     actions.extend(artifact.get_actions(state)?);
         // }
 
-        Ok(actions)
+        Ok(activated_abilities)
     }
 
-    fn base_unit_actions(&self, state: &State) -> anyhow::Result<Vec<Box<dyn CardAction>>> {
-        let mut actions: Vec<Box<dyn CardAction>> = vec![Box::new(UnitAction::Attack), Box::new(UnitAction::Move)];
+    fn base_unit_activated_abilities(&self, state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+        let mut activated_abilities: Vec<Box<dyn ActivatedAbility>> =
+            vec![Box::new(UnitAction::Attack), Box::new(UnitAction::Move)];
         if self.is_ranged(state)? {
-            actions.push(Box::new(UnitAction::RangedAttack));
+            activated_abilities.push(Box::new(UnitAction::RangedAttack));
         }
 
         if self.has_modifier(state, &Ability::Burrowing) {
-            actions.push(Box::new(UnitAction::Burrow));
+            activated_abilities.push(Box::new(UnitAction::Burrow));
         }
 
         if self.has_modifier(state, &Ability::Submerge) {
-            actions.push(Box::new(UnitAction::Submerge));
+            activated_abilities.push(Box::new(UnitAction::Submerge));
         }
 
         for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
             let mods = card.area_modifiers(state);
-            if let Some(mods) = mods.grants_actions.get(self.get_id()) {
-                actions.extend(mods.clone());
+            if let Some(mods) = mods.grants_activated_abilities.get(self.get_id()) {
+                activated_abilities.extend(mods.clone());
             }
         }
 
@@ -1270,15 +1271,15 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         //     actions.extend(artifact.get_actions(state)?);
         // }
 
-        Ok(actions)
+        Ok(activated_abilities)
     }
 
     // Returns the available actions for this card, given the current game state.
-    fn get_actions(&self, state: &State) -> anyhow::Result<Vec<Box<dyn CardAction>>> {
+    fn get_activated_abilities(&self, state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         if self.is_avatar() {
-            return Ok(self.base_avatar_actions(state)?);
+            return Ok(self.base_avatar_activated_abilities(state)?);
         } else if self.is_unit() {
-            return Ok(self.base_unit_actions(state)?);
+            return Ok(self.base_unit_activated_abilities(state)?);
         }
 
         Ok(vec![])
@@ -1302,7 +1303,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 pub struct AreaModifiers {
     pub grants_abilities: HashMap<uuid::Uuid, Vec<Ability>>,
     pub removes_abilities: HashMap<uuid::Uuid, Vec<Ability>>,
-    pub grants_actions: HashMap<uuid::Uuid, Vec<Box<dyn CardAction>>>,
+    pub grants_activated_abilities: HashMap<uuid::Uuid, Vec<Box<dyn ActivatedAbility>>>,
 }
 
 #[derive(Debug, PartialEq, Clone)]

@@ -1,7 +1,7 @@
 use crate::{
     card::{AdditionalCost, Artifact, ArtifactBase, Card, CardBase, CardType, Cost, Edition, Plane, Rarity, Zone},
     effect::Effect,
-    game::{CardAction, PlayerId, Thresholds, pick_zone},
+    game::{ActivatedAbility, PlayerId, Thresholds, pick_zone},
     query::CardQuery,
     state::State,
 };
@@ -10,7 +10,7 @@ use crate::{
 struct ShootPayload;
 
 #[async_trait::async_trait]
-impl CardAction for ShootPayload {
+impl ActivatedAbility for ShootPayload {
     fn get_name(&self) -> &str {
         "Shoot Payload"
     }
@@ -65,17 +65,14 @@ impl CardAction for ShootPayload {
                             },
                         },
                         AdditionalCost::Discard {
-                            card: CardQuery::FromOptions {
+                            card: CardQuery::InZone {
                                 id: uuid::Uuid::new_v4(),
-                                options: state
-                                    .cards
-                                    .iter()
-                                    .filter(|c| c.get_zone() == &Zone::Hand)
-                                    .filter(|c| c.get_controller_id() == bearer.get_controller_id())
-                                    .map(|c| c.get_id().clone())
-                                    .collect(),
+                                zone: Zone::Hand,
+                                card_types: None,
                                 prompt: Some("Discard a card from your hand".to_string()),
-                                preview: false,
+                                planes: None,
+                                owner: Some(bearer.get_controller_id().clone()),
+                                tapped: None,
                             },
                         },
                     ],
@@ -144,7 +141,7 @@ impl Card for PayloadTrebuchet {
         Some(self)
     }
 
-    fn get_actions(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn CardAction>>> {
+    fn get_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         Ok(vec![Box::new(ShootPayload)])
     }
 }

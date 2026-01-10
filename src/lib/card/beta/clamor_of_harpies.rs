@@ -1,7 +1,7 @@
 use crate::{
     card::{Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
     effect::Effect,
-    game::{CardAction, PlayerId, pick_action, pick_card},
+    game::{ActivatedAbility, PlayerId, pick_action, pick_card},
     query::ZoneQuery,
     state::State,
 };
@@ -13,7 +13,7 @@ enum ClamorOfHarpiesAction {
 }
 
 #[async_trait::async_trait]
-impl CardAction for ClamorOfHarpiesAction {
+impl ActivatedAbility for ClamorOfHarpiesAction {
     fn get_name(&self) -> &str {
         match self {
             ClamorOfHarpiesAction::Strike => "Strike",
@@ -111,12 +111,12 @@ impl Card for ClamorOfHarpies {
         let prompt = "Clamor of Harpies: Pick a unit to bring here";
         let card_id = pick_card(self.get_controller_id(), &valid_cards, state, prompt).await?;
         let card = state.get_card(&card_id);
-        let actions: Vec<Box<dyn CardAction>> = vec![
+        let activated_abilities: Vec<Box<dyn ActivatedAbility>> = vec![
             Box::new(ClamorOfHarpiesAction::Strike),
             Box::new(ClamorOfHarpiesAction::DoNotStrike),
         ];
         let prompt = "Clamor of Harpies: Strike selected unit?";
-        let action = pick_action(self.get_controller_id(), &actions, state, prompt).await?;
+        let action = pick_action(self.get_controller_id(), &activated_abilities, state, prompt).await?;
         let mut effects = vec![Effect::MoveCard {
             player_id: self.get_controller_id().clone(),
             card_id,

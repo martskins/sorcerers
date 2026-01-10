@@ -1,7 +1,7 @@
 use crate::{
     card::{AvatarBase, Card, CardBase, Cost, Edition, Plane, Rarity, Rubble, UnitBase, Zone},
     effect::{Effect, TokenType},
-    game::{AvatarAction, CardAction, Element, PlayerId, pick_card, pick_zone},
+    game::{ActivatedAbility, AvatarAction, Element, PlayerId, pick_card, pick_zone},
     query::ZoneQuery,
     state::State,
 };
@@ -14,7 +14,7 @@ pub enum GeomancerAbility {
 }
 
 #[async_trait::async_trait]
-impl CardAction for GeomancerAbility {
+impl ActivatedAbility for GeomancerAbility {
     fn get_name(&self) -> &str {
         match self {
             GeomancerAbility::PlaySite => "Play Site",
@@ -194,12 +194,12 @@ impl Card for Geomancer {
         Some(&mut self.avatar_base)
     }
 
-    fn get_actions(&self, state: &State) -> anyhow::Result<Vec<Box<dyn CardAction>>> {
-        let mut actions = self.base_unit_actions(state)?;
-        actions.push(Box::new(GeomancerAbility::PlaySite));
-        actions.push(Box::new(GeomancerAbility::DrawSite));
-        actions.push(Box::new(GeomancerAbility::ReplaceRubble));
-        Ok(actions)
+    fn get_activated_abilities(&self, state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+        let mut activated_abilities = self.base_unit_activated_abilities(state)?;
+        activated_abilities.push(Box::new(GeomancerAbility::PlaySite));
+        activated_abilities.push(Box::new(GeomancerAbility::DrawSite));
+        activated_abilities.push(Box::new(GeomancerAbility::ReplaceRubble));
+        Ok(activated_abilities)
     }
 }
 

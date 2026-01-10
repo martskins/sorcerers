@@ -1,7 +1,7 @@
 use crate::{
     card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
     effect::Effect,
-    game::{PlayerId, pick_card, pick_option, pick_zone},
+    game::{BaseOption, PlayerId, pick_card, pick_option, pick_zone},
     state::State,
 };
 
@@ -61,9 +61,10 @@ impl Card for SkirmishersOfMu {
     }
 
     async fn on_move(&self, state: &State, path: &[Zone]) -> anyhow::Result<Vec<Effect>> {
-        let actions = vec!["Yes".to_string(), "No".to_string()];
-        let picked_option = pick_option(self.get_controller_id(), &actions, state, "Ranged strike?").await?;
-        if actions[picked_option] == "No" {
+        let options = vec![BaseOption::Yes, BaseOption::No];
+        let option_labels = options.iter().map(|o| o.to_string()).collect::<Vec<_>>();
+        let picked_option = pick_option(self.get_controller_id(), &option_labels, state, "Ranged strike?").await?;
+        if options[picked_option] == BaseOption::No {
             return Ok(vec![]);
         }
 

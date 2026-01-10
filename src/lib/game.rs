@@ -146,10 +146,10 @@ pub async fn pick_card(
 
 pub async fn pick_action<'a>(
     player_id: &PlayerId,
-    actions: &'a [Box<dyn CardAction>],
+    actions: &'a [Box<dyn ActivatedAbility>],
     state: &State,
     prompt: &str,
-) -> anyhow::Result<&'a Box<dyn CardAction>> {
+) -> anyhow::Result<&'a Box<dyn ActivatedAbility>> {
     state
         .get_sender()
         .send(ServerMessage::PickAction {
@@ -196,7 +196,7 @@ pub async fn wait_for_opponent(player_id: &PlayerId, state: &State, prompt: impl
 
 pub async fn pick_option(
     player_id: &PlayerId,
-    actions: &[String],
+    options: &[String],
     state: &State,
     prompt: impl AsRef<str>,
 ) -> anyhow::Result<usize> {
@@ -205,7 +205,7 @@ pub async fn pick_option(
         .send(ServerMessage::PickAction {
             prompt: prompt.as_ref().to_string(),
             player_id: player_id.clone(),
-            actions: actions.to_vec(),
+            actions: options.to_vec(),
         })
         .await?;
 
@@ -524,20 +524,20 @@ pub fn get_adjacent_zones(zone: &Zone) -> Vec<Zone> {
 }
 
 pub trait CloneBoxedAction {
-    fn clone_boxed_action(&self) -> Box<dyn CardAction>;
+    fn clone_boxed_action(&self) -> Box<dyn ActivatedAbility>;
 }
 
 impl<T> CloneBoxedAction for T
 where
-    T: 'static + CardAction + Clone,
+    T: 'static + ActivatedAbility + Clone,
 {
-    fn clone_boxed_action(&self) -> Box<dyn CardAction> {
+    fn clone_boxed_action(&self) -> Box<dyn ActivatedAbility> {
         Box::new(self.clone())
     }
 }
 
 #[async_trait::async_trait]
-pub trait CardAction: std::fmt::Debug + Send + Sync + CloneBoxedAction {
+pub trait ActivatedAbility: std::fmt::Debug + Send + Sync + CloneBoxedAction {
     fn get_name(&self) -> &str;
     async fn on_select(&self, card_id: &uuid::Uuid, player_id: &PlayerId, state: &State)
     -> anyhow::Result<Vec<Effect>>;
@@ -546,8 +546,8 @@ pub trait CardAction: std::fmt::Debug + Send + Sync + CloneBoxedAction {
     }
 }
 
-impl Clone for Box<dyn CardAction> {
-    fn clone(&self) -> Box<dyn CardAction> {
+impl Clone for Box<dyn ActivatedAbility> {
+    fn clone(&self) -> Box<dyn ActivatedAbility> {
         self.clone_boxed_action()
     }
 }
@@ -566,7 +566,7 @@ pub enum InputStatus {
     },
     SelectingAction {
         player_id: PlayerId,
-        actions: Vec<Box<dyn CardAction>>,
+        actions: Vec<Box<dyn ActivatedAbility>>,
         card_id: Option<uuid::Uuid>,
     },
     PlayingSite {
@@ -610,7 +610,7 @@ impl ToString for BaseOption {
 pub struct CancelAction;
 
 #[async_trait::async_trait]
-impl CardAction for CancelAction {
+impl ActivatedAbility for CancelAction {
     fn get_name(&self) -> &str {
         "Cancel"
     }
@@ -663,7 +663,7 @@ pub enum AvatarAction {
 }
 
 #[async_trait::async_trait]
-impl CardAction for AvatarAction {
+impl ActivatedAbility for AvatarAction {
     fn get_name(&self) -> &str {
         match self {
             AvatarAction::PlaySite => "Play Site",
@@ -720,7 +720,7 @@ pub enum UnitAction {
 }
 
 #[async_trait::async_trait]
-impl CardAction for UnitAction {
+impl ActivatedAbility for UnitAction {
     fn get_name(&self) -> &str {
         match self {
             UnitAction::Move => "Move",
@@ -1072,7 +1072,7 @@ impl Game {
                             return Ok(());
                         }
 
-                        let mut actions = card.get_actions(&self.state)?;
+                        let mut actions = card.get_activated_abilities(&self.state)?;
                         actions.retain(|action| {
                             action
                                 .get_cost(card_id, &self.state)
