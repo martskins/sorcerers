@@ -1,7 +1,7 @@
 use crate::{
-    card::{Card, CardBase, Edition, Plane, Rarity, Zone},
+    card::{Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
     effect::Effect,
-    game::{Direction, PlayerId, Thresholds, pick_zone},
+    game::{Direction, PlayerId, pick_zone},
     state::State,
 };
 
@@ -20,8 +20,7 @@ impl MajorExplosion {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 7,
-                required_thresholds: Thresholds::parse("FF"),
+                cost: Cost::new(7, "FF"),
                 plane: Plane::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,

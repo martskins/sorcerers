@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, Plane, Rarity, Site, SiteBase, Zone},
+    card::{Card, CardBase, Cost, Edition, Plane, Rarity, Site, SiteBase, Zone},
     effect::Effect,
     game::{CardAction, PlayerId, Thresholds, pick_card},
     state::State,
@@ -73,8 +73,7 @@ impl Sinkhole {
                 owner_id,
                 tapped: false,
                 zone: Zone::Atlasbook,
-                mana_cost: 0,
-                required_thresholds: Thresholds::new(),
+                cost: Cost::zero(),
                 plane: Plane::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,

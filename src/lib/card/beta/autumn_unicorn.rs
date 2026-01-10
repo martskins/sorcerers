@@ -1,6 +1,6 @@
 use crate::{
-    card::{Card, CardBase, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
-    game::{PlayerId, Thresholds},
+    card::{Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    game::PlayerId,
 };
 
 #[derive(Debug, Clone)]
@@ -26,8 +26,7 @@ impl AutumnUnicorn {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 3,
-                required_thresholds: Thresholds::parse("EE"),
+                cost: Cost::new(3, "EE"),
                 plane: Plane::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,

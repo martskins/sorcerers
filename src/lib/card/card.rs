@@ -9,7 +9,7 @@ use crate::{
     state::State,
 };
 use serde::{Deserialize, Serialize};
-use std::fmt::Debug;
+use std::{collections::HashMap, fmt::Debug};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum CardType {
@@ -288,7 +288,7 @@ pub struct CardData {
     pub zone: Zone,
     pub plane: Plane,
     pub card_type: CardType,
-    pub modifiers: Vec<Modifier>,
+    pub modifiers: Vec<Ability>,
     pub damage_taken: u8,
     pub attached_to: Option<uuid::Uuid>,
     pub rarity: Rarity,
@@ -337,6 +337,7 @@ pub enum AdditionalCost {
     Sacrifice { card: CardQuery, count: usize },
 }
 
+#[derive(Debug, Clone, Default)]
 pub struct Cost {
     pub mana: u8,
     pub thresholds: Thresholds,
@@ -344,6 +345,14 @@ pub struct Cost {
 }
 
 impl Cost {
+    pub fn new(mana: u8, thresholds: impl Into<Thresholds>) -> Self {
+        Self {
+            mana,
+            thresholds: thresholds.into(),
+            additional: vec![],
+        }
+    }
+
     pub fn zero() -> Self {
         Self {
             mana: 0,
@@ -353,8 +362,14 @@ impl Cost {
     }
 
     pub fn can_afford(&self, state: &State, player_id: &PlayerId) -> anyhow::Result<bool> {
-        let player_resources = state.get_player_resources(player_id)?;
-        if !player_resources.has_resources(self.mana, self.thresholds.clone()) {
+        let resources = state.get_player_resources(player_id)?;
+        let has_resources = resources.mana >= self.mana
+            && resources.thresholds.fire >= self.thresholds.fire
+            && resources.thresholds.air >= self.thresholds.air
+            && resources.thresholds.earth >= self.thresholds.earth
+            && resources.thresholds.water >= self.thresholds.water;
+
+        if !has_resources {
             return Ok(false);
         }
 
@@ -405,11 +420,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         &self.get_base().id
     }
 
-    fn can_be_played(&self, state: &State) -> anyhow::Result<bool> {
-        let cost = self.get_cost(state)?;
-        cost.can_afford(state, self.get_controller_id())
-    }
-
     // When resolving a CardQuery, this method allows the card to override the query. A useful
     // usecase for this method is for example overriding the valid targets of a spell when there's
     // a card in play that affects targeting.
@@ -454,11 +464,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         &self.get_base().controller_id
     }
 
-    // Sets the controller ID of this card.
-    fn set_controller_id(&mut self, controller_id: &PlayerId) {
-        self.get_base_mut().controller_id = controller_id.clone();
-    }
-
     // Returns a list of effects that must be applied after this card attacks.
     async fn after_attack(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![])
@@ -500,7 +505,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             if !visited.contains(&current_zone) {
                 visited.push(current_zone.clone());
 
-                if self.has_modifier(state, &Modifier::Airborne) {
+                if self.has_modifier(state, &Ability::Airborne) {
                     for nearby in current_zone.get_nearby() {
                         to_visit.push((nearby, current_step + 1));
                     }
@@ -512,7 +517,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             }
         }
 
-        if self.is_unit() && !self.has_modifier(state, &Modifier::Voidwalk) {
+        if self.is_unit() && !self.has_modifier(state, &Ability::Voidwalk) {
             visited = visited
                 .iter()
                 .filter(|z| z.get_site(state).is_some())
@@ -539,7 +544,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             ub.damage += damage;
 
             let attacker = state.get_card(from);
-            if ub.damage >= self.get_toughness(state).unwrap_or(0) || attacker.has_modifier(state, &Modifier::Lethal) {
+            if ub.damage >= self.get_toughness(state).unwrap_or(0) || attacker.has_modifier(state, &Ability::Lethal) {
                 return Ok(vec![Effect::bury_card(self.get_id(), self.get_zone())]);
             }
 
@@ -689,7 +694,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     fn is_ranged(&self, state: &State) -> anyhow::Result<bool> {
         for modif in self.get_modifiers(state)? {
-            if let Modifier::Ranged(_) = modif {
+            if let Ability::Ranged(_) = modif {
                 return Ok(true);
             }
         }
@@ -698,7 +703,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     // Returns whether the card has the given modifier.
-    fn has_modifier(&self, _state: &State, modifier: &Modifier) -> bool {
+    fn has_modifier(&self, _state: &State, modifier: &Ability) -> bool {
         if self
             .get_unit_base()
             .unwrap_or(&UnitBase::default())
@@ -717,9 +722,9 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     // Returns the elements associated to this card.
-    fn get_elements(&self, state: &State) -> Vec<Element> {
+    fn get_elements(&self, state: &State) -> anyhow::Result<Vec<Element>> {
         let mut elements = Vec::new();
-        let thresholds = self.get_required_thresholds(state);
+        let thresholds = self.get_cost(state)?.thresholds;
         if thresholds.fire > 0 {
             elements.push(Element::Fire);
         }
@@ -732,7 +737,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         if thresholds.air > 0 {
             elements.push(Element::Air);
         }
-        elements
+
+        Ok(elements)
     }
 
     // Returns all valid move paths from the card's current zone to the given zone. The paths
@@ -776,7 +782,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     // Returns the number of steps this card can move per movement action.
     fn get_steps_per_movement(&self, state: &State) -> anyhow::Result<u8> {
-        if self.has_modifier(state, &Modifier::Immobile) {
+        if self.has_modifier(state, &Ability::Immobile) {
             return Ok(0);
         }
 
@@ -784,7 +790,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             .get_modifiers(state)?
             .into_iter()
             .map(|m| match m {
-                Modifier::Movement(s) => s,
+                Ability::Movement(s) => s,
                 _ => 0,
             })
             .sum();
@@ -803,7 +809,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     return true;
                 }
 
-                if self.has_modifier(state, &Modifier::Voidwalk) {
+                if self.has_modifier(state, &Ability::Voidwalk) {
                     return true;
                 }
 
@@ -836,7 +842,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 return same_plane || ranged_on_airborne || airborne_on_surface;
             })
             .filter(|_| {
-                let attacker_is_airborne = self.has_modifier(state, &Modifier::Airborne);
+                let attacker_is_airborne = self.has_modifier(state, &Ability::Airborne);
                 if !attacker_is_airborne {
                     return zone.is_adjacent(&self.get_zone());
                 }
@@ -867,11 +873,11 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     // Returns all modifiers currently applied to the card.
-    fn get_modifiers(&self, state: &State) -> anyhow::Result<Vec<Modifier>> {
+    fn get_modifiers(&self, state: &State) -> anyhow::Result<Vec<Ability>> {
         Ok(self.base_get_modifiers(state))
     }
 
-    fn base_get_modifiers(&self, state: &State) -> Vec<Modifier> {
+    fn base_get_modifiers(&self, state: &State) -> Vec<Ability> {
         match self.get_unit_base() {
             Some(base) => {
                 let mut modifiers = base.modifiers.clone();
@@ -879,21 +885,22 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     modifiers.push(counter.modifier.clone());
                 }
 
-                let area_mods: Vec<Modifier> = state
-                    .cards
-                    .iter()
-                    .filter(|c| c.get_zone().is_in_play())
-                    .flat_map(|c| c.area_modifiers(state))
-                    .filter_map(|(modif, units)| {
-                        if units.contains(self.get_id()) {
-                            Some(modif)
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
+                for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
+                    let mods = card.area_modifiers(state);
+                    if let Some(mods) = mods.grants_abilities.get(self.get_id()) {
+                        modifiers.extend(mods.clone());
+                    }
+                }
 
-                modifiers.extend(area_mods);
+                for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
+                    let mods = card.area_modifiers(state);
+                    if let Some(mods) = mods.removes_abilities.get(self.get_id()) {
+                        for modif in mods {
+                            modifiers.retain(|m| m != modif);
+                        }
+                    }
+                }
+
                 modifiers
             }
             None => vec![],
@@ -917,26 +924,14 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(self.base_get_power(state))
     }
 
-    // Returns the required thresholds to play this card.
-    fn get_required_thresholds(&self, _state: &State) -> &Thresholds {
-        &self.get_base().required_thresholds
-    }
-
     fn get_cost(&self, state: &State) -> anyhow::Result<Cost> {
-        Ok(Cost {
-            mana: self.get_mana_cost(state),
-            thresholds: self.get_required_thresholds(state).clone(),
-            additional: self.get_additional_costs(state)?.clone(),
-        })
+        let mut cost = self.get_base().cost.clone();
+        cost.additional = self.get_additional_costs(state)?;
+        Ok(cost)
     }
 
     fn get_additional_costs(&self, _state: &State) -> anyhow::Result<Vec<AdditionalCost>> {
         Ok(vec![])
-    }
-
-    // Returns the mana cost to play this card.
-    fn get_mana_cost(&self, _state: &State) -> u8 {
-        self.get_base().mana_cost
     }
 
     // Returns the avatar base if the card is an avatar, None otherwise.
@@ -1023,7 +1018,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     fn can_be_targetted_by(&self, state: &State, player_id: &PlayerId) -> bool {
-        if self.has_modifier(state, &Modifier::Stealth) && self.get_owner_id() != player_id {
+        if self.has_modifier(state, &Ability::Stealth) && self.get_owner_id() != player_id {
             return false;
         }
 
@@ -1058,27 +1053,27 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         self.get_aura_base().is_some()
     }
 
-    fn can_cast(&self, state: &State, spell: &Box<dyn Card>) -> bool {
+    fn can_cast(&self, state: &State, spell: &Box<dyn Card>) -> anyhow::Result<bool> {
         if !self.get_zone().is_in_play() {
-            return false;
+            return Ok(false);
         }
 
         if self.get_owner_id() != spell.get_owner_id() {
-            return false;
+            return Ok(false);
         }
 
         if self.is_avatar() {
-            return true;
+            return Ok(true);
         }
 
-        let elements = spell.get_elements(state);
+        let elements = spell.get_elements(state)?;
         for element in elements {
-            if self.has_modifier(state, &Modifier::Spellcaster(element)) {
-                return true;
+            if self.has_modifier(state, &Ability::Spellcaster(element)) {
+                return Ok(true);
             }
         }
 
-        false
+        Ok(false)
     }
 
     async fn on_move(&self, state: &State, path: &[Zone]) -> anyhow::Result<Vec<Effect>> {
@@ -1109,13 +1104,13 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(vec![])
     }
 
-    fn remove_modifier(&mut self, modifier: &Modifier) {
+    fn remove_modifier(&mut self, modifier: &Ability) {
         if let Some(ub) = self.get_unit_base_mut() {
             ub.modifiers.retain(|a| a != modifier);
         }
     }
 
-    fn add_modifier(&mut self, modifier: Modifier) {
+    fn add_modifier(&mut self, modifier: Ability) {
         if let Some(ub) = self.get_unit_base_mut() {
             ub.modifiers.push(modifier);
         }
@@ -1147,6 +1142,13 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             actions.push(Box::new(AvatarAction::PlaySite));
         }
 
+        for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
+            let mods = card.area_modifiers(state);
+            if let Some(mods) = mods.grants_actions.get(self.get_id()) {
+                actions.extend(mods.clone());
+            }
+        }
+
         // TODO: should artifacts on avatars be able to provide actions?
         // let artifacts = state
         //     .cards
@@ -1170,12 +1172,19 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             actions.push(Box::new(UnitAction::RangedAttack));
         }
 
-        if self.has_modifier(state, &Modifier::Burrowing) {
+        if self.has_modifier(state, &Ability::Burrowing) {
             actions.push(Box::new(UnitAction::Burrow));
         }
 
-        if self.has_modifier(state, &Modifier::Submerge) {
+        if self.has_modifier(state, &Ability::Submerge) {
             actions.push(Box::new(UnitAction::Submerge));
+        }
+
+        for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
+            let mods = card.area_modifiers(state);
+            if let Some(mods) = mods.grants_actions.get(self.get_id()) {
+                actions.extend(mods.clone());
+            }
         }
 
         // TODO: should artifacts on units be able to provide actions?
@@ -1207,8 +1216,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     // Returns the modifiers that this card provides to other cards in the game.
-    fn area_modifiers(&self, _state: &State) -> Vec<(Modifier, Vec<uuid::Uuid>)> {
-        vec![]
+    fn area_modifiers(&self, _state: &State) -> AreaModifiers {
+        AreaModifiers::default()
     }
 
     fn area_effects(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
@@ -1218,6 +1227,13 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     fn get_num_arts(&self) -> usize {
         1
     }
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct AreaModifiers {
+    pub grants_abilities: HashMap<uuid::Uuid, Vec<Ability>>,
+    pub removes_abilities: HashMap<uuid::Uuid, Vec<Ability>>,
+    pub grants_actions: HashMap<uuid::Uuid, Vec<Box<dyn CardAction>>>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -1274,7 +1290,7 @@ pub trait Site: Card {
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
-pub enum Modifier {
+pub enum Ability {
     Disabled,
     Voidwalk,
     Airborne,
@@ -1293,10 +1309,10 @@ pub enum Modifier {
     Blaze(u8), // Specific modifier for the Blaze magic
 }
 
-impl Modifier {
+impl Ability {
     fn on_move(&self, card_id: &uuid::Uuid, state: &State, path: &[Zone]) -> anyhow::Result<Vec<Effect>> {
         match self {
-            Modifier::Blaze(burn) => {
+            Ability::Blaze(burn) => {
                 if path.len() <= 1 {
                     return Ok(vec![]);
                 }
@@ -1325,7 +1341,7 @@ impl Modifier {
 pub struct UnitBase {
     pub power: u8,
     pub toughness: u8,
-    pub modifiers: Vec<Modifier>,
+    pub modifiers: Vec<Ability>,
     pub damage: u8,
     pub power_counters: Vec<Counter>,
     pub modifier_counters: Vec<ModifierCounter>,
@@ -1375,8 +1391,7 @@ pub struct CardBase {
     pub owner_id: PlayerId,
     pub tapped: bool,
     pub zone: Zone,
-    pub mana_cost: u8,
-    pub required_thresholds: Thresholds,
+    pub cost: Cost,
     pub plane: Plane,
     pub rarity: Rarity,
     pub edition: Edition,
@@ -1422,7 +1437,7 @@ pub fn from_name_and_zone(name: &str, player_id: &PlayerId, zone: Zone) -> Box<d
 #[cfg(test)]
 mod tests {
     use crate::{
-        card::{ApprenticeWizard, Card, Modifier, RimlandNomads, Zone},
+        card::{Ability, ApprenticeWizard, Card, RimlandNomads, Zone},
         state::State,
     };
 
@@ -1448,7 +1463,7 @@ mod tests {
         let player_id = state.players[0].id.clone();
         let mut card = RimlandNomads::new(player_id.clone());
         card.set_zone(Zone::Realm(8));
-        card.add_modifier(Modifier::Airborne);
+        card.add_modifier(Ability::Airborne);
         state.cards.push(Box::new(card.clone()));
 
         let paths = card
@@ -1466,7 +1481,7 @@ mod tests {
         let player_id = state.players[0].id.clone();
         let mut card = RimlandNomads::new(player_id.clone());
         card.set_zone(Zone::Realm(8));
-        card.add_modifier(Modifier::Movement(2));
+        card.add_modifier(Ability::Movement(2));
         state.cards.push(Box::new(card.clone()));
 
         let paths = card
@@ -1505,7 +1520,7 @@ mod tests {
         let player_id = state.players[0].id.clone();
         let mut card = ApprenticeWizard::new(player_id.clone());
         card.set_zone(Zone::Realm(8));
-        card.add_modifier(Modifier::Movement(1));
+        card.add_modifier(Ability::Movement(1));
         state.cards.push(Box::new(card.clone()));
 
         let mut zones = card.get_valid_move_zones(&state).expect("zones to be computed");
@@ -1559,7 +1574,7 @@ mod tests {
         let player_id = state.players[0].id.clone();
         let mut card = ApprenticeWizard::new(player_id.clone());
         card.set_zone(Zone::Realm(8));
-        card.add_modifier(Modifier::Movement(1));
+        card.add_modifier(Ability::Movement(1));
         state.cards.push(Box::new(card.clone()));
 
         let mut zones = card.get_valid_move_zones(&state).expect("zones to be computed");
@@ -1584,7 +1599,7 @@ mod tests {
         let player_id = state.players[0].id.clone();
         let mut card = ApprenticeWizard::new(player_id.clone());
         card.set_zone(Zone::Realm(8));
-        card.add_modifier(Modifier::Voidwalk);
+        card.add_modifier(Ability::Voidwalk);
         state.cards.push(Box::new(card.clone()));
 
         let mut zones = card.get_valid_move_zones(&state).expect("zones to be computed");
@@ -1606,7 +1621,7 @@ mod tests {
         let player_id = state.players[0].id.clone();
         let mut card = ApprenticeWizard::new(player_id.clone());
         card.set_zone(Zone::Realm(8));
-        card.add_modifier(Modifier::Airborne);
+        card.add_modifier(Ability::Airborne);
         state.cards.push(Box::new(card.clone()));
 
         let mut zones = card.get_valid_move_zones(&state).expect("zones to be computed");
@@ -1641,7 +1656,7 @@ mod tests {
         let player_id = state.players[0].id.clone();
         let mut card = ApprenticeWizard::new(player_id.clone());
         card.set_zone(Zone::Realm(8));
-        card.add_modifier(Modifier::Airborne);
+        card.add_modifier(Ability::Airborne);
         state.cards.push(Box::new(card.clone()));
 
         let mut zones = card.get_valid_move_zones(&state).expect("zones to be computed");
@@ -1677,8 +1692,8 @@ mod tests {
         let player_id = state.players[0].id.clone();
         let mut card = ApprenticeWizard::new(player_id.clone());
         card.set_zone(Zone::Realm(8));
-        card.add_modifier(Modifier::Airborne);
-        card.add_modifier(Modifier::Voidwalk);
+        card.add_modifier(Ability::Airborne);
+        card.add_modifier(Ability::Voidwalk);
         state.cards.push(Box::new(card.clone()));
 
         let mut zones = card.get_valid_move_zones(&state).expect("zones to be computed");

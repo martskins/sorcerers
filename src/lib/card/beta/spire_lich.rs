@@ -1,6 +1,6 @@
 use crate::{
-    card::{Card, CardBase, Edition, MinionType, Modifier, Plane, Rarity, SiteType, UnitBase, Zone},
-    game::{Element, PlayerId, Thresholds},
+    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, SiteType, UnitBase, Zone},
+    game::{Element, PlayerId},
     state::State,
 };
 
@@ -27,8 +27,7 @@ impl SpireLich {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 3,
-                required_thresholds: Thresholds::parse("A"),
+                cost: Cost::new(3, "A"),
                 plane: Plane::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
@@ -80,14 +79,14 @@ impl Card for SpireLich {
         Some(&mut self.unit_base)
     }
 
-    fn get_modifiers(&self, state: &State) -> anyhow::Result<Vec<Modifier>> {
+    fn get_modifiers(&self, state: &State) -> anyhow::Result<Vec<Ability>> {
         let mut modifiers = self.base_get_modifiers(state);
         if self.is_atop_tower(state)? {
-            modifiers.push(Modifier::Ranged(1));
-            modifiers.push(Modifier::Spellcaster(Element::Fire));
-            modifiers.push(Modifier::Spellcaster(Element::Earth));
-            modifiers.push(Modifier::Spellcaster(Element::Air));
-            modifiers.push(Modifier::Spellcaster(Element::Water));
+            modifiers.push(Ability::Ranged(1));
+            modifiers.push(Ability::Spellcaster(Element::Fire));
+            modifiers.push(Ability::Spellcaster(Element::Earth));
+            modifiers.push(Ability::Spellcaster(Element::Air));
+            modifiers.push(Ability::Spellcaster(Element::Water));
         }
 
         Ok(modifiers)

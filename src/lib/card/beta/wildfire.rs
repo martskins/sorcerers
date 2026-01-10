@@ -1,7 +1,7 @@
 use crate::{
-    card::{Aura, AuraBase, Card, CardBase, Edition, Plane, Rarity, Zone},
+    card::{Aura, AuraBase, Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
     effect::Effect,
-    game::{PlayerId, Thresholds, pick_zone},
+    game::{PlayerId, pick_zone},
     query::ZoneQuery,
     state::State,
 };
@@ -23,8 +23,7 @@ impl Wildfire {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 4,
-                required_thresholds: Thresholds::parse("F"),
+                cost: Cost::new(4, "F"),
                 plane: Plane::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,

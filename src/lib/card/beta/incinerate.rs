@@ -1,7 +1,7 @@
 use crate::{
-    card::{Card, CardBase, Edition, MinionType, Plane, Rarity, Zone},
+    card::{Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, Zone},
     effect::Effect,
-    game::{PlayerId, Thresholds, pick_zone},
+    game::{PlayerId, pick_zone},
     state::State,
 };
 
@@ -20,8 +20,7 @@ impl Incinerate {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 2,
-                required_thresholds: Thresholds::parse("F"),
+                cost: Cost::new(2, "F"),
                 plane: Plane::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,

@@ -1,7 +1,7 @@
 use crate::{
-    card::{Card, CardBase, Edition, MinionType, Modifier, Plane, Rarity, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
     effect::Effect,
-    game::{PlayerId, Thresholds},
+    game::PlayerId,
     query::ZoneQuery,
     state::State,
 };
@@ -20,7 +20,7 @@ impl HeadlessHaunt {
             unit_base: UnitBase {
                 power: 4,
                 toughness: 4,
-                modifiers: vec![Modifier::Voidwalk],
+                modifiers: vec![Ability::Voidwalk],
                 types: vec![MinionType::Spirit],
                 ..Default::default()
             },
@@ -29,8 +29,7 @@ impl HeadlessHaunt {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 3,
-                required_thresholds: Thresholds::parse("AA"),
+                cost: Cost::new(3, "AA"),
                 plane: Plane::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,

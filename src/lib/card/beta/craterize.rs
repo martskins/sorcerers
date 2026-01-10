@@ -1,7 +1,7 @@
 use crate::{
-    card::{AdditionalCost, Card, CardBase, Edition, Plane, Rarity, Zone},
+    card::{AdditionalCost, Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
     effect::Effect,
-    game::{Direction, PlayerId, Thresholds, pick_card},
+    game::{Direction, PlayerId, pick_card},
     query::{CardQuery, ZoneQuery},
     state::State,
 };
@@ -21,8 +21,7 @@ impl Craterize {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 8,
-                required_thresholds: Thresholds::parse("EE"),
+                cost: Cost::new(8, "EE"),
                 plane: Plane::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,

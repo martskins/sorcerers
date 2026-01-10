@@ -1,7 +1,7 @@
 use crate::{
-    card::{Card, CardBase, Edition, MinionType, Modifier, Plane, Rarity, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
     effect::Effect,
-    game::{Element, PlayerId, Thresholds},
+    game::{Element, PlayerId},
     state::State,
 };
 
@@ -20,10 +20,10 @@ impl ApprenticeWizard {
                 power: 1,
                 toughness: 1,
                 modifiers: vec![
-                    Modifier::Spellcaster(Element::Air),
-                    Modifier::Spellcaster(Element::Fire),
-                    Modifier::Spellcaster(Element::Earth),
-                    Modifier::Spellcaster(Element::Fire),
+                    Ability::Spellcaster(Element::Air),
+                    Ability::Spellcaster(Element::Fire),
+                    Ability::Spellcaster(Element::Earth),
+                    Ability::Spellcaster(Element::Fire),
                 ],
                 types: vec![MinionType::Mortal],
                 ..Default::default()
@@ -33,8 +33,7 @@ impl ApprenticeWizard {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 3,
-                required_thresholds: Thresholds::parse("A"),
+                cost: Cost::new(3, "A"),
                 plane: Plane::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,

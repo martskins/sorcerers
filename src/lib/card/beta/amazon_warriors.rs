@@ -1,6 +1,6 @@
 use crate::{
-    card::{Card, CardBase, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
-    game::{PlayerId, Thresholds},
+    card::{Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    game::PlayerId,
 };
 
 #[derive(Debug, Clone)]
@@ -26,8 +26,7 @@ impl AmazonWarriors {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 5,
-                required_thresholds: Thresholds::parse("E"),
+                cost: Cost::new(5, "E"),
                 plane: Plane::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,

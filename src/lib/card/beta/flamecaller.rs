@@ -1,5 +1,5 @@
 use crate::{
-    card::{AvatarBase, Card, CardBase, Edition, Plane, Rarity, UnitBase, Zone},
+    card::{AvatarBase, Card, CardBase, Cost, Edition, Plane, Rarity, UnitBase, Zone},
     effect::Effect,
     game::{CARDINAL_DIRECTIONS, CardAction, Element, PlayerId, Thresholds, pick_direction},
     state::State,
@@ -30,15 +30,15 @@ impl CardAction for FlamecallerAction {
                     .cards
                     .iter()
                     .filter(|c| c.get_zone() == &Zone::Cemetery)
-                    .filter(|c| c.get_elements(state).contains(&Element::Fire))
+                    .filter(|c| c.get_elements(state).unwrap_or_default().contains(&Element::Fire))
                     .map(|c| c.get_id().clone())
                     .collect::<Vec<_>>();
                 let damage = state
                     .cards
                     .iter()
                     .filter(|c| c.get_zone() == &Zone::Cemetery)
-                    .filter(|c| c.get_elements(state).contains(&Element::Fire))
-                    .map(|c| c.get_required_thresholds(state).clone())
+                    .filter(|c| c.get_elements(state).unwrap_or_default().contains(&Element::Fire))
+                    .map(|c| c.get_cost(state).unwrap_or_default().thresholds.clone())
                     .sum::<Thresholds>()
                     .fire;
                 let avatar = state.get_card(card_id);
@@ -88,8 +88,7 @@ impl Flamecaller {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 0,
-                required_thresholds: Thresholds::new(),
+                cost: Cost::zero(),
                 plane: Plane::Surface,
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,

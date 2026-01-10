@@ -1,7 +1,7 @@
 use crate::{
-    card::{Card, CardBase, Edition, Plane, Rarity, Zone},
+    card::{Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
     effect::Effect,
-    game::{PlayerId, Thresholds},
+    game::PlayerId,
     query::{CardQuery, ZoneQuery},
     state::State,
 };
@@ -21,8 +21,7 @@ impl Teleport {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 2,
-                required_thresholds: Thresholds::parse("AA"),
+                cost: Cost::new(2, "AA"),
                 plane: Plane::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,

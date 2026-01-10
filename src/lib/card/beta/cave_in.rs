@@ -1,7 +1,7 @@
 use crate::{
-    card::{Card, CardBase, Edition, Plane, Rarity, Zone},
+    card::{Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
     effect::Effect,
-    game::{Element, PlayerId, Thresholds, pick_card},
+    game::{Element, PlayerId, pick_card},
     query::ZoneQuery,
     state::State,
 };
@@ -21,8 +21,7 @@ impl CaveIn {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 4,
-                required_thresholds: Thresholds::parse("E"),
+                cost: Cost::new(4, "E"),
                 plane: Plane::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
@@ -55,6 +54,7 @@ impl Card for CaveIn {
                 c.get_site()
                     .expect("site card has no site base")
                     .get_elements(state)
+                    .unwrap_or_default()
                     .contains(&Element::Earth)
             })
             .map(|c| c.get_id())

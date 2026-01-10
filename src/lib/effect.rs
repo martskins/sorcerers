@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, FootSoldier, Modifier, Plane, Rubble, UnitBase, Zone},
+    card::{Ability, Card, FootSoldier, Plane, Rubble, UnitBase, Zone},
     game::{BaseAction, Direction, PlayerAction, PlayerId, SoundEffect, Thresholds, pick_card, pick_option},
     networking::message::ServerMessage,
     query::{CardQuery, EffectQuery, ZoneQuery},
@@ -10,7 +10,7 @@ use std::fmt::Debug;
 #[derive(Debug, Clone)]
 pub struct ModifierCounter {
     pub id: uuid::Uuid,
-    pub modifier: Modifier,
+    pub modifier: Ability,
     pub expires_on_effect: Option<EffectQuery>,
 }
 
@@ -61,7 +61,7 @@ pub enum Effect {
     },
     RemoveModifier {
         card_id: uuid::Uuid,
-        modifier: Modifier,
+        modifier: Ability,
     },
     AddModifierCounter {
         card_id: uuid::Uuid,
@@ -229,7 +229,7 @@ impl Effect {
         }
     }
 
-    pub fn add_modifier(card_id: &uuid::Uuid, modifier: Modifier, expires_on_effect: Option<EffectQuery>) -> Self {
+    pub fn add_modifier(card_id: &uuid::Uuid, modifier: Ability, expires_on_effect: Option<EffectQuery>) -> Self {
         Effect::AddModifierCounter {
             card_id: card_id.clone(),
             counter: ModifierCounter {
@@ -676,7 +676,7 @@ impl Effect {
                     .iter()
                     .find(|c| c.get_id() == card_id)
                     .expect("to find card");
-                let mana_cost = card.get_mana_cost(&state);
+                let mana_cost = card.get_cost(&state)?.mana;
                 state.effects.push_back(
                     Effect::RemoveResources {
                         player_id: card.get_owner_id().clone(),
@@ -719,13 +719,13 @@ impl Effect {
                     .expect("to find card");
                 let cast_effects = card.on_summon(&snapshot)?;
                 card.set_zone(zone.clone());
-                if !card.has_modifier(&snapshot, &Modifier::Charge) {
-                    card.add_modifier(Modifier::SummoningSickness);
+                if !card.has_modifier(&snapshot, &Ability::Charge) {
+                    card.add_modifier(Ability::SummoningSickness);
                 }
 
                 let mut effects = card.genesis(&snapshot).await?;
                 effects.extend(card.on_visit_zone(&snapshot, zone).await?);
-                let mana_cost = card.get_mana_cost(&snapshot);
+                let mana_cost = card.get_cost(&snapshot)?.mana;
                 effects.push(Effect::RemoveResources {
                     player_id: card.get_owner_id().clone(),
                     mana: mana_cost,
@@ -743,8 +743,8 @@ impl Effect {
                     .expect("to find card");
                 let cast_effects = card.on_summon(&snapshot)?;
                 card.set_zone(zone.clone());
-                if !card.has_modifier(&snapshot, &Modifier::Charge) {
-                    card.add_modifier(Modifier::SummoningSickness);
+                if !card.has_modifier(&snapshot, &Ability::Charge) {
+                    card.add_modifier(Ability::SummoningSickness);
                 }
 
                 let mut effects = card.genesis(&snapshot).await?;
@@ -775,7 +775,7 @@ impl Effect {
                     .filter(|c| c.get_owner_id() == &state.current_player);
                 for card in cards {
                     card.get_base_mut().tapped = false;
-                    card.remove_modifier(&Modifier::SummoningSickness);
+                    card.remove_modifier(&Ability::SummoningSickness);
                 }
 
                 for card in state.cards.iter().filter(|c| c.get_owner_id() == &state.current_player) {

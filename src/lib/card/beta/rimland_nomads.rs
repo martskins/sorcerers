@@ -1,7 +1,7 @@
 use crate::{
-    card::{Card, CardBase, Edition, MinionType, Modifier, Plane, Rarity, SiteBase, SiteType, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, SiteBase, SiteType, UnitBase, Zone},
     effect::Effect,
-    game::{PlayerId, Thresholds},
+    game::PlayerId,
     state::State,
 };
 
@@ -19,7 +19,7 @@ impl RimlandNomads {
             unit_base: UnitBase {
                 power: 2,
                 toughness: 2,
-                modifiers: vec![Modifier::Movement(1)],
+                modifiers: vec![Ability::Movement(1)],
                 types: vec![MinionType::Mortal],
                 ..Default::default()
             },
@@ -28,8 +28,7 @@ impl RimlandNomads {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 2,
-                required_thresholds: Thresholds::parse("F"),
+                cost: Cost::new(2, "F"),
                 plane: Plane::Air,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,

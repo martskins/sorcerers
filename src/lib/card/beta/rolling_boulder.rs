@@ -1,7 +1,98 @@
 use crate::{
-    card::{Artifact, ArtifactBase, Card, CardBase, Edition, Plane, Rarity, Zone},
-    game::{PlayerId, Thresholds},
+    card::{AdditionalCost, AreaModifiers, Artifact, ArtifactBase, Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
+    effect::Effect,
+    game::{CARDINAL_DIRECTIONS, CardAction, PlayerId, pick_direction},
+    query::{CardQuery, ZoneQuery},
+    state::State,
 };
+
+#[derive(Debug, Clone)]
+enum RollingBounderAction {
+    Roll(uuid::Uuid),
+}
+
+#[async_trait::async_trait]
+impl CardAction for RollingBounderAction {
+    fn get_name(&self) -> &str {
+        match self {
+            RollingBounderAction::Roll(_) => "Tap to give Rolling Boulder a push",
+        }
+    }
+
+    fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
+        Ok(Cost {
+            additional: vec![AdditionalCost::Tap {
+                card: CardQuery::Specific {
+                    id: uuid::Uuid::new_v4(),
+                    card_id: card_id.clone(),
+                },
+                count: 1,
+            }],
+            ..Default::default()
+        })
+    }
+
+    async fn on_select(
+        &self,
+        card_id: &uuid::Uuid,
+        player_id: &PlayerId,
+        state: &State,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match self {
+            RollingBounderAction::Roll(rolling_builder_id) => {
+                let boulder = state.get_card(rolling_builder_id);
+                let picked_direction = pick_direction(
+                    player_id,
+                    &CARDINAL_DIRECTIONS,
+                    state,
+                    "Pick a direction to roll the Boulder",
+                )
+                .await?;
+
+                let mut last_zone = boulder.get_zone().clone();
+                let mut effects = Vec::new();
+                for unit in last_zone.get_units(state, None) {
+                    if unit.get_id() == card_id {
+                        continue;
+                    }
+
+                    effects.push(Effect::TakeDamage {
+                        card_id: unit.get_id().clone(),
+                        from: boulder.get_id().clone(),
+                        damage: 4,
+                    });
+                }
+
+                while let Some(zone) = last_zone.zone_in_direction(&picked_direction, 1) {
+                    let units = zone.get_units(state, None);
+                    for unit in units {
+                        effects.push(Effect::TakeDamage {
+                            card_id: unit.get_id().clone(),
+                            from: boulder.get_id().clone(),
+                            damage: 4,
+                        });
+                        effects.push(Effect::MoveCard {
+                            card_id: boulder.get_id().clone(),
+                            from: last_zone.clone(),
+                            to: ZoneQuery::Specific {
+                                id: uuid::Uuid::new_v4(),
+                                zone: zone.clone(),
+                            },
+                            player_id: boulder.get_controller_id().clone(),
+                            tap: false,
+                            plane: Plane::Surface,
+                            through_path: None,
+                        });
+                    }
+
+                    last_zone = zone.clone();
+                }
+
+                Ok(effects)
+            }
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct RollingBoulder {
@@ -20,8 +111,7 @@ impl RollingBoulder {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 4,
-                required_thresholds: Thresholds::parse(""),
+                cost: Cost::new(4, ""),
                 plane: Plane::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
@@ -57,6 +147,24 @@ impl Card for RollingBoulder {
 
     fn get_artifact(&self) -> Option<&dyn Artifact> {
         Some(self)
+    }
+
+    fn area_modifiers(&self, state: &State) -> AreaModifiers {
+        let granted_actions = self
+            .get_zone()
+            .get_units(state, None)
+            .iter()
+            .map(|u| {
+                (
+                    u.get_id().clone(),
+                    vec![Box::new(RollingBounderAction::Roll(self.get_id().clone())) as Box<dyn CardAction>],
+                )
+            })
+            .collect();
+        AreaModifiers {
+            grants_actions: granted_actions,
+            ..Default::default()
+        }
     }
 }
 

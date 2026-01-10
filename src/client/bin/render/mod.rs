@@ -10,7 +10,7 @@ use macroquad::{
     texture::{DrawTextureParams, Texture2D, draw_texture_ex},
     ui,
 };
-use sorcerers::card::{CardData, CardType, Modifier};
+use sorcerers::card::{Ability, CardData, CardType};
 
 #[derive(Debug, Clone)]
 pub struct CardRect {
@@ -65,7 +65,7 @@ pub fn draw_card(card_rect: &CardRect, is_ally: bool) {
     }
 
     let mut color = WHITE;
-    if card_rect.card.modifiers.contains(&Modifier::Stealth) {
+    if card_rect.card.modifiers.contains(&Ability::Stealth) {
         color = Color::new(1.0, 1.0, 1.0, 0.85);
     }
 
@@ -118,7 +118,7 @@ pub fn draw_card(card_rect: &CardRect, is_ally: bool) {
         );
     }
 
-    if card_rect.card.modifiers.contains(&Modifier::SummoningSickness) {
+    if card_rect.card.modifiers.contains(&Ability::SummoningSickness) {
         let icon_size = 22.0;
         let scale = 1.0;
         let x = card_rect.rect.x + card_rect.rect.w * scale - icon_size - 4.0;
@@ -126,7 +126,7 @@ pub fn draw_card(card_rect: &CardRect, is_ally: bool) {
         draw_vortex_icon(x, y, icon_size, BLUE);
     }
 
-    if card_rect.card.modifiers.contains(&Modifier::Disabled) {
+    if card_rect.card.modifiers.contains(&Ability::Disabled) {
         let icon_size = 15.0;
         let x = card_rect.rect.x + card_rect.rect.w - 30.0 - 5.0;
         let y = card_rect.rect.y + 4.0;

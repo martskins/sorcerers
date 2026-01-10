@@ -1,8 +1,8 @@
 use rand::seq::IndexedRandom;
 
 use crate::{
-    card::{Artifact, ArtifactBase, Card, CardBase, Edition, Plane, Rarity, Zone},
-    game::{PlayerId, Thresholds},
+    card::{Artifact, ArtifactBase, Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
+    game::PlayerId,
     query::{CardQuery, ZoneQuery},
     state::State,
 };
@@ -24,8 +24,7 @@ impl LuckyCharm {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 1,
-                required_thresholds: Thresholds::parse(""),
+                cost: Cost::new(1, ""),
                 plane: Plane::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,

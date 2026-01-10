@@ -1,6 +1,6 @@
 use crate::{
-    card::{Card, CardBase, Edition, MinionType, Modifier, Plane, Rarity, UnitBase, Zone},
-    game::{PlayerId, Thresholds},
+    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    game::PlayerId,
 };
 
 #[derive(Debug, Clone)]
@@ -17,7 +17,7 @@ impl DeadOfNightDemon {
             unit_base: UnitBase {
                 power: 2,
                 toughness: 2,
-                modifiers: vec![Modifier::Stealth],
+                modifiers: vec![Ability::Stealth],
                 types: vec![MinionType::Demon],
                 ..Default::default()
             },
@@ -26,8 +26,7 @@ impl DeadOfNightDemon {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 2,
-                required_thresholds: Thresholds::parse("A"),
+                cost: Cost::new(2, "A"),
                 plane: Plane::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,

@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, Modifier, Plane, Rarity, Site, SiteBase, SiteType, Zone},
+    card::{Ability, Card, CardBase, Cost, Edition, Plane, Rarity, Site, SiteBase, SiteType, Zone},
     effect::{Effect, ModifierCounter},
     game::{PlayerId, Thresholds},
     query::{CardQuery, EffectQuery, ZoneQuery},
@@ -27,8 +27,7 @@ impl PlanarGate {
                 owner_id,
                 tapped: false,
                 zone: Zone::Atlasbook,
-                mana_cost: 0,
-                required_thresholds: Thresholds::new(),
+                cost: Cost::zero(),
                 plane: Plane::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
@@ -49,7 +48,7 @@ impl Site for PlanarGate {
             card_id: card_id.clone(),
             counter: ModifierCounter {
                 id: uuid::Uuid::new_v4(),
-                modifier: Modifier::Voidwalk,
+                modifier: Ability::Voidwalk,
                 expires_on_effect: Some(EffectQuery::EnterZone {
                     card: CardQuery::Specific {
                         id: uuid::Uuid::new_v4(),

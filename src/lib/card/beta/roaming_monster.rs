@@ -1,6 +1,6 @@
 use crate::{
-    card::{Card, CardBase, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
-    game::{PlayerId, Thresholds},
+    card::{Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    game::PlayerId,
     state::State,
 };
 
@@ -27,8 +27,7 @@ impl RoamingMonster {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 5,
-                required_thresholds: Thresholds::parse("A"),
+                cost: Cost::new(5, "A"),
                 plane: Plane::Air,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,

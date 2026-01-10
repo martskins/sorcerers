@@ -1,7 +1,7 @@
 use crate::{
-    card::{Card, CardBase, Edition, MinionType, Modifier, Plane, Rarity, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
     effect::{Counter, Effect},
-    game::{Element, PlayerId, Thresholds},
+    game::{Element, PlayerId},
     query::EffectQuery,
     state::State,
 };
@@ -20,7 +20,7 @@ impl AskelonPhoenix {
             unit_base: UnitBase {
                 power: 4,
                 toughness: 4,
-                modifiers: vec![Modifier::Airborne],
+                modifiers: vec![Ability::Airborne],
                 types: vec![MinionType::Beast],
                 ..Default::default()
             },
@@ -29,8 +29,7 @@ impl AskelonPhoenix {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 5,
-                required_thresholds: Thresholds::parse("FF"),
+                cost: Cost::new(5, "FF"),
                 plane: Plane::Air,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
@@ -63,7 +62,7 @@ impl Card for AskelonPhoenix {
 
     fn on_take_damage(&mut self, state: &State, from: &uuid::Uuid, damage: u8) -> anyhow::Result<Vec<Effect>> {
         let attacker = state.get_card(from);
-        if attacker.get_elements(state).contains(&Element::Fire) {
+        if attacker.get_elements(state)?.contains(&Element::Fire) {
             return Ok(vec![Effect::AddCounter {
                 card_id: self.get_id().clone(),
                 counter: Counter::new(1, 1, Some(EffectQuery::TurnEnd { player_id: None })),
@@ -74,7 +73,7 @@ impl Card for AskelonPhoenix {
         ub.damage += damage;
 
         let mut effects = vec![];
-        if ub.damage >= self.get_toughness(state).unwrap_or(0) || attacker.has_modifier(state, &Modifier::Lethal) {
+        if ub.damage >= self.get_toughness(state).unwrap_or(0) || attacker.has_modifier(state, &Ability::Lethal) {
             effects.push(Effect::bury_card(self.get_id(), self.get_zone()));
         }
         Ok(effects)

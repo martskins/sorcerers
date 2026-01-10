@@ -1,6 +1,6 @@
 use crate::{
-    card::{AvatarBase, Card, CardBase, Edition, Plane, Rarity, UnitBase, Zone},
-    game::{PlayerId, Thresholds},
+    card::{AvatarBase, Card, CardBase, Cost, Edition, Plane, Rarity, UnitBase, Zone},
+    game::PlayerId,
 };
 
 #[derive(Debug, Clone)]
@@ -25,8 +25,7 @@ impl Sparkmage {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 0,
-                required_thresholds: Thresholds::new(),
+                cost: Cost::zero(),
                 plane: Plane::Surface,
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,

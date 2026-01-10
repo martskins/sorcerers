@@ -1,6 +1,6 @@
 use crate::{
-    card::{Card, CardBase, Edition, MinionType, Modifier, Plane, Rarity, UnitBase, Zone},
-    game::{PlayerId, Thresholds},
+    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    game::PlayerId,
 };
 
 #[derive(Debug, Clone)]
@@ -17,7 +17,7 @@ impl PlumedPegasus {
             unit_base: UnitBase {
                 power: 3,
                 toughness: 3,
-                modifiers: vec![Modifier::Airborne],
+                modifiers: vec![Ability::Airborne],
                 types: vec![MinionType::Beast],
                 ..Default::default()
             },
@@ -26,8 +26,7 @@ impl PlumedPegasus {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 3,
-                required_thresholds: Thresholds::parse("A"),
+                cost: Cost::new(3, "A"),
                 plane: Plane::Air,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,

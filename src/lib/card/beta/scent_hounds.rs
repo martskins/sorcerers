@@ -1,7 +1,7 @@
 use crate::{
-    card::{Card, CardBase, Edition, MinionType, Modifier, Plane, Rarity, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
     effect::Effect,
-    game::{PlayerId, Thresholds},
+    game::PlayerId,
     state::State,
 };
 
@@ -28,8 +28,7 @@ impl ScentHounds {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 2,
-                required_thresholds: Thresholds::parse("E"),
+                cost: Cost::new(2, "E"),
                 plane: Plane::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
@@ -67,10 +66,10 @@ impl Card for ScentHounds {
             .get_zone()
             .get_nearby_units(state, Some(&opponent_id))
             .into_iter()
-            .filter(|c| c.has_modifier(state, &Modifier::Stealth))
+            .filter(|c| c.has_modifier(state, &Ability::Stealth))
             .map(|c| Effect::RemoveModifier {
                 card_id: c.get_id().clone(),
-                modifier: Modifier::Stealth,
+                modifier: Ability::Stealth,
             })
             .collect();
 

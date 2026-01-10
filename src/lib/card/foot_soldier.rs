@@ -1,6 +1,6 @@
 use crate::{
-    card::{Card, CardBase, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
-    game::{PlayerId, Thresholds},
+    card::{Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    game::PlayerId,
 };
 
 #[derive(Debug, Clone)]
@@ -25,8 +25,7 @@ impl FootSoldier {
                 owner_id,
                 tapped: false,
                 zone: Zone::Atlasbook,
-                mana_cost: 0,
-                required_thresholds: Thresholds::new(),
+                cost: Cost::zero(),
                 plane: Plane::Surface,
                 rarity: Rarity::Token,
                 edition: Edition::Beta,

@@ -1,7 +1,7 @@
 use crate::{
-    card::{Card, CardBase, Edition, Plane, Rarity, Zone},
+    card::{Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
     effect::Effect,
-    game::{PlayerId, Thresholds, pick_card, pick_zone},
+    game::{PlayerId, pick_card, pick_zone},
     state::State,
 };
 
@@ -20,8 +20,7 @@ impl Blink {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 2,
-                required_thresholds: Thresholds::parse("A"),
+                cost: Cost::new(2, "A"),
                 plane: Plane::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,

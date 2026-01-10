@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, Plane, Rarity, Site, SiteBase, SiteType, Zone},
+    card::{Card, CardBase, Cost, Edition, Plane, Rarity, Site, SiteBase, SiteType, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds},
     state::State,
@@ -26,8 +26,7 @@ impl DarkTower {
                 owner_id,
                 tapped: false,
                 zone: Zone::Atlasbook,
-                mana_cost: 0,
-                required_thresholds: Thresholds::new(),
+                cost: Cost::zero(),
                 plane: Plane::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,

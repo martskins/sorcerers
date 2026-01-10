@@ -1,6 +1,6 @@
 use crate::{
-    card::{Card, CardBase, Edition, MinionType, Modifier, Plane, Rarity, UnitBase, Zone},
-    game::{PlayerId, Thresholds},
+    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    game::PlayerId,
 };
 
 #[derive(Debug, Clone)]
@@ -17,7 +17,7 @@ impl BelmotteLongbowmen {
             unit_base: UnitBase {
                 power: 3,
                 toughness: 3,
-                modifiers: vec![Modifier::Ranged(1)],
+                modifiers: vec![Ability::Ranged(1)],
                 types: vec![MinionType::Mortal],
                 ..Default::default()
             },
@@ -26,8 +26,7 @@ impl BelmotteLongbowmen {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 3,
-                required_thresholds: Thresholds::parse("E"),
+                cost: Cost::new(3, "E"),
                 plane: Plane::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,

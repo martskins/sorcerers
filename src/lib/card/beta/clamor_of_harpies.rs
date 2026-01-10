@@ -1,7 +1,7 @@
 use crate::{
-    card::{Card, CardBase, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    card::{Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
     effect::Effect,
-    game::{CardAction, PlayerId, Thresholds, pick_action, pick_card},
+    game::{CardAction, PlayerId, pick_action, pick_card},
     query::ZoneQuery,
     state::State,
 };
@@ -63,8 +63,7 @@ impl ClamorOfHarpies {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 4,
-                required_thresholds: Thresholds::parse("F"),
+                cost: Cost::new(4, "F"),
                 plane: Plane::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,

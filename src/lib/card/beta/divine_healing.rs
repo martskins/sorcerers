@@ -1,7 +1,7 @@
 use crate::{
-    card::{Card, CardBase, Edition, Plane, Rarity, Zone},
+    card::{Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
     effect::Effect,
-    game::{PlayerId, Thresholds},
+    game::PlayerId,
     state::State,
 };
 
@@ -20,8 +20,7 @@ impl DivineHealing {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 1,
-                required_thresholds: Thresholds::parse("EEE"),
+                cost: Cost::new(1, "EEE"),
                 plane: Plane::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,

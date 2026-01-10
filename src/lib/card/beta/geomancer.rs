@@ -1,7 +1,7 @@
 use crate::{
-    card::{AvatarBase, Card, CardBase, Edition, Plane, Rarity, Rubble, UnitBase, Zone},
+    card::{AvatarBase, Card, CardBase, Cost, Edition, Plane, Rarity, Rubble, UnitBase, Zone},
     effect::{Effect, TokenType},
-    game::{AvatarAction, CardAction, Element, PlayerId, Thresholds, pick_card, pick_zone},
+    game::{AvatarAction, CardAction, Element, PlayerId, pick_card, pick_zone},
     query::ZoneQuery,
     state::State,
 };
@@ -154,8 +154,7 @@ impl Geomancer {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 0,
-                required_thresholds: Thresholds::new(),
+                cost: Cost::zero(),
                 plane: Plane::Surface,
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,

@@ -1,6 +1,6 @@
 use crate::{
-    card::{Card, CardBase, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
-    game::{PlayerId, Thresholds},
+    card::{Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    game::PlayerId,
 };
 
 #[derive(Debug, Clone)]
@@ -26,8 +26,7 @@ impl KingOfTheRealm {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 7,
-                required_thresholds: Thresholds::parse("EEE"),
+                cost: Cost::new(7, "EEE"),
                 plane: Plane::Surface,
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,

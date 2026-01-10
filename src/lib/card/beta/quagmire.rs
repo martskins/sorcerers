@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, Modifier, Plane, Rarity, Site, SiteBase, Zone},
+    card::{Ability, Card, CardBase, Cost, Edition, Plane, Rarity, Site, SiteBase, Zone},
     effect::{Effect, ModifierCounter},
     game::{PlayerId, Thresholds},
     query::EffectQuery,
@@ -28,8 +28,7 @@ impl Quagmire {
                 owner_id,
                 tapped: false,
                 zone: Zone::Atlasbook,
-                mana_cost: 0,
-                required_thresholds: Thresholds::new(),
+                cost: Cost::zero(),
                 plane: Plane::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
@@ -78,7 +77,7 @@ impl Card for Quagmire {
                 card_id: u.get_id().clone(),
                 counter: ModifierCounter {
                     id: uuid::Uuid::new_v4(),
-                    modifier: Modifier::Immobile,
+                    modifier: Ability::Immobile,
                     expires_on_effect: Some(EffectQuery::TurnStart {
                         player_id: Some(self.get_controller_id().clone()),
                     }),

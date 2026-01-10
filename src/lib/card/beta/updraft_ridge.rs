@@ -1,5 +1,7 @@
+use std::collections::HashMap;
+
 use crate::{
-    card::{Card, CardBase, Edition, Modifier, Plane, Rarity, Site, SiteBase, SiteType, Zone},
+    card::{Ability, AreaModifiers, Card, CardBase, Cost, Edition, Plane, Rarity, Site, SiteBase, SiteType, Zone},
     game::{PlayerId, Thresholds},
     state::State,
 };
@@ -25,8 +27,7 @@ impl UpdraftRidge {
                 owner_id,
                 tapped: false,
                 zone: Zone::Atlasbook,
-                mana_cost: 0,
-                required_thresholds: Thresholds::new(),
+                cost: Cost::zero(),
                 plane: Plane::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
@@ -60,15 +61,19 @@ impl Card for UpdraftRidge {
         Some(&mut self.site_base)
     }
 
-    fn area_modifiers(&self, state: &State) -> Vec<(Modifier, Vec<uuid::Uuid>)> {
-        let units: Vec<uuid::Uuid> = self
+    fn area_modifiers(&self, state: &State) -> AreaModifiers {
+        let grants_abilities = self
             .get_zone()
             .get_units(state, None)
             .iter()
-            .filter(|c| c.has_modifier(state, &Modifier::Airborne))
-            .map(|c| c.get_id().clone())
-            .collect();
-        vec![(Modifier::Movement(1), units)]
+            .filter(|c| c.has_modifier(state, &Ability::Airborne))
+            .map(|c| (c.get_id().clone(), vec![Ability::Movement(1)]))
+            .collect::<HashMap<uuid::Uuid, Vec<Ability>>>();
+
+        AreaModifiers {
+            grants_abilities,
+            ..Default::default()
+        }
     }
 
     fn get_site(&self) -> Option<&dyn Site> {

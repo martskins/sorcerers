@@ -1,5 +1,5 @@
 pub const MAGIC_TEMPLATE: &str = r#"use crate::{
-    card::{Card, CardBase, Edition, Plane, Rarity, Zone},
+    card::{Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds},
     state::State,
@@ -20,8 +20,7 @@ impl {StructName} {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: {ManaCost},
-                required_thresholds: Thresholds::parse("{RequiredThresholds}"),
+                cost: Cost::new({ManaCost}, "{RequiredThresholds}"),
                 plane: Plane::Surface,
                 rarity: Rarity::{Rarity},
                 edition: Edition::{Edition},

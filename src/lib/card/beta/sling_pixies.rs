@@ -1,7 +1,7 @@
 use crate::{
-    card::{Card, CardBase, Edition, MinionType, Modifier, Plane, Rarity, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
     effect::Effect,
-    game::{PlayerId, Thresholds},
+    game::PlayerId,
     state::State,
 };
 
@@ -19,7 +19,7 @@ impl SlingPixies {
             unit_base: UnitBase {
                 power: 1,
                 toughness: 1,
-                modifiers: vec![Modifier::Airborne, Modifier::Ranged(1)],
+                modifiers: vec![Ability::Airborne, Ability::Ranged(1)],
                 types: vec![MinionType::Fairy],
                 ..Default::default()
             },
@@ -28,8 +28,7 @@ impl SlingPixies {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 1,
-                required_thresholds: Thresholds::parse("A"),
+                cost: Cost::new(1, "A"),
                 plane: Plane::Air,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,

@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, Plane, Rarity, Site, SiteBase, Zone},
+    card::{Card, CardBase, Cost, Edition, Plane, Rarity, Site, SiteBase, Zone},
     effect::Effect,
     game::{CardAction, PlayerId, Thresholds, pick_zone},
     query::ZoneQuery,
@@ -17,6 +17,14 @@ impl CardAction for CloudCityAction {
         match self {
             CloudCityAction::FlyToVoid => "Fly to nearby void",
         }
+    }
+
+    fn get_cost(&self, _card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
+        Ok(Cost {
+            mana: 0,
+            thresholds: "AAA".into(),
+            additional: vec![],
+        })
     }
 
     async fn on_select(
@@ -110,8 +118,7 @@ impl CloudCity {
                 owner_id,
                 tapped: false,
                 zone: Zone::Atlasbook,
-                mana_cost: 0,
-                required_thresholds: Thresholds::new(),
+                cost: Cost::zero(),
                 plane: Plane::Surface,
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
@@ -157,14 +164,7 @@ impl Card for CloudCity {
         Ok(vec![])
     }
 
-    fn get_actions(&self, state: &State) -> anyhow::Result<Vec<Box<dyn CardAction>>> {
-        if !state
-            .get_player_resources(self.get_controller_id())?
-            .has_resources(0, "AAA")
-        {
-            return Ok(vec![]);
-        }
-
+    fn get_actions(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn CardAction>>> {
         Ok(vec![Box::new(CloudCityAction::FlyToVoid)])
     }
 

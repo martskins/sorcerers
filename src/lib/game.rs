@@ -1,5 +1,5 @@
 use crate::{
-    card::{Aura, Card, CardType, Cost, Modifier, Plane, Zone},
+    card::{Ability, Aura, CardType, Cost, Plane, Zone},
     effect::Effect,
     error::GameError,
     networking::message::{ClientMessage, ServerMessage, ToMessage},
@@ -402,25 +402,6 @@ impl Resources {
             mana: 0,
             thresholds: Thresholds::new(),
         }
-    }
-
-    pub fn has_resources(&self, mana: u8, threshold: impl Into<Thresholds>) -> bool {
-        let threshold = threshold.into();
-        self.mana >= mana
-            && self.thresholds.fire >= threshold.fire
-            && self.thresholds.air >= threshold.air
-            && self.thresholds.earth >= threshold.earth
-            && self.thresholds.water >= threshold.water
-    }
-
-    pub fn can_afford(&self, card: &Box<dyn Card>, state: &State) -> bool {
-        let required_thresholds = card.get_required_thresholds(state);
-        let cost = card.get_mana_cost(state);
-        self.mana >= cost
-            && self.thresholds.fire >= required_thresholds.fire
-            && self.thresholds.air >= required_thresholds.air
-            && self.thresholds.earth >= required_thresholds.earth
-            && self.thresholds.water >= required_thresholds.water
     }
 }
 
@@ -1040,7 +1021,7 @@ impl Game {
                             .state
                             .cards
                             .iter()
-                            .filter(|c| c.can_cast(&self.state, card))
+                            .filter(|c| c.can_cast(&self.state, card).unwrap_or_default())
                             .map(|c| c.get_id().clone())
                             .collect();
                         let prompt = "Pick a spellcaster to cast the spell";
@@ -1058,7 +1039,7 @@ impl Game {
                     }
                     (_, Zone::Realm(_)) => {
                         let unit_disabled =
-                            card.is_tapped() || card.has_modifier(&self.state, &Modifier::SummoningSickness);
+                            card.is_tapped() || card.has_modifier(&self.state, &Ability::SummoningSickness);
                         if card.is_unit() && unit_disabled {
                             return Ok(());
                         }

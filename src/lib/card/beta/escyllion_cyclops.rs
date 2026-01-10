@@ -1,7 +1,7 @@
 use crate::{
-    card::{Card, CardBase, Edition, MinionType, Modifier, Plane, Rarity, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
     effect::Effect,
-    game::{PlayerId, Thresholds},
+    game::PlayerId,
     state::State,
 };
 
@@ -19,7 +19,7 @@ impl EscyllionCyclops {
             unit_base: UnitBase {
                 power: 6,
                 toughness: 6,
-                modifiers: vec![Modifier::Charge],
+                modifiers: vec![Ability::Charge],
                 types: vec![MinionType::Monster],
                 ..Default::default()
             },
@@ -28,8 +28,7 @@ impl EscyllionCyclops {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 6,
-                required_thresholds: Thresholds::parse("FF"),
+                cost: Cost::new(6, "FF"),
                 plane: Plane::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,

@@ -1,7 +1,7 @@
 use crate::{
-    card::{Card, CardBase, Edition, MinionType, Modifier, Plane, Rarity, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
     effect::Effect,
-    game::{Element, PlayerId, Thresholds},
+    game::{Element, PlayerId},
     state::State,
 };
 
@@ -20,10 +20,10 @@ impl GrandmasterWizard {
                 power: 0,
                 toughness: 0,
                 modifiers: vec![
-                    Modifier::Spellcaster(Element::Fire),
-                    Modifier::Spellcaster(Element::Air),
-                    Modifier::Spellcaster(Element::Earth),
-                    Modifier::Spellcaster(Element::Water),
+                    Ability::Spellcaster(Element::Fire),
+                    Ability::Spellcaster(Element::Air),
+                    Ability::Spellcaster(Element::Earth),
+                    Ability::Spellcaster(Element::Water),
                 ],
                 types: vec![MinionType::Mortal],
                 ..Default::default()
@@ -33,8 +33,7 @@ impl GrandmasterWizard {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 6,
-                required_thresholds: Thresholds::parse("AA"),
+                cost: Cost::new(6, "AA"),
                 plane: Plane::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,

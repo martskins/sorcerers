@@ -1,7 +1,7 @@
 use crate::{
-    card::{Card, CardBase, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    card::{Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
     effect::Effect,
-    game::{PlayerId, Thresholds},
+    game::PlayerId,
     state::State,
 };
 
@@ -28,8 +28,7 @@ impl InfernalLegion {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 6,
-                required_thresholds: Thresholds::parse("FFF"),
+                cost: Cost::new(6, "FFF"),
                 plane: Plane::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,

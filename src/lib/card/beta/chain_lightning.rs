@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, Plane, Rarity, Zone},
+    card::{Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
     effect::Effect,
     game::{BaseOption, PlayerId, Thresholds, force_sync, pick_card, pick_option},
     state::State,
@@ -20,8 +20,7 @@ impl ChainLightning {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 2,
-                required_thresholds: Thresholds::parse("AA"),
+                cost: Cost::new(2, "AA"),
                 plane: Plane::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
@@ -90,10 +89,11 @@ impl Card for ChainLightning {
 
             force_sync(self.get_controller_id(), &local_state).await?;
 
-            let can_afford_next_hit = local_state
-                .get_player_resources(self.get_controller_id())?
-                .has_resources(2, "");
-            if !can_afford_next_hit {
+            let additional_hit_cost = Cost {
+                mana: 2,
+                ..Default::default()
+            };
+            if !additional_hit_cost.can_afford(state, self.get_controller_id())? {
                 break;
             }
 

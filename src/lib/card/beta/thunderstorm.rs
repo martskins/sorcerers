@@ -1,7 +1,7 @@
 use crate::{
-    card::{Aura, AuraBase, Card, CardBase, Edition, Plane, Rarity, Zone},
+    card::{Aura, AuraBase, Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
     effect::Effect,
-    game::{PlayerId, Thresholds},
+    game::PlayerId,
     query::{CardQuery, ZoneQuery},
     state::State,
 };
@@ -22,8 +22,7 @@ impl Thunderstorm {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 4,
-                required_thresholds: Thresholds::parse("AA"),
+                cost: Cost::new(4, "AA"),
                 plane: Plane::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,

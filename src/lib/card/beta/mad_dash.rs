@@ -1,7 +1,7 @@
 use crate::{
-    card::{Card, CardBase, Edition, Modifier, Plane, Rarity, Zone},
+    card::{Ability, Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
     effect::Effect,
-    game::{PlayerId, Thresholds, pick_card},
+    game::{PlayerId, pick_card},
     query::EffectQuery,
     state::State,
 };
@@ -21,8 +21,7 @@ impl MadDash {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 2,
-                required_thresholds: Thresholds::parse("F"),
+                cost: Cost::new(2, "F"),
                 plane: Plane::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
@@ -62,7 +61,7 @@ impl Card for MadDash {
         let picked_card_id = pick_card(self.get_controller_id(), &cards, state, prompt).await?;
         effects.push(Effect::add_modifier(
             &picked_card_id,
-            Modifier::Movement(1),
+            Ability::Movement(1),
             Some(EffectQuery::TurnEnd { player_id: None }),
         ));
         Ok(effects)

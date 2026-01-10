@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, Plane, Rarity, Site, SiteBase, SiteType, Zone},
+    card::{Card, CardBase, Cost, Edition, Plane, Rarity, Site, SiteBase, SiteType, Zone},
     effect::{Effect, TokenType},
     game::{BaseOption, PlayerId, Thresholds, pick_option},
     state::State,
@@ -27,8 +27,7 @@ impl SimpleVillage {
                 owner_id,
                 tapped: false,
                 zone: Zone::Atlasbook,
-                mana_cost: 0,
-                required_thresholds: Thresholds::new(),
+                cost: Cost::zero(),
                 plane: Plane::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,

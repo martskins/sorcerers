@@ -1,7 +1,7 @@
 use crate::{
-    card::{Card, CardBase, Edition, MinionType, Modifier, Plane, Rarity, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
     effect::Effect,
-    game::{CardAction, PlayerId, Thresholds},
+    game::{CardAction, PlayerId},
     query::CardQuery,
     state::State,
 };
@@ -64,7 +64,7 @@ impl NimbusJinn {
             unit_base: UnitBase {
                 power: 4,
                 toughness: 4,
-                modifiers: vec![Modifier::Airborne],
+                modifiers: vec![Ability::Airborne],
                 types: vec![MinionType::Spirit],
                 ..Default::default()
             },
@@ -73,8 +73,7 @@ impl NimbusJinn {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 6,
-                required_thresholds: Thresholds::parse("AA"),
+                cost: Cost::new(6, "AA"),
                 plane: Plane::Air,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,

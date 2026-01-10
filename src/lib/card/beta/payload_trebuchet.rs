@@ -1,6 +1,6 @@
 use crate::{
-    card::{Artifact, ArtifactBase, Card, CardBase, Edition, Plane, Rarity, Zone},
-    game::{PlayerId, Thresholds},
+    card::{Artifact, ArtifactBase, Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
+    game::PlayerId,
 };
 
 #[derive(Debug, Clone)]
@@ -20,8 +20,7 @@ impl PayloadTrebuchet {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 5,
-                required_thresholds: Thresholds::parse(""),
+                cost: Cost::new(5, ""),
                 plane: Plane::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,

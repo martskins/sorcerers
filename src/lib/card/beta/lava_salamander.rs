@@ -1,6 +1,6 @@
 use crate::{
-    card::{Card, CardBase, Edition, MinionType, Modifier, Plane, Rarity, UnitBase, Zone},
-    game::{Element, PlayerId, Thresholds},
+    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    game::{Element, PlayerId},
 };
 
 #[derive(Debug, Clone)]
@@ -18,8 +18,8 @@ impl LavaSalamander {
                 power: 1,
                 toughness: 1,
                 modifiers: vec![
-                    Modifier::Spellcaster(Element::Fire),
-                    Modifier::TakesNoDamageFromElement(Element::Fire),
+                    Ability::Spellcaster(Element::Fire),
+                    Ability::TakesNoDamageFromElement(Element::Fire),
                 ],
                 types: vec![MinionType::Beast],
                 ..Default::default()
@@ -29,8 +29,7 @@ impl LavaSalamander {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 2,
-                required_thresholds: Thresholds::parse("FF"),
+                cost: Cost::new(2, "FF"),
                 plane: Plane::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,

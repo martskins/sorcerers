@@ -1,7 +1,7 @@
 use crate::{
-    card::{Card, CardBase, Edition, MinionType, Modifier, Plane, Rarity, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
     effect::Effect,
-    game::{PlayerId, Thresholds, pick_option, pick_zone},
+    game::{PlayerId, pick_option, pick_zone},
     query::ZoneQuery,
     state::State,
 };
@@ -20,7 +20,7 @@ impl KiteArcher {
             unit_base: UnitBase {
                 power: 2,
                 toughness: 2,
-                modifiers: vec![Modifier::Ranged(1)],
+                modifiers: vec![Ability::Ranged(1)],
                 types: vec![MinionType::Mortal],
                 ..Default::default()
             },
@@ -29,8 +29,7 @@ impl KiteArcher {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 3,
-                required_thresholds: Thresholds::parse("A"),
+                cost: Cost::new(3, "A"),
                 plane: Plane::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,

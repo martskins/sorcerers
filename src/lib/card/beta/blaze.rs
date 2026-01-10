@@ -1,7 +1,7 @@
 use crate::{
-    card::{Card, CardBase, Edition, Modifier, Plane, Rarity, Zone},
+    card::{Ability, Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
     effect::{Effect, ModifierCounter},
-    game::{PlayerId, Thresholds, pick_card},
+    game::{PlayerId, pick_card},
     query::EffectQuery,
     state::State,
 };
@@ -21,8 +21,7 @@ impl Blaze {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 3,
-                required_thresholds: Thresholds::parse("F"),
+                cost: Cost::new(3, "F"),
                 plane: Plane::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
@@ -61,7 +60,7 @@ impl Card for Blaze {
                 card_id: picked_card.clone(),
                 counter: ModifierCounter {
                     id: uuid::Uuid::new_v4(),
-                    modifier: Modifier::Movement(2),
+                    modifier: Ability::Movement(2),
                     expires_on_effect: Some(EffectQuery::TurnEnd { player_id: None }),
                 },
             },
@@ -69,7 +68,7 @@ impl Card for Blaze {
                 card_id: picked_card,
                 counter: ModifierCounter {
                     id: uuid::Uuid::new_v4(),
-                    modifier: Modifier::Blaze(2),
+                    modifier: Ability::Blaze(2),
                     expires_on_effect: Some(EffectQuery::TurnEnd { player_id: None }),
                 },
             },

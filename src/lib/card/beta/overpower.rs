@@ -1,7 +1,7 @@
 use crate::{
-    card::{Card, CardBase, Edition, Plane, Rarity, Zone},
+    card::{Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
     effect::{Counter, Effect},
-    game::{PlayerId, Thresholds, pick_card},
+    game::{PlayerId, pick_card},
     query::EffectQuery,
     state::State,
 };
@@ -21,8 +21,7 @@ impl Overpower {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 1,
-                required_thresholds: Thresholds::parse("E"),
+                cost: Cost::new(1, "E"),
                 plane: Plane::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,

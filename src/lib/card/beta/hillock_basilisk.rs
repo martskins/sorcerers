@@ -1,6 +1,8 @@
+use std::collections::HashMap;
+
 use crate::{
-    card::{Card, CardBase, Edition, MinionType, Modifier, Plane, Rarity, UnitBase, Zone},
-    game::{Direction, PlayerId, Thresholds},
+    card::{Ability, AreaModifiers, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    game::{Direction, PlayerId},
     state::State,
 };
 
@@ -27,8 +29,7 @@ impl HillockBasilisk {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                mana_cost: 4,
-                required_thresholds: Thresholds::parse("F"),
+                cost: Cost::new(4, "F"),
                 plane: Plane::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
@@ -59,7 +60,7 @@ impl Card for HillockBasilisk {
         Some(&mut self.unit_base)
     }
 
-    fn area_modifiers(&self, state: &State) -> Vec<(Modifier, Vec<uuid::Uuid>)> {
+    fn area_modifiers(&self, state: &State) -> AreaModifiers {
         let mut zones = vec![self.get_zone().clone()];
         let board_flipped = self.get_owner_id() != &state.player_one;
         let zone_in_front = self
@@ -69,13 +70,18 @@ impl Card for HillockBasilisk {
             zones.push(zone);
         }
 
-        let units = zones
+        let grants_abilities = zones
             .iter()
             .flat_map(|z| state.get_units_in_zone(z))
             .filter(|c| c.get_id() != self.get_id())
-            .map(|c| c.get_id().clone())
-            .collect();
-        vec![(Modifier::Disabled, units)]
+            .map(|c| (c.get_id().clone(), vec![Ability::Disabled]))
+            .collect::<HashMap<uuid::Uuid, Vec<Ability>>>();
+
+        AreaModifiers {
+            grants_abilities: grants_abilities,
+            // grants_abilities: vec![(Ability::Disabled, units)],
+            ..Default::default()
+        }
     }
 }
 
