@@ -17,7 +17,7 @@ impl GyreHippogriffs {
             unit_base: UnitBase {
                 power: 3,
                 toughness: 3,
-                modifiers: vec![Ability::Airborne, Ability::Charge],
+                abilities: vec![Ability::Airborne, Ability::Charge],
                 types: vec![MinionType::Beast],
                 ..Default::default()
             },

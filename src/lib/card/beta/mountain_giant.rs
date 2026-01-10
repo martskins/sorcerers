@@ -17,7 +17,7 @@ impl MountainGiant {
             unit_base: UnitBase {
                 power: 8,
                 toughness: 8,
-                modifiers: vec![],
+                abilities: vec![],
                 types: vec![MinionType::Giant],
                 ..Default::default()
             },

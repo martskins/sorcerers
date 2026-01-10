@@ -17,7 +17,7 @@ impl WraetannisTitan {
             unit_base: UnitBase {
                 power: 6,
                 toughness: 6,
-                modifiers: vec![],
+                abilities: vec![],
                 types: vec![MinionType::Giant],
                 ..Default::default()
             },

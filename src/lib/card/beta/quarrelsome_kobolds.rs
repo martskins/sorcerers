@@ -19,7 +19,7 @@ impl QuarrelsomeKobolds {
             unit_base: UnitBase {
                 power: 2,
                 toughness: 2,
-                modifiers: vec![],
+                abilities: vec![],
                 types: vec![MinionType::Goblin],
                 ..Default::default()
             },

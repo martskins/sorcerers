@@ -17,7 +17,7 @@ impl PlumedPegasus {
             unit_base: UnitBase {
                 power: 3,
                 toughness: 3,
-                modifiers: vec![Ability::Airborne],
+                abilities: vec![Ability::Airborne],
                 types: vec![MinionType::Beast],
                 ..Default::default()
             },

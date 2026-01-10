@@ -20,7 +20,7 @@ impl KiteArcher {
             unit_base: UnitBase {
                 power: 2,
                 toughness: 2,
-                modifiers: vec![Ability::Ranged(1)],
+                abilities: vec![Ability::Ranged(1)],
                 types: vec![MinionType::Mortal],
                 ..Default::default()
             },

@@ -17,7 +17,7 @@ impl AutumnUnicorn {
             unit_base: UnitBase {
                 power: 4,
                 toughness: 4,
-                modifiers: vec![],
+                abilities: vec![],
                 types: vec![MinionType::Beast],
                 ..Default::default()
             },

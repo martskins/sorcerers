@@ -17,7 +17,7 @@ impl PetrosianCavalry {
             unit_base: UnitBase {
                 power: 3,
                 toughness: 3,
-                modifiers: vec![Ability::Charge],
+                abilities: vec![Ability::Charge],
                 types: vec![MinionType::Mortal],
                 ..Default::default()
             },

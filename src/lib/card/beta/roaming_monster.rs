@@ -18,7 +18,7 @@ impl RoamingMonster {
             unit_base: UnitBase {
                 power: 4,
                 toughness: 4,
-                modifiers: vec![],
+                abilities: vec![],
                 types: vec![MinionType::Monster],
                 ..Default::default()
             },

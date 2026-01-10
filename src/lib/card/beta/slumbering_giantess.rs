@@ -1,6 +1,6 @@
 use crate::{
     card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
-    effect::{Effect, ModifierCounter},
+    effect::{AbilityCounter, Effect},
     game::PlayerId,
     query::{CardQuery, EffectQuery},
     state::State,
@@ -20,7 +20,7 @@ impl SlumberingGiantess {
             unit_base: UnitBase {
                 power: 3,
                 toughness: 3,
-                modifiers: vec![],
+                abilities: vec![],
                 types: vec![MinionType::Mortal],
                 ..Default::default()
             },
@@ -62,9 +62,9 @@ impl Card for SlumberingGiantess {
     }
 
     async fn genesis(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
-        Ok(vec![Effect::AddModifierCounter {
+        Ok(vec![Effect::AddAbilityCounter {
             card_id: self.get_id().clone(),
-            counter: ModifierCounter {
+            counter: AbilityCounter {
                 id: uuid::Uuid::new_v4(),
                 modifier: Ability::Disabled,
                 expires_on_effect: Some(EffectQuery::DamageDealt {

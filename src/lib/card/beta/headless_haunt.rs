@@ -20,7 +20,7 @@ impl HeadlessHaunt {
             unit_base: UnitBase {
                 power: 4,
                 toughness: 4,
-                modifiers: vec![Ability::Voidwalk],
+                abilities: vec![Ability::Voidwalk],
                 types: vec![MinionType::Spirit],
                 ..Default::default()
             },

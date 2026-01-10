@@ -19,7 +19,7 @@ impl SkirmishersOfMu {
             unit_base: UnitBase {
                 power: 3,
                 toughness: 3,
-                modifiers: vec![Ability::Ranged(1)],
+                abilities: vec![Ability::Ranged(1)],
                 types: vec![MinionType::Mortal],
                 ..Default::default()
             },

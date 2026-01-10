@@ -19,7 +19,7 @@ impl GrandmasterWizard {
             unit_base: UnitBase {
                 power: 0,
                 toughness: 0,
-                modifiers: vec![
+                abilities: vec![
                     Ability::Spellcaster(Element::Fire),
                     Ability::Spellcaster(Element::Air),
                     Ability::Spellcaster(Element::Earth),

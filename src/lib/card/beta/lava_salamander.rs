@@ -17,7 +17,7 @@ impl LavaSalamander {
             unit_base: UnitBase {
                 power: 1,
                 toughness: 1,
-                modifiers: vec![
+                abilities: vec![
                     Ability::Spellcaster(Element::Fire),
                     Ability::TakesNoDamageFromElement(Element::Fire),
                 ],

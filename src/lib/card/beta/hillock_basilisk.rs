@@ -20,7 +20,7 @@ impl HillockBasilisk {
             unit_base: UnitBase {
                 power: 3,
                 toughness: 3,
-                modifiers: vec![],
+                abilities: vec![],
                 types: vec![MinionType::Beast],
                 ..Default::default()
             },

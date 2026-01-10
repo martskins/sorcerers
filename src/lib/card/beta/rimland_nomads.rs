@@ -19,7 +19,7 @@ impl RimlandNomads {
             unit_base: UnitBase {
                 power: 2,
                 toughness: 2,
-                modifiers: vec![Ability::Movement(1)],
+                abilities: vec![Ability::Movement(1)],
                 types: vec![MinionType::Mortal],
                 ..Default::default()
             },

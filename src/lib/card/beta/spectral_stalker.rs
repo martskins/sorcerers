@@ -17,7 +17,7 @@ impl SpectralStalker {
             unit_base: UnitBase {
                 power: 2,
                 toughness: 2,
-                modifiers: vec![Ability::Voidwalk],
+                abilities: vec![Ability::Voidwalk],
                 types: vec![MinionType::Undead],
                 ..Default::default()
             },

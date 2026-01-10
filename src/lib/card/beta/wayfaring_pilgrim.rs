@@ -20,7 +20,7 @@ impl WayfaringPilgrim {
             unit_base: UnitBase {
                 power: 1,
                 toughness: 1,
-                modifiers: vec![Ability::Airborne],
+                abilities: vec![Ability::Airborne],
                 types: vec![MinionType::Mortal],
                 ..Default::default()
             },

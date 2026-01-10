@@ -17,7 +17,7 @@ impl DeadOfNightDemon {
             unit_base: UnitBase {
                 power: 2,
                 toughness: 2,
-                modifiers: vec![Ability::Stealth],
+                abilities: vec![Ability::Stealth],
                 types: vec![MinionType::Demon],
                 ..Default::default()
             },

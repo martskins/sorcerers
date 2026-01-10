@@ -17,7 +17,7 @@ impl SandWorm {
             unit_base: UnitBase {
                 power: 4,
                 toughness: 4,
-                modifiers: vec![Ability::Burrowing, Ability::Landbound],
+                abilities: vec![Ability::Burrowing, Ability::Landbound],
                 types: vec![MinionType::Beast],
                 ..Default::default()
             },

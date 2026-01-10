@@ -58,7 +58,7 @@ impl NimbusJinn {
             unit_base: UnitBase {
                 power: 4,
                 toughness: 4,
-                modifiers: vec![Ability::Airborne],
+                abilities: vec![Ability::Airborne],
                 types: vec![MinionType::Spirit],
                 ..Default::default()
             },

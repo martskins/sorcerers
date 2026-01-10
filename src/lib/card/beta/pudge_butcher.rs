@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
     game::PlayerId,
 };
 
@@ -17,7 +17,7 @@ impl PudgeButcher {
             unit_base: UnitBase {
                 power: 5,
                 toughness: 5,
-                modifiers: vec![],
+                abilities: vec![Ability::Immobile],
                 types: vec![MinionType::Demon],
                 ..Default::default()
             },

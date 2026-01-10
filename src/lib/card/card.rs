@@ -1,6 +1,6 @@
 use crate::{
     card::CARD_CONSTRUCTORS,
-    effect::{Counter, Effect, ModifierCounter, TokenType},
+    effect::{AbilityCounter, Counter, Effect, TokenType},
     game::{
         ActivatedAbility, AvatarAction, Direction, Element, PlayerId, Thresholds, UnitAction, are_adjacent, are_nearby,
         get_adjacent_zones, get_nearby_zones,
@@ -786,7 +786,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         if self
             .get_unit_base()
             .unwrap_or(&UnitBase::default())
-            .modifiers
+            .abilities
             .contains(&modifier)
         {
             return true;
@@ -971,7 +971,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     fn base_get_modifiers(&self, state: &State) -> Vec<Ability> {
         match self.get_unit_base() {
             Some(base) => {
-                let mut modifiers = base.modifiers.clone();
+                let mut modifiers = base.abilities.clone();
                 for counter in &base.modifier_counters {
                     modifiers.push(counter.modifier.clone());
                 }
@@ -1209,13 +1209,13 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     fn remove_modifier(&mut self, modifier: &Ability) {
         if let Some(ub) = self.get_unit_base_mut() {
-            ub.modifiers.retain(|a| a != modifier);
+            ub.abilities.retain(|a| a != modifier);
         }
     }
 
     fn add_modifier(&mut self, modifier: Ability) {
         if let Some(ub) = self.get_unit_base_mut() {
-            ub.modifiers.push(modifier);
+            ub.abilities.push(modifier);
         }
     }
 
@@ -1446,10 +1446,10 @@ impl Ability {
 pub struct UnitBase {
     pub power: u8,
     pub toughness: u8,
-    pub modifiers: Vec<Ability>,
+    pub abilities: Vec<Ability>,
     pub damage: u8,
     pub power_counters: Vec<Counter>,
-    pub modifier_counters: Vec<ModifierCounter>,
+    pub modifier_counters: Vec<AbilityCounter>,
     pub types: Vec<MinionType>,
 }
 

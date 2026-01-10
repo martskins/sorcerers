@@ -17,7 +17,7 @@ impl SnowLeopard {
             unit_base: UnitBase {
                 power: 2,
                 toughness: 2,
-                modifiers: vec![],
+                abilities: vec![],
                 types: vec![MinionType::Beast],
                 ..Default::default()
             },

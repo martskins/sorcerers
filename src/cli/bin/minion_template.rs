@@ -17,7 +17,7 @@ impl {StructName} {
             unit_base: UnitBase {
                 power: {Power},
                 toughness: {Toughness},
-                modifiers: vec![{Modifiers}],
+                abilities: vec![{Modifiers}],
                 types: vec![{MinionTypes}],
                 ..Default::default()
             },

@@ -17,7 +17,7 @@ impl CaveTrolls {
             unit_base: UnitBase {
                 power: 3,
                 toughness: 3,
-                modifiers: vec![Ability::Burrowing],
+                abilities: vec![Ability::Burrowing],
                 types: vec![MinionType::Mortal],
                 ..Default::default()
             },

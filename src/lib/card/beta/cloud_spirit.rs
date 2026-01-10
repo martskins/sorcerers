@@ -17,7 +17,7 @@ impl CloudSpirit {
             unit_base: UnitBase {
                 power: 2,
                 toughness: 2,
-                modifiers: vec![Ability::Airborne, Ability::Movement(2)],
+                abilities: vec![Ability::Airborne, Ability::Movement(2)],
                 types: vec![MinionType::Fairy],
                 ..Default::default()
             },

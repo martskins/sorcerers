@@ -17,7 +17,7 @@ impl HighlandClansmen {
             unit_base: UnitBase {
                 power: 5,
                 toughness: 5,
-                modifiers: vec![Ability::Charge],
+                abilities: vec![Ability::Charge],
                 types: vec![MinionType::Mortal],
                 ..Default::default()
             },

@@ -17,7 +17,7 @@ impl PitVipers {
             unit_base: UnitBase {
                 power: 1,
                 toughness: 1,
-                modifiers: vec![Ability::Lethal, Ability::Burrowing],
+                abilities: vec![Ability::Lethal, Ability::Burrowing],
                 types: vec![MinionType::Beast],
                 ..Default::default()
             },

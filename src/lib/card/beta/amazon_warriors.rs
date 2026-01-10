@@ -17,7 +17,7 @@ impl AmazonWarriors {
             unit_base: UnitBase {
                 power: 5,
                 toughness: 5,
-                modifiers: vec![],
+                abilities: vec![],
                 types: vec![MinionType::Mortal],
                 ..Default::default()
             },

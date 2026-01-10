@@ -8,7 +8,7 @@ use crate::{
 use std::fmt::Debug;
 
 #[derive(Debug, Clone)]
-pub struct ModifierCounter {
+pub struct AbilityCounter {
     pub id: uuid::Uuid,
     pub modifier: Ability,
     pub expires_on_effect: Option<EffectQuery>,
@@ -59,13 +59,13 @@ pub enum Effect {
         piercing: bool,
         splash_damage: Option<u8>,
     },
-    RemoveModifier {
+    RemoveAbility {
         card_id: uuid::Uuid,
         modifier: Ability,
     },
-    AddModifierCounter {
+    AddAbilityCounter {
         card_id: uuid::Uuid,
-        counter: ModifierCounter,
+        counter: AbilityCounter,
     },
     AddCounter {
         card_id: uuid::Uuid,
@@ -230,9 +230,9 @@ impl Effect {
     }
 
     pub fn add_modifier(card_id: &uuid::Uuid, modifier: Ability, expires_on_effect: Option<EffectQuery>) -> Self {
-        Effect::AddModifierCounter {
+        Effect::AddAbilityCounter {
             card_id: card_id.clone(),
-            counter: ModifierCounter {
+            counter: AbilityCounter {
                 id: uuid::Uuid::new_v4(),
                 modifier,
                 expires_on_effect,
@@ -271,7 +271,7 @@ impl Effect {
                 let card = state.get_card(card_id).get_name();
                 Some(format!("{} heals {} for {} health", card, card, amount))
             }
-            Effect::RemoveModifier { .. } => None,
+            Effect::RemoveAbility { .. } => None,
             Effect::ShootProjectile {
                 player_id,
                 shooter,
@@ -288,7 +288,7 @@ impl Effect {
                     direction.get_name()
                 ))
             }
-            Effect::AddModifierCounter { .. } => None,
+            Effect::AddAbilityCounter { .. } => None,
             Effect::AddCounter { .. } => None,
             Effect::TeleportCard { .. } => None,
             Effect::MoveCard {
@@ -500,7 +500,7 @@ impl Effect {
                     .ok_or(anyhow::anyhow!("card has no unit base"))?;
                 unit_base.damage = unit_base.damage.saturating_sub(*amount);
             }
-            Effect::RemoveModifier { card_id, modifier } => {
+            Effect::RemoveAbility { card_id, modifier } => {
                 let card = state.get_card_mut(card_id);
                 card.remove_modifier(modifier);
             }
@@ -998,7 +998,7 @@ impl Effect {
                     base.power_counters.push(counter.clone());
                 }
             }
-            Effect::AddModifierCounter { card_id, counter, .. } => {
+            Effect::AddAbilityCounter { card_id, counter, .. } => {
                 let card = state.get_card_mut(card_id);
                 if card.is_unit() {
                     let base = card

@@ -1,6 +1,6 @@
 use crate::{
     card::{Ability, Card, CardBase, Cost, Edition, Plane, Rarity, Site, SiteBase, Zone},
-    effect::{Effect, ModifierCounter},
+    effect::{AbilityCounter, Effect},
     game::{PlayerId, Thresholds},
     query::EffectQuery,
     state::State,
@@ -73,9 +73,9 @@ impl Card for Quagmire {
             .iter()
             .map(|s| s.get_zone().get_units(state, None))
             .flatten()
-            .map(|u| Effect::AddModifierCounter {
+            .map(|u| Effect::AddAbilityCounter {
                 card_id: u.get_id().clone(),
-                counter: ModifierCounter {
+                counter: AbilityCounter {
                     id: uuid::Uuid::new_v4(),
                     modifier: Ability::Immobile,
                     expires_on_effect: Some(EffectQuery::TurnStart {

@@ -19,7 +19,7 @@ impl ScentHounds {
             unit_base: UnitBase {
                 power: 2,
                 toughness: 2,
-                modifiers: vec![],
+                abilities: vec![],
                 types: vec![MinionType::Beast],
                 ..Default::default()
             },
@@ -67,7 +67,7 @@ impl Card for ScentHounds {
             .get_nearby_units(state, Some(&opponent_id))
             .into_iter()
             .filter(|c| c.has_modifier(state, &Ability::Stealth))
-            .map(|c| Effect::RemoveModifier {
+            .map(|c| Effect::RemoveAbility {
                 card_id: c.get_id().clone(),
                 modifier: Ability::Stealth,
             })

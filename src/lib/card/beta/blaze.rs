@@ -1,6 +1,6 @@
 use crate::{
     card::{Ability, Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
-    effect::{Effect, ModifierCounter},
+    effect::{AbilityCounter, Effect},
     game::{PlayerId, pick_card},
     query::EffectQuery,
     state::State,
@@ -56,17 +56,17 @@ impl Card for Blaze {
         let prompt = "Blaze: Pick an ally";
         let picked_card = pick_card(self.get_controller_id(), &units, state, prompt).await?;
         Ok(vec![
-            Effect::AddModifierCounter {
+            Effect::AddAbilityCounter {
                 card_id: picked_card.clone(),
-                counter: ModifierCounter {
+                counter: AbilityCounter {
                     id: uuid::Uuid::new_v4(),
                     modifier: Ability::Movement(2),
                     expires_on_effect: Some(EffectQuery::TurnEnd { player_id: None }),
                 },
             },
-            Effect::AddModifierCounter {
+            Effect::AddAbilityCounter {
                 card_id: picked_card,
-                counter: ModifierCounter {
+                counter: AbilityCounter {
                     id: uuid::Uuid::new_v4(),
                     modifier: Ability::Blaze(2),
                     expires_on_effect: Some(EffectQuery::TurnEnd { player_id: None }),
