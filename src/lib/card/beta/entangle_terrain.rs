@@ -1,5 +1,7 @@
+use std::collections::HashMap;
+
 use crate::{
-    card::{Aura, AuraBase, Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
+    card::{Ability, AreaModifiers, Aura, AuraBase, Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
     effect::Effect,
     game::PlayerId,
     state::State,
@@ -72,6 +74,21 @@ impl Card for EntangleTerrain {
 
     fn get_aura(&self) -> Option<&dyn Aura> {
         Some(self)
+    }
+
+    fn area_modifiers(&self, state: &State) -> AreaModifiers {
+        let minions: Vec<uuid::Uuid> = self
+            .get_affected_zones(state)
+            .iter()
+            .filter(|zone| zone.get_site(state).is_some())
+            .flat_map(|zone| zone.get_minions(state, None))
+            .map(|minion| minion.get_id().clone())
+            .collect();
+        AreaModifiers {
+            grants_abilities: minions.iter().map(|id| (id.clone(), vec![Ability::Immobile])).collect(),
+            removes_abilities: minions.iter().map(|id| (id.clone(), vec![Ability::Airborne])).collect(),
+            grants_activated_abilities: HashMap::new(),
+        }
     }
 }
 
