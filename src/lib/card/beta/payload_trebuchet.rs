@@ -1,7 +1,81 @@
 use crate::{
-    card::{Artifact, ArtifactBase, Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
-    game::PlayerId,
+    card::{AdditionalCost, Artifact, ArtifactBase, Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
+    effect::Effect,
+    game::{CardAction, PlayerId, Thresholds},
+    query::CardQuery,
+    state::State,
 };
+
+#[derive(Debug, Clone)]
+struct ShootPayload;
+
+#[async_trait::async_trait]
+impl CardAction for ShootPayload {
+    fn get_name(&self) -> &str {
+        "Shoot Payload"
+    }
+
+    async fn on_select(
+        &self,
+        card_id: &uuid::Uuid,
+        player_id: &PlayerId,
+        state: &State,
+    ) -> anyhow::Result<Vec<Effect>> {
+        Ok(vec![])
+    }
+
+    fn get_cost(&self, card_id: &uuid::Uuid, state: &State) -> anyhow::Result<Cost> {
+        let bearer_id = state
+            .get_card(card_id)
+            .get_artifact_base()
+            .and_then(|ab| ab.bearer.clone());
+        match bearer_id {
+            Some(bearer_id) => {
+                let bearer = state.get_card(&bearer_id);
+                Ok(Cost {
+                    mana: 0,
+                    thresholds: Thresholds::new(),
+                    additional: vec![
+                        AdditionalCost::Tap {
+                            count: 1,
+                            card: CardQuery::Specific {
+                                id: uuid::Uuid::new_v4(),
+                                card_id: bearer_id.clone(),
+                            },
+                        },
+                        AdditionalCost::Tap {
+                            card: CardQuery::InZone {
+                                id: uuid::Uuid::new_v4(),
+                                zone: bearer.get_zone().clone(),
+                                planes: None,
+                                owner: Some(bearer.get_controller_id().clone()),
+                                prompt: None,
+                            },
+                            count: 2, // One of the taps is the bearer itself, which we check is
+                                      // untapped on the previous cost.
+                        },
+                        AdditionalCost::Discard {
+                            card: CardQuery::FromOptions {
+                                id: uuid::Uuid::new_v4(),
+                                options: state
+                                    .cards
+                                    .iter()
+                                    .filter(|c| c.get_zone() == &Zone::Hand)
+                                    .filter(|c| c.get_controller_id() == bearer.get_controller_id())
+                                    .map(|c| c.get_id().clone())
+                                    .collect(),
+                                prompt: None,
+                                preview: false,
+                            },
+                            count: 1,
+                        },
+                    ],
+                })
+            }
+            None => Ok(Cost::zero()),
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct PayloadTrebuchet {
@@ -59,6 +133,10 @@ impl Card for PayloadTrebuchet {
 
     fn get_artifact(&self) -> Option<&dyn Artifact> {
         Some(self)
+    }
+
+    fn get_actions(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn CardAction>>> {
+        Ok(vec![Box::new(ShootPayload)])
     }
 }
 

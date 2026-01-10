@@ -150,7 +150,7 @@ impl RealmComponent {
             if let Some(existing) = existing.as_mut() {
                 if card.zone == existing.card.zone {
                     existing.card.tapped = card.tapped;
-                    existing.card.modifiers = card.modifiers.clone();
+                    existing.card.abilities = card.abilities.clone();
                     existing.card.damage_taken = card.damage_taken;
                     new_cards.push(existing.clone());
                     continue;

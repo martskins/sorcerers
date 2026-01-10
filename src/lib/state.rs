@@ -155,7 +155,7 @@ impl State {
                 edition: c.get_edition().clone(),
                 zone: c.get_zone().clone(),
                 card_type: c.get_card_type().clone(),
-                modifiers: c.get_modifiers(&self).unwrap_or_default(),
+                abilities: c.get_modifiers(&self).unwrap_or_default(),
                 plane: c.get_plane(&self).clone(),
                 damage_taken: c.get_damage_taken().unwrap_or(0),
                 bearer: c
