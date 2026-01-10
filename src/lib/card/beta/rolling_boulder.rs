@@ -66,11 +66,6 @@ impl CardAction for RollingBounderAction {
                 while let Some(zone) = last_zone.zone_in_direction(&picked_direction, 1) {
                     let units = zone.get_units(state, None);
                     for unit in units {
-                        effects.push(Effect::TakeDamage {
-                            card_id: unit.get_id().clone(),
-                            from: boulder.get_id().clone(),
-                            damage: 4,
-                        });
                         effects.push(Effect::MoveCard {
                             card_id: boulder.get_id().clone(),
                             from: last_zone.clone(),
@@ -83,11 +78,18 @@ impl CardAction for RollingBounderAction {
                             plane: Plane::Surface,
                             through_path: None,
                         });
+                        effects.push(Effect::TakeDamage {
+                            card_id: unit.get_id().clone(),
+                            from: boulder.get_id().clone(),
+                            damage: 4,
+                        });
                     }
 
                     last_zone = zone.clone();
                 }
 
+                // reverse the effects vec so that they are applied in FIFO order
+                effects.reverse();
                 Ok(effects)
             }
         }
@@ -105,7 +107,10 @@ impl RollingBoulder {
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
-            artifact_base: ArtifactBase { attached_to: None },
+            artifact_base: ArtifactBase {
+                bearer: None,
+                needs_bearer: false,
+            },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,

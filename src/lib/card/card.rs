@@ -288,9 +288,9 @@ pub struct CardData {
     pub zone: Zone,
     pub plane: Plane,
     pub card_type: CardType,
-    pub modifiers: Vec<Ability>,
+    pub abilities: Vec<Ability>,
     pub damage_taken: u8,
-    pub attached_to: Option<uuid::Uuid>,
+    pub bearer: Option<uuid::Uuid>,
     pub rarity: Rarity,
     pub num_arts: usize,
 }
@@ -577,7 +577,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     fn default_get_valid_play_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {
         match self.get_card_type() {
-            CardType::Artifact => Ok(vec![]),
             CardType::Aura => Ok(Zone::all_intersections()
                 .iter()
                 .filter(|z| match z {
@@ -586,7 +585,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 })
                 .cloned()
                 .collect()),
-            CardType::Minion => Ok(state
+            CardType::Minion | CardType::Artifact => Ok(state
                 .cards
                 .iter()
                 .filter(|c| c.get_owner_id() == self.get_owner_id())
@@ -1359,10 +1358,18 @@ pub enum Rarity {
 
 #[derive(Debug, Clone)]
 pub struct ArtifactBase {
-    pub attached_to: Option<uuid::Uuid>,
+    pub bearer: Option<uuid::Uuid>,
+    pub needs_bearer: bool,
 }
 
 pub trait Artifact: Card {
+    fn needs_bearer(&self, _state: &State) -> anyhow::Result<bool> {
+        Ok(self
+            .get_artifact_base()
+            .ok_or(anyhow::anyhow!("artifact card has no base"))?
+            .needs_bearer)
+    }
+
     fn get_valid_attach_targets(&self, state: &State) -> Vec<uuid::Uuid> {
         match self.get_card_type() {
             CardType::Artifact => state
@@ -1380,7 +1387,7 @@ pub trait Artifact: Card {
         Ok(self
             .get_artifact_base()
             .ok_or(anyhow::anyhow!("artifact card has no base"))?
-            .attached_to
+            .bearer
             .clone())
     }
 }

@@ -713,7 +713,7 @@ impl Component for RealmComponent {
                         let attached_cards: Vec<uuid::Uuid> = self
                             .card_rects
                             .iter()
-                            .filter(|c| c.card.attached_to == dragging_card)
+                            .filter(|c| c.card.bearer == dragging_card)
                             .map(|c| c.card.id.clone())
                             .collect();
                         for attached_card_id in attached_cards {

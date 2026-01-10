@@ -1000,13 +1000,40 @@ impl Game {
                             .get_artifact()
                             .ok_or(anyhow::anyhow!("artifact card does not implement artifact"))?
                             .get_valid_attach_targets(&self.state);
-                        let picked_card_id =
-                            pick_card(player_id, &units, &self.state, "Pick a unit to attach the relic to").await?;
-                        let artifact = self.state.get_card_mut(card_id);
-                        artifact
-                            .get_artifact_base_mut()
-                            .ok_or(anyhow::anyhow!("artifact card has no base artifact component"))?
-                            .attached_to = Some(picked_card_id.clone());
+                        let needs_bearer = self
+                            .state
+                            .get_card(card_id)
+                            .get_artifact()
+                            .ok_or(anyhow::anyhow!("artifact card does not implement artifact"))?
+                            .needs_bearer(&self.state)?;
+                        match needs_bearer {
+                            true => {
+                                let picked_card_id = pick_card(
+                                    player_id,
+                                    &units,
+                                    &self.state,
+                                    format!("Pick a unit to attach {} to", card.get_name()).as_str(),
+                                )
+                                .await?;
+                                self.state
+                                    .get_card_mut(card_id)
+                                    .get_artifact_base_mut()
+                                    .ok_or(anyhow::anyhow!("artifact card has no base artifact component"))?
+                                    .bearer = Some(picked_card_id.clone());
+                            }
+                            false => {
+                                let picked_zone = pick_zone(
+                                    player_id,
+                                    &card.get_valid_play_zones(&self.state)?,
+                                    &self.state,
+                                    "Pick a zone to play the artifact",
+                                )
+                                .await?;
+                                self.state
+                                    .effects
+                                    .push_back(Effect::play_card(player_id, card_id, &picked_zone).into());
+                            }
+                        }
                     }
                     (CardType::Minion, Zone::Hand) | (CardType::Aura, Zone::Hand) => {
                         let zones = card.get_valid_play_zones(&self.state)?;
@@ -1158,7 +1185,7 @@ impl Game {
             .iter()
             .filter(|c| c.is_artifact())
             .filter_map(
-                |c| match c.get_artifact_base().expect("artifact to have a base").attached_to {
+                |c| match c.get_artifact_base().expect("artifact to have a base").bearer {
                     Some(attached_to) => Some((c.get_id().clone(), attached_to.clone())),
                     None => None,
                 },

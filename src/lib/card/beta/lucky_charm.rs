@@ -18,7 +18,10 @@ impl LuckyCharm {
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
-            artifact_base: ArtifactBase { attached_to: None },
+            artifact_base: ArtifactBase {
+                bearer: None,
+                needs_bearer: true,
+            },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,

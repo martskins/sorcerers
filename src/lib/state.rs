@@ -158,7 +158,7 @@ impl State {
                 modifiers: c.get_modifiers(&self).unwrap_or_default(),
                 plane: c.get_plane(&self).clone(),
                 damage_taken: c.get_damage_taken().unwrap_or(0),
-                attached_to: c
+                bearer: c
                     .get_artifact()
                     .and_then(|c| c.get_bearer().unwrap_or_default().clone()),
                 rarity: c.get_base().rarity.clone(),
