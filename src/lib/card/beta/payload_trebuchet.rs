@@ -1,7 +1,7 @@
 use crate::{
     card::{AdditionalCost, Artifact, ArtifactBase, Card, CardBase, CardType, Cost, Edition, Plane, Rarity, Zone},
     effect::Effect,
-    game::{CardAction, PlayerId, Thresholds},
+    game::{CardAction, PlayerId, Thresholds, pick_zone},
     query::CardQuery,
     state::State,
 };
@@ -21,7 +21,18 @@ impl CardAction for ShootPayload {
         player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
-        Ok(vec![])
+        let zones = state.get_card(card_id).get_zones_within_steps(state, 3);
+        let picked_zone = pick_zone(player_id, &zones, state, "Pick a zone to shoot the payload at").await?;
+        let units = picked_zone.get_units(state, None);
+
+        Ok(units
+            .iter()
+            .map(|unit| Effect::TakeDamage {
+                card_id: unit.get_id().clone(),
+                damage: 3,
+                from: card_id.clone(),
+            })
+            .collect())
     }
 
     fn get_cost(&self, card_id: &uuid::Uuid, state: &State) -> anyhow::Result<Cost> {
@@ -49,7 +60,7 @@ impl CardAction for ShootPayload {
                                 card_types: Some(vec![CardType::Minion, CardType::Avatar]),
                                 planes: None,
                                 owner: Some(bearer.get_controller_id().clone()),
-                                prompt: None,
+                                prompt: Some("Tap an untapped ally here".to_string()),
                                 tapped: Some(false),
                             },
                         },
@@ -63,7 +74,7 @@ impl CardAction for ShootPayload {
                                     .filter(|c| c.get_controller_id() == bearer.get_controller_id())
                                     .map(|c| c.get_id().clone())
                                     .collect(),
-                                prompt: None,
+                                prompt: Some("Discard a card from your hand".to_string()),
                                 preview: false,
                             },
                         },
