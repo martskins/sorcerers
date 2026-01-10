@@ -332,9 +332,9 @@ where
 
 #[derive(Debug, Clone)]
 pub enum AdditionalCost {
-    Tap { card: CardQuery, count: usize },
-    Discard { card: CardQuery, count: usize },
-    Sacrifice { card: CardQuery, count: usize },
+    Tap { card: CardQuery },
+    Discard { card: CardQuery },
+    Sacrifice { card: CardQuery },
 }
 
 #[derive(Debug, Clone, Default)]
@@ -351,6 +351,56 @@ impl Cost {
             thresholds: thresholds.into(),
             additional: vec![],
         }
+    }
+
+    pub async fn pay(&self, state: &mut State, player_id: &PlayerId) -> anyhow::Result<()> {
+        let resources = state.get_player_resources_mut(player_id)?;
+        resources.mana -= self.mana;
+
+        for other in &self.additional {
+            match other {
+                AdditionalCost::Tap { card } => {
+                    let card_id = card.resolve(player_id, state).await?;
+                    let effect = Effect::TapCard { card_id };
+                    effect.apply(state).await?;
+                }
+                AdditionalCost::Discard { card } => {
+                    let card_id = card.resolve(player_id, state).await?;
+                    let effect = Effect::MoveCard {
+                        card_id,
+                        player_id: player_id.clone(),
+                        from: Zone::Hand,
+                        to: ZoneQuery::Specific {
+                            id: uuid::Uuid::new_v4(),
+                            zone: Zone::Cemetery,
+                        },
+                        tap: false,
+                        plane: Plane::Surface,
+                        through_path: None,
+                    };
+                    effect.apply(state).await?;
+                }
+                AdditionalCost::Sacrifice { card } => {
+                    let card_id = card.resolve(player_id, state).await?;
+                    let card = state.get_card(&card_id);
+                    let effect = Effect::MoveCard {
+                        card_id,
+                        player_id: player_id.clone(),
+                        from: card.get_zone().clone(),
+                        to: ZoneQuery::Specific {
+                            id: uuid::Uuid::new_v4(),
+                            zone: Zone::Cemetery,
+                        },
+                        tap: false,
+                        plane: Plane::Surface,
+                        through_path: None,
+                    };
+                    effect.apply(state).await?;
+                }
+            }
+        }
+
+        Ok(())
     }
 
     pub fn zero() -> Self {
@@ -373,22 +423,42 @@ impl Cost {
             return Ok(false);
         }
 
+        let mut snapshot = state.snapshot();
         for other in &self.additional {
             match other {
-                AdditionalCost::Tap { card, count } => {
-                    if card.options(state).len() < *count {
+                AdditionalCost::Tap { card } => {
+                    let options: Vec<uuid::Uuid> = card
+                        .options(&snapshot)
+                        .iter()
+                        .map(|cid| snapshot.get_card(cid))
+                        .filter(|c| !c.is_tapped())
+                        .map(|c| c.get_id())
+                        .cloned()
+                        .collect();
+                    if options.is_empty() {
                         return Ok(false);
                     }
+
+                    let card_id = options.first().expect("options to have at least one element");
+                    snapshot.get_card_mut(card_id).get_base_mut().tapped = true;
                 }
-                AdditionalCost::Discard { card, count } => {
-                    if card.options(state).len() < *count {
+                AdditionalCost::Discard { card } => {
+                    let options = card.options(&snapshot);
+                    if options.is_empty() {
                         return Ok(false);
                     }
+
+                    let card_id = options.first().expect("options to have at least one element");
+                    snapshot.get_card_mut(card_id).set_zone(Zone::Cemetery);
                 }
-                AdditionalCost::Sacrifice { card, count } => {
-                    if card.options(state).len() < *count {
+                AdditionalCost::Sacrifice { card } => {
+                    let options = card.options(&snapshot);
+                    if options.is_empty() {
                         return Ok(false);
                     }
+
+                    let card_id = options.first().expect("options to have at least one element");
+                    snapshot.get_card_mut(card_id).set_zone(Zone::Cemetery);
                 }
             }
         }
@@ -1444,9 +1514,97 @@ pub fn from_name_and_zone(name: &str, player_id: &PlayerId, zone: Zone) -> Box<d
 #[cfg(test)]
 mod tests {
     use crate::{
-        card::{Ability, ApprenticeWizard, Card, RimlandNomads, Zone},
+        card::{Ability, AdditionalCost, ApprenticeWizard, Card, CardType, Cost, RimlandNomads, Zone},
+        query::CardQuery,
         state::State,
     };
+
+    #[test]
+    fn test_additional_cost_tap() {
+        let mut state = State::new_mock_state(Zone::all_realm());
+        let player_id = state.players[0].id.clone();
+        let cost = Cost {
+            additional: vec![AdditionalCost::Tap {
+                card: CardQuery::InZone {
+                    id: uuid::Uuid::new_v4(),
+                    zone: Zone::Realm(10),
+                    card_types: Some(vec![CardType::Minion, CardType::Avatar]),
+                    planes: None,
+                    owner: None,
+                    prompt: None,
+                    tapped: Some(false),
+                },
+            }],
+            ..Default::default()
+        };
+        let can_afford = cost.can_afford(&state, &player_id).expect("should not error");
+        assert!(!can_afford, "no units in the zone");
+
+        let mut unit = ApprenticeWizard::new(player_id.clone());
+        let unit_id = unit.get_id().clone();
+        unit.set_zone(Zone::Realm(10));
+        state.cards.push(Box::new(unit));
+        let can_afford = cost.can_afford(&state, &player_id).expect("should not error");
+        assert!(can_afford, "an untapped unit is present in the zone");
+
+        let unit = state.get_card_mut(&unit_id);
+        unit.get_base_mut().tapped = true;
+        let can_afford = cost.can_afford(&state, &player_id).expect("should not error");
+        assert!(!can_afford, "only unit in zone is tapped");
+    }
+
+    #[test]
+    fn test_additional_cost_two_taps() {
+        let mut state = State::new_mock_state(Zone::all_realm());
+        let player_id = state.players[0].id.clone();
+        let cost = Cost {
+            additional: vec![
+                AdditionalCost::Tap {
+                    card: CardQuery::InZone {
+                        id: uuid::Uuid::new_v4(),
+                        zone: Zone::Realm(10),
+                        card_types: Some(vec![CardType::Minion, CardType::Avatar]),
+                        planes: None,
+                        owner: None,
+                        prompt: None,
+                        tapped: Some(false),
+                    },
+                },
+                AdditionalCost::Tap {
+                    card: CardQuery::InZone {
+                        id: uuid::Uuid::new_v4(),
+                        zone: Zone::Realm(10),
+                        card_types: Some(vec![CardType::Minion, CardType::Avatar]),
+                        planes: None,
+                        owner: None,
+                        prompt: None,
+                        tapped: Some(false),
+                    },
+                },
+            ],
+            ..Default::default()
+        };
+        let can_afford = cost.can_afford(&state, &player_id).expect("should not error");
+        assert!(!can_afford, "no units in the zone");
+
+        let mut unit = ApprenticeWizard::new(player_id.clone());
+        let unit_id = unit.get_id().clone();
+        unit.set_zone(Zone::Realm(10));
+        state.cards.push(Box::new(unit));
+        let can_afford = cost.can_afford(&state, &player_id).expect("should not error");
+        assert!(!can_afford, "only one unit in the zone, two are required");
+
+        let mut unit = ApprenticeWizard::new(player_id.clone());
+        unit.set_zone(Zone::Realm(10));
+        state.cards.push(Box::new(unit));
+        let can_afford = cost.can_afford(&state, &player_id).expect("should not error");
+        assert!(can_afford, "two untapped units the zone");
+
+        let unit = state.get_card_mut(&unit_id);
+        unit.get_base_mut().tapped = true;
+        let can_afford = cost.can_afford(&state, &player_id).expect("should not error");
+        assert!(!can_afford, "only one untapped unit in the zone");
+    }
 
     #[test]
     fn test_get_valid_move_paths_movement_plus_1() {

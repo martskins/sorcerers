@@ -7,16 +7,12 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-enum RollingBounderAction {
-    Roll(uuid::Uuid),
-}
+struct RollBoulder(uuid::Uuid);
 
 #[async_trait::async_trait]
-impl CardAction for RollingBounderAction {
+impl CardAction for RollBoulder {
     fn get_name(&self) -> &str {
-        match self {
-            RollingBounderAction::Roll(_) => "Tap to give Rolling Boulder a push",
-        }
+        "Tap to give Rolling Boulder a push"
     }
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
@@ -26,7 +22,6 @@ impl CardAction for RollingBounderAction {
                     id: uuid::Uuid::new_v4(),
                     card_id: card_id.clone(),
                 },
-                count: 1,
             }],
             ..Default::default()
         })
@@ -38,61 +33,57 @@ impl CardAction for RollingBounderAction {
         player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
-        match self {
-            RollingBounderAction::Roll(rolling_builder_id) => {
-                let boulder = state.get_card(rolling_builder_id);
-                let picked_direction = pick_direction(
-                    player_id,
-                    &CARDINAL_DIRECTIONS,
-                    state,
-                    "Pick a direction to roll the Boulder",
-                )
-                .await?;
+        let boulder = state.get_card(&self.0);
+        let picked_direction = pick_direction(
+            player_id,
+            &CARDINAL_DIRECTIONS,
+            state,
+            "Pick a direction to roll the Boulder",
+        )
+        .await?;
 
-                let mut last_zone = boulder.get_zone().clone();
-                let mut effects = Vec::new();
-                for unit in last_zone.get_units(state, None) {
-                    if unit.get_id() == card_id {
-                        continue;
-                    }
-
-                    effects.push(Effect::TakeDamage {
-                        card_id: unit.get_id().clone(),
-                        from: boulder.get_id().clone(),
-                        damage: 4,
-                    });
-                }
-
-                while let Some(zone) = last_zone.zone_in_direction(&picked_direction, 1) {
-                    let units = zone.get_units(state, None);
-                    for unit in units {
-                        effects.push(Effect::MoveCard {
-                            card_id: boulder.get_id().clone(),
-                            from: last_zone.clone(),
-                            to: ZoneQuery::Specific {
-                                id: uuid::Uuid::new_v4(),
-                                zone: zone.clone(),
-                            },
-                            player_id: boulder.get_controller_id().clone(),
-                            tap: false,
-                            plane: Plane::Surface,
-                            through_path: None,
-                        });
-                        effects.push(Effect::TakeDamage {
-                            card_id: unit.get_id().clone(),
-                            from: boulder.get_id().clone(),
-                            damage: 4,
-                        });
-                    }
-
-                    last_zone = zone.clone();
-                }
-
-                // reverse the effects vec so that they are applied in FIFO order
-                effects.reverse();
-                Ok(effects)
+        let mut last_zone = boulder.get_zone().clone();
+        let mut effects = Vec::new();
+        for unit in last_zone.get_units(state, None) {
+            if unit.get_id() == card_id {
+                continue;
             }
+
+            effects.push(Effect::TakeDamage {
+                card_id: unit.get_id().clone(),
+                from: boulder.get_id().clone(),
+                damage: 4,
+            });
         }
+
+        while let Some(zone) = last_zone.zone_in_direction(&picked_direction, 1) {
+            let units = zone.get_units(state, None);
+            for unit in units {
+                effects.push(Effect::MoveCard {
+                    card_id: boulder.get_id().clone(),
+                    from: last_zone.clone(),
+                    to: ZoneQuery::Specific {
+                        id: uuid::Uuid::new_v4(),
+                        zone: zone.clone(),
+                    },
+                    player_id: boulder.get_controller_id().clone(),
+                    tap: false,
+                    plane: Plane::Surface,
+                    through_path: None,
+                });
+                effects.push(Effect::TakeDamage {
+                    card_id: unit.get_id().clone(),
+                    from: boulder.get_id().clone(),
+                    damage: 4,
+                });
+            }
+
+            last_zone = zone.clone();
+        }
+
+        // reverse the effects vec so that they are applied in FIFO order
+        effects.reverse();
+        Ok(effects)
     }
 }
 
@@ -162,7 +153,7 @@ impl Card for RollingBoulder {
             .map(|u| {
                 (
                     u.get_id().clone(),
-                    vec![Box::new(RollingBounderAction::Roll(self.get_id().clone())) as Box<dyn CardAction>],
+                    vec![Box::new(RollBoulder(self.get_id().clone())) as Box<dyn CardAction>],
                 )
             })
             .collect();

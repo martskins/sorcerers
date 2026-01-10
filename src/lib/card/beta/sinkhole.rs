@@ -6,16 +6,12 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-enum SinkholeAbility {
-    DestroyNearbySite,
-}
+struct DestroyNearbySite;
 
 #[async_trait::async_trait]
-impl CardAction for SinkholeAbility {
+impl CardAction for DestroyNearbySite {
     fn get_name(&self) -> &str {
-        match self {
-            SinkholeAbility::DestroyNearbySite => "Destroy Nearby Site",
-        }
+        "Destroy Nearby Site"
     }
 
     async fn on_select(
@@ -24,30 +20,26 @@ impl CardAction for SinkholeAbility {
         player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
-        match self {
-            SinkholeAbility::DestroyNearbySite => {
-                let card = state.get_card(card_id);
-                let nearby_sites: Vec<uuid::Uuid> = card
-                    .get_zone()
-                    .get_nearby_sites(state, None)
-                    .iter()
-                    .map(|c| c.get_id())
-                    .cloned()
-                    .collect::<Vec<_>>();
-                let picked_card_id = pick_card(player_id, &nearby_sites, state, "Select a site to destroy").await?;
-                let picked_card = state.get_card(&picked_card_id);
-                Ok(vec![
-                    Effect::BuryCard {
-                        card_id: card_id.clone(),
-                        from: card.get_zone().clone(),
-                    },
-                    Effect::BuryCard {
-                        card_id: picked_card_id,
-                        from: picked_card.get_zone().clone(),
-                    },
-                ])
-            }
-        }
+        let card = state.get_card(card_id);
+        let nearby_sites: Vec<uuid::Uuid> = card
+            .get_zone()
+            .get_nearby_sites(state, None)
+            .iter()
+            .map(|c| c.get_id())
+            .cloned()
+            .collect::<Vec<_>>();
+        let picked_card_id = pick_card(player_id, &nearby_sites, state, "Select a site to destroy").await?;
+        let picked_card = state.get_card(&picked_card_id);
+        Ok(vec![
+            Effect::BuryCard {
+                card_id: card_id.clone(),
+                from: card.get_zone().clone(),
+            },
+            Effect::BuryCard {
+                card_id: picked_card_id,
+                from: picked_card.get_zone().clone(),
+            },
+        ])
     }
 }
 
@@ -112,7 +104,7 @@ impl Card for Sinkhole {
     }
 
     fn get_actions(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn CardAction>>> {
-        Ok(vec![Box::new(SinkholeAbility::DestroyNearbySite)])
+        Ok(vec![Box::new(DestroyNearbySite)])
     }
 }
 

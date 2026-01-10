@@ -670,21 +670,19 @@ impl Effect {
                     );
                 }
             }
-            Effect::PlayMagic { card_id, caster_id, .. } => {
+            Effect::PlayMagic {
+                card_id,
+                player_id,
+                caster_id,
+                ..
+            } => {
+                let cost = state.get_card(card_id).get_cost(&state)?.clone();
+                Box::pin(cost.pay(state, player_id)).await?;
                 let card = state
                     .cards
                     .iter()
                     .find(|c| c.get_id() == card_id)
                     .expect("to find card");
-                let mana_cost = card.get_cost(&state)?.mana;
-                state.effects.push_back(
-                    Effect::RemoveResources {
-                        player_id: card.get_owner_id().clone(),
-                        mana: mana_cost,
-                        thresholds: Thresholds::new(),
-                    }
-                    .into(),
-                );
                 state.effects.push_back(
                     Effect::MoveCard {
                         player_id: card.get_controller_id().clone(),
@@ -710,13 +708,21 @@ impl Effect {
                 let effects = card.on_cast(&snapshot, caster_id).await?.into_iter().map(|e| e.into());
                 state.effects.extend(effects);
             }
-            Effect::PlayCard { card_id, zone, .. } => {
+            Effect::PlayCard {
+                card_id,
+                player_id,
+                zone,
+                ..
+            } => {
                 let snapshot = state.snapshot();
+                let cost = state.get_card(card_id).get_cost(&snapshot)?.clone();
+                Box::pin(cost.pay(state, &player_id)).await?;
                 let card = state
                     .cards
                     .iter_mut()
                     .find(|c| c.get_id() == card_id)
                     .expect("to find card");
+
                 let cast_effects = card.on_summon(&snapshot)?;
                 card.set_zone(zone.clone());
                 if !card.has_modifier(&snapshot, &Ability::Charge) {
@@ -725,12 +731,11 @@ impl Effect {
 
                 let mut effects = card.genesis(&snapshot).await?;
                 effects.extend(card.on_visit_zone(&snapshot, zone).await?);
-                let mana_cost = card.get_cost(&snapshot)?.mana;
-                effects.push(Effect::RemoveResources {
-                    player_id: card.get_owner_id().clone(),
-                    mana: mana_cost,
-                    thresholds: Thresholds::new(),
-                });
+                // effects.push(Effect::RemoveResources {
+                //     player_id: card.get_owner_id().clone(),
+                //     mana: mana_cost,
+                //     thresholds: Thresholds::new(),
+                // });
                 state.effects.extend(effects.into_iter().map(|e| e.into()));
                 state.effects.extend(cast_effects.into_iter().map(|e| e.into()));
             }

@@ -7,16 +7,12 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-enum CloudCityAction {
-    FlyToVoid,
-}
+struct FlyToVoid;
 
 #[async_trait::async_trait]
-impl CardAction for CloudCityAction {
+impl CardAction for FlyToVoid {
     fn get_name(&self) -> &str {
-        match self {
-            CloudCityAction::FlyToVoid => "Fly to nearby void",
-        }
+        "Fly to nearby void"
     }
 
     fn get_cost(&self, _card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
@@ -33,66 +29,62 @@ impl CardAction for CloudCityAction {
         player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
-        match self {
-            CloudCityAction::FlyToVoid => {
-                let card = state.get_card(card_id);
-                let nearby_voids: Vec<Zone> = card
-                    .get_zone()
-                    .get_nearby()
-                    .iter()
-                    .filter(|z| z.get_site(state).is_none())
-                    .cloned()
-                    .collect();
-                if nearby_voids.is_empty() {
-                    return Ok(vec![]);
-                }
-
-                let picked_void = pick_zone(
-                    card.get_controller_id(),
-                    &nearby_voids,
-                    state,
-                    "Pick a nearby void to fly to",
-                )
-                .await?;
-
-                let mut effects = vec![
-                    Effect::MoveCard {
-                        player_id: player_id.clone(),
-                        card_id: card.get_id().clone(),
-                        from: card.get_zone().clone(),
-                        to: ZoneQuery::Specific {
-                            id: uuid::Uuid::new_v4(),
-                            zone: picked_void.clone(),
-                        },
-                        tap: false,
-                        plane: Plane::Surface,
-                        through_path: None,
-                    },
-                    Effect::SetCardData {
-                        card_id: card.get_id().clone(),
-                        data: Box::new(true),
-                    },
-                ];
-
-                let units_on_site = state.get_units_in_zone(card.get_zone());
-                for unit in units_on_site {
-                    effects.push(Effect::MoveCard {
-                        player_id: player_id.clone(),
-                        card_id: unit.get_id().clone(),
-                        from: card.get_zone().clone(),
-                        to: ZoneQuery::Specific {
-                            id: uuid::Uuid::new_v4(),
-                            zone: picked_void.clone(),
-                        },
-                        tap: false,
-                        plane: unit.get_base().plane.clone(),
-                        through_path: None,
-                    });
-                }
-
-                Ok(effects)
-            }
+        let card = state.get_card(card_id);
+        let nearby_voids: Vec<Zone> = card
+            .get_zone()
+            .get_nearby()
+            .iter()
+            .filter(|z| z.get_site(state).is_none())
+            .cloned()
+            .collect();
+        if nearby_voids.is_empty() {
+            return Ok(vec![]);
         }
+
+        let picked_void = pick_zone(
+            card.get_controller_id(),
+            &nearby_voids,
+            state,
+            "Pick a nearby void to fly to",
+        )
+        .await?;
+
+        let mut effects = vec![
+            Effect::MoveCard {
+                player_id: player_id.clone(),
+                card_id: card.get_id().clone(),
+                from: card.get_zone().clone(),
+                to: ZoneQuery::Specific {
+                    id: uuid::Uuid::new_v4(),
+                    zone: picked_void.clone(),
+                },
+                tap: false,
+                plane: Plane::Surface,
+                through_path: None,
+            },
+            Effect::SetCardData {
+                card_id: card.get_id().clone(),
+                data: Box::new(true),
+            },
+        ];
+
+        let units_on_site = state.get_units_in_zone(card.get_zone());
+        for unit in units_on_site {
+            effects.push(Effect::MoveCard {
+                player_id: player_id.clone(),
+                card_id: unit.get_id().clone(),
+                from: card.get_zone().clone(),
+                to: ZoneQuery::Specific {
+                    id: uuid::Uuid::new_v4(),
+                    zone: picked_void.clone(),
+                },
+                tap: false,
+                plane: unit.get_base().plane.clone(),
+                through_path: None,
+            });
+        }
+
+        Ok(effects)
     }
 }
 
@@ -165,7 +157,7 @@ impl Card for CloudCity {
     }
 
     fn get_actions(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn CardAction>>> {
-        Ok(vec![Box::new(CloudCityAction::FlyToVoid)])
+        Ok(vec![Box::new(FlyToVoid)])
     }
 
     fn set_data(&mut self, data: &Box<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {

@@ -979,7 +979,8 @@ impl Game {
                 self.player_disconnected(player_id).await?;
             }
             ClientMessage::ClickCard { player_id, card_id, .. } => {
-                let card = self.state.get_card(card_id);
+                let snapshot = self.state.snapshot();
+                let card = snapshot.get_card(card_id);
                 if card.get_owner_id() != player_id {
                     return Ok(());
                 }
@@ -1086,6 +1087,8 @@ impl Game {
                         actions.push(Box::new(CancelAction));
                         let prompt = format!("{}: Pick action", card.get_name());
                         let action = pick_action(player_id, &actions, &self.state, &prompt).await?;
+                        let cost = action.get_cost(card_id, &self.state)?.clone();
+                        cost.pay(&mut self.state, player_id).await?;
                         let effects = action.on_select(card.get_id(), player_id, &self.state).await?;
                         self.state.effects.extend(effects.into_iter().map(|e| e.into()));
                     }

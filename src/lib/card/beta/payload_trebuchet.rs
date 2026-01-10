@@ -1,5 +1,5 @@
 use crate::{
-    card::{AdditionalCost, Artifact, ArtifactBase, Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
+    card::{AdditionalCost, Artifact, ArtifactBase, Card, CardBase, CardType, Cost, Edition, Plane, Rarity, Zone},
     effect::Effect,
     game::{CardAction, PlayerId, Thresholds},
     query::CardQuery,
@@ -37,7 +37,6 @@ impl CardAction for ShootPayload {
                     thresholds: Thresholds::new(),
                     additional: vec![
                         AdditionalCost::Tap {
-                            count: 1,
                             card: CardQuery::Specific {
                                 id: uuid::Uuid::new_v4(),
                                 card_id: bearer_id.clone(),
@@ -47,12 +46,12 @@ impl CardAction for ShootPayload {
                             card: CardQuery::InZone {
                                 id: uuid::Uuid::new_v4(),
                                 zone: bearer.get_zone().clone(),
+                                card_types: Some(vec![CardType::Minion, CardType::Avatar]),
                                 planes: None,
                                 owner: Some(bearer.get_controller_id().clone()),
                                 prompt: None,
+                                tapped: Some(false),
                             },
-                            count: 2, // One of the taps is the bearer itself, which we check is
-                                      // untapped on the previous cost.
                         },
                         AdditionalCost::Discard {
                             card: CardQuery::FromOptions {
@@ -67,7 +66,6 @@ impl CardAction for ShootPayload {
                                 prompt: None,
                                 preview: false,
                             },
-                            count: 1,
                         },
                     ],
                 })

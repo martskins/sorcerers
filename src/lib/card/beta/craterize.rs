@@ -1,5 +1,5 @@
 use crate::{
-    card::{AdditionalCost, Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
+    card::{AdditionalCost, Card, CardBase, CardType, Cost, Edition, Plane, Rarity, Zone},
     effect::Effect,
     game::{Direction, PlayerId, pick_card},
     query::{CardQuery, ZoneQuery},
@@ -45,44 +45,34 @@ impl Card for Craterize {
         &self.card_base
     }
 
-    fn get_additional_costs(&self, state: &State) -> anyhow::Result<Vec<AdditionalCost>> {
-        Ok(vec![AdditionalCost::Discard {
-            count: 1,
-            card: CardQuery::FromOptions {
-                id: uuid::Uuid::new_v4(),
-                options: state
-                    .cards
-                    .iter()
-                    .filter(|c| c.get_zone() == &Zone::Hand)
-                    .filter(|c| c.is_site())
-                    .filter(|c| c.get_controller_id() == self.get_controller_id())
-                    .map(|c| c.get_id().clone())
-                    .collect(),
-                preview: false,
-                prompt: Some("Select a site card to discard as an additional cost for Craterize".to_string()),
+    fn get_additional_costs(&self, _state: &State) -> anyhow::Result<Vec<AdditionalCost>> {
+        Ok(vec![
+            AdditionalCost::Discard {
+                card: CardQuery::InZone {
+                    id: uuid::Uuid::new_v4(),
+                    zone: Zone::Hand,
+                    card_types: Some(vec![CardType::Site]),
+                    planes: None,
+                    owner: Some(self.get_controller_id().clone()),
+                    prompt: Some("Craterize: Discard a site from your hand".to_string()),
+                    tapped: None,
+                },
             },
-        }])
+            AdditionalCost::Discard {
+                card: CardQuery::InZone {
+                    id: uuid::Uuid::new_v4(),
+                    zone: Zone::Hand,
+                    card_types: Some(vec![CardType::Site]),
+                    planes: None,
+                    owner: Some(self.get_controller_id().clone()),
+                    prompt: Some("Craterize: Discard a site from your hand".to_string()),
+                    tapped: None,
+                },
+            },
+        ])
     }
 
     async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
-        let sites_in_hand = state
-            .cards
-            .iter()
-            .filter(|c| c.get_zone() == &Zone::Hand)
-            .filter(|c| c.is_site())
-            .filter(|c| c.get_controller_id() == self.get_controller_id())
-            .map(|c| c.get_id())
-            .cloned()
-            .collect::<Vec<_>>();
-
-        let picked_card_id = pick_card(
-            &self.get_controller_id(),
-            &sites_in_hand,
-            state,
-            "Craterize: Select a card to discard",
-        )
-        .await?;
-
         let sites = state
             .cards
             .iter()
@@ -100,24 +90,10 @@ impl Card for Craterize {
         .await?;
         let picked_site = state.get_card(&picked_site_id);
 
-        let mut effects = vec![
-            Effect::MoveCard {
-                player_id: self.get_controller_id().clone(),
-                card_id: picked_card_id.clone(),
-                from: Zone::Hand,
-                to: ZoneQuery::Specific {
-                    id: uuid::Uuid::new_v4(),
-                    zone: Zone::Cemetery,
-                },
-                tap: false,
-                plane: Plane::Surface,
-                through_path: None,
-            },
-            Effect::BuryCard {
-                card_id: picked_site_id.clone(),
-                from: picked_site.get_zone().clone(),
-            },
-        ];
+        let mut effects = vec![Effect::BuryCard {
+            card_id: picked_site_id.clone(),
+            from: picked_site.get_zone().clone(),
+        }];
 
         let picked_zone = picked_site.get_zone();
         // Damage Pattern:

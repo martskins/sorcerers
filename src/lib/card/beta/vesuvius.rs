@@ -6,46 +6,38 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-enum VesuviusAction {
-    UseAbility,
-}
+struct UseAbility;
 
 #[async_trait::async_trait]
-impl CardAction for VesuviusAction {
+impl CardAction for UseAbility {
     fn get_name(&self) -> &str {
-        match self {
-            VesuviusAction::UseAbility => "Use Vesuvius Ability",
-        }
+        "Use Vesuvius Ability"
     }
 
     async fn on_select(&self, card_id: &uuid::Uuid, _: &PlayerId, state: &State) -> anyhow::Result<Vec<Effect>> {
-        match self {
-            VesuviusAction::UseAbility => {
-                let card = state.get_card(card_id);
-                let site_ids: Vec<uuid::Uuid> = card
-                    .get_zone()
-                    .get_nearby_sites(state, None)
-                    .iter()
-                    .map(|c| c.get_id().clone())
-                    .collect();
-                let mut effects = vec![
-                    Effect::bury_card(card.get_id(), card.get_zone()),
-                    Effect::SummonToken {
-                        player_id: card.get_controller_id().clone(),
-                        token_type: TokenType::Rubble,
-                        zone: card.get_zone().clone(),
-                    },
-                ];
-                for site_id in site_ids {
-                    let site = state.get_card(&site_id);
-                    let units = state.get_units_in_zone(site.get_zone());
-                    for unit in units {
-                        effects.push(Effect::take_damage(unit.get_id(), card.get_id(), 3));
-                    }
-                }
-                Ok(effects)
+        let card = state.get_card(card_id);
+        let site_ids: Vec<uuid::Uuid> = card
+            .get_zone()
+            .get_nearby_sites(state, None)
+            .iter()
+            .map(|c| c.get_id().clone())
+            .collect();
+        let mut effects = vec![
+            Effect::bury_card(card.get_id(), card.get_zone()),
+            Effect::SummonToken {
+                player_id: card.get_controller_id().clone(),
+                token_type: TokenType::Rubble,
+                zone: card.get_zone().clone(),
+            },
+        ];
+        for site_id in site_ids {
+            let site = state.get_card(&site_id);
+            let units = state.get_units_in_zone(site.get_zone());
+            for unit in units {
+                effects.push(Effect::take_damage(unit.get_id(), card.get_id(), 3));
             }
         }
+        Ok(effects)
     }
 }
 
@@ -104,7 +96,7 @@ impl Card for Vesuvius {
     }
 
     fn get_actions(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn CardAction>>> {
-        Ok(vec![Box::new(VesuviusAction::UseAbility)])
+        Ok(vec![Box::new(UseAbility)])
     }
 
     fn get_site(&self) -> Option<&dyn Site> {

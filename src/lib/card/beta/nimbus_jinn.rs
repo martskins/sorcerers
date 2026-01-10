@@ -7,12 +7,10 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-enum NimbusJinnAction {
-    DealDamage,
-}
+struct DealDamage;
 
 #[async_trait::async_trait]
-impl CardAction for NimbusJinnAction {
+impl CardAction for DealDamage {
     fn get_name(&self) -> &str {
         todo!()
     }
@@ -23,30 +21,26 @@ impl CardAction for NimbusJinnAction {
         _player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
-        match self {
-            NimbusJinnAction::DealDamage => {
-                let card = state.get_card(card_id);
-                let units = state
-                    .get_units_in_zone(card.get_zone())
-                    .iter()
-                    .filter(|c| c.get_id() != card_id)
-                    .map(|c| c.get_id().clone())
-                    .collect::<Vec<uuid::Uuid>>();
-                if units.len() == 0 {
-                    return Ok(vec![]);
-                }
-
-                Ok(vec![Effect::DealDamageToTarget {
-                    from: card_id.clone(),
-                    damage: 3,
-                    player_id: card.get_controller_id().clone(),
-                    query: CardQuery::RandomTarget {
-                        id: uuid::Uuid::new_v4(),
-                        possible_targets: units,
-                    },
-                }])
-            }
+        let card = state.get_card(card_id);
+        let units = state
+            .get_units_in_zone(card.get_zone())
+            .iter()
+            .filter(|c| c.get_id() != card_id)
+            .map(|c| c.get_id().clone())
+            .collect::<Vec<uuid::Uuid>>();
+        if units.len() == 0 {
+            return Ok(vec![]);
         }
+
+        Ok(vec![Effect::DealDamageToTarget {
+            from: card_id.clone(),
+            damage: 3,
+            player_id: card.get_controller_id().clone(),
+            query: CardQuery::RandomTarget {
+                id: uuid::Uuid::new_v4(),
+                possible_targets: units,
+            },
+        }])
     }
 }
 
@@ -107,7 +101,7 @@ impl Card for NimbusJinn {
 
     fn get_actions(&self, state: &State) -> anyhow::Result<Vec<Box<dyn CardAction>>> {
         let mut actions = self.base_unit_actions(state)?;
-        actions.push(Box::new(NimbusJinnAction::DealDamage));
+        actions.push(Box::new(DealDamage));
         Ok(actions)
     }
 }
