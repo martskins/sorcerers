@@ -38,7 +38,7 @@ impl Server {
                 self.send_to_stream(
                     ServerMessage::ConnectResponse {
                         player_id,
-                        available_decks: vec![PreconDeck::BetaFire, PreconDeck::BetaAir],
+                        available_decks: vec![PreconDeck::BetaFire, PreconDeck::BetaAir, PreconDeck::BetaEarth],
                     },
                     Arc::clone(&stream),
                 )
@@ -191,7 +191,7 @@ impl Server {
         //     sorcerers::card::Zone::Realm(13),
         // ));
         // game.state.cards.push(sorcerers::card::from_name_and_zone(
-        //     "Thunderstorm",
+        //     "Craterize",
         //     &player_one,
         //     sorcerers::card::Zone::Hand,
         // ));
@@ -210,8 +210,9 @@ impl Server {
         //     .resources
         //     .entry(player_one)
         //     .or_insert(sorcerers::game::Resources::new());
-        // resources.mana = 6;
+        // resources.mana = 10;
         // resources.thresholds.air = 3;
+        // resources.thresholds.earth = 3;
 
         tokio::spawn(async move {
             game.start().await.expect("game to start");

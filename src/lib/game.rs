@@ -1,5 +1,5 @@
 use crate::{
-    card::{Aura, Card, CardType, Modifier, Plane, Zone},
+    card::{Aura, Card, CardType, Cost, Modifier, Plane, Zone},
     effect::Effect,
     error::GameError,
     networking::message::{ClientMessage, ServerMessage, ToMessage},
@@ -517,6 +517,7 @@ pub fn get_adjacent_zones(zone: &Zone) -> Vec<Zone> {
                 ],
             };
             adjacent.retain(|s| s.get_square().unwrap_or(0) <= 20);
+            adjacent.retain(|s| s.get_square().unwrap_or(0) > 0);
             adjacent
         }
         Zone::Intersection(locs) => {
@@ -559,6 +560,9 @@ pub trait CardAction: std::fmt::Debug + Send + Sync + CloneBoxedAction {
     fn get_name(&self) -> &str;
     async fn on_select(&self, card_id: &uuid::Uuid, player_id: &PlayerId, state: &State)
     -> anyhow::Result<Vec<Effect>>;
+    fn get_cost(&self, _card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
+        Ok(Cost::zero())
+    }
 }
 
 impl Clone for Box<dyn CardAction> {
@@ -1003,18 +1007,14 @@ impl Game {
                     return Ok(());
                 }
 
+                if let Zone::Hand = card.get_zone() {
+                    if !card.get_cost(&self.state)?.can_afford(&self.state, player_id)? {
+                        return Ok(());
+                    }
+                }
+
                 match (card.get_card_type(), card.get_zone()) {
                     (CardType::Artifact, Zone::Hand) => {
-                        let resources = self
-                            .state
-                            .resources
-                            .get(&player_id)
-                            .ok_or(anyhow::anyhow!("No resources found for player"))?;
-                        let can_afford = resources.can_afford(card, &self.state);
-                        if !can_afford {
-                            return Ok(());
-                        }
-
                         let units = card
                             .get_artifact()
                             .ok_or(anyhow::anyhow!("artifact card does not implement artifact"))?
@@ -1028,16 +1028,6 @@ impl Game {
                             .attached_to = Some(picked_card_id.clone());
                     }
                     (CardType::Minion, Zone::Hand) | (CardType::Aura, Zone::Hand) => {
-                        let resources = self
-                            .state
-                            .resources
-                            .get(&player_id)
-                            .ok_or(anyhow::anyhow!("No resources found for player"))?;
-                        let can_afford = resources.can_afford(card, &self.state);
-                        if !can_afford {
-                            return Ok(());
-                        }
-
                         let zones = card.get_valid_play_zones(&self.state)?;
                         let prompt = "Pick a zone to play the card";
                         let zone = pick_zone(player_id, &zones, &self.state, prompt).await?;
@@ -1046,16 +1036,6 @@ impl Game {
                             .push_back(Effect::play_card(player_id, card_id, &zone).into());
                     }
                     (CardType::Magic, Zone::Hand) => {
-                        let resources = self
-                            .state
-                            .resources
-                            .get(&player_id)
-                            .ok_or(anyhow::anyhow!("No resources found for player"))?;
-                        let can_afford = resources.can_afford(card, &self.state);
-                        if !can_afford {
-                            return Ok(());
-                        }
-
                         let spellcasters: Vec<uuid::Uuid> = self
                             .state
                             .cards
@@ -1084,6 +1064,13 @@ impl Game {
                         }
 
                         let mut actions = card.get_actions(&self.state)?;
+                        actions.retain(|action| {
+                            action
+                                .get_cost(card_id, &self.state)
+                                .and_then(|cost| cost.can_afford(&self.state, player_id))
+                                .unwrap_or_default()
+                        });
+
                         if actions.is_empty() {
                             return Ok(());
                         }

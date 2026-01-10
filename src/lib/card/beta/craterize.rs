@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Edition, Plane, Rarity, Zone},
+    card::{AdditionalCost, Card, CardBase, Edition, Plane, Rarity, Zone},
     effect::Effect,
     game::{Direction, PlayerId, Thresholds, pick_card},
     query::{CardQuery, ZoneQuery},
@@ -46,16 +46,23 @@ impl Card for Craterize {
         &self.card_base
     }
 
-    fn controller_can_pay_additional_costs(&self, state: &State) -> anyhow::Result<bool> {
-        let sites_in_hand = state
-            .cards
-            .iter()
-            .filter(|c| c.get_zone() == &Zone::Hand)
-            .filter(|c| c.is_site())
-            .filter(|c| c.get_controller_id() == self.get_controller_id())
-            .map(|c| c.get_id())
-            .count();
-        Ok(sites_in_hand > 0)
+    fn get_additional_costs(&self, state: &State) -> anyhow::Result<Vec<AdditionalCost>> {
+        Ok(vec![AdditionalCost::Discard {
+            count: 1,
+            card: CardQuery::FromOptions {
+                id: uuid::Uuid::new_v4(),
+                options: state
+                    .cards
+                    .iter()
+                    .filter(|c| c.get_zone() == &Zone::Hand)
+                    .filter(|c| c.is_site())
+                    .filter(|c| c.get_controller_id() == self.get_controller_id())
+                    .map(|c| c.get_id().clone())
+                    .collect(),
+                preview: false,
+                prompt: Some("Select a site card to discard as an additional cost for Craterize".to_string()),
+            },
+        }])
     }
 
     async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
@@ -161,14 +168,11 @@ impl Card for Craterize {
                     continue;
                 }
 
-                effects.push(Effect::DealDamageToTarget {
+                effects.push(Effect::DealDamageAllUnitsInZone {
                     player_id: self.get_controller_id().clone(),
-                    query: CardQuery::InZone {
+                    zone: ZoneQuery::Specific {
                         id: uuid::Uuid::new_v4(),
                         zone: zone,
-                        planes: None,
-                        owner: None,
-                        prompt: None,
                     },
                     from: caster_id.clone(),
                     damage: damage,

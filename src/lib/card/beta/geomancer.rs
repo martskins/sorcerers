@@ -66,13 +66,15 @@ impl CardAction for GeomancerAbility {
                         .filter(|z| z != &&zone)
                         .cloned()
                         .collect::<Vec<Zone>>();
-                    let picked_zone =
-                        pick_zone(player_id, &zones, state, "Geomancer: Pick a void to fill with a rubble").await?;
-                    effects.push(Effect::SummonToken {
-                        player_id: card.get_controller_id().clone(),
-                        token_type: TokenType::Rubble,
-                        zone: picked_zone.clone(),
-                    });
+                    if zones.len() > 0 {
+                        let picked_zone =
+                            pick_zone(player_id, &zones, state, "Geomancer: Pick a void to fill with a rubble").await?;
+                        effects.push(Effect::SummonToken {
+                            player_id: card.get_controller_id().clone(),
+                            token_type: TokenType::Rubble,
+                            zone: picked_zone.clone(),
+                        });
+                    }
                 }
 
                 Ok(effects)

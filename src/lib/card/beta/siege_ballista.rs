@@ -1,7 +1,8 @@
 use crate::{
-    card::{Artifact, ArtifactBase, Card, CardBase, Edition, Plane, Rarity, Zone},
+    card::{AdditionalCost, Artifact, ArtifactBase, Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
     effect::Effect,
     game::{CardAction, PlayerId, Thresholds, pick_card},
+    query::CardQuery,
     state::State,
 };
 
@@ -15,6 +16,38 @@ impl CardAction for SiegeBallistaAbility {
     fn get_name(&self) -> &str {
         match self {
             SiegeBallistaAbility::TapToDealDamage => "Tap to deal 3 damage to target unit",
+        }
+    }
+
+    fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
+        match self {
+            SiegeBallistaAbility::TapToDealDamage => {
+                let card = _state.get_card(card_id);
+                Ok(Cost {
+                    mana: 0,
+                    thresholds: Thresholds::new(),
+                    additional: vec![
+                        AdditionalCost::Tap {
+                            card: CardQuery::Specific {
+                                id: uuid::Uuid::new_v4(),
+                                card_id: card_id.clone(),
+                            },
+                            count: 1,
+                        },
+                        AdditionalCost::Tap {
+                            card: CardQuery::InZone {
+                                id: uuid::Uuid::new_v4(),
+                                zone: card.get_zone().clone(),
+                                planes: None,
+                                owner: Some(card.get_controller_id().clone()),
+                                prompt: Some("Tap an untapped ally here".to_string()),
+                            },
+                            count: 2, // One of the taps is the bearer itself, which we check is
+                                      // untapped on the previous cost.
+                        },
+                    ],
+                })
+            }
         }
     }
 
@@ -146,30 +179,8 @@ impl Card for SiegeBallista {
         Some(self)
     }
 
-    fn get_actions(&self, state: &State) -> anyhow::Result<Vec<Box<dyn CardAction>>> {
-        if let Some(bearer_id) = self.get_bearer()? {
-            let bearer = state.get_card(&bearer_id);
-            if bearer.is_tapped() {
-                return Ok(vec![]);
-            }
-
-            let zone = bearer.get_zone();
-            let untapped_allies_here = zone
-                .get_units(state, Some(self.get_controller_id()))
-                .iter()
-                .filter(|c| c.get_id() != &bearer_id)
-                .filter(|c| !c.is_tapped())
-                .map(|c| c.get_id())
-                .count();
-
-            if untapped_allies_here > 0 {
-                return Ok(vec![Box::new(SiegeBallistaAbility::TapToDealDamage)]);
-            }
-
-            return Ok(vec![]);
-        }
-
-        Ok(vec![])
+    fn get_actions(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn CardAction>>> {
+        Ok(vec![Box::new(SiegeBallistaAbility::TapToDealDamage)])
     }
 }
 

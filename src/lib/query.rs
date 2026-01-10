@@ -30,6 +30,112 @@ impl QueryCache {
         QUERY_CACHE.get_or_init(|| RwLock::new(QueryCache::new()));
     }
 
+    pub async fn resolve_cards(qry: &CardQuery, player_id: &PlayerId, state: &State) -> anyhow::Result<uuid::Uuid> {
+        if let Some(cached) = QUERY_CACHE
+            .get()
+            .expect("to get lock")
+            .read()
+            .await
+            .card_queries
+            .get(&qry.get_id())
+        {
+            return Ok(cached.clone());
+        }
+
+        let card_id = match qry {
+            CardQuery::Specific { card_id, .. } => card_id.clone(),
+            CardQuery::InZone {
+                zone, owner, prompt, ..
+            } => {
+                let cards: Vec<uuid::Uuid> = zone
+                    .get_units(state, owner.as_ref())
+                    .iter()
+                    .filter(|c| c.can_be_targetted_by(state, player_id))
+                    .map(|c| c.get_id().clone())
+                    .collect();
+                pick_card(player_id, &cards, state, prompt.as_ref().map_or("Pick a card", |v| v)).await?
+            }
+            CardQuery::NearZone {
+                zone, owner, prompt, ..
+            } => {
+                let cards: Vec<uuid::Uuid> = zone
+                    .get_nearby_units(state, owner.as_ref())
+                    .iter()
+                    .filter(|c| c.can_be_targetted_by(state, player_id))
+                    .map(|c| c.get_id().clone())
+                    .collect();
+                pick_card(player_id, &cards, state, prompt.as_ref().map_or("Pick a card", |v| v)).await?
+            }
+            CardQuery::OwnedBy { owner, prompt, .. } => {
+                let cards: Vec<uuid::Uuid> = state
+                    .cards
+                    .iter()
+                    .filter(|c| c.get_owner_id() == owner)
+                    .filter(|c| c.can_be_targetted_by(state, player_id))
+                    .map(|c| c.get_id().clone())
+                    .collect();
+                pick_card(player_id, &cards, state, prompt.as_ref().map_or("Pick a card", |v| v)).await?
+            }
+            CardQuery::RandomTarget { possible_targets, .. } => {
+                for card in &state.cards {
+                    if let Some(query) = card.card_query_override(state, qry)? {
+                        return Ok(Box::pin(query.resolve(player_id, state)).await?);
+                    }
+                }
+
+                possible_targets
+                    .choose(&mut rand::rng())
+                    .ok_or(anyhow::anyhow!("failed to get random card"))?
+                    .clone()
+            }
+            CardQuery::RandomUnitInZone { zone, .. } => {
+                for card in &state.cards {
+                    if let Some(query) = card.card_query_override(state, qry)? {
+                        return Ok(Box::pin(query.resolve(player_id, state)).await?);
+                    }
+                }
+
+                let cards: Vec<uuid::Uuid> = state
+                    .get_units_in_zone(&zone)
+                    .iter()
+                    .map(|c| c.get_id().clone())
+                    .collect();
+                cards
+                    .choose(&mut rand::rng())
+                    .ok_or(anyhow::anyhow!("failed to get random card"))?
+                    .clone()
+            }
+            CardQuery::FromOptions {
+                options,
+                prompt,
+                preview,
+                ..
+            } => {
+                if *preview {
+                    return pick_card_with_preview(
+                        player_id,
+                        options,
+                        state,
+                        prompt.as_ref().unwrap_or(&String::new()),
+                    )
+                    .await;
+                }
+
+                pick_card(player_id, &options, state, prompt.as_ref().unwrap_or(&String::new())).await?
+            }
+        };
+
+        let mut cache = QUERY_CACHE.get().expect("lock to be obtained").write().await;
+        cache.card_queries.insert(qry.get_id().clone(), card_id.clone());
+        cache
+            .game_queries
+            .entry(state.game_id)
+            .or_insert(Vec::new())
+            .push(qry.get_id().clone());
+
+        Ok(card_id)
+    }
+
     pub async fn resolve_card(qry: &CardQuery, player_id: &PlayerId, state: &State) -> anyhow::Result<uuid::Uuid> {
         if let Some(cached) = QUERY_CACHE
             .get()

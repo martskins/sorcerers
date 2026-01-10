@@ -168,6 +168,12 @@ pub enum Effect {
         unit_query: CardQuery,
         zone_query: ZoneQuery,
     },
+    DealDamageAllUnitsInZone {
+        player_id: uuid::Uuid,
+        zone: ZoneQuery,
+        from: uuid::Uuid,
+        damage: u8,
+    },
     DealDamageToTarget {
         player_id: uuid::Uuid,
         query: CardQuery,
@@ -382,6 +388,7 @@ impl Effect {
             Effect::SetCardData { .. } => None,
             Effect::RangedStrike { .. } => None,
             Effect::DealDamageToTarget { .. } => None,
+            Effect::DealDamageAllUnitsInZone { .. } => None,
             Effect::TeleportUnitToZone { .. } => None,
             Effect::RearrangeDeck { .. } => None,
             Effect::Burrow { .. } => None,
@@ -910,6 +917,30 @@ impl Effect {
                 effects.extend(attacker.after_attack(state).await?);
                 effects.extend(defender.on_defend(state, attacker_id)?.into_iter().map(|e| e.into()));
                 state.effects.extend(effects.into_iter().map(|e| e.into()));
+            }
+            Effect::DealDamageAllUnitsInZone {
+                player_id,
+                zone: query,
+                from,
+                damage,
+            } => {
+                let zone = query.resolve(player_id, state).await?;
+                let units: Vec<uuid::Uuid> = zone
+                    .get_units(state, None)
+                    .iter()
+                    .map(|c| c.get_id())
+                    .cloned()
+                    .collect();
+                for unit_id in units {
+                    state.effects.push_back(
+                        Effect::TakeDamage {
+                            card_id: unit_id,
+                            from: from.clone(),
+                            damage: *damage,
+                        }
+                        .into(),
+                    );
+                }
             }
             Effect::DealDamageToTarget {
                 player_id,

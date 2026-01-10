@@ -330,6 +330,58 @@ where
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum AdditionalCost {
+    Tap { card: CardQuery, count: usize },
+    Discard { card: CardQuery, count: usize },
+    Sacrifice { card: CardQuery, count: usize },
+}
+
+pub struct Cost {
+    pub mana: u8,
+    pub thresholds: Thresholds,
+    pub additional: Vec<AdditionalCost>,
+}
+
+impl Cost {
+    pub fn zero() -> Self {
+        Self {
+            mana: 0,
+            thresholds: Thresholds::new(),
+            additional: vec![],
+        }
+    }
+
+    pub fn can_afford(&self, state: &State, player_id: &PlayerId) -> anyhow::Result<bool> {
+        let player_resources = state.get_player_resources(player_id)?;
+        if !player_resources.has_resources(self.mana, self.thresholds.clone()) {
+            return Ok(false);
+        }
+
+        for other in &self.additional {
+            match other {
+                AdditionalCost::Tap { card, count } => {
+                    if card.options(state).len() < *count {
+                        return Ok(false);
+                    }
+                }
+                AdditionalCost::Discard { card, count } => {
+                    if card.options(state).len() < *count {
+                        return Ok(false);
+                    }
+                }
+                AdditionalCost::Sacrifice { card, count } => {
+                    if card.options(state).len() < *count {
+                        return Ok(false);
+                    }
+                }
+            }
+        }
+
+        Ok(true)
+    }
+}
+
 // The `Card` trait defines the core interface for all cards in Sorcerers.
 // It provides methods for accessing card properties, handling game logic, and interacting with the game state.
 //
@@ -353,19 +405,9 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         &self.get_base().id
     }
 
-    fn controller_can_pay_additional_costs(&self, _state: &State) -> anyhow::Result<bool> {
-        Ok(true)
-    }
-
     fn can_be_played(&self, state: &State) -> anyhow::Result<bool> {
-        let resources = state.get_player_resources(self.get_controller_id())?;
-        let can_afford =
-            resources.has_resources(self.get_mana_cost(state), self.get_required_thresholds(state).clone());
-        if !can_afford {
-            return Ok(false);
-        }
-
-        self.controller_can_pay_additional_costs(state)
+        let cost = self.get_cost(state)?;
+        cost.can_afford(state, self.get_controller_id())
     }
 
     // When resolving a CardQuery, this method allows the card to override the query. A useful
@@ -878,6 +920,18 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     // Returns the required thresholds to play this card.
     fn get_required_thresholds(&self, _state: &State) -> &Thresholds {
         &self.get_base().required_thresholds
+    }
+
+    fn get_cost(&self, state: &State) -> anyhow::Result<Cost> {
+        Ok(Cost {
+            mana: self.get_mana_cost(state),
+            thresholds: self.get_required_thresholds(state).clone(),
+            additional: self.get_additional_costs(state)?.clone(),
+        })
+    }
+
+    fn get_additional_costs(&self, _state: &State) -> anyhow::Result<Vec<AdditionalCost>> {
+        Ok(vec![])
     }
 
     // Returns the mana cost to play this card.
