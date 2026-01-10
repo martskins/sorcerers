@@ -1,6 +1,10 @@
+use std::collections::HashMap;
+
 use crate::{
-    card::{Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    card::{AreaModifiers, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    effect::Counter,
     game::PlayerId,
+    state::State,
 };
 
 #[derive(Debug, Clone)]
@@ -56,6 +60,36 @@ impl Card for HouseArnBannerman {
 
     fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
         Some(&mut self.unit_base)
+    }
+
+    fn area_modifiers(&self, state: &State) -> AreaModifiers {
+        let nearby_allies: Vec<uuid::Uuid> = self
+            .get_zone()
+            .get_nearby_units(state, Some(self.get_controller_id()))
+            .iter()
+            .map(|unit| unit.get_id())
+            .filter(|id| *id != self.get_id())
+            .cloned()
+            .collect();
+
+        let counters: HashMap<uuid::Uuid, Vec<Counter>> = nearby_allies
+            .into_iter()
+            .map(|unit_id| {
+                (
+                    unit_id,
+                    vec![Counter {
+                        id: uuid::Uuid::new_v4(),
+                        power: 1,
+                        toughness: 0,
+                        expires_on_effect: None,
+                    }],
+                )
+            })
+            .collect();
+        AreaModifiers {
+            grants_counters: counters,
+            ..Default::default()
+        }
     }
 }
 

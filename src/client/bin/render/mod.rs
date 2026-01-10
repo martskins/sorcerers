@@ -136,23 +136,39 @@ pub fn draw_card(card_rect: &CardRect, is_ally: bool) {
         draw_line(x + 4.0, y + icon_size - 4.0, x + icon_size - 4.0, y + 4.0, 3.0, WHITE);
     }
 
-    // Draw damage taken indicator if damage_taken > 0
-    if card_rect.card.card_type != CardType::Avatar && card_rect.card.damage_taken > 0 {
+    // Draw red circle with damage taken in top-left corner if the card has taken damage and is a
+    // minion.
+    if card_rect.card.card_type != CardType::Avatar
+        && card_rect.card.damage_taken > 0
+        && card_rect.card.zone.is_in_play()
+    {
         let circle_radius = 8.0;
-        let circle_x = rect.x + w - circle_radius - 3.0;
-        let circle_y = rect.y + circle_radius - 3.0;
-        draw_circle(
-            circle_x + circle_radius,
-            circle_y + circle_radius,
-            circle_radius - 2.0,
-            RED,
-        );
+        let circle_x = rect.x + (circle_radius / 2.0);
+        let circle_y = rect.y + (circle_radius / 2.0);
+        draw_circle(circle_x, circle_y, circle_radius - 2.0, RED);
         let dmg_text = card_rect.card.damage_taken.to_string();
         let text_dims = macroquad::text::measure_text(&dmg_text, None, 12, 1.0);
         draw_text(
             &dmg_text,
-            circle_x + circle_radius - text_dims.width / 2.0,
-            circle_y + circle_radius + text_dims.height / 2.8,
+            circle_x - text_dims.width / 2.0,
+            circle_y + text_dims.height / 2.8,
+            12.0,
+            WHITE,
+        );
+    }
+
+    // Draw power on a blue circle in the top-right corner if the card is a unit.
+    if card_rect.card.card_type.is_unit() {
+        let circle_radius = 8.0;
+        let circle_x = rect.x + w - (circle_radius / 2.0);
+        let circle_y = rect.y + (circle_radius / 2.0);
+        draw_circle(circle_x, circle_y, circle_radius - 2.0, BLUE);
+        let dmg_text = card_rect.card.power.to_string();
+        let text_dims = macroquad::text::measure_text(&dmg_text, None, 12, 1.0);
+        draw_text(
+            &dmg_text,
+            circle_x - text_dims.width / 2.0,
+            circle_y + text_dims.height / 2.8,
             12.0,
             WHITE,
         );

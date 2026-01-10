@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::{
     card::{Ability, AreaModifiers, Aura, AuraBase, Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
     effect::Effect,
@@ -87,7 +85,7 @@ impl Card for EntangleTerrain {
         AreaModifiers {
             grants_abilities: minions.iter().map(|id| (id.clone(), vec![Ability::Immobile])).collect(),
             removes_abilities: minions.iter().map(|id| (id.clone(), vec![Ability::Airborne])).collect(),
-            grants_activated_abilities: HashMap::new(),
+            ..Default::default()
         }
     }
 }

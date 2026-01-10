@@ -21,6 +21,15 @@ pub enum CardType {
     Aura,
 }
 
+impl CardType {
+    pub fn is_unit(&self) -> bool {
+        match self {
+            CardType::Minion | CardType::Avatar => true,
+            _ => false,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Edition {
     Alpha,
@@ -293,6 +302,7 @@ pub struct CardData {
     pub bearer: Option<uuid::Uuid>,
     pub rarity: Rarity,
     pub num_arts: usize,
+    pub power: u8,
 }
 
 impl CardData {
@@ -928,13 +938,25 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     // Returns the toughness of the card. Returns None for non-unit cards.
-    fn get_toughness(&self, _state: &State) -> Option<u8> {
+    fn get_toughness(&self, state: &State) -> Option<u8> {
         match self.get_unit_base() {
             Some(base) => {
                 let mut toughness = base.toughness;
                 for counter in &base.power_counters {
                     toughness = toughness.saturating_add_signed(counter.toughness);
                 }
+
+                let counters: i8 = state
+                    .cards
+                    .iter()
+                    .filter(|c| c.get_zone().is_in_play())
+                    .map(|c| c.area_modifiers(state))
+                    .filter_map(|mods| mods.grants_counters.get(self.get_id()).cloned())
+                    .flat_map(|counters| counters)
+                    .map(|counter| counter.toughness)
+                    .sum();
+                toughness = toughness.saturating_add_signed(counters);
+
                 Some(toughness)
             }
             None => None,
@@ -976,13 +998,25 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         }
     }
 
-    fn base_get_power(&self, _state: &State) -> Option<u8> {
+    fn base_get_power(&self, state: &State) -> Option<u8> {
         match self.get_unit_base() {
             Some(base) => {
                 let mut power = base.power;
                 for counter in &base.power_counters {
                     power = power.saturating_add_signed(counter.power);
                 }
+
+                let power_counters: i8 = state
+                    .cards
+                    .iter()
+                    .filter(|c| c.get_zone().is_in_play())
+                    .map(|c| c.area_modifiers(state))
+                    .filter_map(|mods| mods.grants_counters.get(self.get_id()).cloned())
+                    .flat_map(|counters| counters)
+                    .map(|counter| counter.power)
+                    .sum();
+                power = power.saturating_add_signed(power_counters);
+
                 Some(power)
             }
             None => None,
@@ -1304,6 +1338,7 @@ pub struct AreaModifiers {
     pub grants_abilities: HashMap<uuid::Uuid, Vec<Ability>>,
     pub removes_abilities: HashMap<uuid::Uuid, Vec<Ability>>,
     pub grants_activated_abilities: HashMap<uuid::Uuid, Vec<Box<dyn ActivatedAbility>>>,
+    pub grants_counters: HashMap<uuid::Uuid, Vec<Counter>>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
