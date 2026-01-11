@@ -1,6 +1,8 @@
 use crate::{
     card::{Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    effect::Effect,
     game::PlayerId,
+    state::State,
 };
 
 #[derive(Debug, Clone)]
@@ -56,6 +58,23 @@ impl Card for WraetannisTitan {
 
     fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
         Some(&mut self.unit_base)
+    }
+
+    async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+        let opponent_id = state.get_opponent_id(&self.get_controller_id(state))?;
+        let effects = self
+            .get_zone()
+            .get_units(state, Some(&opponent_id))
+            .iter()
+            .map(|c| c.get_id())
+            .cloned()
+            .map(|id| Effect::TakeDamage {
+                card_id: id.clone(),
+                from: self.get_id().clone(),
+                damage: self.get_power(state).unwrap_or_default().unwrap_or_default(),
+            })
+            .collect();
+        Ok(effects)
     }
 }
 
