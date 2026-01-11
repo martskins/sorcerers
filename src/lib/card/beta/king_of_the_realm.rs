@@ -1,6 +1,7 @@
 use crate::{
     card::{Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
     game::PlayerId,
+    state::{CardMatcher, State, WorldEffect},
 };
 
 #[derive(Debug, Clone)]
@@ -56,6 +57,17 @@ impl Card for KingOfTheRealm {
 
     fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
         Some(&mut self.unit_base)
+    }
+
+    async fn get_world_effects(&self, _state: &State) -> anyhow::Result<Vec<WorldEffect>> {
+        Ok(vec![WorldEffect::ControllerOverride {
+            controller_id: self.get_controller_id().clone(),
+            affected_cards: CardMatcher {
+                minion_types: Some(vec![MinionType::Mortal]),
+                in_zones: Some(Zone::all_realm()),
+                ..Default::default()
+            },
+        }])
     }
 }
 

@@ -6,7 +6,7 @@ use crate::{
         get_adjacent_zones, get_nearby_zones,
     },
     query::{CardQuery, ZoneQuery},
-    state::State,
+    state::{State, WorldEffect},
 };
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Debug};
@@ -537,6 +537,23 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     // Returns the ID of the player who owns this card.
     fn get_owner_id(&self) -> &PlayerId {
         &self.get_base().owner_id
+    }
+
+    fn get_controller_id2(&self, state: &State) -> PlayerId {
+        let mut controller = self.get_base().controller_id;
+        for we in &state.world_effects {
+            if let WorldEffect::ControllerOverride {
+                controller_id,
+                affected_cards,
+            } = we
+            {
+                if affected_cards.matches(self.get_id(), state) {
+                    controller = controller_id.clone();
+                }
+            }
+        }
+
+        controller
     }
 
     // Returns the ID of the player who controls this card.
@@ -1330,6 +1347,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     fn get_num_arts(&self) -> usize {
         1
+    }
+
+    async fn get_world_effects(&self, _state: &State) -> anyhow::Result<Vec<WorldEffect>> {
+        Ok(vec![])
     }
 }
 

@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardData, Zone},
+    card::{Card, CardData, CardType, MinionType, SiteType, Zone},
     deck::Deck,
     effect::Effect,
     game::{InputStatus, PlayerId, Resources},
@@ -14,7 +14,6 @@ use std::{
 #[derive(Debug, PartialEq, Clone)]
 pub enum Phase {
     Main,
-    // PreEndTurn { player_id: PlayerId },
 }
 
 #[derive(Debug, Clone)]
@@ -27,6 +26,81 @@ pub struct PlayerWithDeck {
     pub player: Player,
     pub deck: Deck,
     pub cards: Vec<Box<dyn Card>>,
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct CardMatcher {
+    pub controller_id: Option<PlayerId>,
+    pub card_types: Option<Vec<CardType>>,
+    pub minion_types: Option<Vec<MinionType>>,
+    pub site_types: Option<Vec<SiteType>>,
+    pub in_zones: Option<Vec<Zone>>,
+}
+
+impl CardMatcher {
+    pub fn matches(&self, card_id: &uuid::Uuid, state: &State) -> bool {
+        let card = state.get_card(card_id);
+        if let Some(controller_id) = &self.controller_id {
+            if card.get_controller_id() != controller_id {
+                return false;
+            }
+        }
+
+        if let Some(card_types) = &self.card_types {
+            if !card_types.contains(&card.get_card_type()) {
+                return false;
+            }
+        }
+
+        if let Some(site_types) = &self.site_types {
+            if let Some(base) = card.get_site_base() {
+                let types = &base.types;
+                let mut found_type = false;
+                for site_type in site_types {
+                    if types.contains(site_type) {
+                        found_type = true;
+                    }
+                }
+
+                if !found_type {
+                    return false;
+                }
+            }
+        }
+
+        if let Some(minion_types) = &self.minion_types {
+            if let Some(base) = card.get_unit_base() {
+                let types = &base.types;
+                let mut found_type = false;
+                for minion_type in minion_types {
+                    if types.contains(minion_type) {
+                        found_type = true;
+                    }
+                }
+
+                if !found_type {
+                    return false;
+                }
+            }
+        }
+
+        if let Some(in_zones) = &self.in_zones {
+            if !in_zones.contains(&card.get_zone()) {
+                return false;
+            }
+        }
+
+        true
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum WorldEffect {
+    ControllerOverride {
+        controller_id: PlayerId,
+        affected_cards: CardMatcher,
+    },
+    Other,
 }
 
 #[derive(Debug)]
@@ -46,6 +120,7 @@ pub struct State {
     pub player_one: PlayerId,
     pub server_tx: Sender<ServerMessage>,
     pub client_rx: Receiver<ClientMessage>,
+    pub world_effects: Vec<WorldEffect>,
 }
 
 impl State {
@@ -84,7 +159,21 @@ impl State {
             player_one,
             server_tx,
             client_rx,
+            world_effects: Vec::new(),
         }
+    }
+
+    pub async fn compute_world_effects(&mut self) -> anyhow::Result<()> {
+        self.world_effects.clear();
+
+        for card in &self.cards {
+            let card_world_effects = card.get_world_effects(self).await?;
+            for effect in card_world_effects {
+                self.world_effects.push(effect);
+            }
+        }
+
+        Ok(())
     }
 
     pub fn get_player_avatar_id(&self, player_id: &PlayerId) -> anyhow::Result<uuid::Uuid> {
@@ -264,6 +353,7 @@ impl State {
             server_tx: self.server_tx.clone(),
             client_rx: self.client_rx.clone(),
             effect_log: self.effect_log.clone(),
+            world_effects: self.world_effects.clone(),
         }
     }
 

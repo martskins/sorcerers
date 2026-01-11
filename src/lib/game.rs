@@ -1321,6 +1321,7 @@ impl Game {
                 // Move the effect to the effect log so we can keep track of what has happened in
                 // the game.
                 self.state.effect_log.push(effect);
+                self.state.compute_world_effects().await?;
 
                 Self::dispell_auras(&mut self.state).await?;
                 self.send_sync().await?;
