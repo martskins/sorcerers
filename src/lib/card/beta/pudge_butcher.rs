@@ -32,6 +32,7 @@ impl ActivatedAbility for ShootProjectile {
         let mut snapshot = state.snapshot();
         let pudge = state.get_card(card_id);
         let effect = Effect::ShootProjectile {
+            id: uuid::Uuid::new_v4(),
             player_id: player_id.clone(),
             shooter: card_id.clone(),
             from_zone: pudge.get_zone().clone(),
@@ -71,9 +72,16 @@ impl ActivatedAbility for ShootProjectile {
                 plane: pudge.get_plane(state).clone(),
                 through_path: None,
             });
+            let target_name = state.get_card(&target).get_name().to_string();
             let options = vec![BaseOption::Yes, BaseOption::No];
             let option_labels: Vec<String> = options.iter().map(|o| o.to_string()).collect();
-            let picked_option = pick_option(player_id, &option_labels, state, "Pudge Butcher: Fight unit?").await?;
+            let picked_option = pick_option(
+                player_id,
+                &option_labels,
+                state,
+                format!("Pudge Butcher: Fight {}?", target_name),
+            )
+            .await?;
             if options[picked_option] == BaseOption::Yes {
                 effects.push(Effect::Attack {
                     attacker_id: card_id.clone(),

@@ -49,6 +49,7 @@ impl Card for Fireball {
         let prompt = "Fireball: Pick a direction to cast the spell:";
         let direction = pick_direction(self.get_owner_id(), &CARDINAL_DIRECTIONS, state, prompt).await?;
         Ok(vec![Effect::ShootProjectile {
+            id: uuid::Uuid::new_v4(),
             player_id: self.get_owner_id().clone(),
             shooter: caster.get_id().clone(),
             from_zone: caster.get_zone().clone(),

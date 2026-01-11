@@ -40,6 +40,7 @@ impl ActivatedAbility for ShootProjectile {
         let direction = pick_direction(avatar.get_owner_id(), &CARDINAL_DIRECTIONS, state, prompt).await?;
         let mut effects = vec![
             Effect::ShootProjectile {
+                id: uuid::Uuid::new_v4(),
                 player_id: avatar.get_owner_id().clone(),
                 from_zone: avatar.get_zone().clone(),
                 shooter: card_id.clone(),

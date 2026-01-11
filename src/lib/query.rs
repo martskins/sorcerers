@@ -14,6 +14,7 @@ static QUERY_CACHE: OnceLock<RwLock<QueryCache>> = OnceLock::new();
 pub struct QueryCache {
     zone_queries: HashMap<uuid::Uuid, Zone>,
     card_queries: HashMap<uuid::Uuid, uuid::Uuid>,
+    effect_targets: HashMap<uuid::Uuid, Vec<uuid::Uuid>>,
     game_queries: HashMap<uuid::Uuid, Vec<uuid::Uuid>>,
 }
 
@@ -23,11 +24,28 @@ impl QueryCache {
             zone_queries: HashMap::new(),
             card_queries: HashMap::new(),
             game_queries: HashMap::new(),
+            effect_targets: HashMap::new(),
         }
     }
 
     pub fn init() {
         QUERY_CACHE.get_or_init(|| RwLock::new(QueryCache::new()));
+    }
+
+    pub async fn store_effect_targets(game_id: uuid::Uuid, effect_id: uuid::Uuid, affected_cards: Vec<uuid::Uuid>) {
+        let mut cache = QUERY_CACHE.get().expect("to get lock").write().await;
+        cache.effect_targets.insert(effect_id.clone(), affected_cards);
+
+        cache
+            .game_queries
+            .entry(game_id)
+            .or_insert(Vec::new())
+            .push(effect_id.clone());
+    }
+
+    pub async fn effect_targets(effect_id: &uuid::Uuid) -> Option<Vec<uuid::Uuid>> {
+        let cache = QUERY_CACHE.get().expect("to get lock").read().await;
+        cache.effect_targets.get(effect_id).cloned()
     }
 
     pub async fn resolve_card(qry: &CardQuery, player_id: &PlayerId, state: &State) -> anyhow::Result<uuid::Uuid> {
@@ -183,6 +201,7 @@ impl QueryCache {
                 for qry_id in queries {
                     cache.zone_queries.remove(&qry_id);
                     cache.card_queries.remove(&qry_id);
+                    cache.effect_targets.remove(&qry_id);
                 }
             }
         }

@@ -2,7 +2,7 @@ use crate::{
     card::{Ability, Card, FootSoldier, Plane, Rubble, UnitBase, Zone},
     game::{BaseAction, Direction, PlayerAction, PlayerId, SoundEffect, Thresholds, pick_card, pick_option},
     networking::message::ServerMessage,
-    query::{CardQuery, EffectQuery, ZoneQuery},
+    query::{CardQuery, EffectQuery, QueryCache, ZoneQuery},
     state::{Phase, State},
 };
 use std::fmt::Debug;
@@ -51,6 +51,7 @@ pub enum Effect {
         amount: u8,
     },
     ShootProjectile {
+        id: uuid::Uuid,
         player_id: uuid::Uuid,
         shooter: uuid::Uuid,
         from_zone: Zone,
@@ -194,6 +195,12 @@ fn player_name<'a>(player_id: &uuid::Uuid, state: &'a State) -> &'a str {
 }
 
 impl Effect {
+    pub async fn affected_cards(&self) -> Option<Vec<uuid::Uuid>> {
+        match self {
+            Effect::ShootProjectile { id, .. } => QueryCache::effect_targets(id).await,
+            _ => None,
+        }
+    }
     pub fn banish_card(card_id: &uuid::Uuid, from: &Zone) -> Self {
         Effect::BanishCard {
             card_id: card_id.clone(),
@@ -505,6 +512,7 @@ impl Effect {
                 card.remove_modifier(modifier);
             }
             Effect::ShootProjectile {
+                id,
                 player_id,
                 shooter,
                 from_zone,
@@ -517,37 +525,50 @@ impl Effect {
                 let mut effects = vec![];
                 let mut next_zone = from_zone.zone_in_direction(direction, 1);
                 while let Some(zone) = next_zone {
-                    let units = state
-                        .get_units_in_zone(&zone)
-                        .iter()
-                        .filter(|c| c.can_be_targetted_by(state, player_id))
-                        .map(|c| c.get_id().clone())
-                        .collect::<Vec<_>>();
-                    if units.is_empty() {
-                        next_zone = zone.zone_in_direction(direction, 1);
-                        continue;
+                    let picked_unit_id = match self.affected_cards().await {
+                        Some(affected_cards) => affected_cards.first().cloned(),
+                        None => {
+                            let units = state
+                                .get_units_in_zone(&zone)
+                                .iter()
+                                .filter(|c| c.can_be_targetted_by(state, player_id))
+                                .map(|c| c.get_id().clone())
+                                .collect::<Vec<_>>();
+                            match units.len() {
+                                0 => None,
+                                1 => Some(units[0].clone()),
+                                _ => {
+                                    let prompt = "Pick a unit to shoot";
+                                    let picked_unit_id = pick_card(player_id, &units, state, prompt).await?;
+                                    QueryCache::store_effect_targets(
+                                        state.game_id.clone(),
+                                        id.clone(),
+                                        vec![picked_unit_id.clone()],
+                                    )
+                                    .await;
+                                    Some(picked_unit_id)
+                                }
+                            }
+                        }
+                    };
+
+                    if let Some(picked_unit_id) = picked_unit_id {
+                        effects.push(Effect::take_damage(&picked_unit_id, shooter, *damage));
+                        if let Some(splash_damage) = splash_damage {
+                            let splash_effects = state
+                                .get_units_in_zone(&zone)
+                                .iter()
+                                .filter(|c| c.get_id() != &picked_unit_id)
+                                .map(|c| Effect::take_damage(c.get_id(), shooter, *splash_damage))
+                                .collect::<Vec<_>>();
+                            effects.extend(splash_effects);
+                        }
+
+                        if !piercing {
+                            break;
+                        }
                     }
 
-                    let mut picked_unit_id = units[0];
-                    if units.len() >= 1 {
-                        let prompt = "Pick a unit to shoot";
-                        picked_unit_id = pick_card(player_id, &units, state, prompt).await?;
-                    }
-
-                    effects.push(Effect::take_damage(&picked_unit_id, shooter, *damage));
-                    if let Some(splash_damage) = splash_damage {
-                        let splash_effects = state
-                            .get_units_in_zone(&zone)
-                            .iter()
-                            .filter(|c| c.get_id() != &picked_unit_id)
-                            .map(|c| Effect::take_damage(c.get_id(), shooter, *splash_damage))
-                            .collect::<Vec<_>>();
-                        effects.extend(splash_effects);
-                    }
-
-                    if !piercing {
-                        break;
-                    }
                     next_zone = zone.zone_in_direction(direction, 1);
                 }
 
