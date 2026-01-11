@@ -1024,6 +1024,18 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     power = power.saturating_add_signed(counter.power);
                 }
 
+                for we in &state.world_effects {
+                    if let WorldEffect::ModifyPower {
+                        power_diff,
+                        affected_cards,
+                    } = we
+                    {
+                        if affected_cards.matches(self.get_id(), state) {
+                            power = power.saturating_add_signed(*power_diff);
+                        }
+                    }
+                }
+
                 let power_counters: i8 = state
                     .cards
                     .iter()

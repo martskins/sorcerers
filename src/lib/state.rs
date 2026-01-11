@@ -31,6 +31,7 @@ pub struct PlayerWithDeck {
 #[derive(Debug, Default, Clone)]
 pub struct CardMatcher {
     pub controller_id: Option<PlayerId>,
+    pub not_in_ids: Option<Vec<uuid::Uuid>>,
     pub card_types: Option<Vec<CardType>>,
     pub minion_types: Option<Vec<MinionType>>,
     pub site_types: Option<Vec<SiteType>>,
@@ -40,6 +41,12 @@ pub struct CardMatcher {
 impl CardMatcher {
     pub fn matches(&self, card_id: &uuid::Uuid, state: &State) -> bool {
         let card = state.get_card(card_id);
+        if let Some(not_in_ids) = &self.not_in_ids {
+            if not_in_ids.contains(card_id) {
+                return false;
+            }
+        }
+
         if let Some(controller_id) = &self.controller_id {
             if &card.get_controller_id(state) != controller_id {
                 return false;
@@ -104,7 +111,10 @@ pub enum WorldEffect {
         controller_id: PlayerId,
         affected_cards: CardMatcher,
     },
-    Other,
+    ModifyPower {
+        power_diff: i8,
+        affected_cards: CardMatcher,
+    },
 }
 
 #[derive(Debug)]
