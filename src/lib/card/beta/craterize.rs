@@ -45,7 +45,7 @@ impl Card for Craterize {
         &self.card_base
     }
 
-    fn get_additional_costs(&self, _state: &State) -> anyhow::Result<Vec<AdditionalCost>> {
+    fn get_additional_costs(&self, state: &State) -> anyhow::Result<Vec<AdditionalCost>> {
         Ok(vec![
             AdditionalCost::Discard {
                 card: CardQuery::InZone {
@@ -53,7 +53,7 @@ impl Card for Craterize {
                     zone: Zone::Hand,
                     card_types: Some(vec![CardType::Site]),
                     planes: None,
-                    owner: Some(self.get_controller_id().clone()),
+                    owner: Some(self.get_controller_id(state)),
                     prompt: Some("Craterize: Discard a site from your hand".to_string()),
                     tapped: None,
                 },
@@ -64,7 +64,7 @@ impl Card for Craterize {
                     zone: Zone::Hand,
                     card_types: Some(vec![CardType::Site]),
                     planes: None,
-                    owner: Some(self.get_controller_id().clone()),
+                    owner: Some(self.get_controller_id(state)),
                     prompt: Some("Craterize: Discard a site from your hand".to_string()),
                     tapped: None,
                 },
@@ -82,7 +82,7 @@ impl Card for Craterize {
             .cloned()
             .collect::<Vec<_>>();
         let picked_site_id = pick_card(
-            &self.get_controller_id(),
+            &self.get_controller_id(state),
             &sites,
             state,
             "Craterize: Pick a site to destroy",
@@ -144,7 +144,7 @@ impl Card for Craterize {
                 }
 
                 effects.push(Effect::DealDamageAllUnitsInZone {
-                    player_id: self.get_controller_id().clone(),
+                    player_id: self.get_controller_id(state).clone(),
                     zone: ZoneQuery::Specific {
                         id: uuid::Uuid::new_v4(),
                         zone: zone,

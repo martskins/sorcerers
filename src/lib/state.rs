@@ -41,7 +41,7 @@ impl CardMatcher {
     pub fn matches(&self, card_id: &uuid::Uuid, state: &State) -> bool {
         let card = state.get_card(card_id);
         if let Some(controller_id) = &self.controller_id {
-            if card.get_controller_id() != controller_id {
+            if &card.get_controller_id(state) != controller_id {
                 return false;
             }
         }
@@ -65,6 +65,8 @@ impl CardMatcher {
                 if !found_type {
                     return false;
                 }
+            } else {
+                return false;
             }
         }
 
@@ -81,6 +83,8 @@ impl CardMatcher {
                 if !found_type {
                     return false;
                 }
+            } else {
+                return false;
             }
         }
 
@@ -167,6 +171,10 @@ impl State {
         self.world_effects.clear();
 
         for card in &self.cards {
+            if !card.get_zone().is_in_play() {
+                continue;
+            }
+
             let card_world_effects = card.get_world_effects(self).await?;
             for effect in card_world_effects {
                 self.world_effects.push(effect);
@@ -196,7 +204,7 @@ impl State {
     pub fn get_interceptors_for_move(&self, path: &[Zone], controller_id: &PlayerId) -> Vec<(uuid::Uuid, Zone)> {
         self.cards
             .iter()
-            .filter(|c| c.get_controller_id() == controller_id)
+            .filter(|c| &c.get_controller_id(self) == controller_id)
             .filter(|c| c.is_unit())
             .filter(|c| matches!(c.get_zone(), Zone::Realm(_)))
             .flat_map(|c| {
@@ -240,6 +248,7 @@ impl State {
                 id: c.get_id().clone(),
                 name: c.get_name().to_string(),
                 owner_id: c.get_owner_id().clone(),
+                controller_id: c.get_controller_id(&self),
                 tapped: c.is_tapped(),
                 edition: c.get_edition().clone(),
                 zone: c.get_zone().clone(),

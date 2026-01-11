@@ -61,7 +61,7 @@ impl Card for QuarrelsomeKobolds {
     }
 
     async fn on_turn_end(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        if &state.current_player != self.get_controller_id() {
+        if state.current_player != self.get_controller_id(state) {
             return Ok(vec![]);
         }
 
@@ -72,14 +72,14 @@ impl Card for QuarrelsomeKobolds {
             let units_in_zone = state
                 .get_units_in_zone(&zone)
                 .iter()
-                .filter(|c| c.can_be_targetted_by(state, self.get_controller_id()))
+                .filter(|c| c.can_be_targetted_by(state, &self.get_controller_id(state)))
                 .map(|c| c.get_id().clone())
                 .collect::<Vec<uuid::Uuid>>();
             units.extend(units_in_zone);
         }
 
         let prompt = "Quarrelsome Kobolds: Pick a unit to deal damage to";
-        let picked_unit = pick_card(self.get_controller_id(), &units, state, prompt).await?;
+        let picked_unit = pick_card(self.get_controller_id(state), &units, state, prompt).await?;
         Ok(vec![Effect::take_damage(
             &picked_unit,
             self.get_id(),

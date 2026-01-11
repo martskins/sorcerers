@@ -35,7 +35,7 @@ impl ActivatedAbility for DealDamage {
         Ok(vec![Effect::DealDamageToTarget {
             from: card_id.clone(),
             damage: 3,
-            player_id: card.get_controller_id().clone(),
+            player_id: card.get_controller_id(state).clone(),
             query: CardQuery::RandomTarget {
                 id: uuid::Uuid::new_v4(),
                 possible_targets: units,

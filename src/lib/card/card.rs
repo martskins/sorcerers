@@ -140,14 +140,14 @@ impl Zone {
         get_nearby_zones(self)
     }
 
-    pub fn get_minions<'a>(&self, state: &'a State, owner_id: Option<&uuid::Uuid>) -> Vec<&'a Box<dyn Card>> {
+    pub fn get_minions<'a>(&self, state: &'a State, controller_id: Option<&uuid::Uuid>) -> Vec<&'a Box<dyn Card>> {
         state
             .get_cards_in_zone(self)
             .iter()
             .filter(|c| c.is_minion())
             .filter(|c| {
-                if let Some(owner_id) = owner_id {
-                    c.get_owner_id() == owner_id
+                if let Some(controller_id) = controller_id {
+                    &c.get_controller_id(state) == controller_id
                 } else {
                     true
                 }
@@ -156,14 +156,14 @@ impl Zone {
             .collect::<Vec<&Box<dyn Card>>>()
     }
 
-    pub fn get_units<'a>(&self, state: &'a State, owner_id: Option<&uuid::Uuid>) -> Vec<&'a Box<dyn Card>> {
+    pub fn get_units<'a>(&self, state: &'a State, controller_id: Option<&uuid::Uuid>) -> Vec<&'a Box<dyn Card>> {
         state
             .get_cards_in_zone(self)
             .iter()
             .filter(|c| c.is_unit())
             .filter(|c| {
-                if let Some(owner_id) = owner_id {
-                    c.get_owner_id() == owner_id
+                if let Some(controller_id) = controller_id {
+                    &c.get_controller_id(state) == controller_id
                 } else {
                     true
                 }
@@ -181,7 +181,7 @@ impl Zone {
             .clone()
     }
 
-    pub fn get_nearby_units<'a>(&self, state: &'a State, owner_id: Option<&uuid::Uuid>) -> Vec<&'a Box<dyn Card>> {
+    pub fn get_nearby_units<'a>(&self, state: &'a State, controller_id: Option<&uuid::Uuid>) -> Vec<&'a Box<dyn Card>> {
         get_nearby_zones(self)
             .iter()
             .flat_map(|z| {
@@ -190,8 +190,8 @@ impl Zone {
                     .iter()
                     .filter(|c| c.is_unit())
                     .filter(|c| {
-                        if let Some(owner_id) = owner_id {
-                            c.get_owner_id() == owner_id
+                        if let Some(controller_id) = controller_id {
+                            &c.get_controller_id(state) == controller_id
                         } else {
                             true
                         }
@@ -202,7 +202,7 @@ impl Zone {
             .collect()
     }
 
-    pub fn get_nearby_sites<'a>(&self, state: &'a State, owner_id: Option<&uuid::Uuid>) -> Vec<&'a Box<dyn Card>> {
+    pub fn get_nearby_sites<'a>(&self, state: &'a State, controller_id: Option<&uuid::Uuid>) -> Vec<&'a Box<dyn Card>> {
         get_nearby_zones(self)
             .iter()
             .flat_map(|z| {
@@ -211,8 +211,8 @@ impl Zone {
                     .iter()
                     .filter(|c| c.is_site())
                     .filter(|c| {
-                        if let Some(owner_id) = owner_id {
-                            c.get_owner_id() == owner_id
+                        if let Some(controller_id) = controller_id {
+                            &c.get_controller_id(state) == controller_id
                         } else {
                             true
                         }
@@ -292,6 +292,7 @@ pub struct CardData {
     pub id: uuid::Uuid,
     pub name: String,
     pub owner_id: PlayerId,
+    pub controller_id: PlayerId,
     pub tapped: bool,
     pub edition: Edition,
     pub zone: Zone,
@@ -421,8 +422,8 @@ impl Cost {
         }
     }
 
-    pub fn can_afford(&self, state: &State, player_id: &PlayerId) -> anyhow::Result<bool> {
-        let resources = state.get_player_resources(player_id)?;
+    pub fn can_afford(&self, state: &State, player_id: impl AsRef<PlayerId>) -> anyhow::Result<bool> {
+        let resources = state.get_player_resources(player_id.as_ref())?;
         let has_resources = resources.mana >= self.mana
             && resources.thresholds.fire >= self.thresholds.fire
             && resources.thresholds.air >= self.thresholds.air
@@ -539,7 +540,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         &self.get_base().owner_id
     }
 
-    fn get_controller_id2(&self, state: &State) -> PlayerId {
+    // Returns the ID of the player who controls this card.
+    fn get_controller_id(&self, state: &State) -> PlayerId {
         let mut controller = self.get_base().controller_id;
         for we in &state.world_effects {
             if let WorldEffect::ControllerOverride {
@@ -556,13 +558,12 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         controller
     }
 
-    // Returns the ID of the player who controls this card.
-    fn get_controller_id(&self) -> &PlayerId {
-        &self.get_base().controller_id
-    }
-
     // Returns a list of effects that must be applied after this card attacks.
     async fn after_attack(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
+        Ok(vec![])
+    }
+
+    async fn after_ranged_attack(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![])
     }
 
@@ -647,7 +648,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
             return Ok(vec![]);
         } else if self.is_site() {
-            let avatar_id = state.get_player_avatar_id(self.get_controller_id())?;
+            let avatar_id = state.get_player_avatar_id(&self.get_controller_id(state))?;
             return Ok(vec![Effect::TakeDamage {
                 card_id: avatar_id,
                 from: from.clone(),
@@ -927,9 +928,9 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         state
             .cards
             .iter()
-            .filter(|c| c.get_owner_id() != self.get_owner_id())
+            .filter(|c| c.get_controller_id(state) != self.get_controller_id(state))
             .filter(|c| c.is_unit() || c.is_site())
-            .filter(|c| c.can_be_targetted_by(state, self.get_controller_id()))
+            .filter(|c| c.can_be_targetted_by(state, &self.get_controller_id(state)))
             .filter(|c| {
                 let same_plane = c.get_base().plane == self.get_base().plane;
                 let ranged_on_airborne =
@@ -1118,16 +1119,16 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(vec![])
     }
 
-    fn deathrite(&self, _state: &State, from: &Zone) -> Vec<Effect> {
+    fn deathrite(&self, state: &State, from: &Zone) -> Vec<Effect> {
         if self.is_site() && from.is_in_play() {
             return vec![
                 Effect::SummonToken {
-                    player_id: self.get_controller_id().clone(),
+                    player_id: self.get_controller_id(state),
                     token_type: TokenType::Rubble,
                     zone: from.clone(),
                 },
                 Effect::RemoveResources {
-                    player_id: self.get_owner_id().clone(),
+                    player_id: self.get_controller_id(state).clone(),
                     mana: 0,
                     thresholds: self.get_site_base().unwrap().provided_thresholds.clone(),
                 },
@@ -1138,7 +1139,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     fn can_be_targetted_by(&self, state: &State, player_id: &PlayerId) -> bool {
-        if self.has_modifier(state, &Ability::Stealth) && self.get_owner_id() != player_id {
+        if self.has_modifier(state, &Ability::Stealth) && &self.get_controller_id(state) != player_id {
             return false;
         }
 
@@ -1178,7 +1179,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             return Ok(false);
         }
 
-        if self.get_owner_id() != spell.get_owner_id() {
+        if self.get_controller_id(state) != spell.get_controller_id(state) {
             return Ok(false);
         }
 
@@ -1254,7 +1255,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         if state
             .cards
             .iter()
-            .filter(|c| c.get_owner_id() == self.get_owner_id())
+            .filter(|c| c.get_controller_id(state) == self.get_controller_id(state))
             .filter(|c| matches!(c.get_zone(), Zone::Hand))
             .count()
             > 0
@@ -1503,7 +1504,7 @@ pub trait Artifact: Card {
                 .cards
                 .iter()
                 .filter(|c| c.is_unit())
-                .filter(|c| c.get_controller_id() == self.get_owner_id())
+                .filter(|c| c.get_controller_id(state) == self.get_controller_id(state))
                 .map(|c| c.get_id().clone())
                 .collect(),
             _ => vec![],
@@ -1523,13 +1524,13 @@ pub trait Artifact: Card {
 pub struct CardBase {
     pub id: uuid::Uuid,
     pub owner_id: PlayerId,
+    pub controller_id: PlayerId,
     pub tapped: bool,
     pub zone: Zone,
     pub cost: Cost,
     pub plane: Plane,
     pub rarity: Rarity,
     pub edition: Edition,
-    pub controller_id: PlayerId,
 }
 
 #[derive(Debug, Clone)]

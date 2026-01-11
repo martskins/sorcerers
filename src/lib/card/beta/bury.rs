@@ -55,7 +55,7 @@ impl Card for Bury {
             .cloned()
             .collect::<Vec<_>>();
         let picked_card_id = pick_card(
-            &self.get_controller_id(),
+            &self.get_controller_id(state),
             &valid_targets,
             state,
             "Bury: Pick a minion or artifact to bury",
@@ -64,7 +64,7 @@ impl Card for Bury {
         let picked_card = state.get_card(&picked_card_id);
 
         Ok(vec![Effect::MoveCard {
-            player_id: self.get_controller_id().clone(),
+            player_id: self.get_controller_id(state).clone(),
             card_id: picked_card_id.clone(),
             from: picked_card.get_zone().clone(),
             to: ZoneQuery::Specific {

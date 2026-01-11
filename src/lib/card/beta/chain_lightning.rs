@@ -79,7 +79,7 @@ impl Card for ChainLightning {
 
             if !first_pick {
                 let effect = Effect::RemoveResources {
-                    player_id: self.get_controller_id().clone(),
+                    player_id: self.get_controller_id(state).clone(),
                     mana: 2,
                     thresholds: Thresholds::new(),
                 };
@@ -87,20 +87,20 @@ impl Card for ChainLightning {
                 effects.push(effect);
             }
 
-            force_sync(self.get_controller_id(), &local_state).await?;
+            force_sync(self.get_controller_id(state), &local_state).await?;
 
             let additional_hit_cost = Cost {
                 mana: 2,
                 ..Default::default()
             };
-            if !additional_hit_cost.can_afford(state, self.get_controller_id())? {
+            if !additional_hit_cost.can_afford(state, self.get_controller_id(state))? {
                 break;
             }
 
             let options = vec![BaseOption::Yes, BaseOption::No];
             let option_labels = options.iter().map(|o| o.to_string()).collect::<Vec<_>>();
             let picked_option = pick_option(
-                self.get_owner_id(),
+                &self.get_controller_id(state),
                 &option_labels,
                 state,
                 "Chain Lightning: Pay 2 to deal an additional 2 damage to another unit?",

@@ -70,7 +70,7 @@ impl ActivatedAbility for GeomancerAbility {
                         let picked_zone =
                             pick_zone(player_id, &zones, state, "Geomancer: Pick a void to fill with a rubble").await?;
                         effects.push(Effect::SummonToken {
-                            player_id: card.get_controller_id().clone(),
+                            player_id: card.get_controller_id(state).clone(),
                             token_type: TokenType::Rubble,
                             zone: picked_zone.clone(),
                         });
@@ -91,7 +91,7 @@ impl ActivatedAbility for GeomancerAbility {
                     .map(|c| c.get_id().clone())
                     .collect::<Vec<uuid::Uuid>>();
                 let picked_rubble = pick_card(
-                    card.get_controller_id(),
+                    card.get_controller_id(state),
                     &cards,
                     state,
                     "Geomancer: Pick a rubble to replace with a site",
@@ -99,7 +99,7 @@ impl ActivatedAbility for GeomancerAbility {
                 .await?;
 
                 let rubble = state.get_card(&picked_rubble);
-                let deck = state.decks.get(card.get_controller_id()).unwrap();
+                let deck = state.decks.get(&card.get_controller_id(state)).unwrap();
                 let site_id = deck.sites.last();
 
                 match site_id {
@@ -109,11 +109,11 @@ impl ActivatedAbility for GeomancerAbility {
                             from: rubble.get_zone().clone(),
                         },
                         Effect::DrawSite {
-                            player_id: card.get_controller_id().clone(),
+                            player_id: card.get_controller_id(state).clone(),
                             count: 1,
                         },
                         Effect::MoveCard {
-                            player_id: card.get_controller_id().clone(),
+                            player_id: card.get_controller_id(state).clone(),
                             card_id: site_id.clone(),
                             from: Zone::Atlasbook,
                             to: ZoneQuery::Specific {

@@ -34,7 +34,7 @@ impl EntangleTerrain {
 
 impl Aura for EntangleTerrain {
     fn should_dispell(&self, state: &State) -> anyhow::Result<bool> {
-        let controller_id = self.get_controller_id();
+        let controller_id = self.get_controller_id(state);
         let turns_in_play = state
             .effect_log
             .iter()
@@ -43,7 +43,7 @@ impl Aura for EntangleTerrain {
                 _ => true,
             })
             .filter(|e| match ***e {
-                Effect::EndTurn { ref player_id, .. } if player_id == controller_id => true,
+                Effect::EndTurn { ref player_id, .. } if player_id == &controller_id => true,
                 _ => false,
             })
             .count();

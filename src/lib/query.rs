@@ -478,15 +478,15 @@ impl EffectQuery {
             }
             (EffectQuery::DamageDealt { source, target }, Effect::TakeDamage { card_id, from, .. }) => {
                 let card = state.get_card(card_id);
-                let player_id = card.get_controller_id();
+                let player_id = card.get_controller_id(state);
                 if let Some(source) = source {
-                    if &source.resolve(player_id, state).await? != from {
+                    if &source.resolve(&player_id, state).await? != from {
                         return Ok(false);
                     }
                 }
 
                 if let Some(target) = target {
-                    if &target.resolve(player_id, state).await? != card_id {
+                    if &target.resolve(&player_id, state).await? != card_id {
                         return Ok(false);
                     }
                 }

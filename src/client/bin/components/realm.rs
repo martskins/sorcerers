@@ -150,6 +150,7 @@ impl RealmComponent {
             if let Some(existing) = existing.as_mut() {
                 if card.zone == existing.card.zone {
                     existing.card.tapped = card.tapped;
+                    existing.card.controller_id = card.controller_id;
                     existing.card.power = card.power;
                     existing.card.abilities = card.abilities.clone();
                     existing.card.damage_taken = card.damage_taken;
@@ -742,7 +743,7 @@ impl Component for RealmComponent {
                 continue;
             }
 
-            render::draw_card(card_rect, card_rect.card.owner_id == self.player_id);
+            render::draw_card(card_rect, card_rect.card.controller_id == self.player_id);
 
             if let Status::SelectingCard {
                 cards, preview: false, ..

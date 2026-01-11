@@ -49,15 +49,21 @@ impl Card for Blink {
         let cards = state
             .cards
             .iter()
-            .filter(|c| c.get_controller_id() == caster.get_controller_id())
+            .filter(|c| c.get_controller_id(state) == caster.get_controller_id(state))
             .filter(|c| c.get_id() != caster_id)
             .map(|c| c.get_id().clone())
             .collect::<Vec<_>>();
-        let picked_card = pick_card(self.get_controller_id(), &cards, state, "Pick an ally to teleport").await?;
+        let picked_card = pick_card(self.get_controller_id(state), &cards, state, "Pick an ally to teleport").await?;
 
         let zone = state.get_card(&picked_card).get_zone();
         let zones = zone.get_nearby();
-        let picked_zone = pick_zone(self.get_controller_id(), &zones, state, "Pick a zone to teleport to").await?;
+        let picked_zone = pick_zone(
+            self.get_controller_id(state),
+            &zones,
+            state,
+            "Pick a zone to teleport to",
+        )
+        .await?;
         Ok(vec![
             Effect::TeleportCard {
                 card_id: picked_card.clone(),
@@ -65,7 +71,7 @@ impl Card for Blink {
                 to: picked_zone.clone(),
             },
             Effect::DrawCard {
-                player_id: self.get_controller_id().clone(),
+                player_id: self.get_controller_id(state).clone(),
                 count: 1,
             },
         ])

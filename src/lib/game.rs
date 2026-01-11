@@ -89,7 +89,7 @@ impl Direction {
 pub const CARDINAL_DIRECTIONS: [Direction; 4] = [Direction::Up, Direction::Down, Direction::Left, Direction::Right];
 
 pub async fn pick_card_with_preview(
-    player_id: &PlayerId,
+    player_id: impl AsRef<PlayerId>,
     card_ids: &[uuid::Uuid],
     state: &State,
     prompt: &str,
@@ -98,7 +98,7 @@ pub async fn pick_card_with_preview(
         .get_sender()
         .send(ServerMessage::PickCard {
             prompt: prompt.to_string(),
-            player_id: player_id.clone(),
+            player_id: player_id.as_ref().clone(),
             cards: card_ids.to_vec(),
             preview: true,
         })
@@ -117,7 +117,7 @@ pub async fn pick_card_with_preview(
 }
 
 pub async fn pick_card(
-    player_id: &PlayerId,
+    player_id: impl AsRef<PlayerId>,
     card_ids: &[uuid::Uuid],
     state: &State,
     prompt: &str,
@@ -126,7 +126,7 @@ pub async fn pick_card(
         .get_sender()
         .send(ServerMessage::PickCard {
             prompt: prompt.to_string(),
-            player_id: player_id.clone(),
+            player_id: player_id.as_ref().clone(),
             cards: card_ids.to_vec(),
             preview: false,
         })
@@ -145,7 +145,7 @@ pub async fn pick_card(
 }
 
 pub async fn pick_action<'a>(
-    player_id: &PlayerId,
+    player_id: impl AsRef<PlayerId>,
     actions: &'a [Box<dyn ActivatedAbility>],
     state: &State,
     prompt: &str,
@@ -154,7 +154,7 @@ pub async fn pick_action<'a>(
         .get_sender()
         .send(ServerMessage::PickAction {
             prompt: prompt.to_string(),
-            player_id: player_id.clone(),
+            player_id: player_id.as_ref().clone(),
             actions: actions.iter().map(|c| c.get_name().to_string()).collect(),
         })
         .await?;
@@ -195,7 +195,7 @@ pub async fn wait_for_opponent(player_id: &PlayerId, state: &State, prompt: impl
 }
 
 pub async fn pick_option(
-    player_id: &PlayerId,
+    player_id: impl AsRef<PlayerId>,
     options: &[String],
     state: &State,
     prompt: impl AsRef<str>,
@@ -204,7 +204,7 @@ pub async fn pick_option(
         .get_sender()
         .send(ServerMessage::PickAction {
             prompt: prompt.as_ref().to_string(),
-            player_id: player_id.clone(),
+            player_id: player_id.as_ref().clone(),
             actions: options.to_vec(),
         })
         .await?;
@@ -222,7 +222,7 @@ pub async fn pick_option(
 }
 
 pub async fn pick_path(
-    player_id: &PlayerId,
+    player_id: impl AsRef<PlayerId>,
     paths: &[Vec<Zone>],
     state: &State,
     prompt: &str,
@@ -231,7 +231,7 @@ pub async fn pick_path(
         .get_sender()
         .send(ServerMessage::PickPath {
             prompt: prompt.to_string(),
-            player_id: player_id.clone(),
+            player_id: player_id.as_ref().clone(),
             paths: paths.to_vec(),
         })
         .await?;
@@ -248,12 +248,17 @@ pub async fn pick_path(
     }
 }
 
-pub async fn pick_zone(player_id: &PlayerId, zones: &[Zone], state: &State, prompt: &str) -> anyhow::Result<Zone> {
+pub async fn pick_zone(
+    player_id: impl AsRef<PlayerId>,
+    zones: &[Zone],
+    state: &State,
+    prompt: &str,
+) -> anyhow::Result<Zone> {
     state
         .get_sender()
         .send(ServerMessage::PickZone {
             prompt: prompt.to_string(),
-            player_id: player_id.clone(),
+            player_id: player_id.as_ref().clone(),
             zones: zones.to_vec(),
         })
         .await?;
@@ -272,7 +277,7 @@ pub async fn pick_zone(player_id: &PlayerId, zones: &[Zone], state: &State, prom
 // Sends a ForceSync message to the specified player with the provided game state. This can be used
 // to temporarily override the state of the game for the player, which is useful in cases where the
 // state needs to be mutated as part of the card resolution process.
-pub async fn force_sync(player_id: &PlayerId, state: &State) -> anyhow::Result<()> {
+pub async fn force_sync(player_id: impl AsRef<PlayerId>, state: &State) -> anyhow::Result<()> {
     let sync_msg = state.into_sync()?;
     match sync_msg {
         ServerMessage::Sync {
@@ -284,7 +289,7 @@ pub async fn force_sync(player_id: &PlayerId, state: &State) -> anyhow::Result<(
             state
                 .get_sender()
                 .send(ServerMessage::ForceSync {
-                    player_id: player_id.clone(),
+                    player_id: player_id.as_ref().clone(),
                     cards: cards,
                     resources: resources,
                     current_player: current_player,
@@ -299,7 +304,7 @@ pub async fn force_sync(player_id: &PlayerId, state: &State) -> anyhow::Result<(
 }
 
 pub async fn pick_direction(
-    player_id: &PlayerId,
+    player_id: impl AsRef<PlayerId>,
     directions: &[Direction],
     state: &State,
     prompt: &str,
@@ -308,12 +313,12 @@ pub async fn pick_direction(
         .get_sender()
         .send(ServerMessage::PickAction {
             prompt: prompt.to_string(),
-            player_id: player_id.clone(),
+            player_id: player_id.as_ref().clone(),
             actions: directions.iter().map(|c| c.get_name()).collect(),
         })
         .await?;
 
-    let board_flipped = &state.player_one != player_id;
+    let board_flipped = &state.player_one != player_id.as_ref();
     loop {
         let msg = state.get_receiver().recv().await?;
         match msg {
@@ -981,7 +986,7 @@ impl Game {
             ClientMessage::ClickCard { player_id, card_id, .. } => {
                 let snapshot = self.state.snapshot();
                 let card = snapshot.get_card(card_id);
-                if card.get_owner_id() != player_id {
+                if &card.get_controller_id(&self.state) != player_id {
                     return Ok(());
                 }
 

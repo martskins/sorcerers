@@ -59,9 +59,9 @@ impl Card for KingOfTheRealm {
         Some(&mut self.unit_base)
     }
 
-    async fn get_world_effects(&self, _state: &State) -> anyhow::Result<Vec<WorldEffect>> {
+    async fn get_world_effects(&self, state: &State) -> anyhow::Result<Vec<WorldEffect>> {
         Ok(vec![WorldEffect::ControllerOverride {
-            controller_id: self.get_controller_id().clone(),
+            controller_id: self.get_controller_id(state),
             affected_cards: CardMatcher {
                 minion_types: Some(vec![MinionType::Mortal]),
                 in_zones: Some(Zone::all_realm()),

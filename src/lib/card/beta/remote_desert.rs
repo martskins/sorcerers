@@ -64,7 +64,7 @@ impl Card for RemoteDesert {
         }
 
         let prompt = "Remote Desert: Pick a site to deal 1 damage to all atop units";
-        let picked_card_id = pick_card(self.get_controller_id(), &site_ids, state, prompt).await?;
+        let picked_card_id = pick_card(self.get_controller_id(state), &site_ids, state, prompt).await?;
         let site = state.get_card(&picked_card_id);
         let units = state.get_minions_in_zone(site.get_zone());
         let units = units.iter().filter(|c| c.get_base().plane == Plane::Surface);

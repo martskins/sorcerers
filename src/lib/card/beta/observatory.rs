@@ -61,7 +61,7 @@ impl Card for Observatory {
     }
 
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        let deck = state.decks.get(self.get_controller_id()).unwrap().clone();
+        let deck = state.decks.get(&self.get_controller_id(state)).unwrap().clone();
         let mut spells = deck.spells.clone();
         let mut cards = vec![];
         for _ in 0..3 {
@@ -78,7 +78,7 @@ impl Card for Observatory {
                 _ => unreachable!(),
             };
             let picked_card_id = pick_card_with_preview(
-                self.get_controller_id(),
+                self.get_controller_id(state),
                 &cards,
                 state,
                 &format!("Pick a spell to put back into your spellbook, {}", position),

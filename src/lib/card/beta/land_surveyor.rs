@@ -60,9 +60,9 @@ impl Card for LandSurveyor {
         Some(&mut self.unit_base)
     }
 
-    async fn genesis(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
+    async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![Effect::DrawSite {
-            player_id: self.get_controller_id().clone(),
+            player_id: self.get_controller_id(state),
             count: 1,
         }])
     }

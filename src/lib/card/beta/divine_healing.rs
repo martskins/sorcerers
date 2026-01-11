@@ -45,7 +45,7 @@ impl Card for DivineHealing {
     }
 
     async fn on_cast(&mut self, state: &State, _caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
-        let avatar_id = state.get_player_avatar_id(self.get_controller_id())?;
+        let avatar_id = state.get_player_avatar_id(&self.get_controller_id(state))?;
         Ok(vec![Effect::Heal {
             card_id: avatar_id.clone(),
             amount: 7,

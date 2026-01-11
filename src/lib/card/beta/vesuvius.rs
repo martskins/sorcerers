@@ -25,7 +25,7 @@ impl ActivatedAbility for UseAbility {
         let mut effects = vec![
             Effect::bury_card(card.get_id(), card.get_zone()),
             Effect::SummonToken {
-                player_id: card.get_controller_id().clone(),
+                player_id: card.get_controller_id(state).clone(),
                 token_type: TokenType::Rubble,
                 zone: card.get_zone().clone(),
             },

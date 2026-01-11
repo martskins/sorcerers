@@ -69,7 +69,7 @@ impl Card for SimpleVillage {
         let options = vec![BaseOption::Yes, BaseOption::No];
         let option_labels: Vec<String> = options.iter().map(|o| o.to_string()).collect();
         let picked_option = pick_option(
-            self.get_controller_id(),
+            self.get_controller_id(state),
             &option_labels,
             state,
             "Humble Village: Pay 1 to summon a foot soldier?",
@@ -81,12 +81,12 @@ impl Card for SimpleVillage {
 
         Ok(vec![
             Effect::RemoveResources {
-                player_id: self.get_controller_id().clone(),
+                player_id: self.get_controller_id(state).clone(),
                 mana: 1,
                 thresholds: Thresholds::new(),
             },
             Effect::SummonToken {
-                player_id: self.get_controller_id().clone(),
+                player_id: self.get_controller_id(state).clone(),
                 token_type: TokenType::FootSoldier,
                 zone: self.get_zone().clone(),
             },

@@ -50,13 +50,13 @@ impl Card for Overpower {
             .cards
             .iter()
             .filter(|c| c.get_zone().is_in_play())
-            .filter(|c| c.get_controller_id() == self.get_controller_id())
+            .filter(|c| c.get_controller_id(state) == self.get_controller_id(state))
             .filter(|c| c.is_unit())
             .map(|c| c.get_id())
             .cloned()
             .collect::<Vec<_>>();
         let picked_ally_id = pick_card(
-            self.get_controller_id(),
+            self.get_controller_id(state),
             &allies,
             state,
             "Overpower: Pick an ally to give +2 power to",

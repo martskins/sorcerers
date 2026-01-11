@@ -61,7 +61,7 @@ impl Card for ScentHounds {
     }
 
     fn area_effects(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        let opponent_id = state.get_opponent_id(&self.get_controller_id())?;
+        let opponent_id = state.get_opponent_id(&self.get_controller_id(state))?;
         let effects = self
             .get_zone()
             .get_nearby_units(state, Some(&opponent_id))

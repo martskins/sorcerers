@@ -66,7 +66,7 @@ impl ActivatedAbility for RollBoulder {
                         id: uuid::Uuid::new_v4(),
                         zone: zone.clone(),
                     },
-                    player_id: boulder.get_controller_id().clone(),
+                    player_id: boulder.get_controller_id(state).clone(),
                     tap: false,
                     plane: Plane::Surface,
                     through_path: None,

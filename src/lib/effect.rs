@@ -367,7 +367,7 @@ impl Effect {
             } => {
                 let attacker = state.get_card(attacker_id);
                 let defender = state.get_card(defender_id);
-                let player = player_name(attacker.get_controller_id(), state);
+                let player = player_name(&attacker.get_controller_id(state), state);
                 Some(format!(
                     "{} attacks {} with {}",
                     player,
@@ -384,13 +384,13 @@ impl Effect {
             }
             Effect::BuryCard { card_id, .. } => {
                 let card = state.get_card(card_id);
-                let player = card.get_controller_id();
-                Some(format!("{} buries {}", player_name(player, state), card.get_name()))
+                let player = card.get_controller_id(state);
+                Some(format!("{} buries {}", player_name(&player, state), card.get_name()))
             }
             Effect::BanishCard { card_id, .. } => {
                 let card = state.get_card(card_id);
-                let player = card.get_controller_id();
-                Some(format!("{} banishes {}", player_name(player, state), card.get_name()))
+                let player = card.get_controller_id(state);
+                Some(format!("{} banishes {}", player_name(&player, state), card.get_name()))
             }
             Effect::SetCardData { .. } => None,
             Effect::RangedStrike { .. } => None,
@@ -706,7 +706,7 @@ impl Effect {
                     .expect("to find card");
                 state.effects.push_back(
                     Effect::MoveCard {
-                        player_id: card.get_controller_id().clone(),
+                        player_id: card.get_controller_id(state).clone(),
                         card_id: card.get_id().clone(),
                         from: card.get_zone().clone(),
                         to: ZoneQuery::Specific {
@@ -921,7 +921,7 @@ impl Effect {
                 let defender = state.get_card(defender_id);
                 let mut effects = vec![
                     Effect::MoveCard {
-                        player_id: attacker.get_controller_id().clone(),
+                        player_id: attacker.get_controller_id(state).clone(),
                         card_id: attacker_id.clone(),
                         from: attacker.get_zone().clone(),
                         to: ZoneQuery::Specific {
@@ -1047,7 +1047,7 @@ impl Effect {
                         .get_power(&snapshot)?
                         .ok_or(anyhow::anyhow!("attacker has no power"))?,
                 }];
-                effects.extend(attacker.after_attack(state).await?);
+                effects.extend(attacker.after_ranged_attack(state).await?);
                 effects.extend(defender.on_defend(state, attacker_id)?.into_iter().map(|e| e.into()));
                 state.effects.extend(effects.into_iter().map(|e| e.into()));
             }

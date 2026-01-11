@@ -89,9 +89,9 @@ impl Card for WayfaringPilgrim {
         let options: Vec<BaseAction> = vec![BaseAction::DrawSite, BaseAction::DrawSpell];
         let option_labels: Vec<String> = options.iter().map(|a| a.get_name().to_string()).collect();
         let prompt = "Wayfaring Pilgrim: Draw a card";
-        let picked_option_idx = pick_option(self.get_controller_id(), &option_labels, state, prompt).await?;
+        let picked_option_idx = pick_option(self.get_controller_id(state), &option_labels, state, prompt).await?;
         let mut effects = options[picked_option_idx]
-            .on_select(self.get_controller_id(), state)
+            .on_select(&self.get_controller_id(state), state)
             .await?;
 
         effects.push(Effect::SetCardData {

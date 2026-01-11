@@ -79,7 +79,7 @@ impl Card for Quagmire {
                     id: uuid::Uuid::new_v4(),
                     modifier: Ability::Immobile,
                     expires_on_effect: Some(EffectQuery::TurnStart {
-                        player_id: Some(self.get_controller_id().clone()),
+                        player_id: Some(self.get_controller_id(state).clone()),
                     }),
                 },
             })

@@ -154,7 +154,7 @@ impl SelectionOverlay {
         let mut rects = self.card_rects.clone();
         rects.sort_by_key(|f| f.is_hovered);
         for card_rect in &self.card_rects {
-            render::draw_card(card_rect, card_rect.card.owner_id == self.player_id);
+            render::draw_card(card_rect, card_rect.card.controller_id == self.player_id);
         }
 
         if self.behaviour == SelectionOverlayBehaviour::Preview {

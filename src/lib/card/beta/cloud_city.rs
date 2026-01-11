@@ -42,7 +42,7 @@ impl ActivatedAbility for FlyToVoid {
         }
 
         let picked_void = pick_zone(
-            card.get_controller_id(),
+            card.get_controller_id(state),
             &nearby_voids,
             state,
             "Pick a nearby void to fly to",

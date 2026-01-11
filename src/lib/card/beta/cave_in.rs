@@ -62,7 +62,7 @@ impl Card for CaveIn {
             .collect::<Vec<_>>();
 
         let picked_site_id = pick_card(
-            &self.get_controller_id(),
+            &self.get_controller_id(state),
             &valid_targets,
             state,
             "Cave-In: Pick a target site",
@@ -82,7 +82,7 @@ impl Card for CaveIn {
         Ok(minions_and_artifacts
             .iter()
             .map(|card_id| Effect::MoveCard {
-                player_id: self.get_controller_id().clone(),
+                player_id: self.get_controller_id(state).clone(),
                 card_id: card_id.clone(),
                 from: picked_site.get_zone().clone(),
                 to: ZoneQuery::Specific {

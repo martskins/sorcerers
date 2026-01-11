@@ -49,11 +49,11 @@ impl Card for BorderMilitia {
             .cards
             .iter()
             .filter(|c| c.is_site())
-            .filter(|c| c.get_controller_id() == self.get_controller_id())
+            .filter(|c| c.get_controller_id(state) == self.get_controller_id(state))
             .filter_map(|c| {
                 for zone in c.get_zone().get_adjacent() {
                     match zone.get_site(state) {
-                        Some(site) if site.get_controller_id() != self.get_controller_id() => return Some(c),
+                        Some(site) if site.get_controller_id(state) != self.get_controller_id(state) => return Some(c),
                         _ => {}
                     }
                 }
@@ -66,7 +66,7 @@ impl Card for BorderMilitia {
         Ok(sites
             .iter()
             .map(|site| Effect::SummonToken {
-                player_id: self.get_controller_id().clone(),
+                player_id: self.get_controller_id(state).clone(),
                 token_type: TokenType::FootSoldier,
                 zone: site.get_zone().clone(),
             })

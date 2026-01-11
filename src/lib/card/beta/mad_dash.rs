@@ -47,18 +47,18 @@ impl Card for MadDash {
 
     async fn on_cast(&mut self, state: &State, _caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
         let mut effects = vec![Effect::DrawCard {
-            player_id: self.get_controller_id().clone(),
+            player_id: self.get_controller_id(state).clone(),
             count: 1,
         }];
         let cards = state
             .cards
             .iter()
             .filter(|c| c.is_unit())
-            .filter(|c| c.get_controller_id() == self.get_controller_id())
+            .filter(|c| c.get_controller_id(state) == self.get_controller_id(state))
             .map(|c| c.get_id().clone())
             .collect::<Vec<uuid::Uuid>>();
         let prompt = "Mad Dash: Pick a unit to gain Movement +1";
-        let picked_card_id = pick_card(self.get_controller_id(), &cards, state, prompt).await?;
+        let picked_card_id = pick_card(self.get_controller_id(state), &cards, state, prompt).await?;
         effects.push(Effect::add_modifier(
             &picked_card_id,
             Ability::Movement(1),

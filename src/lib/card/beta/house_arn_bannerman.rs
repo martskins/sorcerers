@@ -65,7 +65,7 @@ impl Card for HouseArnBannerman {
     fn area_modifiers(&self, state: &State) -> AreaModifiers {
         let nearby_allies: Vec<uuid::Uuid> = self
             .get_zone()
-            .get_nearby_units(state, Some(self.get_controller_id()))
+            .get_nearby_units(state, Some(&self.get_controller_id(state)))
             .iter()
             .map(|unit| unit.get_id())
             .filter(|id| *id != self.get_id())

@@ -100,7 +100,7 @@ impl Card for ClamorOfHarpies {
             .cards
             .iter()
             .filter(|c| c.is_unit())
-            .filter(|c| c.can_be_targetted_by(state, self.get_controller_id()))
+            .filter(|c| c.can_be_targetted_by(state, &self.get_controller_id(state)))
             .filter(|c| c.get_zone().is_in_play())
             .filter(|c| {
                 c.get_power(state).unwrap_or_default().unwrap_or(0)
@@ -109,16 +109,16 @@ impl Card for ClamorOfHarpies {
             .map(|c| c.get_id().clone())
             .collect();
         let prompt = "Clamor of Harpies: Pick a unit to bring here";
-        let card_id = pick_card(self.get_controller_id(), &valid_cards, state, prompt).await?;
+        let card_id = pick_card(self.get_controller_id(state), &valid_cards, state, prompt).await?;
         let card = state.get_card(&card_id);
         let activated_abilities: Vec<Box<dyn ActivatedAbility>> = vec![
             Box::new(ClamorOfHarpiesAction::Strike),
             Box::new(ClamorOfHarpiesAction::DoNotStrike),
         ];
         let prompt = "Clamor of Harpies: Strike selected unit?";
-        let action = pick_action(self.get_controller_id(), &activated_abilities, state, prompt).await?;
+        let action = pick_action(self.get_controller_id(state), &activated_abilities, state, prompt).await?;
         let mut effects = vec![Effect::MoveCard {
-            player_id: self.get_controller_id().clone(),
+            player_id: self.get_controller_id(state).clone(),
             card_id,
             from: card.get_zone().clone(),
             to: ZoneQuery::Specific {
@@ -129,7 +129,11 @@ impl Card for ClamorOfHarpies {
             plane: self.card_base.plane.clone(),
             through_path: None,
         }];
-        effects.extend(action.on_select(card.get_id(), self.get_controller_id(), state).await?);
+        effects.extend(
+            action
+                .on_select(card.get_id(), &self.get_controller_id(state), state)
+                .await?,
+        );
         Ok(effects)
     }
 }

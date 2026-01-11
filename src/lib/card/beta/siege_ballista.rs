@@ -38,7 +38,7 @@ impl ActivatedAbility for TapToDealDamage {
                         zone: card.get_zone().clone(),
                         card_types: Some(vec![CardType::Minion, CardType::Avatar]),
                         planes: None,
-                        owner: Some(card.get_controller_id().clone()),
+                        owner: Some(card.get_controller_id(state).clone()),
                         prompt: Some("Tap an untapped ally here".to_string()),
                         tapped: Some(false),
                     },
@@ -69,7 +69,7 @@ impl ActivatedAbility for TapToDealDamage {
                 .collect();
 
             let picked_unit_id = pick_card(
-                card.get_controller_id(),
+                card.get_controller_id(state),
                 &valid_targets,
                 state,
                 "Siege Ballista: Pick a unit to deal 3 damage to",

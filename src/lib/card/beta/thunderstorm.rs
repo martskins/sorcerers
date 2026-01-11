@@ -35,7 +35,7 @@ impl Thunderstorm {
 
 impl Aura for Thunderstorm {
     fn should_dispell(&self, state: &State) -> anyhow::Result<bool> {
-        let controller_id = self.get_controller_id();
+        let controller_id = self.get_controller_id(state);
         let turns_in_play = state
             .effect_log
             .iter()
@@ -44,7 +44,7 @@ impl Aura for Thunderstorm {
                 _ => true,
             })
             .filter(|e| match ***e {
-                Effect::EndTurn { ref player_id, .. } if player_id == controller_id => true,
+                Effect::EndTurn { ref player_id, .. } if player_id == &controller_id => true,
                 _ => false,
             })
             .count();
@@ -72,7 +72,7 @@ impl Card for Thunderstorm {
     }
 
     async fn on_turn_end(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        if &state.current_player != self.get_controller_id() {
+        if state.current_player != self.get_controller_id(state) {
             return Ok(vec![]);
         }
 
@@ -89,7 +89,7 @@ impl Card for Thunderstorm {
             .collect::<Vec<uuid::Uuid>>();
         let effects = vec![
             Effect::MoveCard {
-                player_id: self.get_controller_id().clone(),
+                player_id: self.get_controller_id(state).clone(),
                 card_id: self.get_id().clone(),
                 from: self.get_zone().clone(),
                 to: ZoneQuery::FromOptions {
@@ -102,7 +102,7 @@ impl Card for Thunderstorm {
                 through_path: None,
             },
             Effect::DealDamageToTarget {
-                player_id: self.get_controller_id().clone(),
+                player_id: self.get_controller_id(state).clone(),
                 query: CardQuery::RandomTarget {
                     id: uuid::Uuid::new_v4(),
                     possible_targets: units,
