@@ -744,6 +744,21 @@ impl Effect {
                     .find(|c| c.get_id() == card_id)
                     .expect("to find card");
 
+                // If playing a site and there is a rubble on that zone, remove it.
+                if card.is_site() {
+                    if let Some(site) = zone.get_site(&snapshot) {
+                        if site.get_name() == Rubble::NAME {
+                            state.effects.push_back(
+                                Effect::BanishCard {
+                                    card_id: site.get_id().clone(),
+                                    from: zone.clone(),
+                                }
+                                .into(),
+                            );
+                        }
+                    }
+                }
+
                 let cast_effects = card.on_summon(&snapshot)?;
                 card.set_zone(zone.clone());
                 if !card.has_modifier(&snapshot, &Ability::Charge) {
@@ -752,11 +767,6 @@ impl Effect {
 
                 let mut effects = card.genesis(&snapshot).await?;
                 effects.extend(card.on_visit_zone(&snapshot, zone).await?);
-                // effects.push(Effect::RemoveResources {
-                //     player_id: card.get_owner_id().clone(),
-                //     mana: mana_cost,
-                //     thresholds: Thresholds::new(),
-                // });
                 state.effects.extend(effects.into_iter().map(|e| e.into()));
                 state.effects.extend(cast_effects.into_iter().map(|e| e.into()));
             }

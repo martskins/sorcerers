@@ -1,5 +1,5 @@
 use crate::{
-    card::CARD_CONSTRUCTORS,
+    card::{CARD_CONSTRUCTORS, Rubble},
     effect::{AbilityCounter, Counter, Effect, TokenType},
     game::{
         ActivatedAbility, AvatarAction, Direction, Element, PlayerId, Thresholds, UnitAction, are_adjacent, are_nearby,
@@ -717,6 +717,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     .cards
                     .iter()
                     .filter(|c| c.is_site())
+                    .filter(|c| c.get_name() != Rubble::NAME)
                     .filter_map(|c| match c.get_zone() {
                         z @ Zone::Realm(_) => Some(z),
                         _ => None,
@@ -728,6 +729,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     .iter()
                     .filter(|c| c.get_owner_id() == player_id)
                     .filter(|c| c.is_site())
+                    .filter(|c| c.get_name() != Rubble::NAME)
                     .filter(|c| matches!(c.get_zone(), Zone::Realm(_)))
                     .flat_map(|c| match c.get_zone() {
                         z @ Zone::Realm(_) => vec![z],
