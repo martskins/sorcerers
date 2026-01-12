@@ -1,7 +1,9 @@
 use crate::{
+    components::{Component, ComponentCommand, ComponentType},
     config::{card_height, card_width},
     input::Mouse,
     render::{self, CardRect},
+    scene::game::GameData,
     texture_cache::TextureCache,
 };
 use macroquad::{
@@ -71,6 +73,7 @@ impl SelectionOverlay {
                 image: textures[idx].clone(),
                 rect: Rect::new(x, cards_y, size.x, size.y),
                 is_hovered: false,
+                is_selected: false,
                 card: card.clone(),
             };
             rects.push(rect);
@@ -90,8 +93,11 @@ impl SelectionOverlay {
     pub fn should_close(&self) -> bool {
         self.close
     }
+}
 
-    pub async fn update(&mut self) -> anyhow::Result<()> {
+#[async_trait::async_trait]
+impl Component for SelectionOverlay {
+    async fn update(&mut self, _data: &mut GameData) -> anyhow::Result<()> {
         if is_mouse_button_released(MouseButton::Left) {
             Mouse::set_enabled(true)?;
         }
@@ -104,7 +110,55 @@ impl SelectionOverlay {
         Ok(())
     }
 
-    pub fn render(&mut self) -> anyhow::Result<()> {
+    async fn process_command(&mut self, _command: &ComponentCommand, data: &mut GameData) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    fn toggle_visibility(&mut self) {}
+
+    fn is_visible(&self) -> bool {
+        true
+    }
+
+    fn get_component_type(&self) -> ComponentType {
+        ComponentType::SelectionOverlay
+    }
+
+    async fn process_input(&mut self, in_turn: bool, data: &mut GameData) -> anyhow::Result<Option<ComponentCommand>> {
+        let mouse_position = macroquad::input::mouse_position();
+        let mouse_vec = Vec2::new(mouse_position.0, mouse_position.1);
+
+        for rect in &mut self.card_rects {
+            if !Mouse::enabled()? {
+                continue;
+            }
+
+            if rect.rect.contains(mouse_vec) && is_mouse_button_released(MouseButton::Left) {
+                match self.behaviour {
+                    SelectionOverlayBehaviour::Preview => {
+                        self.client.send(ClientMessage::ClickCard {
+                            game_id: self.game_id.clone(),
+                            player_id: self.player_id.clone(),
+                            card_id: rect.card.id.clone(),
+                        })?;
+                        self.close = true;
+                    }
+                    SelectionOverlayBehaviour::Pick => {
+                        self.client.send(ClientMessage::PickCard {
+                            game_id: self.game_id.clone(),
+                            player_id: self.player_id.clone(),
+                            card_id: rect.card.id.clone(),
+                        })?;
+                        self.close = true;
+                    }
+                }
+            }
+        }
+
+        Ok(None)
+    }
+
+    async fn render(&mut self, _data: &mut GameData) -> anyhow::Result<()> {
         draw_rectangle(
             0.0,
             0.0,
@@ -154,7 +208,7 @@ impl SelectionOverlay {
         let mut rects = self.card_rects.clone();
         rects.sort_by_key(|f| f.is_hovered);
         for card_rect in &self.card_rects {
-            render::draw_card(card_rect, card_rect.card.controller_id == self.player_id);
+            render::draw_card(card_rect, card_rect.card.controller_id == self.player_id, false);
         }
 
         if self.behaviour == SelectionOverlayBehaviour::Preview {
@@ -170,40 +224,6 @@ impl SelectionOverlay {
         }
 
         ui::root_ui().pop_skin();
-        Ok(())
-    }
-
-    pub async fn process_input(&mut self) -> anyhow::Result<()> {
-        let mouse_position = macroquad::input::mouse_position();
-        let mouse_vec = Vec2::new(mouse_position.0, mouse_position.1);
-
-        for rect in &mut self.card_rects {
-            if !Mouse::enabled()? {
-                continue;
-            }
-
-            if rect.rect.contains(mouse_vec) && is_mouse_button_released(MouseButton::Left) {
-                match self.behaviour {
-                    SelectionOverlayBehaviour::Preview => {
-                        self.client.send(ClientMessage::ClickCard {
-                            game_id: self.game_id.clone(),
-                            player_id: self.player_id.clone(),
-                            card_id: rect.card.id.clone(),
-                        })?;
-                        self.close = true;
-                    }
-                    SelectionOverlayBehaviour::Pick => {
-                        self.client.send(ClientMessage::PickCard {
-                            game_id: self.game_id.clone(),
-                            player_id: self.player_id.clone(),
-                            card_id: rect.card.id.clone(),
-                        })?;
-                        self.close = true;
-                    }
-                }
-            }
-        }
-
         Ok(())
     }
 }

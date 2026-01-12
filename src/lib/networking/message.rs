@@ -44,6 +44,12 @@ impl PreconDeck {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ServerMessage {
+    DistributeDamage {
+        player_id: PlayerId,
+        attacker: uuid::Uuid,
+        defenders: Vec<uuid::Uuid>,
+        damage: u16,
+    },
     PlaySoundEffect {
         player_id: Option<PlayerId>,
         sound_effect: SoundEffect,
@@ -76,8 +82,14 @@ pub enum ServerMessage {
     Sync {
         cards: Vec<CardData>,
         resources: HashMap<PlayerId, Resources>,
-        health: HashMap<PlayerId, u8>,
+        health: HashMap<PlayerId, u16>,
         current_player: PlayerId,
+    },
+    PickCards {
+        prompt: String,
+        player_id: PlayerId,
+        cards: Vec<uuid::Uuid>,
+        preview: bool,
     },
     PickCard {
         prompt: String,
@@ -110,7 +122,7 @@ pub enum ServerMessage {
         cards: Vec<CardData>,
         resources: HashMap<PlayerId, Resources>,
         current_player: PlayerId,
-        health: HashMap<PlayerId, u8>,
+        health: HashMap<PlayerId, u16>,
     },
 }
 
@@ -131,6 +143,8 @@ impl ServerMessage {
             ServerMessage::Sync { .. } => uuid::Uuid::nil(),
             ServerMessage::ForceSync { player_id, .. } => player_id.clone(),
             ServerMessage::PlayerDisconnected { player_id } => player_id.clone(),
+            ServerMessage::PickCards { player_id, .. } => player_id.clone(),
+            ServerMessage::DistributeDamage { player_id, .. } => player_id.clone(),
         }
     }
 }
@@ -145,6 +159,11 @@ impl ToMessage for ServerMessage {
 pub enum ClientMessage {
     Connect,
     Disconnect,
+    ResolveCombat {
+        game_id: uuid::Uuid,
+        player_id: PlayerId,
+        damage_assignment: HashMap<uuid::Uuid, u16>,
+    },
     PlayerDisconnected {
         game_id: uuid::Uuid,
         player_id: PlayerId,
@@ -168,6 +187,11 @@ pub enum ClientMessage {
         game_id: uuid::Uuid,
         player_id: PlayerId,
         direction: Direction,
+    },
+    PickCards {
+        game_id: uuid::Uuid,
+        player_id: PlayerId,
+        card_ids: Vec<uuid::Uuid>,
     },
     PickCard {
         game_id: uuid::Uuid,
@@ -212,6 +236,8 @@ impl ClientMessage {
             ClientMessage::ClickCard { game_id, .. } => game_id.clone(),
             ClientMessage::DrawCard { game_id, .. } => game_id.clone(),
             ClientMessage::PickDirection { game_id, .. } => game_id.clone(),
+            ClientMessage::PickCards { game_id, .. } => game_id.clone(),
+            ClientMessage::ResolveCombat { game_id, .. } => game_id.clone(),
         }
     }
 
@@ -229,6 +255,8 @@ impl ClientMessage {
             ClientMessage::DrawCard { player_id, .. } => player_id,
             ClientMessage::PickDirection { player_id, .. } => player_id,
             ClientMessage::JoinQueue { player_id, .. } => player_id,
+            ClientMessage::PickCards { player_id, .. } => player_id,
+            ClientMessage::ResolveCombat { player_id, .. } => player_id,
         }
     }
 }

@@ -110,6 +110,11 @@ impl PlayerHandComponent {
                     .iter()
                     .find(|r| r.card.id == card.id)
                     .map_or(false, |r| r.is_hovered),
+                is_selected: self
+                    .card_rects
+                    .iter()
+                    .find(|r| r.card.id == card.id)
+                    .map_or(false, |r| r.is_selected),
                 image: TextureCache::get_card_texture(card).await?,
                 card: card.clone(),
             });
@@ -140,6 +145,11 @@ impl PlayerHandComponent {
                         .iter()
                         .find(|r| r.card.id == card.id)
                         .map_or(false, |r| r.is_hovered),
+                    is_selected: self
+                        .card_rects
+                        .iter()
+                        .find(|r| r.card.id == card.id)
+                        .map_or(false, |r| r.is_selected),
                     image: TextureCache::get_card_texture(card).await?,
                     card: card.clone(),
                 });
@@ -348,7 +358,11 @@ impl Component for PlayerHandComponent {
         self.visible = !self.visible;
     }
 
-    async fn process_command(&mut self, command: &ComponentCommand) -> anyhow::Result<()> {
+    fn is_visible(&self) -> bool {
+        self.visible
+    }
+
+    async fn process_command(&mut self, command: &ComponentCommand, _data: &mut GameData) -> anyhow::Result<()> {
         match command {
             ComponentCommand::SetRect {
                 component_type: ComponentType::PlayerHand,

@@ -193,6 +193,10 @@ impl Component for PlayerStatusComponent {
         self.visible = !self.visible;
     }
 
+    fn is_visible(&self) -> bool {
+        self.visible
+    }
+
     async fn process_input(
         &mut self,
         _in_turn: bool,
@@ -210,7 +214,7 @@ impl Component for PlayerStatusComponent {
         Ok(None)
     }
 
-    async fn process_command(&mut self, command: &ComponentCommand) -> anyhow::Result<()> {
+    async fn process_command(&mut self, command: &ComponentCommand, _data: &mut GameData) -> anyhow::Result<()> {
         match command {
             ComponentCommand::SetRect {
                 component_type: ComponentType::PlayerStatus,

@@ -92,7 +92,7 @@ impl Card for SpireLich {
         Ok(modifiers)
     }
 
-    fn get_power(&self, state: &State) -> anyhow::Result<Option<u8>> {
+    fn get_power(&self, state: &State) -> anyhow::Result<Option<u16>> {
         let mut power = self.base_get_power(state);
         if self.is_atop_tower(state)? {
             power = power.map(|p| p + 2);

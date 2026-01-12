@@ -17,13 +17,13 @@ pub struct AbilityCounter {
 #[derive(Debug, Clone)]
 pub struct Counter {
     pub id: uuid::Uuid,
-    pub power: i8,
-    pub toughness: i8,
+    pub power: i16,
+    pub toughness: i16,
     pub expires_on_effect: Option<EffectQuery>,
 }
 
 impl Counter {
-    pub fn new(power: i8, toughness: i8, expires_on_effect: Option<EffectQuery>) -> Self {
+    pub fn new(power: i16, toughness: i16, expires_on_effect: Option<EffectQuery>) -> Self {
         Self {
             id: uuid::Uuid::new_v4(),
             power,
@@ -48,7 +48,7 @@ pub enum Effect {
     },
     Heal {
         card_id: uuid::Uuid,
-        amount: u8,
+        amount: u16,
     },
     ShootProjectile {
         id: uuid::Uuid,
@@ -56,9 +56,9 @@ pub enum Effect {
         shooter: uuid::Uuid,
         from_zone: Zone,
         direction: Direction,
-        damage: u8,
+        damage: u16,
         piercing: bool,
-        splash_damage: Option<u8>,
+        splash_damage: Option<u16>,
     },
     RemoveAbility {
         card_id: uuid::Uuid,
@@ -150,7 +150,7 @@ pub enum Effect {
     TakeDamage {
         card_id: uuid::Uuid,
         from: uuid::Uuid,
-        damage: u8,
+        damage: u16,
     },
     BanishCard {
         card_id: uuid::Uuid,
@@ -173,13 +173,13 @@ pub enum Effect {
         player_id: uuid::Uuid,
         zone: ZoneQuery,
         from: uuid::Uuid,
-        damage: u8,
+        damage: u16,
     },
     DealDamageToTarget {
         player_id: uuid::Uuid,
         query: CardQuery,
         from: uuid::Uuid,
-        damage: u8,
+        damage: u16,
     },
     RearrangeDeck {
         spells: Vec<uuid::Uuid>,
@@ -201,49 +201,12 @@ impl Effect {
             _ => None,
         }
     }
-    pub fn banish_card(card_id: &uuid::Uuid, from: &Zone) -> Self {
-        Effect::BanishCard {
-            card_id: card_id.clone(),
-            from: from.clone(),
-        }
-    }
-    pub fn bury_card(card_id: &uuid::Uuid, from: &Zone) -> Self {
-        Effect::BuryCard {
-            card_id: card_id.clone(),
-            from: from.clone(),
-        }
-    }
 
-    pub fn tap_card(card_id: &uuid::Uuid) -> Self {
-        Effect::TapCard {
-            card_id: card_id.clone(),
-        }
-    }
-
-    pub fn play_card(player_id: &PlayerId, card_id: &uuid::Uuid, zone: &Zone) -> Self {
-        Effect::PlayCard {
-            player_id: player_id.clone(),
-            card_id: card_id.clone(),
-            zone: zone.clone(),
-        }
-    }
-
-    pub fn take_damage(card_id: &uuid::Uuid, from: &uuid::Uuid, damage: u8) -> Self {
+    pub fn take_damage(card_id: &uuid::Uuid, from: &uuid::Uuid, damage: u16) -> Self {
         Effect::TakeDamage {
             card_id: card_id.clone(),
             from: from.clone(),
             damage,
-        }
-    }
-
-    pub fn add_modifier(card_id: &uuid::Uuid, modifier: Ability, expires_on_effect: Option<EffectQuery>) -> Self {
-        Effect::AddAbilityCounter {
-            card_id: card_id.clone(),
-            counter: AbilityCounter {
-                id: uuid::Uuid::new_v4(),
-                modifier,
-                expires_on_effect,
-            },
         }
     }
 
@@ -1011,10 +974,8 @@ impl Effect {
                 card.set_zone(Zone::Banish);
             }
             Effect::BuryCard { card_id, from, .. } => {
-                {
-                    let card = state.get_card_mut(card_id);
-                    card.set_zone(Zone::Cemetery);
-                }
+                let card = state.get_card_mut(card_id);
+                card.set_zone(Zone::Cemetery);
 
                 let snapshot = state.snapshot();
                 let card = state.get_card_mut(card_id);

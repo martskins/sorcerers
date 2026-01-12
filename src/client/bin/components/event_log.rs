@@ -97,7 +97,11 @@ impl Component for EventLogComponent {
         self.visible = !self.visible;
     }
 
-    async fn process_command(&mut self, command: &ComponentCommand) -> anyhow::Result<()> {
+    fn is_visible(&self) -> bool {
+        self.visible
+    }
+
+    async fn process_command(&mut self, command: &ComponentCommand, _data: &mut GameData) -> anyhow::Result<()> {
         match command {
             ComponentCommand::SetVisibility {
                 component_type: ComponentType::EventLog,

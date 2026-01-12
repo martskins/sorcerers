@@ -116,6 +116,63 @@ pub async fn pick_card_with_preview(
     }
 }
 
+pub async fn distribute_damage(
+    player_id: impl AsRef<PlayerId>,
+    attacker: &uuid::Uuid,
+    amount: u16,
+    defenders: &[uuid::Uuid],
+    state: &State,
+) -> anyhow::Result<HashMap<uuid::Uuid, u16>> {
+    state
+        .get_sender()
+        .send(ServerMessage::DistributeDamage {
+            player_id: player_id.as_ref().clone(),
+            attacker: attacker.clone(),
+            defenders: defenders.to_vec(),
+            damage: amount,
+        })
+        .await?;
+
+    loop {
+        let msg = state.get_receiver().recv().await?;
+        match msg {
+            ClientMessage::ResolveCombat { damage_assignment, .. } => break Ok(damage_assignment),
+            ClientMessage::PlayerDisconnected { player_id, .. } => {
+                return Err(GameError::PlayerDisconnected(player_id.clone()).into());
+            }
+            _ => unreachable!(),
+        }
+    }
+}
+
+pub async fn pick_cards(
+    player_id: impl AsRef<PlayerId>,
+    card_ids: &[uuid::Uuid],
+    state: &State,
+    prompt: &str,
+) -> anyhow::Result<Vec<uuid::Uuid>> {
+    state
+        .get_sender()
+        .send(ServerMessage::PickCards {
+            prompt: prompt.to_string(),
+            player_id: player_id.as_ref().clone(),
+            cards: card_ids.to_vec(),
+            preview: false,
+        })
+        .await?;
+
+    loop {
+        let msg = state.get_receiver().recv().await?;
+        match msg {
+            ClientMessage::PickCards { card_ids, .. } => break Ok(card_ids),
+            ClientMessage::PlayerDisconnected { player_id, .. } => {
+                return Err(GameError::PlayerDisconnected(player_id.clone()).into());
+            }
+            _ => unreachable!(),
+        }
+    }
+}
+
 pub async fn pick_card(
     player_id: impl AsRef<PlayerId>,
     card_ids: &[uuid::Uuid],
@@ -192,6 +249,17 @@ pub async fn wait_for_opponent(player_id: &PlayerId, state: &State, prompt: impl
         .await?;
 
     Ok(())
+}
+
+pub async fn yes_or_no(
+    player_id: impl AsRef<PlayerId>,
+    state: &State,
+    prompt: impl AsRef<str>,
+) -> anyhow::Result<bool> {
+    let options = vec![BaseOption::Yes, BaseOption::No];
+    let option_labels = options.iter().map(|o| o.to_string()).collect::<Vec<String>>();
+    let choice = pick_option(player_id, &option_labels, state, prompt).await?;
+    Ok(options[choice] == BaseOption::Yes)
 }
 
 pub async fn pick_option(
@@ -566,7 +634,7 @@ pub enum InputStatus {
         caster_id: Option<uuid::Uuid>,
         from: Zone,
         direction: Option<Direction>,
-        damage: u8,
+        damage: u16,
         piercing: bool,
     },
     SelectingAction {
@@ -699,8 +767,14 @@ impl ActivatedAbility for AvatarAction {
                 let prompt = "Pick a zone to play the site";
                 let zone = pick_zone(player_id, &zones, state, prompt).await?;
                 Ok(vec![
-                    Effect::play_card(player_id, &picked_card_id, &zone),
-                    Effect::tap_card(card_id),
+                    Effect::PlayCard {
+                        player_id: player_id.clone(),
+                        card_id: picked_card_id.clone(),
+                        zone: zone.clone(),
+                    },
+                    Effect::TapCard {
+                        card_id: card_id.clone(),
+                    },
                 ])
             }
             AvatarAction::DrawSite => Ok(vec![
@@ -708,7 +782,9 @@ impl ActivatedAbility for AvatarAction {
                     player_id: player_id.clone(),
                     count: 1,
                 },
-                Effect::tap_card(card_id),
+                Effect::TapCard {
+                    card_id: card_id.clone(),
+                },
             ]),
         }
     }
@@ -755,10 +831,124 @@ impl ActivatedAbility for UnitAction {
                 }])
             }
             UnitAction::Attack => {
-                let card = state.get_card(card_id);
-                let cards = card.get_valid_attack_targets(state, false);
+                let attacker = state.get_card(card_id);
+                let cards = attacker.get_valid_attack_targets(state, false);
                 let prompt = "Pick a unit to attack";
                 let picked_card_id = pick_card(player_id, &cards, state, prompt).await?;
+                let attacked = state.get_card(&picked_card_id);
+
+                let opponent = state
+                    .players
+                    .iter()
+                    .find(|p| &p.id != player_id)
+                    .ok_or(anyhow::anyhow!("opponent not found"))?;
+                let possible_defenders = state.get_defenders_for_attack(&picked_card_id);
+                if !possible_defenders.is_empty() {
+                    wait_for_opponent(
+                        player_id,
+                        state,
+                        format!("Wait for opponent to choose whether to defend"),
+                    )
+                    .await?;
+
+                    let defend = yes_or_no(
+                        &opponent.id,
+                        state,
+                        format!("{} attacks {}, defend?", attacker.get_name(), attacked.get_name()),
+                    )
+                    .await?;
+                    if defend {
+                        let defenders =
+                            pick_cards(&opponent.id, &possible_defenders, state, "Pick units to defend with").await?;
+                        resume(player_id, state).await?;
+                        match defenders.len() {
+                            // If no defenders are picked, proceed with the original attack.
+                            0 => {
+                                return Ok(vec![Effect::Attack {
+                                    attacker_id: card_id.clone(),
+                                    defender_id: picked_card_id,
+                                }]);
+                            }
+                            // If a single defender is picked, change the attack to target the
+                            // defender.
+                            1 => {
+                                let defender_id = defenders[0];
+                                let defender = state.get_card(&defender_id);
+                                return Ok(vec![
+                                    Effect::MoveCard {
+                                        player_id: opponent.id.clone(),
+                                        card_id: defender_id.clone(),
+                                        from: defender.get_zone().clone(),
+                                        to: ZoneQuery::Specific {
+                                            id: uuid::Uuid::new_v4(),
+                                            zone: attacker.get_zone().clone(),
+                                        },
+                                        tap: true,
+                                        plane: attacker.get_plane(state).clone(),
+                                        through_path: None,
+                                    },
+                                    Effect::Attack {
+                                        attacker_id: card_id.clone(),
+                                        defender_id: defender_id.clone(),
+                                    },
+                                ]);
+                            }
+                            _ => {
+                                let mut effects = defenders
+                                    .iter()
+                                    .flat_map(|defender_id| {
+                                        let defender_zone = state.get_card(defender_id).get_zone().clone();
+                                        vec![Effect::MoveCard {
+                                            player_id: opponent.id.clone(),
+                                            card_id: defender_id.clone(),
+                                            from: defender_zone,
+                                            to: ZoneQuery::Specific {
+                                                id: uuid::Uuid::new_v4(),
+                                                zone: attacker.get_zone().clone(),
+                                            },
+                                            tap: true,
+                                            plane: attacker.get_plane(state).clone(),
+                                            through_path: None,
+                                        }]
+                                    })
+                                    .collect::<Vec<Effect>>();
+
+                                wait_for_opponent(
+                                    &opponent.id,
+                                    state,
+                                    format!("Wait for opponent to distribute damage"),
+                                )
+                                .await?;
+
+                                let damage_distribution = distribute_damage(
+                                    player_id,
+                                    card_id,
+                                    attacker.get_power(state)?.unwrap_or_default(),
+                                    &defenders,
+                                    state,
+                                )
+                                .await?;
+
+                                for (defender_id, damage) in damage_distribution {
+                                    effects.push(Effect::TakeDamage {
+                                        card_id: defender_id.clone(),
+                                        from: card_id.clone(),
+                                        damage,
+                                    });
+
+                                    let defender = state.get_card(&defender_id);
+                                    effects.extend(defender.on_defend(state, attacker.get_id())?);
+                                }
+
+                                effects.extend(attacker.after_attack(state).await?);
+                                resume(&opponent.id, state).await?;
+                                effects.reverse();
+                                return Ok(effects);
+                            }
+                        }
+                    }
+                }
+
                 Ok(vec![Effect::Attack {
                     attacker_id: card_id.clone(),
                     defender_id: picked_card_id,
@@ -1035,9 +1225,14 @@ impl Game {
                                     "Pick a zone to play the artifact",
                                 )
                                 .await?;
-                                self.state
-                                    .effects
-                                    .push_back(Effect::play_card(player_id, card_id, &picked_zone).into());
+                                self.state.effects.push_back(
+                                    Effect::PlayCard {
+                                        player_id: player_id.clone(),
+                                        card_id: card_id.clone(),
+                                        zone: picked_zone.clone(),
+                                    }
+                                    .into(),
+                                );
                             }
                         }
                     }
@@ -1045,9 +1240,14 @@ impl Game {
                         let zones = card.get_valid_play_zones(&self.state)?;
                         let prompt = "Pick a zone to play the card";
                         let zone = pick_zone(player_id, &zones, &self.state, prompt).await?;
-                        self.state
-                            .effects
-                            .push_back(Effect::play_card(player_id, card_id, &zone).into());
+                        self.state.effects.push_back(
+                            Effect::PlayCard {
+                                player_id: player_id.clone(),
+                                card_id: card_id.clone(),
+                                zone: zone.clone(),
+                            }
+                            .into(),
+                        );
                     }
                     (CardType::Magic, Zone::Hand) => {
                         let spellcasters: Vec<uuid::Uuid> = self

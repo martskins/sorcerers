@@ -13,6 +13,8 @@ pub enum ComponentType {
     PlayerStatus,
     PlayerHand,
     Realm,
+    SelectionOverlay,
+    CombatResolutionOverlay,
 }
 
 #[derive(Debug, Clone)]
@@ -25,6 +27,7 @@ pub enum ComponentCommand {
         component_type: ComponentType,
         rect: Rect,
     },
+    DonePicking,
 }
 
 #[async_trait::async_trait]
@@ -32,7 +35,8 @@ pub trait Component: std::fmt::Debug {
     async fn update(&mut self, data: &mut GameData) -> anyhow::Result<()>;
     async fn render(&mut self, data: &mut GameData) -> anyhow::Result<()>;
     async fn process_input(&mut self, in_turn: bool, data: &mut GameData) -> anyhow::Result<Option<ComponentCommand>>;
-    async fn process_command(&mut self, command: &ComponentCommand) -> anyhow::Result<()>;
+    async fn process_command(&mut self, command: &ComponentCommand, data: &mut GameData) -> anyhow::Result<()>;
     fn toggle_visibility(&mut self);
+    fn is_visible(&self) -> bool;
     fn get_component_type(&self) -> ComponentType;
 }

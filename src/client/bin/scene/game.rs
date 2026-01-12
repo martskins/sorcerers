@@ -1,3 +1,4 @@
+use super::selection_overlay::SelectionOverlayBehaviour;
 use crate::{
     components::{
         Component, ComponentCommand, ComponentType, event_log::EventLogComponent, player_hand::PlayerHandComponent,
@@ -6,7 +7,9 @@ use crate::{
     config::*,
     input::Mouse,
     render,
-    scene::{Scene, menu::Menu, selection_overlay::SelectionOverlay},
+    scene::{
+        Scene, combat_resolution_overlay::CombatResolutionOverlay, menu::Menu, selection_overlay::SelectionOverlay,
+    },
 };
 use kira::{AudioManager, AudioManagerSettings, DefaultBackend, sound::static_sound::StaticSoundData};
 use macroquad::{
@@ -28,8 +31,6 @@ use sorcerers::{
 };
 use std::collections::HashMap;
 
-use super::selection_overlay::SelectionOverlayBehaviour;
-
 const FONT_SIZE: f32 = 24.0;
 
 #[derive(Debug, PartialEq, Clone)]
@@ -46,6 +47,7 @@ pub enum Status {
         cards: Vec<uuid::Uuid>,
         preview: bool,
         prompt: String,
+        multiple: bool,
     },
     SelectingPath {
         paths: Vec<Vec<Zone>>,
@@ -60,6 +62,12 @@ pub enum Status {
         prompt: String,
         prev_status: Box<Status>,
         behaviour: SelectionOverlayBehaviour,
+    },
+    DistributingDamage {
+        player_id: PlayerId,
+        attacker: uuid::Uuid,
+        defenders: Vec<uuid::Uuid>,
+        damage: u16,
     },
     GameAborted {
         reason: String,
@@ -89,6 +97,8 @@ fn component_rect(component_type: ComponentType) -> anyhow::Result<Rect> {
         ComponentType::PlayerStatus => Ok(Rect::new(20.0, 25.0, realm_rect()?.x, 60.0)),
         ComponentType::PlayerHand => hand_rect(),
         ComponentType::Realm => realm_rect(),
+        ComponentType::SelectionOverlay => screen_rect(),
+        ComponentType::CombatResolutionOverlay => screen_rect(),
     }
 }
 
@@ -100,7 +110,7 @@ pub struct GameData {
     pub status: Status,
     pub unseen_events: usize,
     pub resources: HashMap<PlayerId, Resources>,
-    pub avatar_health: HashMap<PlayerId, u8>,
+    pub avatar_health: HashMap<PlayerId, u16>,
 }
 
 impl GameData {
@@ -147,7 +157,7 @@ pub struct Game {
     game_id: uuid::Uuid,
     client: networking::client::Client,
     current_player: PlayerId,
-    card_selection_overlay: Option<SelectionOverlay>,
+    overlay: Option<Box<dyn Component>>,
     components: Vec<Box<dyn Component>>,
     data: GameData,
     audio_manager: AudioManager<DefaultBackend>,
@@ -166,7 +176,7 @@ impl Game {
             game_id: game_id.clone(),
             client: client.clone(),
             current_player: uuid::Uuid::nil(),
-            card_selection_overlay: None,
+            overlay: None,
             components: vec![
                 Box::new(PlayerStatusComponent::new(
                     component_rect(ComponentType::PlayerStatus)?,
@@ -208,10 +218,13 @@ impl Game {
             component.update(&mut self.data).await?;
 
             component
-                .process_command(&ComponentCommand::SetRect {
-                    component_type: component.get_component_type(),
-                    rect: component_rect(component.get_component_type())?,
-                })
+                .process_command(
+                    &ComponentCommand::SetRect {
+                        component_type: component.get_component_type(),
+                        rect: component_rect(component.get_component_type())?,
+                    },
+                    &mut self.data,
+                )
                 .await?;
         }
 
@@ -232,7 +245,7 @@ impl Game {
         } = &self.data.status
         {
             let renderables = self.data.cards.iter().filter(|c| cards.contains(&c.id)).collect();
-            self.card_selection_overlay = Some(
+            self.overlay = Some(Box::new(
                 SelectionOverlay::new(
                     self.client.clone(),
                     &self.game_id,
@@ -242,17 +255,12 @@ impl Game {
                     behaviour.clone(),
                 )
                 .await?,
-            );
+            ));
             self.data.status = *prev_status.clone();
         }
 
-        if let Some(overlay) = &mut self.card_selection_overlay {
-            overlay.update().await?;
-
-            if overlay.should_close() {
-                self.card_selection_overlay = None;
-                self.data.status = Status::Idle;
-            }
+        if let Some(overlay) = &mut self.overlay {
+            overlay.update(&mut self.data).await?;
         }
 
         Ok(())
@@ -283,8 +291,8 @@ impl Game {
             return Ok(Some(scene));
         }
 
-        if let Some(overlay) = &mut self.card_selection_overlay {
-            overlay.render()?;
+        if let Some(overlay) = &mut self.overlay {
+            overlay.render(&mut self.data).await?;
         }
 
         Ok(None)
@@ -337,18 +345,19 @@ impl Game {
                 };
                 Ok(None)
             }
-            ServerMessage::PickCard {
+            ServerMessage::PickCards {
                 cards, prompt, preview, ..
             } => {
                 self.data.status = Status::SelectingCard {
                     cards: cards.clone(),
                     preview: preview.clone(),
                     prompt: prompt.clone(),
+                    multiple: true,
                 };
 
                 if *preview {
                     let renderables = self.data.cards.iter().filter(|c| cards.contains(&c.id)).collect();
-                    self.card_selection_overlay = Some(
+                    self.overlay = Some(Box::new(
                         SelectionOverlay::new(
                             self.client.clone(),
                             &self.game_id,
@@ -358,7 +367,74 @@ impl Game {
                             SelectionOverlayBehaviour::Pick,
                         )
                         .await?,
-                    );
+                    ));
+                }
+                Ok(None)
+            }
+            ServerMessage::DistributeDamage {
+                player_id,
+                attacker,
+                defenders,
+                damage,
+            } => {
+                self.data.status = Status::DistributingDamage {
+                    player_id: player_id.clone(),
+                    attacker: attacker.clone(),
+                    defenders: defenders.clone(),
+                    damage: *damage,
+                };
+
+                let defenders = self
+                    .data
+                    .cards
+                    .iter()
+                    .filter(|c| defenders.contains(&c.id))
+                    .cloned()
+                    .collect::<Vec<CardData>>();
+                let attacker = self
+                    .data
+                    .cards
+                    .iter()
+                    .find(|c| c.id == *attacker)
+                    .ok_or(anyhow::anyhow!("Attacker card not found"))?
+                    .clone();
+                self.overlay = Some(Box::new(
+                    CombatResolutionOverlay::new(
+                        self.client.clone(),
+                        &self.game_id,
+                        player_id,
+                        attacker,
+                        defenders,
+                        damage.clone(),
+                    )
+                    .await?,
+                ));
+
+                Ok(None)
+            }
+            ServerMessage::PickCard {
+                cards, prompt, preview, ..
+            } => {
+                self.data.status = Status::SelectingCard {
+                    cards: cards.clone(),
+                    preview: preview.clone(),
+                    prompt: prompt.clone(),
+                    multiple: false,
+                };
+
+                if *preview {
+                    let renderables = self.data.cards.iter().filter(|c| cards.contains(&c.id)).collect();
+                    self.overlay = Some(Box::new(
+                        SelectionOverlay::new(
+                            self.client.clone(),
+                            &self.game_id,
+                            &self.data.player_id,
+                            renderables,
+                            prompt,
+                            SelectionOverlayBehaviour::Pick,
+                        )
+                        .await?,
+                    ));
                 }
                 Ok(None)
             }
@@ -401,8 +477,14 @@ impl Game {
             return Ok(());
         }
 
-        if let Some(overlay) = &mut self.card_selection_overlay {
-            return overlay.process_input().await;
+        if let Some(overlay) = &mut self.overlay {
+            overlay
+                .process_input(self.current_player == self.data.player_id, &mut self.data)
+                .await?;
+
+            if !overlay.is_visible() {
+                self.overlay = None;
+            }
         }
 
         let mut component_actions = vec![];
@@ -417,7 +499,7 @@ impl Game {
 
         for action in component_actions {
             for component in &mut self.components {
-                component.process_command(&action).await?;
+                component.process_command(&action, &mut self.data).await?;
             }
         }
 
@@ -443,6 +525,15 @@ impl Game {
                     player_id: self.data.player_id.clone(),
                     game_id: self.game_id.clone(),
                 })?;
+            }
+        } else if matches!(self.data.status, Status::SelectingCard { multiple: true, .. }) {
+            if ui::root_ui().button(Vec2::new(screen_rect.w - 120.0, screen_rect.h - 40.0), "Done Selecting") {
+                Mouse::set_enabled(false)?;
+                for component in &mut self.components {
+                    component
+                        .process_command(&ComponentCommand::DonePicking, &mut self.data)
+                        .await?;
+                }
             }
         }
 

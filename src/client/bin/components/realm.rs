@@ -181,11 +181,13 @@ impl RealmComponent {
                             pos_y += jitter_y;
                         }
 
+                        let (hovered, selected) = existing.map_or((false, false), |c| (c.is_hovered, c.is_selected));
                         let rect = Rect::new(pos_x, pos_y, dimensions.x, dimensions.y);
                         new_cards.push(CardRect {
                             image: TextureCache::get_card_texture(&card).await?,
                             rect,
-                            is_hovered: existing.map_or(false, |c| c.is_hovered),
+                            is_hovered: hovered,
+                            is_selected: selected,
                             card: card.clone(),
                         });
                     }
@@ -217,6 +219,11 @@ impl RealmComponent {
                                 .iter()
                                 .find(|c| c.card.id == card.id)
                                 .map_or(false, |c| c.is_hovered),
+                            is_selected: self
+                                .card_rects
+                                .iter()
+                                .find(|c| c.card.id == card.id)
+                                .map_or(false, |c| c.is_selected),
                             card: card.clone(),
                         });
                     }
@@ -359,6 +366,7 @@ impl RealmComponent {
                     }
                 }
                 Status::SelectingCard { preview: true, .. }
+                | Status::DistributingDamage { .. }
                 | Status::GameAborted { .. }
                 | Status::SelectingAction { .. }
                 | Status::Waiting { .. }
@@ -386,6 +394,7 @@ impl RealmComponent {
                     }
                 }
                 Status::SelectingCard { preview: true, .. }
+                | Status::DistributingDamage { .. }
                 | Status::Waiting { .. }
                 | Status::SelectingAction { .. }
                 | Status::GameAborted { .. }
@@ -473,7 +482,7 @@ impl RealmComponent {
         in_turn: bool,
         status: &mut Status,
     ) -> anyhow::Result<()> {
-        if !in_turn {
+        if !in_turn && !matches!(status, Status::SelectingCard { multiple: true, .. }) {
             return Ok(());
         }
 
@@ -537,9 +546,35 @@ impl RealmComponent {
                     *status = Status::Idle;
                 }
             }
-
             Status::SelectingCard {
-                cards, preview: false, ..
+                cards,
+                multiple: true,
+                preview: false,
+                ..
+            } => {
+                let valid_cards: Vec<&CardRect> =
+                    self.card_rects.iter().filter(|c| cards.contains(&c.card.id)).collect();
+                let mut selected_id = None;
+                for card in valid_cards {
+                    if card.rect.contains(mouse_position.into()) && Mouse::clicked()? {
+                        selected_id = Some(card.card.id.clone());
+                    }
+                }
+
+                if let Some(id) = selected_id {
+                    let rect = self
+                        .card_rects
+                        .iter_mut()
+                        .find(|c| c.card.id == id)
+                        .ok_or(anyhow::anyhow!("failed to find card"))?;
+                    rect.is_selected = !rect.is_selected;
+                }
+            }
+            Status::SelectingCard {
+                cards,
+                multiple: false,
+                preview: false,
+                ..
             } => {
                 let valid_cards: Vec<&CardRect> =
                     self.card_rects.iter().filter(|c| cards.contains(&c.card.id)).collect();
@@ -743,7 +778,7 @@ impl Component for RealmComponent {
                 continue;
             }
 
-            render::draw_card(card_rect, card_rect.card.controller_id == self.player_id);
+            render::draw_card(card_rect, card_rect.card.controller_id == self.player_id, true);
 
             if let Status::SelectingCard {
                 cards, preview: false, ..
@@ -796,8 +831,26 @@ impl Component for RealmComponent {
         self.visible = !self.visible;
     }
 
-    async fn process_command(&mut self, command: &ComponentCommand) -> anyhow::Result<()> {
+    fn is_visible(&self) -> bool {
+        self.visible
+    }
+
+    async fn process_command(&mut self, command: &ComponentCommand, data: &mut GameData) -> anyhow::Result<()> {
         match command {
+            ComponentCommand::DonePicking => {
+                self.client.send(ClientMessage::PickCards {
+                    game_id: self.game_id.clone(),
+                    player_id: self.player_id.clone(),
+                    card_ids: self
+                        .card_rects
+                        .iter()
+                        .filter(|c| c.is_selected)
+                        .map(|c| c.card.id.clone())
+                        .collect(),
+                })?;
+                data.status = Status::Idle;
+                self.card_rects.iter_mut().for_each(|c| c.is_selected = false);
+            }
             ComponentCommand::SetRect {
                 component_type: ComponentType::Realm,
                 rect,

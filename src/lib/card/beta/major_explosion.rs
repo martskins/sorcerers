@@ -49,7 +49,7 @@ impl Card for MajorExplosion {
         let zones = caster.get_zones_within_steps(state, 2);
         let prompt = "Pick a zone to center Major Explosion:";
         let zone = pick_zone(self.get_owner_id(), &zones, state, prompt).await?;
-        let zone_dmg: Vec<(Option<Zone>, u8)> = vec![
+        let zone_dmg: Vec<(Option<Zone>, u16)> = vec![
             (Some(zone.clone()), 7),
             (zone.zone_in_direction(&Direction::Up, 1), 5),
             (zone.zone_in_direction(&Direction::Down, 1), 5),

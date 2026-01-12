@@ -112,7 +112,7 @@ pub enum WorldEffect {
         affected_cards: CardMatcher,
     },
     ModifyPower {
-        power_diff: i8,
+        power_diff: i16,
         affected_cards: CardMatcher,
     },
 }
@@ -209,6 +209,13 @@ impl State {
         }
 
         Err(anyhow::anyhow!("failed to get opponent id"))
+    }
+
+    pub fn get_defenders_for_attack(&self, defender_id: &uuid::Uuid) -> Vec<uuid::Uuid> {
+        let defender = self.get_card(defender_id);
+        defender
+            .get_zone()
+            .get_nearby_unit_ids(self, Some(&defender.get_controller_id(self)))
     }
 
     pub fn get_interceptors_for_move(&self, path: &[Zone], controller_id: &PlayerId) -> Vec<(uuid::Uuid, Zone)> {

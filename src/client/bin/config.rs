@@ -22,7 +22,7 @@ fn hand_space_height() -> anyhow::Result<f32> {
 }
 
 pub fn event_log_rect() -> Rect {
-    Rect::new(0.0, 0.0, screen_width() * 0.8, 200.0)
+    Rect::new(20.0, 20.0, screen_width() * 0.8, 200.0)
 }
 
 pub fn screen_rect() -> anyhow::Result<Rect> {

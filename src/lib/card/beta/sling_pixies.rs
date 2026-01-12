@@ -60,7 +60,7 @@ impl Card for SlingPixies {
         Some(&mut self.unit_base)
     }
 
-    fn on_take_damage(&mut self, state: &State, from: &uuid::Uuid, damage: u8) -> anyhow::Result<Vec<Effect>> {
+    fn on_take_damage(&mut self, state: &State, from: &uuid::Uuid, damage: u16) -> anyhow::Result<Vec<Effect>> {
         let dealer = state.get_card(from);
         if dealer.get_power(state)?.unwrap_or(0) >= 4 {
             // Takes no damage from units with 4 or more power:w

@@ -34,7 +34,7 @@ impl ActivatedAbility for ShootProjectile {
             .filter(|c| c.get_elements(state).unwrap_or_default().contains(&Element::Fire))
             .map(|c| c.get_cost(state).unwrap_or_default().thresholds.clone())
             .sum::<Thresholds>()
-            .fire;
+            .fire as u16;
         let avatar = state.get_card(card_id);
         let prompt = "Flamecaller: Pick a direction to shoot the projectile:";
         let direction = pick_direction(avatar.get_owner_id(), &CARDINAL_DIRECTIONS, state, prompt).await?;
@@ -49,10 +49,15 @@ impl ActivatedAbility for ShootProjectile {
                 piercing: false,
                 splash_damage: None,
             },
-            Effect::tap_card(card_id),
+            Effect::TapCard {
+                card_id: card_id.clone(),
+            },
         ];
         for minion_id in fire_minions {
-            effects.push(Effect::banish_card(&minion_id, &Zone::Cemetery));
+            effects.push(Effect::BanishCard {
+                card_id: minion_id,
+                from: Zone::Cemetery,
+            });
         }
 
         Ok(effects)

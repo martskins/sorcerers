@@ -5,7 +5,7 @@ use crate::{
 use macroquad::{
     color::{BLUE, Color, DARKGREEN, RED, WHITE},
     math::{Rect, Vec2},
-    shapes::{draw_circle, draw_circle_lines, draw_line},
+    shapes::{draw_circle, draw_circle_lines, draw_line, draw_rectangle_lines},
     text::draw_text,
     texture::{DrawTextureParams, Texture2D, draw_texture_ex},
     ui,
@@ -17,6 +17,7 @@ pub struct CardRect {
     pub rect: Rect,
     pub image: Texture2D,
     pub is_hovered: bool,
+    pub is_selected: bool,
     pub card: CardData,
 }
 
@@ -57,10 +58,10 @@ fn draw_vortex_icon(x: f32, y: f32, size: f32, color: Color) {
     }
 }
 
-pub fn draw_card(card_rect: &CardRect, is_ally: bool) {
+pub fn draw_card(card_rect: &CardRect, is_ally: bool, draw_accessories: bool) {
     let rect = card_rect.rect;
     let mut scale = 1.0;
-    if card_rect.is_hovered {
+    if card_rect.is_hovered || card_rect.is_selected {
         scale = 1.1;
     }
 
@@ -212,6 +213,10 @@ pub fn draw_card(card_rect: &CardRect, is_ally: bool) {
             12.0,
             WHITE,
         );
+    }
+
+    if draw_accessories && card_rect.is_selected {
+        draw_rectangle_lines(rect.x, rect.y, rect.w * scale, rect.h * scale, 2.0, WHITE);
     }
 }
 

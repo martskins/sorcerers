@@ -181,6 +181,14 @@ impl Zone {
             .clone()
     }
 
+    pub fn get_nearby_unit_ids(&self, state: &State, controller_id: Option<&uuid::Uuid>) -> Vec<uuid::Uuid> {
+        self.get_nearby_units(state, controller_id)
+            .iter()
+            .map(|c| c.get_id())
+            .cloned()
+            .collect()
+    }
+
     pub fn get_nearby_units<'a>(&self, state: &'a State, controller_id: Option<&uuid::Uuid>) -> Vec<&'a Box<dyn Card>> {
         get_nearby_zones(self)
             .iter()
@@ -299,11 +307,11 @@ pub struct CardData {
     pub plane: Plane,
     pub card_type: CardType,
     pub abilities: Vec<Ability>,
-    pub damage_taken: u8,
+    pub damage_taken: u16,
     pub bearer: Option<uuid::Uuid>,
     pub rarity: Rarity,
     pub num_arts: usize,
-    pub power: u8,
+    pub power: u16,
     pub has_attachments: bool,
 }
 
@@ -635,7 +643,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     // Base take damage behaviour for cards. This method MUST NOT BE OVERRIDEN by specific card
     // types. Instead, specific card types should override `on_take_damage`, and can use
     // base_take_damage to get the default behaviour.
-    fn base_take_damage(&mut self, state: &State, from: &uuid::Uuid, damage: u8) -> anyhow::Result<Vec<Effect>> {
+    fn base_take_damage(&mut self, state: &State, from: &uuid::Uuid, damage: u16) -> anyhow::Result<Vec<Effect>> {
         if self.is_unit() {
             let ub = self
                 .get_unit_base_mut()
@@ -644,7 +652,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
             let attacker = state.get_card(from);
             if ub.damage >= self.get_toughness(state).unwrap_or(0) || attacker.has_modifier(state, &Ability::Lethal) {
-                return Ok(vec![Effect::bury_card(self.get_id(), self.get_zone())]);
+                return Ok(vec![Effect::BuryCard {
+                    card_id: self.get_id().clone(),
+                    from: self.get_zone().clone(),
+                }]);
             }
 
             return Ok(vec![]);
@@ -759,7 +770,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     // Returns the amount of damage taken by the card. Defaults to 0 for non-unit cards.
-    fn get_damage_taken(&self) -> anyhow::Result<u8> {
+    fn get_damage_taken(&self) -> anyhow::Result<u16> {
         if self.is_unit() {
             return Ok(self
                 .get_unit_base()
@@ -959,7 +970,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     // Returns the toughness of the card. Returns None for non-unit cards.
-    fn get_toughness(&self, state: &State) -> Option<u8> {
+    fn get_toughness(&self, state: &State) -> Option<u16> {
         match self.get_unit_base() {
             Some(base) => {
                 let mut toughness = base.toughness;
@@ -967,7 +978,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     toughness = toughness.saturating_add_signed(counter.toughness);
                 }
 
-                let counters: i8 = state
+                let counters: i16 = state
                     .cards
                     .iter()
                     .filter(|c| c.get_zone().is_in_play())
@@ -1034,7 +1045,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(false)
     }
 
-    fn base_get_power(&self, state: &State) -> Option<u8> {
+    fn base_get_power(&self, state: &State) -> Option<u16> {
         match self.get_unit_base() {
             Some(base) => {
                 let mut power = base.power;
@@ -1054,7 +1065,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     }
                 }
 
-                let power_counters: i8 = state
+                let power_counters: i16 = state
                     .cards
                     .iter()
                     .filter(|c| c.get_zone().is_in_play())
@@ -1071,7 +1082,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         }
     }
 
-    fn get_power(&self, state: &State) -> anyhow::Result<Option<u8>> {
+    fn get_power(&self, state: &State) -> anyhow::Result<Option<u16>> {
         Ok(self.base_get_power(state))
     }
 
@@ -1243,7 +1254,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(vec![])
     }
 
-    fn on_take_damage(&mut self, state: &State, from: &uuid::Uuid, damage: u8) -> anyhow::Result<Vec<Effect>> {
+    fn on_take_damage(&mut self, state: &State, from: &uuid::Uuid, damage: u16) -> anyhow::Result<Vec<Effect>> {
         self.base_take_damage(state, from, damage)
     }
 
@@ -1463,7 +1474,7 @@ pub enum Ability {
     SummoningSickness,
     TakesNoDamageFromElement(Element),
     Immobile,
-    Blaze(u8), // Specific modifier for the Blaze magic
+    Blaze(u16), // Specific modifier for the Blaze magic
 }
 
 impl Ability {
@@ -1496,10 +1507,10 @@ impl Ability {
 
 #[derive(Debug, Default, Clone)]
 pub struct UnitBase {
-    pub power: u8,
-    pub toughness: u8,
+    pub power: u16,
+    pub toughness: u16,
     pub abilities: Vec<Ability>,
-    pub damage: u8,
+    pub damage: u16,
     pub power_counters: Vec<Counter>,
     pub modifier_counters: Vec<AbilityCounter>,
     pub types: Vec<MinionType>,

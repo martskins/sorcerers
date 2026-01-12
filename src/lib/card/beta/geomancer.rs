@@ -46,8 +46,14 @@ impl ActivatedAbility for GeomancerAbility {
                 let prompt = "Pick a zone to play the site";
                 let zone = pick_zone(player_id, &zones, state, prompt).await?;
                 let mut effects: Vec<Effect> = vec![
-                    Effect::play_card(player_id, &picked_card_id, &zone).into(),
-                    Effect::tap_card(card_id).into(),
+                    Effect::PlayCard {
+                        player_id: player_id.clone(),
+                        card_id: picked_card_id.clone(),
+                        zone: zone.clone(),
+                    },
+                    Effect::TapCard {
+                        card_id: card_id.clone(),
+                    },
                 ];
 
                 let picked_site = state.get_card(&picked_card_id);
