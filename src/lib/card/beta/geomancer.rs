@@ -104,25 +104,24 @@ impl ActivatedAbility for GeomancerAbility {
 
                 match site_id {
                     Some(site_id) => Ok(vec![
-                        Effect::BuryCard {
+                        Effect::BanishCard {
                             card_id: rubble.get_id().clone(),
                             from: rubble.get_zone().clone(),
-                        },
-                        Effect::DrawSite {
-                            player_id: card.get_controller_id(state).clone(),
-                            count: 1,
                         },
                         Effect::MoveCard {
                             player_id: card.get_controller_id(state).clone(),
                             card_id: site_id.clone(),
                             from: Zone::Atlasbook,
                             to: ZoneQuery::Specific {
-                                id: uuid::Uuid::new_v4(),
+                                id: site_id.clone(),
                                 zone: rubble.get_zone().clone(),
                             },
                             tap: false,
                             plane: Plane::Surface,
                             through_path: None,
+                        },
+                        Effect::TapCard {
+                            card_id: rubble.get_id().clone(),
                         },
                     ]),
                     None => Ok(vec![]),

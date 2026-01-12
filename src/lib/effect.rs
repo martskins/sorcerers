@@ -952,6 +952,7 @@ impl Effect {
                 ];
                 effects.extend(attacker.after_attack(state).await?);
                 effects.extend(defender.on_defend(state, attacker_id)?.into_iter().map(|e| e.into()));
+                effects.reverse();
                 state.effects.extend(effects.into_iter().map(|e| e.into()));
             }
             Effect::DealDamageAllUnitsInZone {
