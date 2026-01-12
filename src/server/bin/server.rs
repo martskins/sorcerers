@@ -182,7 +182,7 @@ impl Server {
         //     sorcerers::card::from_name_and_zone("Kite Archer", &player_two, sorcerers::card::Zone::Realm(8));
         // let mut lucky_charm =
         //     sorcerers::card::from_name_and_zone("Lucky Charm", &player_two, sorcerers::card::Zone::Realm(1));
-        // lucky_charm.get_artifact_base_mut().unwrap().attached_to = Some(kite_archer.get_id().clone());
+        // lucky_charm.get_artifact_base_mut().unwrap().bearer = Some(kite_archer.get_id().clone());
         // game.state.cards.push(lucky_charm);
         // game.state.cards.push(kite_archer);
         // game.state.cards.push(sorcerers::card::from_name_and_zone(

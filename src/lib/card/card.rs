@@ -304,6 +304,7 @@ pub struct CardData {
     pub rarity: Rarity,
     pub num_arts: usize,
     pub power: u8,
+    pub has_attachments: bool,
 }
 
 impl CardData {
@@ -1014,6 +1015,21 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             }
             None => vec![],
         }
+    }
+
+    fn has_attachments(&self, state: &State) -> anyhow::Result<bool> {
+        for card in state.cards.iter().filter(|c| c.get_card_type() == CardType::Artifact) {
+            let artifact = card
+                .get_artifact()
+                .ok_or(anyhow::anyhow!("artifact card does not implement artifact"))?;
+            if let Some(bearer) = artifact.get_bearer()? {
+                if &bearer == self.get_id() {
+                    return Ok(true);
+                }
+            }
+        }
+
+        Ok(false)
     }
 
     fn base_get_power(&self, state: &State) -> Option<u8> {

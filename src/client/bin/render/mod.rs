@@ -86,6 +86,46 @@ pub fn draw_card(card_rect: &CardRect, is_ally: bool) {
         sleeve_color = RED;
     }
 
+    if card_rect.card.has_attachments {
+        let triangle_w = 6.0;
+        let triangle_h = 20.0;
+        let card_w = rect.w * scale;
+        let card_h = rect.h * scale;
+        let card_center_x = rect.x + card_w / 2.0;
+        let card_center_y = rect.y + card_h / 2.0;
+        let (sin, cos) = card_rect.rotation().sin_cos();
+
+        let left_center = Vec2::new(-card_w / 2.0, 0.0);
+        let left_tip = left_center + Vec2::new(-triangle_w, 0.0);
+        let left_top = left_center + Vec2::new(0.0, -triangle_h / 2.0);
+        let left_bot = left_center + Vec2::new(0.0, triangle_h / 2.0);
+
+        let rotate = |v: Vec2| {
+            Vec2::new(
+                cos * v.x - sin * v.y + card_center_x,
+                sin * v.x + cos * v.y + card_center_y,
+            )
+        };
+
+        let tip = rotate(left_tip);
+        let top = rotate(left_top);
+        let bot = rotate(left_bot);
+
+        macroquad::shapes::draw_triangle(tip, top, bot, WHITE);
+
+        // Right triangle (points right)
+        let right_center = Vec2::new(-card_w / 2.0 + 0.5, 0.0);
+        let right_tip = right_center + Vec2::new(triangle_w, 0.0);
+        let right_top = right_center + Vec2::new(0.0, -triangle_h / 2.0);
+        let right_bot = right_center + Vec2::new(0.0, triangle_h / 2.0);
+
+        let rtip = rotate(right_tip);
+        let rtop = rotate(right_top);
+        let rbot = rotate(right_bot);
+
+        macroquad::shapes::draw_triangle(rtip, rtop, rbot, WHITE);
+    }
+
     // Draw rectangle border rotated around the center
     let w = rect.w * scale;
     let h = rect.h * scale;

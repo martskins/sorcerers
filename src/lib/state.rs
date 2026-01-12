@@ -272,6 +272,7 @@ impl State {
                 rarity: c.get_base().rarity.clone(),
                 num_arts: c.get_num_arts(),
                 power: c.get_power(&self).unwrap_or_default().unwrap_or_default(),
+                has_attachments: c.has_attachments(self).unwrap_or_default(),
             })
             .collect()
     }
