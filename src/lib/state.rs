@@ -216,18 +216,9 @@ impl State {
             .iter()
             .filter(|c| &c.get_controller_id(self) == controller_id)
             .filter(|c| c.is_unit())
-            .filter(|c| matches!(c.get_zone(), Zone::Realm(_)))
-            .flat_map(|c| {
-                let valid_moves = c.get_valid_move_zones(self).unwrap_or_default();
-                let mut intercepts = vec![];
-                for zone in path {
-                    if valid_moves.contains(&zone) {
-                        intercepts.push((c.get_id().clone(), zone.clone()));
-                    }
-                }
-
-                intercepts
-            })
+            .filter(|c| c.get_zone().is_in_play())
+            .filter(|c| path.contains(c.get_zone()))
+            .map(|c| (c.get_id().clone(), c.get_zone().clone()))
             .collect()
     }
 
