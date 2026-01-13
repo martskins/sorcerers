@@ -2,7 +2,10 @@ use crate::{
     card::{Ability, Aura, CardType, Cost, Plane, Zone},
     effect::Effect,
     error::GameError,
-    networking::message::{ClientMessage, ServerMessage, ToMessage},
+    networking::{
+        client::Client,
+        message::{ClientMessage, ServerMessage},
+    },
     query::{QueryCache, ZoneQuery},
     state::{PlayerWithDeck, State},
 };
@@ -10,7 +13,7 @@ use async_channel::{Receiver, Sender};
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, iter::Sum, sync::Arc};
-use tokio::{io::AsyncWriteExt, net::tcp::OwnedWriteHalf, sync::Mutex};
+use tokio::{net::tcp::OwnedWriteHalf, sync::Mutex};
 
 pub type PlayerId = uuid::Uuid;
 
@@ -1121,7 +1124,7 @@ impl Game {
         })
         .await?;
         self.process_effects().await?;
-        self.send_sync().await?;
+        self.broadcast(&self.state.into_sync()?).await?;
 
         let streams = self.streams.clone();
         let receiver = self.server_receiver.clone();
@@ -1129,7 +1132,7 @@ impl Game {
             loop {
                 if let Ok(message) = receiver.recv().await {
                     let stream = streams.get(&message.player_id()).expect("stream to be found");
-                    Self::send_message(&message, Arc::clone(stream))
+                    Client::send_to_stream(&message, Arc::clone(stream))
                         .await
                         .expect("message to be sent");
                 }
@@ -1406,26 +1409,13 @@ impl Game {
             artifact.set_zone(zone);
         }
 
-        self.send_sync().await?;
-        Ok(())
-    }
-
-    pub async fn send_sync(&self) -> anyhow::Result<()> {
         self.broadcast(&self.state.into_sync()?).await?;
-        Ok(())
-    }
-
-    async fn send_message(message: &ServerMessage, stream: Arc<Mutex<OwnedWriteHalf>>) -> anyhow::Result<()> {
-        let bytes = rmp_serde::to_vec(&message.to_message())?;
-        let mut stream = stream.lock().await;
-        stream.write_all(&bytes).await?;
-
         Ok(())
     }
 
     pub async fn broadcast(&self, message: &ServerMessage) -> anyhow::Result<()> {
         for stream in self.streams.values() {
-            Self::send_message(message, Arc::clone(stream)).await?;
+            Client::send_to_stream(message, Arc::clone(stream)).await?;
         }
         Ok(())
     }
@@ -1529,7 +1519,7 @@ impl Game {
                 self.state.compute_world_effects().await?;
 
                 Self::dispell_auras(&mut self.state).await?;
-                self.send_sync().await?;
+                self.broadcast(&self.state.into_sync()?).await?;
             }
         }
 

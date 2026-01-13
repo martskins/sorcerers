@@ -21,8 +21,22 @@ async fn main() -> anyhow::Result<()> {
             let (mut reader, writer) = stream.into_split();
             let writer = Arc::new(Mutex::new(writer));
             loop {
-                let mut buf = vec![0; 32000];
-                let read_bytes = reader.read(&mut buf).await.expect("read from socket");
+                let mut len: [u8; std::mem::size_of::<usize>()] = [0; std::mem::size_of::<usize>()];
+                if reader.read_exact(&mut len).await.is_err() {
+                    let mut server = server_clone.lock().await;
+                    server
+                        .process_message(
+                            &Message::ClientMessage(ClientMessage::Disconnect),
+                            Arc::clone(&writer),
+                            &addr,
+                        )
+                        .await
+                        .expect("message to be processed");
+                    break;
+                }
+
+                let mut buf = vec![0; usize::from_be_bytes(len)];
+                let read_bytes = reader.read_exact(&mut buf).await.expect("read from socket");
                 if read_bytes == 0 {
                     let mut server = server_clone.lock().await;
                     server

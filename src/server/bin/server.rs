@@ -1,7 +1,11 @@
 use async_channel::Sender;
 use sorcerers::{
+    card::CaveTrolls,
     game::Game,
-    networking::message::{ClientMessage, Message, PreconDeck, ServerMessage, ToMessage},
+    networking::{
+        client::Client,
+        message::{ClientMessage, Message, PreconDeck, ServerMessage, ToMessage},
+    },
     state::{Player, PlayerWithDeck},
 };
 use std::{collections::HashMap, sync::Arc};
@@ -35,8 +39,8 @@ impl Server {
         match message {
             Message::ClientMessage(ClientMessage::Connect) => {
                 let player_id = uuid::Uuid::new_v4();
-                self.send_to_stream(
-                    ServerMessage::ConnectResponse {
+                Client::send_to_stream(
+                    &ServerMessage::ConnectResponse {
                         player_id,
                         available_decks: vec![PreconDeck::BetaFire, PreconDeck::BetaAir, PreconDeck::BetaEarth],
                     },
@@ -103,16 +107,6 @@ impl Server {
         Ok(())
     }
 
-    pub async fn send_to_stream<T: ToMessage>(
-        &self,
-        message: T,
-        stream: Arc<Mutex<OwnedWriteHalf>>,
-    ) -> anyhow::Result<()> {
-        let bytes = rmp_serde::to_vec(&message.to_message())?;
-        stream.lock().await.write_all(&bytes).await?;
-        Ok(())
-    }
-
     pub async fn create_game(
         &mut self,
         player1: &Player,
@@ -160,59 +154,64 @@ impl Server {
         self.game_players
             .insert(game.id.clone(), vec![player1.clone(), player2.clone()]);
 
-        // // Uncomment this to setup a basic game state for testing
-        // let player_one = game.state.players[0].id.clone();
-        // let player_two = game.state.players[1].id.clone();
-        // game.state.cards.push(sorcerers::card::from_name_and_zone(
-        //     "Chain Lightning",
-        //     &player_one,
-        //     sorcerers::card::Zone::Hand,
-        // ));
-        // game.state.cards.push(sorcerers::card::from_name_and_zone(
-        //     "Lone Tower",
-        //     &player_one,
-        //     sorcerers::card::Zone::Realm(3),
-        // ));
-        // game.state.cards.push(sorcerers::card::from_name_and_zone(
-        //     "Lone Tower",
-        //     &player_one,
-        //     sorcerers::card::Zone::Realm(8),
-        // ));
-        // let kite_archer =
-        //     sorcerers::card::from_name_and_zone("Kite Archer", &player_two, sorcerers::card::Zone::Realm(8));
-        // let mut lucky_charm =
-        //     sorcerers::card::from_name_and_zone("Lucky Charm", &player_two, sorcerers::card::Zone::Realm(1));
-        // lucky_charm.get_artifact_base_mut().unwrap().bearer = Some(kite_archer.get_id().clone());
-        // game.state.cards.push(lucky_charm);
-        // game.state.cards.push(kite_archer);
-        // game.state.cards.push(sorcerers::card::from_name_and_zone(
-        //     "Arid Desert",
-        //     &player_two,
-        //     sorcerers::card::Zone::Realm(13),
-        // ));
-        // game.state.cards.push(sorcerers::card::from_name_and_zone(
-        //     "Craterize",
-        //     &player_one,
-        //     sorcerers::card::Zone::Hand,
-        // ));
-        // game.state.cards.push(sorcerers::card::from_name_and_zone(
-        //     "Arid Desert",
-        //     &player_two,
-        //     sorcerers::card::Zone::Realm(18),
-        // ));
-        // game.state.cards.push(sorcerers::card::from_name_and_zone(
-        //     "Rimland Nomads",
-        //     &player_two,
-        //     sorcerers::card::Zone::Realm(13),
-        // ));
-        // let resources = game
-        //     .state
-        //     .resources
-        //     .entry(player_one)
-        //     .or_insert(sorcerers::game::Resources::new());
-        // resources.mana = 10;
-        // resources.thresholds.air = 3;
-        // resources.thresholds.earth = 3;
+        // Uncomment this to setup a basic game state for testing
+        let player_one = game.state.players[0].id.clone();
+        let player_two = game.state.players[1].id.clone();
+        game.state.cards.push(sorcerers::card::from_name_and_zone(
+            "Chain Lightning",
+            &player_one,
+            sorcerers::card::Zone::Hand,
+        ));
+        game.state.cards.push(sorcerers::card::from_name_and_zone(
+            "Lone Tower",
+            &player_one,
+            sorcerers::card::Zone::Realm(3),
+        ));
+        game.state.cards.push(sorcerers::card::from_name_and_zone(
+            "Lone Tower",
+            &player_one,
+            sorcerers::card::Zone::Realm(8),
+        ));
+        game.state.cards.push(sorcerers::card::from_name_and_zone(
+            CaveTrolls::NAME,
+            &player_two,
+            sorcerers::card::Zone::Realm(8),
+        ));
+        let kite_archer =
+            sorcerers::card::from_name_and_zone("Kite Archer", &player_one, sorcerers::card::Zone::Realm(8));
+        let mut lucky_charm =
+            sorcerers::card::from_name_and_zone("Lucky Charm", &player_two, sorcerers::card::Zone::Realm(1));
+        lucky_charm.get_artifact_base_mut().unwrap().bearer = Some(kite_archer.get_id().clone());
+        game.state.cards.push(lucky_charm);
+        game.state.cards.push(kite_archer);
+        game.state.cards.push(sorcerers::card::from_name_and_zone(
+            "Arid Desert",
+            &player_two,
+            sorcerers::card::Zone::Realm(13),
+        ));
+        game.state.cards.push(sorcerers::card::from_name_and_zone(
+            "Craterize",
+            &player_one,
+            sorcerers::card::Zone::Hand,
+        ));
+        game.state.cards.push(sorcerers::card::from_name_and_zone(
+            "Arid Desert",
+            &player_two,
+            sorcerers::card::Zone::Realm(18),
+        ));
+        game.state.cards.push(sorcerers::card::from_name_and_zone(
+            "Rimland Nomads",
+            &player_two,
+            sorcerers::card::Zone::Realm(13),
+        ));
+        let resources = game
+            .state
+            .resources
+            .entry(player_one)
+            .or_insert(sorcerers::game::Resources::new());
+        resources.mana = 10;
+        resources.thresholds.air = 3;
+        resources.thresholds.earth = 3;
 
         tokio::spawn(async move {
             game.start().await.expect("game to start");
