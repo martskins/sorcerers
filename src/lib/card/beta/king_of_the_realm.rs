@@ -1,7 +1,7 @@
 use crate::{
     card::{Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
     game::PlayerId,
-    state::{CardMatcher, State, WorldEffect},
+    state::{CardMatcher, ContinousEffect, State},
 };
 
 #[derive(Debug, Clone)]
@@ -59,9 +59,9 @@ impl Card for KingOfTheRealm {
         Some(&mut self.unit_base)
     }
 
-    async fn get_world_effects(&self, state: &State) -> anyhow::Result<Vec<WorldEffect>> {
+    async fn get_continuos_effects(&self, state: &State) -> anyhow::Result<Vec<ContinousEffect>> {
         Ok(vec![
-            WorldEffect::ModifyPower {
+            ContinousEffect::ModifyPower {
                 power_diff: 1,
                 affected_cards: CardMatcher {
                     minion_types: Some(vec![MinionType::Mortal]),
@@ -70,7 +70,7 @@ impl Card for KingOfTheRealm {
                     ..Default::default()
                 },
             },
-            WorldEffect::ControllerOverride {
+            ContinousEffect::ControllerOverride {
                 controller_id: self.get_controller_id(state),
                 affected_cards: CardMatcher {
                     minion_types: Some(vec![MinionType::Mortal]),

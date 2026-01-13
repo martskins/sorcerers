@@ -22,7 +22,7 @@ impl ActivatedAbility for ShootPayload {
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
         let zones = state.get_card(card_id).get_zones_within_steps(state, 3);
-        let picked_zone = pick_zone(player_id, &zones, state, "Pick a zone to shoot the payload at").await?;
+        let picked_zone = pick_zone(player_id, &zones, state, false, "Pick a zone to shoot the payload at").await?;
         let units = picked_zone.get_units(state, None);
 
         Ok(units

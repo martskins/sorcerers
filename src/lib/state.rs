@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardData, CardType, MinionType, SiteType, Zone},
+    card::{Ability, Card, CardData, CardType, MinionType, SiteType, Zone},
     deck::Deck,
     effect::Effect,
     game::{InputStatus, PlayerId, Resources},
@@ -30,6 +30,7 @@ pub struct PlayerWithDeck {
 
 #[derive(Debug, Default, Clone)]
 pub struct CardMatcher {
+    pub id: Option<uuid::Uuid>,
     pub controller_id: Option<PlayerId>,
     pub not_in_ids: Option<Vec<uuid::Uuid>>,
     pub card_types: Option<Vec<CardType>>,
@@ -39,8 +40,30 @@ pub struct CardMatcher {
 }
 
 impl CardMatcher {
+    pub fn from_id(id: uuid::Uuid) -> Self {
+        Self {
+            id: Some(id),
+            ..Default::default()
+        }
+    }
+
+    pub fn resolve_all(&self, state: &State) -> Vec<uuid::Uuid> {
+        state
+            .cards
+            .iter()
+            .filter(|c| self.matches(c.get_id(), state))
+            .map(|c| c.get_id().clone())
+            .collect()
+    }
+
     pub fn matches(&self, card_id: &uuid::Uuid, state: &State) -> bool {
         let card = state.get_card(card_id);
+        if let Some(id) = &self.id {
+            if card_id != id {
+                return false;
+            }
+        }
+
         if let Some(not_in_ids) = &self.not_in_ids {
             if not_in_ids.contains(card_id) {
                 return false;
@@ -106,13 +129,24 @@ impl CardMatcher {
 }
 
 #[derive(Debug, Clone)]
-pub enum WorldEffect {
+pub enum ContinousEffect {
     ControllerOverride {
         controller_id: PlayerId,
         affected_cards: CardMatcher,
     },
     ModifyPower {
         power_diff: i16,
+        affected_cards: CardMatcher,
+    },
+    FloodSites {
+        affected_sites: CardMatcher,
+    },
+    ChangeSiteType {
+        site_type: SiteType,
+        affected_sites: CardMatcher,
+    },
+    GrantAbility {
+        ability: Ability,
         affected_cards: CardMatcher,
     },
 }
@@ -134,7 +168,7 @@ pub struct State {
     pub player_one: PlayerId,
     pub server_tx: Sender<ServerMessage>,
     pub client_rx: Receiver<ClientMessage>,
-    pub world_effects: Vec<WorldEffect>,
+    pub continuous_effects: Vec<ContinousEffect>,
 }
 
 impl State {
@@ -173,21 +207,25 @@ impl State {
             player_one,
             server_tx,
             client_rx,
-            world_effects: Vec::new(),
+            continuous_effects: Vec::new(),
         }
     }
 
+    pub fn get_body_of_water_size(&self) -> usize {
+        0
+    }
+
     pub async fn compute_world_effects(&mut self) -> anyhow::Result<()> {
-        self.world_effects.clear();
+        self.continuous_effects.clear();
 
         for card in &self.cards {
             if !card.get_zone().is_in_play() {
                 continue;
             }
 
-            let card_world_effects = card.get_world_effects(self).await?;
+            let card_world_effects = card.get_continuos_effects(self).await?;
             for effect in card_world_effects {
-                self.world_effects.push(effect);
+                self.continuous_effects.push(effect);
             }
         }
 
@@ -261,7 +299,7 @@ impl State {
                 edition: c.get_edition().clone(),
                 zone: c.get_zone().clone(),
                 card_type: c.get_card_type().clone(),
-                abilities: c.get_modifiers(&self).unwrap_or_default(),
+                abilities: c.get_abilities(&self).unwrap_or_default(),
                 plane: c.get_plane(&self).clone(),
                 damage_taken: c.get_damage_taken().unwrap_or(0),
                 bearer: c
@@ -347,6 +385,13 @@ impl State {
             .ok_or(anyhow::anyhow!("failed to get player resources"))?)
     }
 
+    pub fn get_player_deck(&self, player_id: &PlayerId) -> anyhow::Result<&Deck> {
+        Ok(self
+            .decks
+            .get(player_id)
+            .ok_or(anyhow::anyhow!("failed to get player deck"))?)
+    }
+
     pub fn get_player_resources(&self, player_id: &PlayerId) -> anyhow::Result<&Resources> {
         Ok(self
             .resources
@@ -371,7 +416,7 @@ impl State {
             server_tx: self.server_tx.clone(),
             client_rx: self.client_rx.clone(),
             effect_log: self.effect_log.clone(),
-            world_effects: self.world_effects.clone(),
+            continuous_effects: self.continuous_effects.clone(),
         }
     }
 

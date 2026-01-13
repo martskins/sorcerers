@@ -70,7 +70,7 @@ impl Card for KiteArcher {
         }
 
         let zones = self.get_zone().get_adjacent();
-        let picked_zone = pick_zone(self.get_owner_id(), &zones, state, "Choose to step to").await?;
+        let picked_zone = pick_zone(self.get_owner_id(), &zones, state, false, "Choose to step to").await?;
         Ok(vec![Effect::MoveCard {
             player_id: self.get_owner_id().clone(),
             card_id: self.get_id().clone(),

@@ -1,26 +1,23 @@
 use crate::{
     card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
-    effect::Effect,
     game::PlayerId,
-    query::ZoneQuery,
-    state::State,
 };
 
 #[derive(Debug, Clone)]
-pub struct HeadlessHaunt {
+pub struct AnuiUndine {
     pub unit_base: UnitBase,
     pub card_base: CardBase,
 }
 
-impl HeadlessHaunt {
-    pub const NAME: &'static str = "Headless Haunt";
+impl AnuiUndine {
+    pub const NAME: &'static str = "Anui Undine";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
             unit_base: UnitBase {
-                power: 4,
-                toughness: 4,
-                abilities: vec![Ability::Voidwalk],
+                power: 0,
+                toughness: 0,
+                abilities: vec![Ability::Submerge],
                 types: vec![MinionType::Spirit],
                 ..Default::default()
             },
@@ -29,7 +26,7 @@ impl HeadlessHaunt {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(3, "AA"),
+                cost: Cost::new(5, "WW"),
                 plane: Plane::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
@@ -40,7 +37,7 @@ impl HeadlessHaunt {
 }
 
 #[async_trait::async_trait]
-impl Card for HeadlessHaunt {
+impl Card for AnuiUndine {
     fn get_name(&self) -> &str {
         Self::NAME
     }
@@ -60,28 +57,9 @@ impl Card for HeadlessHaunt {
     fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
         Some(&mut self.unit_base)
     }
-
-    async fn on_turn_start(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
-        if !self.get_zone().is_in_play() {
-            return Ok(vec![]);
-        }
-
-        Ok(vec![Effect::MoveCard {
-            player_id: self.get_owner_id().clone(),
-            card_id: self.get_id().clone(),
-            from: self.get_zone().clone(),
-            to: ZoneQuery::Random {
-                id: uuid::Uuid::new_v4(),
-                options: Zone::all_realm(),
-            },
-            tap: false,
-            plane: Plane::Surface,
-            through_path: None,
-        }])
-    }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (HeadlessHaunt::NAME, |owner_id: PlayerId| {
-    Box::new(HeadlessHaunt::new(owner_id))
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (AnuiUndine::NAME, |owner_id: PlayerId| {
+    Box::new(AnuiUndine::new(owner_id))
 });

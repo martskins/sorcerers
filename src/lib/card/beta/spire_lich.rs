@@ -79,8 +79,8 @@ impl Card for SpireLich {
         Some(&mut self.unit_base)
     }
 
-    fn get_modifiers(&self, state: &State) -> anyhow::Result<Vec<Ability>> {
-        let mut modifiers = self.base_get_modifiers(state);
+    fn get_abilities(&self, state: &State) -> anyhow::Result<Vec<Ability>> {
+        let mut modifiers = self.base_get_abilities(state);
         if self.is_atop_tower(state)? {
             modifiers.push(Ability::Ranged(1));
             modifiers.push(Ability::Spellcaster(Element::Fire));

@@ -97,7 +97,7 @@ impl Card for Wildfire {
             .map(|c| Effect::take_damage(c.get_id(), self.get_id(), 3))
             .collect();
         let prompt = "Wildfire: Pick a zone to move to:";
-        let picked_zone = pick_zone(self.get_owner_id(), &zones, state, prompt).await?;
+        let picked_zone = pick_zone(self.get_owner_id(), &zones, state, false, prompt).await?;
         effects.push(Effect::MoveCard {
             player_id: self.get_owner_id().clone(),
             card_id: self.get_id().clone(),

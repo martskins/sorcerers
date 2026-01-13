@@ -323,8 +323,14 @@ pub async fn pick_zone(
     player_id: impl AsRef<PlayerId>,
     zones: &[Zone],
     state: &State,
+    block_opponent: bool,
     prompt: &str,
 ) -> anyhow::Result<Zone> {
+    let opponent_id = state.get_opponent_id(player_id.as_ref())?;
+    if block_opponent {
+        wait_for_opponent(&opponent_id, state, "Wait for opponent to pick a zone...").await?;
+    }
+
     state
         .get_sender()
         .send(ServerMessage::PickZone {
@@ -334,7 +340,7 @@ pub async fn pick_zone(
         })
         .await?;
 
-    loop {
+    let zone = loop {
         let msg = state.get_receiver().recv().await?;
         match msg {
             ClientMessage::PickZone { zone, .. } => break Ok(zone),
@@ -343,8 +349,15 @@ pub async fn pick_zone(
             }
             _ => panic!("expected PickSquare, got {:?}", msg),
         }
+    };
+
+    if block_opponent {
+        resume(&opponent_id, state).await?;
     }
+
+    zone
 }
+
 // Sends a ForceSync message to the specified player with the provided game state. This can be used
 // to temporarily override the state of the game for the player, which is useful in cases where the
 // state needs to be mutated as part of the card resolution process.
@@ -768,7 +781,7 @@ impl ActivatedAbility for AvatarAction {
                 let picked_card = state.get_card(&picked_card_id);
                 let zones = picked_card.get_valid_play_zones(state)?;
                 let prompt = "Pick a zone to play the site";
-                let zone = pick_zone(player_id, &zones, state, prompt).await?;
+                let zone = pick_zone(player_id, &zones, state, false, prompt).await?;
                 Ok(vec![
                     Effect::PlayCard {
                         player_id: player_id.clone(),
@@ -961,7 +974,7 @@ impl ActivatedAbility for UnitAction {
                 let card = state.get_card(card_id);
                 let zones = card.get_valid_move_zones(state)?;
                 let prompt = "Pick a zone to move to";
-                let zone = pick_zone(player_id, &zones, state, prompt).await?;
+                let zone = pick_zone(player_id, &zones, state, false, prompt).await?;
                 let paths = card.get_valid_move_paths(state, &zone)?;
                 let path = if paths.len() > 1 {
                     let prompt = "Pick a path to move along";
@@ -1225,6 +1238,7 @@ impl Game {
                                     player_id,
                                     &card.get_valid_play_zones(&self.state)?,
                                     &self.state,
+                                    false, 
                                     "Pick a zone to play the artifact",
                                 )
                                 .await?;
@@ -1242,7 +1256,7 @@ impl Game {
                     (CardType::Minion, Zone::Hand) | (CardType::Aura, Zone::Hand) => {
                         let zones = card.get_valid_play_zones(&self.state)?;
                         let prompt = "Pick a zone to play the card";
-                        let zone = pick_zone(player_id, &zones, &self.state, prompt).await?;
+                        let zone = pick_zone(player_id, &zones, &self.state, false, prompt).await?;
                         self.state.effects.push_back(
                             Effect::PlayCard {
                                 player_id: player_id.clone(),

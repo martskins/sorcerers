@@ -1,15 +1,15 @@
 use async_channel::Sender;
 use sorcerers::{
-    card::CaveTrolls,
+    card::{BrobdingnagBullfrog, CaveTrolls, GuileSirens},
     game::Game,
     networking::{
         client::Client,
-        message::{ClientMessage, Message, PreconDeck, ServerMessage, ToMessage},
+        message::{ClientMessage, Message, PreconDeck, ServerMessage},
     },
     state::{Player, PlayerWithDeck},
 };
 use std::{collections::HashMap, sync::Arc};
-use tokio::{io::AsyncWriteExt, net::tcp::OwnedWriteHalf, sync::Mutex};
+use tokio::{net::tcp::OwnedWriteHalf, sync::Mutex};
 
 pub struct Server {
     pub games: HashMap<uuid::Uuid, Sender<ClientMessage>>,
@@ -173,8 +173,8 @@ impl Server {
             sorcerers::card::Zone::Realm(8),
         ));
         game.state.cards.push(sorcerers::card::from_name_and_zone(
-            CaveTrolls::NAME,
-            &player_two,
+            GuileSirens::NAME,
+            &player_one,
             sorcerers::card::Zone::Realm(8),
         ));
         let kite_archer =
@@ -210,8 +210,10 @@ impl Server {
             .entry(player_one)
             .or_insert(sorcerers::game::Resources::new());
         resources.mana = 10;
-        resources.thresholds.air = 3;
-        resources.thresholds.earth = 3;
+        resources.thresholds.air = 5;
+        resources.thresholds.earth = 5;
+        resources.thresholds.water = 5;
+        resources.thresholds.fire = 5;
 
         tokio::spawn(async move {
             game.start().await.expect("game to start");

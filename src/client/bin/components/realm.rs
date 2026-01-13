@@ -482,7 +482,7 @@ impl RealmComponent {
         in_turn: bool,
         status: &mut Status,
     ) -> anyhow::Result<()> {
-        if !in_turn && !matches!(status, Status::SelectingCard { multiple: true, .. }) {
+        if !in_turn && !matches!(status, Status::SelectingCard { .. }) {
             return Ok(());
         }
 

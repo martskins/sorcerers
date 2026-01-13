@@ -124,7 +124,7 @@ fn main() -> anyhow::Result<()> {
                 let modifiers = minion
                     .modifiers
                     .iter()
-                    .map(|m| format!("Modifier::{}", m))
+                    .map(|m| format!("Ability::{}", m))
                     .collect::<Vec<String>>()
                     .join(", ");
                 let minion_types = minion

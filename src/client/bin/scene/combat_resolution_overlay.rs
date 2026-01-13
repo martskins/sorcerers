@@ -5,7 +5,7 @@ use crate::{
     config::{card_height, card_width},
     input::Mouse,
     render::{self, CardRect},
-    scene::game::{GameData, Status},
+    scene::game::GameData,
     texture_cache::TextureCache,
 };
 use macroquad::{

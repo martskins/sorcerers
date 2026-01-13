@@ -61,6 +61,7 @@ impl Card for Blink {
             self.get_controller_id(state),
             &zones,
             state,
+            false,
             "Pick a zone to teleport to",
         )
         .await?;

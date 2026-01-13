@@ -150,6 +150,7 @@ impl QueryCache {
                     player_id,
                     &Zone::all_realm(),
                     state,
+                    false,
                     prompt.as_ref().map_or("Pick a zone", |v| v),
                 )
                 .await?
@@ -164,7 +165,14 @@ impl QueryCache {
                     .map(|c| c.get_zone().clone())
                     .collect::<Vec<Zone>>();
                 sites.dedup();
-                pick_zone(player_id, &sites, state, prompt.as_ref().map_or("Pick a zone", |v| v)).await?
+                pick_zone(
+                    player_id,
+                    &sites,
+                    state,
+                    false,
+                    prompt.as_ref().map_or("Pick a zone", |v| v),
+                )
+                .await?
             }
             ZoneQuery::Random { options, .. } => {
                 for card in &state.cards {
@@ -179,7 +187,14 @@ impl QueryCache {
                     .clone()
             }
             ZoneQuery::FromOptions { options, prompt, .. } => {
-                pick_zone(player_id, options, state, prompt.as_ref().map_or("Pick a zone", |v| v)).await?
+                pick_zone(
+                    player_id,
+                    options,
+                    state,
+                    false,
+                    prompt.as_ref().map_or("Pick a zone", |v| v),
+                )
+                .await?
             }
         };
 
@@ -235,6 +250,13 @@ pub enum ZoneQuery {
 }
 
 impl ZoneQuery {
+    pub fn from_zone(zone: Zone) -> Self {
+        ZoneQuery::Specific {
+            id: uuid::Uuid::new_v4(),
+            zone,
+        }
+    }
+
     pub fn get_id(&self) -> &uuid::Uuid {
         match self {
             ZoneQuery::Any { id, .. } => id,

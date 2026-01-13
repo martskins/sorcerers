@@ -44,7 +44,7 @@ impl ActivatedAbility for GeomancerAbility {
                 let picked_card = state.get_card(&picked_card_id);
                 let zones = picked_card.get_valid_play_zones(state)?;
                 let prompt = "Pick a zone to play the site";
-                let zone = pick_zone(player_id, &zones, state, prompt).await?;
+                let zone = pick_zone(player_id, &zones, state, false, prompt).await?;
                 let mut effects: Vec<Effect> = vec![
                     Effect::PlayCard {
                         player_id: player_id.clone(),
@@ -73,8 +73,14 @@ impl ActivatedAbility for GeomancerAbility {
                         .cloned()
                         .collect::<Vec<Zone>>();
                     if zones.len() > 0 {
-                        let picked_zone =
-                            pick_zone(player_id, &zones, state, "Geomancer: Pick a void to fill with a rubble").await?;
+                        let picked_zone = pick_zone(
+                            player_id,
+                            &zones,
+                            state,
+                            false,
+                            "Geomancer: Pick a void to fill with a rubble",
+                        )
+                        .await?;
                         effects.push(Effect::SummonToken {
                             player_id: card.get_controller_id(state).clone(),
                             token_type: TokenType::Rubble,

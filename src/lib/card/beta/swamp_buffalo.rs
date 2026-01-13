@@ -1,24 +1,24 @@
-pub const MINION_TEMPLATE: &str = r#"use crate::{
-    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+use crate::{
+    card::{Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
     game::PlayerId,
 };
 
 #[derive(Debug, Clone)]
-pub struct {StructName} {
+pub struct SwampBuffalo {
     pub unit_base: UnitBase,
     pub card_base: CardBase,
 }
 
-impl {StructName} {
-    pub const NAME: &'static str = "{CardName}";
+impl SwampBuffalo {
+    pub const NAME: &'static str = "Swamp Buffalo";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
             unit_base: UnitBase {
-                power: {Power},
-                toughness: {Toughness},
-                abilities: vec![{Modifiers}],
-                types: vec![{MinionTypes}],
+                power: 2,
+                toughness: 2,
+                abilities: vec![],
+                types: vec![MinionType::Beast],
                 ..Default::default()
             },
             card_base: CardBase {
@@ -26,10 +26,10 @@ impl {StructName} {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new({ManaCost}, "{RequiredThresholds}"),
+                cost: Cost::new(1, "W"),
                 plane: Plane::Surface,
-                rarity: Rarity::{Rarity},
-                edition: Edition::{Edition},
+                rarity: Rarity::Ordinary,
+                edition: Edition::Beta,
                 controller_id: owner_id.clone(),
             },
         }
@@ -37,7 +37,7 @@ impl {StructName} {
 }
 
 #[async_trait::async_trait]
-impl Card for {StructName} {
+impl Card for SwampBuffalo {
     fn get_name(&self) -> &str {
         Self::NAME
     }
@@ -61,5 +61,4 @@ impl Card for {StructName} {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    ({StructName}::NAME, |owner_id: PlayerId| Box::new({StructName}::new(owner_id)));
-"#;
+    (SwampBuffalo::NAME, |owner_id: PlayerId| Box::new(SwampBuffalo::new(owner_id)));

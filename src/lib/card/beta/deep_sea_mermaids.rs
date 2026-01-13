@@ -7,21 +7,21 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub struct HeadlessHaunt {
+pub struct DeepSeaMermaids {
     pub unit_base: UnitBase,
     pub card_base: CardBase,
 }
 
-impl HeadlessHaunt {
-    pub const NAME: &'static str = "Headless Haunt";
+impl DeepSeaMermaids {
+    pub const NAME: &'static str = "Deep-Sea Mermaids";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
             unit_base: UnitBase {
-                power: 4,
-                toughness: 4,
-                abilities: vec![Ability::Voidwalk],
-                types: vec![MinionType::Spirit],
+                power: 1,
+                toughness: 1,
+                abilities: vec![Ability::Submerge],
+                types: vec![MinionType::Merfolk],
                 ..Default::default()
             },
             card_base: CardBase {
@@ -29,9 +29,9 @@ impl HeadlessHaunt {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(3, "AA"),
+                cost: Cost::new(3, "WW"),
                 plane: Plane::Surface,
-                rarity: Rarity::Exceptional,
+                rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
             },
@@ -40,7 +40,7 @@ impl HeadlessHaunt {
 }
 
 #[async_trait::async_trait]
-impl Card for HeadlessHaunt {
+impl Card for DeepSeaMermaids {
     fn get_name(&self) -> &str {
         Self::NAME
     }
@@ -61,27 +61,26 @@ impl Card for HeadlessHaunt {
         Some(&mut self.unit_base)
     }
 
-    async fn on_turn_start(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
-        if !self.get_zone().is_in_play() {
-            return Ok(vec![]);
+    async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+        let controller_id = self.get_controller_id(state);
+        let deck = state.get_player_deck(&controller_id)?;
+        if let Some(card_id) = deck.spells.first() {
+            return Ok(vec![Effect::MoveCard {
+                player_id: controller_id.clone(),
+                card_id: card_id.clone(),
+                from: Zone::Spellbook,
+                to: ZoneQuery::from_zone(Zone::Hand),
+                tap: false,
+                plane: Plane::Surface,
+                through_path: None,
+            }]);
         }
 
-        Ok(vec![Effect::MoveCard {
-            player_id: self.get_owner_id().clone(),
-            card_id: self.get_id().clone(),
-            from: self.get_zone().clone(),
-            to: ZoneQuery::Random {
-                id: uuid::Uuid::new_v4(),
-                options: Zone::all_realm(),
-            },
-            tap: false,
-            plane: Plane::Surface,
-            through_path: None,
-        }])
+        Ok(vec![])
     }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (HeadlessHaunt::NAME, |owner_id: PlayerId| {
-    Box::new(HeadlessHaunt::new(owner_id))
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (DeepSeaMermaids::NAME, |owner_id: PlayerId| {
+    Box::new(DeepSeaMermaids::new(owner_id))
 });

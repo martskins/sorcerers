@@ -48,7 +48,7 @@ impl Card for MinorExplosion {
         let caster = state.get_card(caster_id);
         let valid_zones = caster.get_zones_within_steps(state, 2);
         let prompt = "Pick a zone to center Minor Explosion:";
-        let zone = pick_zone(self.get_owner_id(), &valid_zones, state, prompt).await?;
+        let zone = pick_zone(self.get_owner_id(), &valid_zones, state, false, prompt).await?;
         let units = state.get_units_in_zone(&zone);
         Ok(units
             .iter()

@@ -777,11 +777,6 @@ impl Effect {
                     card.remove_modifier(&Ability::SummoningSickness);
                 }
 
-                for card in state.cards.iter().filter(|c| c.get_owner_id() == &state.current_player) {
-                    let effects = card.on_turn_start(state).await;
-                    state.effects.extend(effects.into_iter().map(|e| e.into()));
-                }
-
                 let available_mana: u8 = state
                     .cards
                     .iter()
@@ -804,6 +799,11 @@ impl Effect {
                 state.effects.extend(effects.into_iter().map(|e| e.into()));
 
                 state.current_player = player_id.clone();
+                for card in state.cards.iter().filter(|c| c.get_owner_id() == &state.current_player) {
+                    let effects = card.on_turn_start(state).await?;
+                    state.effects.extend(effects.into_iter().map(|e| e.into()));
+                }
+
                 state.turns += 1;
                 state
                     .get_sender()

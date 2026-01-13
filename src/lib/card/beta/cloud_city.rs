@@ -45,6 +45,7 @@ impl ActivatedAbility for FlyToVoid {
             card.get_controller_id(state),
             &nearby_voids,
             state,
+            false,
             "Pick a nearby void to fly to",
         )
         .await?;

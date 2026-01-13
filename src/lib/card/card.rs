@@ -6,7 +6,7 @@ use crate::{
         get_adjacent_zones, get_nearby_zones,
     },
     query::{CardQuery, ZoneQuery},
-    state::{State, WorldEffect},
+    state::{ContinousEffect, State},
 };
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Debug};
@@ -100,6 +100,31 @@ impl Zone {
         }
     }
 
+    pub fn steps_to_zone(&self, other: &Zone) -> Option<usize> {
+        self.min_steps_to_zone(other)
+    }
+
+    pub fn min_steps_to_zone(&self, other: &Zone) -> Option<usize> {
+        let mut visited = Vec::new();
+        let mut to_visit = vec![(self.clone(), 0)];
+
+        while let Some((current_zone, current_step)) = to_visit.pop() {
+            if &current_zone == other {
+                return Some(current_step);
+            }
+
+            if !visited.contains(&current_zone) {
+                visited.push(current_zone.clone());
+
+                for adjacent in current_zone.get_adjacent() {
+                    to_visit.push((adjacent, current_step + 1));
+                }
+            }
+        }
+
+        None
+    }
+
     pub fn all_intersections() -> Vec<Zone> {
         vec![
             Zone::Intersection(vec![1, 2, 6, 7]),
@@ -138,6 +163,14 @@ impl Zone {
 
     pub fn get_nearby(&self) -> Vec<Zone> {
         get_nearby_zones(self)
+    }
+
+    pub fn get_minion_ids(&self, state: &State, controller_id: Option<&uuid::Uuid>) -> Vec<uuid::Uuid> {
+        self.get_minions(state, controller_id)
+            .iter()
+            .map(|c| c.get_id())
+            .cloned()
+            .collect()
     }
 
     pub fn get_minions<'a>(&self, state: &'a State, controller_id: Option<&uuid::Uuid>) -> Vec<&'a Box<dyn Card>> {
@@ -552,8 +585,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     // Returns the ID of the player who controls this card.
     fn get_controller_id(&self, state: &State) -> PlayerId {
         let mut controller = self.get_base().controller_id;
-        for we in &state.world_effects {
-            if let WorldEffect::ControllerOverride {
+        for we in &state.continuous_effects {
+            if let ContinousEffect::ControllerOverride {
                 controller_id,
                 affected_cards,
             } = we
@@ -804,7 +837,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     fn is_ranged(&self, state: &State) -> anyhow::Result<bool> {
-        for modif in self.get_modifiers(state)? {
+        for modif in self.get_abilities(state)? {
             if let Ability::Ranged(_) = modif {
                 return Ok(true);
             }
@@ -898,7 +931,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         }
 
         let extra_steps: u8 = self
-            .get_modifiers(state)?
+            .get_abilities(state)?
             .into_iter()
             .map(|m| match m {
                 Ability::Movement(s) => s,
@@ -996,11 +1029,11 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     // Returns all modifiers currently applied to the card.
-    fn get_modifiers(&self, state: &State) -> anyhow::Result<Vec<Ability>> {
-        Ok(self.base_get_modifiers(state))
+    fn get_abilities(&self, state: &State) -> anyhow::Result<Vec<Ability>> {
+        Ok(self.base_get_abilities(state))
     }
 
-    fn base_get_modifiers(&self, state: &State) -> Vec<Ability> {
+    fn base_get_abilities(&self, state: &State) -> Vec<Ability> {
         match self.get_unit_base() {
             Some(base) => {
                 let mut modifiers = base.abilities.clone();
@@ -1021,6 +1054,16 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                         for modif in mods {
                             modifiers.retain(|m| m != modif);
                         }
+                    }
+                }
+
+                for ce in &state.continuous_effects {
+                    match ce {
+                        ContinousEffect::GrantAbility {
+                            ability,
+                            affected_cards,
+                        } if affected_cards.matches(self.get_id(), state) => modifiers.push(ability.clone()),
+                        _ => {}
                     }
                 }
 
@@ -1053,8 +1096,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     power = power.saturating_add_signed(counter.power);
                 }
 
-                for we in &state.world_effects {
-                    if let WorldEffect::ModifyPower {
+                for we in &state.continuous_effects {
+                    if let ContinousEffect::ModifyPower {
                         power_diff,
                         affected_cards,
                     } = we
@@ -1241,7 +1284,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     async fn on_move(&self, state: &State, path: &[Zone]) -> anyhow::Result<Vec<Effect>> {
         let mut all_effects = Vec::new();
         for card in &state.cards {
-            for modif in card.get_modifiers(state)? {
+            for modif in card.get_abilities(state)? {
                 let effects = modif.on_move(self.get_id(), state, &path)?;
                 all_effects.extend(effects);
             }
@@ -1258,8 +1301,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         self.base_take_damage(state, from, damage)
     }
 
-    async fn on_turn_start(&self, _state: &State) -> Vec<Effect> {
-        vec![]
+    async fn on_turn_start(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
+        Ok(vec![])
     }
 
     async fn on_turn_end(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
@@ -1391,7 +1434,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         1
     }
 
-    async fn get_world_effects(&self, _state: &State) -> anyhow::Result<Vec<WorldEffect>> {
+    async fn get_continuos_effects(&self, _state: &State) -> anyhow::Result<Vec<ContinousEffect>> {
         Ok(vec![])
     }
 }
@@ -1417,6 +1460,7 @@ pub enum MinionType {
     Spirit,
     Undead,
     Giant,
+    Merfolk,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -1475,6 +1519,7 @@ pub enum Ability {
     TakesNoDamageFromElement(Element),
     Immobile,
     Blaze(u16), // Specific modifier for the Blaze magic
+    Waterbound,
 }
 
 impl Ability {

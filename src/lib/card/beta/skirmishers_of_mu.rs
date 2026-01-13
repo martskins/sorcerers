@@ -72,6 +72,7 @@ impl Card for SkirmishersOfMu {
             self.get_controller_id(state),
             &path,
             state,
+            false,
             "Skirmishers of Mu: Pick a zone to perform a ranged strike from",
         )
         .await?;
