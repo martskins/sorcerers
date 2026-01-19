@@ -865,7 +865,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             .unwrap_or(&UnitBase::default())
             .modifier_counters
             .iter()
-            .find(|c| &c.modifier == modifier)
+            .find(|c| &c.ability == modifier)
             .is_some()
     }
 
@@ -1050,7 +1050,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             Some(base) => {
                 let mut modifiers = base.abilities.clone();
                 for counter in &base.modifier_counters {
-                    modifiers.push(counter.modifier.clone());
+                    modifiers.push(counter.ability.clone());
                 }
 
                 for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {

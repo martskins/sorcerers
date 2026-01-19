@@ -1,8 +1,9 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, Rarity, Region, Zone},
-    effect::Effect,
+    card::{Ability, Card, CardBase, Cost, Edition, Rarity, Region, Zone},
+    effect::{AbilityCounter, Effect},
     game::{PlayerId, Thresholds},
-    state::State,
+    query::EffectQuery,
+    state::{CardMatcher, State},
 };
 
 #[derive(Debug, Clone)]
@@ -45,8 +46,23 @@ impl Card for FrostNova {
     }
 
     async fn on_cast(&mut self, state: &State, _caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
-        // TODO: Implement Frost Nova effect
-        Ok(vec![])
+        let controller_id = self.get_controller_id(state);
+        let nearby_enemies = CardMatcher::minions_near(self.get_zone())
+            .controller_id(&controller_id)
+            .resolve_ids(state);
+        Ok(nearby_enemies
+            .into_iter()
+            .map(|card_id| Effect::AddAbilityCounter {
+                card_id,
+                counter: AbilityCounter {
+                    id: uuid::Uuid::new_v4(),
+                    ability: Ability::Disabled,
+                    expires_on_effect: Some(EffectQuery::TurnStart {
+                        player_id: Some(controller_id),
+                    }),
+                },
+            })
+            .collect())
     }
 }
 

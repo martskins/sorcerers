@@ -66,7 +66,7 @@ impl Card for SlumberingGiantess {
             card_id: self.get_id().clone(),
             counter: AbilityCounter {
                 id: uuid::Uuid::new_v4(),
-                modifier: Ability::Disabled,
+                ability: Ability::Disabled,
                 expires_on_effect: Some(EffectQuery::DamageDealt {
                     source: None,
                     target: Some(CardQuery::Specific {

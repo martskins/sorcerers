@@ -63,7 +63,7 @@ impl Card for MadDash {
             card_id: picked_card_id.clone(),
             counter: AbilityCounter {
                 id: uuid::Uuid::new_v4(),
-                modifier: Ability::Movement(1),
+                ability: Ability::Movement(1),
                 expires_on_effect: Some(EffectQuery::TurnEnd { player_id: None }),
             },
         });

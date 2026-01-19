@@ -421,12 +421,14 @@ impl CardQuery {
                 })
                 .map(|c| c.get_id().clone())
                 .collect(),
-            CardQuery::NearZone { zone, owner, .. } => CardMatcher::units_near(zone)
-                .controller_id(owner.as_ref())
-                .resolve_ids(state),
-            CardQuery::OwnedBy { owner, .. } => CardMatcher::new()
-                .controller_id(Some(owner.as_ref()))
-                .resolve_ids(state),
+            CardQuery::NearZone { zone, owner, .. } => {
+                let mut matcher = CardMatcher::units_near(zone);
+                if let Some(owner) = owner {
+                    matcher = matcher.controller_id(owner);
+                }
+                matcher.resolve_ids(state)
+            }
+            CardQuery::OwnedBy { owner, .. } => CardMatcher::new().controller_id(owner).resolve_ids(state),
             CardQuery::FromOptions { options, .. } => options.clone(),
             CardQuery::RandomUnitInZone { .. } => unreachable!(),
             CardQuery::RandomTarget { .. } => unreachable!(),

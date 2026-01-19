@@ -60,7 +60,7 @@ impl Card for Blaze {
                 card_id: picked_card.clone(),
                 counter: AbilityCounter {
                     id: uuid::Uuid::new_v4(),
-                    modifier: Ability::Movement(2),
+                    ability: Ability::Movement(2),
                     expires_on_effect: Some(EffectQuery::TurnEnd { player_id: None }),
                 },
             },
@@ -68,7 +68,7 @@ impl Card for Blaze {
                 card_id: picked_card,
                 counter: AbilityCounter {
                     id: uuid::Uuid::new_v4(),
-                    modifier: Ability::Blaze(2),
+                    ability: Ability::Blaze(2),
                     expires_on_effect: Some(EffectQuery::TurnEnd { player_id: None }),
                 },
             },

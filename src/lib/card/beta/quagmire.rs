@@ -74,7 +74,7 @@ impl Card for Quagmire {
                 card_id: card_id,
                 counter: AbilityCounter {
                     id: uuid::Uuid::new_v4(),
-                    modifier: Ability::Immobile,
+                    ability: Ability::Immobile,
                     expires_on_effect: Some(EffectQuery::TurnStart {
                         player_id: Some(self.get_controller_id(state).clone()),
                     }),

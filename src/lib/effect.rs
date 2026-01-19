@@ -10,7 +10,7 @@ use std::fmt::Debug;
 #[derive(Debug, Clone)]
 pub struct AbilityCounter {
     pub id: uuid::Uuid,
-    pub modifier: Ability,
+    pub ability: Ability,
     pub expires_on_effect: Option<EffectQuery>,
 }
 

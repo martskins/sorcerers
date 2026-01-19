@@ -196,9 +196,9 @@ impl CardMatcher {
         }
     }
 
-    pub fn controller_id(self, controller_id: Option<&PlayerId>) -> Self {
+    pub fn controller_id(self, controller_id: &PlayerId) -> Self {
         Self {
-            controller_id: controller_id.cloned(),
+            controller_id: Some(controller_id.clone()),
             ..self
         }
     }
@@ -497,7 +497,7 @@ impl State {
     pub fn get_defenders_for_attack(&self, defender_id: &uuid::Uuid) -> Vec<uuid::Uuid> {
         let defender = self.get_card(defender_id);
         CardMatcher::units_near(defender.get_zone())
-            .controller_id(Some(&defender.get_controller_id(self)))
+            .controller_id(&defender.get_controller_id(self))
             .resolve_ids(self)
     }
 
