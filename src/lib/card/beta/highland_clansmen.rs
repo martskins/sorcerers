@@ -27,7 +27,7 @@ impl HighlandClansmen {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(7, "A"),
-                region: Region::Air,
+                region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

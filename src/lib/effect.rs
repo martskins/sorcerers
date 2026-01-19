@@ -83,6 +83,10 @@ pub enum Effect {
     Submerge {
         card_id: uuid::Uuid,
     },
+    SetCardZone {
+        card_id: uuid::Uuid,
+        zone: Zone,
+    },
     MoveCard {
         player_id: uuid::Uuid,
         card_id: uuid::Uuid,
@@ -261,6 +265,7 @@ impl Effect {
             Effect::AddAbilityCounter { .. } => None,
             Effect::AddCounter { .. } => None,
             Effect::TeleportCard { .. } => None,
+            Effect::SetCardZone { .. } => None,
             Effect::MoveCard {
                 player_id,
                 to,
@@ -451,6 +456,10 @@ impl Effect {
         }
 
         match self {
+            Effect::SetCardZone { card_id, zone } => {
+                let card = state.get_card_mut(card_id);
+                card.set_zone(zone.clone());
+            }
             Effect::SummonToken {
                 player_id,
                 token_type,
@@ -662,26 +671,6 @@ impl Effect {
             } => {
                 let cost = state.get_card(card_id).get_cost(&state)?.clone();
                 Box::pin(cost.pay(state, player_id)).await?;
-                let card = state
-                    .cards
-                    .iter()
-                    .find(|c| c.get_id() == card_id)
-                    .expect("to find card");
-                state.effects.push_back(
-                    Effect::MoveCard {
-                        player_id: card.get_controller_id(state).clone(),
-                        card_id: card.get_id().clone(),
-                        from: card.get_zone().clone(),
-                        to: ZoneQuery::Specific {
-                            id: uuid::Uuid::new_v4(),
-                            zone: Zone::Cemetery,
-                        },
-                        tap: false,
-                        region: Region::None,
-                        through_path: None,
-                    }
-                    .into(),
-                );
 
                 let snapshot = state.snapshot();
                 let card = state
@@ -689,6 +678,7 @@ impl Effect {
                     .iter_mut()
                     .find(|c| c.get_id() == card_id)
                     .expect("to find card");
+                card.set_zone(Zone::Cemetery);
                 let effects = card.on_cast(&snapshot, caster_id).await?.into_iter().map(|e| e.into());
                 state.effects.extend(effects);
             }
@@ -724,7 +714,7 @@ impl Effect {
 
                 let cast_effects = card.on_summon(&snapshot)?;
                 card.set_zone(zone.clone());
-                if !card.has_modifier(&snapshot, &Ability::Charge) {
+                if !card.has_ability(&snapshot, &Ability::Charge) {
                     card.add_modifier(Ability::SummoningSickness);
                 }
 
@@ -742,7 +732,7 @@ impl Effect {
                     .expect("to find card");
                 let cast_effects = card.on_summon(&snapshot)?;
                 card.set_zone(zone.clone());
-                if !card.has_modifier(&snapshot, &Ability::Charge) {
+                if !card.has_ability(&snapshot, &Ability::Charge) {
                     card.add_modifier(Ability::SummoningSickness);
                 }
 
@@ -1067,7 +1057,7 @@ impl Effect {
             }
             Effect::Submerge { card_id, .. } => {
                 let card = state.get_card_mut(card_id);
-                card.get_base_mut().region = Region::Submerged;
+                card.get_base_mut().region = Region::Underwater;
                 card.get_base_mut().tapped = true;
             }
         }

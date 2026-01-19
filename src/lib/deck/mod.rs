@@ -1,11 +1,6 @@
 pub mod precon;
 
-use crate::{
-    card::{Region, Zone},
-    effect::Effect,
-    game::PlayerId,
-    query::ZoneQuery,
-};
+use crate::{effect::Effect, game::PlayerId};
 
 #[derive(Debug, Clone)]
 pub struct Deck {
@@ -30,21 +25,10 @@ impl Deck {
     }
 
     pub fn draw_site(&mut self) -> Vec<Effect> {
-        match self.sites.pop() {
-            Some(card_id) => vec![Effect::MoveCard {
-                player_id: self.player_id.clone(),
-                card_id: card_id,
-                from: Zone::Atlasbook,
-                to: ZoneQuery::Specific {
-                    id: uuid::Uuid::new_v4(),
-                    zone: Zone::Hand,
-                },
-                tap: false,
-                region: Region::None,
-                through_path: None,
-            }],
-            None => vec![],
-        }
+        vec![Effect::DrawSite {
+            player_id: self.player_id.clone(),
+            count: 1,
+        }]
     }
 
     pub fn peek_spell(&self) -> Option<&uuid::Uuid> {
@@ -52,21 +36,10 @@ impl Deck {
     }
 
     pub fn draw_spell(&mut self) -> Vec<Effect> {
-        match self.spells.pop() {
-            Some(card_id) => vec![Effect::MoveCard {
-                player_id: self.player_id.clone(),
-                card_id,
-                from: Zone::Spellbook,
-                to: ZoneQuery::Specific {
-                    id: uuid::Uuid::new_v4(),
-                    zone: Zone::Hand,
-                },
-                tap: false,
-                region: Region::None,
-                through_path: None,
-            }],
-            None => vec![],
-        }
+        vec![Effect::DrawSpell {
+            player_id: self.player_id.clone(),
+            count: 1,
+        }]
     }
 
     pub fn shuffle(&mut self) {

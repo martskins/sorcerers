@@ -47,7 +47,7 @@ impl Card for Drown {
     async fn on_cast(&mut self, state: &State, _caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
         let possible_targets = CardMatcher::new()
             .card_types(vec![CardType::Minion, CardType::Artifact])
-            .in_regions(vec![Region::Surface, Region::Air])
+            .in_regions(vec![Region::Surface])
             .resolve_ids(state);
         if possible_targets.is_empty() {
             return Ok(vec![]);

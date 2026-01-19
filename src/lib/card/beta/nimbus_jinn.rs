@@ -68,7 +68,7 @@ impl NimbusJinn {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(6, "AA"),
-                region: Region::Air,
+                region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

@@ -30,7 +30,7 @@ impl AskelonPhoenix {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(5, "FF"),
-                region: Region::Air,
+                region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -73,7 +73,7 @@ impl Card for AskelonPhoenix {
         ub.damage += damage;
 
         let mut effects = vec![];
-        if ub.damage >= self.get_toughness(state).unwrap_or(0) || attacker.has_modifier(state, &Ability::Lethal) {
+        if ub.damage >= self.get_toughness(state).unwrap_or(0) || attacker.has_ability(state, &Ability::Lethal) {
             effects.push(Effect::BuryCard {
                 card_id: self.get_id().clone(),
                 from: self.get_zone().clone(),

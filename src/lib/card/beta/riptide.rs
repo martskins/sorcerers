@@ -1,7 +1,7 @@
 use crate::{
     card::{Card, CardBase, CardType, Cost, Edition, Rarity, Region, Zone},
     effect::Effect,
-    game::{pick_card, Element, PlayerId},
+    game::{Element, PlayerId, pick_card},
     query::ZoneQuery,
     state::{CardMatcher, State},
 };
@@ -46,12 +46,15 @@ impl Card for Riptide {
     }
 
     async fn on_cast(&mut self, state: &State, _caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
-        let water_sites = CardMatcher::new().with_affinity(Element::Water).card_type(CardType::Site).resolve_ids(state);
+        let water_sites = CardMatcher::new()
+            .with_affinity(Element::Water)
+            .card_type(CardType::Site)
+            .resolve_ids(state);
         let prompt = "Riptide: Pick a water site to pull a unit into";
         let site_id = pick_card(self.get_controller_id(state), &water_sites, state, prompt).await?;
         let site = state.get_card(&site_id);
         let units = CardMatcher::units_adjacent(site.get_zone())
-            .in_regions(vec![Region::Surface, Region::Air])
+            .in_regions(vec![Region::Surface])
             .resolve_ids(state);
         if units.is_empty() {
             return Ok(vec![]);

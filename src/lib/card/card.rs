@@ -53,12 +53,10 @@ impl Edition {
 
 #[derive(Debug, PartialOrd, Ord, Eq, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Region {
-    None,
     Void,
     Underground,
-    Submerged,
+    Underwater,
     Surface,
-    Air,
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Serialize, Deserialize)]
@@ -651,7 +649,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             if !visited.contains(&current_zone) {
                 visited.push(current_zone.clone());
 
-                if self.has_modifier(state, &Ability::Airborne) {
+                if self.has_ability(state, &Ability::Airborne) {
                     for nearby in current_zone.get_nearby() {
                         to_visit.push((nearby, current_step + 1));
                     }
@@ -663,7 +661,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             }
         }
 
-        if self.is_unit() && !self.has_modifier(state, &Ability::Voidwalk) {
+        if self.is_unit() && !self.has_ability(state, &Ability::Voidwalk) {
             visited = visited
                 .iter()
                 .filter(|z| z.get_site(state).is_some())
@@ -690,7 +688,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             ub.damage += damage;
 
             let attacker = state.get_card(from);
-            if ub.damage >= self.get_toughness(state).unwrap_or(0) || attacker.has_modifier(state, &Ability::Lethal) {
+            if ub.damage >= self.get_toughness(state).unwrap_or(0) || attacker.has_ability(state, &Ability::Lethal) {
                 return Ok(vec![Effect::BuryCard {
                     card_id: self.get_id().clone(),
                     from: self.get_zone().clone(),
@@ -853,7 +851,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     // Returns whether the card has the given modifier.
-    fn has_modifier(&self, _state: &State, modifier: &Ability) -> bool {
+    fn has_ability(&self, _state: &State, modifier: &Ability) -> bool {
         if self
             .get_unit_base()
             .unwrap_or(&UnitBase::default())
@@ -939,7 +937,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     // Returns the number of steps this card can move per movement action.
     fn get_steps_per_movement(&self, state: &State) -> anyhow::Result<u8> {
-        if self.has_modifier(state, &Ability::Immobile) {
+        if self.has_ability(state, &Ability::Immobile) {
             return Ok(0);
         }
 
@@ -966,7 +964,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     return true;
                 }
 
-                if self.has_modifier(state, &Ability::Voidwalk) {
+                if self.has_ability(state, &Ability::Voidwalk) {
                     return true;
                 }
 
@@ -994,13 +992,13 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             .filter(|c| {
                 let same_region = c.get_base().region == self.get_base().region;
                 let ranged_on_airborne =
-                    ranged && self.get_base().region == Region::Surface && c.get_base().region == Region::Air;
+                    ranged && self.get_base().region == Region::Surface && c.has_ability(state, &Ability::Airborne);
                 let airborne_on_surface =
-                    self.get_base().region == Region::Air && c.get_base().region == Region::Surface;
+                    self.has_ability(state, &Ability::Airborne) && c.get_base().region == Region::Surface;
                 return same_region || ranged_on_airborne || airborne_on_surface;
             })
             .filter(|_| {
-                let attacker_is_airborne = self.has_modifier(state, &Ability::Airborne);
+                let attacker_is_airborne = self.has_ability(state, &Ability::Airborne);
                 if !attacker_is_airborne {
                     return zone.is_adjacent(&self.get_zone());
                 }
@@ -1237,7 +1235,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     fn can_be_targetted_by(&self, state: &State, player_id: &PlayerId) -> bool {
-        if self.has_modifier(state, &Ability::Stealth) && &self.get_controller_id(state) != player_id {
+        if self.has_ability(state, &Ability::Stealth) && &self.get_controller_id(state) != player_id {
             return false;
         }
 
@@ -1287,7 +1285,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
         let elements = spell.get_elements(state)?;
         for element in elements {
-            if self.has_modifier(state, &Ability::Spellcaster(element)) {
+            if self.has_ability(state, &Ability::Spellcaster(element)) {
                 return Ok(true);
             }
         }
@@ -1392,11 +1390,11 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             activated_abilities.push(Box::new(UnitAction::RangedAttack));
         }
 
-        if self.has_modifier(state, &Ability::Burrowing) {
+        if self.has_ability(state, &Ability::Burrowing) {
             activated_abilities.push(Box::new(UnitAction::Burrow));
         }
 
-        if self.has_modifier(state, &Ability::Submerge) {
+        if self.has_ability(state, &Ability::Submerge) {
             activated_abilities.push(Box::new(UnitAction::Submerge));
         }
 

@@ -27,7 +27,7 @@ impl CloudSpirit {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(2, "AA"),
-                region: Region::Air,
+                region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

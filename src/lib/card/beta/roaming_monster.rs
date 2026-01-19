@@ -28,7 +28,7 @@ impl RoamingMonster {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(5, "A"),
-                region: Region::Air,
+                region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

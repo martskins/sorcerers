@@ -66,7 +66,7 @@ impl Card for UpdraftRidge {
             .get_zone()
             .get_units(state, None)
             .iter()
-            .filter(|c| c.has_modifier(state, &Ability::Airborne))
+            .filter(|c| c.has_ability(state, &Ability::Airborne))
             .map(|c| (c.get_id().clone(), vec![Ability::Movement(1)]))
             .collect::<HashMap<uuid::Uuid, Vec<Ability>>>();
 

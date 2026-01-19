@@ -27,7 +27,7 @@ impl GyreHippogriffs {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(4, "AA"),
-                region: Region::Air,
+                region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

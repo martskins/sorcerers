@@ -1337,7 +1337,7 @@ impl Game {
                     }
                     (_, Zone::Realm(_)) => {
                         let unit_disabled =
-                            card.is_tapped() || card.has_modifier(&self.state, &Ability::SummoningSickness);
+                            card.is_tapped() || card.has_ability(&self.state, &Ability::SummoningSickness);
                         if card.is_unit() && unit_disabled {
                             return Ok(());
                         }

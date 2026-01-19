@@ -66,7 +66,7 @@ impl Card for UnlandAngler {
             return Ok(vec![]);
         }
 
-        if self.get_region(state) != &Region::Submerged {
+        if self.get_region(state) != &Region::Underwater {
             return Ok(vec![]);
         }
 
