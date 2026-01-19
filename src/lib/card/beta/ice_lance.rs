@@ -1,8 +1,8 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, Rarity, Region, Zone},
+    card::{Card, CardBase, CardType, Cost, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::{CARDINAL_DIRECTIONS, Direction, PlayerId, Thresholds, pick_card, pick_direction},
-    query::QueryCache,
+    query::{CardQuery, QueryCache},
     state::State,
 };
 
@@ -51,72 +51,47 @@ impl Card for IceLance {
         let direction = pick_direction(controller_id, &CARDINAL_DIRECTIONS, state, prompt).await?;
         let caster = state.get_card(caster_id);
 
-        Ok(vec![Effect::ShootProjectile {
-            id: uuid::Uuid::new_v4(),
-            player_id: controller_id.clone(),
-            shooter: caster_id.clone(),
-            from_zone: caster.get_zone().clone(),
-            direction,
-            damage: vec![3, 2, 1],
-            piercing: true,
-            splash_damage: None,
-        }])
+        let zone_dmg = vec![
+            (Some(caster.get_zone().clone()), 3),
+            (caster.get_zone().zone_in_direction(&direction, 1), 2),
+            (caster.get_zone().zone_in_direction(&direction, 2), 1),
+        ];
+
+        let mut effects = vec![];
+        for (zone, dmg) in zone_dmg {
+            if let Some(zone) = zone {
+                let qry = CardQuery::InZone {
+                    id: uuid::Uuid::new_v4(),
+                    zone: zone.clone(),
+                    card_types: Some(vec![CardType::Minion, CardType::Avatar]),
+                    regions: Some(vec![caster.get_region(state).clone()]),
+                    owner: None,
+                    prompt: Some("Pick a unit to damage with Ice Lance".to_string()),
+                    tapped: None,
+                };
+
+                let options = qry.options(state);
+                if options.is_empty() {
+                    continue;
+                }
+
+                if options.len() == 1 && &options[0] == caster_id {
+                    // Don't allow self-damage if it's the only option
+                    continue;
+                }
+
+                let card_id = qry.resolve(&controller_id, state).await?;
+                effects.push(Effect::TakeDamage {
+                    card_id,
+                    from: caster_id.clone(),
+                    damage: dmg,
+                });
+            }
+        }
+
+        Ok(effects)
     }
 }
-
-// async fn shoot_projectile(state: &State, player_id: &PlayerId, from_zone: &Zone, direction: &Direction) -> Vec<Effect> {
-//     let mut effects = vec![];
-//     let mut next_zone = from_zone.zone_in_direction(direction, 1);
-//     while let Some(zone) = next_zone {
-//         let picked_unit_id = match self.affected_cards().await {
-//             Some(affected_cards) => affected_cards.first().cloned(),
-//             None => {
-//                 let units = state
-//                     .get_units_in_zone(&zone)
-//                     .iter()
-//                     .filter(|c| c.can_be_targetted_by(state, player_id))
-//                     .map(|c| c.get_id().clone())
-//                     .collect::<Vec<_>>();
-//                 match units.len() {
-//                     0 => None,
-//                     1 => Some(units[0].clone()),
-//                     _ => {
-//                         let prompt = "Pick a unit to shoot";
-//                         let picked_unit_id = pick_card(player_id, &units, state, prompt).await?;
-//                         QueryCache::store_effect_targets(
-//                             state.game_id.clone(),
-//                             id.clone(),
-//                             vec![picked_unit_id.clone()],
-//                         )
-//                         .await;
-//                         Some(picked_unit_id)
-//                     }
-//                 }
-//             }
-//         };
-//
-//         if let Some(picked_unit_id) = picked_unit_id {
-//             effects.push(Effect::take_damage(&picked_unit_id, shooter, *damage));
-//             if let Some(splash_damage) = splash_damage {
-//                 let splash_effects = state
-//                     .get_units_in_zone(&zone)
-//                     .iter()
-//                     .filter(|c| c.get_id() != &picked_unit_id)
-//                     .map(|c| Effect::take_damage(c.get_id(), shooter, *splash_damage))
-//                     .collect::<Vec<_>>();
-//                 effects.extend(splash_effects);
-//             }
-//
-//             if !piercing {
-//                 break;
-//             }
-//         }
-//
-//         next_zone = zone.zone_in_direction(direction, 1);
-//     }
-//
-//     effects
-// }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =

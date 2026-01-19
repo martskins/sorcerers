@@ -56,7 +56,7 @@ pub enum Effect {
         shooter: uuid::Uuid,
         from_zone: Zone,
         direction: Direction,
-        damage: Vec<u16>,
+        damage: u16,
         piercing: bool,
         splash_damage: Option<u16>,
     },
