@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    card::{Card, CardBase, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     game::PlayerId,
 };
 
@@ -27,7 +27,7 @@ impl SwampBuffalo {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(1, "W"),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -60,5 +60,6 @@ impl Card for SwampBuffalo {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (SwampBuffalo::NAME, |owner_id: PlayerId| Box::new(SwampBuffalo::new(owner_id)));
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (SwampBuffalo::NAME, |owner_id: PlayerId| {
+    Box::new(SwampBuffalo::new(owner_id))
+});

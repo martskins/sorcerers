@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    card::{Card, CardBase, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     game::{Direction, PlayerId},
     state::State,
 };
@@ -28,7 +28,7 @@ impl DalceanPhalanx {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(4, "EE"),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

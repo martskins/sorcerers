@@ -22,6 +22,7 @@ pub enum PreconDeck {
     BetaFire,
     BetaAir,
     BetaEarth,
+    BetaWater,
 }
 
 impl PreconDeck {
@@ -30,6 +31,7 @@ impl PreconDeck {
             PreconDeck::BetaFire => "Beta - Fire",
             PreconDeck::BetaAir => "Beta - Air",
             PreconDeck::BetaEarth => "Beta - Earth",
+            PreconDeck::BetaWater => "Beta - Water",
         }
     }
 
@@ -38,12 +40,19 @@ impl PreconDeck {
             PreconDeck::BetaFire => precon::beta::fire(player_id),
             PreconDeck::BetaAir => precon::beta::air(player_id),
             PreconDeck::BetaEarth => precon::beta::earth(player_id),
+            PreconDeck::BetaWater => precon::beta::water(player_id),
         }
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ServerMessage {
+    RevealCards {
+        player_id: PlayerId,
+        cards: Vec<uuid::Uuid>,
+        prompt: String,
+        action: Option<String>,
+    },
     DistributeDamage {
         player_id: PlayerId,
         attacker: uuid::Uuid,
@@ -144,6 +153,7 @@ impl ServerMessage {
             ServerMessage::ForceSync { player_id, .. } => player_id.clone(),
             ServerMessage::PlayerDisconnected { player_id } => player_id.clone(),
             ServerMessage::PickCards { player_id, .. } => player_id.clone(),
+            ServerMessage::RevealCards { player_id, .. } => player_id.clone(),
             ServerMessage::DistributeDamage { player_id, .. } => player_id.clone(),
         }
     }
@@ -159,6 +169,11 @@ impl ToMessage for ServerMessage {
 pub enum ClientMessage {
     Connect,
     Disconnect,
+    ResolveAction {
+        game_id: uuid::Uuid,
+        player_id: PlayerId,
+        take_action: bool,
+    },
     ResolveCombat {
         game_id: uuid::Uuid,
         player_id: PlayerId,
@@ -238,6 +253,7 @@ impl ClientMessage {
             ClientMessage::PickDirection { game_id, .. } => game_id.clone(),
             ClientMessage::PickCards { game_id, .. } => game_id.clone(),
             ClientMessage::ResolveCombat { game_id, .. } => game_id.clone(),
+            ClientMessage::ResolveAction { game_id, .. } => game_id.clone(),
         }
     }
 
@@ -257,6 +273,7 @@ impl ClientMessage {
             ClientMessage::JoinQueue { player_id, .. } => player_id,
             ClientMessage::PickCards { player_id, .. } => player_id,
             ClientMessage::ResolveCombat { player_id, .. } => player_id,
+            ClientMessage::ResolveAction { player_id, .. } => player_id,
         }
     }
 }

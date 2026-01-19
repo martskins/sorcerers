@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, AreaModifiers, Card, CardBase, Cost, Edition, Plane, Rarity, Site, SiteBase, Zone},
+    card::{Ability, AreaModifiers, Card, CardBase, Cost, Edition, Rarity, Region, Site, SiteBase, Zone},
     game::{PlayerId, Thresholds},
     state::State,
 };
@@ -27,7 +27,7 @@ impl VantageHills {
                 tapped: false,
                 zone: Zone::Atlasbook,
                 cost: Cost::zero(),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -69,7 +69,7 @@ impl Card for VantageHills {
             .get_zone()
             .get_units(state, None)
             .iter()
-            .filter(|c| c.get_base().plane == Plane::Surface)
+            .filter(|c| c.get_base().region == Region::Surface)
             .map(|c| (c.get_id().clone(), vec![Ability::Ranged(1)]))
             .collect();
 

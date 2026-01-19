@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, Plane, Rarity, Site, SiteBase, Zone},
+    card::{Card, CardBase, Cost, Edition, Rarity, Region, Site, SiteBase, Zone},
     game::{PlayerId, Thresholds},
     state::State,
 };
@@ -26,7 +26,7 @@ impl Cornerstone {
                 tapped: false,
                 zone: Zone::Atlasbook,
                 cost: Cost::zero(),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
+    card::{Card, CardBase, Cost, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::{Element, PlayerId, pick_card},
     query::ZoneQuery,
@@ -22,7 +22,7 @@ impl CaveIn {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(4, "E"),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -90,7 +90,7 @@ impl Card for CaveIn {
                     zone: picked_site.get_zone().clone(),
                 },
                 tap: false,
-                plane: Plane::Underground,
+                region: Region::Underground,
                 through_path: None,
             })
             .collect())

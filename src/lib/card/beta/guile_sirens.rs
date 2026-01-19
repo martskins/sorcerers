@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    card::{Ability, Card, CardBase, CardType, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    card::{Ability, Card, CardBase, CardType, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{PlayerId, pick_card, pick_zone, resume, wait_for_opponent},
     query::ZoneQuery,
@@ -32,7 +32,7 @@ impl GuileSirens {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(3, "WW"),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -76,7 +76,7 @@ impl Card for GuileSirens {
             in_zones: Some(self.get_zone().get_adjacent()),
             ..Default::default()
         }
-        .resolve_all(state);
+        .resolve_ids(state);
         let picked_card_id = pick_card(
             &controller_id,
             &minions,
@@ -117,7 +117,7 @@ impl Card for GuileSirens {
                 from: picked_card.get_zone().clone(),
                 to: ZoneQuery::from_zone(picked_zone),
                 tap: false,
-                plane: Plane::Surface,
+                region: Region::Surface,
                 through_path: None,
             }]);
         }

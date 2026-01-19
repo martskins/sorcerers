@@ -1,7 +1,7 @@
 use rand::seq::IndexedRandom;
 
 use crate::{
-    card::{Artifact, ArtifactBase, Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
+    card::{Artifact, ArtifactBase, Card, CardBase, Cost, Edition, Rarity, Region, Zone},
     game::PlayerId,
     query::{CardQuery, ZoneQuery},
     state::State,
@@ -28,7 +28,7 @@ impl LuckyCharm {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(1, ""),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

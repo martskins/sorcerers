@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{BaseAction, PlayerId, pick_option},
     state::State,
@@ -30,7 +30,7 @@ impl WayfaringPilgrim {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(2, "F"),
-                plane: Plane::Air,
+                region: Region::Air,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

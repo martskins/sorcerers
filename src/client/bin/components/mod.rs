@@ -15,6 +15,7 @@ pub enum ComponentType {
     Realm,
     SelectionOverlay,
     CombatResolutionOverlay,
+    ActionOverlay,
 }
 
 #[derive(Debug, Clone)]

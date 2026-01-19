@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::PlayerId,
     query::ZoneQuery,
@@ -30,7 +30,7 @@ impl HeadlessHaunt {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(3, "AA"),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -75,7 +75,7 @@ impl Card for HeadlessHaunt {
                 options: Zone::all_realm(),
             },
             tap: false,
-            plane: Plane::Surface,
+            region: Region::Surface,
             through_path: None,
         }])
     }

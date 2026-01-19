@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, Plane, Rarity, Site, SiteBase, SiteType, Zone},
+    card::{Card, CardBase, Cost, Edition, Rarity, Region, Site, SiteBase, SiteType, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds, pick_card_with_preview},
     state::State,
@@ -27,7 +27,7 @@ impl Observatory {
                 tapped: false,
                 zone: Zone::Atlasbook,
                 cost: Cost::zero(),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

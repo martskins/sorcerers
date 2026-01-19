@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
+    card::{Card, CardBase, Cost, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::{PlayerId, pick_zone},
     query::CardQuery,
@@ -22,7 +22,7 @@ impl RaiseDead {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(4, "AA"),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

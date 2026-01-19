@@ -1,6 +1,9 @@
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
-    game::PlayerId,
+    card::{Ability, Card, CardBase, CardType, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    effect::Effect,
+    game::{PlayerId, pick_card},
+    query::ZoneQuery,
+    state::{CardMatcher, State},
 };
 
 #[derive(Debug, Clone)]
@@ -27,7 +30,7 @@ impl UnlandAngler {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(5, "WW"),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -56,6 +59,34 @@ impl Card for UnlandAngler {
 
     fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
         Some(&mut self.unit_base)
+    }
+
+    async fn on_turn_start(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+        if state.current_player != self.get_controller_id(state) {
+            return Ok(vec![]);
+        }
+
+        if self.get_region(state) != &Region::Submerged {
+            return Ok(vec![]);
+        }
+
+        let controller_id = self.get_controller_id(state);
+        let minions = CardMatcher::minions_adjacent(self.get_zone()).resolve_ids(state);
+        Ok(minions
+            .into_iter()
+            .map(|minion_id| {
+                let minion = state.get_card(&minion_id);
+                Effect::MoveCard {
+                    player_id: controller_id.clone(),
+                    card_id: minion_id,
+                    from: minion.get_zone().clone(),
+                    to: ZoneQuery::from_zone(self.get_zone().clone()),
+                    tap: minion.is_tapped(),
+                    region: minion.get_region(state).clone(),
+                    through_path: None,
+                }
+            })
+            .collect::<Vec<Effect>>())
     }
 }
 

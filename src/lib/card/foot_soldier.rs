@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    card::{Card, CardBase, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     game::PlayerId,
 };
 
@@ -26,7 +26,7 @@ impl FootSoldier {
                 tapped: false,
                 zone: Zone::Atlasbook,
                 cost: Cost::zero(),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Token,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

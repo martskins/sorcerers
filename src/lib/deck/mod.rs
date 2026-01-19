@@ -1,7 +1,7 @@
 pub mod precon;
 
 use crate::{
-    card::{Plane, Zone},
+    card::{Region, Zone},
     effect::Effect,
     game::PlayerId,
     query::ZoneQuery,
@@ -25,6 +25,10 @@ impl Deck {
         }
     }
 
+    pub fn peek_site(&self) -> Option<&uuid::Uuid> {
+        self.sites.last()
+    }
+
     pub fn draw_site(&mut self) -> Vec<Effect> {
         match self.sites.pop() {
             Some(card_id) => vec![Effect::MoveCard {
@@ -36,11 +40,15 @@ impl Deck {
                     zone: Zone::Hand,
                 },
                 tap: false,
-                plane: Plane::None,
+                region: Region::None,
                 through_path: None,
             }],
             None => vec![],
         }
+    }
+
+    pub fn peek_spell(&self) -> Option<&uuid::Uuid> {
+        self.spells.last()
     }
 
     pub fn draw_spell(&mut self) -> Vec<Effect> {
@@ -54,7 +62,7 @@ impl Deck {
                     zone: Zone::Hand,
                 },
                 tap: false,
-                plane: Plane::None,
+                region: Region::None,
                 through_path: None,
             }],
             None => vec![],

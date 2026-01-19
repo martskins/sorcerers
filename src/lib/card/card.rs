@@ -52,7 +52,7 @@ impl Edition {
 }
 
 #[derive(Debug, PartialOrd, Ord, Eq, Clone, PartialEq, Serialize, Deserialize)]
-pub enum Plane {
+pub enum Region {
     None,
     Void,
     Underground,
@@ -214,56 +214,6 @@ impl Zone {
             .clone()
     }
 
-    pub fn get_nearby_unit_ids(&self, state: &State, controller_id: Option<&uuid::Uuid>) -> Vec<uuid::Uuid> {
-        self.get_nearby_units(state, controller_id)
-            .iter()
-            .map(|c| c.get_id())
-            .cloned()
-            .collect()
-    }
-
-    pub fn get_nearby_units<'a>(&self, state: &'a State, controller_id: Option<&uuid::Uuid>) -> Vec<&'a Box<dyn Card>> {
-        get_nearby_zones(self)
-            .iter()
-            .flat_map(|z| {
-                state
-                    .get_cards_in_zone(z)
-                    .iter()
-                    .filter(|c| c.is_unit())
-                    .filter(|c| {
-                        if let Some(controller_id) = controller_id {
-                            &c.get_controller_id(state) == controller_id
-                        } else {
-                            true
-                        }
-                    })
-                    .cloned()
-                    .collect::<Vec<&Box<dyn Card>>>()
-            })
-            .collect()
-    }
-
-    pub fn get_nearby_sites<'a>(&self, state: &'a State, controller_id: Option<&uuid::Uuid>) -> Vec<&'a Box<dyn Card>> {
-        get_nearby_zones(self)
-            .iter()
-            .flat_map(|z| {
-                state
-                    .get_cards_in_zone(z)
-                    .iter()
-                    .filter(|c| c.is_site())
-                    .filter(|c| {
-                        if let Some(controller_id) = controller_id {
-                            &c.get_controller_id(state) == controller_id
-                        } else {
-                            true
-                        }
-                    })
-                    .cloned()
-                    .collect::<Vec<&Box<dyn Card>>>()
-            })
-            .collect()
-    }
-
     pub fn zone_in_direction(&self, direction: &Direction, steps: u8) -> Option<Self> {
         let mut current_zone = self.clone();
         for _ in 0..steps {
@@ -337,7 +287,7 @@ pub struct CardData {
     pub tapped: bool,
     pub edition: Edition,
     pub zone: Zone,
-    pub plane: Plane,
+    pub region: Region,
     pub card_type: CardType,
     pub abilities: Vec<Ability>,
     pub damage_taken: u16,
@@ -346,6 +296,7 @@ pub struct CardData {
     pub num_arts: usize,
     pub power: u16,
     pub has_attachments: bool,
+    pub image_path: String,
 }
 
 impl CardData {
@@ -388,6 +339,7 @@ pub enum AdditionalCost {
     Tap { card: CardQuery },
     Discard { card: CardQuery },
     Sacrifice { card: CardQuery },
+    Surface { card: CardQuery },
 }
 
 #[derive(Debug, Clone, Default)]
@@ -412,6 +364,20 @@ impl Cost {
 
         for other in &self.additional {
             match other {
+                AdditionalCost::Surface { card } => {
+                    let card_id = card.resolve(player_id, state).await?;
+                    let card = state.get_card(&card_id);
+                    let effect = Effect::MoveCard {
+                        card_id,
+                        player_id: card.get_controller_id(state).clone(),
+                        from: card.get_zone().clone(),
+                        to: ZoneQuery::from_zone(card.get_zone().clone()),
+                        tap: true,
+                        region: Region::Surface,
+                        through_path: None,
+                    };
+                    effect.apply(state).await?;
+                }
                 AdditionalCost::Tap { card } => {
                     let card_id = card.resolve(player_id, state).await?;
                     let effect = Effect::TapCard { card_id };
@@ -428,7 +394,7 @@ impl Cost {
                             zone: Zone::Cemetery,
                         },
                         tap: false,
-                        plane: Plane::Surface,
+                        region: Region::Surface,
                         through_path: None,
                     };
                     effect.apply(state).await?;
@@ -445,7 +411,7 @@ impl Cost {
                             zone: Zone::Cemetery,
                         },
                         tap: false,
-                        plane: Plane::Surface,
+                        region: Region::Surface,
                         through_path: None,
                     };
                     effect.apply(state).await?;
@@ -479,6 +445,22 @@ impl Cost {
         let mut snapshot = state.snapshot();
         for other in &self.additional {
             match other {
+                AdditionalCost::Surface { card } => {
+                    let options: Vec<uuid::Uuid> = card.options(&snapshot);
+                    if options.is_empty() {
+                        return Ok(false);
+                    }
+
+                    let card_id = options.first().expect("options to have exactly one element");
+                    let card = snapshot.get_card(card_id);
+                    if card.is_tapped() {
+                        return Ok(false);
+                    }
+
+                    if card.get_region(state) == &Region::Surface {
+                        return Ok(false);
+                    }
+                }
                 AdditionalCost::Tap { card } => {
                     let options: Vec<uuid::Uuid> = card
                         .options(&snapshot)
@@ -541,6 +523,30 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     fn get_id(&self) -> &uuid::Uuid {
         &self.get_base().id
+    }
+
+    fn get_image_path(&self) -> String {
+        let set = self.get_edition().url_name();
+        let name_for_url = self
+            .get_name()
+            .to_string()
+            .to_lowercase()
+            .replace(" ", "_")
+            .replace("ö", "o")
+            .replace("-", "_");
+        let mut folder = "cards";
+        if self.is_site() {
+            folder = "rotated";
+        }
+        let mut after_card_name = "b";
+        if self.is_token() {
+            after_card_name = "bt";
+        }
+
+        format!(
+            "https://d27a44hjr9gen3.cloudfront.net/{}/{}-{}-{}-s.png",
+            folder, set, name_for_url, after_card_name
+        )
     }
 
     // When resolving a CardQuery, this method allows the card to override the query. A useful
@@ -792,14 +798,14 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         }
     }
 
-    // Retuns the plane the card is currently on. If the card is not in a zone with a site, it is
+    // Retuns the region the card is currently on. If the card is not in a zone with a site, it is
     // in the void.
-    fn get_plane(&self, state: &State) -> &Plane {
+    fn get_region(&self, state: &State) -> &Region {
         if self.get_zone().get_site(state).is_none() {
-            return &Plane::Void;
+            return &Region::Void;
         }
 
-        &self.get_base().plane
+        &self.get_base().region
     }
 
     // Returns the amount of damage taken by the card. Defaults to 0 for non-unit cards.
@@ -867,8 +873,16 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     // Returns the elements associated to this card.
     fn get_elements(&self, state: &State) -> anyhow::Result<Vec<Element>> {
+        let thresholds = if self.is_site() {
+            self.get_site_base()
+                .ok_or(anyhow::anyhow!("site card has no site base"))?
+                .provided_thresholds
+                .clone()
+        } else {
+            self.get_cost(state)?.thresholds
+        };
+
         let mut elements = Vec::new();
-        let thresholds = self.get_cost(state)?.thresholds;
         if thresholds.fire > 0 {
             elements.push(Element::Fire);
         }
@@ -881,7 +895,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         if thresholds.air > 0 {
             elements.push(Element::Air);
         }
-
         Ok(elements)
     }
 
@@ -958,7 +971,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 }
 
                 z.get_site(state).map_or(false, |c| {
-                    c.can_be_entered_by(self.get_id(), self.get_zone(), self.get_plane(state), state)
+                    c.can_be_entered_by(self.get_id(), self.get_zone(), self.get_region(state), state)
                 })
             })
             .cloned()
@@ -979,11 +992,12 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             .filter(|c| c.is_unit() || c.is_site())
             .filter(|c| c.can_be_targetted_by(state, &self.get_controller_id(state)))
             .filter(|c| {
-                let same_plane = c.get_base().plane == self.get_base().plane;
+                let same_region = c.get_base().region == self.get_base().region;
                 let ranged_on_airborne =
-                    ranged && self.get_base().plane == Plane::Surface && c.get_base().plane == Plane::Air;
-                let airborne_on_surface = self.get_base().plane == Plane::Air && c.get_base().plane == Plane::Surface;
-                return same_plane || ranged_on_airborne || airborne_on_surface;
+                    ranged && self.get_base().region == Region::Surface && c.get_base().region == Region::Air;
+                let airborne_on_surface =
+                    self.get_base().region == Region::Air && c.get_base().region == Region::Surface;
+                return same_region || ranged_on_airborne || airborne_on_surface;
             })
             .filter(|_| {
                 let attacker_is_airborne = self.has_modifier(state, &Ability::Airborne);
@@ -1413,11 +1427,19 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     // Returns the available actions for this card, given the current game state.
     fn get_activated_abilities(&self, state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         if self.is_avatar() {
-            return Ok(self.base_avatar_activated_abilities(state)?);
+            let mut abilities = self.base_avatar_activated_abilities(state)?;
+            abilities.extend(self.get_additional_activated_abilities(state)?);
+            return Ok(abilities);
         } else if self.is_unit() {
-            return Ok(self.base_unit_activated_abilities(state)?);
+            let mut abilities = self.base_unit_activated_abilities(state)?;
+            abilities.extend(self.get_additional_activated_abilities(state)?);
+            return Ok(abilities);
         }
 
+        Ok(vec![])
+    }
+
+    fn get_additional_activated_abilities(&self, state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         Ok(vec![])
     }
 
@@ -1469,6 +1491,7 @@ pub enum SiteType {
     Tower,
     Earth,
     Village,
+    River,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -1496,7 +1519,7 @@ pub trait Site: Card {
         vec![]
     }
 
-    fn can_be_entered_by(&self, _card: &uuid::Uuid, _from: &Zone, _plane: &Plane, _state: &State) -> bool {
+    fn can_be_entered_by(&self, _card: &uuid::Uuid, _from: &Zone, _region: &Region, _state: &State) -> bool {
         true
     }
 }
@@ -1614,7 +1637,7 @@ pub struct CardBase {
     pub tapped: bool,
     pub zone: Zone,
     pub cost: Cost,
-    pub plane: Plane,
+    pub region: Region,
     pub rarity: Rarity,
     pub edition: Edition,
 }
@@ -1673,7 +1696,7 @@ mod tests {
                     id: uuid::Uuid::new_v4(),
                     zone: Zone::Realm(10),
                     card_types: Some(vec![CardType::Minion, CardType::Avatar]),
-                    planes: None,
+                    regions: None,
                     owner: None,
                     prompt: None,
                     tapped: Some(false),
@@ -1708,7 +1731,7 @@ mod tests {
                         id: uuid::Uuid::new_v4(),
                         zone: Zone::Realm(10),
                         card_types: Some(vec![CardType::Minion, CardType::Avatar]),
-                        planes: None,
+                        regions: None,
                         owner: None,
                         prompt: None,
                         tapped: Some(false),
@@ -1719,7 +1742,7 @@ mod tests {
                         id: uuid::Uuid::new_v4(),
                         zone: Zone::Realm(10),
                         card_types: Some(vec![CardType::Minion, CardType::Avatar]),
-                        planes: None,
+                        regions: None,
                         owner: None,
                         prompt: None,
                         tapped: Some(false),

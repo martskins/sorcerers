@@ -1,5 +1,7 @@
 use crate::{
-    card::{AdditionalCost, AreaModifiers, Artifact, ArtifactBase, Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
+    card::{
+        AdditionalCost, AreaModifiers, Artifact, ArtifactBase, Card, CardBase, Cost, Edition, Rarity, Region, Zone,
+    },
     effect::Effect,
     game::{ActivatedAbility, CARDINAL_DIRECTIONS, PlayerId, pick_direction},
     query::{CardQuery, ZoneQuery},
@@ -68,7 +70,7 @@ impl ActivatedAbility for RollBoulder {
                     },
                     player_id: boulder.get_controller_id(state).clone(),
                     tap: false,
-                    plane: Plane::Surface,
+                    region: Region::Surface,
                     through_path: None,
                 });
                 effects.push(Effect::TakeDamage {
@@ -108,7 +110,7 @@ impl RollingBoulder {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(4, ""),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

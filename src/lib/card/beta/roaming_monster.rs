@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    card::{Card, CardBase, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     game::PlayerId,
     state::State,
 };
@@ -28,7 +28,7 @@ impl RoamingMonster {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(5, "A"),
-                plane: Plane::Air,
+                region: Region::Air,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

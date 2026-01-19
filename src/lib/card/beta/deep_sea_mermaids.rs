@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::PlayerId,
     query::ZoneQuery,
@@ -30,7 +30,7 @@ impl DeepSeaMermaids {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(3, "WW"),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -71,7 +71,7 @@ impl Card for DeepSeaMermaids {
                 from: Zone::Spellbook,
                 to: ZoneQuery::from_zone(Zone::Hand),
                 tap: false,
-                plane: Plane::Surface,
+                region: Region::Surface,
                 through_path: None,
             }]);
         }

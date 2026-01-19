@@ -1,5 +1,5 @@
 use crate::{
-    card::{AvatarBase, Card, CardBase, Cost, Edition, Plane, Rarity, UnitBase, Zone},
+    card::{AvatarBase, Card, CardBase, Cost, Edition, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{ActivatedAbility, CARDINAL_DIRECTIONS, Element, PlayerId, Thresholds, pick_direction},
     state::State,
@@ -87,7 +87,7 @@ impl Flamecaller {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::zero(),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -126,10 +126,8 @@ impl Card for Flamecaller {
         Some(&mut self.avatar_base)
     }
 
-    fn get_activated_abilities(&self, state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
-        let mut activated_abilities = self.base_avatar_activated_abilities(state)?;
-        activated_abilities.push(Box::new(ShootProjectile));
-        Ok(activated_abilities)
+    fn get_additional_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+        Ok(vec![Box::new(ShootProjectile)])
     }
 }
 

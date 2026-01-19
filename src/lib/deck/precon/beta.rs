@@ -4,6 +4,68 @@ use crate::{
     game::PlayerId,
 };
 
+pub fn water(player_id: &PlayerId) -> (Deck, Vec<Box<dyn Card>>) {
+    let spells = vec![
+        (1, "Sedge Crabs"),
+        (2, "Swamp Buffalo"),
+        (2, "Polar Bears"),
+        (1, "Swan Maidens"),
+        (2, "Tide Naiads"),
+        (2, "Brobdingnag Bullfrog"),
+        (2, "Coral-Reef Kelpie"),
+        (2, "Deep-Sea Mermaids"),
+        (1, "Guile Sirens"),
+        (1, "Megamoeba"),
+        (1, "Pirate Ship"),
+        (2, "Sea Serpent"),
+        (1, "Anui Undine"),
+        (1, "Unland Angler"),
+        (1, "Mother Nature"),
+        (1, "Diluvian Kraken"),
+        (2, "Dodge Roll"),
+        (1, "Marine Voyage"),
+        (1, "Riptide"),
+        (2, "Drown"),
+        (2, "Ice Lance"),
+        (1, "Frost Nova"),
+        (1, "Upwelling"),
+        (1, "Wrath of the Sea"),
+        (1, "Sunken Treasure"),
+        (1, "Flood"),
+    ];
+    let spells = spells
+        .into_iter()
+        .flat_map(|(count, name)| (0..count).map(move |_| from_name(name, player_id)))
+        .collect::<Vec<_>>();
+
+    let sites = vec![
+        (3, "Autumn River"),
+        (2, "Floodplain"),
+        (1, "Island Leviathan"),
+        (1, "Maelström"),
+        (3, "Spring River"),
+        (3, "Summer River"),
+        (1, "Tadpole Pool"),
+        (2, "Undertow"),
+    ];
+    let sites = sites
+        .into_iter()
+        .flat_map(|(count, name)| (0..count).map(move |_| from_name(name, player_id)))
+        .collect::<Vec<_>>();
+
+    let avatar = from_name("Avatar of Water", player_id);
+
+    let mut deck = Deck {
+        player_id: player_id.clone(),
+        sites: sites.iter().map(|c| c.get_id().clone()).collect(),
+        spells: spells.iter().map(|c| c.get_id().clone()).collect(),
+        avatar: avatar.get_id().clone(),
+    };
+    deck.shuffle();
+
+    (deck, vec![avatar].into_iter().chain(spells).chain(sites).collect())
+}
+
 pub fn earth(player_id: &PlayerId) -> (Deck, Vec<Box<dyn Card>>) {
     let spells = vec![
         (2, "Wild Boars"),

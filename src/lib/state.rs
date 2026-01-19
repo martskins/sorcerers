@@ -1,8 +1,8 @@
 use crate::{
-    card::{Ability, Card, CardData, CardType, MinionType, SiteType, Zone},
+    card::{Ability, Card, CardData, CardType, MinionType, Region, SiteType, Zone},
     deck::Deck,
     effect::Effect,
-    game::{InputStatus, PlayerId, Resources},
+    game::{Element, InputStatus, PlayerId, Resources},
     networking::message::{ClientMessage, ServerMessage},
 };
 use async_channel::{Receiver, Sender};
@@ -33,10 +33,15 @@ pub struct CardMatcher {
     pub id: Option<uuid::Uuid>,
     pub controller_id: Option<PlayerId>,
     pub not_in_ids: Option<Vec<uuid::Uuid>>,
+    pub abilities: Option<Vec<Ability>>,
     pub card_types: Option<Vec<CardType>>,
     pub minion_types: Option<Vec<MinionType>>,
     pub site_types: Option<Vec<SiteType>>,
+    pub with_affinity: Option<Vec<Element>>,
     pub in_zones: Option<Vec<Zone>>,
+    pub in_regions: Option<Vec<Region>>,
+    pub tapped: Option<bool>,
+    pub in_play: Option<bool>,
 }
 
 impl CardMatcher {
@@ -47,7 +52,11 @@ impl CardMatcher {
         }
     }
 
-    pub fn resolve_all(&self, state: &State) -> Vec<uuid::Uuid> {
+    pub fn iter<'a>(&'a self, state: &'a State) -> impl Iterator<Item = &'a Box<dyn Card>> {
+        state.cards.iter().filter(|c| self.matches(c.get_id(), state))
+    }
+
+    pub fn resolve_ids(&self, state: &State) -> Vec<uuid::Uuid> {
         state
             .cards
             .iter()
@@ -56,11 +65,218 @@ impl CardMatcher {
             .collect()
     }
 
+    pub fn units_in_zone(zones: Vec<Zone>) -> Self {
+        Self {
+            card_types: Some(vec![CardType::Minion, CardType::Avatar]),
+            in_zones: Some(zones),
+            ..Default::default()
+        }
+    }
+
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn in_play(self, in_play: bool) -> Self {
+        Self {
+            in_play: Some(in_play),
+            ..self
+        }
+    }
+
+    pub fn tapped(self, tapped: bool) -> Self {
+        Self {
+            tapped: Some(tapped),
+            ..self
+        }
+    }
+
+    pub fn adjacent_to(self, zone: &Zone) -> Self {
+        let zones = zone.get_adjacent();
+        Self {
+            in_zones: Some(zones),
+            ..self
+        }
+    }
+
+    pub fn near(self, zone: &Zone) -> Self {
+        let zones = zone.get_nearby();
+        Self {
+            in_zones: Some(zones),
+            ..self
+        }
+    }
+
+    pub fn in_regions(self, region: Vec<Region>) -> Self {
+        Self {
+            in_regions: Some(region),
+            ..self
+        }
+    }
+
+    pub fn in_region(self, region: Region) -> Self {
+        Self {
+            in_regions: Some(vec![region]),
+            ..self
+        }
+    }
+
+    pub fn with_affinities(self, elements: Vec<Element>) -> Self {
+        Self {
+            with_affinity: Some(elements),
+            ..self
+        }
+    }
+
+    pub fn with_affinity(self, elements: Element) -> Self {
+        Self {
+            with_affinity: Some(vec![elements]),
+            ..self
+        }
+    }
+
+    pub fn sites_adjacent(zone: &Zone) -> Self {
+        let zones = zone.get_adjacent();
+        Self {
+            card_types: Some(vec![CardType::Site]),
+            in_zones: Some(zones),
+            ..Default::default()
+        }
+    }
+
+    pub fn units_adjacent(zone: &Zone) -> Self {
+        let zones = zone.get_adjacent();
+        Self {
+            card_types: Some(vec![CardType::Minion, CardType::Avatar]),
+            in_zones: Some(zones),
+            ..Default::default()
+        }
+    }
+
+    pub fn minions_adjacent(zone: &Zone) -> Self {
+        let zones = zone.get_adjacent();
+        Self {
+            card_types: Some(vec![CardType::Minion]),
+            in_zones: Some(zones),
+            ..Default::default()
+        }
+    }
+
+    pub fn sites_near(zone: &Zone) -> Self {
+        let zones = zone.get_nearby();
+        Self {
+            card_types: Some(vec![CardType::Site]),
+            in_zones: Some(zones),
+            ..Default::default()
+        }
+    }
+
+    pub fn units_near(zone: &Zone) -> Self {
+        let zones = zone.get_nearby();
+        Self {
+            card_types: Some(vec![CardType::Minion, CardType::Avatar]),
+            in_zones: Some(zones),
+            ..Default::default()
+        }
+    }
+
+    pub fn minions_near(zone: &Zone) -> Self {
+        let zones = zone.get_nearby();
+        Self {
+            card_types: Some(vec![CardType::Minion]),
+            in_zones: Some(zones),
+            ..Default::default()
+        }
+    }
+
+    pub fn with_abilities(self, abilities: Vec<Ability>) -> Self {
+        Self {
+            abilities: Some(abilities),
+            ..self
+        }
+    }
+
+    pub fn controller_id(self, controller_id: Option<&PlayerId>) -> Self {
+        Self {
+            controller_id: controller_id.cloned(),
+            ..self
+        }
+    }
+
+    pub fn not_in_ids(self, not_in_ids: Vec<uuid::Uuid>) -> Self {
+        Self {
+            not_in_ids: Some(not_in_ids),
+            ..self
+        }
+    }
+
+    pub fn site_types(self, site_types: Vec<SiteType>) -> Self {
+        Self {
+            site_types: Some(site_types),
+            ..self
+        }
+    }
+
+    pub fn card_type(self, card_type: CardType) -> Self {
+        Self {
+            card_types: Some(vec![card_type]),
+            ..self
+        }
+    }
+
+    pub fn card_types(self, card_types: Vec<CardType>) -> Self {
+        Self {
+            card_types: Some(card_types),
+            ..self
+        }
+    }
+
     pub fn matches(&self, card_id: &uuid::Uuid, state: &State) -> bool {
         let card = state.get_card(card_id);
         if let Some(id) = &self.id {
             if card_id != id {
                 return false;
+            }
+        }
+
+        if let Some(in_play) = &self.in_play {
+            if &card.get_zone().is_in_play() != in_play {
+                return false;
+            }
+        }
+
+        if let Some(regions) = &self.in_regions {
+            if !regions.contains(card.get_region(state)) {
+                return false;
+            }
+        }
+
+        if let Some(with_affinity) = &self.with_affinity {
+            let mut has_affinity = false;
+            for element in with_affinity {
+                if card.get_elements(state).unwrap_or_default().contains(element) {
+                    has_affinity = true;
+                    break;
+                }
+            }
+
+            if !has_affinity {
+                return false;
+            }
+        }
+
+        if let Some(tapped) = &self.tapped {
+            if &card.is_tapped() != tapped {
+                return false;
+            }
+        }
+
+        if let Some(abilities) = &self.abilities {
+            let card_abilities = card.get_abilities(state).unwrap_or_default();
+            for ability in abilities {
+                if !card_abilities.contains(ability) {
+                    return false;
+                }
             }
         }
 
@@ -211,8 +427,37 @@ impl State {
         }
     }
 
-    pub fn get_body_of_water_size(&self) -> usize {
-        0
+    pub fn get_body_of_water_size(&self, zone: &Zone) -> u16 {
+        let mut visited: Vec<Zone> = Vec::new();
+        let mut water_zones: Vec<Zone> = Vec::new();
+
+        fn dfs(state: &State, zone: &Zone, visited: &mut Vec<Zone>, water_zones: &mut Vec<Zone>) {
+            if visited.iter().any(|z| z == zone) {
+                return;
+            }
+            visited.push(zone.clone());
+            let sites = state.get_cards_in_zone(zone);
+            let is_water = sites.iter().any(|card| {
+                card.get_site_base()
+                    .map(|base| base.provided_thresholds.water > 0)
+                    .unwrap_or(false)
+            });
+            if is_water {
+                if !water_zones.iter().any(|z| z == zone) {
+                    water_zones.push(zone.clone());
+                }
+                for adj in zone.get_adjacent() {
+                    dfs(state, &adj, visited, water_zones);
+                }
+            }
+        }
+
+        // Start DFS from adjacent zones
+        for adj in zone.get_adjacent() {
+            dfs(self, &adj, &mut visited, &mut water_zones);
+        }
+
+        water_zones.len() as u16
     }
 
     pub async fn compute_world_effects(&mut self) -> anyhow::Result<()> {
@@ -251,9 +496,9 @@ impl State {
 
     pub fn get_defenders_for_attack(&self, defender_id: &uuid::Uuid) -> Vec<uuid::Uuid> {
         let defender = self.get_card(defender_id);
-        defender
-            .get_zone()
-            .get_nearby_unit_ids(self, Some(&defender.get_controller_id(self)))
+        CardMatcher::units_near(defender.get_zone())
+            .controller_id(Some(&defender.get_controller_id(self)))
+            .resolve_ids(self)
     }
 
     pub fn get_interceptors_for_move(&self, path: &[Zone], controller_id: &PlayerId) -> Vec<(uuid::Uuid, Zone)> {
@@ -300,7 +545,7 @@ impl State {
                 zone: c.get_zone().clone(),
                 card_type: c.get_card_type().clone(),
                 abilities: c.get_abilities(&self).unwrap_or_default(),
-                plane: c.get_plane(&self).clone(),
+                region: c.get_region(&self).clone(),
                 damage_taken: c.get_damage_taken().unwrap_or(0),
                 bearer: c
                     .get_artifact()
@@ -309,6 +554,7 @@ impl State {
                 num_arts: c.get_num_arts(),
                 power: c.get_power(&self).unwrap_or_default().unwrap_or_default(),
                 has_attachments: c.has_attachments(self).unwrap_or_default(),
+                image_path: c.get_image_path(),
             })
             .collect()
     }
@@ -383,6 +629,14 @@ impl State {
             .resources
             .get_mut(player_id)
             .ok_or(anyhow::anyhow!("failed to get player resources"))?)
+    }
+
+    pub fn get_player(&self, player_id: &PlayerId) -> anyhow::Result<&Player> {
+        Ok(self
+            .players
+            .iter()
+            .find(|p| &p.id == player_id)
+            .ok_or(anyhow::anyhow!("failed to get player deck"))?)
     }
 
     pub fn get_player_deck(&self, player_id: &PlayerId) -> anyhow::Result<&Deck> {

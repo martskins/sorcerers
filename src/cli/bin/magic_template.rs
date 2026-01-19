@@ -1,5 +1,5 @@
 pub const MAGIC_TEMPLATE: &str = r#"use crate::{
-    card::{Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
+    card::{Card, CardBase, Cost, Edition, Region, Rarity, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds},
     state::State,
@@ -21,7 +21,7 @@ impl {StructName} {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new({ManaCost}, "{RequiredThresholds}"),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::{Rarity},
                 edition: Edition::{Edition},
                 controller_id: owner_id.clone(),

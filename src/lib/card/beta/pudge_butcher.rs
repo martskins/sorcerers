@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, AdditionalCost, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    card::{Ability, AdditionalCost, Card, CardBase, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{ActivatedAbility, BaseOption, CARDINAL_DIRECTIONS, PlayerId, pick_direction, pick_option},
     query::{CardQuery, ZoneQuery},
@@ -69,7 +69,7 @@ impl ActivatedAbility for ShootProjectile {
                     zone: pudge.get_zone().clone(),
                 },
                 tap: false,
-                plane: pudge.get_plane(state).clone(),
+                region: pudge.get_region(state).clone(),
                 through_path: None,
             });
             let target_name = state.get_card(&target).get_name().to_string();
@@ -131,7 +131,7 @@ impl PudgeButcher {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(4, "EE"),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -162,7 +162,7 @@ impl Card for PudgeButcher {
         Some(&mut self.unit_base)
     }
 
-    fn get_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+    fn get_additional_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         Ok(vec![Box::new(ShootProjectile)])
     }
 }

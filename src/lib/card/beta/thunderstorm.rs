@@ -1,5 +1,5 @@
 use crate::{
-    card::{Aura, AuraBase, Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
+    card::{Aura, AuraBase, Card, CardBase, Cost, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::PlayerId,
     query::{CardQuery, ZoneQuery},
@@ -23,7 +23,7 @@ impl Thunderstorm {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(4, "AA"),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -98,7 +98,7 @@ impl Card for Thunderstorm {
                     prompt: Some("Pick a zone to move Thunderstorm to".to_string()),
                 },
                 tap: false,
-                plane: Plane::Surface,
+                region: Region::Surface,
                 through_path: None,
             },
             Effect::DealDamageToTarget {

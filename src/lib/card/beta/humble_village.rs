@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, Plane, Rarity, Site, SiteBase, SiteType, Zone},
+    card::{Card, CardBase, Cost, Edition, Rarity, Region, Site, SiteBase, SiteType, Zone},
     effect::{Effect, TokenType},
     game::{BaseOption, PlayerId, Thresholds, pick_option},
     state::State,
@@ -28,7 +28,7 @@ impl HumbleVillage {
                 tapped: false,
                 zone: Zone::Atlasbook,
                 cost: Cost::zero(),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

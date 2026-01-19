@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
+    card::{Card, CardBase, Cost, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::{PlayerId, pick_card},
     query::ZoneQuery,
@@ -22,7 +22,7 @@ impl Bury {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(3, "E"),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -50,7 +50,7 @@ impl Card for Bury {
             .cards
             .iter()
             .filter(|c| c.is_minion() || c.is_artifact())
-            .filter(|c| c.get_base().plane >= Plane::Surface)
+            .filter(|c| c.get_base().region >= Region::Surface)
             .map(|c| c.get_id())
             .cloned()
             .collect::<Vec<_>>();
@@ -72,7 +72,7 @@ impl Card for Bury {
                 zone: picked_card.get_zone().clone(),
             },
             tap: false,
-            plane: Plane::Underground,
+            region: Region::Underground,
             through_path: None,
         }])
     }

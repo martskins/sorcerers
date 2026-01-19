@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{PlayerId, pick_card},
     query::ZoneQuery,
@@ -31,7 +31,7 @@ impl BrobdingnagBullfrog {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(3, "WW"),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -97,7 +97,7 @@ impl Card for BrobdingnagBullfrog {
                         player_id: self.get_controller_id(state),
                         from: path.first().expect("Path should have at least one element").clone(),
                         tap: false,
-                        plane: self.get_plane(state).clone(),
+                        region: self.get_region(state).clone(),
                         through_path: None,
                     }]);
                 }

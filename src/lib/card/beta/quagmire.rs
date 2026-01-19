@@ -1,9 +1,9 @@
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Edition, Plane, Rarity, Site, SiteBase, Zone},
+    card::{Ability, Card, CardBase, Cost, Edition, Rarity, Region, Site, SiteBase, Zone},
     effect::{AbilityCounter, Effect},
     game::{PlayerId, Thresholds},
     query::EffectQuery,
-    state::State,
+    state::{CardMatcher, State},
 };
 
 #[derive(Debug, Clone)]
@@ -29,7 +29,7 @@ impl Quagmire {
                 tapped: false,
                 zone: Zone::Atlasbook,
                 cost: Cost::zero(),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -67,14 +67,11 @@ impl Card for Quagmire {
     }
 
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        let effects = self
-            .get_zone()
-            .get_nearby_sites(state, None)
-            .iter()
-            .map(|s| s.get_zone().get_units(state, None))
-            .flatten()
-            .map(|u| Effect::AddAbilityCounter {
-                card_id: u.get_id().clone(),
+        let effects = CardMatcher::units_near(self.get_zone())
+            .resolve_ids(state)
+            .into_iter()
+            .map(|card_id| Effect::AddAbilityCounter {
+                card_id: card_id,
                 counter: AbilityCounter {
                     id: uuid::Uuid::new_v4(),
                     modifier: Ability::Immobile,

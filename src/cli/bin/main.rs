@@ -186,7 +186,7 @@ fn main() -> anyhow::Result<()> {
                 let site_types = site
                     .types
                     .iter()
-                    .map(|m| format!("MinionType::{}", m))
+                    .map(|m| format!("SiteType::{}", m))
                     .collect::<Vec<String>>()
                     .join(", ");
 

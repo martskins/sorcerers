@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, Zone},
+    card::{Card, CardBase, Cost, Edition, MinionType, Rarity, Region, Zone},
     effect::Effect,
     game::{PlayerId, pick_zone},
     state::State,
@@ -21,7 +21,7 @@ impl Incinerate {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(2, "F"),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

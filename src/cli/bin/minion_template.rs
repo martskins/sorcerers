@@ -1,5 +1,5 @@
 pub const MINION_TEMPLATE: &str = r#"use crate::{
-    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Region, Rarity, UnitBase, Zone},
     game::PlayerId,
 };
 
@@ -27,7 +27,7 @@ impl {StructName} {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new({ManaCost}, "{RequiredThresholds}"),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::{Rarity},
                 edition: Edition::{Edition},
                 controller_id: owner_id.clone(),

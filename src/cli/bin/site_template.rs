@@ -1,5 +1,5 @@
 pub const SITE_TEMPLATE: &str = r#"use crate::{
-    card::{Card, CardBase, Edition, Plane, Rarity, Site, SiteBase, Zone},
+    card::{Card, CardBase, Cost, Edition, Region, Rarity, Site, SiteBase, SiteType, Zone},
     game::{PlayerId, Thresholds},
 };
 
@@ -25,9 +25,8 @@ impl {StructName} {
                 owner_id,
                 tapped: false,
                 zone: Zone::Atlasbook,
-                mana_cost: 0,
-                required_thresholds: Thresholds::new(),
-                plane: Plane::Surface,
+                cost: Cost::zero(),
+                region: Region::Surface,
                 rarity: Rarity::{Rarity},
                 edition: Edition::{Edition},
                 controller_id: owner_id.clone(),

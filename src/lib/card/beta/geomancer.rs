@@ -1,5 +1,5 @@
 use crate::{
-    card::{AvatarBase, Card, CardBase, Cost, Edition, Plane, Rarity, Rubble, UnitBase, Zone},
+    card::{AvatarBase, Card, CardBase, Cost, Edition, Rarity, Region, Rubble, UnitBase, Zone},
     effect::{Effect, TokenType},
     game::{ActivatedAbility, AvatarAction, Element, PlayerId, pick_card, pick_zone},
     query::ZoneQuery,
@@ -129,7 +129,7 @@ impl ActivatedAbility for GeomancerAbility {
                                 zone: rubble.get_zone().clone(),
                             },
                             tap: false,
-                            plane: Plane::Surface,
+                            region: Region::Surface,
                             through_path: None,
                         },
                         Effect::TapCard {
@@ -166,7 +166,7 @@ impl Geomancer {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::zero(),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -205,12 +205,12 @@ impl Card for Geomancer {
         Some(&mut self.avatar_base)
     }
 
-    fn get_activated_abilities(&self, state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
-        let mut activated_abilities = self.base_unit_activated_abilities(state)?;
-        activated_abilities.push(Box::new(GeomancerAbility::PlaySite));
-        activated_abilities.push(Box::new(GeomancerAbility::DrawSite));
-        activated_abilities.push(Box::new(GeomancerAbility::ReplaceRubble));
-        Ok(activated_abilities)
+    fn get_additional_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+        Ok(vec![
+            Box::new(GeomancerAbility::PlaySite),
+            Box::new(GeomancerAbility::DrawSite),
+            Box::new(GeomancerAbility::ReplaceRubble),
+        ])
     }
 }
 

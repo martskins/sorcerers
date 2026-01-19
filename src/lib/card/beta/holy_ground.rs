@@ -1,8 +1,8 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, Plane, Rarity, Site, SiteBase, Zone},
+    card::{Card, CardBase, CardType, Cost, Edition, Rarity, Region, Site, SiteBase, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds},
-    state::State,
+    state::{CardMatcher, State},
 };
 
 #[derive(Debug, Clone)]
@@ -28,7 +28,7 @@ impl HolyGround {
                 tapped: false,
                 zone: Zone::Atlasbook,
                 cost: Cost::zero(),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -66,15 +66,10 @@ impl Card for HolyGround {
     }
 
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        let nearby_avatars: Vec<uuid::Uuid> = self
-            .get_zone()
-            .get_nearby_units(state, None)
-            .iter()
-            .filter(|c| c.is_avatar())
-            .map(|a| a.get_id())
-            .cloned()
-            .collect();
-
+        let nearby_avatars = CardMatcher::new()
+            .near(self.get_zone())
+            .card_types(vec![CardType::Avatar])
+            .resolve_ids(state);
         let effects = nearby_avatars
             .iter()
             .map(|a| Effect::Heal {

@@ -1,5 +1,5 @@
 use crate::{
-    card::{AdditionalCost, Artifact, ArtifactBase, Card, CardBase, CardType, Cost, Edition, Plane, Rarity, Zone},
+    card::{AdditionalCost, Artifact, ArtifactBase, Card, CardBase, CardType, Cost, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::{ActivatedAbility, PlayerId, Thresholds, pick_card},
     query::CardQuery,
@@ -37,7 +37,7 @@ impl ActivatedAbility for TapToDealDamage {
                         id: uuid::Uuid::new_v4(),
                         zone: card.get_zone().clone(),
                         card_types: Some(vec![CardType::Minion, CardType::Avatar]),
-                        planes: None,
+                        regions: None,
                         owner: Some(card.get_controller_id(state).clone()),
                         prompt: Some("Tap an untapped ally here".to_string()),
                         tapped: Some(false),
@@ -108,7 +108,7 @@ impl SiegeBallista {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(3, ""),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -145,7 +145,7 @@ impl Card for SiegeBallista {
         Some(self)
     }
 
-    fn get_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+    fn get_additional_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         Ok(vec![Box::new(TapToDealDamage)])
     }
 }

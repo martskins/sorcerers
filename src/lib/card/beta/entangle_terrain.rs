@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, AreaModifiers, Aura, AuraBase, Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
+    card::{Ability, AreaModifiers, Aura, AuraBase, Card, CardBase, Cost, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::PlayerId,
     state::State,
@@ -22,7 +22,7 @@ impl EntangleTerrain {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(4, "EE"),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

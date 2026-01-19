@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, SiteBase, SiteType, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Rarity, Region, SiteBase, SiteType, UnitBase, Zone},
     effect::Effect,
     game::PlayerId,
     state::State,
@@ -29,7 +29,7 @@ impl RimlandNomads {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(2, "F"),
-                plane: Plane::Air,
+                region: Region::Air,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

@@ -1,8 +1,8 @@
 use crate::{
-    card::{CardType, Plane, Zone},
+    card::{CardType, Region, Zone},
     effect::Effect,
     game::{PlayerId, pick_card, pick_card_with_preview, pick_zone},
-    state::State,
+    state::{CardMatcher, State},
 };
 use rand::seq::IndexedRandom;
 use std::{collections::HashMap, sync::OnceLock};
@@ -337,7 +337,7 @@ pub enum CardQuery {
         id: uuid::Uuid,
         zone: Zone,
         card_types: Option<Vec<CardType>>,
-        planes: Option<Vec<Plane>>,
+        regions: Option<Vec<Region>>,
         owner: Option<PlayerId>,
         prompt: Option<String>,
         tapped: Option<bool>,
@@ -370,6 +370,13 @@ pub enum CardQuery {
 }
 
 impl CardQuery {
+    pub fn from_id(card_id: uuid::Uuid) -> Self {
+        CardQuery::Specific {
+            id: uuid::Uuid::new_v4(),
+            card_id,
+        }
+    }
+
     pub fn get_id(&self) -> &uuid::Uuid {
         match self {
             CardQuery::Specific { id, .. } => id,
@@ -388,7 +395,7 @@ impl CardQuery {
             CardQuery::InZone {
                 zone,
                 owner,
-                planes,
+                regions: planes,
                 card_types,
                 tapped,
                 ..
@@ -409,22 +416,17 @@ impl CardQuery {
                     None => true,
                 })
                 .filter(|c| match planes {
-                    Some(planes) => planes.contains(c.get_plane(state)),
+                    Some(planes) => planes.contains(c.get_region(state)),
                     None => true,
                 })
                 .map(|c| c.get_id().clone())
                 .collect(),
-            CardQuery::NearZone { zone, owner, .. } => zone
-                .get_nearby_units(state, owner.as_ref())
-                .iter()
-                .map(|c| c.get_id().clone())
-                .collect(),
-            CardQuery::OwnedBy { owner, .. } => state
-                .cards
-                .iter()
-                .filter(|c| c.get_owner_id() == owner)
-                .map(|c| c.get_id().clone())
-                .collect(),
+            CardQuery::NearZone { zone, owner, .. } => CardMatcher::units_near(zone)
+                .controller_id(owner.as_ref())
+                .resolve_ids(state),
+            CardQuery::OwnedBy { owner, .. } => CardMatcher::new()
+                .controller_id(Some(owner.as_ref()))
+                .resolve_ids(state),
             CardQuery::FromOptions { options, .. } => options.clone(),
             CardQuery::RandomUnitInZone { .. } => unreachable!(),
             CardQuery::RandomTarget { .. } => unreachable!(),

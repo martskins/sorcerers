@@ -1,8 +1,8 @@
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::PlayerId,
-    state::State,
+    state::{CardMatcher, State},
 };
 
 #[derive(Debug, Clone)]
@@ -29,7 +29,7 @@ impl ScentHounds {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(2, "E"),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -62,13 +62,13 @@ impl Card for ScentHounds {
 
     fn area_effects(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let opponent_id = state.get_opponent_id(&self.get_controller_id(state))?;
-        let effects = self
-            .get_zone()
-            .get_nearby_units(state, Some(&opponent_id))
+        let effects = CardMatcher::units_near(self.get_zone())
+            .controller_id(Some(&opponent_id))
+            .with_abilities(vec![Ability::Stealth])
+            .resolve_ids(state)
             .into_iter()
-            .filter(|c| c.has_modifier(state, &Ability::Stealth))
-            .map(|c| Effect::RemoveAbility {
-                card_id: c.get_id().clone(),
+            .map(|card_id| Effect::RemoveAbility {
+                card_id: card_id,
                 modifier: Ability::Stealth,
             })
             .collect();

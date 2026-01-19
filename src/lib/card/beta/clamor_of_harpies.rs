@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    card::{Card, CardBase, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_action, pick_card},
     query::ZoneQuery,
@@ -64,7 +64,7 @@ impl ClamorOfHarpies {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(4, "F"),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -126,7 +126,7 @@ impl Card for ClamorOfHarpies {
                 zone: self.get_zone().clone(),
             },
             tap: false,
-            plane: self.card_base.plane.clone(),
+            region: self.card_base.region.clone(),
             through_path: None,
         }];
         effects.extend(

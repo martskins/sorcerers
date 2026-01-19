@@ -1,5 +1,6 @@
 use sorcerers::networking::message::ServerMessage;
 
+pub mod action_overlay;
 pub mod combat_resolution_overlay;
 pub mod game;
 pub mod menu;

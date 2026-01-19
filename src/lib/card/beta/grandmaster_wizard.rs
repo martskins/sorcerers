@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{Element, PlayerId},
     state::State,
@@ -34,7 +34,7 @@ impl GrandmasterWizard {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(6, "AA"),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

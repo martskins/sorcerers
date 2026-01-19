@@ -1,8 +1,8 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, Plane, Rarity, Site, SiteBase, Zone},
+    card::{Card, CardBase, Cost, Edition, Rarity, Region, Site, SiteBase, Zone},
     effect::Effect,
     game::{ActivatedAbility, PlayerId, Thresholds, pick_card},
-    state::State,
+    state::{CardMatcher, State},
 };
 
 #[derive(Debug, Clone)]
@@ -21,13 +21,7 @@ impl ActivatedAbility for DestroyNearbySite {
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
         let card = state.get_card(card_id);
-        let nearby_sites: Vec<uuid::Uuid> = card
-            .get_zone()
-            .get_nearby_sites(state, None)
-            .iter()
-            .map(|c| c.get_id())
-            .cloned()
-            .collect::<Vec<_>>();
+        let nearby_sites = CardMatcher::sites_near(card.get_zone()).resolve_ids(state);
         let picked_card_id = pick_card(player_id, &nearby_sites, state, "Select a site to destroy").await?;
         let picked_card = state.get_card(&picked_card_id);
         Ok(vec![
@@ -66,7 +60,7 @@ impl Sinkhole {
                 tapped: false,
                 zone: Zone::Atlasbook,
                 cost: Cost::zero(),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -103,7 +97,7 @@ impl Card for Sinkhole {
         Some(self)
     }
 
-    fn get_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+    fn get_additional_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         Ok(vec![Box::new(DestroyNearbySite)])
     }
 }

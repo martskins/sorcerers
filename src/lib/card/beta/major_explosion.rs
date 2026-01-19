@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
+    card::{Card, CardBase, Cost, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::{Direction, PlayerId, pick_zone},
     state::State,
@@ -21,7 +21,7 @@ impl MajorExplosion {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(7, "FF"),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

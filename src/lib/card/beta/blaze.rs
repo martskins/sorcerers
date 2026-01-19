@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
+    card::{Ability, Card, CardBase, Cost, Edition, Rarity, Region, Zone},
     effect::{AbilityCounter, Effect},
     game::{PlayerId, pick_card},
     query::EffectQuery,
@@ -22,7 +22,7 @@ impl Blaze {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(3, "F"),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

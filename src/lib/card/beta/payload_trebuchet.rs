@@ -1,5 +1,5 @@
 use crate::{
-    card::{AdditionalCost, Artifact, ArtifactBase, Card, CardBase, CardType, Cost, Edition, Plane, Rarity, Zone},
+    card::{AdditionalCost, Artifact, ArtifactBase, Card, CardBase, CardType, Cost, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::{ActivatedAbility, PlayerId, Thresholds, pick_zone},
     query::CardQuery,
@@ -58,7 +58,7 @@ impl ActivatedAbility for ShootPayload {
                                 id: uuid::Uuid::new_v4(),
                                 zone: bearer.get_zone().clone(),
                                 card_types: Some(vec![CardType::Minion, CardType::Avatar]),
-                                planes: None,
+                                regions: None,
                                 owner: Some(bearer.get_controller_id(state).clone()),
                                 prompt: Some("Tap an untapped ally here".to_string()),
                                 tapped: Some(false),
@@ -70,7 +70,7 @@ impl ActivatedAbility for ShootPayload {
                                 zone: Zone::Hand,
                                 card_types: None,
                                 prompt: Some("Discard a card from your hand".to_string()),
-                                planes: None,
+                                regions: None,
                                 owner: Some(bearer.get_controller_id(state).clone()),
                                 tapped: None,
                             },
@@ -104,7 +104,7 @@ impl PayloadTrebuchet {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(5, ""),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -141,7 +141,7 @@ impl Card for PayloadTrebuchet {
         Some(self)
     }
 
-    fn get_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+    fn get_additional_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         Ok(vec![Box::new(ShootPayload)])
     }
 }

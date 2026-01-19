@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, Plane, Rarity, Site, SiteBase, Zone},
+    card::{Card, CardBase, Cost, Edition, Rarity, Region, Site, SiteBase, Zone},
     effect::Effect,
     game::{ActivatedAbility, PlayerId, Thresholds, pick_zone},
     query::ZoneQuery,
@@ -60,7 +60,7 @@ impl ActivatedAbility for FlyToVoid {
                     zone: picked_void.clone(),
                 },
                 tap: false,
-                plane: Plane::Surface,
+                region: Region::Surface,
                 through_path: None,
             },
             Effect::SetCardData {
@@ -80,7 +80,7 @@ impl ActivatedAbility for FlyToVoid {
                     zone: picked_void.clone(),
                 },
                 tap: false,
-                plane: unit.get_base().plane.clone(),
+                region: unit.get_base().region.clone(),
                 through_path: None,
             });
         }
@@ -112,7 +112,7 @@ impl CloudCity {
                 tapped: false,
                 zone: Zone::Atlasbook,
                 cost: Cost::zero(),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -157,7 +157,7 @@ impl Card for CloudCity {
         Ok(vec![])
     }
 
-    fn get_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+    fn get_additional_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         Ok(vec![Box::new(FlyToVoid)])
     }
 

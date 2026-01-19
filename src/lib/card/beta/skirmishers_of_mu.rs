@@ -1,8 +1,8 @@
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{BaseOption, PlayerId, pick_card, pick_option, pick_zone},
-    state::State,
+    state::{CardMatcher, State},
 };
 
 #[derive(Debug, Clone)]
@@ -29,7 +29,7 @@ impl SkirmishersOfMu {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(4, "AA"),
-                plane: Plane::Air,
+                region: Region::Air,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -77,11 +77,7 @@ impl Card for SkirmishersOfMu {
         )
         .await?;
 
-        let units: Vec<uuid::Uuid> = picked_zone
-            .get_nearby_units(state, None)
-            .iter()
-            .map(|c| c.get_id().clone())
-            .collect();
+        let units = CardMatcher::units_near(&picked_zone).resolve_ids(state);
         let target_unit = pick_card(
             self.get_controller_id(state),
             &units,

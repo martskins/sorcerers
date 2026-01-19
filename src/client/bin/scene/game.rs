@@ -8,7 +8,8 @@ use crate::{
     input::Mouse,
     render,
     scene::{
-        Scene, combat_resolution_overlay::CombatResolutionOverlay, menu::Menu, selection_overlay::SelectionOverlay,
+        Scene, action_overlay::ActionOverlay, combat_resolution_overlay::CombatResolutionOverlay, menu::Menu,
+        selection_overlay::SelectionOverlay,
     },
 };
 use kira::{AudioManager, AudioManagerSettings, DefaultBackend, sound::static_sound::StaticSoundData};
@@ -22,7 +23,7 @@ use macroquad::{
     window::{screen_height, screen_width},
 };
 use sorcerers::{
-    card::{CardData, CardType, Plane, Zone},
+    card::{CardData, CardType, Region, Zone},
     game::{PlayerId, Resources},
     networking::{
         self,
@@ -99,6 +100,7 @@ fn component_rect(component_type: ComponentType) -> anyhow::Result<Rect> {
         ComponentType::Realm => realm_rect(),
         ComponentType::SelectionOverlay => screen_rect(),
         ComponentType::CombatResolutionOverlay => screen_rect(),
+        ComponentType::ActionOverlay => screen_rect(),
     }
 }
 
@@ -133,12 +135,12 @@ impl GameData {
 fn sort_cards(cards: &[CardData]) -> Vec<CardData> {
     let mut cards = cards.to_vec();
     cards.sort_by(|a, b| {
-        let plane_cmp = a.plane.cmp(&b.plane);
-        if plane_cmp != std::cmp::Ordering::Equal {
-            return plane_cmp;
+        let region_cmp = a.region.cmp(&b.region);
+        if region_cmp != std::cmp::Ordering::Equal {
+            return region_cmp;
         }
 
-        if let Plane::Surface = a.plane {
+        if let Region::Surface = a.region {
             match (&a.card_type, &b.card_type) {
                 (CardType::Site, CardType::Site) => std::cmp::Ordering::Equal,
                 (CardType::Site, _) => std::cmp::Ordering::Less,
@@ -345,6 +347,24 @@ impl Game {
                 };
                 Ok(None)
             }
+            ServerMessage::RevealCards {
+                cards, action, prompt, ..
+            } => {
+                let renderables = self.data.cards.iter().filter(|c| cards.contains(&c.id)).collect();
+                self.overlay = Some(Box::new(
+                    ActionOverlay::new(
+                        self.client.clone(),
+                        &self.game_id,
+                        renderables,
+                        &self.data.player_id,
+                        prompt.to_string(),
+                        action.clone(),
+                    )
+                    .await?,
+                ));
+                Ok(None)
+            }
+
             ServerMessage::PickCards {
                 cards, prompt, preview, ..
             } => {

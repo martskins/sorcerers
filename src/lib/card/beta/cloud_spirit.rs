@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     game::PlayerId,
 };
 
@@ -27,7 +27,7 @@ impl CloudSpirit {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(2, "AA"),
-                plane: Plane::Air,
+                region: Region::Air,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

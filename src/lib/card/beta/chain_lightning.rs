@@ -1,8 +1,8 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
+    card::{Card, CardBase, Cost, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::{BaseOption, PlayerId, Thresholds, force_sync, pick_card, pick_option},
-    state::State,
+    state::{CardMatcher, State},
 };
 
 #[derive(Debug, Clone)]
@@ -21,7 +21,7 @@ impl ChainLightning {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(2, "AA"),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -51,11 +51,7 @@ impl Card for ChainLightning {
         let mut first_pick = true;
         let mut local_state = state.snapshot();
         loop {
-            let units_nearby = last_hit_zone
-                .get_nearby_units(state, None)
-                .iter()
-                .map(|c| c.get_id().clone())
-                .collect::<Vec<_>>();
+            let units_nearby = CardMatcher::units_near(&last_hit_zone).resolve_ids(state);
             let picked_card = pick_card(
                 self.get_owner_id(),
                 &units_nearby,

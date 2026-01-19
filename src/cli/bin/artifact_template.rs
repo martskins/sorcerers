@@ -1,5 +1,5 @@
 pub const ARTIFACT_TEMPLATE: &str = r#"use crate::{
-    card::{Artifact, ArtifactBase, Card, CardBase, Cost, Edition, Plane, Rarity, Zone},
+    card::{Artifact, ArtifactBase, Card, CardBase, Cost, Edition, Region, Rarity, Zone},
     game::{PlayerId, Thresholds},
 };
 
@@ -24,7 +24,7 @@ impl {StructName} {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new({ManaCost}, "{RequiredThresholds}"),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::{Rarity},
                 edition: Edition::{Edition},
                 controller_id: owner_id.clone(),

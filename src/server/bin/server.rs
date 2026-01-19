@@ -1,6 +1,6 @@
 use async_channel::Sender;
 use sorcerers::{
-    card::{BrobdingnagBullfrog, CaveTrolls, GuileSirens},
+    card::{AnuiUndine, AutumnRiver, BrobdingnagBullfrog, CaveTrolls, DiluvianKraken, GuileSirens},
     game::Game,
     networking::{
         client::Client,
@@ -42,7 +42,12 @@ impl Server {
                 Client::send_to_stream(
                     &ServerMessage::ConnectResponse {
                         player_id,
-                        available_decks: vec![PreconDeck::BetaFire, PreconDeck::BetaAir, PreconDeck::BetaEarth],
+                        available_decks: vec![
+                            PreconDeck::BetaFire,
+                            PreconDeck::BetaAir,
+                            PreconDeck::BetaEarth,
+                            PreconDeck::BetaWater,
+                        ],
                     },
                     Arc::clone(&stream),
                 )
@@ -163,17 +168,17 @@ impl Server {
             sorcerers::card::Zone::Hand,
         ));
         game.state.cards.push(sorcerers::card::from_name_and_zone(
-            "Lone Tower",
+            AutumnRiver::NAME,
             &player_one,
             sorcerers::card::Zone::Realm(3),
         ));
         game.state.cards.push(sorcerers::card::from_name_and_zone(
-            "Lone Tower",
+            AutumnRiver::NAME,
             &player_one,
             sorcerers::card::Zone::Realm(8),
         ));
         game.state.cards.push(sorcerers::card::from_name_and_zone(
-            GuileSirens::NAME,
+            AnuiUndine::NAME,
             &player_one,
             sorcerers::card::Zone::Realm(8),
         ));
@@ -185,17 +190,17 @@ impl Server {
         game.state.cards.push(lucky_charm);
         game.state.cards.push(kite_archer);
         game.state.cards.push(sorcerers::card::from_name_and_zone(
-            "Arid Desert",
+            AutumnRiver::NAME,
             &player_two,
             sorcerers::card::Zone::Realm(13),
         ));
         game.state.cards.push(sorcerers::card::from_name_and_zone(
-            "Craterize",
+            DiluvianKraken::NAME,
             &player_one,
             sorcerers::card::Zone::Hand,
         ));
         game.state.cards.push(sorcerers::card::from_name_and_zone(
-            "Arid Desert",
+            AutumnRiver::NAME,
             &player_two,
             sorcerers::card::Zone::Realm(18),
         ));

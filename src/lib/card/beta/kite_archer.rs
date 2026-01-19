@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{BaseOption, PlayerId, pick_option, pick_zone},
     query::ZoneQuery,
@@ -30,7 +30,7 @@ impl KiteArcher {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(3, "A"),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -80,7 +80,7 @@ impl Card for KiteArcher {
                 zone: picked_zone.clone(),
             },
             tap: false,
-            plane: self.card_base.plane.clone(),
+            region: self.card_base.region.clone(),
             through_path: None,
         }])
     }

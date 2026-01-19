@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{ActivatedAbility, PlayerId},
     query::CardQuery,
@@ -68,7 +68,7 @@ impl NimbusJinn {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(6, "AA"),
-                plane: Plane::Air,
+                region: Region::Air,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -99,10 +99,8 @@ impl Card for NimbusJinn {
         Some(&mut self.unit_base)
     }
 
-    fn get_activated_abilities(&self, state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
-        let mut activated_abilities = self.base_unit_activated_abilities(state)?;
-        activated_abilities.push(Box::new(DealDamage));
-        Ok(activated_abilities)
+    fn get_additional_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+        Ok(vec![Box::new(DealDamage)])
     }
 }
 

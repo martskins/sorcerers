@@ -1,7 +1,62 @@
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
-    game::PlayerId,
+    card::{Ability, AdditionalCost, Card, CardBase, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    effect::Effect,
+    game::{ActivatedAbility, PlayerId, Thresholds},
+    query::{CardQuery, ZoneQuery},
+    state::{CardMatcher, State},
 };
+
+#[derive(Debug, Clone)]
+struct TapToStrikeNearbyMinions;
+
+#[async_trait::async_trait]
+impl ActivatedAbility for TapToStrikeNearbyMinions {
+    fn get_name(&self) -> &str {
+        "Tap to Strike Nearby Minions"
+    }
+
+    async fn on_select(
+        &self,
+        card_id: &uuid::Uuid,
+        player_id: &PlayerId,
+        state: &State,
+    ) -> anyhow::Result<Vec<Effect>> {
+        let kraken = state.get_card(card_id);
+        let units_nearby = CardMatcher::units_near(kraken.get_zone())
+            .not_in_ids(vec![kraken.get_id().clone()])
+            .resolve_ids(state);
+        let mut effects: Vec<Effect> = units_nearby
+            .into_iter()
+            .map(|unit_id| Effect::TakeDamage {
+                card_id: unit_id.clone(),
+                from: kraken.get_id().clone(),
+                damage: kraken.get_power(state).unwrap().unwrap(),
+            })
+            .collect();
+
+        effects.push(Effect::MoveCard {
+            player_id: player_id.clone(),
+            card_id: card_id.clone(),
+            from: kraken.get_zone().clone(),
+            to: ZoneQuery::from_zone(kraken.get_zone().clone()),
+            tap: false,
+            region: Region::Surface,
+            through_path: None,
+        });
+
+        Ok(effects)
+    }
+
+    fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
+        Ok(Cost {
+            mana: 0,
+            thresholds: Thresholds::new(),
+            additional: vec![AdditionalCost::Surface {
+                card: CardQuery::from_id(card_id.clone()),
+            }],
+        })
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct DiluvianKraken {
@@ -27,7 +82,7 @@ impl DiluvianKraken {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(8, "WWW"),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -56,6 +111,10 @@ impl Card for DiluvianKraken {
 
     fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
         Some(&mut self.unit_base)
+    }
+
+    fn get_additional_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+        Ok(vec![Box::new(TapToStrikeNearbyMinions)])
     }
 }
 

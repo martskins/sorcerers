@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Aura, CardType, Cost, Plane, Zone},
+    card::{Ability, Aura, CardType, Cost, Region, Zone},
     effect::Effect,
     error::GameError,
     networking::{
@@ -176,6 +176,53 @@ pub async fn pick_cards(
     }
 }
 
+pub async fn reveal_cards(
+    player_id: impl AsRef<PlayerId>,
+    preview_cards: &[uuid::Uuid],
+    state: &State,
+    prompt: &str,
+) -> anyhow::Result<()> {
+    state
+        .get_sender()
+        .send(ServerMessage::RevealCards {
+            prompt: prompt.to_string(),
+            player_id: player_id.as_ref().clone(),
+            cards: preview_cards.to_vec(),
+            action: None,
+        })
+        .await?;
+
+    Ok(())
+}
+
+pub async fn take_action(
+    player_id: impl AsRef<PlayerId>,
+    preview_cards: &[uuid::Uuid],
+    state: &State,
+    prompt: &str,
+    action: &str,
+) -> anyhow::Result<bool> {
+    state
+        .get_sender()
+        .send(ServerMessage::RevealCards {
+            prompt: prompt.to_string(),
+            player_id: player_id.as_ref().clone(),
+            cards: preview_cards.to_vec(),
+            action: Some(action.to_string()),
+        })
+        .await?;
+
+    loop {
+        let msg = state.get_receiver().recv().await?;
+        match msg {
+            ClientMessage::ResolveAction { take_action, .. } => break Ok(take_action),
+            ClientMessage::PlayerDisconnected { player_id, .. } => {
+                return Err(GameError::PlayerDisconnected(player_id.clone()).into());
+            }
+            _ => unreachable!(),
+        }
+    }
+}
 pub async fn pick_card(
     player_id: impl AsRef<PlayerId>,
     card_ids: &[uuid::Uuid],
@@ -873,10 +920,11 @@ impl ActivatedAbility for UnitAction {
                         format!("{} attacks {}, defend?", attacker.get_name(), attacked.get_name()),
                     )
                     .await?;
+                    resume(player_id, state).await?;
+
                     if defend {
                         let defenders =
                             pick_cards(&opponent.id, &possible_defenders, state, "Pick units to defend with").await?;
-                        resume(player_id, state).await?;
                         match defenders.len() {
                             // If no defenders are picked, proceed with the original attack.
                             0 => {
@@ -900,7 +948,7 @@ impl ActivatedAbility for UnitAction {
                                             zone: attacker.get_zone().clone(),
                                         },
                                         tap: true,
-                                        plane: attacker.get_plane(state).clone(),
+                                        region: attacker.get_region(state).clone(),
                                         through_path: None,
                                     },
                                     Effect::Attack {
@@ -923,7 +971,7 @@ impl ActivatedAbility for UnitAction {
                                                 zone: attacker.get_zone().clone(),
                                             },
                                             tap: true,
-                                            plane: attacker.get_plane(state).clone(),
+                                            region: attacker.get_region(state).clone(),
                                             through_path: None,
                                         }]
                                     })
@@ -1042,7 +1090,7 @@ impl ActivatedAbility for UnitAction {
                             zone: to_zone.clone(),
                         },
                         tap: true,
-                        plane: card.get_base().plane.clone(),
+                        region: card.get_base().region.clone(),
                         through_path: None,
                     });
 
@@ -1061,7 +1109,7 @@ impl ActivatedAbility for UnitAction {
                                 zone: zone.clone(),
                             },
                             tap: true,
-                            plane: card.get_base().plane.clone(),
+                            region: card.get_base().region.clone(),
                             through_path: None,
                         });
                         effects.push(Effect::Attack {
@@ -1238,7 +1286,7 @@ impl Game {
                                     player_id,
                                     &card.get_valid_play_zones(&self.state)?,
                                     &self.state,
-                                    false, 
+                                    false,
                                     "Pick a zone to play the artifact",
                                 )
                                 .await?;
@@ -1469,7 +1517,7 @@ impl Game {
                     zone: Zone::Realm(square),
                 },
                 tap: false,
-                plane: Plane::Surface,
+                region: Region::Surface,
                 through_path: None,
             });
         }

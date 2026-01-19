@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::{Counter, Effect},
     game::{Element, PlayerId},
     query::EffectQuery,
@@ -30,7 +30,7 @@ impl AskelonPhoenix {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(5, "FF"),
-                plane: Plane::Air,
+                region: Region::Air,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

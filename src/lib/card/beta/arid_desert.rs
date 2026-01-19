@@ -1,8 +1,8 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, Plane, Rarity, Site, SiteBase, Zone},
+    card::{Card, CardBase, Cost, Edition, Rarity, Region, Site, SiteBase, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds, pick_card},
-    state::State,
+    state::{CardMatcher, State},
 };
 
 #[derive(Debug, Clone)]
@@ -27,7 +27,7 @@ impl AridDesert {
                 tapped: false,
                 zone: Zone::Atlasbook,
                 cost: Cost::zero(),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -61,12 +61,7 @@ impl Card for AridDesert {
     }
 
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        let site_ids = self
-            .get_zone()
-            .get_nearby_sites(state, None)
-            .iter()
-            .map(|c| c.get_id().clone())
-            .collect::<Vec<uuid::Uuid>>();
+        let site_ids = CardMatcher::sites_near(self.get_zone()).resolve_ids(state);
         if site_ids.is_empty() {
             return Ok(vec![]);
         }
@@ -75,7 +70,7 @@ impl Card for AridDesert {
         let picked_card_id = pick_card(self.get_owner_id(), &site_ids, state, prompt).await?;
         let site = state.get_card(&picked_card_id);
         let units = state.get_minions_in_zone(site.get_zone());
-        let units = units.iter().filter(|c| c.get_base().plane == Plane::Surface);
+        let units = units.iter().filter(|c| c.get_base().region == Region::Surface);
         let mut effects = vec![];
         for unit in units {
             effects.push(Effect::take_damage(&unit.get_id(), site.get_id(), 1));

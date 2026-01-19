@@ -1,8 +1,8 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, Plane, Rarity, Site, SiteBase, SiteType, Zone},
+    card::{Card, CardBase, Cost, Edition, Rarity, Region, Site, SiteBase, SiteType, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds},
-    state::State,
+    state::{CardMatcher, State},
 };
 
 #[derive(Debug, Clone)]
@@ -27,7 +27,7 @@ impl ShiftingSands {
                 tapped: false,
                 zone: Zone::Atlasbook,
                 cost: Cost::zero(),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -54,14 +54,11 @@ impl Card for ShiftingSands {
 
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let mut effects = vec![];
-        let nearby_sites: Vec<&Box<dyn Card>> = self
-            .get_zone()
-            .get_nearby_sites(state, Some(self.get_owner_id()))
-            .iter()
-            .cloned()
-            .filter(|c| c.get_site_base().unwrap().types.contains(&SiteType::Desert))
-            .collect();
-        for site in nearby_sites {
+        for site in CardMatcher::sites_near(self.get_zone())
+            .controller_id(Some(&self.get_controller_id(state)))
+            .site_types(vec![SiteType::Desert])
+            .iter(state)
+        {
             effects.extend(site.genesis(state).await?);
         }
         Ok(effects)

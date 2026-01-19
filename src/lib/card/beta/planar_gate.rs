@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Edition, Plane, Rarity, Site, SiteBase, SiteType, Zone},
+    card::{Ability, Card, CardBase, Cost, Edition, Rarity, Region, Site, SiteBase, SiteType, Zone},
     effect::{AbilityCounter, Effect},
     game::{PlayerId, Thresholds},
     query::{CardQuery, EffectQuery, ZoneQuery},
@@ -28,7 +28,7 @@ impl PlanarGate {
                 tapped: false,
                 zone: Zone::Atlasbook,
                 cost: Cost::zero(),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

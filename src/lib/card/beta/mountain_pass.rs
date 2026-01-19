@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, Plane, Rarity, Site, SiteBase, SiteType, Zone},
+    card::{Card, CardBase, Cost, Edition, Rarity, Region, Site, SiteBase, SiteType, Zone},
     game::{PlayerId, Thresholds},
     state::State,
 };
@@ -26,7 +26,7 @@ impl MountainPass {
                 tapped: false,
                 zone: Zone::Atlasbook,
                 cost: Cost::zero(),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -36,16 +36,16 @@ impl MountainPass {
 }
 
 impl Site for MountainPass {
-    fn can_be_entered_by(&self, card_id: &uuid::Uuid, _from: &Zone, plane: &Plane, state: &State) -> bool {
+    fn can_be_entered_by(&self, card_id: &uuid::Uuid, _from: &Zone, region: &Region, state: &State) -> bool {
         let minions_atop = self
             .get_zone()
             .get_minions(state, None)
             .iter()
-            .filter(|c| c.get_base().plane == Plane::Surface)
+            .filter(|c| c.get_base().region == Region::Surface)
             .count();
 
         let card = state.get_card(card_id);
-        let ground_movement = card.get_plane(state) == &Plane::Surface && plane == &Plane::Surface;
+        let ground_movement = card.get_region(state) == &Region::Surface && region == &Region::Surface;
         !ground_movement || minions_atop == 0
     }
 }

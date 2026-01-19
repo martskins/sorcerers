@@ -1,6 +1,7 @@
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     game::PlayerId,
+    state::State,
 };
 
 #[derive(Debug, Clone)]
@@ -27,7 +28,7 @@ impl AnuiUndine {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(5, "WW"),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -56,6 +57,10 @@ impl Card for AnuiUndine {
 
     fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
         Some(&mut self.unit_base)
+    }
+
+    fn get_power(&self, state: &State) -> anyhow::Result<Option<u16>> {
+        Ok(Some(state.get_body_of_water_size(self.get_zone())))
     }
 }
 

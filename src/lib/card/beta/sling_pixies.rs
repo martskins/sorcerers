@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::PlayerId,
     state::State,
@@ -29,7 +29,7 @@ impl SlingPixies {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(1, "A"),
-                plane: Plane::Air,
+                region: Region::Air,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

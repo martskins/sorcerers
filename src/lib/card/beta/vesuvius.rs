@@ -1,8 +1,8 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, Plane, Rarity, Site, SiteBase, Zone},
+    card::{Card, CardBase, Cost, Edition, Rarity, Region, Site, SiteBase, Zone},
     effect::{Effect, TokenType},
     game::{ActivatedAbility, PlayerId, Thresholds},
-    state::State,
+    state::{CardMatcher, State},
 };
 
 #[derive(Debug, Clone)]
@@ -16,12 +16,7 @@ impl ActivatedAbility for UseAbility {
 
     async fn on_select(&self, card_id: &uuid::Uuid, _: &PlayerId, state: &State) -> anyhow::Result<Vec<Effect>> {
         let card = state.get_card(card_id);
-        let site_ids: Vec<uuid::Uuid> = card
-            .get_zone()
-            .get_nearby_sites(state, None)
-            .iter()
-            .map(|c| c.get_id().clone())
-            .collect();
+        let site_ids = CardMatcher::sites_near(card.get_zone()).resolve_ids(state);
         let mut effects = vec![
             Effect::BuryCard {
                 card_id: card.get_id().clone(),
@@ -68,7 +63,7 @@ impl Vesuvius {
                 tapped: false,
                 zone: Zone::Atlasbook,
                 cost: Cost::zero(),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -98,7 +93,7 @@ impl Card for Vesuvius {
         Some(&mut self.site_base)
     }
 
-    fn get_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+    fn get_additional_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         Ok(vec![Box::new(UseAbility)])
     }
 

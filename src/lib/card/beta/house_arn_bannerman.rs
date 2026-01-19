@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
 use crate::{
-    card::{AreaModifiers, Card, CardBase, Cost, Edition, MinionType, Plane, Rarity, UnitBase, Zone},
+    card::{AreaModifiers, Card, CardBase, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Counter,
     game::PlayerId,
-    state::State,
+    state::{CardMatcher, State},
 };
 
 #[derive(Debug, Clone)]
@@ -31,7 +31,7 @@ impl HouseArnBannerman {
                 tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new(4, "EE"),
-                plane: Plane::Surface,
+                region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -63,14 +63,10 @@ impl Card for HouseArnBannerman {
     }
 
     fn area_modifiers(&self, state: &State) -> AreaModifiers {
-        let nearby_allies: Vec<uuid::Uuid> = self
-            .get_zone()
-            .get_nearby_units(state, Some(&self.get_controller_id(state)))
-            .iter()
-            .map(|unit| unit.get_id())
-            .filter(|id| *id != self.get_id())
-            .cloned()
-            .collect();
+        let nearby_allies = CardMatcher::units_near(self.get_zone())
+            .controller_id(Some(&self.get_controller_id(state)))
+            .not_in_ids(vec![self.get_id().clone()])
+            .resolve_ids(state);
 
         let counters: HashMap<uuid::Uuid, Vec<Counter>> = nearby_allies
             .into_iter()

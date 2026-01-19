@@ -84,41 +84,13 @@ impl TextureCache {
     }
 
     async fn download_card_image(card: &CardData) -> anyhow::Result<Texture2D> {
-        let set = card.get_edition().url_name();
-        let card_name = card.get_name();
-        let name_for_url = card
-            .get_name()
-            .to_string()
-            .to_lowercase()
-            .replace(" ", "_")
-            .replace("-", "_");
-        let mut folder = "cards";
-        if card.is_site() {
-            folder = "rotated";
-        }
-        let mut after_card_name = "b";
-        if card.is_token() {
-            after_card_name = "bt";
-        }
-
-        let mut art_num_suffix = String::new();
-        if card.num_arts > 1 {
-            let num = rand::rng().random_range(1..card.num_arts);
-            art_num_suffix = format!("_{}", num);
-        }
-
-        let path = format!(
-            "https://d27a44hjr9gen3.cloudfront.net/{}/{}-{}{}-{}-s.png",
-            folder, set, name_for_url, art_num_suffix, after_card_name
-        );
-
-        println!("Downloading image for {} from {}", card.get_name(), path);
-        let response = reqwest::blocking::get(&path)?;
+        println!("Downloading image for {} from {}", card.get_name(), card.image_path);
+        let response = reqwest::blocking::get(&card.image_path)?;
         if response.status() != reqwest::StatusCode::OK {
             return Err(anyhow::anyhow!(
                 "Failed to download image for {} on path {}: HTTP {}",
-                name_for_url,
-                path,
+                card.name,
+                &card.image_path,
                 response.status()
             ));
         }
@@ -130,9 +102,9 @@ impl TextureCache {
             .ok_or(anyhow::anyhow!("failed to get texture cache reference"))?
             .write()
             .await;
-        cache.inner.insert(name_for_url.to_string(), texture.clone());
+        cache.inner.insert(card.name.clone(), texture.clone());
 
-        let save_path = format!("assets/images/cache/{}.png", card_name);
+        let save_path = format!("assets/images/cache/{}.png", card.name);
         if let Err(e) = std::fs::write(&save_path, &bytes) {
             println!("Error saving image to disk: {}", e);
         }

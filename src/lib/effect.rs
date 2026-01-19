@@ -1,9 +1,9 @@
 use crate::{
-    card::{Ability, Card, FootSoldier, Plane, Rubble, UnitBase, Zone},
+    card::{Ability, Card, FootSoldier, Region, Rubble, UnitBase, Zone},
     game::{BaseAction, Direction, PlayerAction, PlayerId, SoundEffect, Thresholds, pick_card, pick_option},
     networking::message::ServerMessage,
     query::{CardQuery, EffectQuery, QueryCache, ZoneQuery},
-    state::{Phase, State},
+    state::{CardMatcher, Phase, State},
 };
 use std::fmt::Debug;
 
@@ -56,7 +56,7 @@ pub enum Effect {
         shooter: uuid::Uuid,
         from_zone: Zone,
         direction: Direction,
-        damage: u16,
+        damage: Vec<u16>,
         piercing: bool,
         splash_damage: Option<u16>,
     },
@@ -89,7 +89,7 @@ pub enum Effect {
         from: Zone,
         to: ZoneQuery,
         tap: bool,
-        plane: Plane,
+        region: Region,
         through_path: Option<Vec<Zone>>,
     },
     DrawSite {
@@ -677,7 +677,7 @@ impl Effect {
                             zone: Zone::Cemetery,
                         },
                         tap: false,
-                        plane: Plane::None,
+                        region: Region::None,
                         through_path: None,
                     }
                     .into(),
@@ -768,6 +768,8 @@ impl Effect {
                         prompt: "Waiting for other player".to_string(),
                     })
                     .await?;
+
+                state.current_player = player_id.clone();
                 let cards = state
                     .cards
                     .iter_mut()
@@ -791,18 +793,21 @@ impl Effect {
                 let player_resources = state.get_player_resources_mut(player_id)?;
                 player_resources.mana = available_mana;
 
+                for card in state.cards.iter().filter(|c| c.get_owner_id() == &state.current_player) {
+                    if !card.get_zone().is_in_play() {
+                        continue;
+                    }
+
+                    let effects = card.on_turn_start(state).await?;
+                    state.effects.extend(effects.into_iter().map(|e| e.into()));
+                }
+
                 let options: Vec<BaseAction> = vec![BaseAction::DrawSite, BaseAction::DrawSpell];
                 let option_labels: Vec<String> = options.iter().map(|a| a.get_name().to_string()).collect();
                 let prompt = "Start Turn: Pick card to draw";
                 let picked_option_idx = pick_option(player_id, &option_labels, state, prompt).await?;
                 let effects = options[picked_option_idx].on_select(player_id, state).await?;
                 state.effects.extend(effects.into_iter().map(|e| e.into()));
-
-                state.current_player = player_id.clone();
-                for card in state.cards.iter().filter(|c| c.get_owner_id() == &state.current_player) {
-                    let effects = card.on_turn_start(state).await?;
-                    state.effects.extend(effects.into_iter().map(|e| e.into()));
-                }
 
                 state.turns += 1;
                 state
@@ -902,7 +907,7 @@ impl Effect {
                             zone: defender.get_zone().clone(),
                         },
                         tap: true,
-                        plane: attacker.get_base().plane.clone(),
+                        region: attacker.get_base().region.clone(),
                         through_path: None,
                     },
                     Effect::TakeDamage {
@@ -1042,7 +1047,7 @@ impl Effect {
                             zone,
                         },
                         tap: false,
-                        plane: Plane::Surface,
+                        region: Region::Surface,
                         through_path: None,
                     }
                     .into(),
@@ -1058,11 +1063,12 @@ impl Effect {
             }
             Effect::Burrow { card_id, .. } => {
                 let card = state.get_card_mut(card_id);
-                card.get_base_mut().plane = Plane::Underground;
+                card.get_base_mut().region = Region::Underground;
             }
             Effect::Submerge { card_id, .. } => {
                 let card = state.get_card_mut(card_id);
-                card.get_base_mut().plane = Plane::Submerged;
+                card.get_base_mut().region = Region::Submerged;
+                card.get_base_mut().tapped = true;
             }
         }
 
