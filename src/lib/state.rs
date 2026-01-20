@@ -352,7 +352,7 @@ impl CardMatcher {
 }
 
 #[derive(Debug, Clone)]
-pub enum ContinousEffect {
+pub enum ContinuousEffect {
     ControllerOverride {
         controller_id: PlayerId,
         affected_cards: CardMatcher,
@@ -390,7 +390,7 @@ pub struct State {
     pub player_one: PlayerId,
     pub server_tx: Sender<ServerMessage>,
     pub client_rx: Receiver<ClientMessage>,
-    pub continuous_effects: Vec<ContinousEffect>,
+    pub continuous_effects: Vec<ContinuousEffect>,
     pub player_mana: HashMap<PlayerId, u8>,
 }
 

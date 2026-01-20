@@ -3,7 +3,7 @@ use crate::{
     effect::Effect,
     game::{PlayerId, pick_card},
     query::ZoneQuery,
-    state::{CardMatcher, ContinousEffect, State},
+    state::{CardMatcher, ContinuousEffect, State},
 };
 
 #[derive(Debug, Clone)]
@@ -107,8 +107,8 @@ impl Card for BrobdingnagBullfrog {
         Ok(vec![])
     }
 
-    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<ContinousEffect>> {
-        Ok(vec![ContinousEffect::GrantAbility {
+    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+        Ok(vec![ContinuousEffect::GrantAbility {
             ability: Ability::Disabled,
             affected_cards: CardMatcher::from_id(self.swallowed_minion.unwrap_or(uuid::Uuid::nil()).clone()),
         }])

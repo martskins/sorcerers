@@ -6,7 +6,7 @@ use crate::{
         get_adjacent_zones, get_nearby_zones,
     },
     query::{CardQuery, ZoneQuery},
-    state::{ContinousEffect, State},
+    state::{ContinuousEffect, State},
 };
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Debug};
@@ -605,7 +605,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     fn get_controller_id(&self, state: &State) -> PlayerId {
         let mut controller = self.get_base().controller_id;
         for we in &state.continuous_effects {
-            if let ContinousEffect::ControllerOverride {
+            if let ContinuousEffect::ControllerOverride {
                 controller_id,
                 affected_cards,
             } = we
@@ -1085,7 +1085,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
                 for ce in &state.continuous_effects {
                     match ce {
-                        ContinousEffect::GrantAbility {
+                        ContinuousEffect::GrantAbility {
                             ability,
                             affected_cards,
                         } if affected_cards.matches(self.get_id(), state) => modifiers.push(ability.clone()),
@@ -1123,7 +1123,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 }
 
                 for we in &state.continuous_effects {
-                    if let ContinousEffect::ModifyPower {
+                    if let ContinuousEffect::ModifyPower {
                         power_diff,
                         affected_cards,
                     } = we
@@ -1467,7 +1467,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         1
     }
 
-    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<ContinousEffect>> {
+    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
         Ok(vec![])
     }
 }
