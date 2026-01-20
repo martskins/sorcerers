@@ -1,6 +1,6 @@
 use crate::{
     card::{Ability, Card, FootSoldier, Region, Rubble, UnitBase, Zone},
-    game::{BaseAction, Direction, PlayerAction, PlayerId, SoundEffect, Thresholds, pick_card, pick_option},
+    game::{BaseAction, Direction, PlayerAction, PlayerId, SoundEffect, pick_card, pick_option},
     networking::message::ServerMessage,
     query::{CardQuery, EffectQuery, QueryCache, ZoneQuery},
     state::{Phase, State},
@@ -136,12 +136,10 @@ pub enum Effect {
     RemoveResources {
         player_id: uuid::Uuid,
         mana: u8,
-        thresholds: Thresholds,
     },
     AddResources {
         player_id: uuid::Uuid,
         mana: u8,
-        thresholds: Thresholds,
     },
     RangedStrike {
         attacker_id: uuid::Uuid,
@@ -778,8 +776,8 @@ impl Effect {
                         None => None,
                     })
                     .sum();
-                let player_resources = state.get_player_resources_mut(player_id)?;
-                player_resources.mana = available_mana;
+                let player_mana = state.get_player_mana_mut(player_id);
+                *player_mana = available_mana;
 
                 for card in state.cards.iter().filter(|c| c.get_owner_id() == &state.current_player) {
                     if !card.get_zone().is_in_play() {
@@ -805,18 +803,14 @@ impl Effect {
                     })
                     .await?;
             }
-            Effect::RemoveResources {
-                player_id,
-                mana,
-                thresholds,
-                ..
-            } => {
-                let player_resources = state.get_player_resources_mut(player_id)?;
-                player_resources.mana -= mana;
-                player_resources.thresholds.air = player_resources.thresholds.air.saturating_sub(thresholds.air);
-                player_resources.thresholds.water = player_resources.thresholds.water.saturating_sub(thresholds.water);
-                player_resources.thresholds.fire = player_resources.thresholds.fire.saturating_sub(thresholds.fire);
-                player_resources.thresholds.earth = player_resources.thresholds.earth.saturating_sub(thresholds.earth);
+            Effect::RemoveResources { player_id, mana, .. } => {
+                let player_mana = state.get_player_mana_mut(player_id);
+                *player_mana = player_mana.saturating_sub(*mana);
+                // TODO::
+                // player_resources.thresholds.air = player_resources.thresholds.air.saturating_sub(thresholds.air);
+                // player_resources.thresholds.water = player_resources.thresholds.water.saturating_sub(thresholds.water);
+                // player_resources.thresholds.fire = player_resources.thresholds.fire.saturating_sub(thresholds.fire);
+                // player_resources.thresholds.earth = player_resources.thresholds.earth.saturating_sub(thresholds.earth);
             }
             Effect::EndTurn { player_id, .. } => {
                 for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
@@ -824,11 +818,8 @@ impl Effect {
                     state.effects.extend(effects.into_iter().map(|e| e.into()));
                 }
 
-                let resources = state
-                    .resources
-                    .get_mut(player_id)
-                    .ok_or(anyhow::anyhow!("Player resources not found"))?;
-                resources.mana = 0;
+                let player_mana = state.get_player_mana_mut(player_id);
+                *player_mana = 0;
                 state.phase = Phase::Main;
 
                 let cards = state.cards.iter_mut().filter(|c| c.is_unit());
@@ -864,18 +855,13 @@ impl Effect {
                     .into(),
                 );
             }
-            Effect::AddResources {
-                player_id,
-                mana,
-                thresholds,
-                ..
-            } => {
-                let player_resources = state.get_player_resources_mut(player_id)?;
-                player_resources.mana += mana;
-                player_resources.thresholds.air += thresholds.air;
-                player_resources.thresholds.water += thresholds.water;
-                player_resources.thresholds.fire += thresholds.fire;
-                player_resources.thresholds.earth += thresholds.earth;
+            Effect::AddResources { player_id, mana, .. } => {
+                let player_mana = state.get_player_mana_mut(player_id);
+                *player_mana += mana;
+                // player_resources.thresholds.air += thresholds.air;
+                // player_resources.thresholds.water += thresholds.water;
+                // player_resources.thresholds.fire += thresholds.fire;
+                // player_resources.thresholds.earth += thresholds.earth;
             }
             Effect::Attack {
                 attacker_id,

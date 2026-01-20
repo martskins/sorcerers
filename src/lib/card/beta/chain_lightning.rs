@@ -1,7 +1,7 @@
 use crate::{
     card::{Card, CardBase, Cost, Edition, Rarity, Region, Zone},
     effect::Effect,
-    game::{BaseOption, PlayerId, Thresholds, force_sync, pick_card, pick_option},
+    game::{BaseOption, PlayerId, force_sync, pick_card, pick_option},
     state::{CardMatcher, State},
 };
 
@@ -77,7 +77,6 @@ impl Card for ChainLightning {
                 let effect = Effect::RemoveResources {
                     player_id: self.get_controller_id(state).clone(),
                     mana: 2,
-                    thresholds: Thresholds::new(),
                 };
                 effect.apply(&mut local_state).await?;
                 effects.push(effect);

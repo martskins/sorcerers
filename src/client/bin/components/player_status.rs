@@ -8,7 +8,7 @@ use macroquad::{
 };
 use sorcerers::{
     card::Zone,
-    game::{Element, Resources},
+    game::{Element, Resources, Thresholds},
 };
 
 use crate::{
@@ -130,7 +130,10 @@ impl Component for PlayerStatusComponent {
     }
 
     async fn render(&mut self, data: &mut GameData) -> anyhow::Result<()> {
-        let resources = data.resources.get(&self.player_id).cloned().unwrap_or(Resources::new());
+        let resources = data.resources.get(&self.player_id).unwrap_or(&Resources {
+            mana: 0,
+            thresholds: Thresholds::ZERO,
+        });
         let player_name = if data.player_id == self.player_id {
             "You"
         } else {

@@ -2,7 +2,7 @@ use crate::{
     card::{Ability, Card, CardData, CardType, MinionType, Region, SiteType, Zone},
     deck::Deck,
     effect::Effect,
-    game::{Element, InputStatus, PlayerId, Resources},
+    game::{Element, InputStatus, PlayerId, Resources, Thresholds},
     networking::message::{ClientMessage, ServerMessage},
 };
 use async_channel::{Receiver, Sender};
@@ -381,7 +381,6 @@ pub struct State {
     pub turns: usize,
     pub cards: Vec<Box<dyn Card>>,
     pub decks: HashMap<PlayerId, Deck>,
-    pub resources: HashMap<PlayerId, Resources>,
     pub input_status: InputStatus,
     pub phase: Phase,
     pub waiting_for_input: bool,
@@ -392,6 +391,7 @@ pub struct State {
     pub server_tx: Sender<ServerMessage>,
     pub client_rx: Receiver<ClientMessage>,
     pub continuous_effects: Vec<ContinousEffect>,
+    pub player_mana: HashMap<PlayerId, u8>,
 }
 
 impl State {
@@ -403,11 +403,8 @@ impl State {
     ) -> Self {
         let mut cards: Vec<Box<dyn Card>> = Vec::new();
         let mut decks = HashMap::new();
-        let resources = players_with_decks
-            .iter()
-            .map(|p| (p.player.id.clone(), Resources::new()))
-            .collect();
         let players = players_with_decks.iter().map(|p| p.player.clone()).collect();
+        let player_mana = players_with_decks.iter().map(|p| (p.player.id.clone(), 0)).collect();
         let player_one = players_with_decks[0].player.id.clone();
         for player in players_with_decks {
             cards.extend(player.cards);
@@ -420,7 +417,6 @@ impl State {
             cards,
             decks,
             turns: 0,
-            resources,
             input_status: InputStatus::None,
             phase: Phase::Main,
             current_player: player_one,
@@ -431,7 +427,21 @@ impl State {
             server_tx,
             client_rx,
             continuous_effects: Vec::new(),
+            player_mana,
         }
+    }
+
+    pub fn get_player_mana_mut(&mut self, player_id: &PlayerId) -> &mut u8 {
+        self.player_mana.entry(player_id.clone()).or_insert(0)
+    }
+
+    pub fn get_thresholds_for_player(&self, player_id: &PlayerId) -> Thresholds {
+        self.cards
+            .iter()
+            .filter(|c| c.get_zone().is_in_play())
+            .filter(|c| &c.get_controller_id(self) == player_id)
+            .map(|c| c.get_provided_affinity(self))
+            .sum()
     }
 
     pub fn get_body_of_water_size(&self, zone: &Zone) -> u16 {
@@ -583,7 +593,11 @@ impl State {
 
         Ok(ServerMessage::Sync {
             cards: self.data_from_cards(),
-            resources: self.resources.clone(),
+            resources: self
+                .players
+                .iter()
+                .map(|p| (p.id.clone(), self.get_player_resources(&p.id).unwrap().clone()))
+                .collect(),
             current_player: self.current_player.clone(),
             health: health,
         })
@@ -631,13 +645,6 @@ impl State {
         self.cards.iter().filter(|c| c.get_zone() == zone).collect()
     }
 
-    pub fn get_player_resources_mut(&mut self, player_id: &PlayerId) -> anyhow::Result<&mut Resources> {
-        Ok(self
-            .resources
-            .get_mut(player_id)
-            .ok_or(anyhow::anyhow!("failed to get player resources"))?)
-    }
-
     pub fn get_player(&self, player_id: &PlayerId) -> anyhow::Result<&Player> {
         Ok(self
             .players
@@ -653,11 +660,11 @@ impl State {
             .ok_or(anyhow::anyhow!("failed to get player deck"))?)
     }
 
-    pub fn get_player_resources(&self, player_id: &PlayerId) -> anyhow::Result<&Resources> {
-        Ok(self
-            .resources
-            .get(player_id)
-            .ok_or(anyhow::anyhow!("failed to get player resources"))?)
+    pub fn get_player_resources(&self, player_id: &PlayerId) -> anyhow::Result<Resources> {
+        Ok(Resources {
+            mana: self.player_mana.get(player_id).cloned().unwrap_or(0),
+            thresholds: self.get_thresholds_for_player(player_id),
+        })
     }
 
     pub fn snapshot(&self) -> State {
@@ -667,7 +674,6 @@ impl State {
             cards: self.cards.iter().map(|c| c.clone_box()).collect(),
             decks: self.decks.clone(),
             turns: self.turns.clone(),
-            resources: self.resources.clone(),
             input_status: self.input_status.clone(),
             phase: self.phase.clone(),
             current_player: self.current_player,
@@ -678,6 +684,7 @@ impl State {
             client_rx: self.client_rx.clone(),
             effect_log: self.effect_log.clone(),
             continuous_effects: self.continuous_effects.clone(),
+            player_mana: self.player_mana.clone(),
         }
     }
 

@@ -83,7 +83,6 @@ impl Card for SimpleVillage {
             Effect::RemoveResources {
                 player_id: self.get_controller_id(state).clone(),
                 mana: 1,
-                thresholds: Thresholds::new(),
             },
             Effect::SummonToken {
                 player_id: self.get_controller_id(state).clone(),

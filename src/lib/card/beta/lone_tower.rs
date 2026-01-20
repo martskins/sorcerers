@@ -77,7 +77,6 @@ impl Card for LoneTower {
         Ok(vec![Effect::AddResources {
             player_id: self.get_owner_id().clone(),
             mana: 1,
-            thresholds: Thresholds::new(),
         }])
     }
 

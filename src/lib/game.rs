@@ -502,6 +502,13 @@ impl Into<Thresholds> for &str {
 }
 
 impl Thresholds {
+    pub const ZERO: Self = Thresholds {
+        fire: 0,
+        air: 0,
+        earth: 0,
+        water: 0,
+    };
+
     pub fn new() -> Self {
         Thresholds {
             fire: 0,
@@ -530,15 +537,6 @@ impl Thresholds {
 pub struct Resources {
     pub mana: u8,
     pub thresholds: Thresholds,
-}
-
-impl Resources {
-    pub fn new() -> Self {
-        Resources {
-            mana: 0,
-            thresholds: Thresholds::new(),
-        }
-    }
 }
 
 pub fn are_adjacent(square1: &Zone, square2: &Zone) -> bool {

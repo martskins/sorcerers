@@ -357,8 +357,8 @@ impl Cost {
     }
 
     pub async fn pay(&self, state: &mut State, player_id: &PlayerId) -> anyhow::Result<()> {
-        let resources = state.get_player_resources_mut(player_id)?;
-        resources.mana -= self.mana;
+        let mana = state.get_player_mana_mut(player_id);
+        *mana = mana.saturating_sub(self.mana);
 
         for other in &self.additional {
             match other {
@@ -430,11 +430,12 @@ impl Cost {
 
     pub fn can_afford(&self, state: &State, player_id: impl AsRef<PlayerId>) -> anyhow::Result<bool> {
         let resources = state.get_player_resources(player_id.as_ref())?;
+        let thresholds = state.get_thresholds_for_player(player_id.as_ref());
         let has_resources = resources.mana >= self.mana
-            && resources.thresholds.fire >= self.thresholds.fire
-            && resources.thresholds.air >= self.thresholds.air
-            && resources.thresholds.earth >= self.thresholds.earth
-            && resources.thresholds.water >= self.thresholds.water;
+            && thresholds.fire >= self.thresholds.fire
+            && thresholds.air >= self.thresholds.air
+            && thresholds.earth >= self.thresholds.earth
+            && thresholds.water >= self.thresholds.water;
 
         if !has_resources {
             return Ok(false);
@@ -545,6 +546,20 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             "https://d27a44hjr9gen3.cloudfront.net/{}/{}-{}-{}-s.png",
             folder, set, name_for_url, after_card_name
         )
+    }
+
+    fn get_provided_affinity(&self, _state: &State) -> Thresholds {
+        if !self.get_zone().is_in_play() {
+            return Thresholds::ZERO;
+        }
+
+        match self.get_card_type() {
+            CardType::Site => match self.get_site_base() {
+                Some(site_base) => site_base.provided_thresholds.clone(),
+                None => Thresholds::ZERO,
+            },
+            _ => Thresholds::ZERO,
+        }
     }
 
     // When resolving a CardQuery, this method allows the card to override the query. A useful
@@ -718,7 +733,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(vec![Effect::AddResources {
             player_id: self.get_owner_id().clone(),
             mana: site_base.provided_mana,
-            thresholds: site_base.provided_thresholds.clone(),
         }])
     }
 
@@ -1226,7 +1240,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 Effect::RemoveResources {
                     player_id: self.get_controller_id(state).clone(),
                     mana: 0,
-                    thresholds: self.get_site_base().unwrap().provided_thresholds.clone(),
                 },
             ];
         }

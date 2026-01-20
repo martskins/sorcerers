@@ -204,16 +204,8 @@ impl Server {
             &player_two,
             sorcerers::card::Zone::Realm(13),
         ));
-        let resources = game
-            .state
-            .resources
-            .entry(player_one)
-            .or_insert(sorcerers::game::Resources::new());
-        resources.mana = 10;
-        resources.thresholds.air = 5;
-        resources.thresholds.earth = 5;
-        resources.thresholds.water = 5;
-        resources.thresholds.fire = 5;
+        let player_mana = game.state.get_player_mana_mut(&player_one);
+        *player_mana = 10;
 
         tokio::spawn(async move {
             game.start().await.expect("game to start");
