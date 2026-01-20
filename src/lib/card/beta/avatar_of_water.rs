@@ -1,7 +1,6 @@
 use crate::{
     card::{AvatarBase, Card, CardBase, Cost, Edition, Rarity, Region, UnitBase, Zone},
     game::PlayerId,
-    state::State,
 };
 
 #[derive(Debug, Clone)]

@@ -1,8 +1,8 @@
 use crate::{
     card::{Card, CardBase, CardType, Cost, Edition, Rarity, Region, Zone},
     effect::Effect,
-    game::{CARDINAL_DIRECTIONS, Direction, PlayerId, Thresholds, pick_card, pick_direction},
-    query::{CardQuery, QueryCache},
+    game::{CARDINAL_DIRECTIONS, PlayerId, pick_direction},
+    query::CardQuery,
     state::State,
 };
 

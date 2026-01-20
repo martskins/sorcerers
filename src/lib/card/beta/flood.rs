@@ -1,6 +1,6 @@
 use crate::{
     card::{Aura, AuraBase, Card, CardBase, Cost, Edition, Rarity, Region, Zone},
-    game::{PlayerId, pick_zone},
+    game::PlayerId,
     state::State,
 };
 

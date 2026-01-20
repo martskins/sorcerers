@@ -2,6 +2,7 @@ use crate::{
     card::{Card, from_name},
     deck::Deck,
     game::PlayerId,
+    networking::message::PreconDeck,
 };
 
 pub fn water(player_id: &PlayerId) -> (Deck, Vec<Box<dyn Card>>) {
@@ -242,3 +243,19 @@ pub fn air(player_id: &PlayerId) -> (Deck, Vec<Box<dyn Card>>) {
 
     (deck, vec![avatar].into_iter().chain(spells).chain(sites).collect())
 }
+
+#[linkme::distributed_slice(crate::card::ALL_PRECONS)]
+static BETA_AIR: (&'static PreconDeck, fn(&PlayerId) -> (Deck, Vec<Box<dyn Card>>)) =
+    (&PreconDeck::BetaAir, |owner_id: &PlayerId| air(owner_id));
+
+#[linkme::distributed_slice(crate::card::ALL_PRECONS)]
+static BETA_FIRE: (&'static PreconDeck, fn(&PlayerId) -> (Deck, Vec<Box<dyn Card>>)) =
+    (&PreconDeck::BetaFire, |owner_id: &PlayerId| fire(owner_id));
+
+#[linkme::distributed_slice(crate::card::ALL_PRECONS)]
+static BETA_WATER: (&'static PreconDeck, fn(&PlayerId) -> (Deck, Vec<Box<dyn Card>>)) =
+    (&PreconDeck::BetaWater, |owner_id: &PlayerId| water(owner_id));
+
+#[linkme::distributed_slice(crate::card::ALL_PRECONS)]
+static BETA_EARTH: (&'static PreconDeck, fn(&PlayerId) -> (Deck, Vec<Box<dyn Card>>)) =
+    (&PreconDeck::BetaEarth, |owner_id: &PlayerId| earth(owner_id));

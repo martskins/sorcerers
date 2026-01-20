@@ -1437,7 +1437,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(vec![])
     }
 
-    fn get_additional_activated_abilities(&self, state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+    fn get_additional_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         Ok(vec![])
     }
 

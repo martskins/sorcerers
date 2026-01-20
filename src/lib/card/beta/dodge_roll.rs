@@ -44,7 +44,7 @@ impl Card for DodgeRoll {
         &self.card_base
     }
 
-    async fn on_cast(&mut self, state: &State, _caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
+    async fn on_cast(&mut self, _state: &State, _caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
         // TODO: Implement Dodge Roll effect
         Ok(vec![])
     }

@@ -89,10 +89,6 @@ impl SelectionOverlay {
             close: false,
         })
     }
-
-    pub fn should_close(&self) -> bool {
-        self.close
-    }
 }
 
 #[async_trait::async_trait]
@@ -110,7 +106,7 @@ impl Component for SelectionOverlay {
         Ok(())
     }
 
-    async fn process_command(&mut self, _command: &ComponentCommand, data: &mut GameData) -> anyhow::Result<()> {
+    async fn process_command(&mut self, _command: &ComponentCommand, _data: &mut GameData) -> anyhow::Result<()> {
         Ok(())
     }
 
@@ -124,7 +120,11 @@ impl Component for SelectionOverlay {
         ComponentType::SelectionOverlay
     }
 
-    async fn process_input(&mut self, in_turn: bool, data: &mut GameData) -> anyhow::Result<Option<ComponentCommand>> {
+    async fn process_input(
+        &mut self,
+        _in_turn: bool,
+        _data: &mut GameData,
+    ) -> anyhow::Result<Option<ComponentCommand>> {
         let mouse_position = macroquad::input::mouse_position();
         let mouse_vec = Vec2::new(mouse_position.0, mouse_position.1);
 

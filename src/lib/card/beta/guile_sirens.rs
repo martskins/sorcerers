@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{
     card::{Ability, Card, CardBase, CardType, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
-    game::{PlayerId, pick_card, pick_zone, resume, wait_for_opponent},
+    game::{PlayerId, pick_card, pick_zone},
     query::ZoneQuery,
     state::{CardMatcher, State},
 };

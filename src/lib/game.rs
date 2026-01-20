@@ -604,7 +604,6 @@ pub fn get_nearby_zones(zone: &Zone) -> Vec<Zone> {
             nearby.dedup();
             nearby
         }
-
         _ => vec![],
     }
 }

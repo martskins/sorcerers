@@ -1,6 +1,6 @@
 use async_channel::Sender;
 use sorcerers::{
-    card::{AnuiUndine, AutumnRiver, BrobdingnagBullfrog, CaveTrolls, DiluvianKraken, GuileSirens, IceLance},
+    card::{ALL_PRECONS, AnuiUndine, AutumnRiver, Upwelling},
     game::Game,
     networking::{
         client::Client,
@@ -42,12 +42,7 @@ impl Server {
                 Client::send_to_stream(
                     &ServerMessage::ConnectResponse {
                         player_id,
-                        available_decks: vec![
-                            PreconDeck::BetaFire,
-                            PreconDeck::BetaAir,
-                            PreconDeck::BetaEarth,
-                            PreconDeck::BetaWater,
-                        ],
+                        available_decks: ALL_PRECONS.iter().map(|(deck, _)| (*deck).clone()).collect(),
                     },
                     Arc::clone(&stream),
                 )
@@ -195,7 +190,7 @@ impl Server {
             sorcerers::card::Zone::Realm(13),
         ));
         game.state.cards.push(sorcerers::card::from_name_and_zone(
-            IceLance::NAME,
+            Upwelling::NAME,
             &player_one,
             sorcerers::card::Zone::Hand,
         ));

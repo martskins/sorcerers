@@ -3,7 +3,7 @@ use crate::{
     game::{BaseAction, Direction, PlayerAction, PlayerId, SoundEffect, Thresholds, pick_card, pick_option},
     networking::message::ServerMessage,
     query::{CardQuery, EffectQuery, QueryCache, ZoneQuery},
-    state::{CardMatcher, Phase, State},
+    state::{Phase, State},
 };
 use std::fmt::Debug;
 
@@ -673,13 +673,11 @@ impl Effect {
                 Box::pin(cost.pay(state, player_id)).await?;
 
                 let snapshot = state.snapshot();
-                let card = state
-                    .cards
-                    .iter_mut()
-                    .find(|c| c.get_id() == card_id)
-                    .expect("to find card");
-                card.set_zone(Zone::Cemetery);
+                let card = state.get_card_mut(card_id);
                 let effects = card.on_cast(&snapshot, caster_id).await?.into_iter().map(|e| e.into());
+
+                // Set zone after on_cast so that the card is not in the cemetery during casting.
+                card.set_zone(Zone::Cemetery);
                 state.effects.extend(effects);
             }
             Effect::PlayCard {

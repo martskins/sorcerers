@@ -77,6 +77,13 @@ impl CardMatcher {
         Self::default()
     }
 
+    pub fn in_zone(self, zone: &Zone) -> Self {
+        Self {
+            in_zones: Some(vec![zone.clone()]),
+            ..self
+        }
+    }
+
     pub fn in_play(self, in_play: bool) -> Self {
         Self {
             in_play: Some(in_play),

@@ -1,10 +1,6 @@
-use rand::seq::IndexedRandom;
-
 use crate::{
     card::{Artifact, ArtifactBase, Card, CardBase, Cost, Edition, Rarity, Region, Zone},
     game::PlayerId,
-    query::{CardQuery, ZoneQuery},
-    state::State,
 };
 
 #[derive(Debug, Clone)]

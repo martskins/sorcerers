@@ -1,5 +1,4 @@
 use macroquad::texture::Texture2D;
-use rand::Rng;
 use sorcerers::card::CardData;
 use std::{collections::HashMap, path::Path, sync::OnceLock};
 use tokio::sync::RwLock;

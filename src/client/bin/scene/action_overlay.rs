@@ -107,7 +107,11 @@ impl Component for ActionOverlay {
         ComponentType::ActionOverlay
     }
 
-    async fn process_input(&mut self, _in_turn: bool, data: &mut GameData) -> anyhow::Result<Option<ComponentCommand>> {
+    async fn process_input(
+        &mut self,
+        _in_turn: bool,
+        _data: &mut GameData,
+    ) -> anyhow::Result<Option<ComponentCommand>> {
         let mut skin = ui::root_ui().default_skin();
         skin.label_style = ui::root_ui()
             .style_builder()

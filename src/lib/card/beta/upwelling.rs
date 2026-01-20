@@ -1,8 +1,8 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, Rarity, Region, Zone},
+    card::{Card, CardBase, CardType, Cost, Edition, Rarity, Region, Zone},
     effect::Effect,
-    game::{PlayerId, Thresholds},
-    state::State,
+    game::{PlayerId, pick_card},
+    state::{CardMatcher, State},
 };
 
 #[derive(Debug, Clone)]
@@ -44,9 +44,24 @@ impl Card for Upwelling {
         &self.card_base
     }
 
-    async fn on_cast(&mut self, state: &State, _caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
-        // TODO: Implement Upwelling effect
-        Ok(vec![])
+    async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
+        let controller_id = self.get_controller_id(state);
+        let caster = state.get_card(caster_id);
+        let nearby_sites = CardMatcher::sites_near(caster.get_zone()).resolve_ids(state);
+        let prompt = "Upwelling: Pick a site";
+        let site_id = pick_card(controller_id, &nearby_sites, state, prompt).await?;
+        let site = state.get_card(&site_id);
+        let cards = CardMatcher::new()
+            .in_zone(site.get_zone())
+            .card_types(vec![CardType::Minion, CardType::Artifact])
+            .resolve_ids(state);
+        Ok(cards
+            .into_iter()
+            .map(|card_id| Effect::SetCardZone {
+                card_id,
+                zone: Zone::Hand,
+            })
+            .collect())
     }
 }
 
