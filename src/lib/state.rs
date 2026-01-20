@@ -475,7 +475,7 @@ impl State {
                 continue;
             }
 
-            let card_world_effects = card.get_continuos_effects(self).await?;
+            let card_world_effects = card.get_continuous_effects(self).await?;
             for effect in card_world_effects {
                 self.continuous_effects.push(effect);
             }

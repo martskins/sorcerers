@@ -107,7 +107,7 @@ impl Card for BrobdingnagBullfrog {
         Ok(vec![])
     }
 
-    async fn get_continuos_effects(&self, _state: &State) -> anyhow::Result<Vec<ContinousEffect>> {
+    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<ContinousEffect>> {
         Ok(vec![ContinousEffect::GrantAbility {
             ability: Ability::Disabled,
             affected_cards: CardMatcher::from_id(self.swallowed_minion.unwrap_or(uuid::Uuid::nil()).clone()),

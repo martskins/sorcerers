@@ -59,7 +59,7 @@ impl Card for KingOfTheRealm {
         Some(&mut self.unit_base)
     }
 
-    async fn get_continuos_effects(&self, state: &State) -> anyhow::Result<Vec<ContinousEffect>> {
+    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinousEffect>> {
         Ok(vec![
             ContinousEffect::ModifyPower {
                 power_diff: 1,

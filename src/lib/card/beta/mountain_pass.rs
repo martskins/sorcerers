@@ -19,6 +19,7 @@ impl MountainPass {
                 provided_mana: 1,
                 provided_thresholds: Thresholds::parse("A"),
                 types: vec![SiteType::Tower],
+                ..Default::default()
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),

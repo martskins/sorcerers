@@ -45,7 +45,6 @@ impl Card for WrathOfTheSea {
     }
 
     async fn on_cast(&mut self, _state: &State, _caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
-        // TODO: Implement Wrath of the Sea effect
         Ok(vec![])
     }
 }

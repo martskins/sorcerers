@@ -1454,7 +1454,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         1
     }
 
-    async fn get_continuos_effects(&self, _state: &State) -> anyhow::Result<Vec<ContinousEffect>> {
+    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<ContinousEffect>> {
         Ok(vec![])
     }
 }
@@ -1497,6 +1497,7 @@ pub struct SiteBase {
     pub provided_mana: u8,
     pub provided_thresholds: Thresholds,
     pub types: Vec<SiteType>,
+    pub flooded: bool,
 }
 
 pub trait Site: Card {

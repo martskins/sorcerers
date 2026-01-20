@@ -59,7 +59,7 @@ impl Card for TideNaiads {
         Some(&mut self.unit_base)
     }
 
-    async fn get_continuos_effects(&self, state: &State) -> anyhow::Result<Vec<ContinousEffect>> {
+    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinousEffect>> {
         let site_id = self.get_zone().get_site(state).map(|site| site.get_id()).cloned();
 
         Ok(vec![ContinousEffect::FloodSites {

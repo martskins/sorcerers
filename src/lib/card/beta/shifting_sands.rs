@@ -20,6 +20,7 @@ impl ShiftingSands {
                 provided_mana: 1,
                 provided_thresholds: Thresholds::parse("F"),
                 types: vec![SiteType::Desert],
+                ..Default::default()
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
