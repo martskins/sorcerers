@@ -3,7 +3,7 @@ use crate::{
     game::{BaseAction, Direction, PlayerAction, PlayerId, SoundEffect, pick_card, pick_option},
     networking::message::ServerMessage,
     query::{CardQuery, EffectQuery, QueryCache, ZoneQuery},
-    state::{Phase, State},
+    state::{Phase, State, TemporaryEffect},
 };
 use std::fmt::Debug;
 
@@ -83,6 +83,10 @@ pub enum Effect {
     Submerge {
         card_id: uuid::Uuid,
     },
+    SetCardRegion {
+        card_id: uuid::Uuid,
+        region: Region,
+    },
     SetCardZone {
         card_id: uuid::Uuid,
         zone: Zone,
@@ -133,11 +137,11 @@ pub enum Effect {
     StartTurn {
         player_id: uuid::Uuid,
     },
-    RemoveResources {
+    ConsumeMana {
         player_id: uuid::Uuid,
         mana: u8,
     },
-    AddResources {
+    AddMana {
         player_id: uuid::Uuid,
         mana: u8,
     },
@@ -187,6 +191,9 @@ pub enum Effect {
         spells: Vec<uuid::Uuid>,
         sites: Vec<uuid::Uuid>,
     },
+    AddTemporaryEffect {
+        effect: TemporaryEffect,
+    },
 }
 
 fn player_name<'a>(player_id: &uuid::Uuid, state: &'a State) -> &'a str {
@@ -223,6 +230,11 @@ impl Effect {
 
     pub async fn description(&self, state: &State) -> anyhow::Result<Option<String>> {
         let desc = match self {
+            Effect::SetCardRegion { card_id, region } => {
+                let card = state.get_card(card_id).get_name();
+                Some(format!("{} changes region to {}", card, region))
+            }
+            Effect::AddTemporaryEffect { .. } => None,
             Effect::SummonToken {
                 player_id,
                 token_type,
@@ -324,8 +336,8 @@ impl Effect {
             Effect::TapCard { .. } => None,
             Effect::EndTurn { player_id, .. } => Some(format!("{} passes the turn", player_name(player_id, state))),
             Effect::StartTurn { .. } => None,
-            Effect::RemoveResources { .. } => None,
-            Effect::AddResources { .. } => None,
+            Effect::ConsumeMana { .. } => None,
+            Effect::AddMana { .. } => None,
             Effect::Attack {
                 attacker_id,
                 defender_id,
@@ -369,6 +381,24 @@ impl Effect {
         };
 
         Ok(desc)
+    }
+
+    async fn expire_temporary_effects(&self, state: &mut State, effect: &Effect) -> anyhow::Result<()> {
+        let snapshot = state.snapshot();
+        let mut retained_effects = vec![];
+        for te in &state.temporary_effects {
+            let should_retain = match te.expires_on_effect() {
+                Some(expiry_effect) => !expiry_effect.matches(effect, &snapshot).await?,
+                None => true,
+            };
+
+            if should_retain {
+                retained_effects.push(te.clone());
+            }
+        }
+
+        state.temporary_effects = retained_effects;
+        Ok(())
     }
 
     async fn expire_counters(&self, state: &mut State) -> anyhow::Result<()> {
@@ -454,6 +484,9 @@ impl Effect {
         }
 
         match self {
+            Effect::AddTemporaryEffect { effect } => {
+                state.temporary_effects.push(effect.clone());
+            }
             Effect::SetCardZone { card_id, zone } => {
                 let card = state.get_card_mut(card_id);
                 card.set_zone(zone.clone());
@@ -803,14 +836,9 @@ impl Effect {
                     })
                     .await?;
             }
-            Effect::RemoveResources { player_id, mana, .. } => {
+            Effect::ConsumeMana { player_id, mana, .. } => {
                 let player_mana = state.get_player_mana_mut(player_id);
                 *player_mana = player_mana.saturating_sub(*mana);
-                // TODO::
-                // player_resources.thresholds.air = player_resources.thresholds.air.saturating_sub(thresholds.air);
-                // player_resources.thresholds.water = player_resources.thresholds.water.saturating_sub(thresholds.water);
-                // player_resources.thresholds.fire = player_resources.thresholds.fire.saturating_sub(thresholds.fire);
-                // player_resources.thresholds.earth = player_resources.thresholds.earth.saturating_sub(thresholds.earth);
             }
             Effect::EndTurn { player_id, .. } => {
                 for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
@@ -855,13 +883,9 @@ impl Effect {
                     .into(),
                 );
             }
-            Effect::AddResources { player_id, mana, .. } => {
+            Effect::AddMana { player_id, mana, .. } => {
                 let player_mana = state.get_player_mana_mut(player_id);
                 *player_mana += mana;
-                // player_resources.thresholds.air += thresholds.air;
-                // player_resources.thresholds.water += thresholds.water;
-                // player_resources.thresholds.fire += thresholds.fire;
-                // player_resources.thresholds.earth += thresholds.earth;
             }
             Effect::Attack {
                 attacker_id,
@@ -960,6 +984,23 @@ impl Effect {
                 let card = state.get_card_mut(card_id);
                 let effects = card.deathrite(&snapshot, from);
                 state.effects.extend(effects.into_iter().map(|e| e.into()));
+
+                let borne_artifacts: Vec<uuid::Uuid> = state
+                    .cards
+                    .iter()
+                    .filter(|c| c.is_artifact())
+                    .filter(|c| match c.get_artifact() {
+                        Some(artifact) => artifact.get_bearer().unwrap_or_default() == Some(card_id.clone()),
+                        None => false,
+                    })
+                    .map(|c| c.get_id().clone())
+                    .collect();
+                for artifact_id in borne_artifacts {
+                    let artifact = state.get_card_mut(&artifact_id);
+                    if let Some(base) = artifact.get_artifact_base_mut() {
+                        base.bearer = None;
+                    }
+                }
             }
             Effect::AddCounter { card_id, counter, .. } => {
                 let card = state.get_card_mut(card_id);
@@ -1044,6 +1085,28 @@ impl Effect {
                 card.get_base_mut().region = Region::Underwater;
                 card.get_base_mut().tapped = true;
             }
+            Effect::SetCardRegion { card_id, region } => {
+                let card = state.get_card_mut(card_id);
+                card.get_base_mut().region = region.clone();
+
+                if card.is_minion() {
+                    let card = state.get_card(card_id);
+                    let snapshot = state.snapshot();
+                    let underground_without_burrowing =
+                        region == &Region::Underground && !card.has_ability(&snapshot, &Ability::Burrowing);
+                    let underwater_without_submerge =
+                        region == &Region::Underwater && !card.has_ability(&snapshot, &Ability::Submerge);
+                    if underground_without_burrowing || underwater_without_submerge {
+                        state.effects.push_back(
+                            Effect::BuryCard {
+                                card_id: card_id.clone(),
+                                from: card.get_zone().clone(),
+                            }
+                            .into(),
+                        );
+                    }
+                }
+            }
         }
 
         let area_effects: Vec<Effect> = state
@@ -1057,6 +1120,7 @@ impl Effect {
         }
 
         self.expire_counters(state).await?;
+        self.expire_temporary_effects(state, self).await?;
 
         Ok(())
     }

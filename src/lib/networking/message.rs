@@ -121,6 +121,11 @@ pub enum ServerMessage {
         player_id: PlayerId,
         zones: Vec<Zone>,
     },
+    PickZoneGroup {
+        prompt: String,
+        player_id: PlayerId,
+        groups: Vec<Vec<Zone>>,
+    },
     PickDirection {
         prompt: String,
         player_id: PlayerId,
@@ -145,6 +150,7 @@ impl ServerMessage {
             ServerMessage::PickDirection { player_id, .. } => player_id.clone(),
             ServerMessage::PickCard { player_id, .. } => player_id.clone(),
             ServerMessage::PickZone { player_id, .. } => player_id.clone(),
+            ServerMessage::PickZoneGroup { player_id, .. } => player_id.clone(),
             ServerMessage::PickAction { player_id, .. } => player_id.clone(),
             ServerMessage::PickPath { player_id, .. } => player_id.clone(),
             ServerMessage::ConnectResponse { player_id, .. } => player_id.clone(),
@@ -218,6 +224,11 @@ pub enum ClientMessage {
         player_id: PlayerId,
         path: Vec<Zone>,
     },
+    PickZoneGroup {
+        game_id: uuid::Uuid,
+        player_id: PlayerId,
+        group_idx: usize,
+    },
     PickZone {
         game_id: uuid::Uuid,
         player_id: PlayerId,
@@ -247,6 +258,7 @@ impl ClientMessage {
             ClientMessage::PickAction { game_id, .. } => game_id.clone(),
             ClientMessage::EndTurn { game_id, .. } => game_id.clone(),
             ClientMessage::PickZone { game_id, .. } => game_id.clone(),
+            ClientMessage::PickZoneGroup { game_id, .. } => game_id.clone(),
             ClientMessage::PickPath { game_id, .. } => game_id.clone(),
             ClientMessage::ClickCard { game_id, .. } => game_id.clone(),
             ClientMessage::DrawCard { game_id, .. } => game_id.clone(),
@@ -266,6 +278,7 @@ impl ClientMessage {
             ClientMessage::PickAction { player_id, .. } => player_id,
             ClientMessage::EndTurn { player_id, .. } => player_id,
             ClientMessage::PickZone { player_id, .. } => player_id,
+            ClientMessage::PickZoneGroup { player_id, .. } => player_id,
             ClientMessage::PickPath { player_id, .. } => player_id,
             ClientMessage::ClickCard { player_id, .. } => player_id,
             ClientMessage::DrawCard { player_id, .. } => player_id,

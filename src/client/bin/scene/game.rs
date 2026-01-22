@@ -54,6 +54,10 @@ pub enum Status {
         paths: Vec<Vec<Zone>>,
         prompt: String,
     },
+    SelectingZoneGroup {
+        groups: Vec<Vec<Zone>>,
+        prompt: String,
+    },
     SelectingZone {
         zones: Vec<Zone>,
         prompt: String,
@@ -331,6 +335,15 @@ impl Game {
                     description: description.clone(),
                     datetime: datetime.clone(),
                 });
+                Ok(None)
+            }
+            ServerMessage::PickZoneGroup {
+                groups: zones, prompt, ..
+            } => {
+                self.data.status = Status::SelectingZoneGroup {
+                    groups: zones.clone(),
+                    prompt: prompt.clone(),
+                };
                 Ok(None)
             }
             ServerMessage::PickZone { zones, prompt, .. } => {

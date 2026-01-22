@@ -4,6 +4,7 @@ use crate::{
     effect::Effect,
     game::{Element, InputStatus, PlayerId, Resources, Thresholds},
     networking::message::{ClientMessage, ServerMessage},
+    query::EffectQuery,
 };
 use async_channel::{Receiver, Sender};
 use std::{
@@ -41,7 +42,7 @@ pub struct CardMatcher {
     pub in_zones: Option<Vec<Zone>>,
     pub in_regions: Option<Vec<Region>>,
     pub tapped: Option<bool>,
-    pub in_play: Option<bool>,
+    pub include_not_in_play: Option<bool>,
 }
 
 impl CardMatcher {
@@ -53,7 +54,17 @@ impl CardMatcher {
     }
 
     pub fn iter<'a>(&'a self, state: &'a State) -> impl Iterator<Item = &'a Box<dyn Card>> {
-        state.cards.iter().filter(|c| self.matches(c.get_id(), state))
+        state
+            .cards
+            .iter()
+            .filter(|c| self.matches(c.get_id(), state))
+            .filter(|c| {
+                if !self.include_not_in_play.unwrap_or_default() {
+                    c.get_zone().is_in_play()
+                } else {
+                    true
+                }
+            })
     }
 
     pub fn resolve_ids(&self, state: &State) -> Vec<uuid::Uuid> {
@@ -61,6 +72,13 @@ impl CardMatcher {
             .cards
             .iter()
             .filter(|c| self.matches(c.get_id(), state))
+            .filter(|c| {
+                if !self.include_not_in_play.unwrap_or_default() {
+                    c.get_zone().is_in_play()
+                } else {
+                    true
+                }
+            })
             .map(|c| c.get_id().clone())
             .collect()
     }
@@ -77,6 +95,13 @@ impl CardMatcher {
         Self::default()
     }
 
+    pub fn in_zones(self, zones: &[Zone]) -> Self {
+        Self {
+            in_zones: Some(zones.to_vec()),
+            ..self
+        }
+    }
+
     pub fn in_zone(self, zone: &Zone) -> Self {
         Self {
             in_zones: Some(vec![zone.clone()]),
@@ -84,9 +109,9 @@ impl CardMatcher {
         }
     }
 
-    pub fn in_play(self, in_play: bool) -> Self {
+    pub fn include_not_in_play(self, in_play: bool) -> Self {
         Self {
-            in_play: Some(in_play),
+            include_not_in_play: Some(in_play),
             ..self
         }
     }
@@ -94,6 +119,14 @@ impl CardMatcher {
     pub fn tapped(self, tapped: bool) -> Self {
         Self {
             tapped: Some(tapped),
+            ..self
+        }
+    }
+
+    pub fn adjacent_to_zones(self, zones: &[Zone]) -> Self {
+        let zones = zones.into_iter().flat_map(|z| z.get_adjacent()).collect();
+        Self {
+            in_zones: Some(zones),
             ..self
         }
     }
@@ -246,8 +279,8 @@ impl CardMatcher {
             }
         }
 
-        if let Some(in_play) = &self.in_play {
-            if &card.get_zone().is_in_play() != in_play {
+        if !self.include_not_in_play.unwrap_or_default() {
+            if !card.get_zone().is_in_play() {
                 return false;
             }
         }
@@ -352,6 +385,28 @@ impl CardMatcher {
 }
 
 #[derive(Debug, Clone)]
+pub enum TemporaryEffect {
+    FloodSites {
+        affected_sites: CardMatcher,
+        expires_on_effect: EffectQuery,
+    },
+}
+
+impl TemporaryEffect {
+    pub fn affected_cards(&self, state: &State) -> Vec<uuid::Uuid> {
+        match self {
+            TemporaryEffect::FloodSites { affected_sites, .. } => affected_sites.resolve_ids(state),
+        }
+    }
+
+    pub fn expires_on_effect(&self) -> Option<&EffectQuery> {
+        match self {
+            TemporaryEffect::FloodSites { expires_on_effect, .. } => Some(expires_on_effect),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum ContinuousEffect {
     ControllerOverride {
         controller_id: PlayerId,
@@ -391,6 +446,7 @@ pub struct State {
     pub server_tx: Sender<ServerMessage>,
     pub client_rx: Receiver<ClientMessage>,
     pub continuous_effects: Vec<ContinuousEffect>,
+    pub temporary_effects: Vec<TemporaryEffect>,
     pub player_mana: HashMap<PlayerId, u8>,
 }
 
@@ -427,6 +483,7 @@ impl State {
             server_tx,
             client_rx,
             continuous_effects: Vec::new(),
+            temporary_effects: Vec::new(),
             player_mana,
         }
     }
@@ -440,8 +497,63 @@ impl State {
             .iter()
             .filter(|c| c.get_zone().is_in_play())
             .filter(|c| &c.get_controller_id(self) == player_id)
-            .map(|c| c.get_provided_affinity(self))
+            .map(|c| c.get_provided_affinity(self).unwrap_or(Thresholds::ZERO))
             .sum()
+    }
+
+    pub fn get_body_of_water_at(&self, zone: &Zone) -> Option<Vec<Zone>> {
+        let bodies_of_water = self.get_bodies_of_water();
+        for body in bodies_of_water {
+            if body.iter().any(|z| z == zone) {
+                return Some(body);
+            }
+        }
+
+        None
+    }
+
+    pub fn get_bodies_of_water(&self) -> Vec<Vec<Zone>> {
+        let mut visited: Vec<Zone> = Vec::new();
+        let mut bodies_of_water: Vec<Vec<Zone>> = Vec::new();
+
+        fn dfs(state: &State, zone: &Zone, visited: &mut Vec<Zone>, body_of_water: &mut Vec<Zone>) {
+            if visited.iter().any(|z| z == zone) {
+                return;
+            }
+            visited.push(zone.clone());
+
+            if let Some(site) = zone.get_site(state) {
+                let is_water = site.provided_affinity(state).unwrap_or_default().water > 0;
+                if is_water {
+                    if !body_of_water.iter().any(|z| z == zone) {
+                        body_of_water.push(zone.clone());
+                    }
+                    for adj in zone.get_adjacent() {
+                        dfs(state, &adj, visited, body_of_water);
+                    }
+                }
+            }
+        }
+
+        for card in self.cards.iter().filter(|c| c.get_card_type() == CardType::Site) {
+            let zone = card.get_zone();
+            if !zone.is_in_play() {
+                continue;
+            }
+
+            if let Some(site) = zone.get_site(self) {
+                let is_water = site.provided_affinity(self).unwrap_or_default().water > 0;
+                if is_water && !visited.iter().any(|z| z == zone) {
+                    let mut body_of_water: Vec<Zone> = Vec::new();
+                    dfs(self, &zone, &mut visited, &mut body_of_water);
+                    if !body_of_water.is_empty() {
+                        bodies_of_water.push(body_of_water);
+                    }
+                }
+            }
+        }
+
+        bodies_of_water
     }
 
     pub fn get_body_of_water_size(&self, zone: &Zone) -> u16 {
@@ -684,6 +796,7 @@ impl State {
             client_rx: self.client_rx.clone(),
             effect_log: self.effect_log.clone(),
             continuous_effects: self.continuous_effects.clone(),
+            temporary_effects: self.temporary_effects.clone(),
             player_mana: self.player_mana.clone(),
         }
     }

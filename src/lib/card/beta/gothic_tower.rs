@@ -74,7 +74,7 @@ impl Card for GothicTower {
             return Ok(vec![]);
         }
 
-        Ok(vec![Effect::AddResources {
+        Ok(vec![Effect::AddMana {
             player_id: self.get_owner_id().clone(),
             mana: 1,
         }])

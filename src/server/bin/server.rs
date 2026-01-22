@@ -1,6 +1,6 @@
 use async_channel::Sender;
 use sorcerers::{
-    card::{ALL_PRECONS, AnuiUndine, AutumnRiver, Upwelling},
+    card::{ALL_PRECONS, AnuiUndine, AridDesert, SummerRiver, WrathOfTheSea},
     game::Game,
     networking::{
         client::Client,
@@ -163,12 +163,37 @@ impl Server {
             sorcerers::card::Zone::Hand,
         ));
         game.state.cards.push(sorcerers::card::from_name_and_zone(
-            AutumnRiver::NAME,
+            SummerRiver::NAME,
             &player_one,
             sorcerers::card::Zone::Realm(3),
         ));
         game.state.cards.push(sorcerers::card::from_name_and_zone(
-            AutumnRiver::NAME,
+            SummerRiver::NAME,
+            &player_one,
+            sorcerers::card::Zone::Realm(9),
+        ));
+        game.state.cards.push(sorcerers::card::from_name_and_zone(
+            SummerRiver::NAME,
+            &player_one,
+            sorcerers::card::Zone::Realm(4),
+        ));
+        game.state.cards.push(sorcerers::card::from_name_and_zone(
+            SummerRiver::NAME,
+            &player_one,
+            sorcerers::card::Zone::Realm(6),
+        ));
+        game.state.cards.push(sorcerers::card::from_name_and_zone(
+            SummerRiver::NAME,
+            &player_one,
+            sorcerers::card::Zone::Realm(7),
+        ));
+        game.state.cards.push(sorcerers::card::from_name_and_zone(
+            SummerRiver::NAME,
+            &player_one,
+            sorcerers::card::Zone::Realm(2),
+        ));
+        game.state.cards.push(sorcerers::card::from_name_and_zone(
+            AridDesert::NAME,
             &player_one,
             sorcerers::card::Zone::Realm(8),
         ));
@@ -185,17 +210,17 @@ impl Server {
         game.state.cards.push(lucky_charm);
         game.state.cards.push(kite_archer);
         game.state.cards.push(sorcerers::card::from_name_and_zone(
-            AutumnRiver::NAME,
+            AridDesert::NAME,
             &player_two,
             sorcerers::card::Zone::Realm(13),
         ));
         game.state.cards.push(sorcerers::card::from_name_and_zone(
-            Upwelling::NAME,
+            WrathOfTheSea::NAME,
             &player_one,
             sorcerers::card::Zone::Hand,
         ));
         game.state.cards.push(sorcerers::card::from_name_and_zone(
-            AutumnRiver::NAME,
+            AridDesert::NAME,
             &player_two,
             sorcerers::card::Zone::Realm(18),
         ));

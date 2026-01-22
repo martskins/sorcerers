@@ -80,7 +80,7 @@ impl Card for SimpleVillage {
         }
 
         Ok(vec![
-            Effect::RemoveResources {
+            Effect::ConsumeMana {
                 player_id: self.get_controller_id(state).clone(),
                 mana: 1,
             },

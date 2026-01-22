@@ -366,6 +366,45 @@ pub async fn pick_path(
     }
 }
 
+pub async fn pick_zone_group(
+    player_id: impl AsRef<PlayerId>,
+    groups: &[Vec<Zone>],
+    state: &State,
+    block_opponent: bool,
+    prompt: &str,
+) -> anyhow::Result<Vec<Zone>> {
+    let opponent_id = state.get_opponent_id(player_id.as_ref())?;
+    if block_opponent {
+        wait_for_opponent(&opponent_id, state, "Wait for opponent to pick a zone...").await?;
+    }
+
+    state
+        .get_sender()
+        .send(ServerMessage::PickZoneGroup {
+            prompt: prompt.to_string(),
+            player_id: player_id.as_ref().clone(),
+            groups: groups.to_vec(),
+        })
+        .await?;
+
+    let zone = loop {
+        let msg = state.get_receiver().recv().await?;
+        match msg {
+            ClientMessage::PickZoneGroup { group_idx, .. } => break Ok(groups[group_idx].clone()),
+            ClientMessage::PlayerDisconnected { player_id, .. } => {
+                return Err(GameError::PlayerDisconnected(player_id.clone()).into());
+            }
+            _ => panic!("expected PickSquare, got {:?}", msg),
+        }
+    };
+
+    if block_opponent {
+        resume(&opponent_id, state).await?;
+    }
+
+    zone
+}
+
 pub async fn pick_zone(
     player_id: impl AsRef<PlayerId>,
     zones: &[Zone],

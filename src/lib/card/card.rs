@@ -6,7 +6,7 @@ use crate::{
         get_adjacent_zones, get_nearby_zones,
     },
     query::{CardQuery, ZoneQuery},
-    state::{ContinuousEffect, State},
+    state::{ContinuousEffect, State, TemporaryEffect},
 };
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Debug};
@@ -57,6 +57,17 @@ pub enum Region {
     Underground,
     Underwater,
     Surface,
+}
+
+impl std::fmt::Display for Region {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Region::Void => write!(f, "Void"),
+            Region::Underground => write!(f, "Underground"),
+            Region::Underwater => write!(f, "Underwater"),
+            Region::Surface => write!(f, "Surface"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Serialize, Deserialize)]
@@ -548,17 +559,30 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         )
     }
 
-    fn get_provided_affinity(&self, _state: &State) -> Thresholds {
+    fn get_provided_affinity(&self, state: &State) -> anyhow::Result<Thresholds> {
         if !self.get_zone().is_in_play() {
-            return Thresholds::ZERO;
+            return Ok(Thresholds::ZERO);
         }
 
         match self.get_card_type() {
             CardType::Site => match self.get_site_base() {
-                Some(site_base) => site_base.provided_thresholds.clone(),
-                None => Thresholds::ZERO,
+                Some(site_base) => {
+                    let mut base_affinity = site_base.provided_thresholds.clone();
+                    let is_flooded = self
+                        .get_site()
+                        .ok_or(anyhow::anyhow!("site card has no site data"))?
+                        .is_flooded(state)?;
+                    // Flooded sites provide 1 water affinity if they don't already provide water
+                    // affinity.
+                    if is_flooded && base_affinity.water == 0 {
+                        base_affinity.water += 1;
+                    }
+
+                    Ok(base_affinity)
+                }
+                None => Ok(Thresholds::ZERO),
             },
-            _ => Thresholds::ZERO,
+            _ => Ok(Thresholds::ZERO),
         }
     }
 
@@ -730,7 +754,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         let site_base = self
             .get_site_base()
             .ok_or(anyhow::anyhow!("site card has no site base"))?;
-        Ok(vec![Effect::AddResources {
+        Ok(vec![Effect::AddMana {
             player_id: self.get_owner_id().clone(),
             mana: site_base.provided_mana,
         }])
@@ -1237,7 +1261,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     token_type: TokenType::Rubble,
                     zone: from.clone(),
                 },
-                Effect::RemoveResources {
+                Effect::ConsumeMana {
                     player_id: self.get_controller_id(state).clone(),
                     mana: 0,
                 },
@@ -1510,7 +1534,6 @@ pub struct SiteBase {
     pub provided_mana: u8,
     pub provided_thresholds: Thresholds,
     pub types: Vec<SiteType>,
-    pub flooded: bool,
 }
 
 pub trait Site: Card {
@@ -1527,12 +1550,43 @@ pub trait Site: Card {
         Ok(result)
     }
 
+    fn provided_affinity(&self, state: &State) -> anyhow::Result<Thresholds> {
+        let site_base = self.get_site_base().ok_or(anyhow::anyhow!("site card has no base"))?;
+        let mut thresholds = site_base.provided_thresholds.clone();
+        if self.is_flooded(state)? && site_base.provided_thresholds.water == 0 {
+            thresholds.water = 1;
+        }
+
+        Ok(thresholds)
+    }
+
     fn on_card_enter(&self, _state: &State, _card_id: &uuid::Uuid) -> Vec<Effect> {
         vec![]
     }
 
     fn can_be_entered_by(&self, _card: &uuid::Uuid, _from: &Zone, _region: &Region, _state: &State) -> bool {
         true
+    }
+
+    fn is_flooded(&self, state: &State) -> anyhow::Result<bool> {
+        let temporarily_flooded = state
+            .temporary_effects
+            .iter()
+            .filter(|te| te.affected_cards(state).contains(&self.get_id()))
+            .find(|te| matches!(te, TemporaryEffect::FloodSites { .. }))
+            .is_some();
+        if temporarily_flooded {
+            return Ok(true);
+        }
+
+        Ok(state
+            .continuous_effects
+            .iter()
+            .find(|ce| match ce {
+                ContinuousEffect::FloodSites { affected_sites } => affected_sites.matches(self.get_id(), state),
+                _ => false,
+            })
+            .is_some())
     }
 }
 
@@ -1553,6 +1607,7 @@ pub enum Ability {
     SummoningSickness,
     TakesNoDamageFromElement(Element),
     Immobile,
+    // TODO: Remove this in favour of a more generic mechanism
     Blaze(u16), // Specific modifier for the Blaze magic
     Waterbound,
 }

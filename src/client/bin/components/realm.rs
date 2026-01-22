@@ -365,8 +365,9 @@ impl RealmComponent {
                         draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, 5.0, GREEN);
                     }
                 }
-                Status::SelectingCard { preview: true, .. }
-                | Status::DistributingDamage { .. }
+                Status::DistributingDamage { .. }
+                | Status::SelectingZoneGroup { .. }
+                | Status::SelectingCard { preview: true, .. }
                 | Status::GameAborted { .. }
                 | Status::SelectingAction { .. }
                 | Status::Waiting { .. }
@@ -375,6 +376,47 @@ impl RealmComponent {
                     continue;
                 }
                 Status::SelectingCard { preview: false, .. } | Status::Idle => {}
+            }
+        }
+
+        if let Status::SelectingZoneGroup { groups, .. } = &data.status {
+            let mouse: Vec2 = mouse_position().into();
+            let color = Color::new(0.2, 0.6, 1.0, 0.3);
+            let highlight_group_idx = self.cell_rects.iter().find_map(|cell_rect| {
+                let contains_mouse = cell_rect.rect.contains(mouse.into());
+                if !contains_mouse {
+                    return None;
+                }
+
+                groups
+                    .iter()
+                    .position(|group| group.contains(&Zone::Realm(cell_rect.id)))
+            });
+
+            for (group_idx, group) in groups.iter().enumerate() {
+                let mut color = color;
+                if highlight_group_idx == Some(group_idx) {
+                    color.a = 0.7;
+                }
+
+                for zone in group {
+                    if let Zone::Realm(cell_id) = zone {
+                        if let Some(cell) = self.cell_rects.iter().find(|c| c.id == *cell_id) {
+                            if cell.id == *cell_id {
+                                draw_rectangle_ex(
+                                    cell.rect.x,
+                                    cell.rect.y,
+                                    cell.rect.w,
+                                    cell.rect.h,
+                                    DrawRectangleParams {
+                                        color,
+                                        ..Default::default()
+                                    },
+                                );
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -394,6 +436,7 @@ impl RealmComponent {
                     }
                 }
                 Status::SelectingCard { preview: true, .. }
+                | Status::SelectingZoneGroup { .. }
                 | Status::DistributingDamage { .. }
                 | Status::Waiting { .. }
                 | Status::SelectingAction { .. }
@@ -422,6 +465,27 @@ impl RealmComponent {
         }
 
         match &status {
+            Status::SelectingZoneGroup { groups, .. } => {
+                for (group_idx, group) in groups.iter().enumerate() {
+                    for zone in group {
+                        if let Zone::Realm(cell_id) = zone {
+                            if let Some(cell) = self.cell_rects.iter().find(|c| c.id == *cell_id) {
+                                if cell.rect.contains(mouse_position.into()) {
+                                    if is_mouse_button_released(MouseButton::Left) {
+                                        self.client.send(ClientMessage::PickZoneGroup {
+                                            player_id: self.player_id.clone(),
+                                            game_id: self.game_id.clone(),
+                                            group_idx,
+                                        })?;
+                                        *status = Status::Idle;
+                                        return Ok(());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             Status::SelectingZone { zones, .. } => {
                 let zones = zones.clone();
                 for (idx, cell) in self.cell_rects.iter().enumerate() {
@@ -486,8 +550,11 @@ impl RealmComponent {
             return Ok(());
         }
 
-        if let Status::SelectingAction { .. } = &status {
-            return Ok(());
+        match &status {
+            Status::SelectingAction { .. } | Status::SelectingZoneGroup { .. } => {
+                return Ok(());
+            }
+            _ => {}
         }
 
         let mut hovered_card_index = None;
@@ -673,6 +740,7 @@ impl RealmComponent {
     fn render_prompt(&mut self, data: &mut GameData) -> anyhow::Result<()> {
         let prompt = match &data.status {
             Status::SelectingZone { prompt, .. } => Some(prompt),
+            Status::SelectingZoneGroup { prompt, .. } => Some(prompt),
             Status::SelectingCard { prompt, .. } => Some(prompt),
             Status::SelectingPath { prompt, .. } => Some(prompt),
             _ => None,

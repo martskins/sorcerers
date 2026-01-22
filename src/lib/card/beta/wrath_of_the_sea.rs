@@ -1,8 +1,9 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, Rarity, Region, Zone},
+    card::{Card, CardBase, CardType, Cost, Edition, Rarity, Region, Zone},
     effect::Effect,
-    game::PlayerId,
-    state::State,
+    game::{PlayerId, pick_zone_group},
+    query::EffectQuery,
+    state::{CardMatcher, State, TemporaryEffect},
 };
 
 #[derive(Debug, Clone)]
@@ -44,8 +45,37 @@ impl Card for WrathOfTheSea {
         &self.card_base
     }
 
-    async fn on_cast(&mut self, _state: &State, _caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
-        Ok(vec![])
+    async fn on_cast(&mut self, state: &State, _caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
+        let controller_id = self.get_controller_id(state);
+        let prompt = "Wrath of the Sea: Pick a body of water";
+        let bodies_of_water = state.get_bodies_of_water();
+        let picked_body = pick_zone_group(controller_id, &bodies_of_water, state, false, prompt).await?;
+        let sites = CardMatcher::new().adjacent_to_zones(&picked_body);
+        let other_water_sites = CardMatcher::new().card_type(CardType::Site).resolve_ids(state);
+        let zones: Vec<Zone> = sites
+            .resolve_ids(state)
+            .iter()
+            .chain(&other_water_sites)
+            .map(|site| state.get_card(site).get_zone().clone())
+            .collect();
+        let minions_and_artifacts = CardMatcher::new()
+            .card_types(vec![CardType::Minion, CardType::Artifact])
+            .in_zones(&zones)
+            .resolve_ids(state);
+        let mut effects = minions_and_artifacts
+            .into_iter()
+            .map(|card_id| Effect::SetCardRegion {
+                card_id,
+                region: Region::Underwater,
+            })
+            .collect::<Vec<Effect>>();
+        effects.push(Effect::AddTemporaryEffect {
+            effect: TemporaryEffect::FloodSites {
+                affected_sites: sites,
+                expires_on_effect: EffectQuery::TurnEnd { player_id: None },
+            },
+        });
+        Ok(effects)
     }
 }
 

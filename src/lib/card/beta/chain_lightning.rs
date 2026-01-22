@@ -74,7 +74,7 @@ impl Card for ChainLightning {
             effects.push(effect);
 
             if !first_pick {
-                let effect = Effect::RemoveResources {
+                let effect = Effect::ConsumeMana {
                     player_id: self.get_controller_id(state).clone(),
                     mana: 2,
                 };

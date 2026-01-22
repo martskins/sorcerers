@@ -1,7 +1,7 @@
 use crate::{
     card::{Card, CardBase, Cost, Edition, Rarity, Region, Zone},
     effect::Effect,
-    game::PlayerId,
+    game::{PlayerId, pick_zone_group},
     state::State,
 };
 
@@ -44,8 +44,13 @@ impl Card for MarineVoyage {
         &self.card_base
     }
 
-    async fn on_cast(&mut self, _state: &State, _caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
-        // TODO: Implement Marine Voyage effect
+    async fn on_cast(&mut self, state: &State, _caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
+        let controller_id = self.get_controller_id(state);
+        let bodies_of_water = state.get_bodies_of_water();
+        let prompt = "Marine Voyage: Pick a body of water";
+        let body_of_water = pick_zone_group(controller_id, &bodies_of_water, state, false, prompt).await?;
+        println!("Picked body of water: {:?}", body_of_water);
+        // TODO: Implement the actual effect of Marine Voyage
         Ok(vec![])
     }
 }

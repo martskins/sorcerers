@@ -206,11 +206,7 @@ impl Card for Geomancer {
     }
 
     fn get_additional_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
-        Ok(vec![
-            Box::new(GeomancerAbility::PlaySite),
-            Box::new(GeomancerAbility::DrawSite),
-            Box::new(GeomancerAbility::ReplaceRubble),
-        ])
+        Ok(vec![Box::new(GeomancerAbility::ReplaceRubble)])
     }
 }
 
