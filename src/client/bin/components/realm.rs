@@ -456,7 +456,7 @@ impl RealmComponent {
         in_turn: bool,
         status: &mut Status,
     ) -> anyhow::Result<()> {
-        if !in_turn {
+        if !in_turn && !matches!(status, Status::SelectingZone { .. } | Status::SelectingZoneGroup { .. }) {
             return Ok(());
         }
 

@@ -602,8 +602,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     // When resolving an effect, this methods allows a card in play to replace that event with a
     // different set of effects.
-    fn replace_effect(&self, _state: &State, _effect: &Effect) -> Option<Vec<Effect>> {
-        None
+    async fn replace_effect(&self, _state: &State, _effect: &Effect) -> anyhow::Result<Option<Vec<Effect>>> {
+        Ok(None)
     }
 
     // Removes the power counter with the given ID from the card.

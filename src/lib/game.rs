@@ -306,9 +306,14 @@ pub async fn yes_or_no(
     state: &State,
     prompt: impl AsRef<str>,
 ) -> anyhow::Result<bool> {
+    let opponent_id = state.get_opponent_id(player_id.as_ref())?;
+    wait_for_opponent(&opponent_id, state, "Wait for opponent...").await?;
+
     let options = vec![BaseOption::Yes, BaseOption::No];
     let option_labels = options.iter().map(|o| o.to_string()).collect::<Vec<String>>();
     let choice = pick_option(player_id, &option_labels, state, prompt).await?;
+
+    resume(&opponent_id, state).await?;
     Ok(options[choice] == BaseOption::Yes)
 }
 
@@ -375,7 +380,7 @@ pub async fn pick_zone_group(
 ) -> anyhow::Result<Vec<Zone>> {
     let opponent_id = state.get_opponent_id(player_id.as_ref())?;
     if block_opponent {
-        wait_for_opponent(&opponent_id, state, "Wait for opponent to pick a zone...").await?;
+        wait_for_opponent(&opponent_id, state, "Wait for opponent...").await?;
     }
 
     state
@@ -414,7 +419,7 @@ pub async fn pick_zone(
 ) -> anyhow::Result<Zone> {
     let opponent_id = state.get_opponent_id(player_id.as_ref())?;
     if block_opponent {
-        wait_for_opponent(&opponent_id, state, "Wait for opponent to pick a zone...").await?;
+        wait_for_opponent(&opponent_id, state, "Wait for opponent...").await?;
     }
 
     state

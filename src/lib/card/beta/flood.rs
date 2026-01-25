@@ -1,7 +1,7 @@
 use crate::{
-    card::{Aura, AuraBase, Card, CardBase, Cost, Edition, Rarity, Region, Zone},
+    card::{Aura, AuraBase, Card, CardBase, CardType, Cost, Edition, Rarity, Region, Zone},
     game::PlayerId,
-    state::State,
+    state::{CardMatcher, ContinuousEffect, State},
 };
 
 #[derive(Debug, Clone)]
@@ -51,15 +51,16 @@ impl Card for Flood {
         Some(&self.aura_base)
     }
 
-    fn get_valid_play_zones(&self, _state: &State) -> anyhow::Result<Vec<Zone>> {
-        Ok(Zone::all_realm())
-    }
-
     fn get_aura(&self) -> Option<&dyn Aura> {
         Some(self)
     }
 
-    // TODO: Implement Flood effect
+    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+        let affected_zones = self.get_affected_zones(state);
+        Ok(vec![ContinuousEffect::FloodSites {
+            affected_sites: CardMatcher::new().in_zones(&affected_zones).card_type(CardType::Site),
+        }])
+    }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]

@@ -45,7 +45,8 @@ impl Card for DodgeRoll {
     }
 
     async fn on_cast(&mut self, _state: &State, _caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
-        // TODO: Implement Dodge Roll effect
+        // Dodge Roll effect is implement on State::replace_effect, so as to ask the player wether
+        // to play it only once, even if they have multiple Dodge Roll cards in hand.
         Ok(vec![])
     }
 }

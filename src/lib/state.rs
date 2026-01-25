@@ -1,10 +1,10 @@
 use crate::{
-    card::{Ability, Card, CardData, CardType, MinionType, Region, SiteType, Zone},
+    card::{Ability, Card, CardData, CardType, DodgeRoll, MinionType, Region, SiteType, Zone},
     deck::Deck,
     effect::Effect,
-    game::{Element, InputStatus, PlayerId, Resources, Thresholds},
+    game::{Element, InputStatus, PlayerId, Resources, Thresholds, pick_zone, yes_or_no},
     networking::message::{ClientMessage, ServerMessage},
-    query::EffectQuery,
+    query::{EffectQuery, ZoneQuery},
 };
 use async_channel::{Receiver, Sender};
 use std::{
@@ -32,6 +32,7 @@ pub struct PlayerWithDeck {
 #[derive(Debug, Default, Clone)]
 pub struct CardMatcher {
     pub id: Option<uuid::Uuid>,
+    pub card_names: Option<Vec<String>>,
     pub controller_id: Option<PlayerId>,
     pub not_in_ids: Option<Vec<uuid::Uuid>>,
     pub abilities: Option<Vec<Ability>>,
@@ -83,6 +84,20 @@ impl CardMatcher {
             .collect()
     }
 
+    pub fn with_name(self, name: &str) -> Self {
+        Self {
+            card_names: Some(vec![name.to_string()]),
+            ..self
+        }
+    }
+
+    pub fn with_names(self, names: Vec<String>) -> Self {
+        Self {
+            card_names: Some(names),
+            ..self
+        }
+    }
+
     pub fn units_in_zone(zones: Vec<Zone>) -> Self {
         Self {
             card_types: Some(vec![CardType::Minion, CardType::Avatar]),
@@ -98,6 +113,7 @@ impl CardMatcher {
     pub fn in_zones(self, zones: &[Zone]) -> Self {
         Self {
             in_zones: Some(zones.to_vec()),
+            include_not_in_play: Some(true),
             ..self
         }
     }
@@ -105,6 +121,7 @@ impl CardMatcher {
     pub fn in_zone(self, zone: &Zone) -> Self {
         Self {
             in_zones: Some(vec![zone.clone()]),
+            include_not_in_play: Some(true),
             ..self
         }
     }
@@ -275,6 +292,12 @@ impl CardMatcher {
         let card = state.get_card(card_id);
         if let Some(id) = &self.id {
             if card_id != id {
+                return false;
+            }
+        }
+
+        if let Some(names) = &self.card_names {
+            if !names.contains(&card.get_name().to_string()) {
                 return false;
             }
         }
@@ -485,6 +508,67 @@ impl State {
             continuous_effects: Vec::new(),
             temporary_effects: Vec::new(),
             player_mana,
+        }
+    }
+
+    pub async fn replace_effect(&self, effect: &Effect) -> anyhow::Result<Option<Vec<Effect>>> {
+        match effect {
+            Effect::Attack {
+                defender_id,
+                attacker_id,
+            } => {
+                let defender = self.get_card(defender_id);
+                if !defender.is_unit() {
+                    return Ok(None);
+                }
+
+                let defender_controller = defender.get_controller_id(self);
+                let dodge_rolls_in_hand = CardMatcher::new()
+                    .with_name(DodgeRoll::NAME)
+                    .controller_id(&defender_controller)
+                    .in_zone(&Zone::Hand)
+                    .resolve_ids(self);
+                if dodge_rolls_in_hand.is_empty() {
+                    return Ok(None);
+                }
+
+                let prompt = format!("Use Dodge Roll to evade the attack on {}?", defender.get_name());
+                let use_dodge_roll = yes_or_no(defender_controller, self, prompt).await?;
+                if !use_dodge_roll {
+                    return Ok(None);
+                }
+
+                let avatar_id = self.get_player_avatar_id(&defender_controller)?;
+                let avatar = self.get_card(&avatar_id);
+                let adjacent_zones = defender.get_zone().get_adjacent();
+                let prompt = "Dodge Roll: Pick an adjacent site to move to";
+                let picked_site = pick_zone(defender_controller, &adjacent_zones, self, true, prompt).await?;
+
+                let attacker = self.get_card(attacker_id);
+                let attacker_controller = attacker.get_controller_id(self);
+                Ok(Some(vec![
+                    Effect::SetCardZone {
+                        card_id: defender_id.clone(),
+                        zone: picked_site,
+                    },
+                    Effect::MoveCard {
+                        player_id: attacker_controller,
+                        card_id: attacker_id.clone(),
+                        from: attacker.get_zone().clone(),
+                        to: ZoneQuery::from_zone(defender.get_zone().clone()),
+                        tap: true,
+                        region: attacker.get_region(self).clone(),
+                        through_path: None,
+                    },
+                    Effect::PlayMagic {
+                        player_id: defender_controller.clone(),
+                        card_id: dodge_rolls_in_hand[0].clone(),
+                        caster_id: avatar_id.clone(),
+                        from: avatar.get_zone().clone(),
+                    },
+                ]))
+            }
+            _ => Ok(None),
         }
     }
 

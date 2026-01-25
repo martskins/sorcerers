@@ -470,16 +470,21 @@ impl Effect {
     }
 
     pub async fn apply(&self, state: &mut State) -> anyhow::Result<()> {
-        let effects: Vec<Effect> = state
-            .cards
-            .iter()
-            .flat_map(|c| c.replace_effect(state, self))
-            .flatten()
-            .collect();
+        let mut effects: Vec<Effect> = vec![];
+        for card in &state.cards {
+            let replace_effects = card.replace_effect(state, self).await?.unwrap_or_default();
+            effects.extend(replace_effects);
+        }
+
+        if let Some(replaced_effects) = state.replace_effect(self).await? {
+            effects = replaced_effects;
+        }
+
         if !effects.is_empty() {
             for effect in effects {
                 state.effects.push_back(effect.into());
             }
+
             return Ok(());
         }
 

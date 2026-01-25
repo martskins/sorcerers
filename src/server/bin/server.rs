@@ -1,6 +1,6 @@
 use async_channel::Sender;
 use sorcerers::{
-    card::{ALL_PRECONS, AnuiUndine, AridDesert, SummerRiver, WrathOfTheSea},
+    card::{ALL_PRECONS, AnuiUndine, AridDesert, DodgeRoll, Flood, SummerRiver, SunkenTreasure},
     game::Game,
     networking::{
         client::Client,
@@ -215,7 +215,7 @@ impl Server {
             sorcerers::card::Zone::Realm(13),
         ));
         game.state.cards.push(sorcerers::card::from_name_and_zone(
-            WrathOfTheSea::NAME,
+            SunkenTreasure::NAME,
             &player_one,
             sorcerers::card::Zone::Hand,
         ));
