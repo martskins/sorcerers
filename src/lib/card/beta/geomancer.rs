@@ -15,11 +15,11 @@ pub enum GeomancerAbility {
 
 #[async_trait::async_trait]
 impl ActivatedAbility for GeomancerAbility {
-    fn get_name(&self) -> &str {
+    fn get_name(&self) -> String {
         match self {
-            GeomancerAbility::PlaySite => "Play Site",
-            GeomancerAbility::DrawSite => "Draw Site",
-            GeomancerAbility::ReplaceRubble => "Replace Rubble",
+            GeomancerAbility::PlaySite => "Play Site".to_string(),
+            GeomancerAbility::DrawSite => "Draw Site".to_string(),
+            GeomancerAbility::ReplaceRubble => "Replace Rubble".to_string(),
         }
     }
 
@@ -49,7 +49,7 @@ impl ActivatedAbility for GeomancerAbility {
                     Effect::PlayCard {
                         player_id: player_id.clone(),
                         card_id: picked_card_id.clone(),
-                        zone: zone.clone(),
+                        zone: zone.clone().into(),
                     },
                     Effect::TapCard {
                         card_id: card_id.clone(),

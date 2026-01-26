@@ -10,8 +10,8 @@ struct DestroyNearbySite;
 
 #[async_trait::async_trait]
 impl ActivatedAbility for DestroyNearbySite {
-    fn get_name(&self) -> &str {
-        "Destroy Nearby Site"
+    fn get_name(&self) -> String {
+        "Destroy Nearby Site".to_string()
     }
 
     async fn on_select(
@@ -23,15 +23,12 @@ impl ActivatedAbility for DestroyNearbySite {
         let card = state.get_card(card_id);
         let nearby_sites = CardMatcher::sites_near(card.get_zone()).resolve_ids(state);
         let picked_card_id = pick_card(player_id, &nearby_sites, state, "Select a site to destroy").await?;
-        let picked_card = state.get_card(&picked_card_id);
         Ok(vec![
             Effect::BuryCard {
                 card_id: card_id.clone(),
-                from: card.get_zone().clone(),
             },
             Effect::BuryCard {
                 card_id: picked_card_id,
-                from: picked_card.get_zone().clone(),
             },
         ])
     }

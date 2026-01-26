@@ -11,8 +11,8 @@ struct ShootProjectile;
 
 #[async_trait::async_trait]
 impl ActivatedAbility for ShootProjectile {
-    fn get_name(&self) -> &str {
-        "Tap to shoot projectile"
+    fn get_name(&self) -> String {
+        "Tap to shoot projectile".to_string()
     }
 
     async fn on_select(

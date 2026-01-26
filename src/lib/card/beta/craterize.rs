@@ -92,7 +92,6 @@ impl Card for Craterize {
 
         let mut effects = vec![Effect::BuryCard {
             card_id: picked_site_id.clone(),
-            from: picked_site.get_zone().clone(),
         }];
 
         let picked_zone = picked_site.get_zone();

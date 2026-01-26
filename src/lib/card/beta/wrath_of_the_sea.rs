@@ -67,6 +67,7 @@ impl Card for WrathOfTheSea {
             .map(|card_id| Effect::SetCardRegion {
                 card_id,
                 region: Region::Underwater,
+                tap: false,
             })
             .collect::<Vec<Effect>>();
         effects.push(Effect::AddTemporaryEffect {

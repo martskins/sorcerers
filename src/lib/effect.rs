@@ -1,9 +1,9 @@
 use crate::{
-    card::{Ability, Card, FootSoldier, Region, Rubble, UnitBase, Zone},
+    card::{Ability, Card, CardType, FootSoldier, Region, Rubble, UnitBase, Zone},
     game::{BaseAction, Direction, PlayerAction, PlayerId, SoundEffect, pick_card, pick_option},
     networking::message::ServerMessage,
     query::{CardQuery, EffectQuery, QueryCache, ZoneQuery},
-    state::{Phase, State, TemporaryEffect},
+    state::{CardMatcher, Phase, State, TemporaryEffect},
 };
 use std::fmt::Debug;
 
@@ -77,15 +77,10 @@ pub enum Effect {
         from: Zone,
         to: Zone,
     },
-    Burrow {
-        card_id: uuid::Uuid,
-    },
-    Submerge {
-        card_id: uuid::Uuid,
-    },
     SetCardRegion {
         card_id: uuid::Uuid,
         region: Region,
+        tap: bool,
     },
     SetCardZone {
         card_id: uuid::Uuid,
@@ -121,7 +116,7 @@ pub enum Effect {
     PlayCard {
         player_id: uuid::Uuid,
         card_id: uuid::Uuid,
-        zone: Zone,
+        zone: ZoneQuery,
     },
     SummonCard {
         player_id: uuid::Uuid,
@@ -164,7 +159,6 @@ pub enum Effect {
     },
     BuryCard {
         card_id: uuid::Uuid,
-        from: Zone,
     },
     SetCardData {
         card_id: uuid::Uuid,
@@ -193,6 +187,10 @@ pub enum Effect {
     },
     AddTemporaryEffect {
         effect: TemporaryEffect,
+    },
+    SetBearer {
+        card_id: uuid::Uuid,
+        bearer_id: Option<uuid::Uuid>,
     },
 }
 
@@ -230,7 +228,7 @@ impl Effect {
 
     pub async fn description(&self, state: &State) -> anyhow::Result<Option<String>> {
         let desc = match self {
-            Effect::SetCardRegion { card_id, region } => {
+            Effect::SetCardRegion { card_id, region, .. } => {
                 let card = state.get_card(card_id).get_name();
                 Some(format!("{} changes region to {}", card, region))
             }
@@ -329,7 +327,7 @@ impl Effect {
                     "{} plays {} in zone {}",
                     player_name(player_id, state),
                     card,
-                    zone
+                    zone.resolve(player_id, state).await?,
                 ))
             }
             Effect::SummonCard { .. } => None,
@@ -376,8 +374,7 @@ impl Effect {
             Effect::DealDamageAllUnitsInZone { .. } => None,
             Effect::TeleportUnitToZone { .. } => None,
             Effect::RearrangeDeck { .. } => None,
-            Effect::Burrow { .. } => None,
-            Effect::Submerge { .. } => None,
+            Effect::SetBearer { .. } => None,
         };
 
         Ok(desc)
@@ -722,6 +719,7 @@ impl Effect {
                 zone,
                 ..
             } => {
+                let zone = zone.resolve(player_id, state).await?;
                 let snapshot = state.snapshot();
                 let cost = state.get_card(card_id).get_cost(&snapshot)?.clone();
                 Box::pin(cost.pay(state, &player_id)).await?;
@@ -753,7 +751,7 @@ impl Effect {
                 }
 
                 let mut effects = card.genesis(&snapshot).await?;
-                effects.extend(card.on_visit_zone(&snapshot, zone).await?);
+                effects.extend(card.on_visit_zone(&snapshot, &zone).await?);
                 state.effects.extend(effects.into_iter().map(|e| e.into()));
                 state.effects.extend(cast_effects.into_iter().map(|e| e.into()));
             }
@@ -981,13 +979,17 @@ impl Effect {
                 let card = state.get_card_mut(card_id);
                 card.set_zone(Zone::Banish);
             }
-            Effect::BuryCard { card_id, from, .. } => {
+            Effect::BuryCard { card_id, .. } => {
                 let card = state.get_card_mut(card_id);
+                let original_zone = card.get_zone().clone();
+                if card.is_artifact() {
+                    card.get_artifact_base_mut().unwrap().bearer = None;
+                }
                 card.set_zone(Zone::Cemetery);
 
                 let snapshot = state.snapshot();
                 let card = state.get_card_mut(card_id);
-                let effects = card.deathrite(&snapshot, from);
+                let effects = card.deathrite(&snapshot, &original_zone);
                 state.effects.extend(effects.into_iter().map(|e| e.into()));
 
                 let borne_artifacts: Vec<uuid::Uuid> = state
@@ -1081,18 +1083,36 @@ impl Effect {
                 deck.spells = spells.clone();
                 deck.sites = sites.clone();
             }
-            Effect::Burrow { card_id, .. } => {
-                let card = state.get_card_mut(card_id);
-                card.get_base_mut().region = Region::Underground;
-            }
-            Effect::Submerge { card_id, .. } => {
-                let card = state.get_card_mut(card_id);
-                card.get_base_mut().region = Region::Underwater;
-                card.get_base_mut().tapped = true;
-            }
-            Effect::SetCardRegion { card_id, region } => {
+            Effect::SetCardRegion { card_id, region, tap } => {
+                let card = state.get_card(card_id);
+                let from_region = card.get_region(&state);
+                // Compute change region effects before updating the card's region.
+                let mut change_region_effects = card.on_region_change(state, from_region, region)?;
+
+                if card.is_unit() {
+                    let borne_artifacts = CardMatcher::new()
+                        .card_type(CardType::Artifact)
+                        .iter(state)
+                        .filter_map(|c| c.get_artifact())
+                        .filter(|a| a.get_bearer().unwrap_or_default() == Some(card_id.clone()))
+                        .map(|c| c.get_id().clone())
+                        .collect::<Vec<_>>();
+                    // Append these to the change_region_effects so that the effects of changing
+                    // region are applied after the region change itself.
+                    change_region_effects.extend(borne_artifacts.into_iter().map(|artifact_id| {
+                        Effect::SetCardRegion {
+                            card_id: artifact_id,
+                            region: region.clone(),
+                            tap: false,
+                        }
+                    }));
+                }
+
                 let card = state.get_card_mut(card_id);
                 card.get_base_mut().region = region.clone();
+                if *tap {
+                    card.get_base_mut().tapped = true;
+                }
 
                 if card.is_minion() {
                     let card = state.get_card(card_id);
@@ -1105,11 +1125,20 @@ impl Effect {
                         state.effects.push_back(
                             Effect::BuryCard {
                                 card_id: card_id.clone(),
-                                from: card.get_zone().clone(),
                             }
                             .into(),
                         );
                     }
+                }
+
+                state
+                    .effects
+                    .extend(change_region_effects.into_iter().map(|e| e.into()));
+            }
+            Effect::SetBearer { card_id, bearer_id } => {
+                let artifact = state.get_card_mut(card_id);
+                if let Some(artifact_base) = artifact.get_artifact_base_mut() {
+                    artifact_base.bearer = bearer_id.clone();
                 }
             }
         }

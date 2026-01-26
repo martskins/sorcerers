@@ -10,8 +10,8 @@ struct UseAbility;
 
 #[async_trait::async_trait]
 impl ActivatedAbility for UseAbility {
-    fn get_name(&self) -> &str {
-        "Use Vesuvius Ability"
+    fn get_name(&self) -> String {
+        "Use Vesuvius Ability".to_string()
     }
 
     async fn on_select(&self, card_id: &uuid::Uuid, _: &PlayerId, state: &State) -> anyhow::Result<Vec<Effect>> {
@@ -20,7 +20,6 @@ impl ActivatedAbility for UseAbility {
         let mut effects = vec![
             Effect::BuryCard {
                 card_id: card.get_id().clone(),
-                from: card.get_zone().clone(),
             },
             Effect::SummonToken {
                 player_id: card.get_controller_id(state).clone(),

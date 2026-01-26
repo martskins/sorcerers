@@ -10,8 +10,8 @@ struct ShootProjectile;
 
 #[async_trait::async_trait]
 impl ActivatedAbility for ShootProjectile {
-    fn get_name(&self) -> &str {
-        "Shoot Projectile"
+    fn get_name(&self) -> String {
+        "Shoot Projectile".to_string()
     }
 
     async fn on_select(

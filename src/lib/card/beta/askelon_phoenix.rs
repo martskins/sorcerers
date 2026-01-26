@@ -76,7 +76,6 @@ impl Card for AskelonPhoenix {
         if ub.damage >= self.get_toughness(state).unwrap_or(0) || attacker.has_ability(state, &Ability::Lethal) {
             effects.push(Effect::BuryCard {
                 card_id: self.get_id().clone(),
-                from: self.get_zone().clone(),
             });
         }
         Ok(effects)

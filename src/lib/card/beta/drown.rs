@@ -55,7 +55,11 @@ impl Card for Drown {
 
         let prompt = "Drown: Pick a minion or artifact to submerge";
         let picked_card = pick_card(self.get_controller_id(state), &possible_targets, state, prompt).await?;
-        Ok(vec![Effect::Submerge { card_id: picked_card }])
+        Ok(vec![Effect::SetCardRegion {
+            card_id: picked_card,
+            region: Region::Underwater,
+            tap: false,
+        }])
     }
 }
 

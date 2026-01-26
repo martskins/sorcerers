@@ -1,6 +1,8 @@
 use crate::{
-    card::{Artifact, ArtifactBase, Card, CardBase, Cost, Edition, Rarity, Region, Zone},
-    game::PlayerId,
+    card::{Artifact, ArtifactBase, Card, CardBase, CardType, Cost, Edition, Rarity, Region, Zone},
+    effect::Effect,
+    game::{Element, PlayerId, pick_card},
+    state::{CardMatcher, State},
 };
 
 #[derive(Debug, Clone)]
@@ -16,7 +18,7 @@ impl SunkenTreasure {
         Self {
             artifact_base: ArtifactBase {
                 bearer: None,
-                needs_bearer: true,
+                needs_bearer: false,
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
@@ -61,7 +63,51 @@ impl Card for SunkenTreasure {
         Some(self)
     }
 
-    // TODO: Implement the effect of Sunken Treasure
+    async fn play_mechanic(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+        let controller_id = self.get_controller_id(state);
+        let opponent_id = state.get_opponent_id(&controller_id)?;
+
+        let allied_water_sites = CardMatcher::new()
+            .controller_id(&controller_id)
+            .card_type(CardType::Site)
+            .with_affinity(Element::Water)
+            .resolve_ids(state);
+        let prompt = format!("Sunken Treasure: Pick a water site to place the treasure under");
+        let picked_card_id = pick_card(opponent_id, &allied_water_sites, state, &prompt).await?;
+        let picked_zone = state.get_card(&picked_card_id).get_zone();
+        Ok(vec![
+            Effect::SetCardRegion {
+                card_id: self.get_id().clone(),
+                region: Region::Underwater,
+                tap: false,
+            },
+            Effect::PlayCard {
+                player_id: controller_id,
+                card_id: self.get_id().clone(),
+                zone: picked_zone.into(),
+            },
+        ])
+    }
+
+    fn on_region_change(&self, state: &State, from: &Region, to: &Region) -> anyhow::Result<Vec<Effect>> {
+        let subsurface = from == &Region::Underwater || from == &Region::Underground;
+        let surfaced = to == &Region::Surface;
+        let carried = self.get_bearer().unwrap_or_default().is_some();
+        let carried_to_surface = subsurface && surfaced && carried;
+        if !carried_to_surface {
+            return Ok(vec![]);
+        }
+
+        Ok(vec![
+            Effect::DrawCard {
+                player_id: self.get_controller_id(state),
+                count: 2,
+            },
+            Effect::BuryCard {
+                card_id: self.get_id().clone(),
+            },
+        ])
+    }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]

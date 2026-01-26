@@ -14,10 +14,10 @@ enum ClamorOfHarpiesAction {
 
 #[async_trait::async_trait]
 impl ActivatedAbility for ClamorOfHarpiesAction {
-    fn get_name(&self) -> &str {
+    fn get_name(&self) -> String {
         match self {
-            ClamorOfHarpiesAction::Strike => "Strike",
-            ClamorOfHarpiesAction::DoNotStrike => "Do Not Strike",
+            ClamorOfHarpiesAction::Strike => "Strike".to_string(),
+            ClamorOfHarpiesAction::DoNotStrike => "Do Not Strike".to_string(),
         }
     }
 

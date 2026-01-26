@@ -13,8 +13,8 @@ struct RollBoulder(uuid::Uuid);
 
 #[async_trait::async_trait]
 impl ActivatedAbility for RollBoulder {
-    fn get_name(&self) -> &str {
-        "Tap to give Rolling Boulder a push"
+    fn get_name(&self) -> String {
+        "Tap to give Rolling Boulder a push".to_string()
     }
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {

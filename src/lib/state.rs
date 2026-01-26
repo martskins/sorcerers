@@ -171,9 +171,9 @@ impl CardMatcher {
         }
     }
 
-    pub fn in_region(self, region: Region) -> Self {
+    pub fn in_region(self, region: &Region) -> Self {
         Self {
-            in_regions: Some(vec![region]),
+            in_regions: Some(vec![region.clone()]),
             ..self
         }
     }
@@ -764,7 +764,6 @@ impl State {
                     .get_artifact()
                     .and_then(|c| c.get_bearer().unwrap_or_default().clone()),
                 rarity: c.get_base().rarity.clone(),
-                num_arts: c.get_num_arts(),
                 power: c.get_power(&self).unwrap_or_default().unwrap_or_default(),
                 has_attachments: c.has_attachments(self).unwrap_or_default(),
                 image_path: c.get_image_path(),

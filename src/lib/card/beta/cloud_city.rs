@@ -11,8 +11,8 @@ struct FlyToVoid;
 
 #[async_trait::async_trait]
 impl ActivatedAbility for FlyToVoid {
-    fn get_name(&self) -> &str {
-        "Fly to nearby void"
+    fn get_name(&self) -> String {
+        "Fly to nearby void".to_string()
     }
 
     fn get_cost(&self, _card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {

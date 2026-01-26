@@ -87,7 +87,6 @@ impl Card for Wildfire {
         if zones.is_empty() {
             return Ok(vec![Effect::BuryCard {
                 card_id: self.get_id().clone(),
-                from: self.get_zone().clone(),
             }]);
         }
 

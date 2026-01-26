@@ -11,8 +11,8 @@ struct TapToDealDamage;
 
 #[async_trait::async_trait]
 impl ActivatedAbility for TapToDealDamage {
-    fn get_name(&self) -> &str {
-        "Tap to deal 3 damage to target unit"
+    fn get_name(&self) -> String {
+        "Tap to deal 3 damage to target unit".to_string()
     }
 
     fn get_cost(&self, card_id: &uuid::Uuid, state: &State) -> anyhow::Result<Cost> {

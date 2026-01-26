@@ -1,3 +1,5 @@
+use macroquad::rand::ChooseRandom;
+
 use crate::{
     card::{Card, CardBase, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     game::PlayerId,
@@ -56,7 +58,18 @@ impl Card for FootSoldier {
         Some(&mut self.unit_base)
     }
 
-    fn get_num_arts(&self) -> usize {
-        3
+    fn get_image_path(&self) -> String {
+        let arts = vec![
+            "https://d27a44hjr9gen3.cloudfront.net/cards/pro-foot_soldier_english-d-s.png",
+            "https://d27a44hjr9gen3.cloudfront.net/cards/pro-foot_soldier_saracen-d-s.png",
+            "https://d27a44hjr9gen3.cloudfront.net/cards/bet-foot_soldier_1-bt-s.png",
+            "https://d27a44hjr9gen3.cloudfront.net/cards/bet-foot_soldier_2-bt-s.png",
+            "https://d27a44hjr9gen3.cloudfront.net/cards/bet-foot_soldier_3-bt-s.png",
+            "https://d27a44hjr9gen3.cloudfront.net/cards/art-foot_soldiers-bt-s.png",
+        ];
+        match arts.choose() {
+            Some(art) => art.to_string(),
+            None => "".to_string(),
+        }
     }
 }

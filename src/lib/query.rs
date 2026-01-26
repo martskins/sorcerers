@@ -249,6 +249,24 @@ pub enum ZoneQuery {
     },
 }
 
+impl Into<ZoneQuery> for &Zone {
+    fn into(self) -> ZoneQuery {
+        ZoneQuery::Specific {
+            id: uuid::Uuid::new_v4(),
+            zone: self.clone(),
+        }
+    }
+}
+
+impl Into<ZoneQuery> for Zone {
+    fn into(self) -> ZoneQuery {
+        ZoneQuery::Specific {
+            id: uuid::Uuid::new_v4(),
+            zone: self,
+        }
+    }
+}
+
 impl ZoneQuery {
     pub fn from_zone(zone: Zone) -> Self {
         ZoneQuery::Specific {

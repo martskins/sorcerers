@@ -11,8 +11,8 @@ struct FloodSite;
 
 #[async_trait::async_trait]
 impl ActivatedAbility for FloodSite {
-    fn get_name(&self) -> &str {
-        "Flood Site"
+    fn get_name(&self) -> String {
+        "Flood Site".to_string()
     }
 
     async fn on_select(

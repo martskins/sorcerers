@@ -11,8 +11,8 @@ struct DealDamage;
 
 #[async_trait::async_trait]
 impl ActivatedAbility for DealDamage {
-    fn get_name(&self) -> &str {
-        todo!()
+    fn get_name(&self) -> String {
+        "Deal Damage".to_string()
     }
 
     async fn on_select(

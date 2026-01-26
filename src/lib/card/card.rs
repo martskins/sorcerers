@@ -3,10 +3,10 @@ use crate::{
     effect::{AbilityCounter, Counter, Effect, TokenType},
     game::{
         ActivatedAbility, AvatarAction, Direction, Element, PlayerId, Thresholds, UnitAction, are_adjacent, are_nearby,
-        get_adjacent_zones, get_nearby_zones,
+        get_adjacent_zones, get_nearby_zones, pick_card, pick_zone,
     },
     query::{CardQuery, ZoneQuery},
-    state::{ContinuousEffect, State, TemporaryEffect},
+    state::{CardMatcher, ContinuousEffect, State, TemporaryEffect},
 };
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Debug};
@@ -302,7 +302,6 @@ pub struct CardData {
     pub damage_taken: u16,
     pub bearer: Option<uuid::Uuid>,
     pub rarity: Rarity,
-    pub num_arts: usize,
     pub power: u16,
     pub has_attachments: bool,
     pub image_path: String,
@@ -628,6 +627,14 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     // Returns the ID of the player who controls this card.
     fn get_controller_id(&self, state: &State) -> PlayerId {
         let mut controller = self.get_base().controller_id;
+        if let Some(artifact) = self.get_artifact() {
+            if let Some(bearer_id) = artifact.get_bearer().unwrap_or_default() {
+                let bearer = state.get_card(&bearer_id);
+                // Artifacts are controlled by the controller of their bearer.
+                controller = bearer.get_controller_id(state);
+            }
+        }
+
         for we in &state.continuous_effects {
             if let ContinuousEffect::ControllerOverride {
                 controller_id,
@@ -730,7 +737,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             if ub.damage >= self.get_toughness(state).unwrap_or(0) || attacker.has_ability(state, &Ability::Lethal) {
                 return Ok(vec![Effect::BuryCard {
                     card_id: self.get_id().clone(),
-                    from: self.get_zone().clone(),
                 }]);
             }
 
@@ -1382,6 +1388,75 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(vec![])
     }
 
+    async fn play_mechanic(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+        let controller_id = self.get_controller_id(state);
+        let card_id = self.get_id();
+        match self.get_card_type() {
+            CardType::Minion => {
+                let zones = self.get_valid_play_zones(&state)?;
+                let prompt = "Pick a zone to play the card";
+                let zone = pick_zone(controller_id, &zones, &state, false, prompt).await?;
+                Ok(vec![
+                    Effect::PlayCard {
+                        player_id: controller_id.clone(),
+                        card_id: self.get_id().clone(),
+                        zone: zone.clone().into(),
+                    }
+                    .into(),
+                ])
+            }
+            CardType::Artifact => {
+                let units = self
+                    .get_artifact()
+                    .ok_or(anyhow::anyhow!("artifact card does not implement artifact"))?
+                    .get_valid_attach_targets(&state);
+                let needs_bearer = state
+                    .get_card(card_id)
+                    .get_artifact()
+                    .ok_or(anyhow::anyhow!("artifact card does not implement artifact"))?
+                    .needs_bearer(&state)?;
+                match needs_bearer {
+                    true => {
+                        let picked_card_id = pick_card(
+                            controller_id,
+                            &units,
+                            &state,
+                            format!("Pick a unit to attach {} to", self.get_name()).as_str(),
+                        )
+                        .await?;
+                        Ok(vec![Effect::SetBearer {
+                            card_id: card_id.clone(),
+                            bearer_id: Some(picked_card_id.clone()),
+                        }])
+                    }
+                    false => {
+                        let picked_zone = pick_zone(
+                            controller_id,
+                            &self.get_valid_play_zones(&state)?,
+                            &state,
+                            false,
+                            "Pick a zone to play the artifact",
+                        )
+                        .await?;
+                        Ok(vec![
+                            Effect::PlayCard {
+                                player_id: controller_id.clone(),
+                                card_id: card_id.clone(),
+                                zone: picked_zone.clone().into(),
+                            }
+                            .into(),
+                        ])
+                    }
+                }
+            }
+            _ => Ok(vec![]),
+        }
+    }
+
+    fn on_region_change(&self, _state: &State, _from: &Region, _to: &Region) -> anyhow::Result<Vec<Effect>> {
+        Ok(vec![])
+    }
+
     fn base_avatar_activated_abilities(&self, state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         let mut activated_abilities: Vec<Box<dyn ActivatedAbility>> = self.base_unit_activated_abilities(state)?;
         activated_abilities.push(Box::new(AvatarAction::DrawSite));
@@ -1403,20 +1478,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             }
         }
 
-        // TODO: should artifacts on avatars be able to provide actions?
-        // let artifacts = state
-        //     .cards
-        //     .iter()
-        //     .filter(|c| c.is_artifact())
-        //     .filter_map(|c| c.get_artifact())
-        //     .filter(|c| match c.get_bearer() {
-        //         Ok(Some(bearer_id)) => bearer_id == *self.get_id(),
-        //         _ => false,
-        //     });
-        // for artifact in artifacts {
-        //     actions.extend(artifact.get_actions(state)?);
-        // }
-
         Ok(activated_abilities)
     }
 
@@ -1427,12 +1488,22 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             activated_abilities.push(Box::new(UnitAction::RangedAttack));
         }
 
-        if self.has_ability(state, &Ability::Burrowing) {
-            activated_abilities.push(Box::new(UnitAction::Burrow));
-        }
+        if let Some(site) = self.get_zone().get_site(state) {
+            if self.has_ability(state, &Ability::Burrowing) && site.is_land_site(state)? {
+                if self.get_region(state) == &Region::Surface {
+                    activated_abilities.push(Box::new(UnitAction::Burrow));
+                } else {
+                    activated_abilities.push(Box::new(UnitAction::Surface));
+                }
+            }
 
-        if self.has_ability(state, &Ability::Submerge) {
-            activated_abilities.push(Box::new(UnitAction::Submerge));
+            if self.has_ability(state, &Ability::Submerge) && site.is_water_site(state)? {
+                if self.get_region(state) == &Region::Surface {
+                    activated_abilities.push(Box::new(UnitAction::Submerge));
+                } else {
+                    activated_abilities.push(Box::new(UnitAction::Surface));
+                }
+            }
         }
 
         for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
@@ -1440,6 +1511,22 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             if let Some(mods) = mods.grants_activated_abilities.get(self.get_id()) {
                 activated_abilities.extend(mods.clone());
             }
+        }
+
+        let unborne_artifacts: Vec<(uuid::Uuid, String)> = CardMatcher::new()
+            .card_type(CardType::Artifact)
+            .in_zone(self.get_zone())
+            .in_region(self.get_region(state))
+            .iter(state)
+            .filter_map(|c| c.get_artifact())
+            .filter(|c| c.get_bearer().unwrap_or_default().is_none())
+            .map(|c| (c.get_id().clone(), c.get_name().to_string()))
+            .collect();
+        for (artifact_id, artifact_name) in unborne_artifacts {
+            activated_abilities.push(Box::new(UnitAction::PickUpArtifact {
+                artifact_id,
+                artifact_name,
+            }));
         }
 
         // TODO: should artifacts on units be able to provide actions?
@@ -1461,6 +1548,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     // Returns the available actions for this card, given the current game state.
     fn get_activated_abilities(&self, state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+        if self.has_ability(state, &Ability::Disabled) {
+            return Ok(vec![]);
+        }
+
         if self.is_avatar() {
             let mut abilities = self.base_avatar_activated_abilities(state)?;
             abilities.extend(self.get_additional_activated_abilities(state)?);
@@ -1485,10 +1576,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     fn area_effects(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![])
-    }
-
-    fn get_num_arts(&self) -> usize {
-        1
     }
 
     async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
@@ -1548,6 +1635,14 @@ pub trait Site: Card {
         };
 
         Ok(result)
+    }
+
+    fn is_land_site(&self, state: &State) -> anyhow::Result<bool> {
+        Ok(self.get_provided_affinity(state)?.water == 0)
+    }
+
+    fn is_water_site(&self, state: &State) -> anyhow::Result<bool> {
+        Ok(self.get_provided_affinity(state)?.water != 0)
     }
 
     fn provided_affinity(&self, state: &State) -> anyhow::Result<Thresholds> {

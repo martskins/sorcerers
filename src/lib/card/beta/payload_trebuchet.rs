@@ -11,8 +11,8 @@ struct ShootPayload;
 
 #[async_trait::async_trait]
 impl ActivatedAbility for ShootPayload {
-    fn get_name(&self) -> &str {
-        "Shoot Payload"
+    fn get_name(&self) -> String {
+        "Shoot Payload".to_string()
     }
 
     async fn on_select(

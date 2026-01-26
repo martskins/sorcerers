@@ -229,6 +229,8 @@ pub async fn pick_card(
     state: &State,
     prompt: &str,
 ) -> anyhow::Result<uuid::Uuid> {
+    let opponent_id = state.get_opponent_id(player_id.as_ref())?;
+    wait_for_opponent(&opponent_id, state, "Wait for opponent...").await?;
     state
         .get_sender()
         .send(ServerMessage::PickCard {
@@ -239,7 +241,7 @@ pub async fn pick_card(
         })
         .await?;
 
-    loop {
+    let card = loop {
         let msg = state.get_receiver().recv().await?;
         match msg {
             ClientMessage::PickCard { card_id, .. } => break Ok(card_id),
@@ -248,7 +250,10 @@ pub async fn pick_card(
             }
             _ => unreachable!(),
         }
-    }
+    };
+
+    resume(&opponent_id, state).await?;
+    card
 }
 
 pub async fn pick_action<'a>(
@@ -715,7 +720,7 @@ where
 
 #[async_trait::async_trait]
 pub trait ActivatedAbility: std::fmt::Debug + Send + Sync + CloneBoxedAction {
-    fn get_name(&self) -> &str;
+    fn get_name(&self) -> String;
     async fn on_select(&self, card_id: &uuid::Uuid, player_id: &PlayerId, state: &State)
     -> anyhow::Result<Vec<Effect>>;
     fn get_cost(&self, _card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
@@ -788,8 +793,8 @@ pub struct CancelAction;
 
 #[async_trait::async_trait]
 impl ActivatedAbility for CancelAction {
-    fn get_name(&self) -> &str {
-        "Cancel"
+    fn get_name(&self) -> String {
+        "Cancel".to_string()
     }
 
     async fn on_select(
@@ -841,10 +846,10 @@ pub enum AvatarAction {
 
 #[async_trait::async_trait]
 impl ActivatedAbility for AvatarAction {
-    fn get_name(&self) -> &str {
+    fn get_name(&self) -> String {
         match self {
-            AvatarAction::PlaySite => "Play Site",
-            AvatarAction::DrawSite => "Draw Site",
+            AvatarAction::PlaySite => "Play Site".to_string(),
+            AvatarAction::DrawSite => "Draw Site".to_string(),
         }
     }
 
@@ -874,7 +879,7 @@ impl ActivatedAbility for AvatarAction {
                     Effect::PlayCard {
                         player_id: player_id.clone(),
                         card_id: picked_card_id.clone(),
-                        zone: zone.clone(),
+                        zone: zone.clone().into(),
                     },
                     Effect::TapCard {
                         card_id: card_id.clone(),
@@ -899,21 +904,31 @@ pub enum UnitAction {
     Move,
     Attack,
     RangedAttack,
-    Defend,
     Burrow,
     Submerge,
+    Surface,
+    PickUpArtifact {
+        artifact_id: uuid::Uuid,
+        artifact_name: String,
+    },
+    DropArtifact {
+        artifact_id: uuid::Uuid,
+        artifact_name: String,
+    },
 }
 
 #[async_trait::async_trait]
 impl ActivatedAbility for UnitAction {
-    fn get_name(&self) -> &str {
+    fn get_name(&self) -> String {
         match self {
-            UnitAction::Move => "Move",
-            UnitAction::Attack => "Attack",
-            UnitAction::RangedAttack => "Ranged Attack",
-            UnitAction::Defend => "Defend",
-            UnitAction::Burrow => "Burrow",
-            UnitAction::Submerge => "Submerge",
+            UnitAction::Move => "Move".to_string(),
+            UnitAction::Attack => "Attack".to_string(),
+            UnitAction::RangedAttack => "Ranged Attack".to_string(),
+            UnitAction::Burrow => "Burrow".to_string(),
+            UnitAction::Submerge => "Submerge".to_string(),
+            UnitAction::Surface => "Surface".to_string(),
+            UnitAction::PickUpArtifact { artifact_name, .. } => format!("Pick Up {}", artifact_name),
+            UnitAction::DropArtifact { artifact_name, .. } => format!("Drop {}", artifact_name),
         }
     }
 
@@ -1165,13 +1180,29 @@ impl ActivatedAbility for UnitAction {
                 effects.reverse();
                 Ok(effects)
             }
-            UnitAction::Burrow => Ok(vec![Effect::Burrow {
+            UnitAction::Burrow => Ok(vec![Effect::SetCardRegion {
                 card_id: card_id.clone(),
+                region: Region::Underground,
+                tap: true,
             }]),
-            UnitAction::Submerge => Ok(vec![Effect::Submerge {
+            UnitAction::Submerge => Ok(vec![Effect::SetCardRegion {
                 card_id: card_id.clone(),
+                region: Region::Underwater,
+                tap: true,
             }]),
-            UnitAction::Defend => Ok(vec![]),
+            UnitAction::Surface => Ok(vec![Effect::SetCardRegion {
+                card_id: card_id.clone(),
+                region: Region::Surface,
+                tap: true,
+            }]),
+            UnitAction::PickUpArtifact { artifact_id, .. } => Ok(vec![Effect::SetBearer {
+                card_id: artifact_id.clone(),
+                bearer_id: Some(card_id.clone()),
+            }]),
+            UnitAction::DropArtifact { artifact_id, .. } => Ok(vec![Effect::SetBearer {
+                card_id: artifact_id.clone(),
+                bearer_id: None,
+            }]),
         }
     }
 }
@@ -1272,6 +1303,7 @@ impl Game {
             _ => {}
         }
     }
+
     async fn handle_message(&mut self, message: &ClientMessage) -> anyhow::Result<()> {
         self.maybe_unblock_effects(message);
         match message {
@@ -1296,64 +1328,9 @@ impl Game {
                 }
 
                 match (card.get_card_type(), card.get_zone()) {
-                    (CardType::Artifact, Zone::Hand) => {
-                        let units = card
-                            .get_artifact()
-                            .ok_or(anyhow::anyhow!("artifact card does not implement artifact"))?
-                            .get_valid_attach_targets(&self.state);
-                        let needs_bearer = self
-                            .state
-                            .get_card(card_id)
-                            .get_artifact()
-                            .ok_or(anyhow::anyhow!("artifact card does not implement artifact"))?
-                            .needs_bearer(&self.state)?;
-                        match needs_bearer {
-                            true => {
-                                let picked_card_id = pick_card(
-                                    player_id,
-                                    &units,
-                                    &self.state,
-                                    format!("Pick a unit to attach {} to", card.get_name()).as_str(),
-                                )
-                                .await?;
-                                self.state
-                                    .get_card_mut(card_id)
-                                    .get_artifact_base_mut()
-                                    .ok_or(anyhow::anyhow!("artifact card has no base artifact component"))?
-                                    .bearer = Some(picked_card_id.clone());
-                            }
-                            false => {
-                                let picked_zone = pick_zone(
-                                    player_id,
-                                    &card.get_valid_play_zones(&self.state)?,
-                                    &self.state,
-                                    false,
-                                    "Pick a zone to play the artifact",
-                                )
-                                .await?;
-                                self.state.effects.push_back(
-                                    Effect::PlayCard {
-                                        player_id: player_id.clone(),
-                                        card_id: card_id.clone(),
-                                        zone: picked_zone.clone(),
-                                    }
-                                    .into(),
-                                );
-                            }
-                        }
-                    }
-                    (CardType::Minion, Zone::Hand) | (CardType::Aura, Zone::Hand) => {
-                        let zones = card.get_valid_play_zones(&self.state)?;
-                        let prompt = "Pick a zone to play the card";
-                        let zone = pick_zone(player_id, &zones, &self.state, false, prompt).await?;
-                        self.state.effects.push_back(
-                            Effect::PlayCard {
-                                player_id: player_id.clone(),
-                                card_id: card_id.clone(),
-                                zone: zone.clone(),
-                            }
-                            .into(),
-                        );
+                    (CardType::Artifact, Zone::Hand) | (CardType::Minion, Zone::Hand) => {
+                        let effects = card.play_mechanic(&self.state).await?;
+                        self.state.effects.extend(effects.into_iter().map(|e| e.into()));
                     }
                     (CardType::Magic, Zone::Hand) => {
                         let spellcasters: Vec<uuid::Uuid> = self
@@ -1458,39 +1435,6 @@ impl Game {
 
     pub async fn update(&mut self) -> anyhow::Result<()> {
         self.process_effects().await?;
-
-        // if let Phase::PreEndTurn { player_id } = self.state.phase {
-        //     // If the current player is not the one ending their turn, it means we've already
-        //     // actioned the pre-end turn changes, so no action is needed.
-        //     if self.state.current_player == player_id && !self.state.waiting_for_input {
-        //         let current_index = self
-        //             .state
-        //             .players
-        //             .iter()
-        //             .position(|p| p.id == self.state.current_player)
-        //             .unwrap_or_default();
-        //         let current_player = self.state.current_player.clone();
-        //         let next_player = self
-        //             .state
-        //             .players
-        //             .iter()
-        //             .cycle()
-        //             .skip(current_index + 1)
-        //             .next()
-        //             .ok_or(anyhow::anyhow!("No next player found"))?;
-        //         self.state.current_player = next_player.id.clone();
-        //         self.state.turns += 1;
-        //         let effects = vec![
-        //             Effect::EndTurn {
-        //                 player_id: current_player,
-        //             },
-        //             Effect::StartTurn {
-        //                 player_id: next_player.id.clone(),
-        //             },
-        //         ];
-        //         self.state.effects.extend(effects.into_iter().map(|e| e.into()));
-        //     }
-        // }
 
         // Move attached artifacts to the same zone as the unit they are attached to
         let attached_artifacts: Vec<(uuid::Uuid, uuid::Uuid)> = self

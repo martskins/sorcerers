@@ -11,8 +11,8 @@ struct TapToStrikeNearbyMinions;
 
 #[async_trait::async_trait]
 impl ActivatedAbility for TapToStrikeNearbyMinions {
-    fn get_name(&self) -> &str {
-        "Tap to Strike Nearby Minions"
+    fn get_name(&self) -> String {
+        "Tap to Strike Nearby Minions".to_string()
     }
 
     async fn on_select(
