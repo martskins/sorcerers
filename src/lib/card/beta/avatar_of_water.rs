@@ -90,6 +90,7 @@ impl AvatarOfWater {
                 rarity: Rarity::Unique,
                 edition: Edition::Alpha,
                 controller_id: owner_id.clone(),
+                is_token: false,
             },
             avatar_base: AvatarBase {},
             flood_effect: None,

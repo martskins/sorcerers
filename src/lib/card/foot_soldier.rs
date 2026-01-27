@@ -29,9 +29,10 @@ impl FootSoldier {
                 zone: Zone::Atlasbook,
                 cost: Cost::zero(),
                 region: Region::Surface,
-                rarity: Rarity::Token,
+                rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
+                is_token: true,
             },
         }
     }

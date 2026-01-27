@@ -34,6 +34,7 @@ impl HeadlessHaunt {
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
+                is_token: false,
             },
         }
     }

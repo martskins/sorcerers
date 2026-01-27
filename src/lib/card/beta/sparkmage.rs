@@ -30,6 +30,7 @@ impl Sparkmage {
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
+                is_token: false,
             },
             avatar_base: AvatarBase {},
         }

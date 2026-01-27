@@ -61,7 +61,7 @@ fn draw_vortex_icon(x: f32, y: f32, size: f32, color: Color) {
 pub fn draw_card(card_rect: &CardRect, is_ally: bool, draw_accessories: bool) {
     let rect = card_rect.rect;
     let mut scale = 1.0;
-    if card_rect.card.is_token() {
+    if card_rect.card.is_token {
         scale = 0.65;
     }
 

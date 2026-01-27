@@ -767,6 +767,7 @@ impl State {
                 power: c.get_power(&self).unwrap_or_default().unwrap_or_default(),
                 has_attachments: c.has_attachments(self).unwrap_or_default(),
                 image_path: c.get_image_path(),
+                is_token: c.get_base().is_token,
             })
             .collect()
     }

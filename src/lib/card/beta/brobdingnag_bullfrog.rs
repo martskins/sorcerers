@@ -35,6 +35,7 @@ impl BrobdingnagBullfrog {
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
+                is_token: false,
             },
             swallowed_minion: None,
         }

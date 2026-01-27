@@ -1,5 +1,3 @@
-use std::collections::VecDeque;
-
 use crate::{
     card::{Card, CardBase, Cost, Edition, Rarity, Region, Site, SiteBase, SiteType, Zone},
     effect::Effect,
@@ -34,6 +32,7 @@ impl AutumnRiver {
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
+                is_token: false,
             },
         }
     }

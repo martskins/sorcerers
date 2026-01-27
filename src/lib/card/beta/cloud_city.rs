@@ -117,6 +117,7 @@ impl CloudCity {
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
+                is_token: false,
             },
             moved_this_turn: false,
         }

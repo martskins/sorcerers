@@ -27,6 +27,7 @@ impl Thunderstorm {
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
+                is_token: false,
             },
             aura_base: AuraBase {},
         }

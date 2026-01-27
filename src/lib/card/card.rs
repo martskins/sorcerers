@@ -305,6 +305,7 @@ pub struct CardData {
     pub power: u16,
     pub has_attachments: bool,
     pub image_path: String,
+    pub is_token: bool,
 }
 
 impl CardData {
@@ -318,10 +319,6 @@ impl CardData {
 
     pub fn get_name(&self) -> &str {
         &self.name
-    }
-
-    pub fn is_token(&self) -> bool {
-        self.rarity == Rarity::Token
     }
 
     pub fn get_edition(&self) -> &Edition {
@@ -548,7 +545,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             folder = "rotated";
         }
         let mut after_card_name = "b";
-        if self.get_base().rarity == Rarity::Token {
+        if self.get_base().is_token {
             after_card_name = "bt";
         }
 
@@ -1744,7 +1741,6 @@ pub struct UnitBase {
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 pub enum Rarity {
-    Token,
     Ordinary,
     Exceptional,
     Elite,
@@ -1798,6 +1794,7 @@ pub struct CardBase {
     pub region: Region,
     pub rarity: Rarity,
     pub edition: Edition,
+    pub is_token: bool,
 }
 
 #[derive(Debug, Clone)]
