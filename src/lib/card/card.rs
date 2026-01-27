@@ -548,7 +548,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             folder = "rotated";
         }
         let mut after_card_name = "b";
-        if self.is_token() {
+        if self.get_base().rarity == Rarity::Token {
             after_card_name = "bt";
         }
 
@@ -1283,10 +1283,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         }
 
         true
-    }
-
-    fn is_token(&self) -> bool {
-        false
     }
 
     fn is_site(&self) -> bool {

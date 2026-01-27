@@ -1,6 +1,8 @@
 use crate::{
     card::{Card, CardBase, Cost, Edition, Rarity, Region, Site, SiteBase, SiteType, Zone},
-    game::{PlayerId, Thresholds},
+    effect::Effect,
+    game::{PlayerId, Thresholds, take_action},
+    state::State,
 };
 
 #[derive(Debug, Clone)]
@@ -61,6 +63,26 @@ impl Card for SpringRiver {
 
     fn get_site(&self) -> Option<&dyn Site> {
         Some(self)
+    }
+
+    async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+        let controller_id = self.get_controller_id(state);
+        let deck = state.get_player_deck(&controller_id)?;
+        if let Some(spell_id) = deck.peek_spell() {
+            let prompt = "Viewing the top card of your spellbook";
+            let action = "Put into the bottom of your spellbook?";
+            let action = take_action(&controller_id, &[spell_id.clone()], state, prompt, action).await?;
+            if action {
+                let mut deck = deck.clone();
+                deck.rotate_spells(1);
+                return Ok(vec![Effect::RearrangeDeck {
+                    spells: deck.spells,
+                    sites: deck.sites,
+                }]);
+            }
+        }
+
+        Ok(vec![])
     }
 }
 

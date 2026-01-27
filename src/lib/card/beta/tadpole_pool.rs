@@ -1,6 +1,8 @@
 use crate::{
     card::{Card, CardBase, Cost, Edition, Rarity, Region, Site, SiteBase, Zone},
+    effect::{Effect, TokenType},
     game::{PlayerId, Thresholds},
+    state::State,
 };
 
 #[derive(Debug, Clone)]
@@ -61,6 +63,32 @@ impl Card for TadpolePool {
 
     fn get_site(&self) -> Option<&dyn Site> {
         Some(self)
+    }
+
+    async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+        let resources = state.get_player_resources(&self.get_controller_id(state))?;
+        if resources.thresholds.water < 3 {
+            return Ok(vec![]);
+        }
+
+        let controller_id = self.get_controller_id(state);
+        Ok(vec![
+            Effect::SummonToken {
+                player_id: controller_id.clone(),
+                token_type: TokenType::Frog,
+                zone: self.get_zone().clone(),
+            },
+            Effect::SummonToken {
+                player_id: controller_id.clone(),
+                token_type: TokenType::Frog,
+                zone: self.get_zone().clone(),
+            },
+            Effect::SummonToken {
+                player_id: controller_id.clone(),
+                token_type: TokenType::Frog,
+                zone: self.get_zone().clone(),
+            },
+        ])
     }
 }
 

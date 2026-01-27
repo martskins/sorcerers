@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardType, FootSoldier, Region, Rubble, UnitBase, Zone},
+    card::{Ability, Card, CardType, FootSoldier, Frog, Region, Rubble, UnitBase, Zone},
     game::{BaseAction, Direction, PlayerAction, PlayerId, SoundEffect, pick_card, pick_option},
     networking::message::ServerMessage,
     query::{CardQuery, EffectQuery, QueryCache, ZoneQuery},
@@ -37,6 +37,7 @@ impl Counter {
 pub enum TokenType {
     Rubble,
     FootSoldier,
+    Frog,
 }
 
 #[derive(Debug)]
@@ -241,6 +242,7 @@ impl Effect {
                 let token_name = match token_type {
                     TokenType::Rubble => "Rubble",
                     TokenType::FootSoldier => "Foot Soldier",
+                    TokenType::Frog => "Frog",
                 };
                 Some(format!(
                     "{} summons a {} in zone {}",
@@ -501,6 +503,7 @@ impl Effect {
                 let mut token: Box<dyn Card> = match token_type {
                     TokenType::Rubble => Box::new(Rubble::new(player_id.clone())),
                     TokenType::FootSoldier => Box::new(FootSoldier::new(player_id.clone())),
+                    TokenType::Frog => Box::new(Frog::new(player_id.clone())),
                 };
                 token.set_zone(zone.clone());
                 state.cards.push(token);

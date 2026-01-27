@@ -50,4 +50,20 @@ impl Deck {
         self.sites.shuffle(&mut rng);
         self.spells.shuffle(&mut rng);
     }
+
+    pub fn rotate_sites(&mut self, count: usize) {
+        for _ in 0..count {
+            if let Some(site) = self.sites.pop() {
+                self.sites.insert(0, site);
+            }
+        }
+    }
+
+    pub fn rotate_spells(&mut self, count: usize) {
+        for _ in 0..count {
+            if let Some(spell) = self.spells.pop() {
+                self.spells.insert(0, spell);
+            }
+        }
+    }
 }

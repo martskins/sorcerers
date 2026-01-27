@@ -1,10 +1,12 @@
 pub mod beta;
 pub mod card;
 pub mod foot_soldier;
+pub mod frog;
 pub mod rubble;
 pub use beta::*;
 pub use card::*;
 pub use foot_soldier::*;
+pub use frog::*;
 pub use rubble::*;
 
 use crate::{deck::Deck, game::PlayerId, networking::message::PreconDeck};
