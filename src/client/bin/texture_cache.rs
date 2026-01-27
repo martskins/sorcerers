@@ -19,6 +19,10 @@ impl TextureCache {
         TEXTURE_CACHE.get_or_init(|| RwLock::new(TextureCache::new()));
     }
 
+    fn url_to_filename(url: &str) -> String {
+        url.replace("://", "_").replace("/", "_")
+    }
+
     pub async fn get_card_texture(card: &CardData) -> anyhow::Result<Texture2D> {
         if let Some(tex) = TEXTURE_CACHE
             .get()
@@ -31,9 +35,9 @@ impl TextureCache {
             return Ok(tex.clone());
         }
 
-        let path = format!("assets/images/cache/{}.png", card.get_name());
+        let path = format!("assets/images/cache/{}", Self::url_to_filename(&card.image_path));
         if Path::new(&path).exists() {
-            return TextureCache::get_card_image_from_disk(card.get_name(), &path).await;
+            return TextureCache::get_card_image_from_disk(&path).await;
         }
 
         TextureCache::download_card_image(card).await
@@ -71,25 +75,26 @@ impl TextureCache {
         Ok(texture)
     }
 
-    async fn get_card_image_from_disk(name: &str, path: &str) -> anyhow::Result<Texture2D> {
+    async fn get_card_image_from_disk(path: &str) -> anyhow::Result<Texture2D> {
         let texture = macroquad::texture::load_texture(path).await?;
         let mut cache = TEXTURE_CACHE
             .get()
             .ok_or(anyhow::anyhow!("failed to get texture cache reference"))?
             .write()
             .await;
-        cache.inner.insert(name.to_string(), texture.clone());
+        cache.inner.insert(path.to_string(), texture.clone());
         Ok(texture)
     }
 
     async fn download_card_image(card: &CardData) -> anyhow::Result<Texture2D> {
-        println!("Downloading image for {} from {}", card.get_name(), card.image_path);
-        let response = reqwest::blocking::get(&card.image_path)?;
+        let path = &card.image_path;
+        println!("Downloading image for {} from {}", card.get_name(), path);
+        let response = reqwest::blocking::get(path)?;
         if response.status() != reqwest::StatusCode::OK {
             return Err(anyhow::anyhow!(
                 "Failed to download image for {} on path {}: HTTP {}",
                 card.name,
-                &card.image_path,
+                path,
                 response.status()
             ));
         }
@@ -101,9 +106,9 @@ impl TextureCache {
             .ok_or(anyhow::anyhow!("failed to get texture cache reference"))?
             .write()
             .await;
-        cache.inner.insert(card.name.clone(), texture.clone());
+        cache.inner.insert(path.to_string(), texture.clone());
 
-        let save_path = format!("assets/images/cache/{}.png", card.name);
+        let save_path = format!("assets/images/cache/{}", Self::url_to_filename(path));
         if let Err(e) = std::fs::write(&save_path, &bytes) {
             println!("Error saving image to disk: {}", e);
         }

@@ -73,14 +73,17 @@ impl Menu {
                 let sound_data = StaticSoundData::from_file("assets/sounds/game_start.mp3")?;
                 manager.play(sound_data.clone())?;
 
-                Ok(Some(Scene::Game(Game::new(
-                    game_id.clone(),
-                    player_id,
-                    opponent_id,
-                    &player_id == player1,
-                    cards.clone(),
-                    self.client.clone(),
-                )?)))
+                Ok(Some(Scene::Game(
+                    Game::new(
+                        game_id.clone(),
+                        player_id,
+                        opponent_id,
+                        &player_id == player1,
+                        cards.clone(),
+                        self.client.clone(),
+                    )
+                    .await?,
+                )))
             }
             _ => Ok(None),
         }

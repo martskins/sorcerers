@@ -11,6 +11,7 @@ use crate::{
         Scene, action_overlay::ActionOverlay, combat_resolution_overlay::CombatResolutionOverlay, menu::Menu,
         selection_overlay::SelectionOverlay,
     },
+    texture_cache::TextureCache,
 };
 use kira::{AudioManager, AudioManagerSettings, DefaultBackend, sound::static_sound::StaticSoundData};
 use macroquad::{
@@ -170,7 +171,7 @@ pub struct Game {
 }
 
 impl Game {
-    pub fn new(
+    pub async fn new(
         game_id: uuid::Uuid,
         player_id: uuid::Uuid,
         opponent_id: uuid::Uuid,
@@ -178,6 +179,8 @@ impl Game {
         cards: Vec<CardData>,
         client: networking::client::Client,
     ) -> anyhow::Result<Self> {
+        TextureCache::load_cache(&cards).await?;
+
         Ok(Self {
             game_id: game_id.clone(),
             client: client.clone(),
