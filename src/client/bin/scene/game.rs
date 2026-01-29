@@ -497,11 +497,13 @@ impl Game {
                 cards,
                 current_player,
                 resources,
+                health,
                 ..
             } => {
                 self.data.cards = sort_cards(cards);
                 self.current_player = current_player.clone();
                 self.data.resources = resources.clone();
+                self.data.avatar_health = health.clone();
                 Ok(None)
             }
             _ => Ok(None),

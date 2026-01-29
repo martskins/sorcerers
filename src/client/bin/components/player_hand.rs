@@ -8,7 +8,7 @@ use crate::{
 };
 use macroquad::{
     color::{Color, DARKGREEN, WHITE},
-    input::{MouseButton, is_mouse_button_released, mouse_position},
+    input::{MouseButton, is_mouse_button_released},
     math::{Rect, Vec2},
     shapes::{DrawRectangleParams, draw_rectangle, draw_rectangle_ex, draw_rectangle_lines},
     texture::{DrawTextureParams, draw_texture_ex},
@@ -26,7 +26,7 @@ pub struct PlayerHandComponent {
     client: networking::client::Client,
     visible: bool,
     rect: Rect,
-    last_mouse_pos: Vec2,
+    cards_in_hand: Vec<uuid::Uuid>,
 }
 
 impl PlayerHandComponent {
@@ -38,7 +38,7 @@ impl PlayerHandComponent {
             client,
             visible: true,
             rect,
-            last_mouse_pos: mouse_position().into(),
+            cards_in_hand: Vec::new(),
         }
     }
 
@@ -59,104 +59,134 @@ impl PlayerHandComponent {
     }
 
     async fn compute_rects(&mut self, cards: &[CardData]) -> anyhow::Result<()> {
-        let spell_count = cards
+        // Separate spells and sites
+        let spells: Vec<&CardData> = cards
             .iter()
             .filter(|c| c.zone == Zone::Hand)
             .filter(|c| c.owner_id == self.player_id)
             .filter(|c| c.is_spell())
-            .count();
+            .collect();
 
-        let site_count = cards
+        let sites: Vec<&CardData> = cards
             .iter()
             .filter(|c| c.zone == Zone::Hand)
             .filter(|c| c.owner_id == self.player_id)
             .filter(|c| c.is_site())
-            .count();
+            .collect();
+
+        let mut has_new_cards = false;
+        for spell in &spells {
+            if !self.cards_in_hand.contains(&spell.id) {
+                has_new_cards = true;
+                break;
+            }
+        }
+
+        if !has_new_cards {
+            for site in &sites {
+                if !self.cards_in_hand.contains(&site.id) {
+                    has_new_cards = true;
+                    break;
+                }
+            }
+        }
+
+        // Skip recomputing if there are no new cards
+        if !has_new_cards {
+            return Ok(());
+        }
+
+        let spell_count = spells.len();
+        let site_count = sites.len();
 
         let spell_dim = self.spell_dimensions();
         let site_dim = self.site_dimensions();
-        let card_spacing = 20.0;
 
-        let spells_width = if spell_count > 0 {
-            spell_count as f32 * spell_dim.x + (spell_count as f32 - 1.0) * card_spacing
+        // Spells: always recompute, overlap if needed, always visible
+        let min_visible_width = spell_dim.x * 0.25;
+        let max_hand_width = self.rect.w * 0.95;
+        let spell_spacing = if spell_count > 1 {
+            ((max_hand_width - spell_dim.x) / (spell_count as f32 - 1.0))
+                .min(spell_dim.x - min_visible_width)
+                .max(10.0)
         } else {
             0.0
         };
 
-        let total_width = spells_width + if site_count > 0 { card_spacing + site_dim.x } else { 0.0 };
+        let spells_width = if spell_count > 0 {
+            spell_dim.x + (spell_count as f32 - 1.0) * spell_spacing
+        } else {
+            0.0
+        };
+
+        // Sites: vertical stack, multiple columns if >4, overlap so each is partially visible
+        let sites_per_column = 4;
+        let site_columns = ((site_count + sites_per_column - 1) / sites_per_column).max(1);
+        let site_spacing_y = (site_dim.y * 0.15).max(20.0); // overlap, but always at least 20px visible
+        let site_spacing_x = 20.0;
+
+        let sites_width = if site_count > 0 {
+            site_columns as f32 * site_dim.x + (site_columns as f32 - 1.0) * site_spacing_x
+        } else {
+            0.0
+        };
+
+        // Layout: spells first, then sites (columns) to the right
+        let total_width = spells_width
+            + if site_count > 0 {
+                site_spacing_x + sites_width
+            } else {
+                0.0
+            };
         let start_x = self.rect.x + (self.rect.w - total_width) / 2.0;
         let spells_y = self.rect.y + self.rect.h / 2.0 - spell_dim.y / 2.0;
 
         let mut rects: Vec<CardRect> = Vec::new();
-        for (idx, card) in cards
-            .iter()
-            .filter(|c| c.zone == Zone::Hand)
-            .filter(|c| c.owner_id == self.player_id)
-            .filter(|c| c.is_spell())
-            .enumerate()
-        {
-            if let Some(card_rect) = self.card_rects.iter().find(|c| c.card.id == card.id) {
-                rects.push(card_rect.clone());
-                continue;
-            }
 
-            let x = start_x + idx as f32 * (spell_dim.x + card_spacing);
+        // Place spells, left to right, always recomputed
+        for (idx, card) in spells.iter().enumerate() {
+            let existing_card = self.card_rects.iter().find(|c| c.card.id == card.id);
+            let x = start_x + idx as f32 * spell_spacing;
             let rect = Rect::new(x, spells_y, spell_dim.x, spell_dim.y);
 
             rects.push(CardRect {
                 rect,
-                is_hovered: self
-                    .card_rects
-                    .iter()
-                    .find(|r| r.card.id == card.id)
-                    .map_or(false, |r| r.is_hovered),
-                is_selected: self
-                    .card_rects
-                    .iter()
-                    .find(|r| r.card.id == card.id)
-                    .map_or(false, |r| r.is_selected),
-                image: TextureCache::get_card_texture(card).await?,
-                card: card.clone(),
+                is_hovered: existing_card.map_or(false, |c| c.is_hovered),
+                is_selected: existing_card.map_or(false, |c| c.is_selected),
+                image: existing_card.map_or(TextureCache::get_card_texture(card).await?, |c| c.image.clone()),
+                card: (*card).clone(),
             });
         }
 
+        // Place sites, stacked in columns to the right of spells, overlapping so each is partially visible
         if site_count > 0 {
-            let sites_x = start_x + spells_width + card_spacing;
+            let sites_x = start_x + spells_width + site_spacing_x;
             let sites_start_y = self.rect.y + self.rect.h / 2.0 - spell_dim.y / 2.0;
-            for (idx, card) in cards
-                .iter()
-                .filter(|c| c.zone == Zone::Hand)
-                .filter(|c| c.owner_id == self.player_id)
-                .filter(|c| c.is_site())
-                .enumerate()
-            {
-                if let Some(card_rect) = self.card_rects.iter().find(|c| c.card.id == card.id) {
-                    rects.push(card_rect.clone());
-                    continue;
-                }
 
-                let y = sites_start_y + idx as f32 * 20.0;
-                let rect = Rect::new(sites_x, y, site_dim.x, site_dim.y);
+            for (idx, card) in sites.iter().enumerate() {
+                let col = idx / sites_per_column;
+                let row = idx % sites_per_column;
+                let x = sites_x + col as f32 * (site_dim.x + site_spacing_x);
+                let y = sites_start_y + row as f32 * site_spacing_y;
+
+                let rect = Rect::new(x, y, site_dim.x, site_dim.y);
 
                 rects.push(CardRect {
                     rect,
-                    is_hovered: self
-                        .card_rects
-                        .iter()
-                        .find(|r| r.card.id == card.id)
-                        .map_or(false, |r| r.is_hovered),
-                    is_selected: self
-                        .card_rects
-                        .iter()
-                        .find(|r| r.card.id == card.id)
-                        .map_or(false, |r| r.is_selected),
+                    is_hovered: false,
+                    is_selected: false,
                     image: TextureCache::get_card_texture(card).await?,
-                    card: card.clone(),
+                    card: (*card).clone(),
                 });
             }
         }
 
         self.card_rects = rects;
+        self.cards_in_hand = Vec::new();
+        self.cards_in_hand
+            .extend(spells.iter().map(|c| c.id.clone()).collect::<Vec<uuid::Uuid>>());
+        self.cards_in_hand
+            .extend(sites.iter().map(|c| c.id.clone()).collect::<Vec<uuid::Uuid>>());
         Ok(())
     }
 
@@ -172,32 +202,32 @@ impl PlayerHandComponent {
 #[async_trait::async_trait]
 impl Component for PlayerHandComponent {
     async fn update(&mut self, data: &mut GameData) -> anyhow::Result<()> {
-        let new_mouse_pos: Vec2 = mouse_position().into();
-        let mouse_delta = new_mouse_pos - self.last_mouse_pos;
-
         self.compute_rects(&data.cards).await?;
 
-        let mut dragging_card: Option<uuid::Uuid> = None;
-        for card_rect in &mut self.card_rects {
-            if card_rect.is_hovered && Mouse::dragging()? {
-                dragging_card = Some(card_rect.card.id.clone());
-            }
-        }
+        // let new_mouse_pos: Vec2 = mouse_position().into();
+        // let mouse_delta = new_mouse_pos - self.last_mouse_pos;
+        // let mut dragging_card: Option<uuid::Uuid> = None;
+        // for card_rect in &mut self.card_rects {
+        //     if card_rect.is_hovered && Mouse::dragging()? {
+        //         dragging_card = Some(card_rect.card.id.clone());
+        //     }
+        // }
+        //
+        // if let Some(card_id) = dragging_card {
+        //     if let Some(card_rect) = self.card_rects.iter_mut().find(|c| c.card.id == card_id) {
+        //         if card_rect.card.zone == Zone::Hand {
+        //             let min_x = self.rect.x;
+        //             let max_x = self.rect.x + self.rect.w - card_rect.rect.w;
+        //             let min_y = self.rect.y;
+        //             let max_y = self.rect.y + self.rect.h - card_rect.rect.h;
+        //             card_rect.rect.x = (card_rect.rect.x + mouse_delta.x).clamp(min_x, max_x);
+        //             card_rect.rect.y = (card_rect.rect.y + mouse_delta.y).clamp(min_y, max_y);
+        //         }
+        //     }
+        // }
+        //
+        // self.last_mouse_pos = new_mouse_pos;
 
-        if let Some(card_id) = dragging_card {
-            if let Some(card_rect) = self.card_rects.iter_mut().find(|c| c.card.id == card_id) {
-                if card_rect.card.zone == Zone::Hand {
-                    let min_x = self.rect.x;
-                    let max_x = self.rect.x + self.rect.w - card_rect.rect.w;
-                    let min_y = self.rect.y;
-                    let max_y = self.rect.y + self.rect.h - card_rect.rect.h;
-                    card_rect.rect.x = (card_rect.rect.x + mouse_delta.x).clamp(min_x, max_x);
-                    card_rect.rect.y = (card_rect.rect.y + mouse_delta.y).clamp(min_y, max_y);
-                }
-            }
-        }
-
-        self.last_mouse_pos = new_mouse_pos;
         Ok(())
     }
 
