@@ -78,6 +78,10 @@ impl Card for GuileSirens {
             ..Default::default()
         }
         .resolve_ids(state);
+        if minions.is_empty() {
+            return Ok(vec![]);
+        }
+
         let picked_card_id = pick_card(
             &controller_id,
             &minions,
@@ -103,14 +107,19 @@ impl Card for GuileSirens {
         }
 
         if let Some(min_steps) = steps_to_zone.keys().min() {
-            let picked_zone = pick_zone(
-                &opponent_id,
-                &steps_to_zone.get(min_steps).unwrap(),
-                state,
-                true,
-                &format!("Guile Sirens: Pick a zone to move {} to", picked_card.get_name()),
-            )
-            .await?;
+            let closest_zones = steps_to_zone.get(min_steps).unwrap();
+            let picked_zone = if closest_zones.len() == 1 {
+                closest_zones.first().unwrap().clone()
+            } else {
+                pick_zone(
+                    &opponent_id,
+                    &closest_zones,
+                    state,
+                    true,
+                    &format!("Guile Sirens: Pick a zone to move {} to", picked_card.get_name()),
+                )
+                .await?
+            };
 
             return Ok(vec![Effect::MoveCard {
                 player_id: opponent_id.clone(),

@@ -1,12 +1,62 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, Rarity, Region, Site, SiteBase, Zone},
-    game::{PlayerId, Thresholds},
+    card::{Card, CardBase, CardType, Cost, Edition, Rarity, Region, Site, SiteBase, Zone},
+    effect::Effect,
+    game::{ActivatedAbility, PlayerId, Thresholds, pick_card},
+    query::EffectQuery,
+    state::{CardMatcher, State, TemporaryEffect},
 };
+
+#[derive(Debug, Clone)]
+struct FloodAdjacentSite;
+
+#[async_trait::async_trait]
+impl ActivatedAbility for FloodAdjacentSite {
+    fn get_name(&self) -> String {
+        "Flood Adjacent Site".to_string()
+    }
+
+    async fn on_select(
+        &self,
+        card_id: &uuid::Uuid,
+        player_id: &PlayerId,
+        state: &State,
+    ) -> anyhow::Result<Vec<Effect>> {
+        let card = state.get_card(card_id);
+        let adjacent_site_ids = CardMatcher::new()
+            .card_type(CardType::Site)
+            .adjacent_to(card.get_zone())
+            .resolve_ids(state);
+        let prompt = "Select an adjacent site to flood".to_string();
+        let site_id = pick_card(player_id, &adjacent_site_ids, state, &prompt).await?;
+
+        Ok(vec![
+            Effect::AddTemporaryEffect {
+                effect: TemporaryEffect::FloodSites {
+                    affected_sites: CardMatcher::from_id(site_id),
+                    expires_on_effect: EffectQuery::TurnEnd { player_id: None },
+                },
+            },
+            Effect::SetCardData {
+                card_id: card_id.clone(),
+                data: Box::new(state.turns),
+            },
+        ])
+    }
+
+    fn get_cost(&self, _card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
+        Ok(Cost::zero())
+    }
+
+    async fn can_activate(&self, _card_id: &uuid::Uuid, _player_id: &PlayerId, _state: &State) -> anyhow::Result<bool> {
+        Ok(true)
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct Floodplain {
     pub site_base: SiteBase,
     pub card_base: CardBase,
+    last_activation_on_turn: Option<usize>,
 }
 
 impl Floodplain {
@@ -32,6 +82,7 @@ impl Floodplain {
                 controller_id: owner_id.clone(),
                 is_token: false,
             },
+            last_activation_on_turn: None,
         }
     }
 }
@@ -62,6 +113,28 @@ impl Card for Floodplain {
 
     fn get_site(&self) -> Option<&dyn Site> {
         Some(self)
+    }
+
+    fn get_activated_abilities(&self, state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+        if let Some(last_activation) = self.last_activation_on_turn {
+            if last_activation == state.turns {
+                return Ok(vec![]);
+            }
+        }
+
+        if state.current_player != self.card_base.controller_id {
+            return Ok(vec![]);
+        }
+
+        Ok(vec![Box::new(FloodAdjacentSite)])
+    }
+
+    fn set_data(&mut self, data: &Box<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
+        if let Some(last_activation) = data.downcast_ref::<usize>() {
+            self.last_activation_on_turn = Some(*last_activation);
+        }
+
+        Ok(())
     }
 }
 

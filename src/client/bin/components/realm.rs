@@ -168,6 +168,10 @@ impl RealmComponent {
                             dimensions = site_dimensions(&rect);
                         }
 
+                        if card.is_token {
+                            dimensions *= 0.7;
+                        }
+
                         let mut pos_x = rect.x + (rect.w - dimensions.x) / 2.0;
                         let mut pos_y = rect.y + (rect.h - dimensions.y) / 2.0;
                         if card.card_type == CardType::Site {

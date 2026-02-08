@@ -26,7 +26,8 @@ pub struct PlayerHandComponent {
     client: networking::client::Client,
     visible: bool,
     rect: Rect,
-    cards_in_hand: Vec<uuid::Uuid>,
+    spells_in_hand: Vec<uuid::Uuid>,
+    sites_in_hand: Vec<uuid::Uuid>,
 }
 
 impl PlayerHandComponent {
@@ -38,7 +39,8 @@ impl PlayerHandComponent {
             client,
             visible: true,
             rect,
-            cards_in_hand: Vec::new(),
+            spells_in_hand: Vec::new(),
+            sites_in_hand: Vec::new(),
         }
     }
 
@@ -74,25 +76,34 @@ impl PlayerHandComponent {
             .filter(|c| c.is_site())
             .collect();
 
-        let mut has_new_cards = false;
-        for spell in &spells {
-            if !self.cards_in_hand.contains(&spell.id) {
-                has_new_cards = true;
-                break;
+        let mut new_spells = false;
+        if spells.len() != self.spells_in_hand.len() {
+            new_spells = true;
+        }
+        if !new_spells {
+            for spell in &spells {
+                if !self.spells_in_hand.contains(&spell.id) {
+                    new_spells = true;
+                    break;
+                }
             }
         }
 
-        if !has_new_cards {
+        let mut new_sites = false;
+        if sites.len() != self.sites_in_hand.len() {
+            new_sites = true;
+        }
+        if !new_sites {
             for site in &sites {
-                if !self.cards_in_hand.contains(&site.id) {
-                    has_new_cards = true;
+                if !self.sites_in_hand.contains(&site.id) {
+                    new_sites = true;
                     break;
                 }
             }
         }
 
         // Skip recomputing if there are no new cards
-        if !has_new_cards {
+        if !new_spells && !new_sites {
             return Ok(());
         }
 
@@ -182,10 +193,11 @@ impl PlayerHandComponent {
         }
 
         self.card_rects = rects;
-        self.cards_in_hand = Vec::new();
-        self.cards_in_hand
+        self.spells_in_hand = Vec::new();
+        self.sites_in_hand = Vec::new();
+        self.spells_in_hand
             .extend(spells.iter().map(|c| c.id.clone()).collect::<Vec<uuid::Uuid>>());
-        self.cards_in_hand
+        self.sites_in_hand
             .extend(sites.iter().map(|c| c.id.clone()).collect::<Vec<uuid::Uuid>>());
         Ok(())
     }

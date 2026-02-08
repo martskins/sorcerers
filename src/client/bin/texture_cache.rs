@@ -48,7 +48,6 @@ impl TextureCache {
         for card in cards {
             _ = TextureCache::get_card_texture(card).await?;
         }
-
         Ok(())
     }
 

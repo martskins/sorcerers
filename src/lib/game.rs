@@ -721,8 +721,14 @@ where
 #[async_trait::async_trait]
 pub trait ActivatedAbility: std::fmt::Debug + Send + Sync + CloneBoxedAction {
     fn get_name(&self) -> String;
+
     async fn on_select(&self, card_id: &uuid::Uuid, player_id: &PlayerId, state: &State)
     -> anyhow::Result<Vec<Effect>>;
+
+    async fn can_activate(&self, _card_id: &uuid::Uuid, _player_id: &PlayerId, _state: &State) -> anyhow::Result<bool> {
+        Ok(true)
+    }
+
     fn get_cost(&self, _card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
         Ok(Cost::zero())
     }

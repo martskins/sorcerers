@@ -42,6 +42,9 @@ pub enum TokenType {
 
 #[derive(Debug)]
 pub enum Effect {
+    PlayerLost {
+        player_id: uuid::Uuid,
+    },
     SummonToken {
         player_id: uuid::Uuid,
         token_type: TokenType,
@@ -229,6 +232,7 @@ impl Effect {
 
     pub async fn description(&self, state: &State) -> anyhow::Result<Option<String>> {
         let desc = match self {
+            Effect::PlayerLost { player_id } => Some(format!("{} has lost the game", player_name(player_id, state))),
             Effect::SetCardRegion { card_id, region, .. } => {
                 let card = state.get_card(card_id).get_name();
                 Some(format!("{} changes region to {}", card, region))
@@ -488,6 +492,9 @@ impl Effect {
         }
 
         match self {
+            Effect::PlayerLost { player_id } => {
+                state.loosers.push(player_id.clone());
+            }
             Effect::AddTemporaryEffect { effect } => {
                 state.temporary_effects.push(effect.clone());
             }

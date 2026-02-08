@@ -724,30 +724,61 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     // types. Instead, specific card types should override `on_take_damage`, and can use
     // base_take_damage to get the default behaviour.
     fn base_take_damage(&mut self, state: &State, from: &uuid::Uuid, damage: u16) -> anyhow::Result<Vec<Effect>> {
-        if self.is_unit() {
-            let ub = self
-                .get_unit_base_mut()
-                .ok_or(anyhow::anyhow!("unit card has no unit base"))?;
-            ub.damage += damage;
+        match self.get_card_type() {
+            CardType::Minion => {
+                let ub = self
+                    .get_unit_base_mut()
+                    .ok_or(anyhow::anyhow!("unit card has no unit base"))?;
+                ub.damage += damage;
 
-            let attacker = state.get_card(from);
-            if ub.damage >= self.get_toughness(state).unwrap_or(0) || attacker.has_ability(state, &Ability::Lethal) {
-                return Ok(vec![Effect::BuryCard {
-                    card_id: self.get_id().clone(),
-                }]);
+                let attacker = state.get_card(from);
+                if ub.damage >= self.get_toughness(state).unwrap_or(0) || attacker.has_ability(state, &Ability::Lethal)
+                {
+                    return Ok(vec![Effect::BuryCard {
+                        card_id: self.get_id().clone(),
+                    }]);
+                }
+
+                Ok(vec![])
             }
+            CardType::Avatar => {
+                let ab = self
+                    .get_avatar_base()
+                    .ok_or(anyhow::anyhow!("avatar card has no avatar base"))?;
+                if ab.deaths_door && !ab.can_die {
+                    return Ok(vec![]);
+                }
 
-            return Ok(vec![]);
-        } else if self.is_site() {
-            let avatar_id = state.get_player_avatar_id(&self.get_controller_id(state))?;
-            return Ok(vec![Effect::TakeDamage {
-                card_id: avatar_id,
-                from: from.clone(),
-                damage,
-            }]);
+                if ab.deaths_door && ab.can_die {
+                    return Ok(vec![Effect::PlayerLost {
+                        player_id: self.get_controller_id(state),
+                    }]);
+                }
+
+                let ub = self
+                    .get_unit_base_mut()
+                    .ok_or(anyhow::anyhow!("unit card has no unit base"))?;
+                ub.damage += damage;
+
+                if ub.damage >= self.get_toughness(state).unwrap_or(0) {
+                    let ab = self
+                        .get_avatar_base_mut()
+                        .ok_or(anyhow::anyhow!("avatar card has no avatar base"))?;
+                    ab.deaths_door = true;
+                }
+
+                Ok(vec![])
+            }
+            CardType::Site => {
+                let avatar_id = state.get_player_avatar_id(&self.get_controller_id(state))?;
+                Ok(vec![Effect::TakeDamage {
+                    card_id: avatar_id,
+                    from: from.clone(),
+                    damage,
+                }])
+            }
+            _ => Ok(vec![]),
         }
-
-        Ok(vec![])
     }
 
     // Base on-summon behaviour for site cards. This method MUST NOT BE OVERRIDEN by specific card
@@ -1457,6 +1488,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             .cards
             .iter()
             .filter(|c| c.get_controller_id(state) == self.get_controller_id(state))
+            .filter(|c| c.is_site())
             .filter(|c| matches!(c.get_zone(), Zone::Hand))
             .count()
             > 0
@@ -1522,20 +1554,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             }));
         }
 
-        // TODO: should artifacts on units be able to provide actions?
-        // let artifacts = state
-        //     .cards
-        //     .iter()
-        //     .filter(|c| c.is_artifact())
-        //     .filter_map(|c| c.get_artifact())
-        //     .filter(|c| match c.get_bearer() {
-        //         Ok(Some(bearer_id)) => bearer_id == *self.get_id(),
-        //         _ => false,
-        //     });
-        // for artifact in artifacts {
-        //     actions.extend(artifact.get_actions(state)?);
-        // }
-
         Ok(activated_abilities)
     }
 
@@ -1553,9 +1571,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             let mut abilities = self.base_unit_activated_abilities(state)?;
             abilities.extend(self.get_additional_activated_abilities(state)?);
             return Ok(abilities);
+        } else {
+            let abilities = self.get_additional_activated_abilities(state)?;
+            return Ok(abilities);
         }
-
-        Ok(vec![])
     }
 
     fn get_additional_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
@@ -1820,8 +1839,11 @@ pub trait Aura: Card {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct AvatarBase {}
+#[derive(Debug, Default, Clone)]
+pub struct AvatarBase {
+    pub deaths_door: bool,
+    pub can_die: bool,
+}
 
 pub fn from_name(name: &str, player_id: &PlayerId) -> Box<dyn Card> {
     CARD_CONSTRUCTORS.get(name).unwrap()(player_id.clone())

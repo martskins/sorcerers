@@ -92,7 +92,7 @@ impl AvatarOfWater {
                 controller_id: owner_id.clone(),
                 is_token: false,
             },
-            avatar_base: AvatarBase {},
+            avatar_base: AvatarBase { ..Default::default() },
             flood_effect: None,
         }
     }

@@ -471,6 +471,7 @@ pub struct State {
     pub continuous_effects: Vec<ContinuousEffect>,
     pub temporary_effects: Vec<TemporaryEffect>,
     pub player_mana: HashMap<PlayerId, u8>,
+    pub loosers: Vec<PlayerId>,
 }
 
 impl State {
@@ -508,6 +509,7 @@ impl State {
             continuous_effects: Vec::new(),
             temporary_effects: Vec::new(),
             player_mana,
+            loosers: Vec::new(),
         }
     }
 
@@ -882,6 +884,7 @@ impl State {
             continuous_effects: self.continuous_effects.clone(),
             temporary_effects: self.temporary_effects.clone(),
             player_mana: self.player_mana.clone(),
+            loosers: self.loosers.clone(),
         }
     }
 

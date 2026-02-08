@@ -2143,7 +2143,6 @@ dependencies = [
  "macroquad-profiler",
  "oneshot",
  "rand",
- "rayon",
  "reqwest",
  "rmp",
  "rmp-serde",
