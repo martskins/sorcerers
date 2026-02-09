@@ -1,6 +1,8 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, Rarity, Region, Site, SiteBase, Zone},
-    game::{PlayerId, Thresholds},
+    card::{Card, CardBase, CardType, Cost, Edition, Rarity, Region, Site, SiteBase, Zone},
+    effect::Effect,
+    game::{PlayerId, Thresholds, pick_zone},
+    state::{CardMatcher, State},
 };
 
 #[derive(Debug, Clone)]
@@ -62,6 +64,44 @@ impl Card for Maelström {
 
     fn get_site(&self) -> Option<&dyn Site> {
         Some(self)
+    }
+
+    async fn on_turn_start(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+        let controller_id = self.get_controller_id(state);
+        let body_of_water = state.get_body_of_water_at(self.get_zone()).unwrap_or_default();
+        let minion_ids = CardMatcher::new()
+            .card_type(CardType::Minion)
+            .in_zones(&body_of_water)
+            .resolve_ids(state);
+
+        let mut effects = vec![];
+        for minion_id in minion_ids {
+            let minion = state.get_card(&minion_id);
+            let steps = minion.get_zone().steps_to_zone(self.get_zone()).unwrap_or_default();
+            let mut zones = minion.get_zones_within_steps(state, steps);
+            zones.retain(|zone| body_of_water.contains(zone));
+            zones.retain(|zone| zone.steps_to_zone(self.get_zone()).unwrap_or_default() <= steps);
+
+            let prompt = format!(
+                "Maelström: Pick a zone to move {}({}) to, or pick its current zone to not move it",
+                minion.get_name(),
+                minion.get_zone().get_square().unwrap_or_default()
+            );
+            let picked_zone = pick_zone(controller_id, &zones, state, true, &prompt).await?;
+            if &picked_zone != minion.get_zone() {
+                effects.push(Effect::MoveCard {
+                    card_id: minion_id,
+                    player_id: controller_id.clone(),
+                    from: minion.get_zone().clone(),
+                    to: picked_zone.into(),
+                    tap: false,
+                    region: minion.get_region(state).clone(),
+                    through_path: None,
+                });
+            }
+        }
+
+        Ok(effects)
     }
 }
 

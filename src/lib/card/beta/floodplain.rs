@@ -47,7 +47,7 @@ impl ActivatedAbility for FloodAdjacentSite {
         Ok(Cost::zero())
     }
 
-    async fn can_activate(&self, _card_id: &uuid::Uuid, _player_id: &PlayerId, _state: &State) -> anyhow::Result<bool> {
+    fn can_activate(&self, _card_id: &uuid::Uuid, _player_id: &PlayerId, _state: &State) -> anyhow::Result<bool> {
         Ok(true)
     }
 }
@@ -115,7 +115,7 @@ impl Card for Floodplain {
         Some(self)
     }
 
-    fn get_activated_abilities(&self, state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+    fn get_additional_activated_abilities(&self, state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         if let Some(last_activation) = self.last_activation_on_turn {
             if last_activation == state.turns {
                 return Ok(vec![]);

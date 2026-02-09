@@ -1,6 +1,9 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, Rarity, Region, Site, SiteBase, Zone},
-    game::{PlayerId, Thresholds},
+    card::{Card, CardBase, CardType, Cost, Edition, Rarity, Region, Site, SiteBase, Zone},
+    effect::Effect,
+    game::{PlayerId, Thresholds, pick_card, pick_zone},
+    query::ZoneQuery,
+    state::{CardMatcher, State},
 };
 
 #[derive(Debug, Clone)]
@@ -62,6 +65,38 @@ impl Card for Undertow {
 
     fn get_site(&self) -> Option<&dyn Site> {
         Some(self)
+    }
+
+    async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+        let player_id = self.get_controller_id(state);
+        let body_of_water = state
+            .get_body_of_water_at(self.get_zone())
+            .ok_or(anyhow::anyhow!("Undertow must be in a body of water"))?;
+        let units = CardMatcher::new()
+            .card_types(vec![CardType::Minion, CardType::Avatar])
+            .in_zones(&body_of_water)
+            .resolve_ids(state);
+        let prompt = "Undertow: Choose a unit in the same body of water to move";
+        let unit_id = pick_card(player_id, &units, state, prompt).await?;
+        let unit = state.get_card(&unit_id);
+        let zones = unit.get_zones_within_steps(state, 1);
+        let picked_zone = pick_zone(
+            player_id,
+            &zones,
+            state,
+            false,
+            "Undertow: Choose a zone to move the unit to",
+        )
+        .await?;
+        Ok(vec![Effect::MoveCard {
+            card_id: unit_id,
+            to: ZoneQuery::from_zone(picked_zone),
+            player_id,
+            from: unit.get_zone().clone(),
+            tap: false,
+            region: unit.get_region(state).clone(),
+            through_path: None,
+        }])
     }
 }
 

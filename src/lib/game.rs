@@ -725,7 +725,7 @@ pub trait ActivatedAbility: std::fmt::Debug + Send + Sync + CloneBoxedAction {
     async fn on_select(&self, card_id: &uuid::Uuid, player_id: &PlayerId, state: &State)
     -> anyhow::Result<Vec<Effect>>;
 
-    async fn can_activate(&self, _card_id: &uuid::Uuid, _player_id: &PlayerId, _state: &State) -> anyhow::Result<bool> {
+    fn can_activate(&self, _card_id: &uuid::Uuid, _player_id: &PlayerId, _state: &State) -> anyhow::Result<bool> {
         Ok(true)
     }
 
@@ -1368,10 +1368,12 @@ impl Game {
 
                         let mut actions = card.get_activated_abilities(&self.state)?;
                         actions.retain(|action| {
-                            action
+                            let can_afford = action
                                 .get_cost(card_id, &self.state)
                                 .and_then(|cost| cost.can_afford(&self.state, player_id))
-                                .unwrap_or_default()
+                                .unwrap_or_default();
+                            let can_activate = action.can_activate(card_id, player_id, &self.state).unwrap_or_default();
+                            can_afford && can_activate
                         });
 
                         if actions.is_empty() {

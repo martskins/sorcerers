@@ -97,7 +97,7 @@ impl Card for GuileSirens {
             .iter()
             .filter(|zone| zone.is_in_play())
             .map(|zone| (zone.clone(), zone.steps_to_zone(self.get_zone())))
-            .collect::<Vec<(Zone, Option<usize>)>>();
+            .collect::<Vec<(Zone, Option<u8>)>>();
 
         let mut steps_to_zone = HashMap::new();
         for (zone, steps) in zones {

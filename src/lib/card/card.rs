@@ -109,11 +109,11 @@ impl Zone {
         }
     }
 
-    pub fn steps_to_zone(&self, other: &Zone) -> Option<usize> {
+    pub fn steps_to_zone(&self, other: &Zone) -> Option<u8> {
         self.min_steps_to_zone(other)
     }
 
-    pub fn min_steps_to_zone(&self, other: &Zone) -> Option<usize> {
+    pub fn min_steps_to_zone(&self, other: &Zone) -> Option<u8> {
         let mut visited = Vec::new();
         let mut to_visit = vec![(self.clone(), 0)];
 

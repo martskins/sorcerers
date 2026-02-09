@@ -148,7 +148,8 @@ impl RealmComponent {
         for card in cards {
             let mut existing = self.card_rects.iter_mut().find(|c| c.card.id == card.id);
             if let Some(existing) = existing.as_mut() {
-                if card.zone == existing.card.zone {
+                // Check if power is the same for cards that can change type, like Maelstrom.
+                if card.zone == existing.card.zone && card.power == existing.card.power {
                     existing.card.tapped = card.tapped;
                     existing.card.controller_id = card.controller_id;
                     existing.card.power = card.power;
