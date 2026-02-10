@@ -14,6 +14,14 @@ impl ActivatedAbility for UseAbility {
         "Use Vesuvius Ability".to_string()
     }
 
+    fn get_cost(&self, _card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
+        Ok(Cost {
+            mana: 0,
+            thresholds: Thresholds::parse("FFF"),
+            additional: vec![],
+        })
+    }
+
     async fn on_select(&self, card_id: &uuid::Uuid, _: &PlayerId, state: &State) -> anyhow::Result<Vec<Effect>> {
         let card = state.get_card(card_id);
         let site_ids = CardMatcher::sites_near(card.get_zone()).resolve_ids(state);
