@@ -1153,7 +1153,7 @@ impl ActivatedAbility for UnitAction {
                         },
                         tap: true,
                         region: card.get_base().region.clone(),
-                        through_path: None,
+                        through_path: Some(path.clone()),
                     });
 
                     if let Some((interceptor_id, zone)) = &interceptor {
@@ -1172,7 +1172,7 @@ impl ActivatedAbility for UnitAction {
                             },
                             tap: true,
                             region: card.get_base().region.clone(),
-                            through_path: None,
+                            through_path: Some(path.clone()),
                         });
                         effects.push(Effect::Attack {
                             attacker_id: interceptor_id.clone(),

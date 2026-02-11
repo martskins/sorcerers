@@ -407,6 +407,22 @@ impl CardMatcher {
     }
 }
 
+#[derive(Clone)]
+pub struct DeferredEffect {
+    pub trigger_on_effect: EffectQuery,
+    pub expires_on_effect: Option<EffectQuery>,
+    pub on_effect: Arc<dyn Sync + Send + Fn(&State, &uuid::Uuid, &Effect) -> Vec<Effect>>,
+}
+
+impl std::fmt::Debug for DeferredEffect {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DeferredEffect")
+            .field("trigger_on_effect", &self.trigger_on_effect)
+            .field("expires_on_effect", &self.expires_on_effect)
+            .finish()
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum TemporaryEffect {
     FloodSites {
@@ -470,6 +486,7 @@ pub struct State {
     pub client_rx: Receiver<ClientMessage>,
     pub continuous_effects: Vec<ContinuousEffect>,
     pub temporary_effects: Vec<TemporaryEffect>,
+    pub deferred_effects: Vec<DeferredEffect>,
     pub player_mana: HashMap<PlayerId, u8>,
     pub loosers: Vec<PlayerId>,
 }
@@ -508,6 +525,7 @@ impl State {
             client_rx,
             continuous_effects: Vec::new(),
             temporary_effects: Vec::new(),
+            deferred_effects: Vec::new(),
             player_mana,
             loosers: Vec::new(),
         }
@@ -883,6 +901,7 @@ impl State {
             effect_log: self.effect_log.clone(),
             continuous_effects: self.continuous_effects.clone(),
             temporary_effects: self.temporary_effects.clone(),
+            deferred_effects: self.deferred_effects.clone(),
             player_mana: self.player_mana.clone(),
             loosers: self.loosers.clone(),
         }

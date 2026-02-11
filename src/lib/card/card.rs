@@ -1360,16 +1360,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(false)
     }
 
-    async fn on_move(&self, state: &State, path: &[Zone]) -> anyhow::Result<Vec<Effect>> {
-        let mut all_effects = Vec::new();
-        for card in &state.cards {
-            for modif in card.get_abilities(state)? {
-                let effects = modif.on_move(self.get_id(), state, &path)?;
-                all_effects.extend(effects);
-            }
-        }
-
-        Ok(all_effects)
+    async fn on_move(&self, _state: &State, _path: &[Zone]) -> anyhow::Result<Vec<Effect>> {
+        Ok(vec![])
     }
 
     async fn on_visit_zone(&self, _state: &State, _to: &Zone) -> anyhow::Result<Vec<Effect>> {
@@ -1714,37 +1706,7 @@ pub enum Ability {
     SummoningSickness,
     TakesNoDamageFromElement(Element),
     Immobile,
-    // TODO: Remove this in favour of a more generic mechanism
-    Blaze(u16), // Specific modifier for the Blaze magic
     Waterbound,
-}
-
-impl Ability {
-    fn on_move(&self, card_id: &uuid::Uuid, state: &State, path: &[Zone]) -> anyhow::Result<Vec<Effect>> {
-        match self {
-            Ability::Blaze(burn) => {
-                if path.len() <= 1 {
-                    return Ok(vec![]);
-                }
-
-                let mut effects = vec![];
-                for zone in path {
-                    if zone == path.last().unwrap() {
-                        break;
-                    }
-
-                    let units = state.get_units_in_zone(&zone);
-                    for unit in units {
-                        let card = state.get_card(card_id);
-                        effects.push(Effect::take_damage(unit.get_id(), card.get_id(), *burn));
-                    }
-                }
-
-                Ok(effects)
-            }
-            _ => Ok(vec![]),
-        }
-    }
 }
 
 #[derive(Debug, Default, Clone)]

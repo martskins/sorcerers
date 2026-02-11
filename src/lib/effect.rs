@@ -3,7 +3,7 @@ use crate::{
     game::{BaseAction, Direction, PlayerAction, PlayerId, SoundEffect, pick_card, pick_option},
     networking::message::ServerMessage,
     query::{CardQuery, EffectQuery, QueryCache, ZoneQuery},
-    state::{CardMatcher, Phase, State, TemporaryEffect},
+    state::{CardMatcher, DeferredEffect, Phase, State, TemporaryEffect},
 };
 use std::fmt::Debug;
 
@@ -189,6 +189,9 @@ pub enum Effect {
         spells: Vec<uuid::Uuid>,
         sites: Vec<uuid::Uuid>,
     },
+    AddDeferredEffect {
+        effect: DeferredEffect,
+    },
     AddTemporaryEffect {
         effect: TemporaryEffect,
     },
@@ -230,6 +233,46 @@ impl Effect {
         Ok(sound)
     }
 
+    pub fn source_id(&self) -> Option<&uuid::Uuid> {
+        match self {
+            Effect::PlayerLost { player_id } => Some(player_id),
+            Effect::SummonToken { player_id, .. } => Some(player_id),
+            Effect::Heal { card_id, .. } => Some(card_id),
+            Effect::ShootProjectile { player_id, .. } => Some(player_id),
+            Effect::RemoveAbility { card_id, .. } => Some(card_id),
+            Effect::AddAbilityCounter { card_id, .. } => Some(card_id),
+            Effect::AddCounter { card_id, .. } => Some(card_id),
+            Effect::TeleportCard { card_id, .. } => Some(card_id),
+            Effect::SetCardRegion { card_id, .. } => Some(card_id),
+            Effect::SetCardZone { card_id, .. } => Some(card_id),
+            Effect::MoveCard { card_id, .. } => Some(card_id),
+            Effect::DrawSite { player_id, .. } => Some(player_id),
+            Effect::DrawSpell { player_id, .. } => Some(player_id),
+            Effect::DrawCard { player_id, .. } => Some(player_id),
+            Effect::PlayMagic { card_id, .. } => Some(card_id),
+            Effect::PlayCard { card_id, .. } => Some(card_id),
+            Effect::SummonCard { card_id, .. } => Some(card_id),
+            Effect::TapCard { card_id } => Some(card_id),
+            Effect::EndTurn { player_id } => Some(player_id),
+            Effect::StartTurn { player_id } => Some(player_id),
+            Effect::ConsumeMana { player_id, .. } => Some(player_id),
+            Effect::AddMana { player_id, .. } => Some(player_id),
+            Effect::RangedStrike { attacker_id, .. } => Some(attacker_id),
+            Effect::Attack { attacker_id, .. } => Some(attacker_id),
+            Effect::TakeDamage { card_id, .. } => Some(card_id),
+            Effect::BanishCard { card_id, .. } => Some(card_id),
+            Effect::BuryCard { card_id } => Some(card_id),
+            Effect::SetCardData { card_id, .. } => Some(card_id),
+            Effect::TeleportUnitToZone { player_id, .. } => Some(player_id),
+            Effect::DealDamageAllUnitsInZone { from, .. } => Some(from),
+            Effect::DealDamageToTarget { from, .. } => Some(from),
+            Effect::RearrangeDeck { .. } => None,
+            Effect::AddDeferredEffect { .. } => None,
+            Effect::AddTemporaryEffect { .. } => None,
+            Effect::SetBearer { card_id, .. } => Some(card_id),
+        }
+    }
+
     pub async fn description(&self, state: &State) -> anyhow::Result<Option<String>> {
         let desc = match self {
             Effect::PlayerLost { player_id } => Some(format!("{} has lost the game", player_name(player_id, state))),
@@ -238,6 +281,7 @@ impl Effect {
                 Some(format!("{} changes region to {}", card, region))
             }
             Effect::AddTemporaryEffect { .. } => None,
+            Effect::AddDeferredEffect { .. } => None,
             Effect::SummonToken {
                 player_id,
                 token_type,
@@ -386,6 +430,37 @@ impl Effect {
         Ok(desc)
     }
 
+    async fn process_deferred_effects(&self, state: &mut State, effect: &Effect) -> anyhow::Result<()> {
+        let mut effects_to_remove = vec![];
+        for (idx, de) in state.deferred_effects.iter().enumerate() {
+            if de.trigger_on_effect.matches(effect, state).await? {
+                if let Some(source_id) = effect.source_id() {
+                    let effects = (de.on_effect)(state, source_id, effect);
+                    state.effects.extend(effects.into_iter().map(|e| e.into()));
+                }
+
+                effects_to_remove.push(idx);
+            } else {
+                // If the effect was no triggered, check whether it needs to expire.
+                if let Some(expires_on_effect) = &de.expires_on_effect {
+                    if expires_on_effect.matches(effect, state).await? {
+                        effects_to_remove.push(idx);
+                    }
+                }
+            }
+        }
+
+        // Reverse the list of processed effects indexes so that we remove them from the deferred
+        // effects list starting from the end, to avoid messing up the indexes of unprocessed
+        // effects.
+        effects_to_remove.reverse();
+        for idx in effects_to_remove {
+            state.deferred_effects.remove(idx);
+        }
+
+        Ok(())
+    }
+
     async fn expire_temporary_effects(&self, state: &mut State, effect: &Effect) -> anyhow::Result<()> {
         let snapshot = state.snapshot();
         let mut retained_effects = vec![];
@@ -494,6 +569,9 @@ impl Effect {
         match self {
             Effect::PlayerLost { player_id } => {
                 state.loosers.push(player_id.clone());
+            }
+            Effect::AddDeferredEffect { effect } => {
+                state.deferred_effects.push(effect.clone());
             }
             Effect::AddTemporaryEffect { effect } => {
                 state.temporary_effects.push(effect.clone());
@@ -1164,6 +1242,7 @@ impl Effect {
         }
 
         self.expire_counters(state).await?;
+        self.process_deferred_effects(state, self).await?;
         self.expire_temporary_effects(state, self).await?;
 
         Ok(())

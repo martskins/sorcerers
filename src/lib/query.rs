@@ -474,6 +474,9 @@ pub enum EffectQuery {
     TurnStart {
         player_id: Option<PlayerId>,
     },
+    MoveCard {
+        card: CardQuery,
+    },
 }
 
 impl EffectQuery {
@@ -533,6 +536,14 @@ impl EffectQuery {
                     if &target.resolve(&player_id, state).await? != card_id {
                         return Ok(false);
                     }
+                }
+
+                Ok(true)
+            }
+            (EffectQuery::MoveCard { card }, Effect::MoveCard { card_id, .. }) => {
+                let player_id = state.get_card(card_id).get_controller_id(state);
+                if &card.resolve(&player_id, state).await? != card_id {
+                    return Ok(false);
                 }
 
                 Ok(true)

@@ -1,9 +1,11 @@
+use std::sync::Arc;
+
 use crate::{
     card::{Ability, Card, CardBase, Cost, Edition, Rarity, Region, Zone},
     effect::{AbilityCounter, Effect},
     game::{PlayerId, pick_card},
-    query::EffectQuery,
-    state::State,
+    query::{CardQuery, EffectQuery},
+    state::{DeferredEffect, State},
 };
 
 #[derive(Debug, Clone)]
@@ -65,12 +67,38 @@ impl Card for Blaze {
                     expires_on_effect: Some(EffectQuery::TurnEnd { player_id: None }),
                 },
             },
-            Effect::AddAbilityCounter {
-                card_id: picked_card,
-                counter: AbilityCounter {
-                    id: uuid::Uuid::new_v4(),
-                    ability: Ability::Blaze(2),
+            Effect::AddDeferredEffect {
+                effect: DeferredEffect {
+                    trigger_on_effect: EffectQuery::MoveCard {
+                        card: CardQuery::from_id(picked_card),
+                    },
                     expires_on_effect: Some(EffectQuery::TurnEnd { player_id: None }),
+                    on_effect: Arc::new(|_state: &State, card_id: &uuid::Uuid, effect: &Effect| -> Vec<Effect> {
+                        match effect {
+                            Effect::MoveCard {
+                                player_id,
+                                through_path,
+                                ..
+                            } => {
+                                let mut effects = vec![];
+                                if let Some(path) = through_path {
+                                    for zone in path {
+                                        if Some(zone) != path.last() {
+                                            effects.push(Effect::DealDamageAllUnitsInZone {
+                                                player_id: player_id.clone(),
+                                                zone: zone.clone().into(),
+                                                from: card_id.clone(),
+                                                damage: 2,
+                                            });
+                                        }
+                                    }
+                                }
+
+                                effects
+                            }
+                            _ => unreachable!(),
+                        }
+                    }),
                 },
             },
         ])
