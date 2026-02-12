@@ -7,11 +7,10 @@ use crate::{
     texture_cache::TextureCache,
 };
 use macroquad::{
-    color::{Color, DARKGREEN, WHITE},
+    color::Color,
     input::{MouseButton, is_mouse_button_released},
     math::{Rect, Vec2},
-    shapes::{DrawRectangleParams, draw_rectangle, draw_rectangle_ex, draw_rectangle_lines},
-    texture::{DrawTextureParams, draw_texture_ex},
+    shapes::draw_rectangle,
 };
 use sorcerers::{
     card::{CardData, Zone},
@@ -175,6 +174,7 @@ impl PlayerHandComponent {
             let sites_start_y = self.rect.y + self.rect.h / 2.0 - spell_dim.y / 2.0;
 
             for (idx, card) in sites.iter().enumerate() {
+                let existing_card = self.card_rects.iter().find(|c| c.card.id == card.id);
                 let col = idx / sites_per_column;
                 let row = idx % sites_per_column;
                 let x = sites_x + col as f32 * (site_dim.x + site_spacing_x);
@@ -184,8 +184,8 @@ impl PlayerHandComponent {
 
                 rects.push(CardRect {
                     rect,
-                    is_hovered: false,
-                    is_selected: false,
+                    is_hovered: existing_card.map_or(false, |c| c.is_hovered),
+                    is_selected: existing_card.map_or(false, |c| c.is_selected),
                     image: TextureCache::get_card_texture(card).await?,
                     card: (*card).clone(),
                 });
@@ -216,30 +216,6 @@ impl Component for PlayerHandComponent {
     async fn update(&mut self, data: &mut GameData) -> anyhow::Result<()> {
         self.compute_rects(&data.cards).await?;
 
-        // let new_mouse_pos: Vec2 = mouse_position().into();
-        // let mouse_delta = new_mouse_pos - self.last_mouse_pos;
-        // let mut dragging_card: Option<uuid::Uuid> = None;
-        // for card_rect in &mut self.card_rects {
-        //     if card_rect.is_hovered && Mouse::dragging()? {
-        //         dragging_card = Some(card_rect.card.id.clone());
-        //     }
-        // }
-        //
-        // if let Some(card_id) = dragging_card {
-        //     if let Some(card_rect) = self.card_rects.iter_mut().find(|c| c.card.id == card_id) {
-        //         if card_rect.card.zone == Zone::Hand {
-        //             let min_x = self.rect.x;
-        //             let max_x = self.rect.x + self.rect.w - card_rect.rect.w;
-        //             let min_y = self.rect.y;
-        //             let max_y = self.rect.y + self.rect.h - card_rect.rect.h;
-        //             card_rect.rect.x = (card_rect.rect.x + mouse_delta.x).clamp(min_x, max_x);
-        //             card_rect.rect.y = (card_rect.rect.y + mouse_delta.y).clamp(min_y, max_y);
-        //         }
-        //     }
-        // }
-        //
-        // self.last_mouse_pos = new_mouse_pos;
-
         Ok(())
     }
 
@@ -252,44 +228,7 @@ impl Component for PlayerHandComponent {
                 continue;
             }
 
-            let mut scale = 1.0;
-            if card_rect.is_hovered {
-                scale = 1.1;
-            }
-
-            let rect = card_rect.rect;
-            draw_texture_ex(
-                &card_rect.image,
-                rect.x,
-                rect.y,
-                WHITE,
-                DrawTextureParams {
-                    dest_size: Some(Vec2::new(rect.w, rect.h) * scale),
-                    rotation: card_rect.rotation().clone(),
-                    ..Default::default()
-                },
-            );
-
-            draw_rectangle_lines(rect.x, rect.y, rect.w * scale, rect.h * scale, 5.0, DARKGREEN);
-
-            if let Status::SelectingCard {
-                cards, preview: false, ..
-            } = &data.status
-            {
-                if !cards.contains(&card_rect.card.id) {
-                    draw_rectangle_ex(
-                        rect.x,
-                        rect.y,
-                        rect.w * scale,
-                        rect.h * scale,
-                        DrawRectangleParams {
-                            color: Color::new(200.0, 200.0, 200.0, 0.6),
-                            rotation: card_rect.rotation(),
-                            ..Default::default()
-                        },
-                    );
-                }
-            }
+            render::draw_card(&card_rect, true, false);
         }
 
         self.render_card_preview(data).await?;
@@ -307,7 +246,7 @@ impl Component for PlayerHandComponent {
             return Ok(None);
         }
 
-        if !in_turn {
+        if !in_turn && Status::Mulligan != data.status {
             return Ok(None);
         }
 
@@ -367,9 +306,11 @@ impl Component for PlayerHandComponent {
                     data.status = Status::Idle;
                 }
             }
-
             Status::SelectingCard {
-                cards, preview: false, ..
+                cards,
+                multiple: false,
+                preview: false,
+                ..
             } => {
                 let valid_cards: Vec<&CardRect> =
                     self.card_rects.iter().filter(|c| cards.contains(&c.card.id)).collect();
@@ -390,6 +331,23 @@ impl Component for PlayerHandComponent {
                     data.status = Status::Idle;
                 }
             }
+            Status::Mulligan => {
+                let valid_cards: Vec<&CardRect> =
+                    self.card_rects.iter().filter(|c| c.card.zone == Zone::Hand).collect();
+                let mut selected_id = None;
+                for card_rect in valid_cards {
+                    if card_rect.rect.contains(mouse_position.into()) && is_mouse_button_released(MouseButton::Left) {
+                        selected_id = Some(card_rect.card.id.clone());
+                    }
+                }
+
+                if let Some(id) = selected_id {
+                    if let Some(card) = self.card_rects.iter_mut().find(|c| c.card.id == id) {
+                        card.is_selected = !card.is_selected;
+                    }
+                }
+            }
+
             _ => {}
         }
 
@@ -404,8 +362,22 @@ impl Component for PlayerHandComponent {
         self.visible
     }
 
-    async fn process_command(&mut self, command: &ComponentCommand, _data: &mut GameData) -> anyhow::Result<()> {
+    async fn process_command(&mut self, command: &ComponentCommand, data: &mut GameData) -> anyhow::Result<()> {
         match command {
+            ComponentCommand::DonePicking if matches!(data.status, Status::Mulligan) => {
+                let selected_cards: Vec<uuid::Uuid> = self
+                    .card_rects
+                    .iter()
+                    .filter(|c| c.is_selected)
+                    .map(|c| c.card.id.clone())
+                    .collect();
+                self.client.send(ClientMessage::PickCards {
+                    player_id: self.player_id.clone(),
+                    game_id: self.game_id.clone(),
+                    card_ids: selected_cards,
+                })?;
+                data.status = Status::Idle;
+            }
             ComponentCommand::SetRect {
                 component_type: ComponentType::PlayerHand,
                 rect,

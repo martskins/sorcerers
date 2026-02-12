@@ -87,6 +87,10 @@ pub fn draw_card(card_rect: &CardRect, is_ally: bool, draw_accessories: bool) {
         sleeve_color = RED;
     }
 
+    if card_rect.is_selected {
+        sleeve_color = WHITE;
+    }
+
     if card_rect.card.has_attachments {
         let triangle_w = 6.0;
         let triangle_h = 20.0;

@@ -377,6 +377,7 @@ impl RealmComponent {
                 | Status::SelectingAction { .. }
                 | Status::Waiting { .. }
                 | Status::SelectingPath { .. }
+                | Status::Mulligan
                 | Status::ViewingCards { .. } => {
                     continue;
                 }
@@ -445,6 +446,7 @@ impl RealmComponent {
                 | Status::DistributingDamage { .. }
                 | Status::Waiting { .. }
                 | Status::SelectingAction { .. }
+                | Status::Mulligan
                 | Status::GameAborted { .. }
                 | Status::SelectingPath { .. }
                 | Status::ViewingCards { .. } => {
@@ -748,6 +750,7 @@ impl RealmComponent {
             Status::SelectingZoneGroup { prompt, .. } => Some(prompt),
             Status::SelectingCard { prompt, .. } => Some(prompt),
             Status::SelectingPath { prompt, .. } => Some(prompt),
+            Status::Mulligan => Some(&"Select cards to put back".to_string()),
             _ => None,
         };
 
@@ -910,7 +913,7 @@ impl Component for RealmComponent {
 
     async fn process_command(&mut self, command: &ComponentCommand, data: &mut GameData) -> anyhow::Result<()> {
         match command {
-            ComponentCommand::DonePicking => {
+            ComponentCommand::DonePicking if matches!(data.status, Status::SelectingCard { .. }) => {
                 self.client.send(ClientMessage::PickCards {
                     game_id: self.game_id.clone(),
                     player_id: self.player_id.clone(),

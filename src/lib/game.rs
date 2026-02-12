@@ -7,7 +7,7 @@ use crate::{
         message::{ClientMessage, ServerMessage},
     },
     query::{QueryCache, ZoneQuery},
-    state::{PlayerWithDeck, State},
+    state::{Phase, PlayerWithDeck, State},
 };
 use async_channel::{Receiver, Sender};
 use chrono::Utc;
@@ -1398,6 +1398,49 @@ impl Game {
                     }
                     .into(),
                 );
+            }
+            ClientMessage::PickCards {
+                card_ids, player_id, ..
+            } if self.state.phase == Phase::Mulligan => {
+                let mut deck = self.state.get_player_deck(player_id)?.clone();
+                let mut site_count = 0;
+                for card_id in card_ids {
+                    let card = self.state.get_card_mut(card_id);
+                    match card.get_card_type() {
+                        CardType::Site => {
+                            site_count += 1;
+                            deck.sites.push(card_id.clone());
+                            card.set_zone(Zone::Atlasbook);
+                        }
+                        _ => {
+                            deck.spells.push(card_id.clone());
+                            card.set_zone(Zone::Spellbook);
+                        }
+                    }
+                }
+
+                let spell_count = card_ids.len() - site_count;
+                deck.rotate_sites(site_count);
+                deck.rotate_spells(spell_count);
+
+                let effects = vec![
+                    Effect::DrawSite {
+                        player_id: player_id.clone(),
+                        count: site_count as u8,
+                    },
+                    Effect::DrawSpell {
+                        player_id: player_id.clone(),
+                        count: spell_count as u8,
+                    },
+                ];
+                self.state.players_with_accepted_hands.insert(player_id.clone());
+                self.state.effects.extend(effects.into_iter().map(|e| e.into()));
+                if self.state.players_with_accepted_hands.len() == self.state.players.len() {
+                    self.state.phase = Phase::Main;
+                    self.process_effects().await?;
+                    self.broadcast(&ServerMessage::MulligansEnded).await?;
+                    self.broadcast(&self.state.into_sync()?).await?;
+                }
             }
             _ => {}
         }

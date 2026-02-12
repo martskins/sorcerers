@@ -8,12 +8,13 @@ use crate::{
 };
 use async_channel::{Receiver, Sender};
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::{HashMap, HashSet, VecDeque},
     sync::Arc,
 };
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Phase {
+    Mulligan,
     Main,
 }
 
@@ -489,6 +490,7 @@ pub struct State {
     pub deferred_effects: Vec<DeferredEffect>,
     pub player_mana: HashMap<PlayerId, u8>,
     pub loosers: Vec<PlayerId>,
+    pub players_with_accepted_hands: HashSet<PlayerId>,
 }
 
 impl State {
@@ -515,7 +517,7 @@ impl State {
             decks,
             turns: 0,
             input_status: InputStatus::None,
-            phase: Phase::Main,
+            phase: Phase::Mulligan,
             current_player: player_one,
             waiting_for_input: false,
             effects: VecDeque::new(),
@@ -528,6 +530,7 @@ impl State {
             deferred_effects: Vec::new(),
             player_mana,
             loosers: Vec::new(),
+            players_with_accepted_hands: HashSet::new(),
         }
     }
 
@@ -904,6 +907,7 @@ impl State {
             deferred_effects: self.deferred_effects.clone(),
             player_mana: self.player_mana.clone(),
             loosers: self.loosers.clone(),
+            players_with_accepted_hands: self.players_with_accepted_hands.clone(),
         }
     }
 

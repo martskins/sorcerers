@@ -138,11 +138,13 @@ pub enum ServerMessage {
         current_player: PlayerId,
         health: HashMap<PlayerId, u16>,
     },
+    MulligansEnded,
 }
 
 impl ServerMessage {
     pub fn player_id(&self) -> uuid::Uuid {
         match self {
+            ServerMessage::MulligansEnded => uuid::Uuid::nil(),
             ServerMessage::LogEvent { .. } => uuid::Uuid::nil(),
             ServerMessage::PlaySoundEffect { player_id, .. } => player_id.unwrap_or_default(),
             ServerMessage::Resume { player_id, .. } => player_id.clone(),

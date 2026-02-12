@@ -38,6 +38,7 @@ const FONT_SIZE: f32 = 24.0;
 #[derive(Debug, PartialEq, Clone)]
 pub enum Status {
     Idle,
+    Mulligan,
     Waiting {
         prompt: String,
     },
@@ -126,7 +127,7 @@ impl GameData {
             player_id: player_id.clone(),
             cards,
             events: Vec::new(),
-            status: Status::Idle,
+            status: Status::Mulligan,
             unseen_events: 0,
             resources: HashMap::new(),
             avatar_health: HashMap::new(),
@@ -309,6 +310,10 @@ impl Game {
 
     pub async fn process_message(&mut self, message: &ServerMessage) -> anyhow::Result<Option<Scene>> {
         match message {
+            ServerMessage::MulligansEnded => {
+                self.data.status = Status::Idle;
+                Ok(None)
+            }
             ServerMessage::PlaySoundEffect { .. } => {
                 let sound_data = StaticSoundData::from_file("assets/sounds/play_card.mp3")?;
                 self.audio_manager.play(sound_data.clone())?;
@@ -380,7 +385,6 @@ impl Game {
                 ));
                 Ok(None)
             }
-
             ServerMessage::PickCards {
                 cards, prompt, preview, ..
             } => {
@@ -564,7 +568,9 @@ impl Game {
                     game_id: self.game_id.clone(),
                 })?;
             }
-        } else if matches!(self.data.status, Status::SelectingCard { multiple: true, .. }) {
+        } else if matches!(self.data.status, Status::SelectingCard { multiple: true, .. })
+            || self.data.status == Status::Mulligan
+        {
             if ui::root_ui().button(Vec2::new(screen_rect.w - 120.0, screen_rect.h - 40.0), "Done Selecting") {
                 Mouse::set_enabled(false)?;
                 for component in &mut self.components {
