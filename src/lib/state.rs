@@ -489,7 +489,7 @@ pub struct State {
     pub temporary_effects: Vec<TemporaryEffect>,
     pub deferred_effects: Vec<DeferredEffect>,
     pub player_mana: HashMap<PlayerId, u8>,
-    pub loosers: Vec<PlayerId>,
+    pub loosers: HashSet<PlayerId>,
     pub players_with_accepted_hands: HashSet<PlayerId>,
 }
 
@@ -529,7 +529,7 @@ impl State {
             temporary_effects: Vec::new(),
             deferred_effects: Vec::new(),
             player_mana,
-            loosers: Vec::new(),
+            loosers: HashSet::new(),
             players_with_accepted_hands: HashSet::new(),
         }
     }

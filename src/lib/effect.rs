@@ -568,7 +568,7 @@ impl Effect {
 
         match self {
             Effect::PlayerLost { player_id } => {
-                state.loosers.push(player_id.clone());
+                state.loosers.insert(player_id.clone());
             }
             Effect::AddDeferredEffect { effect } => {
                 state.deferred_effects.push(effect.clone());
