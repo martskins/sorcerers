@@ -58,6 +58,41 @@ impl Card for PolarBears {
     fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
         Some(&mut self.unit_base)
     }
+
+    fn get_zones_within_steps_of(&self, state: &State, steps: u8, zone: &Zone) -> Vec<Zone> {
+        let mut visited = Vec::new();
+        let mut to_visit = vec![(zone.clone(), 0u8)];
+
+        while let Some((current_zone, current_step)) = to_visit.pop() {
+            if current_step > steps {
+                continue;
+            }
+
+            if !visited.contains(&current_zone) {
+                visited.push(current_zone.clone());
+
+                // Standard adjacency
+                for adjacent in current_zone.get_adjacent() {
+                    to_visit.push((adjacent, current_step + 1));
+                }
+
+                // Edge-wrapping: top and bottom rows are connected
+                for wrapped in Self::wrapped_neighbours(&current_zone) {
+                    to_visit.push((wrapped, current_step + 1));
+                }
+            }
+        }
+
+        if self.is_unit() && !self.has_ability(state, &Ability::Voidwalk) {
+            visited = visited
+                .iter()
+                .filter(|z| z.get_site(state).is_some())
+                .cloned()
+                .collect();
+        }
+
+        visited
+    }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
