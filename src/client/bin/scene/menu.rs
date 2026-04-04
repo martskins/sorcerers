@@ -95,6 +95,14 @@ impl Menu {
             draw_text(&message, 10.0, 20.0, 24.0, ORANGE);
         }
 
+        if !self.looking_for_match {
+            let title = "Sorcerers";
+            let title_size = 52.0_f32;
+            let sw = macroquad::window::screen_width();
+            let dims = macroquad::text::measure_text(title, None, title_size as u16, 1.0);
+            draw_text(title, sw / 2.0 - dims.width / 2.0, 110.0, title_size, WHITE);
+        }
+
         const FONT_SIZE: f32 = 24.0;
         if self.looking_for_match {
             let time = macroquad::time::get_time();
@@ -160,13 +168,16 @@ impl Menu {
         let button_size = Vec2::new(300.0, 60.0);
         let screen_w = macroquad::window::screen_width();
         let screen_h = macroquad::window::screen_height();
+        // Push the form below the title (y=110) — offset from center so it sits in the
+        // lower half of the screen on any resolution.
+        let form_offset_y = (screen_h * 0.1).max(60.0);
         let button_pos = Vec2::new(
             screen_w / 2.0 - button_size.x / 2.0,
-            screen_h / 2.0 - button_size.y / 2.0 + 70.0,
+            screen_h / 2.0 - button_size.y / 2.0 + form_offset_y + 70.0,
         );
         let mut input_pos = Vec2::new(
             screen_w / 2.0 - button_size.x / 2.0,
-            screen_h / 2.0 - button_size.y / 2.0,
+            screen_h / 2.0 - button_size.y / 2.0 + form_offset_y,
         );
 
         if let Some(shake_until) = self.shake_input_until {

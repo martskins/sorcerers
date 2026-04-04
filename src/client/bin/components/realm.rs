@@ -361,7 +361,6 @@ impl RealmComponent {
             );
 
             draw_rectangle_lines(rect.x, rect.y, rect.w, rect.h, grid_thickness, grid_color);
-            draw_text(&cell.id.to_string(), rect.x + 5.0, rect.y + 15.0, 12.0, GRAY);
 
             match &data.status {
                 Status::SelectingZone { zones, .. } => {

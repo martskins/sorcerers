@@ -2,9 +2,10 @@ use macroquad::{
     color::{BLUE, Color, RED, WHITE},
     input::MouseButton,
     math::{Rect, Vec2},
-    shapes::{draw_line, draw_triangle_lines},
+    shapes::{draw_line, draw_rectangle, draw_triangle_lines},
     text::draw_text,
     texture::{DrawTextureParams, Texture2D, draw_texture_ex},
+    window::screen_height,
 };
 use sorcerers::{
     card::Zone,
@@ -130,6 +131,22 @@ impl Component for PlayerStatusComponent {
     }
 
     async fn render(&mut self, data: &mut GameData) -> anyhow::Result<()> {
+        let sidebar_w = crate::config::realm_rect().map(|r| r.x).unwrap_or(220.0);
+
+        // Draw a solid background panel for this player's status strip.
+        let panel_top;
+        let panel_h;
+        if self.player {
+            // Bottom panel — anchored to the bottom of the screen.
+            let content_top = (self.rect.y - FONT_SIZE - 6.0).max(0.0);
+            panel_top = content_top;
+            panel_h = screen_height() - content_top;
+        } else {
+            // Top panel — anchored to the top of the screen.
+            panel_top = 0.0;
+            panel_h = self.rect.y + 80.0;
+        }
+        draw_rectangle(0.0, panel_top, sidebar_w, panel_h, Color::new(0.07, 0.09, 0.15, 0.90));
         let resources = data.resources.get(&self.player_id).unwrap_or(&Resources {
             mana: 0,
             thresholds: Thresholds::ZERO,

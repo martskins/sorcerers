@@ -18,7 +18,7 @@ use macroquad::{
     color::{Color, WHITE},
     input::{MouseButton, is_mouse_button_pressed, is_mouse_button_released},
     math::{Rect, RectOffset, Vec2},
-    shapes::draw_rectangle,
+    shapes::{draw_line, draw_rectangle},
     text::draw_text,
     ui::{self, hash},
     window::{screen_height, screen_width},
@@ -293,6 +293,11 @@ impl Game {
             return Ok(None);
         }
 
+        // Draw a subtle vertical line separating the sidebar from the realm.
+        if let Ok(realm_r) = realm_rect() {
+            draw_line(realm_r.x, 0.0, realm_r.x, screen_height(), 1.5, Color::new(0.35, 0.35, 0.5, 0.55));
+        }
+
         for component in &mut self.components {
             component.render(&mut self.data).await?;
         }
@@ -550,18 +555,57 @@ impl Game {
 
     async fn render_gui(&mut self) -> anyhow::Result<Option<Scene>> {
         let screen_rect = screen_rect()?;
-        let turn_label = if self.is_players_turn(&self.data.player_id) {
-            "Your Turn"
-        } else {
-            "Their Turn"
-        };
-
-        draw_text(turn_label, 10.0, 120.0, FONT_SIZE, WHITE);
-
+        let sidebar_w = realm_rect()?.x;
         let is_in_turn = self.current_player == self.data.player_id;
         let is_idle = matches!(self.data.status, Status::Idle);
+
+        // Turn indicator — centered in sidebar, color-coded.
+        const TURN_FONT_SIZE: f32 = 18.0;
+        let (turn_label, turn_color) = if is_in_turn {
+            ("YOUR TURN", Color::new(0.35, 0.95, 0.4, 1.0))
+        } else {
+            ("THEIR TURN", Color::new(0.60, 0.60, 0.65, 1.0))
+        };
+        let turn_dims = macroquad::text::measure_text(turn_label, None, TURN_FONT_SIZE as u16, 1.0);
+        draw_text(
+            turn_label,
+            sidebar_w / 2.0 - turn_dims.width / 2.0,
+            120.0,
+            TURN_FONT_SIZE,
+            turn_color,
+        );
+
+        // Contextual prompt shown in sidebar when the player must act.
+        let prompt_text: Option<String> = match &self.data.status {
+            Status::SelectingZone { prompt, .. }
+            | Status::SelectingZoneGroup { prompt, .. }
+            | Status::SelectingPath { prompt, .. }
+            | Status::SelectingCard { prompt, .. } => Some(prompt.clone()),
+            Status::Mulligan => Some("Select cards to\nmulligan".to_string()),
+            _ => None,
+        };
+        if let Some(ref prompt) = prompt_text {
+            let wrapped = render::wrap_text(prompt, sidebar_w - 20.0, 14);
+            let mut y_off = 142.0;
+            for line in wrapped.lines() {
+                draw_text(line, 10.0, y_off, 14.0, Color::new(0.80, 0.80, 0.86, 1.0));
+                y_off += 17.0;
+            }
+        }
+
+        // Action buttons placed in the sidebar, just above the player status panel.
+        // The player status panel top is at roughly screen_h - 120, so the button
+        // sits at screen_h - 155 → screen_h - 120 (height = 35).
+        let btn_w = (sidebar_w - 20.0).max(80.0);
+        let btn_pos = Vec2::new(10.0, screen_rect.h - 155.0);
+        let btn_size = Vec2::new(btn_w, 35.0);
+
         if is_in_turn && is_idle {
-            if ui::root_ui().button(Vec2::new(screen_rect.w - 100.0, screen_rect.h - 40.0), "Pass Turn") {
+            if ui::widgets::Button::new("Pass Turn")
+                .position(btn_pos)
+                .size(btn_size)
+                .ui(&mut ui::root_ui())
+            {
                 Mouse::set_enabled(false)?;
                 self.client.send(ClientMessage::EndTurn {
                     player_id: self.data.player_id.clone(),
@@ -571,7 +615,11 @@ impl Game {
         } else if matches!(self.data.status, Status::SelectingCard { multiple: true, .. })
             || self.data.status == Status::Mulligan
         {
-            if ui::root_ui().button(Vec2::new(screen_rect.w - 120.0, screen_rect.h - 40.0), "Done Selecting") {
+            if ui::widgets::Button::new("Done Selecting")
+                .position(btn_pos)
+                .size(btn_size)
+                .ui(&mut ui::root_ui())
+            {
                 Mouse::set_enabled(false)?;
                 for component in &mut self.components {
                     component
