@@ -151,6 +151,27 @@ impl DeckBuilder {
         player_name: String,
         prev_available_decks: Vec<PreconDeck>,
     ) -> Self {
+        Self::build(client, player_id, player_name, prev_available_decks, None)
+    }
+
+    /// Open the deck builder pre-populated with an existing saved deck for editing.
+    pub fn from_deck_list(
+        client: networking::client::Client,
+        player_id: Option<uuid::Uuid>,
+        player_name: String,
+        prev_available_decks: Vec<PreconDeck>,
+        deck: sorcerers::deck::DeckList,
+    ) -> Self {
+        Self::build(client, player_id, player_name, prev_available_decks, Some(deck))
+    }
+
+    fn build(
+        client: networking::client::Client,
+        player_id: Option<uuid::Uuid>,
+        player_name: String,
+        prev_available_decks: Vec<PreconDeck>,
+        existing: Option<sorcerers::deck::DeckList>,
+    ) -> Self {
         let dummy_id = uuid::Uuid::nil();
         let mut all_cards: Vec<CardEntry> = Vec::new();
         let mut avatars: Vec<CardEntry> = Vec::new();
@@ -190,6 +211,15 @@ impl DeckBuilder {
         });
         avatars.sort_by(|a, b| a.name.cmp(&b.name));
 
+        // Pre-populate from existing deck if editing
+        let (deck_spells, deck_sites, selected_avatar, deck_name) = if let Some(ref dl) = existing {
+            let spells: HashMap<String, u8> = dl.spells.iter().map(|c| (c.name.clone(), c.count)).collect();
+            let sites: HashMap<String, u8> = dl.sites.iter().map(|c| (c.name.clone(), c.count)).collect();
+            (spells, sites, Some(dl.avatar.clone()), dl.name.clone())
+        } else {
+            (HashMap::new(), HashMap::new(), None, String::new())
+        };
+
         Self {
             client,
             player_id,
@@ -197,10 +227,10 @@ impl DeckBuilder {
             prev_available_decks,
             all_cards,
             avatars,
-            deck_spells: HashMap::new(),
-            deck_sites: HashMap::new(),
-            selected_avatar: None,
-            deck_name: String::new(),
+            deck_spells,
+            deck_sites,
+            selected_avatar,
+            deck_name,
             search: String::new(),
             elem_filter: ElemFilter::All,
             type_filter: TypeFilter::All,
@@ -928,40 +958,6 @@ impl DeckBuilder {
                 self.deck_spells.remove(&rm);
             }
         });
-
-        // Total counts at the bottom — color-coded to show progress toward required minimums
-        let totals_y = rect.max.y - pad - 40.0;
-
-        let sites_ok = site_count >= 30;
-        let spells_ok = spell_count >= 60;
-        let site_col = if sites_ok {
-            Color32::from_rgb(100, 210, 120)
-        } else {
-            Color32::from_rgb(220, 120, 60)
-        };
-        let spell_col = if spells_ok {
-            Color32::from_rgb(100, 210, 120)
-        } else {
-            Color32::from_rgb(220, 120, 60)
-        };
-
-        let atlas_text = format!("Atlas: {site_count}/30");
-        let spell_text = format!("Spellbook: {spell_count}/60");
-
-        ui.painter().text(
-            pos2(inner.min.x, totals_y),
-            egui::Align2::LEFT_TOP,
-            &atlas_text,
-            egui::FontId::proportional(12.0),
-            site_col,
-        );
-        ui.painter().text(
-            pos2(inner.min.x, totals_y + 16.0),
-            egui::Align2::LEFT_TOP,
-            &spell_text,
-            egui::FontId::proportional(12.0),
-            spell_col,
-        );
     }
 
     fn back_to_menu(&self) -> Scene {

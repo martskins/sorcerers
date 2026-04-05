@@ -298,36 +298,76 @@ impl Menu {
                             ui.add_space(8.0);
 
                             let can_play = self.selected_saved_deck.is_some();
-                            let play_btn = egui::Button::new(
-                                egui::RichText::new("▶ Play Custom Deck").size(18.0).color(if can_play {
-                                    Color32::WHITE
-                                } else {
-                                    Color32::from_rgb(100, 110, 140)
-                                }),
-                            )
-                            .min_size(vec2(280.0, 42.0));
-                            if ui.add_enabled(can_play, play_btn).clicked() {
-                                if let Some(idx) = self.selected_saved_deck {
-                                    if let Some(deck_list) = saved.get(idx).cloned() {
-                                        match deck_list.validate() {
-                                            Ok(()) => {
-                                                self.deck_error = None;
-                                                self.client
-                                                    .send(ClientMessage::JoinQueue {
-                                                        player_name: self.player_name.clone(),
-                                                        player_id: self.player_id.expect("player id should be set"),
-                                                        deck: DeckChoice::Custom(deck_list),
-                                                    })
-                                                    .ok();
-                                                self.looking_for_match = true;
-                                            }
-                                            Err(msg) => {
-                                                self.deck_error = Some(msg);
+
+                            // Play + Edit on the same row
+                            let btn_w = 136.0_f32;
+                            let gap = 8.0_f32;
+                            let total_w = btn_w * 2.0 + gap;
+                            let avail_w2 = ui.available_width();
+                            let left_pad = ((avail_w2 - total_w) / 2.0).max(0.0);
+
+                            ui.horizontal(|ui| {
+                                ui.add_space(left_pad);
+
+                                let play_btn = egui::Button::new(
+                                    egui::RichText::new("▶ Play").size(17.0).color(if can_play {
+                                        Color32::WHITE
+                                    } else {
+                                        Color32::from_rgb(100, 110, 140)
+                                    }),
+                                )
+                                .min_size(vec2(btn_w, 42.0));
+                                if ui.add_enabled(can_play, play_btn).clicked() {
+                                    if let Some(idx) = self.selected_saved_deck {
+                                        if let Some(deck_list) = saved.get(idx).cloned() {
+                                            match deck_list.validate() {
+                                                Ok(()) => {
+                                                    self.deck_error = None;
+                                                    self.client
+                                                        .send(ClientMessage::JoinQueue {
+                                                            player_name: self.player_name.clone(),
+                                                            player_id: self
+                                                                .player_id
+                                                                .expect("player id should be set"),
+                                                            deck: DeckChoice::Custom(deck_list),
+                                                        })
+                                                        .ok();
+                                                    self.looking_for_match = true;
+                                                }
+                                                Err(msg) => {
+                                                    self.deck_error = Some(msg);
+                                                }
                                             }
                                         }
                                     }
                                 }
-                            }
+
+                                ui.add_space(gap);
+
+                                let edit_btn = egui::Button::new(
+                                    egui::RichText::new("✏ Edit").size(17.0).color(if can_play {
+                                        Color32::from_rgb(200, 220, 255)
+                                    } else {
+                                        Color32::from_rgb(100, 110, 140)
+                                    }),
+                                )
+                                .min_size(vec2(btn_w, 42.0));
+                                if ui.add_enabled(can_play, edit_btn).clicked() {
+                                    if let Some(idx) = self.selected_saved_deck {
+                                        if let Some(deck_list) = saved.get(idx).cloned() {
+                                            next_scene = Some(Scene::DeckBuilder(
+                                                crate::scene::deck_builder::DeckBuilder::from_deck_list(
+                                                    self.client.clone(),
+                                                    self.player_id,
+                                                    self.player_name.clone(),
+                                                    self.available_decks.clone(),
+                                                    deck_list,
+                                                ),
+                                            ));
+                                        }
+                                    }
+                                }
+                            });
                         }
 
                         // Deck error message
