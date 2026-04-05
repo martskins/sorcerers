@@ -1,11 +1,10 @@
-use std::collections::HashMap;
-
 use crate::{
-    card::{Card, CardData, CardType, Zone, from_name},
+    card::{Card, CardData, CardType, Zone},
     deck::{Deck, precon},
     game::{Direction, PlayerId, Resources, SoundEffect},
 };
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 pub trait ToMessage {
     fn to_message(&self) -> Message;
@@ -23,11 +22,6 @@ pub enum PreconDeck {
     BetaAir,
     BetaEarth,
     BetaWater,
-    Custom {
-        spells: Vec<String>,
-        sites: Vec<String>,
-        avatar: String,
-    },
 }
 
 impl PreconDeck {
@@ -37,7 +31,6 @@ impl PreconDeck {
             PreconDeck::BetaAir => "Beta - Air",
             PreconDeck::BetaEarth => "Beta - Earth",
             PreconDeck::BetaWater => "Beta - Water",
-            PreconDeck::Custom { .. } => "Custom Deck",
         }
     }
 
@@ -47,25 +40,6 @@ impl PreconDeck {
             PreconDeck::BetaAir => precon::beta::air(player_id),
             PreconDeck::BetaEarth => precon::beta::earth(player_id),
             PreconDeck::BetaWater => precon::beta::water(player_id),
-            PreconDeck::Custom { spells, sites, avatar } => {
-                let avatar_card = from_name(avatar, player_id);
-                let spell_cards: Vec<Box<dyn Card>> = spells.iter().map(|name| from_name(name, player_id)).collect();
-                let site_cards: Vec<Box<dyn Card>> = sites.iter().map(|name| from_name(name, player_id)).collect();
-
-                let mut deck = Deck {
-                    player_id: player_id.clone(),
-                    spells: spell_cards.iter().map(|c| c.get_id().clone()).collect(),
-                    sites: site_cards.iter().map(|c| c.get_id().clone()).collect(),
-                    avatar: avatar_card.get_id().clone(),
-                };
-                deck.shuffle();
-
-                let all_cards = std::iter::once(avatar_card)
-                    .chain(spell_cards)
-                    .chain(site_cards)
-                    .collect();
-                (deck, all_cards)
-            }
         }
     }
 }

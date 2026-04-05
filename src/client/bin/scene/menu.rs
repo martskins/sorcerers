@@ -33,28 +33,6 @@ impl Menu {
         }
     }
 
-    /// Create a menu that already has a custom deck selected and visible.
-    pub fn with_custom_deck(
-        client: networking::client::Client,
-        player_id: uuid::Uuid,
-        player_name: String,
-        custom_deck: PreconDeck,
-        mut available_decks: Vec<PreconDeck>,
-    ) -> Self {
-        // Remove any previously built custom deck, then append the new one.
-        available_decks.retain(|d| !matches!(d, PreconDeck::Custom { .. }));
-        available_decks.push(custom_deck);
-        Self {
-            client,
-            player_id: Some(player_id),
-            available_decks,
-            looking_for_match: false,
-            player_name,
-            shake_start: None,
-            show_name_error: false,
-        }
-    }
-
     /// Restore menu state without adding a custom deck (used by Back button).
     pub fn restore(
         client: networking::client::Client,
@@ -264,14 +242,12 @@ impl Menu {
                         )
                         .min_size(vec2(280.0, 46.0));
                         if ui.add(build_btn).clicked() {
-                            next_scene = Some(Scene::DeckBuilder(
-                                crate::scene::deck_builder::DeckBuilder::from_menu(
-                                    self.client.clone(),
-                                    self.player_id,
-                                    self.player_name.clone(),
-                                    self.available_decks.clone(),
-                                ),
-                            ));
+                            next_scene = Some(Scene::DeckBuilder(crate::scene::deck_builder::DeckBuilder::from_menu(
+                                self.client.clone(),
+                                self.player_id,
+                                self.player_name.clone(),
+                                self.available_decks.clone(),
+                            )));
                         }
                     }
                 });

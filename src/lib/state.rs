@@ -928,7 +928,13 @@ impl State {
                 id: player_one_id.clone(),
                 name: "Player 1".to_string(),
             },
-            deck: Deck::new(&player_one_id, vec![], vec![], uuid::Uuid::nil()),
+            deck: Deck::new(
+                &player_one_id,
+                "Test Deck".to_string(),
+                vec![],
+                vec![],
+                uuid::Uuid::nil(),
+            ),
             cards,
         };
         let player2 = PlayerWithDeck {
@@ -936,7 +942,13 @@ impl State {
                 id: player_two_id,
                 name: "Player 1".to_string(),
             },
-            deck: Deck::new(&player_two_id, vec![], vec![], uuid::Uuid::nil()),
+            deck: Deck::new(
+                &player_two_id,
+                "Test Deck".to_string(),
+                vec![],
+                vec![],
+                uuid::Uuid::nil(),
+            ),
             cards: vec![],
         };
 

@@ -57,6 +57,7 @@ pub fn water(player_id: &PlayerId) -> (Deck, Vec<Box<dyn Card>>) {
     let avatar = from_name("Avatar of Water", player_id);
 
     let mut deck = Deck {
+        name: "Beta Water Precon".to_string(),
         player_id: player_id.clone(),
         sites: sites.iter().map(|c| c.get_id().clone()).collect(),
         spells: spells.iter().map(|c| c.get_id().clone()).collect(),
@@ -117,6 +118,7 @@ pub fn earth(player_id: &PlayerId) -> (Deck, Vec<Box<dyn Card>>) {
     let avatar = from_name("Geomancer", player_id);
 
     let mut deck = Deck {
+        name: "Beta Earth Precon".to_string(),
         player_id: player_id.clone(),
         sites: sites.iter().map(|c| c.get_id().clone()).collect(),
         spells: spells.iter().map(|c| c.get_id().clone()).collect(),
@@ -176,6 +178,7 @@ pub fn fire(player_id: &PlayerId) -> (Deck, Vec<Box<dyn Card>>) {
     let avatar = from_name("Flamecaller", player_id);
 
     let mut deck = Deck {
+        name: "Beta Fire Precon".to_string(),
         player_id: player_id.clone(),
         sites: sites.iter().map(|c| c.get_id().clone()).collect(),
         spells: spells.iter().map(|c| c.get_id().clone()).collect(),
@@ -234,6 +237,7 @@ pub fn air(player_id: &PlayerId) -> (Deck, Vec<Box<dyn Card>>) {
     let avatar = from_name("Sparkmage", player_id);
 
     let mut deck = Deck {
+        name: "Beta Air Precon".to_string(),
         player_id: player_id.clone(),
         sites: sites.iter().map(|c| c.get_id().clone()).collect(),
         spells: spells.iter().map(|c| c.get_id().clone()).collect(),

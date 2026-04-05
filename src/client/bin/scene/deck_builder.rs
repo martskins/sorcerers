@@ -1,20 +1,15 @@
 use std::collections::HashMap;
 
-use egui::{
-    Color32, Context, CornerRadius, Frame, Rect, ScrollArea, Sense, Stroke, StrokeKind, Ui,
-    pos2, vec2,
-};
 use egui::epaint::Shape;
+use egui::{Color32, Context, CornerRadius, Frame, Rect, ScrollArea, Sense, Stroke, StrokeKind, Ui, pos2, vec2};
+use sorcerers::deck::DeckList;
 use sorcerers::{
     card::{ALL_CARDS, CardType, Rarity, Zone},
     game::{Element, Thresholds},
     networking::{self, message::PreconDeck},
 };
 
-use crate::{
-    scene::Scene,
-    texture_cache::TextureCache,
-};
+use crate::{scene::Scene, texture_cache::TextureCache};
 
 // ── Colors ──────────────────────────────────────────────────────────────────
 const BG: Color32 = Color32::from_rgb(8, 8, 14);
@@ -38,17 +33,28 @@ const THRESH_SZ: f32 = 10.0;
 
 // ── Element / type filter state ──────────────────────────────────────────────
 #[derive(Clone, PartialEq)]
-enum ElemFilter { All, Fire, Air, Earth, Water }
+enum ElemFilter {
+    All,
+    Fire,
+    Air,
+    Earth,
+    Water,
+}
 
 #[derive(Clone, PartialEq)]
-enum TypeFilter { All, Minion, Site, Spell }
+enum TypeFilter {
+    All,
+    Minion,
+    Site,
+    Spell,
+}
 
 // ── Card metadata captured from ALL_CARDS ────────────────────────────────────
 #[derive(Clone)]
 pub struct CardEntry {
     pub name: String,
     pub card_type: CardType,
-    pub zone: Zone,       // Spellbook or Atlasbook
+    pub zone: Zone, // Spellbook or Atlasbook
     #[allow(dead_code)]
     pub is_avatar: bool,
     pub rarity: Rarity,
@@ -72,11 +78,17 @@ impl CardEntry {
     #[allow(dead_code)]
     pub fn primary_element(&self) -> Option<Element> {
         let t = &self.thresholds;
-        if t.fire > 0 { Some(Element::Fire) }
-        else if t.air > 0 { Some(Element::Air) }
-        else if t.earth > 0 { Some(Element::Earth) }
-        else if t.water > 0 { Some(Element::Water) }
-        else { None }
+        if t.fire > 0 {
+            Some(Element::Fire)
+        } else if t.air > 0 {
+            Some(Element::Air)
+        } else if t.earth > 0 {
+            Some(Element::Earth)
+        } else if t.water > 0 {
+            Some(Element::Water)
+        } else {
+            None
+        }
     }
 
     /// Fake CardData just for texture key + path.
@@ -138,7 +150,9 @@ impl DeckBuilder {
 
         for (_name, constructor) in ALL_CARDS {
             let card = constructor(dummy_id);
-            if card.get_base().is_token { continue; }
+            if card.get_base().is_token {
+                continue;
+            }
 
             let base = card.get_base();
             let entry = CardEntry {
@@ -194,7 +208,8 @@ impl DeckBuilder {
             .show(ctx, |ui| {
                 // ── Header bar ────────────────────────────────────────────────
                 let header_rect = Rect::from_min_size(screen.min, vec2(screen.width(), HEADER_H));
-                ui.painter().rect_filled(header_rect, 0.0, Color32::from_rgb(12, 16, 28));
+                ui.painter()
+                    .rect_filled(header_rect, 0.0, Color32::from_rgb(12, 16, 28));
                 ui.painter().line_segment(
                     [header_rect.left_bottom(), header_rect.right_bottom()],
                     Stroke::new(1.0, BORDER),
@@ -203,9 +218,19 @@ impl DeckBuilder {
                 // Back button
                 let back_rect = Rect::from_min_size(header_rect.min + vec2(12.0, 8.0), vec2(90.0, 32.0));
                 let back_resp = ui.allocate_rect(back_rect, Sense::click());
-                let back_col = if back_resp.hovered() { Color32::from_rgb(80, 100, 160) } else { Color32::from_rgb(40, 50, 90) };
+                let back_col = if back_resp.hovered() {
+                    Color32::from_rgb(80, 100, 160)
+                } else {
+                    Color32::from_rgb(40, 50, 90)
+                };
                 ui.painter().rect_filled(back_rect, CornerRadius::same(4), back_col);
-                ui.painter().text(back_rect.center(), egui::Align2::CENTER_CENTER, "← Back", egui::FontId::proportional(15.0), TEXT_BRIGHT);
+                ui.painter().text(
+                    back_rect.center(),
+                    egui::Align2::CENTER_CENTER,
+                    "← Back",
+                    egui::FontId::proportional(15.0),
+                    TEXT_BRIGHT,
+                );
                 if back_resp.clicked() {
                     next_scene = Some(self.back_to_menu());
                 }
@@ -219,11 +244,8 @@ impl DeckBuilder {
                     GOLD,
                 );
 
-                // Use Deck button (only active when avatar selected)
-                let use_rect = Rect::from_min_size(
-                    header_rect.right_top() + vec2(-120.0, 8.0),
-                    vec2(108.0, 32.0),
-                );
+                // Save button (only active when avatar selected)
+                let use_rect = Rect::from_min_size(header_rect.right_top() + vec2(-120.0, 8.0), vec2(108.0, 32.0));
                 let can_use = self.selected_avatar.is_some();
                 let use_resp = ui.allocate_rect(use_rect, Sense::click());
                 let use_bg = if !can_use {
@@ -234,18 +256,25 @@ impl DeckBuilder {
                     Color32::from_rgb(20, 90, 45)
                 };
                 ui.painter().rect_filled(use_rect, CornerRadius::same(4), use_bg);
-                let use_col = if can_use { Color32::WHITE } else { Color32::from_rgb(80, 85, 100) };
-                ui.painter().text(use_rect.center(), egui::Align2::CENTER_CENTER, "▶ Use Deck", egui::FontId::proportional(15.0), use_col);
+                let use_col = if can_use {
+                    Color32::WHITE
+                } else {
+                    Color32::from_rgb(80, 85, 100)
+                };
+                ui.painter().text(
+                    use_rect.center(),
+                    egui::Align2::CENTER_CENTER,
+                    "▶ Save",
+                    egui::FontId::proportional(15.0),
+                    use_col,
+                );
                 if use_resp.clicked() && can_use {
-                    next_scene = Some(self.use_deck());
+                    next_scene = Some(self.save_deck());
                 }
 
                 // ── Main area below header ─────────────────────────────────────
                 let body_top = screen.min.y + HEADER_H + 4.0;
-                let body_rect = Rect::from_min_max(
-                    pos2(screen.min.x, body_top),
-                    screen.max,
-                );
+                let body_rect = Rect::from_min_max(pos2(screen.min.x, body_top), screen.max);
                 let left_w = body_rect.width() * LEFT_FRAC;
                 let right_w = body_rect.width() - left_w;
 
@@ -263,15 +292,11 @@ impl DeckBuilder {
                 );
 
                 // ── Left panel: card collection ────────────────────────────────
-                let mut left_ui = ui.new_child(
-                    egui::UiBuilder::new().max_rect(left_rect),
-                );
+                let mut left_ui = ui.new_child(egui::UiBuilder::new().max_rect(left_rect));
                 self.render_left_panel(&mut left_ui, ctx, left_rect);
 
                 // ── Right panel: deck summary ──────────────────────────────────
-                let mut right_ui = ui.new_child(
-                    egui::UiBuilder::new().max_rect(right_rect),
-                );
+                let mut right_ui = ui.new_child(egui::UiBuilder::new().max_rect(right_rect));
                 self.render_right_panel(&mut right_ui, ctx, right_rect);
             });
 
@@ -304,11 +329,17 @@ impl DeckBuilder {
                 ("💧", ElemFilter::Water, COL_WATER),
             ] {
                 let active = self.elem_filter == filter;
-                let bg = if active { Color32::from_rgb(50, 70, 120) } else { Color32::from_rgb(25, 30, 55) };
+                let bg = if active {
+                    Color32::from_rgb(50, 70, 120)
+                } else {
+                    Color32::from_rgb(25, 30, 55)
+                };
                 let btn = egui::Button::new(egui::RichText::new(label).color(color).size(13.0))
                     .fill(bg)
                     .min_size(vec2(30.0, 26.0));
-                if ui.add(btn).clicked() { self.elem_filter = filter; }
+                if ui.add(btn).clicked() {
+                    self.elem_filter = filter;
+                }
             }
             ui.add_space(6.0);
 
@@ -320,11 +351,17 @@ impl DeckBuilder {
                 ("Spell", TypeFilter::Spell),
             ] {
                 let active = self.type_filter == filter;
-                let bg = if active { Color32::from_rgb(50, 70, 120) } else { Color32::from_rgb(25, 30, 55) };
+                let bg = if active {
+                    Color32::from_rgb(50, 70, 120)
+                } else {
+                    Color32::from_rgb(25, 30, 55)
+                };
                 let btn = egui::Button::new(egui::RichText::new(label).color(TEXT_BRIGHT).size(13.0))
                     .fill(bg)
                     .min_size(vec2(46.0, 26.0));
-                if ui.add(btn).clicked() { self.type_filter = filter; }
+                if ui.add(btn).clicked() {
+                    self.type_filter = filter;
+                }
             }
         });
 
@@ -342,23 +379,53 @@ impl DeckBuilder {
         let type_filter = self.type_filter.clone();
 
         // Collect filtered cards
-        let filtered: Vec<CardEntry> = self.all_cards.iter()
+        let filtered: Vec<CardEntry> = self
+            .all_cards
+            .iter()
             .filter(|c| {
                 if !search_lower.is_empty() && !c.name.to_lowercase().contains(&search_lower) {
                     return false;
                 }
                 match &elem_filter {
                     ElemFilter::All => {}
-                    ElemFilter::Fire => if c.thresholds.fire == 0 { return false; }
-                    ElemFilter::Air => if c.thresholds.air == 0 { return false; }
-                    ElemFilter::Earth => if c.thresholds.earth == 0 { return false; }
-                    ElemFilter::Water => if c.thresholds.water == 0 { return false; }
+                    ElemFilter::Fire => {
+                        if c.thresholds.fire == 0 {
+                            return false;
+                        }
+                    }
+                    ElemFilter::Air => {
+                        if c.thresholds.air == 0 {
+                            return false;
+                        }
+                    }
+                    ElemFilter::Earth => {
+                        if c.thresholds.earth == 0 {
+                            return false;
+                        }
+                    }
+                    ElemFilter::Water => {
+                        if c.thresholds.water == 0 {
+                            return false;
+                        }
+                    }
                 }
                 match &type_filter {
                     TypeFilter::All => {}
-                    TypeFilter::Minion => if c.card_type != CardType::Minion { return false; }
-                    TypeFilter::Site => if !matches!(c.zone, Zone::Atlasbook) { return false; }
-                    TypeFilter::Spell => if matches!(c.zone, Zone::Atlasbook) || c.card_type == CardType::Minion { return false; }
+                    TypeFilter::Minion => {
+                        if c.card_type != CardType::Minion {
+                            return false;
+                        }
+                    }
+                    TypeFilter::Site => {
+                        if !matches!(c.zone, Zone::Atlasbook) {
+                            return false;
+                        }
+                    }
+                    TypeFilter::Spell => {
+                        if matches!(c.zone, Zone::Atlasbook) || c.card_type == CardType::Minion {
+                            return false;
+                        }
+                    }
                 }
                 true
             })
@@ -391,14 +458,27 @@ impl DeckBuilder {
                         .max_size(vec2(CARD_THUMB_W, CARD_THUMB_H))
                         .paint_at(ui, thumb_rect);
                 } else {
-                    ui.painter().rect_filled(thumb_rect, CornerRadius::same(2), Color32::from_rgb(30, 40, 60));
-                    ui.painter().text(thumb_rect.center(), egui::Align2::CENTER_CENTER, "?", egui::FontId::proportional(18.0), TEXT_DIM);
+                    ui.painter()
+                        .rect_filled(thumb_rect, CornerRadius::same(2), Color32::from_rgb(30, 40, 60));
+                    ui.painter().text(
+                        thumb_rect.center(),
+                        egui::Align2::CENTER_CENTER,
+                        "?",
+                        egui::FontId::proportional(18.0),
+                        TEXT_DIM,
+                    );
                 }
 
                 // Card info
                 let info_x = thumb_rect.max.x + 8.0;
                 let name_pos = pos2(info_x, row_rect.min.y + 10.0);
-                ui.painter().text(name_pos, egui::Align2::LEFT_TOP, &entry.name, egui::FontId::proportional(14.0), TEXT_BRIGHT);
+                ui.painter().text(
+                    name_pos,
+                    egui::Align2::LEFT_TOP,
+                    &entry.name,
+                    egui::FontId::proportional(14.0),
+                    TEXT_BRIGHT,
+                );
 
                 // Type + rarity
                 let type_label = match entry.card_type {
@@ -422,20 +502,38 @@ impl DeckBuilder {
                     Rarity::Unique => Color32::from_rgb(200, 80, 200),
                 };
                 let sub_pos = pos2(info_x, row_rect.min.y + 28.0);
-                ui.painter().text(sub_pos, egui::Align2::LEFT_TOP,
+                ui.painter().text(
+                    sub_pos,
+                    egui::Align2::LEFT_TOP,
                     format!("{type_label}  {rarity_label}"),
-                    egui::FontId::proportional(12.0), TEXT_DIM);
+                    egui::FontId::proportional(12.0),
+                    TEXT_DIM,
+                );
                 // rarity glyph in color
-                let rarity_x = sub_pos.x + ui.painter().layout_no_wrap(format!("{type_label}  "), egui::FontId::proportional(12.0), TEXT_DIM).rect.width();
-                ui.painter().text(pos2(rarity_x, sub_pos.y), egui::Align2::LEFT_TOP, rarity_label, egui::FontId::proportional(12.0), rarity_color);
+                let rarity_x = sub_pos.x
+                    + ui.painter()
+                        .layout_no_wrap(format!("{type_label}  "), egui::FontId::proportional(12.0), TEXT_DIM)
+                        .rect
+                        .width();
+                ui.painter().text(
+                    pos2(rarity_x, sub_pos.y),
+                    egui::Align2::LEFT_TOP,
+                    rarity_label,
+                    egui::FontId::proportional(12.0),
+                    rarity_color,
+                );
 
                 // Mana + thresholds
                 let cost_y = row_rect.min.y + 44.0;
                 let mut cx = info_x;
                 if entry.mana > 0 {
-                    ui.painter().text(pos2(cx, cost_y), egui::Align2::LEFT_TOP,
+                    ui.painter().text(
+                        pos2(cx, cost_y),
+                        egui::Align2::LEFT_TOP,
                         format!("{}", entry.mana),
-                        egui::FontId::proportional(13.0), Color32::from_rgb(180, 210, 255));
+                        egui::FontId::proportional(13.0),
+                        Color32::from_rgb(180, 210, 255),
+                    );
                     cx += 18.0;
                 }
                 cx = draw_thresh_symbols(ui.painter(), cx, cost_y + 1.0, &entry.thresholds);
@@ -469,30 +567,72 @@ impl DeckBuilder {
 
                 // Minus
                 let minus_resp = ui.allocate_rect(minus_rect, Sense::click());
-                let minus_bg = if current_count > 0 && minus_resp.hovered() { Color32::from_rgb(130, 40, 40) } else { Color32::from_rgb(55, 25, 25) };
+                let minus_bg = if current_count > 0 && minus_resp.hovered() {
+                    Color32::from_rgb(130, 40, 40)
+                } else {
+                    Color32::from_rgb(55, 25, 25)
+                };
                 ui.painter().rect_filled(minus_rect, CornerRadius::same(3), minus_bg);
-                ui.painter().text(minus_rect.center(), egui::Align2::CENTER_CENTER, "−", egui::FontId::proportional(16.0), Color32::WHITE);
+                ui.painter().text(
+                    minus_rect.center(),
+                    egui::Align2::CENTER_CENTER,
+                    "−",
+                    egui::FontId::proportional(16.0),
+                    Color32::WHITE,
+                );
                 if minus_resp.clicked() && current_count > 0 {
-                    let map = if is_site { &mut self.deck_sites } else { &mut self.deck_spells };
+                    let map = if is_site {
+                        &mut self.deck_sites
+                    } else {
+                        &mut self.deck_spells
+                    };
                     let count = map.entry(entry.name.clone()).or_insert(0);
-                    if *count > 0 { *count -= 1; }
-                    if *count == 0 { map.remove(&entry.name); }
+                    if *count > 0 {
+                        *count -= 1;
+                    }
+                    if *count == 0 {
+                        map.remove(&entry.name);
+                    }
                 }
 
                 // Count
-                ui.painter().text(count_rect.center(), egui::Align2::CENTER_CENTER,
+                ui.painter().text(
+                    count_rect.center(),
+                    egui::Align2::CENTER_CENTER,
                     format!("{current_count}"),
-                    egui::FontId::proportional(15.0), TEXT_BRIGHT);
+                    egui::FontId::proportional(15.0),
+                    TEXT_BRIGHT,
+                );
 
                 // Plus
                 let plus_resp = ui.allocate_rect(plus_rect, Sense::click());
                 let can_add = current_count < max_copies;
-                let plus_bg = if can_add && plus_resp.hovered() { Color32::from_rgb(30, 110, 50) } else if can_add { Color32::from_rgb(20, 70, 35) } else { Color32::from_rgb(25, 30, 25) };
+                let plus_bg = if can_add && plus_resp.hovered() {
+                    Color32::from_rgb(30, 110, 50)
+                } else if can_add {
+                    Color32::from_rgb(20, 70, 35)
+                } else {
+                    Color32::from_rgb(25, 30, 25)
+                };
                 ui.painter().rect_filled(plus_rect, CornerRadius::same(3), plus_bg);
-                let plus_col = if can_add { Color32::WHITE } else { Color32::from_rgb(70, 75, 70) };
-                ui.painter().text(plus_rect.center(), egui::Align2::CENTER_CENTER, "+", egui::FontId::proportional(16.0), plus_col);
+                let plus_col = if can_add {
+                    Color32::WHITE
+                } else {
+                    Color32::from_rgb(70, 75, 70)
+                };
+                ui.painter().text(
+                    plus_rect.center(),
+                    egui::Align2::CENTER_CENTER,
+                    "+",
+                    egui::FontId::proportional(16.0),
+                    plus_col,
+                );
                 if plus_resp.clicked() && can_add {
-                    let map = if is_site { &mut self.deck_sites } else { &mut self.deck_spells };
+                    let map = if is_site {
+                        &mut self.deck_sites
+                    } else {
+                        &mut self.deck_spells
+                    };
                     let count = map.entry(entry.name.clone()).or_insert(0);
                     *count += 1;
                 }
@@ -514,7 +654,13 @@ impl DeckBuilder {
 
         // Avatar section header
         let mut y = inner.min.y;
-        ui.painter().text(pos2(inner.min.x, y), egui::Align2::LEFT_TOP, "Avatar", egui::FontId::proportional(16.0), GOLD);
+        ui.painter().text(
+            pos2(inner.min.x, y),
+            egui::Align2::LEFT_TOP,
+            "Avatar",
+            egui::FontId::proportional(16.0),
+            GOLD,
+        );
         y += 22.0;
 
         // Avatar portraits
@@ -527,7 +673,10 @@ impl DeckBuilder {
             let col = i % avatars_per_row;
             let row_i = i / avatars_per_row;
             let av_rect = Rect::from_min_size(
-                pos2(inner.min.x + col as f32 * (avatar_sz.x + 8.0), y + row_i as f32 * (avatar_sz.y + 28.0)),
+                pos2(
+                    inner.min.x + col as f32 * (avatar_sz.x + 8.0),
+                    y + row_i as f32 * (avatar_sz.y + 28.0),
+                ),
                 avatar_sz,
             );
 
@@ -549,14 +698,27 @@ impl DeckBuilder {
                     .max_size(avatar_sz)
                     .paint_at(ui, av_rect);
             } else {
-                ui.painter().rect_filled(av_rect, CornerRadius::same(3), Color32::from_rgb(30, 40, 60));
-                ui.painter().text(av_rect.center(), egui::Align2::CENTER_CENTER, "?", egui::FontId::proportional(18.0), TEXT_DIM);
+                ui.painter()
+                    .rect_filled(av_rect, CornerRadius::same(3), Color32::from_rgb(30, 40, 60));
+                ui.painter().text(
+                    av_rect.center(),
+                    egui::Align2::CENTER_CENTER,
+                    "?",
+                    egui::FontId::proportional(18.0),
+                    TEXT_DIM,
+                );
             }
 
             // Name below portrait
             let name_pos = pos2(av_rect.center().x, av_rect.max.y + 3.0);
             let av_name_col = if is_selected { GOLD } else { TEXT_DIM };
-            ui.painter().text(name_pos, egui::Align2::CENTER_TOP, &av.name, egui::FontId::proportional(10.0), av_name_col);
+            ui.painter().text(
+                name_pos,
+                egui::Align2::CENTER_TOP,
+                &av.name,
+                egui::FontId::proportional(10.0),
+                av_name_col,
+            );
 
             if av_resp.clicked() {
                 self.selected_avatar = Some(av.name.clone());
@@ -567,10 +729,8 @@ impl DeckBuilder {
         y += rows_count as f32 * (avatar_sz.y + 28.0) + 12.0;
 
         // Separator
-        ui.painter().line_segment(
-            [pos2(inner.min.x, y), pos2(inner.max.x, y)],
-            Stroke::new(1.0, BORDER),
-        );
+        ui.painter()
+            .line_segment([pos2(inner.min.x, y), pos2(inner.max.x, y)], Stroke::new(1.0, BORDER));
         y += 8.0;
 
         // Deck list area
@@ -583,15 +743,22 @@ impl DeckBuilder {
         ScrollArea::vertical().id_salt("deck_list").show(&mut deck_ui, |ui| {
             // Atlas section
             ui.horizontal(|ui| {
-                ui.label(egui::RichText::new("Atlas").color(Color32::from_rgb(100, 200, 100)).size(14.0).strong());
-                ui.label(egui::RichText::new(format!("({site_count})")).color(TEXT_DIM).size(13.0));
+                ui.label(
+                    egui::RichText::new("Atlas")
+                        .color(Color32::from_rgb(100, 200, 100))
+                        .size(14.0)
+                        .strong(),
+                );
+                ui.label(
+                    egui::RichText::new(format!("({site_count})"))
+                        .color(TEXT_DIM)
+                        .size(13.0),
+                );
             });
             ui.add_space(4.0);
 
             let mut sites_to_remove: Option<String> = None;
-            let mut sites_snapshot: Vec<(String, u8)> = self.deck_sites.iter()
-                .map(|(k, &v)| (k.clone(), v))
-                .collect();
+            let mut sites_snapshot: Vec<(String, u8)> = self.deck_sites.iter().map(|(k, &v)| (k.clone(), v)).collect();
             sites_snapshot.sort_by(|a, b| a.0.cmp(&b.0));
 
             for (name, count) in &sites_snapshot {
@@ -599,24 +766,38 @@ impl DeckBuilder {
                     if ui.small_button("×").clicked() {
                         sites_to_remove = Some(name.clone());
                     }
-                    ui.label(egui::RichText::new(format!("{count}×  {name}")).color(TEXT_BRIGHT).size(13.0));
+                    ui.label(
+                        egui::RichText::new(format!("{count}×  {name}"))
+                            .color(TEXT_BRIGHT)
+                            .size(13.0),
+                    );
                 });
             }
-            if let Some(rm) = sites_to_remove { self.deck_sites.remove(&rm); }
+            if let Some(rm) = sites_to_remove {
+                self.deck_sites.remove(&rm);
+            }
 
             ui.add_space(10.0);
 
             // Spellbook section
             ui.horizontal(|ui| {
-                ui.label(egui::RichText::new("Spellbook").color(Color32::from_rgb(120, 160, 255)).size(14.0).strong());
-                ui.label(egui::RichText::new(format!("({spell_count})")).color(TEXT_DIM).size(13.0));
+                ui.label(
+                    egui::RichText::new("Spellbook")
+                        .color(Color32::from_rgb(120, 160, 255))
+                        .size(14.0)
+                        .strong(),
+                );
+                ui.label(
+                    egui::RichText::new(format!("({spell_count})"))
+                        .color(TEXT_DIM)
+                        .size(13.0),
+                );
             });
             ui.add_space(4.0);
 
             let mut spells_to_remove: Option<String> = None;
-            let mut spells_snapshot: Vec<(String, u8)> = self.deck_spells.iter()
-                .map(|(k, &v)| (k.clone(), v))
-                .collect();
+            let mut spells_snapshot: Vec<(String, u8)> =
+                self.deck_spells.iter().map(|(k, &v)| (k.clone(), v)).collect();
             spells_snapshot.sort_by(|a, b| a.0.cmp(&b.0));
 
             for (name, count) in &spells_snapshot {
@@ -624,10 +805,16 @@ impl DeckBuilder {
                     if ui.small_button("×").clicked() {
                         spells_to_remove = Some(name.clone());
                     }
-                    ui.label(egui::RichText::new(format!("{count}×  {name}")).color(TEXT_BRIGHT).size(13.0));
+                    ui.label(
+                        egui::RichText::new(format!("{count}×  {name}"))
+                            .color(TEXT_BRIGHT)
+                            .size(13.0),
+                    );
                 });
             }
-            if let Some(rm) = spells_to_remove { self.deck_spells.remove(&rm); }
+            if let Some(rm) = spells_to_remove {
+                self.deck_spells.remove(&rm);
+            }
         });
 
         // Total counts at the bottom
@@ -654,27 +841,32 @@ impl DeckBuilder {
         ))
     }
 
-    fn use_deck(&self) -> Scene {
+    fn save_deck(&self) -> Scene {
         let avatar = self.selected_avatar.clone().unwrap_or_default();
 
         // Flatten deck_spells/sites into lists (with repetition)
         let mut spells: Vec<String> = Vec::new();
         for (name, &count) in &self.deck_spells {
-            for _ in 0..count { spells.push(name.clone()); }
+            for _ in 0..count {
+                spells.push(name.clone());
+            }
         }
         let mut sites: Vec<String> = Vec::new();
         for (name, &count) in &self.deck_sites {
-            for _ in 0..count { sites.push(name.clone()); }
+            for _ in 0..count {
+                sites.push(name.clone());
+            }
         }
 
-        let custom = PreconDeck::Custom { spells, sites, avatar };
-        Scene::Menu(crate::scene::menu::Menu::with_custom_deck(
-            self.client.clone(),
-            self.player_id.unwrap_or_default(),
-            self.player_name.clone(),
-            custom,
-            self.prev_available_decks.clone(),
-        ))
+        let custom = DeckList {
+            name: "Custom Deck".to_string(),
+            avatar,
+            spells,
+            sites,
+        };
+        custom.save().expect("Failed to save deck");
+
+        Scene::Menu(crate::scene::menu::Menu::new(self.client.clone()))
     }
 
     pub fn process_input(&mut self, _ctx: &Context) -> Option<Scene> {
@@ -691,7 +883,9 @@ fn draw_thresh_symbols(painter: &egui::Painter, mut x: f32, y: f32, t: &Threshol
         (t.earth, Element::Earth),
         (t.water, Element::Water),
     ] {
-        if count == 0 { continue; }
+        if count == 0 {
+            continue;
+        }
         let col = elem_color(element.clone());
         let is_upward = matches!(element, Element::Fire | Element::Air);
         let has_midline = matches!(element, Element::Air | Element::Earth);
