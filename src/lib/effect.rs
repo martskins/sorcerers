@@ -1014,7 +1014,10 @@ impl Effect {
                     if let Ok(avatar_id) = state.get_player_avatar_id(&controller_id) {
                         let heal = attacker.get_power(&snapshot)?.unwrap_or(0);
                         if heal > 0 {
-                            effects.push(Effect::Heal { card_id: avatar_id.clone(), amount: heal });
+                            effects.push(Effect::Heal {
+                                card_id: avatar_id.clone(),
+                                amount: heal,
+                            });
                         }
                     }
                 }
@@ -1189,7 +1192,7 @@ impl Effect {
 
                 if card.is_unit() {
                     let borne_artifacts = CardMatcher::new()
-                        .card_type(CardType::Artifact)
+                        .with_card_type(CardType::Artifact)
                         .iter(state)
                         .filter_map(|c| c.get_artifact())
                         .filter(|a| a.get_bearer().unwrap_or_default() == Some(card_id.clone()))

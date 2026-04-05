@@ -23,7 +23,7 @@ impl ActivatedAbility for FloodAdjacentSite {
     ) -> anyhow::Result<Vec<Effect>> {
         let card = state.get_card(card_id);
         let adjacent_site_ids = CardMatcher::new()
-            .card_type(CardType::Site)
+            .with_card_type(CardType::Site)
             .adjacent_to(card.get_zone())
             .resolve_ids(state);
         let prompt = "Select an adjacent site to flood".to_string();

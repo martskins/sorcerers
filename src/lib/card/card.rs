@@ -1531,7 +1531,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         }
 
         let unborne_artifacts: Vec<(uuid::Uuid, String)> = CardMatcher::new()
-            .card_type(CardType::Artifact)
+            .with_card_type(CardType::Artifact)
             .in_zone(self.get_zone())
             .in_region(self.get_region(state))
             .iter(state)

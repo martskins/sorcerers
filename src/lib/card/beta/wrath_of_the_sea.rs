@@ -52,7 +52,7 @@ impl Card for WrathOfTheSea {
         let bodies_of_water = state.get_bodies_of_water();
         let picked_body = pick_zone_group(controller_id, &bodies_of_water, state, false, prompt).await?;
         let sites = CardMatcher::new().adjacent_to_zones(&picked_body);
-        let other_water_sites = CardMatcher::new().card_type(CardType::Site).resolve_ids(state);
+        let other_water_sites = CardMatcher::new().with_card_type(CardType::Site).resolve_ids(state);
         let zones: Vec<Zone> = sites
             .resolve_ids(state)
             .iter()
@@ -60,7 +60,7 @@ impl Card for WrathOfTheSea {
             .map(|site| state.get_card(site).get_zone().clone())
             .collect();
         let minions_and_artifacts = CardMatcher::new()
-            .card_types(vec![CardType::Minion, CardType::Artifact])
+            .with_card_types(vec![CardType::Minion, CardType::Artifact])
             .in_zones(&zones)
             .resolve_ids(state);
         let mut effects = minions_and_artifacts

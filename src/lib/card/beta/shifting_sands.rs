@@ -58,7 +58,7 @@ impl Card for ShiftingSands {
         let mut effects = vec![];
         for site in CardMatcher::sites_near(self.get_zone())
             .controller_id(&self.get_controller_id(state))
-            .site_types(vec![SiteType::Desert])
+            .with_site_types(vec![SiteType::Desert])
             .iter(state)
         {
             effects.extend(site.genesis(state).await?);

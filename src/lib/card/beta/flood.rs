@@ -59,7 +59,9 @@ impl Card for Flood {
     async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
         let affected_zones = self.get_affected_zones(state);
         Ok(vec![ContinuousEffect::FloodSites {
-            affected_sites: CardMatcher::new().in_zones(&affected_zones).card_type(CardType::Site),
+            affected_sites: CardMatcher::new()
+                .in_zones(&affected_zones)
+                .with_card_type(CardType::Site),
         }])
     }
 }

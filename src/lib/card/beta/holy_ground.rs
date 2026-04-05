@@ -69,7 +69,7 @@ impl Card for HolyGround {
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let nearby_avatars = CardMatcher::new()
             .near(self.get_zone())
-            .card_types(vec![CardType::Avatar])
+            .with_card_types(vec![CardType::Avatar])
             .resolve_ids(state);
         let effects = nearby_avatars
             .iter()

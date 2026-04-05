@@ -49,7 +49,7 @@ impl Card for Riptide {
     async fn on_cast(&mut self, state: &State, _caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
         let water_sites = CardMatcher::new()
             .with_affinity(Element::Water)
-            .card_type(CardType::Site)
+            .with_card_type(CardType::Site)
             .resolve_ids(state);
         let prompt = "Riptide: Pick a water site to pull a unit into";
         let site_id = pick_card(self.get_controller_id(state), &water_sites, state, prompt).await?;

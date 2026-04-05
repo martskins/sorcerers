@@ -26,7 +26,7 @@ impl ActivatedAbility for FloodSite {
             Some(body_of_water) => {
                 let adjacent_sites = CardMatcher::new()
                     .adjacent_to_zones(&body_of_water)
-                    .card_type(CardType::Site)
+                    .with_card_type(CardType::Site)
                     .resolve_ids(state);
                 let prompt = "Avatar of Water: Pick a site to flood";
                 let picked_site_id = pick_card(player_id, &adjacent_sites, state, prompt).await?;

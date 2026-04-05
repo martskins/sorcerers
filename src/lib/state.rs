@@ -268,23 +268,30 @@ impl CardMatcher {
         }
     }
 
-    pub fn site_types(self, site_types: Vec<SiteType>) -> Self {
+    pub fn with_site_types(self, site_types: Vec<SiteType>) -> Self {
         Self {
             site_types: Some(site_types),
             ..self
         }
     }
 
-    pub fn card_type(self, card_type: CardType) -> Self {
+    pub fn with_card_type(self, card_type: CardType) -> Self {
         Self {
             card_types: Some(vec![card_type]),
             ..self
         }
     }
 
-    pub fn card_types(self, card_types: Vec<CardType>) -> Self {
+    pub fn with_card_types(self, card_types: Vec<CardType>) -> Self {
         Self {
             card_types: Some(card_types),
+            ..self
+        }
+    }
+
+    pub fn with_minion_types(self, minion_types: Vec<MinionType>) -> Self {
+        Self {
+            minion_types: Some(minion_types),
             ..self
         }
     }

@@ -70,7 +70,7 @@ impl Card for SunkenTreasure {
 
         let allied_water_sites = CardMatcher::new()
             .controller_id(&controller_id)
-            .card_type(CardType::Site)
+            .with_card_type(CardType::Site)
             .with_affinity(Element::Water)
             .resolve_ids(state);
         let prompt = format!("Sunken Treasure: Pick a water site to place the treasure under");

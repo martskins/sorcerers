@@ -73,7 +73,7 @@ impl Card for Undertow {
             .get_body_of_water_at(self.get_zone())
             .ok_or(anyhow::anyhow!("Undertow must be in a body of water"))?;
         let units = CardMatcher::new()
-            .card_types(vec![CardType::Minion, CardType::Avatar])
+            .with_card_types(vec![CardType::Minion, CardType::Avatar])
             .in_zones(&body_of_water)
             .resolve_ids(state);
         let prompt = "Undertow: Choose a unit in the same body of water to move";

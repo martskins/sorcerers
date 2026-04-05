@@ -1,17 +1,17 @@
 use crate::{
     card::{Card, CardBase, CardType, Cost, Edition, Rarity, Region, Zone},
     effect::Effect,
-    game::{PlayerId, pick_card},
+    game::PlayerId,
     state::{CardMatcher, State},
 };
 
 #[derive(Debug, Clone)]
-pub struct Drown {
+pub struct RainOfArrows {
     pub card_base: CardBase,
 }
 
-impl Drown {
-    pub const NAME: &'static str = "Drown";
+impl RainOfArrows {
+    pub const NAME: &'static str = "Rain of Arrows";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -20,7 +20,7 @@ impl Drown {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(3, "W"),
+                cost: Cost::new(2, "A"),
                 region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
@@ -32,7 +32,7 @@ impl Drown {
 }
 
 #[async_trait::async_trait]
-impl Card for Drown {
+impl Card for RainOfArrows {
     fn get_name(&self) -> &str {
         Self::NAME
     }
@@ -45,25 +45,20 @@ impl Card for Drown {
         &self.card_base
     }
 
-    async fn on_cast(&mut self, state: &State, _caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
-        let possible_targets = CardMatcher::new()
-            .with_card_types(vec![CardType::Minion, CardType::Artifact])
-            .in_regions(vec![Region::Surface])
+    async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
+        let mut effects = Vec::new();
+        let minion_ids = CardMatcher::new()
+            .with_card_type(CardType::Minion)
+            .in_region(&Region::Surface)
             .resolve_ids(state);
-        if possible_targets.is_empty() {
-            return Ok(vec![]);
+        for minion_id in minion_ids {
+            effects.push(Effect::take_damage(&minion_id, caster_id, 1));
         }
-
-        let prompt = "Drown: Pick a minion or artifact to submerge";
-        let picked_card = pick_card(self.get_controller_id(state), &possible_targets, state, prompt).await?;
-        Ok(vec![Effect::SetCardRegion {
-            card_id: picked_card,
-            region: Region::Underwater,
-            tap: false,
-        }])
+        Ok(effects)
     }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Drown::NAME, |owner_id: PlayerId| Box::new(Drown::new(owner_id)));
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (RainOfArrows::NAME, |owner_id: PlayerId| {
+    Box::new(RainOfArrows::new(owner_id))
+});

@@ -1,5 +1,11 @@
 pub mod blood_ravens;
 pub use blood_ravens::*;
+pub mod grapple_shot;
+pub use grapple_shot::*;
+pub mod mortality;
+pub use mortality::*;
+pub mod rain_of_arrows;
+pub use rain_of_arrows::*;
 pub mod disintegrate;
 pub use disintegrate::*;
 pub mod clamor_of_harpies;

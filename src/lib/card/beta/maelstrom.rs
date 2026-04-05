@@ -70,7 +70,7 @@ impl Card for Maelström {
         let controller_id = self.get_controller_id(state);
         let body_of_water = state.get_body_of_water_at(self.get_zone()).unwrap_or_default();
         let minion_ids = CardMatcher::new()
-            .card_type(CardType::Minion)
+            .with_card_type(CardType::Minion)
             .in_zones(&body_of_water)
             .resolve_ids(state);
 
