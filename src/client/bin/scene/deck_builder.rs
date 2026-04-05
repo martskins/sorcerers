@@ -139,6 +139,9 @@ pub struct DeckBuilder {
 
     // Validation / save feedback
     save_error: Option<String>,
+
+    // Card preview: (entry, row_rect center-right position)
+    hovered_card: Option<(CardEntry, egui::Pos2)>,
 }
 
 impl DeckBuilder {
@@ -202,6 +205,7 @@ impl DeckBuilder {
             elem_filter: ElemFilter::All,
             type_filter: TypeFilter::All,
             save_error: None,
+            hovered_card: None,
         }
     }
 
@@ -352,12 +356,18 @@ impl DeckBuilder {
                 );
 
                 // ── Left panel: card collection ────────────────────────────────
+                self.hovered_card = None; // reset each frame; render_left_panel sets it
                 let mut left_ui = ui.new_child(egui::UiBuilder::new().max_rect(left_rect));
                 self.render_left_panel(&mut left_ui, ctx, left_rect);
 
                 // ── Right panel: deck summary ──────────────────────────────────
                 let mut right_ui = ui.new_child(egui::UiBuilder::new().max_rect(right_rect));
                 self.render_right_panel(&mut right_ui, ctx, right_rect);
+
+                // ── Card preview popup (floating, over everything) ─────────────
+                if let Some((ref entry, anchor)) = self.hovered_card.clone() {
+                    Self::draw_card_preview(ctx, entry, anchor, screen);
+                }
             });
 
         next_scene
@@ -502,8 +512,18 @@ impl DeckBuilder {
                 let row_resp = ui.allocate_response(vec2(ui.available_width(), ROW_H), Sense::hover());
                 let row_rect = row_resp.rect;
 
-                // Row background (alternating)
-                let row_bg = Color32::from_rgba_premultiplied(20, 25, 45, 200);
+                // Track hovered card for preview popup
+                if row_resp.hovered() {
+                    let mouse_pos = ctx.input(|i| i.pointer.latest_pos().unwrap_or_default());
+                    self.hovered_card = Some((entry.clone(), pos2(mouse_pos.x, mouse_pos.y)));
+                }
+
+                // Row background — highlight on hover
+                let row_bg = if row_resp.hovered() {
+                    Color32::from_rgba_premultiplied(35, 45, 80, 220)
+                } else {
+                    Color32::from_rgba_premultiplied(20, 25, 45, 200)
+                };
                 ui.painter().rect_filled(row_rect, CornerRadius::same(3), row_bg);
 
                 // Thumbnail
@@ -996,6 +1016,70 @@ impl DeckBuilder {
 
     pub fn process_input(&mut self, _ctx: &Context) -> Option<Scene> {
         None
+    }
+
+    /// Draw a large card preview floating near `anchor`, flipping left/up to stay on screen.
+    fn draw_card_preview(ctx: &Context, entry: &CardEntry, anchor: egui::Pos2, screen: Rect) {
+        const HTOW_RATIO: f32 = 1.4; // card height-to-width ratio
+        const PREVIEW_W: f32 = 250.0;
+        const PREVIEW_H: f32 = PREVIEW_W * HTOW_RATIO;
+        const PAD: f32 = 8.0;
+
+        // Clamp position so the preview stays fully on screen
+        let x = if anchor.x + PREVIEW_W + PAD > screen.max.x {
+            anchor.x - PREVIEW_W - PAD * 2.0 // flip to left side of anchor
+        } else {
+            anchor.x
+        };
+        let y = (anchor.y).min(screen.max.y - PREVIEW_H - PAD).max(screen.min.y + PAD);
+
+        let mut size = vec2(PREVIEW_W, PREVIEW_H);
+        if entry.card_type == CardType::Site {
+            size = vec2(PREVIEW_H, PREVIEW_W);
+        }
+        let preview_rect = Rect::from_min_size(pos2(x, y), size);
+
+        egui::Area::new(egui::Id::new("card_preview_popup"))
+            .fixed_pos(preview_rect.min)
+            .order(egui::Order::Tooltip)
+            .interactable(false)
+            .show(ctx, |ui| {
+                let fake = entry.as_card_data();
+                if let Some(tex) = TextureCache::get_card_texture_blocking(&fake, ctx) {
+                    // Drop shadow
+                    let shadow_rect = preview_rect.translate(vec2(4.0, 4.0));
+                    ui.painter()
+                        .rect_filled(shadow_rect, CornerRadius::same(6), Color32::from_black_alpha(120));
+                    // Card image
+                    ui.painter().rect_stroke(
+                        preview_rect,
+                        CornerRadius::same(6),
+                        Stroke::new(1.5, BORDER),
+                        StrokeKind::Outside,
+                    );
+                    egui::Image::new(egui::ImageSource::Texture(egui::load::SizedTexture::from_handle(&tex)))
+                        .max_size(vec2(PREVIEW_W, PREVIEW_H))
+                        .corner_radius(CornerRadius::same(6))
+                        .paint_at(ui, preview_rect);
+                } else {
+                    // Fallback: dark card with name
+                    ui.painter()
+                        .rect_filled(preview_rect, CornerRadius::same(6), Color32::from_rgb(18, 22, 38));
+                    ui.painter().rect_stroke(
+                        preview_rect,
+                        CornerRadius::same(6),
+                        Stroke::new(1.5, BORDER),
+                        StrokeKind::Outside,
+                    );
+                    ui.painter().text(
+                        preview_rect.center(),
+                        egui::Align2::CENTER_CENTER,
+                        &entry.name,
+                        egui::FontId::proportional(14.0),
+                        TEXT_BRIGHT,
+                    );
+                }
+            });
     }
 }
 

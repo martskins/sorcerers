@@ -343,7 +343,7 @@ impl Menu {
 
                         ui.add_space(8.0);
                         let build_btn = egui::Button::new(
-                            egui::RichText::new("🔨 Build Deck")
+                            egui::RichText::new("🔨 Deck Builder")
                                 .size(20.0)
                                 .color(Color32::from_rgb(200, 220, 255)),
                         )
