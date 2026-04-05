@@ -9,6 +9,10 @@ use std::sync::RwLock;
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc;
 
+// Embedded fonts — compiled into the binary so they're always available.
+static NOTO_SANS: &[u8] = include_bytes!("../../../assets/fonts/NotoSans-Regular.ttf");
+static NOTO_SYMBOLS: &[u8] = include_bytes!("../../../assets/fonts/NotoSansSymbols2-Regular.ttf");
+
 pub struct SorcerersApp {
     pub scene: Scene,
     _runtime: Runtime,
@@ -49,6 +53,30 @@ impl SorcerersApp {
     fn setup_style(ctx: &egui::Context) {
         use egui::epaint::CornerRadius;
         use egui::{Color32, FontId, Stroke, TextStyle, style::WidgetVisuals};
+
+        // ── Embedded fonts ───────────────────────────────────────────────────
+        // Start from egui's defaults (which include its own compact Latin font),
+        // then append Noto Sans and Noto Sans Symbols 2 as fallbacks so every
+        // Unicode character we use in the UI renders correctly.
+        {
+            let mut fonts = egui::FontDefinitions::default();
+            fonts.font_data.insert(
+                "NotoSans".to_owned(),
+                std::sync::Arc::new(egui::FontData::from_static(NOTO_SANS)),
+            );
+            fonts.font_data.insert(
+                "NotoSymbols2".to_owned(),
+                std::sync::Arc::new(egui::FontData::from_static(NOTO_SYMBOLS)),
+            );
+            // Append after the built-in font so basic Latin keeps the default look;
+            // missing glyphs (symbols, dingbats, etc.) fall through to these fonts.
+            for family in [egui::FontFamily::Proportional, egui::FontFamily::Monospace] {
+                let list = fonts.families.entry(family).or_default();
+                list.push("NotoSans".to_owned());
+                list.push("NotoSymbols2".to_owned());
+            }
+            ctx.set_fonts(fonts);
+        }
 
         // ── Visuals ─────────────────────────────────────────────────────────
         let mut visuals = egui::Visuals::dark();

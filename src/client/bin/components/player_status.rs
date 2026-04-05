@@ -189,9 +189,11 @@ impl Component for PlayerStatusComponent {
                             if is_self {
                                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                                     let (label, col) = if unseen > 0 {
-                                        (format!("📩{unseen}"), Color32::from_rgb(100, 200, 255))
+                                        // ✉ = envelope (U+2709, Dingbats)
+                                        (format!("✉ {unseen}"), Color32::from_rgb(100, 200, 255))
                                     } else {
-                                        ("📋".into(), Color32::from_rgb(100, 100, 130))
+                                        // ☰ = trigram / log icon (U+2630, Misc Symbols)
+                                        ("☰ log".into(), Color32::from_rgb(100, 100, 130))
                                     };
                                     if ui.link(egui::RichText::new(label).color(col).size(12.0)).clicked() {
                                         open_log = true;
