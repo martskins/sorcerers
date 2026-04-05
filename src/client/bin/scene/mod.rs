@@ -3,6 +3,7 @@ use egui::{Context, Ui};
 
 pub mod action_overlay;
 pub mod combat_resolution_overlay;
+pub mod deck_builder;
 pub mod game;
 pub mod menu;
 pub mod selection_overlay;
@@ -10,6 +11,7 @@ pub mod selection_overlay;
 pub enum Scene {
     Menu(menu::Menu),
     Game(game::Game),
+    DeckBuilder(deck_builder::DeckBuilder),
 }
 
 impl Scene {
@@ -17,6 +19,7 @@ impl Scene {
         match self {
             Scene::Menu(menu) => menu.render(ui, ctx),
             Scene::Game(game) => game.render(ui, ctx),
+            Scene::DeckBuilder(db) => db.render(ui, ctx),
         }
     }
 
@@ -24,6 +27,7 @@ impl Scene {
         match self {
             Scene::Menu(menu) => menu.update(ctx),
             Scene::Game(game) => game.update(ctx),
+            Scene::DeckBuilder(_) => {}
         }
     }
 
@@ -31,6 +35,7 @@ impl Scene {
         match self {
             Scene::Menu(menu) => menu.process_message(message),
             Scene::Game(game) => game.process_message(message),
+            Scene::DeckBuilder(_) => None,
         }
     }
 
@@ -41,6 +46,7 @@ impl Scene {
                 game.process_input(ctx);
                 None
             }
+            Scene::DeckBuilder(db) => db.process_input(ctx),
         }
     }
 }

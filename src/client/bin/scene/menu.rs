@@ -33,6 +33,46 @@ impl Menu {
         }
     }
 
+    /// Create a menu that already has a custom deck selected and visible.
+    pub fn with_custom_deck(
+        client: networking::client::Client,
+        player_id: uuid::Uuid,
+        player_name: String,
+        custom_deck: PreconDeck,
+        mut available_decks: Vec<PreconDeck>,
+    ) -> Self {
+        // Remove any previously built custom deck, then append the new one.
+        available_decks.retain(|d| !matches!(d, PreconDeck::Custom { .. }));
+        available_decks.push(custom_deck);
+        Self {
+            client,
+            player_id: Some(player_id),
+            available_decks,
+            looking_for_match: false,
+            player_name,
+            shake_start: None,
+            show_name_error: false,
+        }
+    }
+
+    /// Restore menu state without adding a custom deck (used by Back button).
+    pub fn restore(
+        client: networking::client::Client,
+        player_id: Option<uuid::Uuid>,
+        player_name: String,
+        available_decks: Vec<PreconDeck>,
+    ) -> Self {
+        Self {
+            client,
+            player_id,
+            available_decks,
+            looking_for_match: false,
+            player_name,
+            shake_start: None,
+            show_name_error: false,
+        }
+    }
+
     pub fn update(&mut self, _ctx: &Context) {}
 
     pub fn process_message(&mut self, msg: &ServerMessage) -> Option<Scene> {
@@ -95,6 +135,8 @@ impl Menu {
         if !self.player_name.is_empty() {
             self.show_name_error = false;
         }
+
+        let mut next_scene: Option<Scene> = None;
 
         egui::CentralPanel::default()
             .frame(egui::Frame::NONE.fill(Color32::from_rgb(8, 8, 14)))
@@ -213,10 +255,29 @@ impl Menu {
                             }
                             ui.add_space(10.0);
                         }
+
+                        ui.add_space(8.0);
+                        let build_btn = egui::Button::new(
+                            egui::RichText::new("🔨 Build Deck")
+                                .size(20.0)
+                                .color(Color32::from_rgb(200, 220, 255)),
+                        )
+                        .min_size(vec2(280.0, 46.0));
+                        if ui.add(build_btn).clicked() {
+                            next_scene = Some(Scene::DeckBuilder(
+                                crate::scene::deck_builder::DeckBuilder::from_menu(
+                                    self.client.clone(),
+                                    self.player_id,
+                                    self.player_name.clone(),
+                                    self.available_decks.clone(),
+                                ),
+                            ));
+                        }
                     }
                 });
             });
-        None
+
+        next_scene
     }
 
     pub fn process_input(&mut self, _ctx: &Context) -> Option<Scene> {
