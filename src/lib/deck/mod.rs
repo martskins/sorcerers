@@ -1,12 +1,56 @@
 pub mod precon;
 
 use crate::{card::Card, effect::Effect, game::PlayerId};
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone)]
+pub struct CardNameWithCount {
+    pub count: u8,
+    pub name: String,
+}
+
+impl std::fmt::Display for CardNameWithCount {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}x {}", self.count, self.name)
+    }
+}
+
+impl Serialize for CardNameWithCount {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let s = format!("{}x {}", self.count, self.name);
+        serializer.serialize_str(&s)
+    }
+}
+
+impl<'de> Deserialize<'de> for CardNameWithCount {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        let parts: Vec<&str> = s.splitn(2, 'x').map(|p| p.trim()).collect();
+        if parts.len() != 2 {
+            return Err(serde::de::Error::custom(format!(
+                "Invalid card count format: \"{}\"",
+                s
+            )));
+        }
+        let count = parts[0]
+            .parse::<u8>()
+            .map_err(|_| serde::de::Error::custom(format!("Invalid count in card format: \"{}\"", s)))?;
+        let name = parts[1].to_string();
+        Ok(CardNameWithCount { count, name })
+    }
+}
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct DeckList {
     pub name: String,
-    pub sites: Vec<String>,
-    pub spells: Vec<String>,
+    pub sites: Vec<CardNameWithCount>,
+    pub spells: Vec<CardNameWithCount>,
     pub avatar: String,
 }
 
@@ -54,29 +98,26 @@ impl DeckList {
         }
 
         // Spellbook size
-        if self.spells.len() < 60 {
-            return Err(format!(
-                "Spellbook needs at least 60 cards (you have {}).",
-                self.spells.len()
-            ));
+        let spell_count = self.spells.iter().map(|c| c.count as usize).sum::<usize>();
+        if spell_count < 60 {
+            return Err(format!("Spellbook needs at least 60 cards (you have {}).", spell_count));
         }
         // Atlas size
-        if self.sites.len() < 30 {
-            return Err(format!(
-                "Atlas needs at least 30 sites (you have {}).",
-                self.sites.len()
-            ));
+        let site_count = self.sites.iter().map(|c| c.count as usize).sum::<usize>();
+        if site_count < 30 {
+            return Err(format!("Atlas needs at least 30 sites (you have {}).", site_count));
         }
 
         let dummy_id = uuid::Uuid::nil();
 
         // Validate spellbook cards and copy limits
         let mut spell_counts: HashMap<&str, usize> = HashMap::new();
-        for name in &self.spells {
-            if !card_exists(name) {
+        for spell in &self.spells {
+            let name = &spell.name;
+            if !card_exists(&spell.name) {
                 return Err(format!("Unknown card: \"{name}\"."));
             }
-            *spell_counts.entry(name.as_str()).or_insert(0) += 1;
+            *spell_counts.entry(name).or_insert(0) += 1;
         }
         for (name, &count) in &spell_counts {
             let card = from_name(name, &dummy_id);
@@ -96,11 +137,12 @@ impl DeckList {
 
         // Validate atlas sites and copy limits
         let mut site_counts: HashMap<&str, usize> = HashMap::new();
-        for name in &self.sites {
+        for spell in &self.sites {
+            let name = &spell.name;
             if !card_exists(name) {
                 return Err(format!("Unknown site: \"{name}\"."));
             }
-            *site_counts.entry(name.as_str()).or_insert(0) += 1;
+            *site_counts.entry(name).or_insert(0) += 1;
         }
         for (name, &count) in &site_counts {
             let card = from_name(name, &dummy_id);
@@ -125,8 +167,16 @@ impl DeckList {
     pub fn build(&self, player_id: &PlayerId) -> (Deck, Vec<Box<dyn Card>>) {
         use crate::card::from_name;
         let avatar_card = from_name(&self.avatar, player_id);
-        let spell_cards: Vec<Box<dyn Card>> = self.spells.iter().map(|n| from_name(n, player_id)).collect();
-        let site_cards: Vec<Box<dyn Card>> = self.sites.iter().map(|n| from_name(n, player_id)).collect();
+        let spell_cards: Vec<Box<dyn Card>> = self
+            .spells
+            .iter()
+            .flat_map(|c| std::iter::repeat_with(|| from_name(&c.name, player_id)).take(c.count as usize))
+            .collect();
+        let site_cards: Vec<Box<dyn Card>> = self
+            .sites
+            .iter()
+            .flat_map(|c| std::iter::repeat_with(|| from_name(&c.name, player_id)).take(c.count as usize))
+            .collect();
         let mut deck = Deck::new(
             player_id,
             self.name.clone(),
@@ -135,7 +185,10 @@ impl DeckList {
             avatar_card.get_id().clone(),
         );
         deck.shuffle();
-        let all_cards = std::iter::once(avatar_card).chain(spell_cards).chain(site_cards).collect();
+        let all_cards = std::iter::once(avatar_card)
+            .chain(spell_cards)
+            .chain(site_cards)
+            .collect();
         (deck, all_cards)
     }
 }
@@ -219,8 +272,16 @@ impl Deck {
         let file = std::fs::File::open(filepath)?;
         let decklist: DeckList = serde_json::from_reader(file)?;
         let avatar_card = from_name(&decklist.avatar, player_id);
-        let spell_cards: Vec<Box<dyn Card>> = decklist.spells.iter().map(|name| from_name(name, player_id)).collect();
-        let site_cards: Vec<Box<dyn Card>> = decklist.sites.iter().map(|name| from_name(name, player_id)).collect();
+        let spell_cards: Vec<Box<dyn Card>> = decklist
+            .spells
+            .iter()
+            .flat_map(|c| std::iter::repeat_with(|| from_name(&c.name, player_id)).take(c.count as usize))
+            .collect();
+        let site_cards: Vec<Box<dyn Card>> = decklist
+            .sites
+            .iter()
+            .flat_map(|c| std::iter::repeat_with(|| from_name(&c.name, player_id)).take(c.count as usize))
+            .collect();
 
         let mut deck = Deck {
             name: decklist.name,

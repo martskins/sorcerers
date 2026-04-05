@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use egui::epaint::Shape;
 use egui::{Color32, Context, CornerRadius, Frame, Rect, ScrollArea, Sense, Stroke, StrokeKind, Ui, pos2, vec2};
-use sorcerers::deck::DeckList;
+use sorcerers::deck::{CardNameWithCount, DeckList};
 use sorcerers::{
     card::{ALL_CARDS, CardType, Rarity, Zone},
     game::{Element, Thresholds},
@@ -292,8 +292,12 @@ impl DeckBuilder {
                 } else if !can_use && (self.selected_avatar.is_some() || !self.deck_name.trim().is_empty()) {
                     // Show which requirements are missing
                     let mut missing = Vec::new();
-                    if self.selected_avatar.is_none() { missing.push("avatar"); }
-                    if self.deck_name.trim().is_empty() { missing.push("deck name"); }
+                    if self.selected_avatar.is_none() {
+                        missing.push("avatar");
+                    }
+                    if self.deck_name.trim().is_empty() {
+                        missing.push("deck name");
+                    }
                     if site_count_total < 30 {
                         // already shown in the panel, just summarise
                     }
@@ -303,9 +307,15 @@ impl DeckBuilder {
                     let needs_sites = 30u32.saturating_sub(site_count_total);
                     let needs_spells = 60u32.saturating_sub(spell_count_total);
                     let mut parts: Vec<String> = missing.iter().map(|s| s.to_string()).collect();
-                    if needs_sites > 0 { parts.push(format!("{needs_sites} more site(s)")); }
-                    if needs_spells > 0 { parts.push(format!("{needs_spells} more spell(s)")); }
-                    if parts.is_empty() { None } else {
+                    if needs_sites > 0 {
+                        parts.push(format!("{needs_sites} more site(s)"));
+                    }
+                    if needs_spells > 0 {
+                        parts.push(format!("{needs_spells} more spell(s)"));
+                    }
+                    if parts.is_empty() {
+                        None
+                    } else {
                         Some((format!("Need: {}", parts.join(", ")), Color32::from_rgb(180, 160, 60)))
                     }
                 } else {
@@ -718,8 +728,14 @@ impl DeckBuilder {
         } else {
             Color32::from_rgb(60, 90, 140)
         };
-        ui.painter().rect_filled(name_rect, CornerRadius::same(3), Color32::from_rgb(18, 22, 40));
-        ui.painter().rect_stroke(name_rect, CornerRadius::same(3), egui::Stroke::new(1.0, name_border_col), StrokeKind::Outside);
+        ui.painter()
+            .rect_filled(name_rect, CornerRadius::same(3), Color32::from_rgb(18, 22, 40));
+        ui.painter().rect_stroke(
+            name_rect,
+            CornerRadius::same(3),
+            egui::Stroke::new(1.0, name_border_col),
+            StrokeKind::Outside,
+        );
         let te = egui::TextEdit::singleline(&mut self.deck_name)
             .hint_text("Enter deck name…")
             .font(egui::FontId::proportional(13.0))
@@ -898,8 +914,16 @@ impl DeckBuilder {
 
         let sites_ok = site_count >= 30;
         let spells_ok = spell_count >= 60;
-        let site_col = if sites_ok { Color32::from_rgb(100, 210, 120) } else { Color32::from_rgb(220, 120, 60) };
-        let spell_col = if spells_ok { Color32::from_rgb(100, 210, 120) } else { Color32::from_rgb(220, 120, 60) };
+        let site_col = if sites_ok {
+            Color32::from_rgb(100, 210, 120)
+        } else {
+            Color32::from_rgb(220, 120, 60)
+        };
+        let spell_col = if spells_ok {
+            Color32::from_rgb(100, 210, 120)
+        } else {
+            Color32::from_rgb(220, 120, 60)
+        };
 
         let atlas_text = format!("Atlas: {site_count}/30");
         let spell_text = format!("Spellbook: {spell_count}/60");
@@ -934,20 +958,27 @@ impl DeckBuilder {
         let name = self.deck_name.trim().to_string();
 
         // Flatten deck_spells/sites into lists (with repetition)
-        let mut spells: Vec<String> = Vec::new();
+        let mut spells: Vec<CardNameWithCount> = Vec::new();
         for (card_name, &count) in &self.deck_spells {
-            for _ in 0..count {
-                spells.push(card_name.clone());
-            }
+            spells.push(CardNameWithCount {
+                count,
+                name: card_name.clone(),
+            });
         }
-        let mut sites: Vec<String> = Vec::new();
+        let mut sites: Vec<CardNameWithCount> = Vec::new();
         for (card_name, &count) in &self.deck_sites {
-            for _ in 0..count {
-                sites.push(card_name.clone());
-            }
+            sites.push(CardNameWithCount {
+                count,
+                name: card_name.clone(),
+            });
         }
 
-        let deck_list = DeckList { name, avatar, spells, sites };
+        let deck_list = DeckList {
+            name,
+            avatar,
+            spells,
+            sites,
+        };
 
         // Validate before saving
         deck_list.validate()?;

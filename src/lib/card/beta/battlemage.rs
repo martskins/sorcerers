@@ -16,7 +16,7 @@ impl Battlemage {
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
             unit_base: UnitBase {
-                power: 1,
+                power: 3,
                 toughness: 20,
                 ..Default::default()
             },
