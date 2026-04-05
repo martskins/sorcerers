@@ -4,7 +4,7 @@ use sorcerers::{
     game::Game,
     networking::{
         client::Client,
-        message::{ClientMessage, Message, PreconDeck, ServerMessage},
+        message::{ClientMessage, DeckChoice, Message, ServerMessage},
     },
     state::{Player, PlayerWithDeck},
 };
@@ -14,7 +14,7 @@ use tokio::{net::tcp::OwnedWriteHalf, sync::Mutex};
 pub struct Server {
     pub games: HashMap<uuid::Uuid, Sender<ClientMessage>>,
     pub game_players: HashMap<uuid::Uuid, Vec<Player>>,
-    pub looking_for_match: Vec<(uuid::Uuid, (Player, PreconDeck))>,
+    pub looking_for_match: Vec<(uuid::Uuid, (Player, DeckChoice))>,
     pub streams: HashMap<uuid::Uuid, Arc<Mutex<OwnedWriteHalf>>>,
     pub addr_to_player: HashMap<std::net::SocketAddr, uuid::Uuid>,
 }
@@ -110,9 +110,9 @@ impl Server {
     pub async fn create_game(
         &mut self,
         player1: &Player,
-        deck1: PreconDeck,
+        deck1: DeckChoice,
         player2: &Player,
-        deck2: PreconDeck,
+        deck2: DeckChoice,
     ) -> anyhow::Result<()> {
         let (server_tx, server_rx) = async_channel::unbounded();
         let (client_tx, client_rx) = async_channel::unbounded::<ClientMessage>();
@@ -244,7 +244,7 @@ impl Server {
         Ok(())
     }
 
-    pub fn find_match(&mut self) -> Option<((Player, PreconDeck), (Player, PreconDeck))> {
+    pub fn find_match(&mut self) -> Option<((Player, DeckChoice), (Player, DeckChoice))> {
         if self.looking_for_match.len() >= 2 {
             let player1 = self.looking_for_match.remove(0);
             let player2 = self.looking_for_match.remove(0);

@@ -26,3 +26,8 @@ pub static CARD_CONSTRUCTORS: LazyLock<HashMap<&'static str, fn(PlayerId) -> Box
     }
     constructors
 });
+
+/// Returns true if a card with the given name exists in the registry.
+pub fn card_exists(name: &str) -> bool {
+    CARD_CONSTRUCTORS.contains_key(name)
+}

@@ -1,6 +1,6 @@
 use crate::{
     card::{Card, CardData, CardType, Zone},
-    deck::{Deck, precon},
+    deck::{Deck, DeckList, precon},
     game::{Direction, PlayerId, Resources, SoundEffect},
 };
 use serde::{Deserialize, Serialize};
@@ -40,6 +40,29 @@ impl PreconDeck {
             PreconDeck::BetaAir => precon::beta::air(player_id),
             PreconDeck::BetaEarth => precon::beta::earth(player_id),
             PreconDeck::BetaWater => precon::beta::water(player_id),
+        }
+    }
+}
+
+/// A deck choice: either a preconstructed deck or a custom saved deck.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum DeckChoice {
+    Precon(PreconDeck),
+    Custom(DeckList),
+}
+
+impl DeckChoice {
+    pub fn name(&self) -> String {
+        match self {
+            DeckChoice::Precon(p) => p.name().to_string(),
+            DeckChoice::Custom(d) => d.name.clone(),
+        }
+    }
+
+    pub fn build(&self, player_id: &PlayerId) -> (Deck, Vec<Box<dyn Card>>) {
+        match self {
+            DeckChoice::Precon(p) => p.build(player_id),
+            DeckChoice::Custom(d) => d.build(player_id),
         }
     }
 }
@@ -193,7 +216,7 @@ pub enum ClientMessage {
     JoinQueue {
         player_name: String,
         player_id: PlayerId,
-        deck: PreconDeck,
+        deck: DeckChoice,
     },
     DrawCard {
         game_id: uuid::Uuid,

@@ -130,11 +130,15 @@ pub struct DeckBuilder {
     deck_spells: HashMap<String, u8>,
     deck_sites: HashMap<String, u8>,
     selected_avatar: Option<String>,
+    deck_name: String,
 
     // Filters
     search: String,
     elem_filter: ElemFilter,
     type_filter: TypeFilter,
+
+    // Validation / save feedback
+    save_error: Option<String>,
 }
 
 impl DeckBuilder {
@@ -193,9 +197,11 @@ impl DeckBuilder {
             deck_spells: HashMap::new(),
             deck_sites: HashMap::new(),
             selected_avatar: None,
+            deck_name: String::new(),
             search: String::new(),
             elem_filter: ElemFilter::All,
             type_filter: TypeFilter::All,
+            save_error: None,
         }
     }
 
@@ -244,9 +250,14 @@ impl DeckBuilder {
                     GOLD,
                 );
 
-                // Save button (only active when avatar selected)
+                // Save button — active only when avatar, name, and deck sizes meet requirements
                 let use_rect = Rect::from_min_size(header_rect.right_top() + vec2(-120.0, 8.0), vec2(108.0, 32.0));
-                let can_use = self.selected_avatar.is_some();
+                let spell_count_total: u32 = self.deck_spells.values().map(|&c| c as u32).sum();
+                let site_count_total: u32 = self.deck_sites.values().map(|&c| c as u32).sum();
+                let can_use = self.selected_avatar.is_some()
+                    && !self.deck_name.trim().is_empty()
+                    && spell_count_total >= 60
+                    && site_count_total >= 30;
                 let use_resp = ui.allocate_rect(use_rect, Sense::click());
                 let use_bg = if !can_use {
                     Color32::from_rgb(30, 35, 55)
@@ -264,12 +275,51 @@ impl DeckBuilder {
                 ui.painter().text(
                     use_rect.center(),
                     egui::Align2::CENTER_CENTER,
-                    "▶ Save",
+                    "💾 Save Deck",
                     egui::FontId::proportional(15.0),
                     use_col,
                 );
                 if use_resp.clicked() && can_use {
-                    next_scene = Some(self.save_deck());
+                    match self.try_save_deck() {
+                        Ok(scene) => next_scene = Some(scene),
+                        Err(e) => self.save_error = Some(e),
+                    }
+                }
+
+                // Show save error or requirement hint below the header
+                let hint = if let Some(ref err) = self.save_error.clone() {
+                    Some((format!("⚠ {err}"), Color32::from_rgb(220, 80, 60)))
+                } else if !can_use && (self.selected_avatar.is_some() || !self.deck_name.trim().is_empty()) {
+                    // Show which requirements are missing
+                    let mut missing = Vec::new();
+                    if self.selected_avatar.is_none() { missing.push("avatar"); }
+                    if self.deck_name.trim().is_empty() { missing.push("deck name"); }
+                    if site_count_total < 30 {
+                        // already shown in the panel, just summarise
+                    }
+                    if spell_count_total < 60 {
+                        // already shown in the panel
+                    }
+                    let needs_sites = 30u32.saturating_sub(site_count_total);
+                    let needs_spells = 60u32.saturating_sub(spell_count_total);
+                    let mut parts: Vec<String> = missing.iter().map(|s| s.to_string()).collect();
+                    if needs_sites > 0 { parts.push(format!("{needs_sites} more site(s)")); }
+                    if needs_spells > 0 { parts.push(format!("{needs_spells} more spell(s)")); }
+                    if parts.is_empty() { None } else {
+                        Some((format!("Need: {}", parts.join(", ")), Color32::from_rgb(180, 160, 60)))
+                    }
+                } else {
+                    None
+                };
+                if let Some((text, col)) = hint {
+                    let err_pos = header_rect.center_bottom() + vec2(0.0, 2.0);
+                    ui.painter().text(
+                        err_pos,
+                        egui::Align2::CENTER_TOP,
+                        &text,
+                        egui::FontId::proportional(12.0),
+                        col,
+                    );
                 }
 
                 // ── Main area below header ─────────────────────────────────────
@@ -652,8 +702,34 @@ impl DeckBuilder {
         let pad = 10.0;
         let inner = rect.shrink(pad);
 
-        // Avatar section header
+        // Deck name input
         let mut y = inner.min.y;
+        ui.painter().text(
+            pos2(inner.min.x, y),
+            egui::Align2::LEFT_TOP,
+            "Deck Name",
+            egui::FontId::proportional(13.0),
+            TEXT_DIM,
+        );
+        y += 18.0;
+        let name_rect = Rect::from_min_size(pos2(inner.min.x, y), vec2(inner.width(), 26.0));
+        let name_border_col = if self.deck_name.trim().is_empty() {
+            Color32::from_rgb(120, 50, 50)
+        } else {
+            Color32::from_rgb(60, 90, 140)
+        };
+        ui.painter().rect_filled(name_rect, CornerRadius::same(3), Color32::from_rgb(18, 22, 40));
+        ui.painter().rect_stroke(name_rect, CornerRadius::same(3), egui::Stroke::new(1.0, name_border_col), StrokeKind::Outside);
+        let te = egui::TextEdit::singleline(&mut self.deck_name)
+            .hint_text("Enter deck name…")
+            .font(egui::FontId::proportional(13.0))
+            .text_color(TEXT_BRIGHT)
+            .background_color(Color32::TRANSPARENT)
+            .frame(false);
+        ui.put(name_rect.shrink(4.0), te);
+        y += 34.0;
+
+        // Avatar section header
         ui.painter().text(
             pos2(inner.min.x, y),
             egui::Align2::LEFT_TOP,
@@ -817,18 +893,30 @@ impl DeckBuilder {
             }
         });
 
-        // Total counts at the bottom
-        let totals_y = rect.max.y - pad - 26.0;
-        let total_text = format!(
-            "Atlas: {site_count}  |  Spellbook: {spell_count}  |  Total: {}",
-            site_count + spell_count
-        );
+        // Total counts at the bottom — color-coded to show progress toward required minimums
+        let totals_y = rect.max.y - pad - 40.0;
+
+        let sites_ok = site_count >= 30;
+        let spells_ok = spell_count >= 60;
+        let site_col = if sites_ok { Color32::from_rgb(100, 210, 120) } else { Color32::from_rgb(220, 120, 60) };
+        let spell_col = if spells_ok { Color32::from_rgb(100, 210, 120) } else { Color32::from_rgb(220, 120, 60) };
+
+        let atlas_text = format!("Atlas: {site_count}/30");
+        let spell_text = format!("Spellbook: {spell_count}/60");
+
         ui.painter().text(
             pos2(inner.min.x, totals_y),
             egui::Align2::LEFT_TOP,
-            &total_text,
+            &atlas_text,
             egui::FontId::proportional(12.0),
-            TEXT_DIM,
+            site_col,
+        );
+        ui.painter().text(
+            pos2(inner.min.x, totals_y + 16.0),
+            egui::Align2::LEFT_TOP,
+            &spell_text,
+            egui::FontId::proportional(12.0),
+            spell_col,
         );
     }
 
@@ -841,32 +929,38 @@ impl DeckBuilder {
         ))
     }
 
-    fn save_deck(&self) -> Scene {
+    fn try_save_deck(&mut self) -> Result<Scene, String> {
         let avatar = self.selected_avatar.clone().unwrap_or_default();
+        let name = self.deck_name.trim().to_string();
 
         // Flatten deck_spells/sites into lists (with repetition)
         let mut spells: Vec<String> = Vec::new();
-        for (name, &count) in &self.deck_spells {
+        for (card_name, &count) in &self.deck_spells {
             for _ in 0..count {
-                spells.push(name.clone());
+                spells.push(card_name.clone());
             }
         }
         let mut sites: Vec<String> = Vec::new();
-        for (name, &count) in &self.deck_sites {
+        for (card_name, &count) in &self.deck_sites {
             for _ in 0..count {
-                sites.push(name.clone());
+                sites.push(card_name.clone());
             }
         }
 
-        let custom = DeckList {
-            name: "Custom Deck".to_string(),
-            avatar,
-            spells,
-            sites,
-        };
-        custom.save().expect("Failed to save deck");
+        let deck_list = DeckList { name, avatar, spells, sites };
 
-        Scene::Menu(crate::scene::menu::Menu::new(self.client.clone()))
+        // Validate before saving
+        deck_list.validate()?;
+
+        // Save to disk
+        deck_list.save().map_err(|e| format!("Failed to save: {e}"))?;
+
+        Ok(Scene::Menu(crate::scene::menu::Menu::restore(
+            self.client.clone(),
+            self.player_id,
+            self.player_name.clone(),
+            self.prev_available_decks.clone(),
+        )))
     }
 
     pub fn process_input(&mut self, _ctx: &Context) -> Option<Scene> {
