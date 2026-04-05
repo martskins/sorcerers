@@ -1,6 +1,7 @@
 mod client;
 pub mod components;
 mod config;
+pub mod element_icon;
 pub mod input;
 mod render;
 mod scene;

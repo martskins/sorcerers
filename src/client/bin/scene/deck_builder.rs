@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use egui::epaint::Shape;
 use egui::{Color32, Context, CornerRadius, Frame, Rect, ScrollArea, Sense, Stroke, StrokeKind, Ui, pos2, vec2};
 use sorcerers::deck::{CardNameWithCount, DeckList};
 use sorcerers::{
@@ -9,17 +8,13 @@ use sorcerers::{
     networking::{self, message::PreconDeck},
 };
 
-use crate::{scene::Scene, texture_cache::TextureCache};
+use crate::{element_icon, scene::Scene, texture_cache::TextureCache};
 
 // ── Colors ──────────────────────────────────────────────────────────────────
 const BG: Color32 = Color32::from_rgb(8, 8, 14);
 const PANEL_BG: Color32 = Color32::from_rgba_premultiplied(15, 20, 38, 240);
 const BORDER: Color32 = Color32::from_rgb(45, 60, 100);
 const GOLD: Color32 = Color32::from_rgb(255, 200, 60);
-const COL_FIRE: Color32 = Color32::from_rgb(220, 70, 40);
-const COL_AIR: Color32 = Color32::from_rgb(160, 90, 220);
-const COL_EARTH: Color32 = Color32::from_rgb(140, 100, 40);
-const COL_WATER: Color32 = Color32::from_rgb(50, 150, 230);
 const TEXT_DIM: Color32 = Color32::from_rgb(160, 165, 190);
 const TEXT_BRIGHT: Color32 = Color32::from_rgb(220, 225, 255);
 
@@ -420,24 +415,34 @@ impl DeckBuilder {
             ui.add(te);
             ui.add_space(8.0);
 
-            // Element buttons
-            for (label, filter, color) in [
-                ("All", ElemFilter::All, TEXT_BRIGHT),
-                ("🔥", ElemFilter::Fire, COL_FIRE),
-                ("💨", ElemFilter::Air, COL_AIR),
-                ("🌿", ElemFilter::Earth, COL_EARTH),
-                ("💧", ElemFilter::Water, COL_WATER),
-            ] {
-                let active = self.elem_filter == filter;
+            // Element buttons — "All" as text, elements as triangle icons
+            let btn_sz = vec2(30.0, 26.0);
+
+            // "All" text button
+            {
+                let active = self.elem_filter == ElemFilter::All;
                 let bg = if active {
                     Color32::from_rgb(50, 70, 120)
                 } else {
                     Color32::from_rgb(25, 30, 55)
                 };
-                let btn = egui::Button::new(egui::RichText::new(label).color(color).size(13.0))
+                let btn = egui::Button::new(egui::RichText::new("All").color(TEXT_BRIGHT).size(13.0))
                     .fill(bg)
-                    .min_size(vec2(30.0, 26.0));
+                    .min_size(btn_sz);
                 if ui.add(btn).clicked() {
+                    self.elem_filter = ElemFilter::All;
+                }
+            }
+
+            // Icon buttons for each element
+            for (filter, element) in [
+                (ElemFilter::Fire, Element::Fire),
+                (ElemFilter::Air, Element::Air),
+                (ElemFilter::Earth, Element::Earth),
+                (ElemFilter::Water, Element::Water),
+            ] {
+                let active = self.elem_filter == filter;
+                if element_icon::element_filter_button(ui, &element, active, btn_sz, 14.0, 1.5) {
                     self.elem_filter = filter;
                 }
             }
@@ -646,7 +651,7 @@ impl DeckBuilder {
                     );
                     cx += 18.0;
                 }
-                cx = draw_thresh_symbols(ui.painter(), cx, cost_y + 1.0, &entry.thresholds);
+                cx = element_icon::draw_thresholds(ui.painter(), cx, cost_y + 1.0, &entry.thresholds, THRESH_SZ, 1.2);
 
                 // Power/toughness for minions
                 if let (Some(pow), Some(tough)) = (entry.power, entry.toughness) {
@@ -1076,55 +1081,5 @@ impl DeckBuilder {
                     );
                 }
             });
-    }
-}
-
-/// Draw threshold symbols at (x, y), return new x offset.
-fn draw_thresh_symbols(painter: &egui::Painter, mut x: f32, y: f32, t: &Thresholds) -> f32 {
-    let s = THRESH_SZ;
-    for (count, element) in [
-        (t.fire, Element::Fire),
-        (t.air, Element::Air),
-        (t.earth, Element::Earth),
-        (t.water, Element::Water),
-    ] {
-        if count == 0 {
-            continue;
-        }
-        let col = elem_color(element.clone());
-        let is_upward = matches!(element, Element::Fire | Element::Air);
-        let has_midline = matches!(element, Element::Air | Element::Earth);
-
-        let (v1, v2, v3) = if is_upward {
-            (pos2(x + s / 2.0, y), pos2(x, y + s), pos2(x + s, y + s))
-        } else {
-            (pos2(x, y), pos2(x + s, y), pos2(x + s / 2.0, y + s))
-        };
-        painter.add(Shape::closed_line(vec![v1, v2, v3], Stroke::new(1.2, col)));
-        if has_midline {
-            let mid_y = y + s / 2.0;
-            painter.line_segment([pos2(x, mid_y), pos2(x + s, mid_y)], Stroke::new(1.2, col));
-        }
-        if count > 1 {
-            painter.text(
-                pos2(x + s + 2.0, y),
-                egui::Align2::LEFT_TOP,
-                count.to_string(),
-                egui::FontId::proportional(10.0),
-                col,
-            );
-            x += 14.0;
-        }
-        x += s + 4.0;
-    }
-    x
-}
-
-fn elem_color(el: Element) -> Color32 {
-    match el {
-        Element::Fire => COL_FIRE,
-        Element::Air => COL_AIR,
-        Element::Earth => COL_EARTH,
-        Element::Water => COL_WATER,
     }
 }

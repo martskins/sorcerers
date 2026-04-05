@@ -1,4 +1,4 @@
-use egui::epaint::{CornerRadius, Shape};
+use egui::epaint::CornerRadius;
 use egui::{Color32, Context, Painter, Rect, Stroke, Ui, pos2, vec2};
 use sorcerers::{
     card::Zone,
@@ -7,6 +7,7 @@ use sorcerers::{
 
 use crate::{
     components::{Component, ComponentCommand, ComponentType},
+    element_icon,
     scene::game::GameData,
     texture_cache::TextureCache,
 };
@@ -15,7 +16,6 @@ use crate::{
 const ICON_SZ: f32 = 14.0;
 const STAT_FONT: f32 = 14.0;
 const NAME_FONT: f32 = 13.0;
-const THRESH_FONT: f32 = 12.0;
 const THRESH_SYM: f32 = 14.0; // triangle bounding box size
 const PAD_H: i8 = 8; // horizontal inner margin (i8 for egui::Margin)
 const PAD_V: i8 = 6; // vertical   inner margin
@@ -23,21 +23,6 @@ const PAD_V: i8 = 6; // vertical   inner margin
 // Panel background / border
 const BG: Color32 = Color32::from_rgba_premultiplied(15, 20, 38, 235);
 const BORDER: Color32 = Color32::from_rgb(55, 70, 110);
-
-// Element colours
-const COL_FIRE: Color32 = Color32::from_rgb(220, 70, 40);
-const COL_AIR: Color32 = Color32::from_rgb(160, 90, 220);
-const COL_EARTH: Color32 = Color32::from_rgb(140, 100, 40);
-const COL_WATER: Color32 = Color32::from_rgb(50, 150, 230);
-
-fn element_color(el: Element) -> Color32 {
-    match el {
-        Element::Fire => COL_FIRE,
-        Element::Air => COL_AIR,
-        Element::Earth => COL_EARTH,
-        Element::Water => COL_WATER,
-    }
-}
 
 #[derive(Debug)]
 pub struct PlayerStatusComponent {
@@ -88,36 +73,7 @@ fn stat_cell(ui: &mut Ui, icon_path: &str, value: impl std::fmt::Display, color:
 /// Earth = downward triangle + horizontal midline
 /// Water = downward triangle              (▽)
 fn element_symbol(ui: &mut Ui, count: u8, element: Element) {
-    let col = element_color(element.clone());
-    let s = THRESH_SYM;
-
-    let (r, _) = ui.allocate_exact_size(vec2(s, s), egui::Sense::hover());
-    let p = ui.painter();
-    let (x, y) = (r.min.x, r.min.y);
-
-    let is_upward = matches!(element, Element::Fire | Element::Air);
-    let has_midline = matches!(element, Element::Air | Element::Earth);
-
-    let (v1, v2, v3) = if is_upward {
-        (pos2(x + s / 2.0, y), pos2(x, y + s), pos2(x + s, y + s)) // ▲
-    } else {
-        (pos2(x, y), pos2(x + s, y), pos2(x + s / 2.0, y + s)) // ▽
-    };
-    p.add(Shape::closed_line(vec![v1, v2, v3], Stroke::new(1.5, col)));
-
-    if has_midline {
-        let mid_y = y + s / 2.0;
-        p.line_segment([pos2(x, mid_y), pos2(x + s, mid_y)], Stroke::new(1.5, col));
-    }
-
-    ui.add_space(2.0);
-    ui.label(
-        egui::RichText::new(count.to_string())
-            .color(col)
-            .size(THRESH_FONT)
-            .strong(),
-    );
-    ui.add_space(6.0);
+    element_icon::element_symbol_widget(ui, count, &element, THRESH_SYM, 1.5);
 }
 
 impl Component for PlayerStatusComponent {
