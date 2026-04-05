@@ -1,5 +1,5 @@
 use crate::scene::{Scene, game::Game};
-use egui::{Color32, Context, Ui, vec2};
+use egui::{Color32, Context, Margin, Ui, vec2};
 use kira::{AudioManager, AudioManagerSettings, DefaultBackend, sound::static_sound::StaticSoundData};
 use sorcerers::deck::DeckList;
 use sorcerers::networking::message::ServerMessage;
@@ -182,6 +182,7 @@ impl Menu {
                             .text_color(Color32::DARK_GRAY)
                             .hint_text("Your name…")
                             .background_color(Color32::LIGHT_GRAY)
+                            .margin(Margin::same(5))
                             .frame(true); // we draw our own frame above
                         let resp = ui.put(inner, te);
 
@@ -309,14 +310,13 @@ impl Menu {
                             ui.horizontal(|ui| {
                                 ui.add_space(left_pad);
 
-                                let play_btn = egui::Button::new(
-                                    egui::RichText::new("▶ Play").size(17.0).color(if can_play {
+                                let play_btn =
+                                    egui::Button::new(egui::RichText::new("▶ Play").size(17.0).color(if can_play {
                                         Color32::WHITE
                                     } else {
                                         Color32::from_rgb(100, 110, 140)
-                                    }),
-                                )
-                                .min_size(vec2(btn_w, 42.0));
+                                    }))
+                                    .min_size(vec2(btn_w, 42.0));
                                 if ui.add_enabled(can_play, play_btn).clicked() {
                                     if let Some(idx) = self.selected_saved_deck {
                                         if let Some(deck_list) = saved.get(idx).cloned() {
@@ -326,9 +326,7 @@ impl Menu {
                                                     self.client
                                                         .send(ClientMessage::JoinQueue {
                                                             player_name: self.player_name.clone(),
-                                                            player_id: self
-                                                                .player_id
-                                                                .expect("player id should be set"),
+                                                            player_id: self.player_id.expect("player id should be set"),
                                                             deck: DeckChoice::Custom(deck_list),
                                                         })
                                                         .ok();
@@ -344,14 +342,13 @@ impl Menu {
 
                                 ui.add_space(gap);
 
-                                let edit_btn = egui::Button::new(
-                                    egui::RichText::new("✏ Edit").size(17.0).color(if can_play {
+                                let edit_btn =
+                                    egui::Button::new(egui::RichText::new("✏ Edit").size(17.0).color(if can_play {
                                         Color32::from_rgb(200, 220, 255)
                                     } else {
                                         Color32::from_rgb(100, 110, 140)
-                                    }),
-                                )
-                                .min_size(vec2(btn_w, 42.0));
+                                    }))
+                                    .min_size(vec2(btn_w, 42.0));
                                 if ui.add_enabled(can_play, edit_btn).clicked() {
                                     if let Some(idx) = self.selected_saved_deck {
                                         if let Some(deck_list) = saved.get(idx).cloned() {

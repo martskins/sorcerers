@@ -21,6 +21,19 @@ pub enum CardType {
     Aura,
 }
 
+impl std::fmt::Display for CardType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CardType::Site => write!(f, "Site"),
+            CardType::Avatar => write!(f, "Avatar"),
+            CardType::Minion => write!(f, "Minion"),
+            CardType::Magic => write!(f, "Magic"),
+            CardType::Artifact => write!(f, "Artifact"),
+            CardType::Aura => write!(f, "Aura"),
+        }
+    }
+}
+
 impl CardType {
     pub fn is_unit(&self) -> bool {
         match self {
@@ -1727,6 +1740,17 @@ pub enum Rarity {
     Exceptional,
     Elite,
     Unique,
+}
+
+impl std::fmt::Display for Rarity {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Rarity::Ordinary => write!(f, "Ordinary"),
+            Rarity::Exceptional => write!(f, "Exceptional"),
+            Rarity::Elite => write!(f, "Elite"),
+            Rarity::Unique => write!(f, "Unique"),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

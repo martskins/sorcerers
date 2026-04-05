@@ -270,7 +270,6 @@ impl DeckBuilder {
                     next_scene = Some(self.back_to_menu());
                 }
 
-                // Title
                 ui.painter().text(
                     header_rect.center(),
                     egui::Align2::CENTER_CENTER,
@@ -569,6 +568,8 @@ impl DeckBuilder {
 
                 let fake_card_data = entry.as_card_data();
                 if let Some(tex) = TextureCache::get_card_texture_blocking(&fake_card_data, ctx) {
+                    // TODO: Change so that site images are rendered rotated 90° to fit the
+                    // thumbnail better
                     egui::Image::new(egui::ImageSource::Texture(egui::load::SizedTexture::from_handle(&tex)))
                         .max_size(vec2(CARD_THUMB_W, CARD_THUMB_H))
                         .paint_at(ui, thumb_rect);
@@ -595,21 +596,6 @@ impl DeckBuilder {
                     TEXT_BRIGHT,
                 );
 
-                // Type + rarity
-                let type_label = match entry.card_type {
-                    CardType::Minion => "Minion",
-                    CardType::Site => "Site",
-                    CardType::Magic => "Magic",
-                    CardType::Artifact => "Artifact",
-                    CardType::Aura => "Aura",
-                    CardType::Avatar => "Avatar",
-                };
-                let rarity_label = match entry.rarity {
-                    Rarity::Ordinary => "●",
-                    Rarity::Exceptional => "◆",
-                    Rarity::Elite => "★",
-                    Rarity::Unique => "♦",
-                };
                 let rarity_color = match entry.rarity {
                     Rarity::Ordinary => Color32::from_rgb(160, 160, 160),
                     Rarity::Exceptional => Color32::from_rgb(80, 180, 255),
@@ -620,20 +606,24 @@ impl DeckBuilder {
                 ui.painter().text(
                     sub_pos,
                     egui::Align2::LEFT_TOP,
-                    format!("{type_label}  {rarity_label}"),
+                    format!("{}  {}", entry.card_type, entry.rarity),
                     egui::FontId::proportional(12.0),
                     TEXT_DIM,
                 );
-                // rarity glyph in color
+
                 let rarity_x = sub_pos.x
                     + ui.painter()
-                        .layout_no_wrap(format!("{type_label}  "), egui::FontId::proportional(12.0), TEXT_DIM)
+                        .layout_no_wrap(
+                            format!("{}  ", entry.card_type),
+                            egui::FontId::proportional(12.0),
+                            TEXT_DIM,
+                        )
                         .rect
                         .width();
                 ui.painter().text(
                     pos2(rarity_x, sub_pos.y),
                     egui::Align2::LEFT_TOP,
-                    rarity_label,
+                    &entry.rarity,
                     egui::FontId::proportional(12.0),
                     rarity_color,
                 );
