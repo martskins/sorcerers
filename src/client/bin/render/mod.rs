@@ -116,8 +116,7 @@ pub fn draw_card(card_rect: &CardRect, is_ally: bool, draw_accessories: bool, pa
         } else {
             // Rotate the image 90° around the card's centre.  We keep the
             // *original* portrait rect as the mesh base; draw_rotated_image
-            // will rotate its four corners, producing a landscape footprint
-            // (matching macroquad's draw_texture_ex rotation behaviour).
+            // will rotate its four corners, producing a landscape footprint.
             draw_rotated_image(painter, tex, scaled_rect, std::f32::consts::FRAC_PI_2, tint);
         }
     } else {
