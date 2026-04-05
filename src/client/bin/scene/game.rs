@@ -110,6 +110,8 @@ pub struct GameData {
     pub unseen_events: usize,
     pub resources: HashMap<PlayerId, Resources>,
     pub avatar_health: HashMap<PlayerId, u16>,
+    /// Screen position of the last card the player clicked; used to anchor context menus.
+    pub last_clicked_card_pos: Option<egui::Pos2>,
 }
 
 impl GameData {
@@ -122,6 +124,7 @@ impl GameData {
             unseen_events: 0,
             resources: HashMap::new(),
             avatar_health: HashMap::new(),
+            last_clicked_card_pos: None,
         }
     }
 }
@@ -415,11 +418,28 @@ impl Game {
                 let actions = actions.clone();
                 let prompt = prompt.clone();
                 let mut result: Option<(usize, bool)> = None;
-                egui::Window::new("Select Action")
+
+                // Position the popup near the card that was clicked; fall back to center.
+                let screen = screen_rect().unwrap_or(Rect::from_min_size(pos2(0.0, 0.0), vec2(1280.0, 720.0)));
+                let mut win = egui::Window::new("Select Action")
                     .collapsible(false)
-                    .resizable(false)
-                    .anchor(egui::Align2::CENTER_CENTER, vec2(0.0, 0.0))
-                    .show(ctx, |ui| {
+                    .resizable(false);
+                if let Some(card_pos) = self.data.last_clicked_card_pos {
+                    // Place the popup just to the right of the card, clamped inside the screen.
+                    let popup_w = 220.0;
+                    let popup_h = actions.len() as f32 * 52.0 + 60.0;
+                    let mut x = card_pos.x + 60.0;
+                    let mut y = card_pos.y - popup_h / 2.0;
+                    if x + popup_w > screen.max.x - 8.0 {
+                        x = card_pos.x - popup_w - 60.0;
+                    }
+                    y = y.clamp(screen.min.y + 8.0, screen.max.y - popup_h - 8.0);
+                    win = win.fixed_pos(pos2(x, y));
+                } else {
+                    win = win.anchor(egui::Align2::CENTER_CENTER, vec2(0.0, 0.0));
+                }
+
+                win.show(ctx, |ui| {
                         for line in prompt.lines() {
                             ui.label(line);
                         }

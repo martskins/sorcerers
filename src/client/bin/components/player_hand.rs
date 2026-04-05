@@ -246,6 +246,7 @@ impl Component for PlayerHandComponent {
             Status::Idle => {
                 for card_rect in self.card_rects.iter().filter(|c| c.card.zone.is_in_play() || c.card.zone == Zone::Hand) {
                     if card_rect.is_hovered && clicked {
+                        data.last_clicked_card_pos = Some(card_rect.rect.center());
                         self.client.send(ClientMessage::ClickCard {
                             card_id: card_rect.card.id,
                             player_id: self.player_id,

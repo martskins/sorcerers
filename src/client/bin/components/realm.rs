@@ -474,14 +474,14 @@ impl RealmComponent {
         &mut self,
         mouse_position: Pos2,
         in_turn: bool,
-        status: &mut Status,
+        data: &mut GameData,
         ctx: &Context,
     ) -> anyhow::Result<()> {
-        if !in_turn && !matches!(status, Status::SelectingCard { .. }) {
+        if !in_turn && !matches!(data.status, Status::SelectingCard { .. }) {
             return Ok(());
         }
 
-        match &status {
+        match &data.status {
             Status::SelectingAction { .. } | Status::SelectingZoneGroup { .. } => {
                 return Ok(());
             }
@@ -506,7 +506,7 @@ impl RealmComponent {
 
         let clicked = Mouse::clicked(ctx);
 
-        match &status.clone() {
+        match data.status.clone() {
             Status::Idle => {
                 for rect in self
                     .card_rects
@@ -514,6 +514,7 @@ impl RealmComponent {
                     .filter(|c| c.card.zone.is_in_play() || c.card.zone == Zone::Hand)
                 {
                     if rect.is_hovered && clicked {
+                        data.last_clicked_card_pos = Some(rect.rect.center());
                         self.client.send(ClientMessage::ClickCard {
                             card_id: rect.card.id,
                             player_id: self.player_id,
@@ -535,7 +536,7 @@ impl RealmComponent {
                         game_id: self.game_id,
                         card_id: id,
                     })?;
-                    *status = Status::Idle;
+                    data.status = Status::Idle;
                 }
             }
             Status::SelectingCard { cards, multiple: true, preview: false, .. } => {
@@ -567,7 +568,7 @@ impl RealmComponent {
                         game_id: self.game_id,
                         card_id: id,
                     })?;
-                    *status = Status::Idle;
+                    data.status = Status::Idle;
                 }
             }
             _ => {}
@@ -754,7 +755,7 @@ impl Component for RealmComponent {
 
         let mouse_position = Mouse::position(ctx).unwrap_or(pos2(0.0, 0.0));
         self.handle_square_click(mouse_position, in_turn, &mut data.status, ctx)?;
-        self.handle_card_click(mouse_position, in_turn, &mut data.status, ctx)?;
+        self.handle_card_click(mouse_position, in_turn, data, ctx)?;
         self.handle_path_click(mouse_position, in_turn, &mut data.status, ctx)?;
 
         Ok(None)

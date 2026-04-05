@@ -149,6 +149,7 @@ impl Menu {
                         let inner = shaken_rect.shrink(4.0);
                         let te = egui::TextEdit::singleline(&mut self.player_name)
                             .font(egui::FontId::proportional(24.0))
+                            .text_color(Color32::DARK_GRAY)
                             .hint_text("Your name…")
                             .background_color(Color32::LIGHT_GRAY)
                             .frame(true); // we draw our own frame above
