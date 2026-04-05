@@ -1707,6 +1707,7 @@ pub enum Ability {
     TakesNoDamageFromElement(Element),
     Immobile,
     Waterbound,
+    Lifesteal,
 }
 
 #[derive(Debug, Default, Clone)]

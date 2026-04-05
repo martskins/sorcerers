@@ -1008,6 +1008,16 @@ impl Effect {
                     },
                 ];
                 effects.extend(attacker.after_attack(state).await?);
+                // Lifesteal: if the defender is a unit, heal the attacker's controller.
+                if attacker.has_ability(&snapshot, &Ability::Lifesteal) && defender.is_unit() {
+                    let controller_id = attacker.get_controller_id(state);
+                    if let Ok(avatar_id) = state.get_player_avatar_id(&controller_id) {
+                        let heal = attacker.get_power(&snapshot)?.unwrap_or(0);
+                        if heal > 0 {
+                            effects.push(Effect::Heal { card_id: avatar_id.clone(), amount: heal });
+                        }
+                    }
+                }
                 effects.extend(defender.on_defend(state, attacker_id)?.into_iter().map(|e| e.into()));
                 effects.reverse();
                 state.effects.extend(effects.into_iter().map(|e| e.into()));

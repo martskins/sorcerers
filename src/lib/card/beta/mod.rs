@@ -1,3 +1,7 @@
+pub mod blood_ravens;
+pub use blood_ravens::*;
+pub mod disintegrate;
+pub use disintegrate::*;
 pub mod clamor_of_harpies;
 pub use clamor_of_harpies::*;
 pub mod flamecaller;
