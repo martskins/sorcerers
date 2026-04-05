@@ -1,5 +1,5 @@
 use crate::scene::{Scene, game::Game};
-use egui::{Color32, Context, Stroke, Ui, pos2, vec2};
+use egui::{Color32, Context, Ui, vec2};
 use kira::{AudioManager, AudioManagerSettings, DefaultBackend, sound::static_sound::StaticSoundData};
 use sorcerers::networking::message::ServerMessage;
 use sorcerers::networking::{
@@ -37,12 +37,20 @@ impl Menu {
 
     pub fn process_message(&mut self, msg: &ServerMessage) -> Option<Scene> {
         match msg {
-            ServerMessage::ConnectResponse { player_id, available_decks } => {
+            ServerMessage::ConnectResponse {
+                player_id,
+                available_decks,
+            } => {
                 self.available_decks = available_decks.clone();
                 self.player_id = Some(*player_id);
                 None
             }
-            ServerMessage::GameStarted { player1, player2, game_id, cards } => {
+            ServerMessage::GameStarted {
+                player1,
+                player2,
+                game_id,
+                cards,
+            } => {
                 let player_id = self.player_id?;
                 let opponent_id = if player1 == &player_id { *player2 } else { *player1 };
 
@@ -134,44 +142,16 @@ impl Menu {
                         // `ui.put` so we can apply the shake offset.
                         let input_w = 320.0;
                         let input_h = 46.0;
-                        let (base_rect, _) = ui.allocate_exact_size(
-                            vec2(input_w, input_h),
-                            egui::Sense::hover(),
-                        );
+                        let (base_rect, _) = ui.allocate_exact_size(vec2(input_w, input_h), egui::Sense::hover());
                         let shaken_rect = base_rect.translate(vec2(shake_x, 0.0));
-
-                        // Custom background so it stands out against the dark page
-                        let is_error = self.show_name_error && self.player_name.is_empty();
-                        let bg_col = if is_error {
-                            Color32::from_rgb(40, 16, 16)
-                        } else {
-                            Color32::from_rgb(22, 26, 44)
-                        };
-
-                        // Border colour: pulsing red-orange on error, blue-gray normally
-                        let border_col = if is_error {
-                            let pulse = ((time * 8.0).sin() as f32 * 0.5 + 0.5); // 0..1
-                            let alpha = (160.0 + pulse * 95.0) as u8;
-                            Color32::from_rgba_unmultiplied(220, 60, 40, alpha)
-                        } else {
-                            Color32::from_rgb(90, 105, 160)
-                        };
-                        let border_w = if is_error { 2.5 } else { 1.5 };
-
-                        ui.painter().rect_filled(shaken_rect, 6.0, bg_col);
-                        ui.painter().rect_stroke(
-                            shaken_rect,
-                            6.0,
-                            Stroke::new(border_w, border_col),
-                            egui::StrokeKind::Outside,
-                        );
 
                         // Inset the TextEdit slightly so it doesn't paint over our border
                         let inner = shaken_rect.shrink(4.0);
                         let te = egui::TextEdit::singleline(&mut self.player_name)
                             .font(egui::FontId::proportional(24.0))
                             .hint_text("Your name…")
-                            .frame(false); // we draw our own frame above
+                            .background_color(Color32::LIGHT_GRAY)
+                            .frame(true); // we draw our own frame above
                         let resp = ui.put(inner, te);
 
                         // Auto-focus the field on first render
@@ -180,6 +160,7 @@ impl Menu {
                         }
 
                         // Error hint text
+                        let is_error = self.show_name_error && self.player_name.is_empty();
                         if is_error {
                             ui.add_space(4.0);
                             ui.label(
@@ -191,18 +172,16 @@ impl Menu {
                             ui.add_space(20.0); // reserve same space so layout doesn't shift
                         }
 
-                        let btn = egui::Button::new(
-                            egui::RichText::new("Search for Match").size(24.0).color(Color32::WHITE),
-                        )
-                        .min_size(vec2(280.0, 52.0));
+                        let btn =
+                            egui::Button::new(egui::RichText::new("Search for Match").size(24.0).color(Color32::WHITE))
+                                .min_size(vec2(280.0, 52.0));
 
-                        let clicked = ui.add(btn).clicked()
-                            || ctx.input(|i| i.key_pressed(egui::Key::Enter));
+                        let clicked = ui.add(btn).clicked() || ctx.input(|i| i.key_pressed(egui::Key::Enter));
 
                         if clicked {
                             if self.player_name.is_empty() {
                                 // Trigger shake + error state
-                                self.shake_start    = Some(time);
+                                self.shake_start = Some(time);
                                 self.show_name_error = true;
                                 ctx.request_repaint();
                             } else {
@@ -218,10 +197,9 @@ impl Menu {
                         );
                         ui.add_space(16.0);
                         for deck in self.available_decks.clone() {
-                            let btn = egui::Button::new(
-                                egui::RichText::new(deck.name()).size(22.0).color(Color32::WHITE),
-                            )
-                            .min_size(vec2(280.0, 50.0));
+                            let btn =
+                                egui::Button::new(egui::RichText::new(deck.name()).size(22.0).color(Color32::WHITE))
+                                    .min_size(vec2(280.0, 50.0));
                             if ui.add(btn).clicked() {
                                 self.client
                                     .send(ClientMessage::JoinQueue {

@@ -59,13 +59,13 @@ impl SorcerersApp {
         visuals.window_fill = Color32::from_rgb(18, 18, 24);
         visuals.window_stroke = Stroke::new(1.0, Color32::from_rgb(60, 60, 80));
         visuals.panel_fill = Color32::TRANSPARENT;
-        visuals.extreme_bg_color = Color32::from_rgb(12, 12, 18); // text-edit bg
+        visuals.extreme_bg_color = Color32::from_rgb(12, 12, 18);
 
         let blue = Color32::from_rgb(30, 144, 255); // dodger blue
         let blue_hovered = Color32::from_rgb(65, 105, 225); // royal blue
         let blue_active = Color32::from_rgb(25, 25, 112); // midnight blue
         let btn_text = Stroke::new(1.0, Color32::WHITE);
-        let cr = CornerRadius::same(6);
+        let cr = CornerRadius::same(1);
 
         visuals.widgets.inactive = WidgetVisuals {
             bg_fill: blue,
