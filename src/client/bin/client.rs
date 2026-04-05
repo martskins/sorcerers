@@ -1,88 +1,177 @@
+use crate::config::SCREEN_RECT;
 use crate::scene::Scene;
-use crate::{config::SCREEN_RECT, scene::menu::Menu};
-use macroquad::prelude::*;
+use crate::scene::menu::Menu;
+use crate::texture_cache::TextureCache;
+use eframe::egui::{self};
 use sorcerers::networking;
 use sorcerers::networking::message::{Message, ServerMessage};
 use std::sync::RwLock;
 use tokio::runtime::Runtime;
-use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::mpsc;
 
-pub struct Client {
+pub struct SorcerersApp {
     pub scene: Scene,
-    client: networking::client::Client,
+    _runtime: Runtime,
+    rx: mpsc::UnboundedReceiver<ServerMessage>,
 }
 
-impl Client {
-    pub fn new(server_url: &str) -> anyhow::Result<Self> {
+impl SorcerersApp {
+    pub fn new(cc: &eframe::CreationContext, server_url: &str) -> anyhow::Result<Self> {
+        TextureCache::init();
+        Self::setup_style(&cc.egui_ctx);
+
         let client = networking::client::Client::connect(server_url)?;
-        let scene = Scene::Menu(Menu::new(client.clone()));
+        let (tx, rx) = mpsc::unbounded_channel::<ServerMessage>();
 
-        let rect = Rect::new(0.0, 0.0, screen_width(), screen_height());
-        SCREEN_RECT.get_or_init(|| RwLock::new(rect));
-        Ok(Client { scene, client })
-    }
+        let rt = Runtime::new()?;
 
-    pub fn start(&self, sender: UnboundedSender<ServerMessage>) -> anyhow::Result<()> {
-        let receiver = self.client.clone();
-        std::thread::spawn(|| {
-            let rt = Runtime::new().expect("runtime to be created");
-            rt.block_on(async move {
-                loop {
-                    match receiver.recv().expect("message should be received") {
-                        Some(Message::ServerMessage(msg)) => {
-                            sender.send(msg).expect("message should be sent");
-                        }
-                        _ => {}
+        let receiver = client.clone();
+        rt.spawn(async move {
+            loop {
+                match receiver.recv().expect("message should be received") {
+                    Some(Message::ServerMessage(msg)) => {
+                        let _ = tx.send(msg);
                     }
+                    _ => {}
                 }
-            });
+            }
         });
 
-        Ok(())
+        let scene = Scene::Menu(Menu::new(client));
+
+        Ok(SorcerersApp {
+            scene,
+            _runtime: rt,
+            rx,
+        })
     }
 
-    pub async fn step(&mut self) -> anyhow::Result<Option<Scene>> {
-        self.process_input().await?;
-        self.update().await?;
-        Ok(self.render().await?)
-    }
+    fn setup_style(ctx: &egui::Context) {
+        use egui::epaint::CornerRadius;
+        use egui::{Color32, FontId, Stroke, TextStyle, style::WidgetVisuals};
 
-    fn dimensions_changed(&self) -> anyhow::Result<bool> {
-        let dimensions = SCREEN_RECT
-            .get()
-            .ok_or(anyhow::anyhow!("failed to get SCREEN_RECT reference"))?;
-        let current_screen = dimensions
-            .read()
-            .map_err(|e| anyhow::anyhow!("failed to lock for write: {}", e))?;
-        Ok(current_screen.w != screen_width() || current_screen.h != screen_height())
-    }
+        // ── Visuals ─────────────────────────────────────────────────────────
+        let mut visuals = egui::Visuals::dark();
 
-    async fn update(&mut self) -> anyhow::Result<()> {
-        if self.dimensions_changed()? {
-            let mut dimensions = SCREEN_RECT
-                .get()
-                .ok_or(anyhow::anyhow!("failed to get SCREEN_RECT reference"))?
-                .write()
-                .map_err(|e| anyhow::anyhow!("failed to lock for write: {}", e))?;
-            dimensions.w = screen_width();
-            dimensions.h = screen_height();
+        // Overall background / window chrome
+        visuals.window_corner_radius = CornerRadius::same(8);
+        visuals.window_shadow = egui::Shadow::NONE;
+        visuals.window_fill = Color32::from_rgb(18, 18, 24);
+        visuals.window_stroke = Stroke::new(1.0, Color32::from_rgb(60, 60, 80));
+        visuals.panel_fill = Color32::TRANSPARENT;
+        visuals.extreme_bg_color = Color32::from_rgb(12, 12, 18); // text-edit bg
+
+        let blue = Color32::from_rgb(30, 144, 255); // dodger blue
+        let blue_hovered = Color32::from_rgb(65, 105, 225); // royal blue
+        let blue_active = Color32::from_rgb(25, 25, 112); // midnight blue
+        let btn_text = Stroke::new(1.0, Color32::WHITE);
+        let cr = CornerRadius::same(6);
+
+        visuals.widgets.inactive = WidgetVisuals {
+            bg_fill: blue,
+            weak_bg_fill: blue,
+            bg_stroke: Stroke::NONE,
+            fg_stroke: btn_text,
+            corner_radius: cr,
+            expansion: 0.0,
+        };
+        visuals.widgets.hovered = WidgetVisuals {
+            bg_fill: blue_hovered,
+            weak_bg_fill: blue_hovered,
+            bg_stroke: Stroke::NONE,
+            fg_stroke: btn_text,
+            corner_radius: cr,
+            expansion: 1.0,
+        };
+        visuals.widgets.active = WidgetVisuals {
+            bg_fill: blue_active,
+            weak_bg_fill: blue_active,
+            bg_stroke: Stroke::NONE,
+            fg_stroke: btn_text,
+            corner_radius: cr,
+            expansion: 0.0,
+        };
+        // Open (non-interactive) widgets — used for text inputs, labels inside frames
+        visuals.widgets.open = WidgetVisuals {
+            bg_fill: Color32::from_rgb(30, 30, 42),
+            weak_bg_fill: Color32::from_rgb(30, 30, 42),
+            bg_stroke: Stroke::new(1.0, Color32::from_rgb(80, 80, 110)),
+            fg_stroke: Stroke::new(1.0, Color32::WHITE),
+            corner_radius: cr,
+            expansion: 0.0,
+        };
+        visuals.widgets.noninteractive = WidgetVisuals {
+            bg_fill: Color32::from_rgb(30, 30, 42),
+            weak_bg_fill: Color32::from_rgb(22, 22, 32),
+            bg_stroke: Stroke::new(1.0, Color32::from_rgb(60, 60, 80)),
+            fg_stroke: Stroke::new(1.0, Color32::from_rgb(200, 200, 220)),
+            corner_radius: cr,
+            expansion: 0.0,
+        };
+        visuals.selection.bg_fill = blue;
+
+        ctx.set_visuals(visuals);
+
+        // ── Spacing / style ──────────────────────────────────────────────────
+        let mut style = (*ctx.style()).clone();
+        style.spacing.button_padding = egui::vec2(14.0, 8.0);
+        style.spacing.item_spacing = egui::vec2(8.0, 8.0);
+        style.spacing.text_edit_width = 300.0;
+
+        style.text_styles.insert(TextStyle::Body, FontId::proportional(18.0));
+        style.text_styles.insert(TextStyle::Button, FontId::proportional(22.0));
+        style.text_styles.insert(TextStyle::Heading, FontId::proportional(36.0));
+        style.text_styles.insert(TextStyle::Small, FontId::proportional(14.0));
+
+        ctx.set_style(style);
+    }
+}
+
+impl eframe::App for SorcerersApp {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // Update screen rect
+        let screen = ctx.screen_rect();
+        {
+            let rect_lock = SCREEN_RECT.get_or_init(|| RwLock::new(screen));
+            if let Ok(mut r) = rect_lock.write() {
+                *r = screen;
+            }
         }
 
-        self.scene.update().await?;
-        Ok(())
-    }
+        // Flush loaded textures
+        TextureCache::flush_blocking(ctx);
 
-    async fn render(&mut self) -> anyhow::Result<Option<Scene>> {
-        clear_background(BLACK);
-        self.scene.render().await
-    }
-
-    async fn process_input(&mut self) -> anyhow::Result<()> {
-        let new_scene = self.scene.process_input().await?;
-        if let Some(scene) = new_scene {
-            self.scene = scene;
+        // Drain incoming server messages
+        while let Ok(msg) = self.rx.try_recv() {
+            if let Some(new_scene) = self.scene.process_message(&msg) {
+                self.scene = new_scene;
+            }
         }
 
-        Ok(())
+        // Update game state
+        self.scene.update(ctx);
+
+        // Process input
+        if let Some(new_scene) = self.scene.process_input(ctx) {
+            self.scene = new_scene;
+        }
+
+        // Render
+        egui::CentralPanel::default()
+            .frame(egui::Frame::NONE.fill(egui::Color32::BLACK))
+            .show(ctx, |ui| {
+                if let Some(new_scene) = self.scene.render(ui, ctx) {
+                    self.scene = new_scene;
+                }
+            });
+
+        ctx.request_repaint();
+    }
+
+    /// When the window is closed the tokio networking task is blocked on
+    /// `receiver.recv()` and will never wake up, causing the process to hang
+    /// on drop.  Force-exit immediately instead.
+    fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
+        std::process::exit(0);
     }
 }

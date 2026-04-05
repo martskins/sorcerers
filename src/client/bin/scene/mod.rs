@@ -1,4 +1,5 @@
 use sorcerers::networking::message::ServerMessage;
+use egui::{Context, Ui};
 
 pub mod action_overlay;
 pub mod combat_resolution_overlay;
@@ -12,33 +13,33 @@ pub enum Scene {
 }
 
 impl Scene {
-    pub async fn render(&mut self) -> anyhow::Result<Option<Scene>> {
+    pub fn render(&mut self, ui: &mut Ui, ctx: &Context) -> Option<Scene> {
         match self {
-            Scene::Menu(menu) => menu.render().await,
-            Scene::Game(game) => game.render().await,
+            Scene::Menu(menu) => menu.render(ui, ctx),
+            Scene::Game(game) => game.render(ui, ctx),
         }
     }
 
-    pub async fn update(&mut self) -> anyhow::Result<()> {
+    pub fn update(&mut self, ctx: &Context) {
         match self {
-            Scene::Menu(menu) => menu.update().await,
-            Scene::Game(game) => game.update().await,
+            Scene::Menu(menu) => menu.update(ctx),
+            Scene::Game(game) => game.update(ctx),
         }
     }
 
-    pub async fn process_message(&mut self, message: &ServerMessage) -> anyhow::Result<Option<Scene>> {
+    pub fn process_message(&mut self, message: &ServerMessage) -> Option<Scene> {
         match self {
-            Scene::Menu(menu) => menu.process_message(message).await,
-            Scene::Game(game) => game.process_message(message).await,
+            Scene::Menu(menu) => menu.process_message(message),
+            Scene::Game(game) => game.process_message(message),
         }
     }
 
-    pub async fn process_input(&mut self) -> anyhow::Result<Option<Scene>> {
+    pub fn process_input(&mut self, ctx: &Context) -> Option<Scene> {
         match self {
-            Scene::Menu(menu) => menu.process_input().await,
+            Scene::Menu(menu) => menu.process_input(ctx),
             Scene::Game(game) => {
-                game.process_input().await?;
-                Ok(None)
+                game.process_input(ctx);
+                None
             }
         }
     }

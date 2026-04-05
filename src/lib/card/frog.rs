@@ -1,4 +1,4 @@
-use macroquad::rand::ChooseRandom;
+use rand::seq::IndexedRandom;
 
 use crate::{
     card::{Ability, Card, CardBase, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
@@ -68,7 +68,7 @@ impl Card for Frog {
             "https://d27a44hjr9gen3.cloudfront.net/cards/bet-frog_red-bt-s.png",
         ];
 
-        match arts.choose() {
+        match arts.choose(&mut rand::rng()) {
             Some(art) => art.to_string(),
             None => "".to_string(),
         }

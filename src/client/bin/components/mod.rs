@@ -1,5 +1,4 @@
-use macroquad::math::Rect;
-
+use egui::Rect;
 use crate::scene::game::GameData;
 
 pub mod event_log;
@@ -31,12 +30,11 @@ pub enum ComponentCommand {
     DonePicking,
 }
 
-#[async_trait::async_trait]
 pub trait Component: std::fmt::Debug {
-    async fn update(&mut self, data: &mut GameData) -> anyhow::Result<()>;
-    async fn render(&mut self, data: &mut GameData) -> anyhow::Result<()>;
-    async fn process_input(&mut self, in_turn: bool, data: &mut GameData) -> anyhow::Result<Option<ComponentCommand>>;
-    async fn process_command(&mut self, command: &ComponentCommand, data: &mut GameData) -> anyhow::Result<()>;
+    fn update(&mut self, data: &mut GameData, ctx: &egui::Context) -> anyhow::Result<()>;
+    fn render(&mut self, data: &mut GameData, ui: &mut egui::Ui, painter: &egui::Painter) -> anyhow::Result<()>;
+    fn process_input(&mut self, in_turn: bool, data: &mut GameData, ctx: &egui::Context) -> anyhow::Result<Option<ComponentCommand>>;
+    fn process_command(&mut self, command: &ComponentCommand, data: &mut GameData) -> anyhow::Result<()>;
     fn toggle_visibility(&mut self);
     fn is_visible(&self) -> bool;
     fn get_component_type(&self) -> ComponentType;

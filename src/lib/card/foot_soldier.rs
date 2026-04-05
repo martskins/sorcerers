@@ -1,4 +1,4 @@
-use macroquad::rand::ChooseRandom;
+use rand::seq::IndexedRandom;
 
 use crate::{
     card::{Card, CardBase, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
@@ -68,7 +68,7 @@ impl Card for FootSoldier {
             "https://d27a44hjr9gen3.cloudfront.net/cards/bet-foot_soldier_3-bt-s.png",
             "https://d27a44hjr9gen3.cloudfront.net/cards/art-foot_soldiers-bt-s.png",
         ];
-        match arts.choose() {
+        match arts.choose(&mut rand::rng()) {
             Some(art) => art.to_string(),
             None => "".to_string(),
         }

@@ -2,20 +2,12 @@ use std::collections::HashMap;
 
 use crate::{
     components::{Component, ComponentCommand, ComponentType},
-    config::{card_height, card_width},
-    input::Mouse,
+    config::{card_height, card_width, screen_rect},
     render::{self, CardRect},
     scene::game::GameData,
     texture_cache::TextureCache,
 };
-use macroquad::{
-    color::{BLACK, Color, WHITE},
-    input::{MouseButton, is_mouse_button_released},
-    math::{Rect, RectOffset, Vec2},
-    shapes::draw_rectangle,
-    ui,
-    window::{screen_height, screen_width},
-};
+use egui::{Color32, Context, Painter, Rect, Ui, pos2, vec2};
 use sorcerers::{
     card::CardData,
     game::PlayerId,
@@ -38,57 +30,49 @@ pub struct CombatResolutionOverlay {
 }
 
 impl CombatResolutionOverlay {
-    pub async fn new(
+    pub fn new(
         client: networking::client::Client,
         game_id: &uuid::Uuid,
         player_id: &PlayerId,
         attacker: CardData,
         defenders: Vec<CardData>,
         damage: u16,
-    ) -> anyhow::Result<Self> {
-        let mut textures = HashMap::with_capacity(defenders.len() + 1);
-        let texture = TextureCache::get_card_texture(&attacker).await?;
-        textures.insert(attacker.id, texture);
-        for defender in &defenders {
-            let texture = TextureCache::get_card_texture(&defender).await?;
-            textures.insert(defender.id, texture);
-        }
-
-        let card_width = card_width()? * 1.2;
-        let card_height = card_height()? * 1.2;
+    ) -> Self {
+        let sw = screen_rect().map(|r| r.width()).unwrap_or(1280.0);
+        let sh = screen_rect().map(|r| r.height()).unwrap_or(720.0);
+        let cw = card_width().unwrap_or(80.0) * 1.2;
+        let ch = card_height().unwrap_or(112.0) * 1.2;
         let card_spacing = 20.0;
 
-        // Attacker position (centered top half)
-        let attacker_x = (screen_width() - card_width) / 2.0;
-        let attacker_y = (screen_height() / 3.0) - (card_height / 2.0);
+        let attacker_x = (sw - cw) / 2.0;
+        let attacker_y = (sh / 3.0) - (ch / 2.0);
 
         let mut rects = Vec::new();
         rects.push(CardRect {
-            rect: Rect::new(attacker_x, attacker_y, card_width, card_height),
-            card: attacker.clone(),
+            rect: Rect::from_min_size(pos2(attacker_x, attacker_y), vec2(cw, ch)),
+            card: attacker,
             is_hovered: false,
-            image: textures.get(&attacker.id).unwrap().clone(),
+            image: None,
             is_selected: false,
         });
 
-        // Defenders positions (centered bottom half)
         let defender_count = defenders.len();
-        let defenders_area_width = defender_count as f32 * card_width + ((defender_count as f32 - 1.0) * card_spacing);
-        let defenders_start_x = (screen_width() - defenders_area_width) / 2.0;
-        let defenders_y = (3.0 * screen_height() / 5.0) - (card_height / 2.0);
+        let defenders_area_width = defender_count as f32 * cw + (defender_count as f32 - 1.0) * card_spacing;
+        let defenders_start_x = (sw - defenders_area_width) / 2.0;
+        let defenders_y = (3.0 * sh / 5.0) - (ch / 2.0);
 
         for (idx, defender) in defenders.iter().enumerate() {
-            let x = defenders_start_x + idx as f32 * (card_width + card_spacing);
+            let x = defenders_start_x + idx as f32 * (cw + card_spacing);
             rects.push(CardRect {
-                rect: Rect::new(x, defenders_y, card_width, card_height),
+                rect: Rect::from_min_size(pos2(x, defenders_y), vec2(cw, ch)),
                 card: defender.clone(),
-                image: textures.get(&defender.id).unwrap().clone(),
+                image: None,
                 is_hovered: false,
                 is_selected: false,
             });
         }
 
-        Ok(Self {
+        Self {
             client,
             game_id: game_id.clone(),
             card_rects: rects,
@@ -98,21 +82,21 @@ impl CombatResolutionOverlay {
             damage,
             shake_button_until: None,
             visible: true,
-        })
+        }
     }
 }
 
-#[async_trait::async_trait]
 impl Component for CombatResolutionOverlay {
-    async fn update(&mut self, _data: &mut GameData) -> anyhow::Result<()> {
-        if is_mouse_button_released(MouseButton::Left) {
-            Mouse::set_enabled(true)?;
+    fn update(&mut self, _data: &mut GameData, ctx: &Context) -> anyhow::Result<()> {
+        for card_rect in &mut self.card_rects {
+            if card_rect.image.is_none() {
+                card_rect.image = TextureCache::get_card_texture_blocking(&card_rect.card, ctx);
+            }
         }
-
         Ok(())
     }
 
-    async fn process_command(&mut self, _command: &ComponentCommand, _data: &mut GameData) -> anyhow::Result<()> {
+    fn process_command(&mut self, _command: &ComponentCommand, _data: &mut GameData) -> anyhow::Result<()> {
         Ok(())
     }
 
@@ -126,46 +110,71 @@ impl Component for CombatResolutionOverlay {
         ComponentType::CombatResolutionOverlay
     }
 
-    async fn process_input(
+    fn process_input(
         &mut self,
         _in_turn: bool,
         _data: &mut GameData,
+        _ctx: &Context,
     ) -> anyhow::Result<Option<ComponentCommand>> {
-        let mut skin = ui::root_ui().default_skin();
-        skin.label_style = ui::root_ui()
-            .style_builder()
-            .font_size(FONT_SIZE as u16)
-            .text_color(WHITE)
-            .build();
-        skin.button_style = ui::root_ui()
-            .style_builder()
-            .font_size(FONT_SIZE as u16)
-            .text_color(BLACK)
-            .build();
-        ui::root_ui().push_skin(&skin);
+        Ok(None)
+    }
 
-        let damage_assigned = self.defender_damage.values().sum::<u16>();
+    fn render(&mut self, _data: &mut GameData, ui: &mut Ui, painter: &Painter) -> anyhow::Result<()> {
+        let sw = screen_rect().map(|r| r.width()).unwrap_or(1280.0);
+        let sh = screen_rect().map(|r| r.height()).unwrap_or(720.0);
+        painter.rect_filled(
+            Rect::from_min_size(pos2(0.0, 0.0), vec2(sw, sh)),
+            0.0,
+            Color32::from_rgba_unmultiplied(0, 0, 0, 204),
+        );
+
+        painter.text(
+            pos2(sw / 2.0, 30.0),
+            egui::Align2::CENTER_TOP,
+            &self.prompt,
+            egui::FontId::proportional(FONT_SIZE),
+            Color32::WHITE,
+        );
+
         for card_rect in &self.card_rects {
-            // Only show damage controls for defenders (skip attacker, which is first)
+            render::draw_card(
+                card_rect,
+                card_rect.card.controller_id == self.player_id,
+                false,
+                painter,
+            );
+        }
+
+        // Damage controls for defenders (skip first card = attacker)
+        let damage_assigned: u16 = self.defender_damage.values().sum();
+        for card_rect in self.card_rects.iter().skip(1) {
             if card_rect.card.controller_id != self.player_id {
                 let card_id = card_rect.card.id;
                 let damage = self.defender_damage.get(&card_id).copied().unwrap_or(0);
+                let label_x = card_rect.rect.min.x + card_rect.rect.width() / 2.0;
+                let label_y = card_rect.rect.max.y + 10.0;
 
-                let label_x = card_rect.rect.x + card_rect.rect.w / 2.0;
-                let label_y = card_rect.rect.y + card_rect.rect.h + 10.0;
-
-                if ui::root_ui().button(Vec2::new(label_x - 40.0, label_y), "-") {
-                    if damage > 0 {
-                        self.defender_damage.insert(card_id, damage - 1);
-                    }
-                }
-
-                ui::root_ui().label(Vec2::new(label_x, label_y), damage.to_string().as_str());
-
-                if ui::root_ui().button(Vec2::new(label_x + 40.0, label_y), "+") {
-                    if damage_assigned < self.damage {
-                        self.defender_damage.insert(card_id, damage + 1);
-                    }
+                let mut dmg_delta: i16 = 0;
+                egui::Area::new(egui::Id::new(format!("combat_dmg_{}", card_id)))
+                    .fixed_pos(pos2(label_x - 60.0, label_y))
+                    .show(ui.ctx(), |ui| {
+                        ui.horizontal(|ui| {
+                            let minus = egui::Button::new(egui::RichText::new("−").size(20.0).color(Color32::WHITE))
+                                .min_size(vec2(36.0, 36.0));
+                            if ui.add(minus).clicked() && damage > 0 {
+                                dmg_delta = -1;
+                            }
+                            ui.label(egui::RichText::new(damage.to_string()).size(20.0).color(Color32::WHITE));
+                            let plus = egui::Button::new(egui::RichText::new("+").size(20.0).color(Color32::WHITE))
+                                .min_size(vec2(36.0, 36.0));
+                            if ui.add(plus).clicked() && damage_assigned < self.damage {
+                                dmg_delta = 1;
+                            }
+                        });
+                    });
+                if dmg_delta != 0 {
+                    let new_dmg = (damage as i16 + dmg_delta).max(0) as u16;
+                    self.defender_damage.insert(card_id, new_dmg);
                 }
             }
         }
@@ -174,98 +183,61 @@ impl Component for CombatResolutionOverlay {
             .card_rects
             .iter()
             .skip(1)
-            .map(|r| r.rect.y + r.rect.h)
-            .fold(0.0, f32::max);
+            .map(|r| r.rect.max.y)
+            .fold(0.0_f32, f32::max);
         let button_width = 150.0;
-        let button_height = 40.0;
-        let mut button_x = (screen_width() - button_width) / 2.0;
-        let button_y = defender_row_y + 40.0;
+        let button_y = defender_row_y + 90.0; // extra space for damage controls
+        let mut button_x = (sw - button_width) / 2.0;
 
         if let Some(shake_until) = self.shake_button_until {
             let now = chrono::Utc::now();
             if now < shake_until {
                 let elapsed = (shake_until - now).num_milliseconds() as f32;
                 let shake_magnitude = 3.0 * (elapsed / 300.0);
-                let shake_x = (macroquad::rand::gen_range(-1.0, 1.0)) * shake_magnitude;
+                let shake_x = (rand::random::<f32>() * 2.0 - 1.0) * shake_magnitude;
                 button_x += shake_x;
             } else {
                 self.shake_button_until = None;
             }
         }
 
-        let pressed = ui::widgets::Button::new("Confirm")
-            .position(Vec2::new(button_x, button_y))
-            .size(Vec2::new(button_width, button_height))
-            .ui(&mut ui::root_ui());
-        if pressed {
-            if damage_assigned != self.damage {
-                self.shake_button_until = Some(chrono::Utc::now() + chrono::Duration::milliseconds(300));
-            } else {
-                self.client.send(ClientMessage::ResolveCombat {
-                    game_id: self.game_id.clone(),
-                    player_id: self.player_id.clone(),
-                    damage_assignment: self.defender_damage.clone(),
-                })?;
-                self.visible = false;
-            }
+        let current_damage = self.damage;
+        let client = self.client.clone();
+        let game_id = self.game_id;
+        let player_id = self.player_id;
+        let defender_damage = self.defender_damage.clone();
+        let mut set_invisible = false;
+        let mut set_shake = false;
+
+        egui::Area::new(egui::Id::new("combat_confirm_btn"))
+            .fixed_pos(pos2(button_x, button_y))
+            .show(ui.ctx(), |ui| {
+                let confirm = egui::Button::new(egui::RichText::new("Confirm").size(22.0).color(Color32::WHITE))
+                    .min_size(vec2(button_width, 48.0));
+                if ui.add(confirm).clicked() {
+                    let assigned: u16 = defender_damage.values().sum();
+                    if assigned != current_damage {
+                        set_shake = true;
+                    } else {
+                        client
+                            .send(ClientMessage::ResolveCombat {
+                                game_id,
+                                player_id,
+                                damage_assignment: defender_damage,
+                            })
+                            .ok();
+                        set_invisible = true;
+                    }
+                }
+            });
+
+        if set_shake {
+            self.shake_button_until = Some(chrono::Utc::now() + chrono::Duration::milliseconds(300));
+        }
+        if set_invisible {
+            self.visible = false;
         }
 
-        ui::root_ui().pop_skin();
-        Ok(None)
-    }
-
-    async fn render(&mut self, _data: &mut GameData) -> anyhow::Result<()> {
-        draw_rectangle(
-            0.0,
-            0.0,
-            screen_width(),
-            screen_height(),
-            Color::new(0.0, 0.0, 0.0, 0.8),
-        );
-
-        let window_style = ui::root_ui()
-            .style_builder()
-            .background_margin(RectOffset::new(10.0, 10.0, 10.0, 10.0))
-            .build();
-        let label_style = ui::root_ui()
-            .style_builder()
-            .font_size(FONT_SIZE as u16)
-            .text_color(WHITE)
-            .build();
-        let skin = ui::Skin {
-            window_style,
-            label_style,
-            ..ui::root_ui().default_skin()
-        };
-
-        ui::root_ui().push_skin(&skin);
-
-        let mut skin = ui::root_ui().default_skin();
-        skin.button_style = ui::root_ui()
-            .style_builder()
-            .color(Color::new(0.0, 0.0, 0.0, 0.0))
-            .build();
-        skin.label_style = ui::root_ui()
-            .style_builder()
-            .text_color(WHITE)
-            .font_size(FONT_SIZE as u16)
-            .build();
-        ui::root_ui().push_skin(&skin);
-
-        let text_dims = macroquad::text::measure_text(&self.prompt, None, FONT_SIZE as u16, 1.0);
-        let wrapped_text = render::wrap_text(&self.prompt, screen_width() - 20.0, FONT_SIZE as u16);
-        render::multiline_label(
-            &wrapped_text,
-            Vec2::new((screen_width() / 2.0) - (text_dims.width / 2.0), 30.0),
-            FONT_SIZE as u16,
-            &mut ui::root_ui(),
-        );
-
-        for card_rect in &self.card_rects {
-            render::draw_card(card_rect, card_rect.card.controller_id == self.player_id, false);
-        }
-
-        ui::root_ui().pop_skin();
         Ok(())
     }
 }

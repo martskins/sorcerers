@@ -1,21 +1,11 @@
-use std::collections::HashMap;
-
 use crate::{
     components::{Component, ComponentCommand, ComponentType},
-    config::{card_height, card_width},
-    input::Mouse,
+    config::{card_height, card_width, screen_rect},
     render::{self, CardRect},
     scene::game::GameData,
     texture_cache::TextureCache,
 };
-use macroquad::{
-    color::{BLACK, Color, WHITE},
-    input::{MouseButton, is_mouse_button_released},
-    math::{Rect, RectOffset, Vec2},
-    shapes::draw_rectangle,
-    ui,
-    window::{screen_height, screen_width},
-};
+use egui::{Color32, Context, Painter, Rect, Ui, pos2, vec2};
 use sorcerers::{
     card::CardData,
     game::PlayerId,
@@ -36,64 +26,62 @@ pub struct ActionOverlay {
 }
 
 impl ActionOverlay {
-    pub async fn new(
+    pub fn new(
         client: networking::client::Client,
         game_id: &uuid::Uuid,
         card_previews: Vec<&CardData>,
         player_id: &PlayerId,
         prompt: String,
         action: Option<String>,
-    ) -> anyhow::Result<Self> {
-        let mut textures = HashMap::with_capacity(card_previews.len());
-        for defender in &card_previews {
-            let texture = TextureCache::get_card_texture(&defender).await?;
-            textures.insert(defender.id, texture);
-        }
-
-        let card_width = card_width()? * 1.2;
-        let card_height = card_height()? * 1.2;
+    ) -> Self {
+        let sw = screen_rect().map(|r| r.width()).unwrap_or(1280.0);
+        let sh = screen_rect().map(|r| r.height()).unwrap_or(720.0);
+        let cw = card_width().unwrap_or(80.0) * 1.2;
+        let ch = card_height().unwrap_or(112.0) * 1.2;
         let card_spacing = 20.0;
-
-        let preview_y = (screen_height() / 3.0) - (card_height / 2.0);
+        let preview_y = (sh / 3.0) - (ch / 2.0);
         let defender_count = card_previews.len();
-        let defenders_area_width = defender_count as f32 * card_width + ((defender_count as f32 - 1.0) * card_spacing);
-        let defenders_start_x = (screen_width() - defenders_area_width) / 2.0;
+        let defenders_area_width = defender_count as f32 * cw + (defender_count as f32 - 1.0) * card_spacing;
+        let defenders_start_x = (sw - defenders_area_width) / 2.0;
 
-        let mut rects = Vec::with_capacity(card_previews.len());
-        for (idx, defender) in card_previews.iter().enumerate() {
-            let x = defenders_start_x + idx as f32 * (card_width + card_spacing);
-            rects.push(CardRect {
-                rect: Rect::new(x, preview_y, card_width, card_height),
-                card: (*defender).clone(),
-                image: textures.get(&defender.id).unwrap().clone(),
-                is_hovered: false,
-                is_selected: false,
-            });
-        }
+        let rects = card_previews
+            .iter()
+            .enumerate()
+            .map(|(idx, card)| {
+                let x = defenders_start_x + idx as f32 * (cw + card_spacing);
+                CardRect {
+                    rect: Rect::from_min_size(pos2(x, preview_y), vec2(cw, ch)),
+                    card: (*card).clone(),
+                    image: None,
+                    is_hovered: false,
+                    is_selected: false,
+                }
+            })
+            .collect();
 
-        Ok(Self {
+        Self {
             client,
             game_id: game_id.clone(),
             card_rects: rects,
-            prompt: prompt,
+            prompt,
             player_id: player_id.clone(),
             visible: true,
             action,
-        })
+        }
     }
 }
 
-#[async_trait::async_trait]
 impl Component for ActionOverlay {
-    async fn update(&mut self, _data: &mut GameData) -> anyhow::Result<()> {
-        if is_mouse_button_released(MouseButton::Left) {
-            Mouse::set_enabled(true)?;
+    fn update(&mut self, _data: &mut GameData, ctx: &Context) -> anyhow::Result<()> {
+        for card_rect in &mut self.card_rects {
+            if card_rect.image.is_none() {
+                card_rect.image = TextureCache::get_card_texture_blocking(&card_rect.card, ctx);
+            }
         }
-
         Ok(())
     }
 
-    async fn process_command(&mut self, _command: &ComponentCommand, _data: &mut GameData) -> anyhow::Result<()> {
+    fn process_command(&mut self, _command: &ComponentCommand, _data: &mut GameData) -> anyhow::Result<()> {
         Ok(())
     }
 
@@ -107,144 +95,115 @@ impl Component for ActionOverlay {
         ComponentType::ActionOverlay
     }
 
-    async fn process_input(
+    fn process_input(
         &mut self,
         _in_turn: bool,
         _data: &mut GameData,
+        _ctx: &Context,
     ) -> anyhow::Result<Option<ComponentCommand>> {
-        let mut skin = ui::root_ui().default_skin();
-        skin.label_style = ui::root_ui()
-            .style_builder()
-            .font_size(FONT_SIZE as u16)
-            .text_color(WHITE)
-            .build();
-        skin.button_style = ui::root_ui()
-            .style_builder()
-            .font_size(FONT_SIZE as u16)
-            .text_color(BLACK)
-            .build();
-        ui::root_ui().push_skin(&skin);
-
-        if self.action.is_some() {
-            let card_row_y = self
-                .card_rects
-                .iter()
-                .map(|r| r.rect.y + r.rect.h)
-                .collect::<Vec<f32>>()[0];
-            let button_width = 150.0;
-            let button_height = 40.0;
-            let button_spacing = 40.0;
-            let total_width = button_width * 2.0 + button_spacing;
-            let button_x = (screen_width() - total_width) / 2.0;
-            let button_y = card_row_y + 40.0;
-
-            let yes_pressed = ui::widgets::Button::new("Yes")
-                .position(Vec2::new(button_x, button_y))
-                .size(Vec2::new(button_width, button_height))
-                .ui(&mut ui::root_ui());
-
-            let no_pressed = ui::widgets::Button::new("No")
-                .position(Vec2::new(button_x + button_width + button_spacing, button_y))
-                .size(Vec2::new(button_width, button_height))
-                .ui(&mut ui::root_ui());
-
-            if yes_pressed || no_pressed {
-                self.client.send(ClientMessage::ResolveAction {
-                    game_id: self.game_id.clone(),
-                    player_id: self.player_id.clone(),
-                    take_action: yes_pressed,
-                })?;
-                self.visible = false;
-            }
-        } else {
-            let card_row_y = self
-                .card_rects
-                .iter()
-                .map(|r| r.rect.y + r.rect.h)
-                .collect::<Vec<f32>>()[0];
-            let button_width = 150.0;
-            let button_height = 40.0;
-            let button_x = (screen_width() - button_width) / 2.0;
-            let button_y = card_row_y + 40.0;
-
-            let ok_pressed = ui::widgets::Button::new("Ok")
-                .position(Vec2::new(button_x, button_y))
-                .size(Vec2::new(button_width, button_height))
-                .ui(&mut ui::root_ui());
-
-            if ok_pressed {
-                self.visible = false;
-            }
-        }
-
-        ui::root_ui().pop_skin();
         Ok(None)
     }
 
-    async fn render(&mut self, _data: &mut GameData) -> anyhow::Result<()> {
-        draw_rectangle(
+    fn render(&mut self, _data: &mut GameData, ui: &mut Ui, painter: &Painter) -> anyhow::Result<()> {
+        let sw = screen_rect().map(|r| r.width()).unwrap_or(1280.0);
+        let sh = screen_rect().map(|r| r.height()).unwrap_or(720.0);
+        painter.rect_filled(
+            Rect::from_min_size(pos2(0.0, 0.0), vec2(sw, sh)),
             0.0,
-            0.0,
-            screen_width(),
-            screen_height(),
-            Color::new(0.0, 0.0, 0.0, 0.8),
+            Color32::from_rgba_unmultiplied(0, 0, 0, 204),
         );
 
-        let window_style = ui::root_ui()
-            .style_builder()
-            .background_margin(RectOffset::new(10.0, 10.0, 10.0, 10.0))
-            .build();
-        let label_style = ui::root_ui()
-            .style_builder()
-            .font_size(FONT_SIZE as u16)
-            .text_color(WHITE)
-            .build();
-        let skin = ui::Skin {
-            window_style,
-            label_style,
-            ..ui::root_ui().default_skin()
-        };
-
-        ui::root_ui().push_skin(&skin);
-
-        let mut skin = ui::root_ui().default_skin();
-        skin.button_style = ui::root_ui()
-            .style_builder()
-            .color(Color::new(0.0, 0.0, 0.0, 0.0))
-            .build();
-        skin.label_style = ui::root_ui()
-            .style_builder()
-            .text_color(WHITE)
-            .font_size(FONT_SIZE as u16)
-            .build();
-        ui::root_ui().push_skin(&skin);
-
-        let text_dims = macroquad::text::measure_text(&self.prompt, None, FONT_SIZE as u16, 1.0);
-        let wrapped_text = render::wrap_text(&self.prompt, screen_width() - 20.0, FONT_SIZE as u16);
-        render::multiline_label(
-            &wrapped_text,
-            Vec2::new((screen_width() / 2.0) - (text_dims.width / 2.0), 30.0),
-            FONT_SIZE as u16,
-            &mut ui::root_ui(),
+        painter.text(
+            pos2(sw / 2.0, 30.0),
+            egui::Align2::CENTER_TOP,
+            &self.prompt,
+            egui::FontId::proportional(FONT_SIZE),
+            Color32::WHITE,
         );
 
-        if self.action.is_some() {
-            let action_text = self.action.as_ref().unwrap();
-            let action_dims = macroquad::text::measure_text(action_text, None, FONT_SIZE as u16, 1.0);
-            let wrapped_text = render::wrap_text(action_text, screen_width() - 20.0, FONT_SIZE as u16);
-            render::multiline_label(
-                &wrapped_text,
-                Vec2::new((screen_width() / 2.0) - (action_dims.width / 2.0), 70.0),
-                FONT_SIZE as u16,
-                &mut ui::root_ui(),
+        if let Some(ref action_text) = self.action {
+            painter.text(
+                pos2(sw / 2.0, 70.0),
+                egui::Align2::CENTER_TOP,
+                action_text,
+                egui::FontId::proportional(FONT_SIZE),
+                Color32::WHITE,
             );
         }
 
         for card_rect in &self.card_rects {
-            render::draw_card(card_rect, card_rect.card.controller_id == self.player_id, false);
+            render::draw_card(
+                card_rect,
+                card_rect.card.controller_id == self.player_id,
+                false,
+                painter,
+            );
         }
 
-        ui::root_ui().pop_skin();
+        let card_row_y = self.card_rects.iter().map(|r| r.rect.max.y).fold(0.0_f32, f32::max);
+        let button_width = 150.0;
+        let button_height = 40.0;
+        let button_y = card_row_y + 40.0;
+
+        if self.action.is_some() {
+            let total_width = button_width * 2.0 + 40.0;
+            let button_x = (sw - total_width) / 2.0;
+            let client = self.client.clone();
+            let game_id = self.game_id;
+            let player_id = self.player_id;
+            let mut set_invisible = false;
+
+            egui::Area::new(egui::Id::new("action_overlay_btns"))
+                .fixed_pos(pos2(button_x, button_y))
+                .show(ui.ctx(), |ui| {
+                    ui.horizontal(|ui| {
+                        let yes = egui::Button::new(egui::RichText::new("Yes").size(22.0).color(Color32::WHITE))
+                            .min_size(vec2(button_width, button_height));
+                        if ui.add(yes).clicked() {
+                            client
+                                .send(ClientMessage::ResolveAction {
+                                    game_id,
+                                    player_id,
+                                    take_action: true,
+                                })
+                                .ok();
+                            set_invisible = true;
+                        }
+                        ui.add_space(40.0);
+                        let no = egui::Button::new(egui::RichText::new("No").size(22.0).color(Color32::WHITE))
+                            .min_size(vec2(button_width, button_height));
+                        if ui.add(no).clicked() {
+                            client
+                                .send(ClientMessage::ResolveAction {
+                                    game_id,
+                                    player_id,
+                                    take_action: false,
+                                })
+                                .ok();
+                            set_invisible = true;
+                        }
+                    });
+                });
+            if set_invisible {
+                self.visible = false;
+            }
+        } else {
+            let button_x = (sw - button_width) / 2.0;
+            let mut set_invisible = false;
+            egui::Area::new(egui::Id::new("action_overlay_ok_btn"))
+                .fixed_pos(pos2(button_x, button_y))
+                .show(ui.ctx(), |ui| {
+                    let ok = egui::Button::new(egui::RichText::new("Ok").size(22.0).color(Color32::WHITE))
+                        .min_size(vec2(button_width, button_height));
+                    if ui.add(ok).clicked() {
+                        set_invisible = true;
+                    }
+                });
+            if set_invisible {
+                self.visible = false;
+            }
+        }
+
         Ok(())
     }
 }

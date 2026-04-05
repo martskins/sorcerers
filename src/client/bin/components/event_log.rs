@@ -3,12 +3,7 @@ use crate::{
     render,
     scene::game::GameData,
 };
-use macroquad::{
-    math::{Rect, Vec2},
-    ui::{self},
-};
-
-const EVENT_LOG_WINDOW: u64 = 10;
+use egui::{Context, Painter, Rect, Ui};
 
 #[derive(Debug)]
 pub struct EventLogComponent {
@@ -19,19 +14,14 @@ pub struct EventLogComponent {
 
 impl EventLogComponent {
     pub fn new(rect: Rect) -> Self {
-        Self {
-            visible: false,
-            last_message_seen: uuid::Uuid::nil(),
-            rect,
-        }
+        Self { visible: false, last_message_seen: uuid::Uuid::nil(), rect }
     }
 }
 
-const FONT_SIZE: u16 = 16;
+const FONT_SIZE: f32 = 16.0;
 
-#[async_trait::async_trait]
 impl Component for EventLogComponent {
-    async fn update(&mut self, data: &mut GameData) -> anyhow::Result<()> {
+    fn update(&mut self, data: &mut GameData, _ctx: &Context) -> anyhow::Result<()> {
         if self.visible {
             if let Some(last_event) = data.events.last() {
                 if last_event.id != self.last_message_seen {
@@ -39,57 +29,43 @@ impl Component for EventLogComponent {
                 }
                 data.unseen_events = 0;
             }
-        } else {
-            if let Some(last_event) = data.events.last()
-                && last_event.id != self.last_message_seen
-            {
-                let idx = data.events.iter().position(|e| e.id == self.last_message_seen);
-                data.unseen_events = match idx {
-                    Some(i) => data.events.len() - i - 1,
-                    None => data.events.len(),
-                };
-            }
+        } else if let Some(last_event) = data.events.last()
+            && last_event.id != self.last_message_seen
+        {
+            let idx = data.events.iter().position(|e| e.id == self.last_message_seen);
+            data.unseen_events = match idx {
+                Some(i) => data.events.len() - i - 1,
+                None => data.events.len(),
+            };
         }
-
         Ok(())
     }
 
-    async fn render(&mut self, data: &mut GameData) -> anyhow::Result<()> {
+    fn render(&mut self, data: &mut GameData, ui: &mut Ui, _painter: &Painter) -> anyhow::Result<()> {
         if !self.visible {
             return Ok(());
         }
-
-        let visible = macroquad::ui::widgets::Window::new(
-            EVENT_LOG_WINDOW,
-            Vec2::new(self.rect.x, self.rect.y),
-            Vec2::new(self.rect.w, self.rect.h),
-        )
-        .movable(true)
-        .label("Event Log")
-        .titlebar(true)
-        .close_button(true)
-        .ui(&mut ui::root_ui(), |ui| {
-            for event in &data.events {
-                let lines: Vec<String> = render::wrap_text(event.formatted(), self.rect.w - 10.0, FONT_SIZE)
-                    .lines()
-                    .map(|line| line.to_string())
-                    .collect();
-                for line in lines {
-                    ui.label(None, &line);
-                }
-            }
-        });
-
-        self.visible = visible;
-
+        let mut open = self.visible;
+        egui::Window::new("Event Log")
+            .open(&mut open)
+            .movable(true)
+            .default_pos(self.rect.min)
+            .default_size(self.rect.size())
+            .show(ui.ctx(), |ui| {
+                egui::ScrollArea::vertical().stick_to_bottom(true).show(ui, |ui| {
+                    for event in &data.events {
+                        let wrapped = render::wrap_text(event.formatted(), self.rect.width() - 10.0, FONT_SIZE as u16);
+                        for line in wrapped.lines() {
+                            ui.label(line);
+                        }
+                    }
+                });
+            });
+        self.visible = open;
         Ok(())
     }
 
-    async fn process_input(
-        &mut self,
-        _in_turn: bool,
-        _data: &mut GameData,
-    ) -> anyhow::Result<Option<ComponentCommand>> {
+    fn process_input(&mut self, _in_turn: bool, _data: &mut GameData, _ctx: &Context) -> anyhow::Result<Option<ComponentCommand>> {
         Ok(None)
     }
 
@@ -101,21 +77,16 @@ impl Component for EventLogComponent {
         self.visible
     }
 
-    async fn process_command(&mut self, command: &ComponentCommand, _data: &mut GameData) -> anyhow::Result<()> {
+    fn process_command(&mut self, command: &ComponentCommand, _data: &mut GameData) -> anyhow::Result<()> {
         match command {
-            ComponentCommand::SetVisibility {
-                component_type: ComponentType::EventLog,
-                visible,
-            } => {
+            ComponentCommand::SetVisibility { component_type: ComponentType::EventLog, visible } => {
                 self.visible = *visible;
             }
-            ComponentCommand::SetRect {
-                component_type: ComponentType::EventLog,
-                rect,
-            } => self.rect = rect.clone(),
+            ComponentCommand::SetRect { component_type: ComponentType::EventLog, rect } => {
+                self.rect = *rect;
+            }
             _ => {}
         }
-
         Ok(())
     }
 

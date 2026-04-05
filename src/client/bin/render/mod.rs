@@ -2,32 +2,40 @@ use crate::{
     config::realm_rect,
     scene::game::{GameData, Status},
 };
-use macroquad::{
-    color::{BLUE, Color, DARKGREEN, RED, WHITE},
-    math::{Rect, Vec2},
-    shapes::{draw_circle, draw_circle_lines, draw_line, draw_rectangle_lines},
-    text::draw_text,
-    texture::{DrawTextureParams, Texture2D, draw_texture_ex},
-    ui,
+use egui::{
+    Color32, FontId, Painter, Pos2, Rect, Stroke, TextureHandle, Vec2, pos2, vec2,
+    epaint::{Mesh, Shape, Vertex},
 };
 use sorcerers::card::{Ability, CardData, CardType};
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct CardRect {
     pub rect: Rect,
-    pub image: Texture2D,
+    pub image: Option<TextureHandle>,
     pub is_hovered: bool,
     pub is_selected: bool,
     pub card: CardData,
 }
+
+impl std::fmt::Debug for CardRect {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CardRect")
+            .field("rect", &self.rect)
+            .field("image", &self.image.as_ref().map(|_| "<TextureHandle>"))
+            .field("is_hovered", &self.is_hovered)
+            .field("is_selected", &self.is_selected)
+            .field("card", &self.card)
+            .finish()
+    }
+}
+
 
 impl CardRect {
     pub fn rotation(&self) -> f32 {
         if self.card.tapped {
             return std::f32::consts::FRAC_PI_2;
         }
-
-        return 0.0;
+        0.0
     }
 }
 
@@ -43,269 +51,183 @@ pub struct IntersectionRect {
     pub rect: Rect,
 }
 
-fn draw_vortex_icon(x: f32, y: f32, size: f32, color: Color) {
+fn draw_vortex_icon(painter: &Painter, x: f32, y: f32, size: f32, color: Color32) {
     let turns = 2.0;
     let segments = 24;
-    let mut prev = (x + size / 2.0, y + size / 2.0);
+    let mut prev = pos2(x + size / 2.0, y + size / 2.0);
     for i in 1..=segments {
         let t = i as f32 / segments as f32;
         let angle = turns * std::f32::consts::TAU * t;
         let radius = (size / 2.0) * t;
         let px = x + size / 2.0 + radius * angle.cos();
         let py = y + size / 2.0 + radius * angle.sin();
-        macroquad::shapes::draw_line(prev.0, prev.1, px, py, 2.0, color);
-        prev = (px, py);
+        painter.line_segment([prev, pos2(px, py)], Stroke::new(2.0, color));
+        prev = pos2(px, py);
     }
 }
 
-pub fn draw_card(card_rect: &CardRect, is_ally: bool, draw_accessories: bool) {
+fn draw_rotated_image(painter: &Painter, tex_handle: &TextureHandle, rect: Rect, angle: f32, tint: Color32) {
+    let cx = rect.center();
+    let (sin, cos) = angle.sin_cos();
+    let rotate = |v: Vec2| -> Pos2 {
+        pos2(cos * v.x - sin * v.y + cx.x, sin * v.x + cos * v.y + cx.y)
+    };
+    let half = rect.size() * 0.5;
+    let corners = [
+        rotate(vec2(-half.x, -half.y)),
+        rotate(vec2(half.x, -half.y)),
+        rotate(vec2(half.x, half.y)),
+        rotate(vec2(-half.x, half.y)),
+    ];
+    let uvs = [pos2(0.0, 0.0), pos2(1.0, 0.0), pos2(1.0, 1.0), pos2(0.0, 1.0)];
+    let mut mesh = Mesh::with_texture(tex_handle.id());
+    for (c, uv) in corners.iter().zip(uvs.iter()) {
+        mesh.vertices.push(Vertex { pos: *c, uv: *uv, color: tint });
+    }
+    mesh.indices = vec![0, 1, 2, 0, 2, 3];
+    painter.add(Shape::mesh(mesh));
+}
+
+pub fn draw_card(card_rect: &CardRect, is_ally: bool, draw_accessories: bool, painter: &Painter) {
     let rect = card_rect.rect;
-    let mut scale = 1.0;
-    if card_rect.is_hovered || card_rect.is_selected {
-        scale *= 1.1;
+    let scale = if card_rect.is_hovered || card_rect.is_selected { 1.1f32 } else { 1.0f32 };
+    let scaled_size = vec2(rect.width() * scale, rect.height() * scale);
+    let scaled_rect = Rect::from_min_size(rect.min, scaled_size);
+
+    if let Some(ref tex) = card_rect.image {
+        let tint = if card_rect.card.abilities.contains(&Ability::Stealth) {
+            Color32::from_rgba_unmultiplied(255, 255, 255, 217)
+        } else {
+            Color32::WHITE
+        };
+        if card_rect.rotation() == 0.0 {
+            painter.image(tex.id(), scaled_rect, Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)), tint);
+        } else {
+            // Rotate the image 90° around the card's centre.  We keep the
+            // *original* portrait rect as the mesh base; draw_rotated_image
+            // will rotate its four corners, producing a landscape footprint
+            // (matching macroquad's draw_texture_ex rotation behaviour).
+            draw_rotated_image(painter, tex, scaled_rect, std::f32::consts::FRAC_PI_2, tint);
+        }
+    } else {
+        painter.rect_filled(scaled_rect, 4.0, Color32::DARK_GRAY);
     }
 
-    let mut color = WHITE;
-    if card_rect.card.abilities.contains(&Ability::Stealth) {
-        color = Color::new(1.0, 1.0, 1.0, 0.85);
-    }
-
-    draw_texture_ex(
-        &card_rect.image,
-        rect.x,
-        rect.y,
-        color,
-        DrawTextureParams {
-            dest_size: Some(Vec2::new(rect.w, rect.h) * scale),
-            rotation: card_rect.rotation(),
-            ..Default::default()
-        },
-    );
-
-    let mut sleeve_color = DARKGREEN;
-    if !is_ally {
-        sleeve_color = RED;
-    }
-
-    if card_rect.is_selected {
-        sleeve_color = WHITE;
-    }
+    let sleeve_color = if card_rect.is_selected {
+        Color32::WHITE
+    } else if is_ally {
+        Color32::DARK_GREEN
+    } else {
+        Color32::RED
+    };
 
     if card_rect.card.has_attachments {
         let triangle_w = 6.0;
         let triangle_h = 20.0;
-        let card_w = rect.w * scale;
-        let card_h = rect.h * scale;
-        let card_center_x = rect.x + card_w / 2.0;
-        let card_center_y = rect.y + card_h / 2.0;
+        let card_w = rect.width() * scale;
+        let card_h = rect.height() * scale;
+        let card_center_x = rect.min.x + card_w / 2.0;
+        let card_center_y = rect.min.y + card_h / 2.0;
         let (sin, cos) = card_rect.rotation().sin_cos();
-
-        let left_center = Vec2::new(-card_w / 2.0, 0.0);
-        let left_tip = left_center + Vec2::new(-triangle_w, 0.0);
-        let left_top = left_center + Vec2::new(0.0, -triangle_h / 2.0);
-        let left_bot = left_center + Vec2::new(0.0, triangle_h / 2.0);
-
-        let rotate = |v: Vec2| {
-            Vec2::new(
-                cos * v.x - sin * v.y + card_center_x,
-                sin * v.x + cos * v.y + card_center_y,
-            )
+        let rotate = |vx: f32, vy: f32| -> Pos2 {
+            pos2(cos * vx - sin * vy + card_center_x, sin * vx + cos * vy + card_center_y)
         };
-
-        let tip = rotate(left_tip);
-        let top = rotate(left_top);
-        let bot = rotate(left_bot);
-
-        macroquad::shapes::draw_triangle(tip, top, bot, WHITE);
-
-        // Right triangle (points right)
-        let right_center = Vec2::new(-card_w / 2.0 + 0.5, 0.0);
-        let right_tip = right_center + Vec2::new(triangle_w, 0.0);
-        let right_top = right_center + Vec2::new(0.0, -triangle_h / 2.0);
-        let right_bot = right_center + Vec2::new(0.0, triangle_h / 2.0);
-
-        let rtip = rotate(right_tip);
-        let rtop = rotate(right_top);
-        let rbot = rotate(right_bot);
-
-        macroquad::shapes::draw_triangle(rtip, rtop, rbot, WHITE);
+        let left_cx = -card_w / 2.0;
+        let tip = rotate(left_cx - triangle_w, 0.0);
+        let top = rotate(left_cx, -triangle_h / 2.0);
+        let bot = rotate(left_cx, triangle_h / 2.0);
+        painter.add(Shape::convex_polygon(vec![tip, top, bot], Color32::WHITE, Stroke::NONE));
+        let right_cx = -card_w / 2.0 + 0.5;
+        let rtip = rotate(right_cx + triangle_w, 0.0);
+        let rtop = rotate(right_cx, -triangle_h / 2.0);
+        let rbot = rotate(right_cx, triangle_h / 2.0);
+        painter.add(Shape::convex_polygon(vec![rtip, rtop, rbot], Color32::WHITE, Stroke::NONE));
     }
 
-    // Draw rectangle border rotated around the center
-    let w = rect.w * scale;
-    let h = rect.h * scale;
-    let cx = rect.x + w / 2.0;
-    let cy = rect.y + h / 2.0;
-    let corners = [
-        Vec2::new(-w / 2.0, -h / 2.0),
-        Vec2::new(w / 2.0, -h / 2.0),
-        Vec2::new(w / 2.0, h / 2.0),
-        Vec2::new(-w / 2.0, h / 2.0),
+    let w = rect.width() * scale;
+    let h = rect.height() * scale;
+    let cx = rect.min.x + w / 2.0;
+    let cy = rect.min.y + h / 2.0;
+    let corners_raw = [
+        vec2(-w / 2.0, -h / 2.0),
+        vec2(w / 2.0, -h / 2.0),
+        vec2(w / 2.0, h / 2.0),
+        vec2(-w / 2.0, h / 2.0),
     ];
-    let rotated: Vec<Vec2> = corners
-        .iter()
-        .map(|corner| {
-            let (sin, cos) = card_rect.rotation().sin_cos();
-            Vec2::new(
-                cos * corner.x - sin * corner.y + cx,
-                sin * corner.x + cos * corner.y + cy,
-            )
-        })
-        .collect();
+    let (sin, cos) = card_rect.rotation().sin_cos();
+    let rotated: Vec<Pos2> = corners_raw.iter().map(|v| pos2(cos * v.x - sin * v.y + cx, sin * v.x + cos * v.y + cy)).collect();
     for i in 0..4 {
-        draw_line(
-            rotated[i].x,
-            rotated[i].y,
-            rotated[(i + 1) % 4].x,
-            rotated[(i + 1) % 4].y,
-            2.0,
-            sleeve_color,
-        );
+        painter.line_segment([rotated[i], rotated[(i + 1) % 4]], Stroke::new(2.0, sleeve_color));
     }
 
     if card_rect.card.abilities.contains(&Ability::SummoningSickness) {
         let icon_size = 22.0;
-        let scale = 1.0;
-        let x = card_rect.rect.x + card_rect.rect.w * scale - icon_size - 4.0;
-        let y = card_rect.rect.y + 4.0;
-        draw_vortex_icon(x, y, icon_size, BLUE);
+        let x = card_rect.rect.min.x + card_rect.rect.width() * scale - icon_size - 4.0;
+        let y = card_rect.rect.min.y + 4.0;
+        draw_vortex_icon(painter, x, y, icon_size, Color32::BLUE);
     }
 
     if card_rect.card.abilities.contains(&Ability::Disabled) {
         let icon_size = 15.0;
-        let x = card_rect.rect.x + card_rect.rect.w - 30.0 - 5.0;
-        let y = card_rect.rect.y + 4.0;
-        let cx = x + icon_size / 2.0;
-        let cy = y + icon_size / 2.0;
-        draw_circle_lines(cx, cy, icon_size / 2.0, 3.0, WHITE);
-        draw_line(x + 4.0, y + icon_size - 4.0, x + icon_size - 4.0, y + 4.0, 3.0, WHITE);
+        let x = card_rect.rect.min.x + card_rect.rect.width() - 30.0 - 5.0;
+        let y = card_rect.rect.min.y + 4.0;
+        let center = pos2(x + icon_size / 2.0, y + icon_size / 2.0);
+        painter.circle_stroke(center, icon_size / 2.0, Stroke::new(3.0, Color32::WHITE));
+        painter.line_segment(
+            [pos2(x + 4.0, y + icon_size - 4.0), pos2(x + icon_size - 4.0, y + 4.0)],
+            Stroke::new(3.0, Color32::WHITE),
+        );
     }
 
-    // Draw red circle with damage taken in top-left corner if the card has taken damage and is a
-    // minion.
     if card_rect.card.card_type != CardType::Avatar
         && card_rect.card.damage_taken > 0
         && card_rect.card.zone.is_in_play()
     {
         let circle_radius = 8.0;
-        let circle_x = rect.x + (circle_radius / 2.0);
-        let circle_y = rect.y + (circle_radius / 2.0);
-        draw_circle(circle_x, circle_y, circle_radius - 2.0, RED);
+        let circle_pos = pos2(rect.min.x + circle_radius / 2.0, rect.min.y + circle_radius / 2.0);
+        painter.circle_filled(circle_pos, circle_radius - 2.0, Color32::RED);
         let dmg_text = card_rect.card.damage_taken.to_string();
-        let text_dims = macroquad::text::measure_text(&dmg_text, None, 12, 1.0);
-        draw_text(
-            &dmg_text,
-            circle_x - text_dims.width / 2.0,
-            circle_y + text_dims.height / 2.8,
-            12.0,
-            WHITE,
-        );
+        painter.text(circle_pos, egui::Align2::CENTER_CENTER, &dmg_text, FontId::proportional(10.0), Color32::WHITE);
     }
 
-    // Draw power on a blue circle in the top-right corner if the card is a unit.
     if card_rect.card.card_type.is_unit() {
         let circle_radius = 8.0;
-        let circle_x = rect.x + w - (circle_radius / 2.0);
-        let circle_y = rect.y + (circle_radius / 2.0);
-        draw_circle(circle_x, circle_y, circle_radius - 2.0, BLUE);
-        let dmg_text = card_rect.card.power.to_string();
-        let text_dims = macroquad::text::measure_text(&dmg_text, None, 12, 1.0);
-        draw_text(
-            &dmg_text,
-            circle_x - text_dims.width / 2.0,
-            circle_y + text_dims.height / 2.8,
-            12.0,
-            WHITE,
-        );
+        let circle_pos = pos2(rect.min.x + w - circle_radius / 2.0, rect.min.y + circle_radius / 2.0);
+        painter.circle_filled(circle_pos, circle_radius - 2.0, Color32::BLUE);
+        let power_text = card_rect.card.power.to_string();
+        painter.text(circle_pos, egui::Align2::CENTER_CENTER, &power_text, FontId::proportional(10.0), Color32::WHITE);
     }
 
     if draw_accessories && card_rect.is_selected {
-        draw_rectangle_lines(rect.x, rect.y, rect.w * scale, rect.h * scale, 2.0, WHITE);
+        painter.rect_stroke(scaled_rect, 0.0, Stroke::new(2.0, Color32::WHITE), egui::StrokeKind::Outside);
     }
 }
 
-pub async fn render_card_preview(card: &CardRect, data: &mut GameData) -> anyhow::Result<()> {
+pub fn render_card_preview(card: &CardRect, data: &mut GameData, painter: &Painter) -> anyhow::Result<()> {
     if let Status::SelectingCard { preview: true, .. } = &data.status {
         return Ok(());
     }
 
     let screen_rect = crate::config::screen_rect()?;
     let mut rect = card.rect;
-    let mut preview_scale: f32 = realm_rect()?.x / card.rect.w;
-    if rect.w > rect.h {
-        preview_scale = realm_rect()?.x / card.rect.h;
+    let mut preview_scale: f32 = realm_rect()?.min.x / card.rect.width();
+    if rect.width() > rect.height() {
+        preview_scale = realm_rect()?.min.x / card.rect.height();
     }
 
-    rect.w *= preview_scale;
-    rect.h *= preview_scale;
-    let preview_y = screen_rect.h / 2.0 - rect.h / 2.0;
-    draw_texture_ex(
-        &card.image,
-        0.0,
-        preview_y,
-        WHITE,
-        DrawTextureParams {
-            dest_size: Some(Vec2::new(rect.w, rect.h)),
-            ..Default::default()
-        },
-    );
+    rect = Rect::from_min_size(rect.min, rect.size() * preview_scale);
+    let preview_y = screen_rect.height() / 2.0 - rect.height() / 2.0;
+    let dest_rect = Rect::from_min_size(pos2(0.0, preview_y), rect.size());
+
+    if let Some(ref tex) = card.image {
+        painter.image(tex.id(), dest_rect, Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)), Color32::WHITE);
+    } else {
+        painter.rect_filled(dest_rect, 4.0, Color32::DARK_GRAY);
+    }
 
     Ok(())
 }
 
-pub fn menu_skin() -> ui::Skin {
-    let button_style = ui::root_ui()
-        .style_builder()
-        .font_size(32)
-        .text_color(WHITE)
-        .text_color_hovered(WHITE)
-        .text_color_clicked(WHITE)
-        .color(macroquad::color::Color::from_rgba(30, 144, 255, 255))
-        .color_hovered(macroquad::color::Color::from_rgba(65, 105, 225, 255))
-        .color_clicked(macroquad::color::Color::from_rgba(25, 25, 112, 255))
-        .build();
-    let editbox_style = ui::root_ui().style_builder().font_size(30).build();
-    let label_style = ui::root_ui().style_builder().font_size(30).text_color(WHITE).build();
-
-    ui::Skin {
-        button_style,
-        editbox_style,
-        label_style,
-        ..ui::root_ui().default_skin()
-    }
-}
-
-pub fn wrap_text<S: AsRef<str>>(text: S, max_width: f32, font_size: u16) -> String {
-    use macroquad::text::measure_text;
-
-    let mut lines = Vec::new();
-    for paragraph in text.as_ref().split('\n') {
-        let mut current = String::new();
-        for word in paragraph.split_whitespace() {
-            let test = if current.is_empty() {
-                word.to_string()
-            } else {
-                format!("{} {}", current, word)
-            };
-            let dims = measure_text(&test, None, font_size, 1.0);
-            if dims.width > max_width && !current.is_empty() {
-                lines.push(current.clone());
-                current = word.to_string();
-            } else {
-                current = test;
-            }
-        }
-        if !current.is_empty() {
-            lines.push(current);
-        }
-    }
-
-    lines.join("\n")
-}
-
-pub fn multiline_label(text: &str, pos: Vec2, font_size: u16, ui: &mut ui::Ui) {
-    for (idx, line) in text.lines().enumerate() {
-        let line_pos = pos + Vec2::new(0.0, idx as f32 * (font_size as f32 + 4.0));
-        ui::widgets::Label::new(line).position(line_pos).ui(ui);
-    }
+pub fn wrap_text<S: AsRef<str>>(text: S, _max_width: f32, _font_size: u16) -> String {
+    text.as_ref().to_string()
 }

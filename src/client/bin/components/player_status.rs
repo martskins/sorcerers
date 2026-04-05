@@ -1,12 +1,5 @@
-use macroquad::{
-    color::{BLUE, Color, RED, WHITE},
-    input::MouseButton,
-    math::{Rect, Vec2},
-    shapes::{draw_line, draw_rectangle, draw_triangle_lines},
-    text::draw_text,
-    texture::{DrawTextureParams, Texture2D, draw_texture_ex},
-    window::screen_height,
-};
+use egui::epaint::{CornerRadius, Shape};
+use egui::{Color32, Context, Painter, Rect, Stroke, Ui, pos2, vec2};
 use sorcerers::{
     card::Zone,
     game::{Element, Resources, Thresholds},
@@ -18,20 +11,42 @@ use crate::{
     texture_cache::TextureCache,
 };
 
+// ── Layout ─────────────────────────────────────────────────────────────────────
+const ICON_SZ: f32 = 14.0;
+const STAT_FONT: f32 = 14.0;
+const NAME_FONT: f32 = 13.0;
+const THRESH_FONT: f32 = 12.0;
+const THRESH_SYM: f32 = 14.0; // triangle bounding box size
+const PAD_H: i8 = 8; // horizontal inner margin (i8 for egui::Margin)
+const PAD_V: i8 = 6; // vertical   inner margin
+
+// Panel background / border
+const BG: Color32 = Color32::from_rgba_premultiplied(15, 20, 38, 235);
+const BORDER: Color32 = Color32::from_rgb(55, 70, 110);
+
+// Element colours
+const COL_FIRE: Color32 = Color32::from_rgb(220, 70, 40);
+const COL_AIR: Color32 = Color32::from_rgb(160, 90, 220);
+const COL_EARTH: Color32 = Color32::from_rgb(140, 100, 40);
+const COL_WATER: Color32 = Color32::from_rgb(50, 150, 230);
+
+fn element_color(el: Element) -> Color32 {
+    match el {
+        Element::Fire => COL_FIRE,
+        Element::Air => COL_AIR,
+        Element::Earth => COL_EARTH,
+        Element::Water => COL_WATER,
+    }
+}
+
 #[derive(Debug)]
 pub struct PlayerStatusComponent {
     visible: bool,
     player_id: uuid::Uuid,
+    /// `true` = local player (bottom of sidebar), `false` = opponent (top).
     player: bool,
     rect: Rect,
-}
-
-enum Icon {
-    Heart,
-    Cards,
-    Potion,
-    Tombstone,
-    Message,
+    pending_open_log: bool,
 }
 
 impl PlayerStatusComponent {
@@ -41,213 +56,246 @@ impl PlayerStatusComponent {
             player_id,
             rect,
             player,
+            pending_open_log: false,
         }
-    }
-
-    fn icon_rect(&self, icon: &Icon) -> Rect {
-        match icon {
-            &Icon::Heart => Rect::new(self.rect.x, self.rect.y + 7.0, 20.0, 20.0),
-            &Icon::Cards => Rect::new(self.rect.x + 52.0, self.rect.y + 4.0, 20.0, 20.0),
-            &Icon::Potion => Rect::new(self.rect.x + 95.0, self.rect.y + 6.0, 20.0, 20.0),
-            &Icon::Tombstone => Rect::new(self.rect.x + 140.0, self.rect.y + 7.0, 20.0, 20.0),
-            &Icon::Message => Rect::new(self.rect.x + 140.0, self.rect.y - 13.0, 20.0, 20.0),
-        }
-    }
-
-    async fn icon_texture(icon: &Icon) -> anyhow::Result<Texture2D> {
-        match icon {
-            &Icon::Heart => TextureCache::get_texture("assets/icons/heart.png").await,
-            &Icon::Cards => TextureCache::get_texture("assets/icons/cards.png").await,
-            &Icon::Potion => TextureCache::get_texture("assets/icons/potion.png").await,
-            &Icon::Tombstone => TextureCache::get_texture("assets/icons/tombstone.png").await,
-            &Icon::Message => TextureCache::get_texture("assets/icons/message.png").await,
-        }
-    }
-
-    async fn draw_icon(&self, icon: &Icon, text: &str) -> anyhow::Result<()> {
-        let texture = Self::icon_texture(icon).await?;
-        let rect = self.icon_rect(icon);
-        draw_texture_ex(
-            &texture,
-            rect.x,
-            rect.y,
-            WHITE,
-            DrawTextureParams {
-                dest_size: Some(Vec2::new(rect.w, rect.h)),
-                ..Default::default()
-            },
-        );
-        draw_text(text, rect.x + rect.w + 5.0, rect.y + rect.h - 5.0, FONT_SIZE, WHITE);
-        Ok(())
     }
 }
 
-const FONT_SIZE: f32 = 24.0;
-const THRESHOLD_SYMBOL_SPACING: f32 = 18.0;
-const SYMBOL_SIZE: f32 = 20.0;
-
-fn render_threshold(x: f32, y: f32, value: u8, element: Element) {
-    let text_offset_y = SYMBOL_SIZE * 0.8;
-    draw_text(&value.to_string(), x, y + text_offset_y, FONT_SIZE, WHITE);
-
-    const PURPLE: Color = Color::new(0.6, 0.2, 0.8, 1.0);
-    const BROWN: Color = Color::new(0.6, 0.4, 0.2, 1.0);
-    let element_color = match element {
-        Element::Fire => RED,
-        Element::Air => PURPLE,
-        Element::Earth => BROWN,
-        Element::Water => BLUE,
-    };
-
-    if element == Element::Earth || element == Element::Water {
-        let v1 = Vec2::new(x + THRESHOLD_SYMBOL_SPACING, y);
-        let v2 = Vec2::new(x + THRESHOLD_SYMBOL_SPACING + SYMBOL_SIZE / 2.0, y + SYMBOL_SIZE);
-        let v3 = Vec2::new(x + THRESHOLD_SYMBOL_SPACING + SYMBOL_SIZE, y);
-        draw_triangle_lines(v1, v2, v3, 3.0, element_color);
+/// Icon + number stat cell, laid out horizontally.
+fn stat_cell(ui: &mut Ui, icon_path: &str, value: impl std::fmt::Display, color: Color32, ctx: &Context) {
+    let icon_sz = vec2(ICON_SZ, ICON_SZ);
+    if let Some(tex) = TextureCache::get_texture_blocking(icon_path, ctx) {
+        let img =
+            egui::Image::new(egui::ImageSource::Texture(egui::load::SizedTexture::from_handle(&tex))).max_size(icon_sz);
+        ui.add(img);
     } else {
-        let v1 = Vec2::new(x + THRESHOLD_SYMBOL_SPACING, y + SYMBOL_SIZE);
-        let v2 = Vec2::new(x + THRESHOLD_SYMBOL_SPACING + SYMBOL_SIZE / 2.0, y);
-        let v3 = Vec2::new(x + THRESHOLD_SYMBOL_SPACING + SYMBOL_SIZE, y + SYMBOL_SIZE);
-        draw_triangle_lines(v1, v2, v3, 3.0, element_color);
+        let (r, _) = ui.allocate_exact_size(icon_sz, egui::Sense::hover());
+        ui.painter().rect_filled(r, 3.0, Color32::from_rgb(50, 50, 60));
     }
-
-    if element == Element::Air || element == Element::Earth {
-        let line_offset_y: f32 = SYMBOL_SIZE / 2.0;
-        draw_line(
-            x + THRESHOLD_SYMBOL_SPACING,
-            y + line_offset_y,
-            x + THRESHOLD_SYMBOL_SPACING + SYMBOL_SIZE,
-            y + line_offset_y,
-            2.0,
-            element_color,
-        );
-    }
+    ui.add_space(2.0);
+    ui.label(
+        egui::RichText::new(value.to_string())
+            .color(color)
+            .size(STAT_FONT)
+            .strong(),
+    );
 }
 
-#[async_trait::async_trait]
+/// Official Sorcery: Contested Realm element symbol.
+///
+/// Fire  = upward triangle               (▲)
+/// Air   = upward triangle + horizontal midline
+/// Earth = downward triangle + horizontal midline
+/// Water = downward triangle              (▽)
+fn element_symbol(ui: &mut Ui, count: u8, element: Element) {
+    let col = element_color(element.clone());
+    let s = THRESH_SYM;
+
+    let (r, _) = ui.allocate_exact_size(vec2(s, s), egui::Sense::hover());
+    let p = ui.painter();
+    let (x, y) = (r.min.x, r.min.y);
+
+    let is_upward = matches!(element, Element::Fire | Element::Air);
+    let has_midline = matches!(element, Element::Air | Element::Earth);
+
+    let (v1, v2, v3) = if is_upward {
+        (pos2(x + s / 2.0, y), pos2(x, y + s), pos2(x + s, y + s)) // ▲
+    } else {
+        (pos2(x, y), pos2(x + s, y), pos2(x + s / 2.0, y + s)) // ▽
+    };
+    p.add(Shape::closed_line(vec![v1, v2, v3], Stroke::new(1.5, col)));
+
+    if has_midline {
+        let mid_y = y + s / 2.0;
+        p.line_segment([pos2(x, mid_y), pos2(x + s, mid_y)], Stroke::new(1.5, col));
+    }
+
+    ui.add_space(2.0);
+    ui.label(
+        egui::RichText::new(count.to_string())
+            .color(col)
+            .size(THRESH_FONT)
+            .strong(),
+    );
+    ui.add_space(6.0);
+}
+
 impl Component for PlayerStatusComponent {
-    async fn update(&mut self, _data: &mut GameData) -> anyhow::Result<()> {
+    fn update(&mut self, _data: &mut GameData, _ctx: &Context) -> anyhow::Result<()> {
         Ok(())
     }
 
-    async fn render(&mut self, data: &mut GameData) -> anyhow::Result<()> {
-        let sidebar_w = crate::config::realm_rect().map(|r| r.x).unwrap_or(220.0);
-
-        // Draw a solid background panel for this player's status strip.
-        let panel_top;
-        let panel_h;
-        if self.player {
-            // Bottom panel — anchored to the bottom of the screen.
-            let content_top = (self.rect.y - FONT_SIZE - 6.0).max(0.0);
-            panel_top = content_top;
-            panel_h = screen_height() - content_top;
-        } else {
-            // Top panel — anchored to the top of the screen.
-            panel_top = 0.0;
-            panel_h = self.rect.y + 80.0;
+    fn render(&mut self, data: &mut GameData, ui: &mut Ui, _painter: &Painter) -> anyhow::Result<()> {
+        if !self.visible {
+            return Ok(());
         }
-        draw_rectangle(0.0, panel_top, sidebar_w, panel_h, Color::new(0.07, 0.09, 0.15, 0.90));
-        let resources = data.resources.get(&self.player_id).unwrap_or(&Resources {
+
+        let sidebar_w = crate::config::realm_rect().map(|r| r.min.x).unwrap_or(220.0);
+        let sr = crate::config::screen_rect()?;
+        let ctx = ui.ctx().clone();
+
+        // Panel sits at the very bottom (player) or very top (opponent) of the sidebar.
+        let panel_y = if self.player {
+            sr.height() - crate::config::SIDEBAR_PANEL_RESERVED - 4.0
+        } else {
+            4.0
+        };
+        let panel_w = sidebar_w - 18.0;
+
+        // Gather data
+        let resources = data.resources.get(&self.player_id).cloned().unwrap_or(Resources {
             mana: 0,
             thresholds: Thresholds::ZERO,
         });
-        let player_name = if data.player_id == self.player_id {
-            "You"
-        } else {
-            "Them"
-        };
-        draw_text(player_name, self.rect.x, self.rect.y, FONT_SIZE, WHITE);
+        let health = data.avatar_health.get(&self.player_id).copied().unwrap_or(0);
+        let hand_count = data
+            .cards
+            .iter()
+            .filter(|c| c.owner_id == self.player_id && c.zone == Zone::Hand)
+            .count();
+        let grave_count = data
+            .cards
+            .iter()
+            .filter(|c| c.owner_id == self.player_id && c.zone == Zone::Cemetery)
+            .count();
+        let is_self = data.player_id == self.player_id;
+        let name = if is_self { "YOU" } else { "OPPONENT" };
+        let unseen = data.unseen_events;
 
-        let health = format!("{}", data.avatar_health.get(&self.player_id).cloned().unwrap_or(0));
-        Self::draw_icon(self, &Icon::Heart, &health).await?;
+        let area_id = if self.player { "ps_self" } else { "ps_opp" };
+        let mut open_log = false;
 
-        let cards_in_hand = format!(
-            "{}",
-            data.cards
-                .iter()
-                .filter(|c| c.owner_id == self.player_id)
-                .filter(|c| c.zone == Zone::Hand)
-                .count()
-        );
-        Self::draw_icon(self, &Icon::Cards, &cards_in_hand).await?;
+        egui::Area::new(egui::Id::new(area_id))
+            .fixed_pos(pos2(4.0, panel_y))
+            .order(egui::Order::Background)
+            .show(&ctx, |ui| {
+                egui::Frame::new()
+                    .fill(BG)
+                    .stroke(Stroke::new(1.0, BORDER))
+                    .corner_radius(CornerRadius::same(7))
+                    .inner_margin(egui::Margin::symmetric(PAD_H, PAD_V))
+                    .show(ui, |ui| {
+                        ui.set_min_width(panel_w - (PAD_H as f32) * 2.0);
+                        ui.set_max_width(panel_w - (PAD_H as f32) * 2.0);
 
-        let mana_text = format!("{}", resources.mana);
-        Self::draw_icon(self, &Icon::Potion, &mana_text).await?;
+                        // ── Name + event-log link ─────────────────────────────
+                        ui.horizontal(|ui| {
+                            ui.label(
+                                egui::RichText::new(name)
+                                    .color(Color32::from_rgb(190, 210, 255))
+                                    .size(NAME_FONT)
+                                    .strong(),
+                            );
+                            if is_self {
+                                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                                    let (label, col) = if unseen > 0 {
+                                        (format!("📩{unseen}"), Color32::from_rgb(100, 200, 255))
+                                    } else {
+                                        ("📋".into(), Color32::from_rgb(100, 100, 130))
+                                    };
+                                    if ui.link(egui::RichText::new(label).color(col).size(12.0)).clicked() {
+                                        open_log = true;
+                                    }
+                                });
+                            }
+                        });
 
-        let cards_in_cemetery = format!(
-            "{}",
-            data.cards
-                .iter()
-                .filter(|c| c.owner_id == self.player_id)
-                .filter(|c| c.zone == Zone::Cemetery)
-                .count()
-        );
-        Self::draw_icon(self, &Icon::Tombstone, &cards_in_cemetery).await?;
+                        ui.add_space(2.0);
+                        // Thin manual separator
+                        let sep_rect = ui.available_rect_before_wrap();
+                        let sep_y = sep_rect.min.y + 1.0;
+                        ui.painter().line_segment(
+                            [pos2(sep_rect.min.x, sep_y), pos2(sep_rect.max.x, sep_y)],
+                            Stroke::new(1.0, BORDER),
+                        );
+                        ui.add_space(5.0);
 
-        if data.player_id == self.player_id {
-            let unseen_messages = format!("{}", data.unseen_events);
-            Self::draw_icon(self, &Icon::Message, &unseen_messages).await?;
+                        // ── Stats: HP · Mana · Hand · Grave ──────────────────
+                        ui.horizontal(|ui| {
+                            ui.spacing_mut().item_spacing = vec2(4.0, 0.0);
+                            stat_cell(
+                                ui,
+                                "assets/icons/heart.png",
+                                health,
+                                Color32::from_rgb(230, 80, 80),
+                                &ctx,
+                            );
+                            ui.add_space(5.0);
+                            stat_cell(
+                                ui,
+                                "assets/icons/potion.png",
+                                resources.mana,
+                                Color32::from_rgb(80, 200, 230),
+                                &ctx,
+                            );
+                            ui.add_space(5.0);
+                            stat_cell(
+                                ui,
+                                "assets/icons/cards.png",
+                                hand_count,
+                                Color32::from_rgb(230, 210, 100),
+                                &ctx,
+                            );
+                            ui.add_space(5.0);
+                            stat_cell(
+                                ui,
+                                "assets/icons/tombstone.png",
+                                grave_count,
+                                Color32::from_rgb(170, 170, 190),
+                                &ctx,
+                            );
+                        });
+
+                        ui.add_space(4.0);
+
+                        // ── Elemental thresholds ──────────────────────────────
+                        ui.horizontal(|ui| {
+                            ui.spacing_mut().item_spacing = vec2(2.0, 0.0);
+                            element_symbol(ui, resources.thresholds.fire, Element::Fire);
+                            element_symbol(ui, resources.thresholds.air, Element::Air);
+                            element_symbol(ui, resources.thresholds.earth, Element::Earth);
+                            element_symbol(ui, resources.thresholds.water, Element::Water);
+                        });
+                    });
+            });
+
+        if open_log {
+            self.pending_open_log = true;
         }
-
-        let thresholds_y: f32 = self.rect.y + 10.0 + 20.0 + 20.0;
-        let fire_x = self.rect.x;
-        let fire_y = thresholds_y;
-        render_threshold(fire_x, fire_y, resources.thresholds.fire, Element::Fire);
-
-        let air_x = fire_x + SYMBOL_SIZE + THRESHOLD_SYMBOL_SPACING + 5.0;
-        let air_y = thresholds_y;
-        render_threshold(air_x, air_y, resources.thresholds.air, Element::Air);
-
-        let earth_x = air_x + SYMBOL_SIZE + THRESHOLD_SYMBOL_SPACING + 5.0;
-        let earth_y = thresholds_y;
-        render_threshold(earth_x, earth_y, resources.thresholds.earth, Element::Earth);
-
-        let water_x = earth_x + SYMBOL_SIZE + THRESHOLD_SYMBOL_SPACING + 5.0;
-        let water_y = thresholds_y;
-        render_threshold(water_x, water_y, resources.thresholds.water, Element::Water);
-
         Ok(())
     }
 
-    fn toggle_visibility(&mut self) {
-        self.visible = !self.visible;
-    }
-
-    fn is_visible(&self) -> bool {
-        self.visible
-    }
-
-    async fn process_input(
+    fn process_input(
         &mut self,
         _in_turn: bool,
         _data: &mut GameData,
+        _ctx: &Context,
     ) -> anyhow::Result<Option<ComponentCommand>> {
-        let mouse_position = macroquad::input::mouse_position();
-        let clicked = macroquad::input::is_mouse_button_released(MouseButton::Left);
-        if clicked && self.icon_rect(&Icon::Message).contains(mouse_position.into()) {
+        if self.pending_open_log {
+            self.pending_open_log = false;
             return Ok(Some(ComponentCommand::SetVisibility {
                 component_type: ComponentType::EventLog,
                 visible: true,
             }));
         }
-
         Ok(None)
     }
 
-    async fn process_command(&mut self, command: &ComponentCommand, _data: &mut GameData) -> anyhow::Result<()> {
-        match command {
-            ComponentCommand::SetRect {
-                component_type: ComponentType::PlayerStatus,
-                rect,
-            } => {
-                self.rect = rect.clone();
-                if self.player {
-                    self.rect.y = crate::config::screen_rect()?.h - 90.0;
-                }
-            }
-            _ => {}
-        }
+    fn toggle_visibility(&mut self) {
+        self.visible = !self.visible;
+    }
+    fn is_visible(&self) -> bool {
+        self.visible
+    }
 
+    fn process_command(&mut self, command: &ComponentCommand, _data: &mut GameData) -> anyhow::Result<()> {
+        if let ComponentCommand::SetRect {
+            component_type: ComponentType::PlayerStatus,
+            rect,
+        } = command
+        {
+            self.rect = *rect;
+        }
         Ok(())
     }
 
