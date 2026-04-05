@@ -417,44 +417,140 @@ impl Game {
             Status::SelectingAction { prompt, actions } => {
                 let actions = actions.clone();
                 let prompt = prompt.clone();
-                let mut result: Option<(usize, bool)> = None;
+                let mut result: Option<usize> = None;
 
-                // Position the popup near the card that was clicked; fall back to center.
+                // ── Layout constants ──────────────────────────────────────────
+                const MENU_W: f32 = 230.0;
+                const HEADER_H: f32 = 36.0;
+                const ROW_H: f32 = 46.0;
+                const CORNER: f32 = 10.0;
+                const ACCENT: Color32 = Color32::from_rgb(90, 160, 255);
+                const BG: Color32 = Color32::from_rgb(14, 16, 28);
+                const BG_ROW_HOVER: Color32 = Color32::from_rgb(35, 55, 100);
+                const SEP: Color32 = Color32::from_rgb(40, 44, 68);
+
+                let total_h = HEADER_H + actions.len() as f32 * ROW_H + 2.0;
+
+                // ── Determine position ────────────────────────────────────────
                 let screen = screen_rect().unwrap_or(Rect::from_min_size(pos2(0.0, 0.0), vec2(1280.0, 720.0)));
-                let mut win = egui::Window::new("Select Action")
-                    .collapsible(false)
-                    .resizable(false);
-                if let Some(card_pos) = self.data.last_clicked_card_pos {
-                    // Place the popup just to the right of the card, clamped inside the screen.
-                    let popup_w = 220.0;
-                    let popup_h = actions.len() as f32 * 52.0 + 60.0;
+                let origin = if let Some(card_pos) = self.data.last_clicked_card_pos {
                     let mut x = card_pos.x + 60.0;
-                    let mut y = card_pos.y - popup_h / 2.0;
-                    if x + popup_w > screen.max.x - 8.0 {
-                        x = card_pos.x - popup_w - 60.0;
+                    let mut y = card_pos.y - total_h / 2.0;
+                    if x + MENU_W > screen.max.x - 8.0 {
+                        x = card_pos.x - MENU_W - 60.0;
                     }
-                    y = y.clamp(screen.min.y + 8.0, screen.max.y - popup_h - 8.0);
-                    win = win.fixed_pos(pos2(x, y));
+                    y = y.clamp(screen.min.y + 8.0, screen.max.y - total_h - 8.0);
+                    pos2(x, y)
                 } else {
-                    win = win.anchor(egui::Align2::CENTER_CENTER, vec2(0.0, 0.0));
-                }
+                    pos2((screen.width() - MENU_W) / 2.0, (screen.height() - total_h) / 2.0)
+                };
 
-                win.show(ctx, |ui| {
-                        for line in prompt.lines() {
-                            ui.label(line);
-                        }
+                // ── Draw via Area so we control every pixel ───────────────────
+                egui::Area::new(egui::Id::new("action_menu_popup"))
+                    .fixed_pos(origin)
+                    .order(egui::Order::Foreground)
+                    .show(ctx, |ui| {
+                        let menu_rect = Rect::from_min_size(origin, vec2(MENU_W, total_h));
+                        let p = ui.painter();
+
+                        // Drop shadow
+                        p.rect_filled(
+                            menu_rect.translate(vec2(4.0, 4.0)),
+                            egui::CornerRadius::same(CORNER as u8),
+                            Color32::from_black_alpha(120),
+                        );
+                        // Main background
+                        p.rect_filled(
+                            menu_rect,
+                            egui::CornerRadius::same(CORNER as u8),
+                            BG,
+                        );
+                        // Accent border
+                        p.rect_stroke(
+                            menu_rect,
+                            egui::CornerRadius::same(CORNER as u8),
+                            egui::Stroke::new(1.5, ACCENT),
+                            egui::StrokeKind::Outside,
+                        );
+                        // Header accent bar
+                        let header_rect = Rect::from_min_size(origin, vec2(MENU_W, HEADER_H));
+                        p.rect_filled(
+                            header_rect,
+                            egui::CornerRadius {
+                                nw: CORNER as u8,
+                                ne: CORNER as u8,
+                                sw: 0,
+                                se: 0,
+                            },
+                            Color32::from_rgb(22, 32, 60),
+                        );
+                        // Header separator line
+                        p.hline(
+                            origin.x + 8.0..=origin.x + MENU_W - 8.0,
+                            origin.y + HEADER_H,
+                            egui::Stroke::new(1.0, ACCENT),
+                        );
+                        // Prompt text in header
+                        p.text(
+                            pos2(origin.x + MENU_W / 2.0, origin.y + HEADER_H / 2.0),
+                            egui::Align2::CENTER_CENTER,
+                            &prompt,
+                            egui::FontId::proportional(14.0),
+                            Color32::from_rgb(180, 200, 240),
+                        );
+
+                        // Action rows
                         for (idx, action) in actions.iter().enumerate() {
-                            let btn = egui::Button::new(
-                                egui::RichText::new(action.as_str()).size(20.0).color(Color32::WHITE),
-                            )
-                            .min_size(vec2(200.0, 44.0));
-                            if ui.add(btn).clicked() {
-                                result = Some((idx, true));
+                            let row_y = origin.y + HEADER_H + idx as f32 * ROW_H;
+                            let row_rect = Rect::from_min_size(
+                                pos2(origin.x + 1.0, row_y),
+                                vec2(MENU_W - 2.0, ROW_H),
+                            );
+                            // Last row gets rounded bottom corners
+                            let row_cr = if idx + 1 == actions.len() {
+                                egui::CornerRadius { nw: 0, ne: 0, sw: CORNER as u8, se: CORNER as u8 }
+                            } else {
+                                egui::CornerRadius::ZERO
+                            };
+
+                            let resp = ui.interact(row_rect, egui::Id::new(("action_row", idx)), egui::Sense::click());
+                            if resp.hovered() {
+                                p.rect_filled(row_rect, row_cr, BG_ROW_HOVER);
                             }
-                            ui.add_space(4.0);
+                            if resp.clicked() {
+                                result = Some(idx);
+                            }
+
+                            // Separator (skip before first row)
+                            if idx > 0 {
+                                p.hline(
+                                    origin.x + 12.0..=origin.x + MENU_W - 12.0,
+                                    row_y,
+                                    egui::Stroke::new(0.5, SEP),
+                                );
+                            }
+
+                            // Arrow glyph
+                            p.text(
+                                pos2(origin.x + 18.0, row_y + ROW_H / 2.0),
+                                egui::Align2::LEFT_CENTER,
+                                "▸",
+                                egui::FontId::proportional(14.0),
+                                if resp.hovered() { ACCENT } else { Color32::from_rgb(80, 100, 140) },
+                            );
+
+                            // Action label
+                            p.text(
+                                pos2(origin.x + 36.0, row_y + ROW_H / 2.0),
+                                egui::Align2::LEFT_CENTER,
+                                action.as_str(),
+                                egui::FontId::proportional(18.0),
+                                if resp.hovered() { Color32::WHITE } else { Color32::from_rgb(200, 210, 230) },
+                            );
                         }
                     });
-                if let Some((idx, _)) = result {
+
+                if let Some(idx) = result {
                     self.client
                         .send(ClientMessage::PickAction {
                             game_id: self.game_id,

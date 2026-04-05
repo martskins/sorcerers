@@ -3,8 +3,9 @@ use crate::{
     scene::game::{GameData, Status},
 };
 use egui::{
-    Color32, FontId, Painter, Pos2, Rect, Stroke, TextureHandle, Vec2, pos2, vec2,
+    Color32, FontId, Painter, Pos2, Rect, Stroke, TextureHandle, Vec2,
     epaint::{Mesh, Shape, Vertex},
+    pos2, vec2,
 };
 use sorcerers::card::{Ability, CardData, CardType};
 
@@ -28,7 +29,6 @@ impl std::fmt::Debug for CardRect {
             .finish()
     }
 }
-
 
 impl CardRect {
     pub fn rotation(&self) -> f32 {
@@ -69,9 +69,7 @@ fn draw_vortex_icon(painter: &Painter, x: f32, y: f32, size: f32, color: Color32
 fn draw_rotated_image(painter: &Painter, tex_handle: &TextureHandle, rect: Rect, angle: f32, tint: Color32) {
     let cx = rect.center();
     let (sin, cos) = angle.sin_cos();
-    let rotate = |v: Vec2| -> Pos2 {
-        pos2(cos * v.x - sin * v.y + cx.x, sin * v.x + cos * v.y + cx.y)
-    };
+    let rotate = |v: Vec2| -> Pos2 { pos2(cos * v.x - sin * v.y + cx.x, sin * v.x + cos * v.y + cx.y) };
     let half = rect.size() * 0.5;
     let corners = [
         rotate(vec2(-half.x, -half.y)),
@@ -82,7 +80,11 @@ fn draw_rotated_image(painter: &Painter, tex_handle: &TextureHandle, rect: Rect,
     let uvs = [pos2(0.0, 0.0), pos2(1.0, 0.0), pos2(1.0, 1.0), pos2(0.0, 1.0)];
     let mut mesh = Mesh::with_texture(tex_handle.id());
     for (c, uv) in corners.iter().zip(uvs.iter()) {
-        mesh.vertices.push(Vertex { pos: *c, uv: *uv, color: tint });
+        mesh.vertices.push(Vertex {
+            pos: *c,
+            uv: *uv,
+            color: tint,
+        });
     }
     mesh.indices = vec![0, 1, 2, 0, 2, 3];
     painter.add(Shape::mesh(mesh));
@@ -90,7 +92,11 @@ fn draw_rotated_image(painter: &Painter, tex_handle: &TextureHandle, rect: Rect,
 
 pub fn draw_card(card_rect: &CardRect, is_ally: bool, draw_accessories: bool, painter: &Painter) {
     let rect = card_rect.rect;
-    let scale = if card_rect.is_hovered || card_rect.is_selected { 1.1f32 } else { 1.0f32 };
+    let scale = if card_rect.is_hovered || card_rect.is_selected {
+        1.1f32
+    } else {
+        1.0f32
+    };
     let scaled_size = vec2(rect.width() * scale, rect.height() * scale);
     let scaled_rect = Rect::from_min_size(rect.min, scaled_size);
 
@@ -101,7 +107,12 @@ pub fn draw_card(card_rect: &CardRect, is_ally: bool, draw_accessories: bool, pa
             Color32::WHITE
         };
         if card_rect.rotation() == 0.0 {
-            painter.image(tex.id(), scaled_rect, Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)), tint);
+            painter.image(
+                tex.id(),
+                scaled_rect,
+                Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
+                tint,
+            );
         } else {
             // Rotate the image 90° around the card's centre.  We keep the
             // *original* portrait rect as the mesh base; draw_rotated_image
@@ -141,7 +152,11 @@ pub fn draw_card(card_rect: &CardRect, is_ally: bool, draw_accessories: bool, pa
         let rtip = rotate(right_cx + triangle_w, 0.0);
         let rtop = rotate(right_cx, -triangle_h / 2.0);
         let rbot = rotate(right_cx, triangle_h / 2.0);
-        painter.add(Shape::convex_polygon(vec![rtip, rtop, rbot], Color32::WHITE, Stroke::NONE));
+        painter.add(Shape::convex_polygon(
+            vec![rtip, rtop, rbot],
+            Color32::WHITE,
+            Stroke::NONE,
+        ));
     }
 
     let w = rect.width() * scale;
@@ -155,7 +170,10 @@ pub fn draw_card(card_rect: &CardRect, is_ally: bool, draw_accessories: bool, pa
         vec2(-w / 2.0, h / 2.0),
     ];
     let (sin, cos) = card_rect.rotation().sin_cos();
-    let rotated: Vec<Pos2> = corners_raw.iter().map(|v| pos2(cos * v.x - sin * v.y + cx, sin * v.x + cos * v.y + cy)).collect();
+    let rotated: Vec<Pos2> = corners_raw
+        .iter()
+        .map(|v| pos2(cos * v.x - sin * v.y + cx, sin * v.x + cos * v.y + cy))
+        .collect();
     for i in 0..4 {
         painter.line_segment([rotated[i], rotated[(i + 1) % 4]], Stroke::new(2.0, sleeve_color));
     }
@@ -179,27 +197,46 @@ pub fn draw_card(card_rect: &CardRect, is_ally: bool, draw_accessories: bool, pa
         );
     }
 
-    if card_rect.card.card_type != CardType::Avatar
-        && card_rect.card.damage_taken > 0
-        && card_rect.card.zone.is_in_play()
-    {
-        let circle_radius = 8.0;
-        let circle_pos = pos2(rect.min.x + circle_radius / 2.0, rect.min.y + circle_radius / 2.0);
-        painter.circle_filled(circle_pos, circle_radius - 2.0, Color32::RED);
-        let dmg_text = card_rect.card.damage_taken.to_string();
-        painter.text(circle_pos, egui::Align2::CENTER_CENTER, &dmg_text, FontId::proportional(10.0), Color32::WHITE);
-    }
+    if card_rect.card.zone.is_in_play() {
+        if card_rect.card.card_type != CardType::Avatar
+            && card_rect.card.damage_taken > 0
+            && card_rect.card.zone.is_in_play()
+        {
+            let circle_radius = 8.0;
+            let circle_pos = pos2(rect.min.x + circle_radius / 2.0, rect.min.y + circle_radius / 2.0);
+            painter.circle_filled(circle_pos, circle_radius - 2.0, Color32::RED);
+            let dmg_text = card_rect.card.damage_taken.to_string();
+            painter.text(
+                circle_pos,
+                egui::Align2::CENTER_CENTER,
+                &dmg_text,
+                FontId::proportional(10.0),
+                Color32::WHITE,
+            );
+        }
 
-    if card_rect.card.card_type.is_unit() {
-        let circle_radius = 8.0;
-        let circle_pos = pos2(rect.min.x + w - circle_radius / 2.0, rect.min.y + circle_radius / 2.0);
-        painter.circle_filled(circle_pos, circle_radius - 2.0, Color32::BLUE);
-        let power_text = card_rect.card.power.to_string();
-        painter.text(circle_pos, egui::Align2::CENTER_CENTER, &power_text, FontId::proportional(10.0), Color32::WHITE);
+        if card_rect.card.card_type.is_unit() {
+            let circle_radius = 8.0;
+            let circle_pos = pos2(rect.min.x + w - circle_radius / 2.0, rect.min.y + circle_radius / 2.0);
+            painter.circle_filled(circle_pos, circle_radius - 2.0, Color32::BLUE);
+            let power_text = card_rect.card.power.to_string();
+            painter.text(
+                circle_pos,
+                egui::Align2::CENTER_CENTER,
+                &power_text,
+                FontId::proportional(10.0),
+                Color32::WHITE,
+            );
+        }
     }
 
     if draw_accessories && card_rect.is_selected {
-        painter.rect_stroke(scaled_rect, 0.0, Stroke::new(2.0, Color32::WHITE), egui::StrokeKind::Outside);
+        painter.rect_stroke(
+            scaled_rect,
+            0.0,
+            Stroke::new(2.0, Color32::WHITE),
+            egui::StrokeKind::Outside,
+        );
     }
 }
 
@@ -220,7 +257,12 @@ pub fn render_card_preview(card: &CardRect, data: &mut GameData, painter: &Paint
     let dest_rect = Rect::from_min_size(pos2(0.0, preview_y), rect.size());
 
     if let Some(ref tex) = card.image {
-        painter.image(tex.id(), dest_rect, Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)), Color32::WHITE);
+        painter.image(
+            tex.id(),
+            dest_rect,
+            Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
+            Color32::WHITE,
+        );
     } else {
         painter.rect_filled(dest_rect, 4.0, Color32::DARK_GRAY);
     }
