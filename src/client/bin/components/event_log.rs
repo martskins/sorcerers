@@ -14,7 +14,11 @@ pub struct EventLogComponent {
 
 impl EventLogComponent {
     pub fn new(rect: Rect) -> Self {
-        Self { visible: false, last_message_seen: uuid::Uuid::nil(), rect }
+        Self {
+            visible: false,
+            last_message_seen: uuid::Uuid::nil(),
+            rect,
+        }
     }
 }
 
@@ -49,6 +53,7 @@ impl Component for EventLogComponent {
         egui::Window::new("Event Log")
             .open(&mut open)
             .movable(true)
+            .resizable(true)
             .default_pos(self.rect.min)
             .default_size(self.rect.size())
             .show(ui.ctx(), |ui| {
@@ -65,7 +70,12 @@ impl Component for EventLogComponent {
         Ok(())
     }
 
-    fn process_input(&mut self, _in_turn: bool, _data: &mut GameData, _ctx: &Context) -> anyhow::Result<Option<ComponentCommand>> {
+    fn process_input(
+        &mut self,
+        _in_turn: bool,
+        _data: &mut GameData,
+        _ctx: &Context,
+    ) -> anyhow::Result<Option<ComponentCommand>> {
         Ok(None)
     }
 
@@ -79,10 +89,16 @@ impl Component for EventLogComponent {
 
     fn process_command(&mut self, command: &ComponentCommand, _data: &mut GameData) -> anyhow::Result<()> {
         match command {
-            ComponentCommand::SetVisibility { component_type: ComponentType::EventLog, visible } => {
+            ComponentCommand::SetVisibility {
+                component_type: ComponentType::EventLog,
+                visible,
+            } => {
                 self.visible = *visible;
             }
-            ComponentCommand::SetRect { component_type: ComponentType::EventLog, rect } => {
+            ComponentCommand::SetRect {
+                component_type: ComponentType::EventLog,
+                rect,
+            } => {
                 self.rect = *rect;
             }
             _ => {}

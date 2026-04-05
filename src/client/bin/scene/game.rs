@@ -362,7 +362,7 @@ impl Game {
             egui::Area::new(egui::Id::new("pass_turn_btn"))
                 .fixed_pos(btn_pos)
                 .show(ctx, |ui| {
-                    let btn = egui::Button::new(egui::RichText::new("Pass Turn").size(22.0).color(Color32::WHITE))
+                    let btn = egui::Button::new(egui::RichText::new("Pass Turn").size(18.0).color(Color32::WHITE))
                         .min_size(vec2(160.0, 48.0));
                     if ui.add(btn).clicked() {
                         Mouse::set_enabled(false);
@@ -376,7 +376,7 @@ impl Game {
             egui::Area::new(egui::Id::new("done_selecting_btn"))
                 .fixed_pos(btn_pos)
                 .show(ctx, |ui| {
-                    let btn = egui::Button::new(egui::RichText::new("Done Selecting").size(22.0).color(Color32::WHITE))
+                    let btn = egui::Button::new(egui::RichText::new("Done Selecting").size(18.0).color(Color32::WHITE))
                         .min_size(vec2(180.0, 48.0));
                     if ui.add(btn).clicked() {
                         Mouse::set_enabled(false);
@@ -460,11 +460,7 @@ impl Game {
                             Color32::from_black_alpha(120),
                         );
                         // Main background
-                        p.rect_filled(
-                            menu_rect,
-                            egui::CornerRadius::same(CORNER as u8),
-                            BG,
-                        );
+                        p.rect_filled(menu_rect, egui::CornerRadius::same(CORNER as u8), BG);
                         // Accent border
                         p.rect_stroke(
                             menu_rect,
@@ -502,13 +498,15 @@ impl Game {
                         // Action rows
                         for (idx, action) in actions.iter().enumerate() {
                             let row_y = origin.y + HEADER_H + idx as f32 * ROW_H;
-                            let row_rect = Rect::from_min_size(
-                                pos2(origin.x + 1.0, row_y),
-                                vec2(MENU_W - 2.0, ROW_H),
-                            );
+                            let row_rect = Rect::from_min_size(pos2(origin.x + 1.0, row_y), vec2(MENU_W - 2.0, ROW_H));
                             // Last row gets rounded bottom corners
                             let row_cr = if idx + 1 == actions.len() {
-                                egui::CornerRadius { nw: 0, ne: 0, sw: CORNER as u8, se: CORNER as u8 }
+                                egui::CornerRadius {
+                                    nw: 0,
+                                    ne: 0,
+                                    sw: CORNER as u8,
+                                    se: CORNER as u8,
+                                }
                             } else {
                                 egui::CornerRadius::ZERO
                             };
@@ -536,7 +534,11 @@ impl Game {
                                 egui::Align2::LEFT_CENTER,
                                 "▸",
                                 egui::FontId::proportional(14.0),
-                                if resp.hovered() { ACCENT } else { Color32::from_rgb(80, 100, 140) },
+                                if resp.hovered() {
+                                    ACCENT
+                                } else {
+                                    Color32::from_rgb(80, 100, 140)
+                                },
                             );
 
                             // Action label
@@ -545,7 +547,11 @@ impl Game {
                                 egui::Align2::LEFT_CENTER,
                                 action.as_str(),
                                 egui::FontId::proportional(18.0),
-                                if resp.hovered() { Color32::WHITE } else { Color32::from_rgb(200, 210, 230) },
+                                if resp.hovered() {
+                                    Color32::WHITE
+                                } else {
+                                    Color32::from_rgb(200, 210, 230)
+                                },
                             );
                         }
                     });
@@ -576,7 +582,7 @@ impl Game {
                         }
                         if ui
                             .add(
-                                egui::Button::new(egui::RichText::new("Ok").size(22.0).color(Color32::WHITE))
+                                egui::Button::new(egui::RichText::new("Ok").size(18.0).color(Color32::WHITE))
                                     .min_size(vec2(80.0, 24.0)),
                             )
                             .clicked()
