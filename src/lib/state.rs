@@ -474,6 +474,10 @@ pub enum ContinuousEffect {
         ability: Ability,
         affected_cards: CardMatcher,
     },
+    ModifyProvidedMana {
+        mana_diff: i8,
+        affected_cards: CardMatcher,
+    },
 }
 
 #[derive(Debug)]

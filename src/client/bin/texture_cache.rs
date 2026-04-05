@@ -21,7 +21,12 @@ pub struct TextureCache {
 impl TextureCache {
     fn new() -> Self {
         let (tx, rx) = channel();
-        Self { handles: HashMap::new(), pending: HashMap::new(), tx, rx }
+        Self {
+            handles: HashMap::new(),
+            pending: HashMap::new(),
+            tx,
+            rx,
+        }
     }
 
     pub fn init() {
@@ -108,22 +113,20 @@ impl TextureCache {
                         }
                     });
                 } else {
-                    std::thread::spawn(move || {
-                        match reqwest::blocking::get(&image_url) {
-                            Ok(resp) if resp.status().is_success() => {
-                                if let Ok(bytes) = resp.bytes() {
-                                    let _ = std::fs::create_dir_all("assets/images/cache");
-                                    let _ = std::fs::write(&save_path, &bytes);
-                                    if let Ok(img) = image::load_from_memory(&bytes) {
-                                        let size = [img.width() as usize, img.height() as usize];
-                                        let rgba = img.to_rgba8();
-                                        let color_image = ColorImage::from_rgba_unmultiplied(size, &rgba);
-                                        let _ = tx.send((name, color_image));
-                                    }
+                    std::thread::spawn(move || match reqwest::blocking::get(&image_url) {
+                        Ok(resp) if resp.status().is_success() => {
+                            if let Ok(bytes) = resp.bytes() {
+                                let _ = std::fs::create_dir_all("assets/images/cache");
+                                let _ = std::fs::write(&save_path, &bytes);
+                                if let Ok(img) = image::load_from_memory(&bytes) {
+                                    let size = [img.width() as usize, img.height() as usize];
+                                    let rgba = img.to_rgba8();
+                                    let color_image = ColorImage::from_rgba_unmultiplied(size, &rgba);
+                                    let _ = tx.send((name, color_image));
                                 }
                             }
-                            _ => eprintln!("Failed to download image for {}", name),
                         }
+                        _ => eprintln!("Failed to download image for {}", name),
                     });
                 }
             }

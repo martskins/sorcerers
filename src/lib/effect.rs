@@ -895,8 +895,8 @@ impl Effect {
                     .filter(|c| c.is_site())
                     .filter(|c| c.get_owner_id() == player_id)
                     .filter(|c| c.get_zone().is_in_play())
-                    .filter_map(|c| match c.get_site_base() {
-                        Some(site_base) => Some(site_base.provided_mana),
+                    .filter_map(|c| match c.get_site() {
+                        Some(site_base) => Some(site_base.provided_mana(state).expect("to get site mana")),
                         None => None,
                     })
                     .sum();

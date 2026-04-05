@@ -797,13 +797,11 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     // Base on-summon behaviour for site cards. This method MUST NOT BE OVERRIDEN by specific card
     // implementations. Instead, specific card types should override `on_summon`, and can use
     // base_site_on_summon to get the default behaviour.
-    fn base_site_on_summon(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
-        let site_base = self
-            .get_site_base()
-            .ok_or(anyhow::anyhow!("site card has no site base"))?;
+    fn base_site_on_summon(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+        let site_base = self.get_site().ok_or(anyhow::anyhow!("site card has no site base"))?;
         Ok(vec![Effect::AddMana {
             player_id: self.get_owner_id().clone(),
-            mana: site_base.provided_mana,
+            mana: site_base.provided_mana(state)?,
         }])
     }
 
@@ -1641,6 +1639,29 @@ pub struct SiteBase {
 }
 
 pub trait Site: Card {
+    fn provided_mana(&self, state: &State) -> anyhow::Result<u8> {
+        let mut mana = self
+            .get_site_base()
+            .ok_or(anyhow::anyhow!("site card has no base"))?
+            .provided_mana;
+
+        state
+            .continuous_effects
+            .iter()
+            .filter(|ce| match ce {
+                ContinuousEffect::ModifyProvidedMana { affected_cards, .. } => {
+                    affected_cards.matches(self.get_id(), state)
+                }
+                _ => false,
+            })
+            .for_each(|ce| {
+                if let ContinuousEffect::ModifyProvidedMana { mana_diff, .. } = ce {
+                    mana = mana.saturating_add_signed(*mana_diff);
+                }
+            });
+
+        Ok(mana)
+    }
     fn provides(&self, element: &Element) -> anyhow::Result<u8> {
         let site_base = self.get_site_base().ok_or(anyhow::anyhow!("site card has no base"))?;
 
