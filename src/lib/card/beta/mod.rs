@@ -308,3 +308,5 @@ pub mod onyx_core;
 pub use onyx_core::*;
 pub mod ruby_core;
 pub use ruby_core::*;
+pub mod ancient_dragon;
+pub use ancient_dragon::*;

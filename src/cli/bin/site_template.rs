@@ -1,5 +1,5 @@
 pub const SITE_TEMPLATE: &str = r#"use crate::{
-    card::{Card, CardBase, Cost, Edition, Region, Rarity, Site, SiteBase, SiteType, Zone},
+    card::{Card, CardBase, Cost, Edition, Region, Rarity, ResourceProvider, Site, SiteBase, SiteType, Zone},
     game::{PlayerId, Thresholds},
 };
 
@@ -60,6 +60,10 @@ impl Card for {StructName} {
     }
 
     fn get_site(&self) -> Option<&dyn Site> {
+        Some(self)
+    }
+
+    fn get_resource_provider(&self) -> Option<&dyn ResourceProvider> {
         Some(self)
     }
 }
