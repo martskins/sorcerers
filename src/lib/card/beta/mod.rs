@@ -292,3 +292,5 @@ pub mod abundance;
 pub use abundance::*;
 pub mod accursed_albatross;
 pub use accursed_albatross::*;
+pub mod adept_illusionist;
+pub use adept_illusionist::*;

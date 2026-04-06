@@ -199,6 +199,9 @@ pub enum Effect {
         card_id: uuid::Uuid,
         bearer_id: Option<uuid::Uuid>,
     },
+    ShuffleDeck {
+        player_id: uuid::Uuid,
+    },
 }
 
 fn player_name<'a>(player_id: &uuid::Uuid, state: &'a State) -> &'a str {
@@ -270,6 +273,7 @@ impl Effect {
             Effect::AddDeferredEffect { .. } => None,
             Effect::AddTemporaryEffect { .. } => None,
             Effect::SetBearer { card_id, .. } => Some(card_id),
+            Effect::ShuffleDeck { .. } => None,
         }
     }
 
@@ -425,6 +429,7 @@ impl Effect {
             Effect::TeleportUnitToZone { .. } => None,
             Effect::RearrangeDeck { .. } => None,
             Effect::SetBearer { .. } => None,
+            Effect::ShuffleDeck { player_id } => Some(format!("{} shuffles their deck", player_name(player_id, state))),
         };
 
         Ok(desc)
@@ -1241,6 +1246,13 @@ impl Effect {
                 if let Some(artifact_base) = artifact.get_artifact_base_mut() {
                     artifact_base.bearer = bearer_id.clone();
                 }
+            }
+            Effect::ShuffleDeck { player_id } => {
+                let deck = state
+                    .decks
+                    .get_mut(player_id)
+                    .ok_or(anyhow::anyhow!("failed to find player deck"))?;
+                deck.shuffle();
             }
         }
 

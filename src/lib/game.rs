@@ -415,6 +415,45 @@ pub async fn pick_zone_group(
     zone
 }
 
+pub async fn pick_zone_near(
+    player_id: impl AsRef<PlayerId>,
+    zone: &Zone,
+    state: &State,
+    block_opponent: bool,
+    prompt: &str,
+) -> anyhow::Result<Zone> {
+    let opponent_id = state.get_opponent_id(player_id.as_ref())?;
+    if block_opponent {
+        wait_for_opponent(&opponent_id, state, "Wait for opponent...").await?;
+    }
+
+    state
+        .get_sender()
+        .send(ServerMessage::PickZone {
+            prompt: prompt.to_string(),
+            player_id: player_id.as_ref().clone(),
+            zones: zone.get_nearby(),
+        })
+        .await?;
+
+    let zone = loop {
+        let msg = state.get_receiver().recv().await?;
+        match msg {
+            ClientMessage::PickZone { zone, .. } => break Ok(zone),
+            ClientMessage::PlayerDisconnected { player_id, .. } => {
+                return Err(GameError::PlayerDisconnected(player_id.clone()).into());
+            }
+            _ => panic!("expected PickSquare, got {:?}", msg),
+        }
+    };
+
+    if block_opponent {
+        resume(&opponent_id, state).await?;
+    }
+
+    zone
+}
+
 pub async fn pick_zone(
     player_id: impl AsRef<PlayerId>,
     zones: &[Zone],
