@@ -60,7 +60,7 @@ impl ActivatedAbility for GeomancerAbility {
                 let is_earth_site = picked_site
                     .get_site()
                     .ok_or(anyhow::anyhow!("Not a site"))?
-                    .provides(&Element::Earth)?
+                    .provides_threshold(&Element::Earth)?
                     > 0;
                 if is_earth_site {
                     let card = state.get_card(card_id);

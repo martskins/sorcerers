@@ -1666,8 +1666,12 @@ pub struct SiteBase {
     pub types: Vec<SiteType>,
 }
 
-pub trait Site: Card {
+pub trait ResourceProvider: Card {
     fn provided_mana(&self, state: &State) -> anyhow::Result<u8> {
+        if self.get_card_type() != CardType::Site {
+            return Ok(0);
+        }
+
         let mut mana = self
             .get_site_base()
             .ok_or(anyhow::anyhow!("site card has no base"))?
@@ -1690,9 +1694,13 @@ pub trait Site: Card {
 
         Ok(mana)
     }
-    fn provides(&self, element: &Element) -> anyhow::Result<u8> {
-        let site_base = self.get_site_base().ok_or(anyhow::anyhow!("site card has no base"))?;
 
+    fn provides_threshold(&self, element: &Element) -> anyhow::Result<u8> {
+        if self.get_card_type() != CardType::Site {
+            return Ok(0);
+        }
+
+        let site_base = self.get_site_base().ok_or(anyhow::anyhow!("site card has no base"))?;
         let result = match element {
             Element::Fire => site_base.provided_thresholds.fire,
             Element::Earth => site_base.provided_thresholds.earth,
@@ -1702,7 +1710,11 @@ pub trait Site: Card {
 
         Ok(result)
     }
+}
 
+impl<T> ResourceProvider for T where T: Site {}
+
+pub trait Site: Card + ResourceProvider {
     fn is_land_site(&self, state: &State) -> anyhow::Result<bool> {
         Ok(self.get_provided_affinity(state)?.water == 0)
     }
