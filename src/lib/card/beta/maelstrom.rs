@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardType, Cost, Edition, Rarity, Region, Site, SiteBase, Zone},
+    card::{Card, CardBase, CardType, Cost, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds, pick_zone},
     state::{CardMatcher, State},
@@ -102,6 +102,10 @@ impl Card for Maelström {
         }
 
         Ok(effects)
+    }
+
+    fn get_resource_provider(&self) -> Option<&dyn ResourceProvider> {
+        Some(self)
     }
 }
 

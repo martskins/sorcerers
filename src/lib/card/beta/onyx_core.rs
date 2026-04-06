@@ -1,6 +1,6 @@
 use crate::{
     card::{Artifact, ArtifactBase, Card, CardBase, Cost, Edition, Rarity, Region, ResourceProvider, Zone},
-    game::{Element, PlayerId},
+    game::{PlayerId, Thresholds},
     state::State,
 };
 
@@ -40,11 +40,8 @@ impl ResourceProvider for OnyxCore {
         Ok(1)
     }
 
-    fn provides_threshold(&self, element: &Element) -> anyhow::Result<u8> {
-        match element {
-            Element::Earth => Ok(1),
-            _ => Ok(0),
-        }
+    fn provided_affinity(&self, _state: &State) -> anyhow::Result<Thresholds> {
+        Ok(Thresholds::parse("E"))
     }
 }
 
@@ -73,6 +70,10 @@ impl Card for OnyxCore {
     }
 
     fn get_artifact(&self) -> Option<&dyn Artifact> {
+        Some(self)
+    }
+
+    fn get_resource_provider(&self) -> Option<&dyn ResourceProvider> {
         Some(self)
     }
 }

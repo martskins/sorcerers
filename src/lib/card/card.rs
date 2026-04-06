@@ -568,33 +568,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         )
     }
 
-    fn get_provided_affinity(&self, state: &State) -> anyhow::Result<Thresholds> {
-        if !self.get_zone().is_in_play() {
-            return Ok(Thresholds::ZERO);
-        }
-
-        match self.get_card_type() {
-            CardType::Site => match self.get_site_base() {
-                Some(site_base) => {
-                    let mut base_affinity = site_base.provided_thresholds.clone();
-                    let is_flooded = self
-                        .get_site()
-                        .ok_or(anyhow::anyhow!("site card has no site data"))?
-                        .is_flooded(state)?;
-                    // Flooded sites provide 1 water affinity if they don't already provide water
-                    // affinity.
-                    if is_flooded && base_affinity.water == 0 {
-                        base_affinity.water += 1;
-                    }
-
-                    Ok(base_affinity)
-                }
-                None => Ok(Thresholds::ZERO),
-            },
-            _ => Ok(Thresholds::ZERO),
-        }
-    }
-
     // When resolving a CardQuery, this method allows the card to override the query. A useful
     // usecase for this method is for example overriding the valid targets of a spell when there's
     // a card in play that affects targeting.
@@ -1277,6 +1250,11 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         None
     }
 
+    // Upcasts a card to a resource provider trait object if it implements it, None otherwise.
+    fn get_resource_provider(&self) -> Option<&dyn ResourceProvider> {
+        None
+    }
+
     // Upcasts a card to a site trait object if it is a site, None otherwise.
     fn get_site(&self) -> Option<&dyn Site> {
         None
@@ -1695,20 +1673,26 @@ pub trait ResourceProvider: Card {
         Ok(mana)
     }
 
-    fn provides_threshold(&self, element: &Element) -> anyhow::Result<u8> {
+    fn provided_affinity(&self, state: &State) -> anyhow::Result<Thresholds> {
         if self.get_card_type() != CardType::Site {
-            return Ok(0);
+            return Ok(Thresholds::ZERO);
         }
 
-        let site_base = self.get_site_base().ok_or(anyhow::anyhow!("site card has no base"))?;
-        let result = match element {
-            Element::Fire => site_base.provided_thresholds.fire,
-            Element::Earth => site_base.provided_thresholds.earth,
-            Element::Air => site_base.provided_thresholds.air,
-            Element::Water => site_base.provided_thresholds.water,
-        };
+        match self.get_card_type() {
+            CardType::Site => {
+                let site_base = self.get_site_base().ok_or(anyhow::anyhow!("site card has no base"))?;
+                let site = self
+                    .get_site()
+                    .ok_or(anyhow::anyhow!("site card does not implement site"))?;
+                let mut thresholds = site_base.provided_thresholds.clone();
+                if site.is_flooded(state)? && site_base.provided_thresholds.water == 0 {
+                    thresholds.water = 1;
+                }
 
-        Ok(result)
+                Ok(thresholds)
+            }
+            _ => Ok(Thresholds::ZERO),
+        }
     }
 }
 
@@ -1716,21 +1700,19 @@ impl<T> ResourceProvider for T where T: Site {}
 
 pub trait Site: Card + ResourceProvider {
     fn is_land_site(&self, state: &State) -> anyhow::Result<bool> {
-        Ok(self.get_provided_affinity(state)?.water == 0)
+        if let Some(rp) = self.get_resource_provider() {
+            return Ok(rp.provided_affinity(state)?.water == 0);
+        }
+
+        Ok(false)
     }
 
     fn is_water_site(&self, state: &State) -> anyhow::Result<bool> {
-        Ok(self.get_provided_affinity(state)?.water != 0)
-    }
-
-    fn provided_affinity(&self, state: &State) -> anyhow::Result<Thresholds> {
-        let site_base = self.get_site_base().ok_or(anyhow::anyhow!("site card has no base"))?;
-        let mut thresholds = site_base.provided_thresholds.clone();
-        if self.is_flooded(state)? && site_base.provided_thresholds.water == 0 {
-            thresholds.water = 1;
+        if let Some(rp) = self.get_resource_provider() {
+            return Ok(rp.provided_affinity(state)?.water != 0);
         }
 
-        Ok(thresholds)
+        Ok(false)
     }
 
     fn on_card_enter(&self, _state: &State, _card_id: &uuid::Uuid) -> Vec<Effect> {

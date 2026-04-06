@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Edition, Rarity, Region, Site, SiteBase, SiteType, Zone},
+    card::{Ability, Card, CardBase, Cost, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, SiteType, Zone},
     effect::{AbilityCounter, Effect},
     game::{PlayerId, Thresholds},
     query::{CardQuery, EffectQuery, ZoneQuery},
@@ -90,6 +90,10 @@ impl Card for PlanarGate {
     }
 
     fn get_site(&self) -> Option<&dyn Site> {
+        Some(self)
+    }
+
+    fn get_resource_provider(&self) -> Option<&dyn ResourceProvider> {
         Some(self)
     }
 }

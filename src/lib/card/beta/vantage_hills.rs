@@ -1,5 +1,7 @@
 use crate::{
-    card::{Ability, AreaModifiers, Card, CardBase, Cost, Edition, Rarity, Region, Site, SiteBase, Zone},
+    card::{
+        Ability, AreaModifiers, Card, CardBase, Cost, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone,
+    },
     game::{PlayerId, Thresholds},
     state::State,
 };
@@ -78,6 +80,10 @@ impl Card for VantageHills {
             grants_abilities,
             ..Default::default()
         }
+    }
+
+    fn get_resource_provider(&self) -> Option<&dyn ResourceProvider> {
+        Some(self)
     }
 }
 

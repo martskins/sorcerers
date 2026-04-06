@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, Rarity, Region, Site, SiteBase, Zone},
+    card::{Card, CardBase, Cost, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
     game::{PlayerId, Thresholds},
 };
 
@@ -61,6 +61,10 @@ impl Card for Bedrock {
     }
 
     fn get_site(&self) -> Option<&dyn Site> {
+        Some(self)
+    }
+
+    fn get_resource_provider(&self) -> Option<&dyn ResourceProvider> {
         Some(self)
     }
 }

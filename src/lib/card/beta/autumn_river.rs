@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, Rarity, Region, Site, SiteBase, SiteType, Zone},
+    card::{Card, CardBase, Cost, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, SiteType, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds, take_action},
     state::State,
@@ -84,6 +84,10 @@ impl Card for AutumnRiver {
         }
 
         Ok(vec![])
+    }
+
+    fn get_resource_provider(&self) -> Option<&dyn ResourceProvider> {
+        Some(self)
     }
 }
 

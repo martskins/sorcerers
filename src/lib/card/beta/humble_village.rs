@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, Rarity, Region, Site, SiteBase, SiteType, Zone},
+    card::{Card, CardBase, Cost, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, SiteType, Zone},
     effect::{Effect, TokenType},
     game::{BaseOption, PlayerId, Thresholds, pick_option},
     state::State,
@@ -91,6 +91,10 @@ impl Card for HumbleVillage {
                 zone: self.get_zone().clone(),
             },
         ])
+    }
+
+    fn get_resource_provider(&self) -> Option<&dyn ResourceProvider> {
+        Some(self)
     }
 }
 

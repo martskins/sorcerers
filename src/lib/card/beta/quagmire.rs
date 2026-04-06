@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Edition, Rarity, Region, Site, SiteBase, Zone},
+    card::{Ability, Card, CardBase, Cost, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
     effect::{AbilityCounter, Effect},
     game::{PlayerId, Thresholds},
     query::EffectQuery,
@@ -84,6 +84,10 @@ impl Card for Quagmire {
             .collect();
 
         Ok(effects)
+    }
+
+    fn get_resource_provider(&self) -> Option<&dyn ResourceProvider> {
+        Some(self)
     }
 }
 

@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, Rarity, Region, Site, SiteBase, Zone},
+    card::{Card, CardBase, Cost, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
     effect::{Effect, TokenType},
     game::{PlayerId, Thresholds},
     state::State,
@@ -90,6 +90,10 @@ impl Card for TadpolePool {
                 zone: self.get_zone().clone(),
             },
         ])
+    }
+
+    fn get_resource_provider(&self) -> Option<&dyn ResourceProvider> {
+        Some(self)
     }
 }
 

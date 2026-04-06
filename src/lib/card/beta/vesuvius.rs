@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, Rarity, Region, Site, SiteBase, Zone},
+    card::{Card, CardBase, Cost, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
     effect::{Effect, TokenType},
     game::{ActivatedAbility, PlayerId, Thresholds},
     state::{CardMatcher, State},
@@ -106,6 +106,10 @@ impl Card for Vesuvius {
     }
 
     fn get_site(&self) -> Option<&dyn Site> {
+        Some(self)
+    }
+
+    fn get_resource_provider(&self) -> Option<&dyn ResourceProvider> {
         Some(self)
     }
 }

@@ -1,6 +1,6 @@
 use crate::{
     card::{Ability, Card, CardBase, Cost, Edition, MinionType, Rarity, Region, ResourceProvider, UnitBase, Zone},
-    game::{Element, PlayerId},
+    game::{PlayerId, Thresholds},
     state::State,
 };
 
@@ -43,8 +43,8 @@ impl ResourceProvider for AlvalinneDryads {
         Ok(1)
     }
 
-    fn provides_threshold(&self, _element: &Element) -> anyhow::Result<u8> {
-        Ok(0)
+    fn provided_affinity(&self, _state: &State) -> anyhow::Result<Thresholds> {
+        Ok(Thresholds::ZERO)
     }
 }
 

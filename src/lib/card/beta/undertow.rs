@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardType, Cost, Edition, Rarity, Region, Site, SiteBase, Zone},
+    card::{Card, CardBase, CardType, Cost, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds, pick_card, pick_zone},
     query::ZoneQuery,
@@ -97,6 +97,10 @@ impl Card for Undertow {
             region: unit.get_region(state).clone(),
             through_path: None,
         }])
+    }
+
+    fn get_resource_provider(&self) -> Option<&dyn ResourceProvider> {
+        Some(self)
     }
 }
 

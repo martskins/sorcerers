@@ -619,6 +619,15 @@ impl Thresholds {
         }
         thresholds
     }
+
+    pub fn element(&self, element: &Element) -> u8 {
+        match element {
+            Element::Fire => self.fire,
+            Element::Air => self.air,
+            Element::Earth => self.earth,
+            Element::Water => self.water,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

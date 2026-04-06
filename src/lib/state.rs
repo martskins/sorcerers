@@ -615,7 +615,8 @@ impl State {
             .iter()
             .filter(|c| c.get_zone().is_in_play())
             .filter(|c| &c.get_controller_id(self) == player_id)
-            .map(|c| c.get_provided_affinity(self).unwrap_or(Thresholds::ZERO))
+            .filter_map(|c| c.get_resource_provider())
+            .map(|c| c.provided_affinity(self).unwrap_or_default())
             .sum()
     }
 

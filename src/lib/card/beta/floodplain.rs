@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardType, Cost, Edition, Rarity, Region, Site, SiteBase, Zone},
+    card::{Card, CardBase, CardType, Cost, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
     effect::Effect,
     game::{ActivatedAbility, PlayerId, Thresholds, pick_card},
     query::EffectQuery,
@@ -135,6 +135,10 @@ impl Card for Floodplain {
         }
 
         Ok(())
+    }
+
+    fn get_resource_provider(&self) -> Option<&dyn ResourceProvider> {
+        Some(self)
     }
 }
 
