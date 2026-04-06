@@ -294,3 +294,7 @@ pub mod accursed_albatross;
 pub use accursed_albatross::*;
 pub mod adept_illusionist;
 pub use adept_illusionist::*;
+pub mod albespine_pikemen;
+pub use albespine_pikemen::*;
+pub mod all_terrain_vestments;
+pub use all_terrain_vestments::*;

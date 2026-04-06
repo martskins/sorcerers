@@ -1105,7 +1105,6 @@ impl ActivatedAbility for UnitAction {
                                     effects.extend(defender.on_defend(state, attacker.get_id())?);
                                 }
 
-                                effects.extend(attacker.after_attack(state).await?);
                                 resume(&opponent.id, state).await?;
                                 effects.reverse();
                                 return Ok(effects);

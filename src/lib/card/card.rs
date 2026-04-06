@@ -660,11 +660,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         controller
     }
 
-    // Returns a list of effects that must be applied after this card attacks.
-    async fn after_attack(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
-        Ok(vec![])
-    }
-
     async fn after_ranged_attack(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![])
     }
@@ -744,15 +739,31 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     .ok_or(anyhow::anyhow!("unit card has no unit base"))?;
                 ub.damage += damage;
 
+                let mut effects = vec![];
                 let attacker = state.get_card(from);
                 if ub.damage >= self.get_toughness(state).unwrap_or(0) || attacker.has_ability(state, &Ability::Lethal)
                 {
-                    return Ok(vec![Effect::BuryCard {
+                    effects.push(Effect::BuryCard {
                         card_id: self.get_id().clone(),
-                    }]);
+                    });
                 }
 
-                Ok(vec![])
+                // Lifesteal: if the defender is a unit, heal the attacker's controller.
+                let defender = state.get_card(&self.get_id());
+                if attacker.has_ability(&state, &Ability::Lifesteal) && defender.is_unit() {
+                    let controller_id = attacker.get_controller_id(state);
+                    if let Ok(avatar_id) = state.get_player_avatar_id(&controller_id) {
+                        let heal = attacker.get_power(&state)?.unwrap_or(0);
+                        if heal > 0 {
+                            effects.push(Effect::Heal {
+                                card_id: avatar_id.clone(),
+                                amount: heal,
+                            });
+                        }
+                    }
+                }
+
+                Ok(effects)
             }
             CardType::Avatar => {
                 let ab = self
@@ -780,7 +791,24 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     ab.deaths_door = true;
                 }
 
-                Ok(vec![])
+                let attacker = state.get_card(from);
+                let mut effects = vec![];
+                // Lifesteal: if the defender is a unit, heal the attacker's controller.
+                let defender = state.get_card(&self.get_id());
+                if attacker.has_ability(&state, &Ability::Lifesteal) && defender.is_unit() {
+                    let controller_id = attacker.get_controller_id(state);
+                    if let Ok(avatar_id) = state.get_player_avatar_id(&controller_id) {
+                        let heal = attacker.get_power(&state)?.unwrap_or(0);
+                        if heal > 0 {
+                            effects.push(Effect::Heal {
+                                card_id: avatar_id.clone(),
+                                amount: heal,
+                            });
+                        }
+                    }
+                }
+
+                Ok(effects)
             }
             CardType::Site => {
                 let avatar_id = state.get_player_avatar_id(&self.get_controller_id(state))?;
@@ -1742,6 +1770,7 @@ pub enum Ability {
     Immobile,
     Waterbound,
     Lifesteal,
+    FirstStrike,
 }
 
 #[derive(Debug, Default, Clone)]

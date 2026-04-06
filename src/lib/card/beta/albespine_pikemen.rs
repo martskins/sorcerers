@@ -1,27 +1,24 @@
 use crate::{
     card::{Ability, Card, CardBase, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
-    effect::{Counter, Effect},
-    game::{Element, PlayerId},
-    query::EffectQuery,
-    state::State,
+    game::PlayerId,
 };
 
 #[derive(Debug, Clone)]
-pub struct AskelonPhoenix {
+pub struct AlbespinePikemen {
     pub unit_base: UnitBase,
     pub card_base: CardBase,
 }
 
-impl AskelonPhoenix {
-    pub const NAME: &'static str = "Askelon Phoenix";
+impl AlbespinePikemen {
+    pub const NAME: &'static str = "Albespine Pikemen";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
             unit_base: UnitBase {
-                power: 4,
-                toughness: 4,
-                abilities: vec![Ability::Airborne],
-                types: vec![MinionType::Beast],
+                power: 3,
+                toughness: 3,
+                abilities: vec![Ability::FirstStrike],
+                types: vec![MinionType::Mortal],
                 ..Default::default()
             },
             card_base: CardBase {
@@ -29,9 +26,9 @@ impl AskelonPhoenix {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(5, "FF"),
+                cost: Cost::new(3, "EE"),
                 region: Region::Surface,
-                rarity: Rarity::Elite,
+                rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
                 is_token: false,
@@ -40,7 +37,8 @@ impl AskelonPhoenix {
     }
 }
 
-impl Card for AskelonPhoenix {
+#[async_trait::async_trait]
+impl Card for AlbespinePikemen {
     fn get_name(&self) -> &str {
         Self::NAME
     }
@@ -60,22 +58,9 @@ impl Card for AskelonPhoenix {
     fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
         Some(&mut self.unit_base)
     }
-
-    fn on_take_damage(&mut self, state: &State, from: &uuid::Uuid, damage: u16) -> anyhow::Result<Vec<Effect>> {
-        let attacker = state.get_card(from);
-        if attacker.get_elements(state)?.contains(&Element::Fire) {
-            return Ok(vec![Effect::AddCounter {
-                card_id: self.get_id().clone(),
-                counter: Counter::new(1, 1, Some(EffectQuery::TurnEnd { player_id: None })),
-            }]);
-        }
-
-        let effects = self.base_take_damage(state, from, damage)?;
-        Ok(effects)
-    }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (AskelonPhoenix::NAME, |owner_id: PlayerId| {
-    Box::new(AskelonPhoenix::new(owner_id))
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (AlbespinePikemen::NAME, |owner_id: PlayerId| {
+    Box::new(AlbespinePikemen::new(owner_id))
 });

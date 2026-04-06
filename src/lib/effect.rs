@@ -991,41 +991,52 @@ impl Effect {
                 let snapshot = state.snapshot();
                 let attacker = state.get_card(attacker_id);
                 let defender = state.get_card(defender_id);
-                let mut effects = vec![
-                    Effect::MoveCard {
-                        player_id: attacker.get_controller_id(state).clone(),
-                        card_id: attacker_id.clone(),
-                        from: attacker.get_zone().clone(),
-                        to: ZoneQuery::Specific {
-                            id: uuid::Uuid::new_v4(),
-                            zone: defender.get_zone().clone(),
-                        },
-                        tap: true,
-                        region: attacker.get_base().region.clone(),
-                        through_path: None,
+                let mut effects = vec![Effect::MoveCard {
+                    player_id: attacker.get_controller_id(state).clone(),
+                    card_id: attacker_id.clone(),
+                    from: attacker.get_zone().clone(),
+                    to: ZoneQuery::Specific {
+                        id: uuid::Uuid::new_v4(),
+                        zone: defender.get_zone().clone(),
                     },
-                    Effect::TakeDamage {
-                        card_id: defender_id.clone(),
-                        from: attacker_id.clone(),
-                        damage: attacker
-                            .get_power(&snapshot)?
-                            .ok_or(anyhow::anyhow!("attacker has no power"))?,
-                    },
-                ];
-                effects.extend(attacker.after_attack(state).await?);
-                // Lifesteal: if the defender is a unit, heal the attacker's controller.
-                if attacker.has_ability(&snapshot, &Ability::Lifesteal) && defender.is_unit() {
-                    let controller_id = attacker.get_controller_id(state);
-                    if let Ok(avatar_id) = state.get_player_avatar_id(&controller_id) {
-                        let heal = attacker.get_power(&snapshot)?.unwrap_or(0);
-                        if heal > 0 {
-                            effects.push(Effect::Heal {
-                                card_id: avatar_id.clone(),
-                                amount: heal,
-                            });
-                        }
-                    }
+                    tap: true,
+                    region: attacker.get_base().region.clone(),
+                    through_path: None,
+                }];
+
+                let mut first_striker_id = attacker_id;
+                let mut first_defender_id = defender_id;
+                if defender.has_ability(state, &Ability::FirstStrike)
+                    && !attacker.has_ability(&snapshot, &Ability::FirstStrike)
+                {
+                    first_striker_id = defender_id;
+                    first_defender_id = attacker_id;
                 }
+
+                let first_striker = state.get_card(first_striker_id);
+                let first_defender = state.get_card(first_defender_id);
+                effects.push(Effect::TakeDamage {
+                    card_id: first_defender_id.clone(),
+                    from: first_striker_id.clone(),
+                    damage: first_striker
+                        .get_power(&snapshot)?
+                        .ok_or(anyhow::anyhow!("attacker has no power"))?,
+                });
+
+                let mut snapshot = state.snapshot();
+                Box::pin(snapshot.apply_effects_without_log()).await?;
+
+                let killed_defender = state.get_card(first_defender_id).get_zone() == &Zone::Cemetery;
+                if killed_defender
+                    && first_striker.has_ability(state, &Ability::FirstStrike)
+                    && !first_defender.has_ability(state, &Ability::FirstStrike)
+                {
+                    // If the first striker killed the defender before it could strike back, skip the defender's strike.
+                    effects.reverse();
+                    state.effects.extend(effects.into_iter().map(|e| e.into()));
+                    return Ok(());
+                }
+
                 effects.extend(defender.on_defend(state, attacker_id)?.into_iter().map(|e| e.into()));
                 effects.reverse();
                 state.effects.extend(effects.into_iter().map(|e| e.into()));
