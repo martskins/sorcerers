@@ -30,7 +30,7 @@ impl DaperyllVampire {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(5, ""),
+                cost: Cost::new(5, "A"),
                 region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,

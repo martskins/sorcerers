@@ -29,7 +29,7 @@ impl PalliburrieBats {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(2, ""),
+                cost: Cost::new(2, "A"),
                 region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,

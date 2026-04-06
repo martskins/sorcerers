@@ -31,7 +31,7 @@ impl CandlemasMons {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(3, ""),
+                cost: Cost::new(3, "A"),
                 region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,

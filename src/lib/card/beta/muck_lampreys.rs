@@ -29,7 +29,7 @@ impl MuckLampreys {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(2, ""),
+                cost: Cost::new(2, "W"),
                 region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
