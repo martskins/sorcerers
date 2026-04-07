@@ -32,7 +32,7 @@ pub struct PlayerWithDeck {
 
 #[derive(Debug, Default, Clone)]
 pub struct CardMatcher {
-    pub id: Option<uuid::Uuid>,
+    pub ids: Option<Vec<uuid::Uuid>>,
     pub card_names: Option<Vec<String>>,
     pub controller_id: Option<PlayerId>,
     pub not_in_ids: Option<Vec<uuid::Uuid>>,
@@ -48,9 +48,16 @@ pub struct CardMatcher {
 }
 
 impl CardMatcher {
+    pub fn from_ids(ids: Vec<uuid::Uuid>) -> Self {
+        Self {
+            ids: Some(ids),
+            ..Default::default()
+        }
+    }
+
     pub fn from_id(id: uuid::Uuid) -> Self {
         Self {
-            id: Some(id),
+            ids: Some(vec![id]),
             ..Default::default()
         }
     }
@@ -298,8 +305,8 @@ impl CardMatcher {
 
     pub fn matches(&self, card_id: &uuid::Uuid, state: &State) -> bool {
         let card = state.get_card(card_id);
-        if let Some(id) = &self.id {
-            if card_id != id {
+        if let Some(ids) = &self.ids {
+            if !ids.contains(card_id) {
                 return false;
             }
         }

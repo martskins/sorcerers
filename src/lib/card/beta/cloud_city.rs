@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
+    card::{Card, CardBase, Cost, CostType, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
     effect::Effect,
     game::{ActivatedAbility, PlayerId, Thresholds, pick_zone},
     query::ZoneQuery,
@@ -17,9 +17,11 @@ impl ActivatedAbility for FlyToVoid {
 
     fn get_cost(&self, _card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
         Ok(Cost {
+            label: None,
             mana: 0,
             thresholds: "AAA".into(),
             additional: vec![],
+            cost_type: CostType::ManaCost,
         })
     }
 

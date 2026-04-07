@@ -1,5 +1,7 @@
 use crate::{
-    card::{AdditionalCost, AvatarBase, Card, CardBase, CardType, Cost, Edition, Rarity, Region, UnitBase, Zone},
+    card::{
+        AdditionalCost, AvatarBase, Card, CardBase, CardType, Cost, CostType, Edition, Rarity, Region, UnitBase, Zone,
+    },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, Thresholds, pick_card, yes_or_no},
     query::CardQuery,
@@ -53,11 +55,13 @@ impl ActivatedAbility for FloodSite {
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
         Ok(Cost {
+            label: None,
             mana: 0,
             thresholds: Thresholds::ZERO,
             additional: vec![AdditionalCost::Tap {
                 card: CardQuery::from_id(card_id.clone()),
             }],
+            cost_type: CostType::ManaCost,
         })
     }
 }

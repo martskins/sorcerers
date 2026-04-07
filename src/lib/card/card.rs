@@ -3,7 +3,7 @@ use crate::{
     effect::{AbilityCounter, Counter, Effect, TokenType},
     game::{
         ActivatedAbility, AvatarAction, Direction, Element, PlayerId, Thresholds, UnitAction, are_adjacent, are_nearby,
-        get_adjacent_zones, get_nearby_zones, pick_card, pick_zone,
+        get_adjacent_zones, get_nearby_zones, pick_card, pick_option, pick_zone,
     },
     query::{CardQuery, ZoneQuery},
     state::{CardMatcher, ContinuousEffect, State, TemporaryEffect},
@@ -360,19 +360,91 @@ pub enum AdditionalCost {
     Surface { card: CardQuery },
 }
 
+#[derive(Debug, PartialEq, Clone, Default)]
+pub enum CostType {
+    #[default]
+    ManaCost,
+    AlternativeCost,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct Costs(Vec<Cost>);
+
+impl Costs {
+    pub fn new(costs: Vec<Cost>) -> Self {
+        Self(costs)
+    }
+
+    pub fn thresholds_cost(&self) -> &Thresholds {
+        &self
+            .0
+            .iter()
+            .find(|c| c.cost_type == CostType::ManaCost)
+            .unwrap()
+            .thresholds
+    }
+
+    pub async fn pay(&self, state: &mut State, player_id: &PlayerId) -> anyhow::Result<()> {
+        match self.0.len() {
+            0 => unreachable!(),
+            1 => Box::pin(self.0.first().expect("costs to have one item").pay(state, player_id)).await?,
+            _ => {
+                let affordable_costs = self
+                    .0
+                    .iter()
+                    .filter(|c| c.can_afford(state, player_id).unwrap_or(false))
+                    .cloned()
+                    .collect::<Vec<_>>();
+                let cost_labels = affordable_costs.iter().map(|c| c.get_label()).collect::<Vec<_>>();
+                let picked_cost_idx = pick_option(player_id, &cost_labels, state, "Pick a cost to pay").await?;
+                Box::pin(affordable_costs[picked_cost_idx].pay(state, player_id)).await?
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn can_afford(&self, state: &State, player_id: impl AsRef<PlayerId>) -> anyhow::Result<bool> {
+        for cost in &self.0 {
+            if cost.can_afford(state, player_id.as_ref())? {
+                return Ok(true);
+            }
+        }
+
+        Ok(false)
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct Cost {
+    pub label: Option<String>,
     pub mana: u8,
     pub thresholds: Thresholds,
     pub additional: Vec<AdditionalCost>,
+    pub cost_type: CostType,
 }
 
 impl Cost {
     pub fn new(mana: u8, thresholds: impl Into<Thresholds>) -> Self {
         Self {
+            label: None,
             mana,
             thresholds: thresholds.into(),
             additional: vec![],
+            cost_type: CostType::ManaCost,
+        }
+    }
+
+    pub fn get_label(&self) -> String {
+        match self.cost_type {
+            CostType::ManaCost => "Mana Cost".to_string(),
+            CostType::AlternativeCost => {
+                if let Some(label) = &self.label {
+                    label.to_string()
+                } else {
+                    "Alternative Cost".to_string()
+                }
+            }
         }
     }
 
@@ -395,27 +467,22 @@ impl Cost {
                         through_path: None,
                     };
                     effect.apply(state).await?;
+                    state.effect_log.push(effect.into());
                 }
                 AdditionalCost::Tap { card } => {
                     let card_id = card.resolve(player_id, state).await?;
                     let effect = Effect::TapCard { card_id };
                     effect.apply(state).await?;
+                    state.effect_log.push(effect.into());
                 }
                 AdditionalCost::Discard { card } => {
                     let card_id = card.resolve(player_id, state).await?;
-                    let effect = Effect::MoveCard {
+                    let effect = Effect::DiscardCard {
                         card_id,
                         player_id: player_id.clone(),
-                        from: Zone::Hand,
-                        to: ZoneQuery::Specific {
-                            id: uuid::Uuid::new_v4(),
-                            zone: Zone::Cemetery,
-                        },
-                        tap: false,
-                        region: Region::Surface,
-                        through_path: None,
                     };
                     effect.apply(state).await?;
+                    state.effect_log.push(effect.into());
                 }
                 AdditionalCost::Sacrifice { card } => {
                     let card_id = card.resolve(player_id, state).await?;
@@ -433,6 +500,7 @@ impl Cost {
                         through_path: None,
                     };
                     effect.apply(state).await?;
+                    state.effect_log.push(effect.into());
                 }
             }
         }
@@ -442,9 +510,11 @@ impl Cost {
 
     pub fn zero() -> Self {
         Self {
+            label: None,
             mana: 0,
             thresholds: Thresholds::new(),
             additional: vec![],
+            cost_type: CostType::ManaCost,
         }
     }
 
@@ -961,7 +1031,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 .provided_thresholds
                 .clone()
         } else {
-            self.get_cost(state)?.thresholds
+            self.get_costs(state)?.thresholds_cost().clone()
         };
 
         let mut elements = Vec::new();
@@ -1225,10 +1295,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(self.base_get_power(state))
     }
 
-    fn get_cost(&self, state: &State) -> anyhow::Result<Cost> {
+    fn get_costs(&self, state: &State) -> anyhow::Result<Costs> {
         let mut cost = self.get_base().cost.clone();
         cost.additional = self.get_additional_costs(state)?;
-        Ok(cost)
+        Ok(Costs::new(vec![cost]))
     }
 
     fn get_additional_costs(&self, _state: &State) -> anyhow::Result<Vec<AdditionalCost>> {

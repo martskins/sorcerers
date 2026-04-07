@@ -32,7 +32,7 @@ impl ActivatedAbility for ShootProjectile {
             .iter()
             .filter(|c| c.get_zone() == &Zone::Cemetery)
             .filter(|c| c.get_elements(state).unwrap_or_default().contains(&Element::Fire))
-            .map(|c| c.get_cost(state).unwrap_or_default().thresholds.clone())
+            .map(|c| c.get_costs(state).unwrap_or_default().thresholds_cost().clone())
             .sum::<Thresholds>()
             .fire as u16;
         let avatar = state.get_card(card_id);

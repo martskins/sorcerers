@@ -448,8 +448,8 @@ impl CardQuery {
             }
             CardQuery::OwnedBy { owner, .. } => CardMatcher::new().controller_id(owner).resolve_ids(state),
             CardQuery::FromOptions { options, .. } => options.clone(),
+            CardQuery::RandomTarget { possible_targets, .. } => possible_targets.to_vec(),
             CardQuery::RandomUnitInZone { .. } => unreachable!(),
-            CardQuery::RandomTarget { .. } => unreachable!(),
         }
     }
 

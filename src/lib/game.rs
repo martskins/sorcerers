@@ -1375,7 +1375,7 @@ impl Game {
                 }
 
                 if let Zone::Hand = card.get_zone() {
-                    if !card.get_cost(&self.state)?.can_afford(&self.state, player_id)? {
+                    if !card.get_costs(&self.state)?.can_afford(&self.state, player_id)? {
                         return Ok(());
                     }
                 }

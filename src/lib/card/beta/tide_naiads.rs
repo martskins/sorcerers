@@ -62,12 +62,8 @@ impl Card for TideNaiads {
 
     async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
         let site_id = self.get_zone().get_site(state).map(|site| site.get_id()).cloned();
-
         Ok(vec![ContinuousEffect::FloodSites {
-            affected_sites: CardMatcher {
-                id: site_id,
-                ..Default::default()
-            },
+            affected_sites: CardMatcher::from_id(site_id.unwrap()),
         }])
     }
 }

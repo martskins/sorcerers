@@ -90,6 +90,10 @@ pub enum Effect {
         card_id: uuid::Uuid,
         zone: Zone,
     },
+    DiscardCard {
+        player_id: uuid::Uuid,
+        card_id: uuid::Uuid,
+    },
     MoveCard {
         player_id: uuid::Uuid,
         card_id: uuid::Uuid,
@@ -249,6 +253,7 @@ impl Effect {
             Effect::SetCardRegion { card_id, .. } => Some(card_id),
             Effect::SetCardZone { card_id, .. } => Some(card_id),
             Effect::MoveCard { card_id, .. } => Some(card_id),
+            Effect::DiscardCard { card_id, .. } => Some(card_id),
             Effect::DrawSite { player_id, .. } => Some(player_id),
             Effect::DrawSpell { player_id, .. } => Some(player_id),
             Effect::DrawCard { player_id, .. } => Some(player_id),
@@ -328,6 +333,10 @@ impl Effect {
             Effect::AddCounter { .. } => None,
             Effect::TeleportCard { .. } => None,
             Effect::SetCardZone { .. } => None,
+            Effect::DiscardCard { card_id, player_id } => {
+                let card = state.get_card(card_id).get_name();
+                Some(format!("{} discards {}", player_name(player_id, state), card))
+            }
             Effect::MoveCard {
                 player_id,
                 to,
@@ -795,8 +804,8 @@ impl Effect {
                 caster_id,
                 ..
             } => {
-                let cost = state.get_card(card_id).get_cost(&state)?.clone();
-                Box::pin(cost.pay(state, player_id)).await?;
+                let costs = state.get_card(card_id).get_costs(&state)?.clone();
+                costs.pay(state, player_id).await?;
 
                 let snapshot = state.snapshot();
                 let card = state.get_card_mut(card_id);
@@ -814,8 +823,8 @@ impl Effect {
             } => {
                 let zone = zone.resolve(player_id, state).await?;
                 let snapshot = state.snapshot();
-                let cost = state.get_card(card_id).get_cost(&snapshot)?.clone();
-                Box::pin(cost.pay(state, &player_id)).await?;
+                let costs = state.get_card(card_id).get_costs(&snapshot)?.clone();
+                Box::pin(costs.pay(state, &player_id)).await?;
                 let card = state
                     .cards
                     .iter_mut()
@@ -1263,6 +1272,18 @@ impl Effect {
                     .get_mut(player_id)
                     .ok_or(anyhow::anyhow!("failed to find player deck"))?;
                 deck.shuffle();
+            }
+            Effect::DiscardCard { player_id, card_id } => {
+                let card = state.get_card_mut(card_id);
+                if card.get_owner_id() != player_id {
+                    return Ok(());
+                }
+
+                if card.get_zone() != &Zone::Hand {
+                    return Ok(());
+                }
+
+                card.set_zone(Zone::Cemetery);
             }
         }
 

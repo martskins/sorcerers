@@ -1,5 +1,7 @@
 use crate::{
-    card::{Ability, AdditionalCost, Card, CardBase, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{
+        Ability, AdditionalCost, Card, CardBase, Cost, CostType, Edition, MinionType, Rarity, Region, UnitBase, Zone,
+    },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, Thresholds},
     query::{CardQuery, ZoneQuery},
@@ -49,11 +51,13 @@ impl ActivatedAbility for TapToStrikeNearbyMinions {
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
         Ok(Cost {
+            label: None,
             mana: 0,
             thresholds: Thresholds::new(),
             additional: vec![AdditionalCost::Surface {
                 card: CardQuery::from_id(card_id.clone()),
             }],
+            cost_type: CostType::ManaCost,
         })
     }
 }

@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
+    card::{Card, CardBase, Cost, CostType, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
     effect::{Effect, TokenType},
     game::{ActivatedAbility, PlayerId, Thresholds},
     state::{CardMatcher, State},
@@ -16,9 +16,11 @@ impl ActivatedAbility for UseAbility {
 
     fn get_cost(&self, _card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
         Ok(Cost {
+            label: None,
             mana: 0,
             thresholds: Thresholds::parse("FFF"),
             additional: vec![],
+            cost_type: CostType::ManaCost,
         })
     }
 

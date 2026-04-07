@@ -1,5 +1,7 @@
 use crate::{
-    card::{AdditionalCost, Artifact, ArtifactBase, Card, CardBase, CardType, Cost, Edition, Rarity, Region, Zone},
+    card::{
+        AdditionalCost, Artifact, ArtifactBase, Card, CardBase, CardType, Cost, CostType, Edition, Rarity, Region, Zone,
+    },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, Thresholds, pick_zone},
     query::CardQuery,
@@ -44,6 +46,7 @@ impl ActivatedAbility for ShootPayload {
             Some(bearer_id) => {
                 let bearer = state.get_card(&bearer_id);
                 Ok(Cost {
+                    label: None,
                     mana: 0,
                     thresholds: Thresholds::new(),
                     additional: vec![
@@ -76,6 +79,7 @@ impl ActivatedAbility for ShootPayload {
                             },
                         },
                     ],
+                    cost_type: CostType::ManaCost,
                 })
             }
             None => Ok(Cost::zero()),

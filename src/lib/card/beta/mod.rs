@@ -1,5 +1,7 @@
 pub mod blood_ravens;
 pub use blood_ravens::*;
+pub mod angels_egg;
+pub use angels_egg::*;
 pub mod grapple_shot;
 pub use grapple_shot::*;
 pub mod mortality;
@@ -310,3 +312,7 @@ pub mod ruby_core;
 pub use ruby_core::*;
 pub mod ancient_dragon;
 pub use ancient_dragon::*;
+pub mod aramos_mercenaries;
+pub use aramos_mercenaries::*;
+pub mod aqueduct;
+pub use aqueduct::*;
