@@ -26,6 +26,7 @@ impl Abundance {
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
                 is_token: false,
+                ..Default::default()
             },
             aura_base: AuraBase {},
         }

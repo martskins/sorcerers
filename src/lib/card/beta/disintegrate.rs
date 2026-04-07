@@ -29,6 +29,7 @@ impl Disintegrate {
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
                 is_token: false,
+                ..Default::default()
             },
         }
     }
@@ -53,8 +54,7 @@ impl Card for Disintegrate {
         let controller_id = self.get_controller_id(state);
 
         // Collect all minions in or near the caster's zone.
-        let valid_targets: Vec<uuid::Uuid> = CardMatcher::minions_near(&caster_zone)
-            .resolve_ids(state);
+        let valid_targets: Vec<uuid::Uuid> = CardMatcher::minions_near(&caster_zone).resolve_ids(state);
 
         if valid_targets.is_empty() {
             return Ok(vec![]);

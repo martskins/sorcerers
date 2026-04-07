@@ -120,6 +120,7 @@ impl CloudCity {
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
                 is_token: false,
+                ..Default::default()
             },
             moved_this_turn: false,
         }

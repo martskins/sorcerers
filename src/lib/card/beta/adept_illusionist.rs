@@ -21,7 +21,7 @@ impl ActivatedAbility for AdeptIllusionistAction {
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
         let card_ids = CardMatcher::new()
-            .controller_id(&player_id.clone())
+            .controlled_by(&player_id.clone())
             .with_names(vec![AdeptIllusionist::NAME.to_string()])
             .include_not_in_play(true)
             .not_in_ids(vec![card_id.clone()])
@@ -90,6 +90,7 @@ impl AdeptIllusionist {
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
                 is_token: false,
+                ..Default::default()
             },
         }
     }

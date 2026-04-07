@@ -39,6 +39,7 @@ pub struct CardMatcher {
     pub abilities: Option<Vec<Ability>>,
     pub card_types: Option<Vec<CardType>>,
     pub minion_types: Option<Vec<MinionType>>,
+    pub mana_cost: Option<u8>,
     pub site_types: Option<Vec<SiteType>>,
     pub with_affinity: Option<Vec<Element>>,
     pub in_zones: Option<Vec<Zone>>,
@@ -261,7 +262,7 @@ impl CardMatcher {
         }
     }
 
-    pub fn controller_id(self, controller_id: &PlayerId) -> Self {
+    pub fn controlled_by(self, controller_id: &PlayerId) -> Self {
         Self {
             controller_id: Some(controller_id.clone()),
             ..self
@@ -292,6 +293,13 @@ impl CardMatcher {
     pub fn with_card_types(self, card_types: Vec<CardType>) -> Self {
         Self {
             card_types: Some(card_types),
+            ..self
+        }
+    }
+
+    pub fn with_mana_cost_less_than_or_equal_to(self, mc: u8) -> Self {
+        Self {
+            mana_cost: Some(mc),
             ..self
         }
     }
@@ -339,6 +347,12 @@ impl CardMatcher {
             }
 
             if !has_affinity {
+                return false;
+            }
+        }
+
+        if let Some(mc) = &self.mana_cost {
+            if card.get_costs(state).unwrap_or_default().mana_cost() > *mc {
                 return false;
             }
         }
@@ -566,7 +580,7 @@ impl State {
                 let defender_controller = defender.get_controller_id(self);
                 let dodge_rolls_in_hand = CardMatcher::new()
                     .with_name(DodgeRoll::NAME)
-                    .controller_id(&defender_controller)
+                    .controlled_by(&defender_controller)
                     .in_zone(&Zone::Hand)
                     .resolve_ids(self);
                 if dodge_rolls_in_hand.is_empty() {
@@ -752,7 +766,7 @@ impl State {
     pub fn get_defenders_for_attack(&self, defender_id: &uuid::Uuid) -> Vec<uuid::Uuid> {
         let defender = self.get_card(defender_id);
         CardMatcher::units_near(defender.get_zone())
-            .controller_id(&defender.get_controller_id(self))
+            .controlled_by(&defender.get_controller_id(self))
             .resolve_ids(self)
     }
 

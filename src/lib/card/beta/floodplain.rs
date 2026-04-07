@@ -81,6 +81,7 @@ impl Floodplain {
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
                 is_token: false,
+                ..Default::default()
             },
             last_activation_on_turn: None,
         }

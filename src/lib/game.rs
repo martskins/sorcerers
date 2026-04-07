@@ -562,7 +562,7 @@ pub enum Element {
     Water,
 }
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Default, Clone, Serialize, Deserialize)]
 pub struct Thresholds {
     pub fire: u8,
     pub air: u8,

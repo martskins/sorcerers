@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, ResourceProvider, Rarity, Region, Site, SiteBase, Zone},
+    card::{Card, CardBase, Cost, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
     game::{PlayerId, Thresholds},
 };
 
@@ -30,6 +30,7 @@ impl Aqueduct {
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
                 is_token: false,
+                ..Default::default()
             },
         }
     }
@@ -69,6 +70,5 @@ impl Card for Aqueduct {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (Aqueduct::NAME, |owner_id: PlayerId| {
-    Box::new(Aqueduct::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (Aqueduct::NAME, |owner_id: PlayerId| Box::new(Aqueduct::new(owner_id)));

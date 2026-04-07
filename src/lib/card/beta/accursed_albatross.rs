@@ -34,6 +34,7 @@ impl AccursedAlbatross {
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
                 is_token: false,
+                ..Default::default()
             },
         }
     }
@@ -75,7 +76,7 @@ impl Card for AccursedAlbatross {
         if was_killed {
             let killer = state.get_card(from);
             let allies = CardMatcher::new()
-                .controller_id(&killer.get_controller_id(state))
+                .controlled_by(&killer.get_controller_id(state))
                 .near(killer.get_zone())
                 .resolve_ids(state);
             for ally in allies {

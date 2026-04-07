@@ -36,6 +36,7 @@ impl AramosMercenaries {
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
                 is_token: false,
+                ..Default::default()
             },
         }
     }
@@ -43,7 +44,7 @@ impl AramosMercenaries {
     fn discard_cost(&self, state: &State) -> anyhow::Result<Cost> {
         let controller_id = self.get_controller_id(state);
         let hand_cards = CardMatcher::new()
-            .controller_id(&controller_id)
+            .controlled_by(&controller_id)
             .in_zone(&Zone::Hand)
             .resolve_ids(state);
 

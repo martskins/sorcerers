@@ -36,6 +36,7 @@ impl HouseArnBannerman {
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
                 is_token: false,
+                ..Default::default()
             },
         }
     }
@@ -65,7 +66,7 @@ impl Card for HouseArnBannerman {
 
     fn area_modifiers(&self, state: &State) -> AreaModifiers {
         let nearby_allies = CardMatcher::units_near(self.get_zone())
-            .controller_id(&self.get_controller_id(state))
+            .controlled_by(&self.get_controller_id(state))
             .not_in_ids(vec![self.get_id().clone()])
             .resolve_ids(state);
 

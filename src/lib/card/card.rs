@@ -43,8 +43,9 @@ impl CardType {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Edition {
+    #[default]
     Alpha,
     Beta,
     ArthurianLegends,
@@ -64,11 +65,12 @@ impl Edition {
     }
 }
 
-#[derive(Debug, PartialOrd, Ord, Eq, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, PartialOrd, Ord, Eq, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Region {
     Void,
     Underground,
     Underwater,
+    #[default]
     Surface,
 }
 
@@ -83,8 +85,9 @@ impl std::fmt::Display for Region {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, PartialOrd, Ord, Eq, Serialize, Deserialize)]
 pub enum Zone {
+    #[default]
     None,
     Hand,
     Spellbook,
@@ -375,7 +378,19 @@ impl Costs {
         Self(costs)
     }
 
+    pub fn mana_cost(&self) -> u8 {
+        if self.0.len() == 0 {
+            return 0;
+        }
+
+        self.0.iter().find(|c| c.cost_type == CostType::ManaCost).unwrap().mana
+    }
+
     pub fn thresholds_cost(&self) -> &Thresholds {
+        if self.0.len() == 0 {
+            return &Thresholds::ZERO;
+        }
+
         &self
             .0
             .iter()
@@ -960,6 +975,16 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         &self.get_base().region
     }
 
+    fn is_flooded_site(&self, state: &State) -> bool {
+        if !self.is_site() {
+            return false;
+        }
+
+        self.get_site()
+            .and_then(|site| site.is_flooded(state).ok())
+            .unwrap_or(false)
+    }
+
     // Returns the amount of damage taken by the card. Defaults to 0 for non-unit cards.
     fn get_damage_taken(&self) -> anyhow::Result<u16> {
         if self.is_unit() {
@@ -1181,6 +1206,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     .cards
                     .iter()
                     .filter(|c| c.get_zone().is_in_play())
+                    .filter(|c| !c.is_flooded_site(state))
                     .map(|c| c.area_modifiers(state))
                     .filter_map(|mods| mods.grants_counters.get(self.get_id()).cloned())
                     .flat_map(|counters| counters)
@@ -1208,6 +1234,9 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 }
 
                 for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
+                    if card.is_flooded_site(state) {
+                        continue;
+                    }
                     let mods = card.area_modifiers(state);
                     if let Some(mods) = mods.grants_abilities.get(self.get_id()) {
                         modifiers.extend(mods.clone());
@@ -1215,6 +1244,9 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 }
 
                 for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
+                    if card.is_flooded_site(state) {
+                        continue;
+                    }
                     let mods = card.area_modifiers(state);
                     if let Some(mods) = mods.removes_abilities.get(self.get_id()) {
                         for modif in mods {
@@ -1278,6 +1310,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     .cards
                     .iter()
                     .filter(|c| c.get_zone().is_in_play())
+                    .filter(|c| !c.is_flooded_site(state))
                     .map(|c| c.area_modifiers(state))
                     .filter_map(|mods| mods.grants_counters.get(self.get_id()).cloned())
                     .flat_map(|counters| counters)
@@ -1577,6 +1610,9 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
         for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
             let mods = card.area_modifiers(state);
+            if card.is_flooded_site(state) {
+                continue;
+            }
             if let Some(mods) = mods.grants_activated_abilities.get(self.get_id()) {
                 activated_abilities.extend(mods.clone());
             }
@@ -1612,6 +1648,9 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
         for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
             let mods = card.area_modifiers(state);
+            if card.is_flooded_site(state) {
+                continue;
+            }
             if let Some(mods) = mods.grants_activated_abilities.get(self.get_id()) {
                 activated_abilities.extend(mods.clone());
             }
@@ -1639,6 +1678,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     // Returns the available actions for this card, given the current game state.
     fn get_activated_abilities(&self, state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         if self.has_ability(state, &Ability::Disabled) {
+            return Ok(vec![]);
+        }
+
+        if self.is_site() && self.is_flooded_site(state) {
             return Ok(vec![]);
         }
 
@@ -1755,8 +1798,11 @@ pub trait ResourceProvider: Card {
                     .get_site()
                     .ok_or(anyhow::anyhow!("site card does not implement site"))?;
                 let mut thresholds = site_base.provided_thresholds.clone();
-                if site.is_flooded(state)? && site_base.provided_thresholds.water == 0 {
-                    thresholds.water = 1;
+                if site.is_flooded(state)? {
+                    thresholds.fire = 0;
+                    thresholds.air = 0;
+                    thresholds.earth = 0;
+                    thresholds.water = std::cmp::max(1, thresholds.water);
                 }
 
                 Ok(thresholds)
@@ -1848,8 +1894,9 @@ pub struct UnitBase {
     pub types: Vec<MinionType>,
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
+#[derive(Debug, Default, PartialEq, Serialize, Deserialize, Clone)]
 pub enum Rarity {
+    #[default]
     Ordinary,
     Exceptional,
     Elite,
@@ -1903,7 +1950,7 @@ pub trait Artifact: Card {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct CardBase {
     pub id: uuid::Uuid,
     pub owner_id: PlayerId,
@@ -1915,6 +1962,7 @@ pub struct CardBase {
     pub rarity: Rarity,
     pub edition: Edition,
     pub is_token: bool,
+    pub oversized: bool,
 }
 
 #[derive(Debug, Clone)]

@@ -442,11 +442,11 @@ impl CardQuery {
             CardQuery::NearZone { zone, owner, .. } => {
                 let mut matcher = CardMatcher::units_near(zone);
                 if let Some(owner) = owner {
-                    matcher = matcher.controller_id(owner);
+                    matcher = matcher.controlled_by(owner);
                 }
                 matcher.resolve_ids(state)
             }
-            CardQuery::OwnedBy { owner, .. } => CardMatcher::new().controller_id(owner).resolve_ids(state),
+            CardQuery::OwnedBy { owner, .. } => CardMatcher::new().controlled_by(owner).resolve_ids(state),
             CardQuery::FromOptions { options, .. } => options.clone(),
             CardQuery::RandomTarget { possible_targets, .. } => possible_targets.to_vec(),
             CardQuery::RandomUnitInZone { .. } => unreachable!(),

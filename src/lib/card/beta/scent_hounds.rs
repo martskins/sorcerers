@@ -34,6 +34,7 @@ impl ScentHounds {
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
                 is_token: false,
+                ..Default::default()
             },
         }
     }
@@ -64,7 +65,7 @@ impl Card for ScentHounds {
     fn area_effects(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let opponent_id = state.get_opponent_id(&self.get_controller_id(state))?;
         let effects = CardMatcher::units_near(self.get_zone())
-            .controller_id(&opponent_id)
+            .controlled_by(&opponent_id)
             .with_abilities(vec![Ability::Stealth])
             .resolve_ids(state)
             .into_iter()

@@ -32,6 +32,8 @@ impl MountainGiant {
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
                 is_token: false,
+                oversized: true,
+                ..Default::default()
             },
         }
     }

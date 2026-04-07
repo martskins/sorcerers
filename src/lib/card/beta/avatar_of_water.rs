@@ -95,6 +95,7 @@ impl AvatarOfWater {
                 edition: Edition::Alpha,
                 controller_id: owner_id.clone(),
                 is_token: false,
+                ..Default::default()
             },
             avatar_base: AvatarBase { ..Default::default() },
             flood_effect: None,

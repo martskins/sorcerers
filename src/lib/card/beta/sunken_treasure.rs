@@ -31,6 +31,7 @@ impl SunkenTreasure {
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
                 is_token: false,
+                ..Default::default()
             },
         }
     }
@@ -69,7 +70,7 @@ impl Card for SunkenTreasure {
         let opponent_id = state.get_opponent_id(&controller_id)?;
 
         let allied_water_sites = CardMatcher::new()
-            .controller_id(&controller_id)
+            .controlled_by(&controller_id)
             .with_card_type(CardType::Site)
             .with_affinity(Element::Water)
             .resolve_ids(state);

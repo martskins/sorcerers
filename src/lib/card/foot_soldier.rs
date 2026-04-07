@@ -33,6 +33,7 @@ impl FootSoldier {
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
                 is_token: true,
+                ..Default::default()
             },
         }
     }

@@ -26,6 +26,7 @@ impl GrappleShot {
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
                 is_token: false,
+                ..Default::default()
             },
         }
     }
@@ -49,7 +50,7 @@ impl Card for GrappleShot {
         let controller_id = self.get_controller_id(state);
         let ally_ids = CardMatcher::new()
             .with_card_types(vec![CardType::Minion, CardType::Avatar])
-            .controller_id(&controller_id)
+            .controlled_by(&controller_id)
             .resolve_ids(state);
         let ally_id = pick_card(
             &controller_id,

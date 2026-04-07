@@ -35,6 +35,7 @@ impl WayfaringPilgrim {
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
                 is_token: false,
+                ..Default::default()
             },
             corners_visited: Vec::new(),
         }

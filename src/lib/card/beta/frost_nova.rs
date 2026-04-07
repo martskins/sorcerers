@@ -27,6 +27,7 @@ impl FrostNova {
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
                 is_token: false,
+                ..Default::default()
             },
         }
     }
@@ -49,7 +50,7 @@ impl Card for FrostNova {
     async fn on_cast(&mut self, state: &State, _caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
         let nearby_enemies = CardMatcher::minions_near(self.get_zone())
-            .controller_id(&controller_id)
+            .controlled_by(&controller_id)
             .resolve_ids(state);
         Ok(nearby_enemies
             .into_iter()

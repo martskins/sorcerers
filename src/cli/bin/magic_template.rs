@@ -25,6 +25,7 @@ impl {StructName} {
                 rarity: Rarity::{Rarity},
                 edition: Edition::{Edition},
                 controller_id: owner_id.clone(),
+                ..Default::default()
             },
         }
     }
