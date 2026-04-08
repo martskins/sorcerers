@@ -24,7 +24,7 @@ impl ActivatedAbility for DealDamage {
         let card = state.get_card(card_id);
         let possible_targets = CardMatcher::new()
             .in_zone(card.get_zone())
-            .not_in_ids(vec![card_id.clone()])
+            .with_id_not_in(vec![card_id.clone()])
             .with_card_types(vec![CardType::Minion, CardType::Avatar]);
         if possible_targets.resolve_ids(state).len() == 0 {
             return Ok(vec![]);

@@ -443,11 +443,11 @@ impl CardQuery {
             CardQuery::NearZone { zone, owner, .. } => {
                 let mut matcher = CardMatcher::units_near(zone);
                 if let Some(owner) = owner {
-                    matcher = matcher.controlled_by(owner);
+                    matcher = matcher.with_controller_id(owner);
                 }
                 matcher.resolve_ids(state)
             }
-            CardQuery::OwnedBy { owner, .. } => CardMatcher::new().controlled_by(owner).resolve_ids(state),
+            CardQuery::OwnedBy { owner, .. } => CardMatcher::new().with_controller_id(owner).resolve_ids(state),
             CardQuery::FromOptions { options, .. } => options.clone(),
             CardQuery::RandomTarget { possible_targets, .. } => possible_targets.resolve_ids(state),
             CardQuery::RandomUnitInZone { .. } => unreachable!(),

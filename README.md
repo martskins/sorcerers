@@ -119,7 +119,7 @@ Every playable card is a Rust struct in `src/lib/card/{edition}/`. To add a new 
         fn get_base_mut(&mut self) -> &mut CardBase { &mut self.card_base }
         fn get_base(&self) -> &CardBase { &self.card_base }
 
-        async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
+        async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid, _cost_paid: Cost) -> anyhow::Result<Vec<Effect>> {
             // Return a list of Effects to apply
             Ok(vec![])
         }

@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, Rarity, Region, Zone},
+    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::PlayerId,
     query::{CardQuery, ZoneQuery},
@@ -47,7 +47,12 @@ impl Card for Teleport {
         &self.card_base
     }
 
-    async fn on_cast(&mut self, _state: &State, _caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
+    async fn on_cast(
+        &mut self,
+        _state: &State,
+        _caster_id: &uuid::Uuid,
+        _cost_paid: Cost,
+    ) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![Effect::TeleportUnitToZone {
             player_id: self.get_owner_id().clone(),
             unit_query: CardQuery::OwnedBy {

@@ -25,7 +25,7 @@ impl SunkenTreasure {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::from_mana_and_threshold(1, ""),
+                costs: Costs::from_mana(1),
                 region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
@@ -70,7 +70,7 @@ impl Card for SunkenTreasure {
         let opponent_id = state.get_opponent_id(&controller_id)?;
 
         let allied_water_sites = CardMatcher::new()
-            .controlled_by(&controller_id)
+            .with_controller_id(&controller_id)
             .with_card_type(CardType::Site)
             .with_affinity(Element::Water)
             .resolve_ids(state);

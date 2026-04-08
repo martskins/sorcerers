@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, Rarity, Region, Zone},
+    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::PlayerId,
     state::State,
@@ -46,7 +46,12 @@ impl Card for DivineHealing {
         &self.card_base
     }
 
-    async fn on_cast(&mut self, state: &State, _caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
+    async fn on_cast(
+        &mut self,
+        state: &State,
+        _caster_id: &uuid::Uuid,
+        _cost_paid: Cost,
+    ) -> anyhow::Result<Vec<Effect>> {
         let avatar_id = state.get_player_avatar_id(&self.get_controller_id(state))?;
         Ok(vec![Effect::Heal {
             card_id: avatar_id.clone(),

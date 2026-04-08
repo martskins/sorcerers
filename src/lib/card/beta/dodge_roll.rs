@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, Rarity, Region, Zone},
+    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::PlayerId,
     state::State,
@@ -46,7 +46,12 @@ impl Card for DodgeRoll {
         &self.card_base
     }
 
-    async fn on_cast(&mut self, _state: &State, _caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
+    async fn on_cast(
+        &mut self,
+        _state: &State,
+        _caster_id: &uuid::Uuid,
+        _cost_paid: Cost,
+    ) -> anyhow::Result<Vec<Effect>> {
         // Dodge Roll effect is implement on State::replace_effect, so as to ask the player wether
         // to play it only once, even if they have multiple Dodge Roll cards in hand.
         Ok(vec![])

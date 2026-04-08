@@ -29,7 +29,7 @@ impl SiroccoScorpions {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::from_mana_and_threshold(2, ""),
+                costs: Costs::from_mana(2),
                 region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,

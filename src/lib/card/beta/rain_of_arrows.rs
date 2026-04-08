@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardType, Costs, Edition, Rarity, Region, Zone},
+    card::{Card, CardBase, CardType, Cost, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::PlayerId,
     state::{CardMatcher, State},
@@ -46,11 +46,16 @@ impl Card for RainOfArrows {
         &self.card_base
     }
 
-    async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
+    async fn on_cast(
+        &mut self,
+        state: &State,
+        caster_id: &uuid::Uuid,
+        _cost_paid: Cost,
+    ) -> anyhow::Result<Vec<Effect>> {
         let mut effects = Vec::new();
         let minion_ids = CardMatcher::new()
             .with_card_type(CardType::Minion)
-            .in_region(&Region::Surface)
+            .with_region(&Region::Surface)
             .resolve_ids(state);
         for minion_id in minion_ids {
             effects.push(Effect::take_damage(&minion_id, caster_id, 1));

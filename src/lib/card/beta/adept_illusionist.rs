@@ -21,10 +21,10 @@ impl ActivatedAbility for AdeptIllusionistAction {
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
         let card_ids = CardMatcher::new()
-            .controlled_by(&player_id.clone())
+            .with_controller_id(&player_id.clone())
             .with_names(vec![AdeptIllusionist::NAME.to_string()])
             .include_not_in_play(true)
-            .not_in_ids(vec![card_id.clone()])
+            .with_id_not_in(vec![card_id.clone()])
             .resolve_ids(state);
 
         if card_ids.is_empty() {

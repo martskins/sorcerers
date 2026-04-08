@@ -76,8 +76,8 @@ impl Card for AccursedAlbatross {
         if was_killed {
             let killer = state.get_card(from);
             let allies = CardMatcher::new()
-                .controlled_by(&killer.get_controller_id(state))
-                .near(killer.get_zone())
+                .with_controller_id(&killer.get_controller_id(state))
+                .with_zone_near_to(killer.get_zone())
                 .resolve_ids(state);
             for ally in allies {
                 if &ally == self.get_id() {

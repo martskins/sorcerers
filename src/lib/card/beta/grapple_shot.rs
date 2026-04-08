@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardType, Costs, Edition, Rarity, Region, Zone},
+    card::{Card, CardBase, CardType, Cost, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::{CARDINAL_DIRECTIONS, PlayerId, pick_card, pick_direction, yes_or_no},
     state::{CardMatcher, State},
@@ -46,11 +46,16 @@ impl Card for GrappleShot {
         &self.card_base
     }
 
-    async fn on_cast(&mut self, state: &State, _caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
+    async fn on_cast(
+        &mut self,
+        state: &State,
+        _caster_id: &uuid::Uuid,
+        _cost_paid: Cost,
+    ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
         let ally_ids = CardMatcher::new()
             .with_card_types(vec![CardType::Minion, CardType::Avatar])
-            .controlled_by(&controller_id)
+            .with_controller_id(&controller_id)
             .resolve_ids(state);
         let ally_id = pick_card(
             &controller_id,

@@ -24,7 +24,7 @@ impl ActivatedAbility for FloodAdjacentSite {
         let card = state.get_card(card_id);
         let adjacent_site_ids = CardMatcher::new()
             .with_card_type(CardType::Site)
-            .adjacent_to(card.get_zone())
+            .with_zone_adjacent_to(card.get_zone())
             .resolve_ids(state);
         let prompt = "Select an adjacent site to flood".to_string();
         let site_id = pick_card(player_id, &adjacent_site_ids, state, &prompt).await?;

@@ -31,7 +31,7 @@ impl ActivatedAbility for AncientDragonAbility {
         .await?;
         let unit_ids = CardMatcher::new()
             .in_zone(&picked_zone)
-            .not_in_ids(vec![card_id.clone()])
+            .with_id_not_in(vec![card_id.clone()])
             .resolve_ids(state);
         let mut effects = vec![Effect::TapCard {
             card_id: card_id.clone(),

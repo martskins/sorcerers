@@ -805,11 +805,15 @@ impl Effect {
                 ..
             } => {
                 let costs = state.get_card(card_id).get_costs(&state)?.clone();
-                costs.pay(state, player_id).await?;
+                let paid_cost = costs.pay(state, player_id).await?;
 
                 let snapshot = state.snapshot();
                 let card = state.get_card_mut(card_id);
-                let effects = card.on_cast(&snapshot, caster_id).await?.into_iter().map(|e| e.into());
+                let effects = card
+                    .on_cast(&snapshot, caster_id, paid_cost)
+                    .await?
+                    .into_iter()
+                    .map(|e| e.into());
 
                 // Set zone after on_cast so that the card is not in the cemetery during casting.
                 card.set_zone(Zone::Cemetery);

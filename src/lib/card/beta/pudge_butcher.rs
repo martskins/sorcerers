@@ -95,7 +95,7 @@ impl ActivatedAbility for ShootProjectile {
     }
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
-        Ok(Cost::ZERO.with_additional(AdditionalCost::Tap {
+        Ok(Cost::from_additional(AdditionalCost::Tap {
             card: CardQuery::from_id(card_id.clone()),
         }))
     }

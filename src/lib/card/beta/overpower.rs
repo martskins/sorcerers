@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, Rarity, Region, Zone},
+    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Region, Zone},
     effect::{Counter, Effect},
     game::{PlayerId, pick_card},
     query::EffectQuery,
@@ -47,7 +47,12 @@ impl Card for Overpower {
         &self.card_base
     }
 
-    async fn on_cast(&mut self, state: &State, _caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
+    async fn on_cast(
+        &mut self,
+        state: &State,
+        _caster_id: &uuid::Uuid,
+        _cost_paid: Cost,
+    ) -> anyhow::Result<Vec<Effect>> {
         let allies = state
             .cards
             .iter()

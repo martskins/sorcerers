@@ -23,7 +23,7 @@ impl ActivatedAbility for TapToStrikeNearbyMinions {
     ) -> anyhow::Result<Vec<Effect>> {
         let kraken = state.get_card(card_id);
         let units_nearby = CardMatcher::units_near(kraken.get_zone())
-            .not_in_ids(vec![kraken.get_id().clone()])
+            .with_id_not_in(vec![kraken.get_id().clone()])
             .resolve_ids(state);
         let mut effects: Vec<Effect> = units_nearby
             .into_iter()
@@ -48,7 +48,7 @@ impl ActivatedAbility for TapToStrikeNearbyMinions {
     }
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
-        Ok(Cost::ZERO.with_additional(AdditionalCost::Surface {
+        Ok(Cost::from_additional(AdditionalCost::Surface {
             card: CardQuery::from_id(card_id.clone()),
         }))
     }

@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardType, Costs, Edition, Rarity, Region, Zone},
+    card::{Card, CardBase, CardType, Cost, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::{PlayerId, pick_card},
     state::{CardMatcher, State},
@@ -46,10 +46,15 @@ impl Card for Drown {
         &self.card_base
     }
 
-    async fn on_cast(&mut self, state: &State, _caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
+    async fn on_cast(
+        &mut self,
+        state: &State,
+        _caster_id: &uuid::Uuid,
+        _cost_paid: Cost,
+    ) -> anyhow::Result<Vec<Effect>> {
         let possible_targets = CardMatcher::new()
             .with_card_types(vec![CardType::Minion, CardType::Artifact])
-            .in_regions(vec![Region::Surface])
+            .with_region_in(vec![Region::Surface])
             .resolve_ids(state);
         if possible_targets.is_empty() {
             return Ok(vec![]);

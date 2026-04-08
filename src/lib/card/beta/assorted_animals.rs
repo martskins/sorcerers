@@ -1,9 +1,9 @@
 use rand::seq::SliceRandom;
 
 use crate::{
-    card::{Card, CardBase, CardType, Cost, Costs, Edition, MinionType, Rarity, Region, Zone},
+    card::{Card, CardBase, CardType, Cost, CostType, Costs, Edition, MinionType, Rarity, Region, Zone},
     effect::Effect,
-    game::{PlayerId, pick_card, pick_option, reveal_cards, yes_or_no},
+    game::{PlayerId, pick_card, reveal_cards, yes_or_no},
     state::{CardMatcher, State},
 };
 
@@ -48,16 +48,29 @@ impl Card for AssortedAnimals {
         &self.card_base
     }
 
-    async fn on_cast(&mut self, state: &State, _caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
+    async fn on_cast(
+        &mut self,
+        state: &State,
+        _caster_id: &uuid::Uuid,
+        cost_paid: Cost,
+    ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
         let deck = state.get_player_deck(&controller_id)?.clone();
+
+        let x_cost = cost_paid
+            .into_iter()
+            .find_map(|cost| match cost {
+                CostType::ManaCost(mana_paid) => Some(mana_paid),
+                _ => None,
+            })
+            .unwrap_or_default();
 
         let mut beasts = CardMatcher::new()
             .in_zone(&Zone::Spellbook)
             .with_card_type(CardType::Minion)
             .with_minion_types(vec![MinionType::Beast])
             .with_mana_cost_less_than_or_equal_to(x_cost)
-            .controlled_by(&controller_id)
+            .with_controller_id(&controller_id)
             .resolve_ids(state)
             .into_iter()
             .map(|id| {
@@ -130,13 +143,6 @@ impl Card for AssortedAnimals {
             card_id: card_id.clone(),
             zone: Zone::Hand,
         }));
-
-        if x_cost > 0 {
-            effects.push(Effect::ConsumeMana {
-                player_id: controller_id,
-                mana: x_cost,
-            });
-        }
 
         Ok(effects)
     }

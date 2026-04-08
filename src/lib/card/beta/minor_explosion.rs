@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, Rarity, Region, Zone},
+    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::{PlayerId, pick_zone},
     state::State,
@@ -46,7 +46,12 @@ impl Card for MinorExplosion {
         &self.card_base
     }
 
-    async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
+    async fn on_cast(
+        &mut self,
+        state: &State,
+        caster_id: &uuid::Uuid,
+        _cost_paid: Cost,
+    ) -> anyhow::Result<Vec<Effect>> {
         let caster = state.get_card(caster_id);
         let valid_zones = caster.get_zones_within_steps(state, 2);
         let prompt = "Pick a zone to center Minor Explosion:";

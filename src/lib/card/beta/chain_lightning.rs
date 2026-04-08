@@ -46,7 +46,12 @@ impl Card for ChainLightning {
         &self.card_base
     }
 
-    async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
+    async fn on_cast(
+        &mut self,
+        state: &State,
+        caster_id: &uuid::Uuid,
+        _cost_paid: Cost,
+    ) -> anyhow::Result<Vec<Effect>> {
         let caster = state.get_card(caster_id);
         let mut effects = vec![];
         let mut last_hit_zone = caster.get_zone().clone();

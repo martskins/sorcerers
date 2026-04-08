@@ -28,11 +28,11 @@ impl AramosMercenaries {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::from_mana_and_threshold(3, "FF").with_alternative(Cost::ZERO.with_additional(
+                costs: Costs::from_mana_and_threshold(3, "FF").with_alternative(Cost::from_additional(
                     AdditionalCost::Discard {
                         card: CardQuery::RandomTarget {
                             id: uuid::Uuid::new_v4(),
-                            possible_targets: CardMatcher::new().controlled_by(&owner_id).in_zone(&Zone::Hand),
+                            possible_targets: CardMatcher::new().with_controller_id(&owner_id).in_zone(&Zone::Hand),
                         },
                     },
                 )),

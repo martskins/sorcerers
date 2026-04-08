@@ -364,9 +364,13 @@ pub enum AdditionalCost {
 }
 
 #[derive(Debug, Clone)]
-enum CostType {
-    ManaCost(u8),
+pub enum CostType {
+    // VariableManaCost is used for cards that have a variable cost (represented by X on the card).
+    // When paying for a cost with VariableManaCost, the player will be prompted to choose how much
+    // mana to pay, up to the amount of mana they have available. The chosen amount will then be
+    // paid and returned as a ManaCost in the paid cost.
     VariableManaCost,
+    ManaCost(u8),
     Thresholds(Thresholds),
     Additional(Vec<AdditionalCost>),
 }
@@ -378,9 +382,9 @@ impl Default for CostType {
 }
 
 impl CostType {
-    async fn pay(&self, state: &mut State, player_id: &PlayerId) -> anyhow::Result<()> {
+    async fn pay(&self, state: &mut State, player_id: &PlayerId) -> anyhow::Result<CostType> {
         match self {
-            CostType::Thresholds(_) => {}
+            CostType::Thresholds(_) => Ok(self.clone()),
             CostType::VariableManaCost => {
                 let resources = state.get_player_resources(player_id)?;
                 let max_mana = resources.mana;
@@ -390,10 +394,12 @@ impl CostType {
                 let mana_to_pay = pick_amount(player_id, 1, max_mana, state, "Choose how much mana to pay").await?;
                 let mana = state.get_player_mana_mut(player_id);
                 *mana = mana.saturating_sub(mana_to_pay);
+                Ok(CostType::ManaCost(mana_to_pay))
             }
             CostType::ManaCost(mc) => {
                 let mana = state.get_player_mana_mut(player_id);
                 *mana = mana.saturating_sub(*mc);
+                Ok(self.clone())
             }
             CostType::Additional(additional_costs) => {
                 for additional_cost in additional_costs {
@@ -448,10 +454,9 @@ impl CostType {
                         }
                     }
                 }
+                Ok(self.clone())
             }
         }
-
-        Ok(())
     }
 
     pub fn can_afford(&self, state: &State, player_id: impl AsRef<PlayerId>) -> anyhow::Result<bool> {
@@ -541,7 +546,7 @@ impl Costs {
     }
 
     pub fn from_mana(mana: u8) -> Self {
-        Self(vec![Cost::new(mana, "")])
+        Self(vec![Cost::from_mana(mana)])
     }
 
     pub fn from_mana_and_threshold(mana: u8, thresholds: impl Into<Thresholds>) -> Self {
@@ -593,10 +598,13 @@ impl Costs {
         Self(self.0)
     }
 
-    pub async fn pay(&self, state: &mut State, player_id: &PlayerId) -> anyhow::Result<()> {
+    pub async fn pay(&self, state: &mut State, player_id: &PlayerId) -> anyhow::Result<Cost> {
         match self.0.len() {
             0 => unreachable!(),
-            1 => Box::pin(self.0.first().expect("costs to have one item").pay(state, player_id)).await?,
+            1 => {
+                let cost = self.0.first().expect("costs to have one item");
+                Box::pin(cost.pay(state, player_id)).await
+            }
             _ => {
                 let affordable_costs = self
                     .0
@@ -606,11 +614,9 @@ impl Costs {
                     .collect::<Vec<_>>();
                 let cost_labels = affordable_costs.iter().map(|c| c.get_label()).collect::<Vec<_>>();
                 let picked_cost_idx = pick_option(player_id, &cost_labels, state, "Pick a cost to pay").await?;
-                Box::pin(affordable_costs[picked_cost_idx].pay(state, player_id)).await?
+                Box::pin(affordable_costs[picked_cost_idx].pay(state, player_id)).await
             }
         }
-
-        Ok(())
     }
 
     pub fn can_afford(&self, state: &State, player_id: impl AsRef<PlayerId>) -> anyhow::Result<bool> {
@@ -631,6 +637,15 @@ impl Costs {
 // means that the player can either pay 2 mana and tap the card, or pay 3 mana.
 #[derive(Debug, Clone, Default)]
 pub struct Cost(Vec<CostType>);
+
+impl IntoIterator for Cost {
+    type Item = CostType;
+    type IntoIter = std::vec::IntoIter<CostType>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
 
 impl Cost {
     pub const ZERO: Cost = Cost(vec![]);
@@ -667,31 +682,46 @@ impl Cost {
         Self::new(0, thresholds)
     }
 
+    pub fn from_additional(additional: AdditionalCost) -> Self {
+        Self(vec![CostType::Additional(vec![additional])])
+    }
+
     pub fn with_additional(mut self, additional: AdditionalCost) -> Self {
         self.0.push(CostType::Additional(vec![additional]));
         Self(self.0)
     }
 
     pub fn get_label(&self) -> String {
-        "TODO".to_string()
-        // match self.cost_type {
-        //     CostType::ManaCost => "Mana Cost".to_string(),
-        //     CostType::AlternativeCost => {
-        //         if let Some(label) = &self.label {
-        //             label.to_string()
-        //         } else {
-        //             "Alternative Cost".to_string()
-        //         }
-        //     }
-        // }
-    }
-
-    pub async fn pay(&self, state: &mut State, player_id: &PlayerId) -> anyhow::Result<()> {
+        let mut parts = vec![];
         for cost_type in &self.0 {
-            cost_type.pay(state, player_id).await?;
+            match cost_type {
+                CostType::VariableManaCost => parts.push("X Mana".to_string()),
+                CostType::ManaCost(mc) => parts.push(format!("{} Mana", mc)),
+                CostType::Thresholds(tc) => parts.push(format!("Thresholds: {:?}", tc)),
+                CostType::Additional(additional) => {
+                    for add in additional {
+                        match add {
+                            AdditionalCost::Tap { .. } => parts.push("Tap card".to_string()),
+                            AdditionalCost::Discard { .. } => parts.push("Discard card".to_string()),
+                            AdditionalCost::Sacrifice { .. } => parts.push("Sacrifice card".to_string()),
+                            AdditionalCost::Surface { .. } => parts.push("Put card on Surface".to_string()),
+                        }
+                    }
+                }
+            }
         }
 
-        Ok(())
+        parts.join(" + ")
+    }
+
+    pub async fn pay(&self, state: &mut State, player_id: &PlayerId) -> anyhow::Result<Cost> {
+        let mut paid_cost = Cost(vec![]);
+        for cost_type in &self.0 {
+            let paid = cost_type.pay(state, player_id).await?;
+            paid_cost.0.push(paid);
+        }
+
+        Ok(paid_cost)
     }
 
     pub fn can_afford(&self, state: &State, player_id: impl AsRef<PlayerId>) -> anyhow::Result<bool> {
@@ -1613,7 +1643,12 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(vec![])
     }
 
-    async fn on_cast(&mut self, _state: &State, _caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
+    async fn on_cast(
+        &mut self,
+        _state: &State,
+        _caster_id: &uuid::Uuid,
+        _cost_paid: Cost,
+    ) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![])
     }
 
@@ -1752,7 +1787,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         let unborne_artifacts: Vec<(uuid::Uuid, String)> = CardMatcher::new()
             .with_card_type(CardType::Artifact)
             .in_zone(self.get_zone())
-            .in_region(self.get_region(state))
+            .with_region(self.get_region(state))
             .iter(state)
             .filter_map(|c| c.get_artifact())
             .filter(|c| c.get_bearer().unwrap_or_default().is_none())
@@ -2109,7 +2144,7 @@ mod tests {
     fn test_additional_cost_tap() {
         let mut state = State::new_mock_state(Zone::all_realm());
         let player_id = state.players[0].id.clone();
-        let cost = Cost::ZERO.with_additional(AdditionalCost::Tap {
+        let cost = Cost::from_additional(AdditionalCost::Tap {
             card: CardQuery::InZone {
                 id: uuid::Uuid::new_v4(),
                 zone: Zone::Realm(10),

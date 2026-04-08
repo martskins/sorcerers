@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
+    card::{Ability, Card, CardBase, Cost, Costs, Edition, Rarity, Region, Zone},
     effect::{AbilityCounter, Effect},
     game::{PlayerId, pick_card},
     query::{CardQuery, EffectQuery},
@@ -49,7 +49,12 @@ impl Card for Blaze {
         &self.card_base
     }
 
-    async fn on_cast(&mut self, state: &State, _caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
+    async fn on_cast(
+        &mut self,
+        state: &State,
+        _caster_id: &uuid::Uuid,
+        _cost_paid: Cost,
+    ) -> anyhow::Result<Vec<Effect>> {
         let units = state
             .cards
             .iter()

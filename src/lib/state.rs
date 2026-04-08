@@ -157,7 +157,7 @@ impl CardMatcher {
         }
     }
 
-    pub fn adjacent_to(self, zone: &Zone) -> Self {
+    pub fn with_zone_adjacent_to(self, zone: &Zone) -> Self {
         let zones = zone.get_adjacent();
         Self {
             in_zones: Some(zones),
@@ -165,7 +165,7 @@ impl CardMatcher {
         }
     }
 
-    pub fn near(self, zone: &Zone) -> Self {
+    pub fn with_zone_near_to(self, zone: &Zone) -> Self {
         let zones = zone.get_nearby();
         Self {
             in_zones: Some(zones),
@@ -173,14 +173,14 @@ impl CardMatcher {
         }
     }
 
-    pub fn in_regions(self, region: Vec<Region>) -> Self {
+    pub fn with_region_in(self, region: Vec<Region>) -> Self {
         Self {
             in_regions: Some(region),
             ..self
         }
     }
 
-    pub fn in_region(self, region: &Region) -> Self {
+    pub fn with_region(self, region: &Region) -> Self {
         Self {
             in_regions: Some(vec![region.clone()]),
             ..self
@@ -262,14 +262,14 @@ impl CardMatcher {
         }
     }
 
-    pub fn controlled_by(self, controller_id: &PlayerId) -> Self {
+    pub fn with_controller_id(self, controller_id: &PlayerId) -> Self {
         Self {
             controller_id: Some(controller_id.clone()),
             ..self
         }
     }
 
-    pub fn not_in_ids(self, not_in_ids: Vec<uuid::Uuid>) -> Self {
+    pub fn with_id_not_in(self, not_in_ids: Vec<uuid::Uuid>) -> Self {
         Self {
             not_in_ids: Some(not_in_ids),
             ..self
@@ -580,7 +580,7 @@ impl State {
                 let defender_controller = defender.get_controller_id(self);
                 let dodge_rolls_in_hand = CardMatcher::new()
                     .with_name(DodgeRoll::NAME)
-                    .controlled_by(&defender_controller)
+                    .with_controller_id(&defender_controller)
                     .in_zone(&Zone::Hand)
                     .resolve_ids(self);
                 if dodge_rolls_in_hand.is_empty() {
@@ -766,7 +766,7 @@ impl State {
     pub fn get_defenders_for_attack(&self, defender_id: &uuid::Uuid) -> Vec<uuid::Uuid> {
         let defender = self.get_card(defender_id);
         CardMatcher::units_near(defender.get_zone())
-            .controlled_by(&defender.get_controller_id(self))
+            .with_controller_id(&defender.get_controller_id(self))
             .resolve_ids(self)
     }
 

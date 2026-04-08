@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
+    card::{Ability, Card, CardBase, Cost, Costs, Edition, Rarity, Region, Zone},
     effect::{AbilityCounter, Effect},
     game::PlayerId,
     query::EffectQuery,
@@ -47,10 +47,15 @@ impl Card for FrostNova {
         &self.card_base
     }
 
-    async fn on_cast(&mut self, state: &State, _caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
+    async fn on_cast(
+        &mut self,
+        state: &State,
+        _caster_id: &uuid::Uuid,
+        _cost_paid: Cost,
+    ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
         let nearby_enemies = CardMatcher::minions_near(self.get_zone())
-            .controlled_by(&controller_id)
+            .with_controller_id(&controller_id)
             .resolve_ids(state);
         Ok(nearby_enemies
             .into_iter()

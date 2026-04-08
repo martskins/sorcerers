@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardType, Costs, Edition, Rarity, Region, Zone},
+    card::{Card, CardBase, CardType, Cost, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::{CARDINAL_DIRECTIONS, PlayerId, pick_direction},
     query::CardQuery,
@@ -47,7 +47,12 @@ impl Card for IceLance {
         &self.card_base
     }
 
-    async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
+    async fn on_cast(
+        &mut self,
+        state: &State,
+        caster_id: &uuid::Uuid,
+        _cost_paid: Cost,
+    ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
         let prompt = "Ice Lance: Pick a direction to shoot the lance";
         let direction = pick_direction(controller_id, &CARDINAL_DIRECTIONS, state, prompt).await?;

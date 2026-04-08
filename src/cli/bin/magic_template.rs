@@ -45,7 +45,7 @@ impl Card for {StructName} {
         &self.card_base
     }
 
-    async fn on_cast(&mut self, state: &State, _caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
+    async fn on_cast(&mut self, state: &State, _caster_id: &uuid::Uuid, _cost_paid: Cost) -> anyhow::Result<Vec<Effect>> {
     }
 }
 
