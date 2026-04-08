@@ -530,12 +530,41 @@ impl Game {
                     pos2((screen.width() - MENU_W) / 2.0, (screen.height() - total_h) / 2.0)
                 };
 
+                let header_w = painter
+                    .text(
+                        pos2(0.0, 0.0),
+                        egui::Align2::LEFT_TOP,
+                        &prompt,
+                        egui::FontId::proportional(14.0),
+                        Color32::from_rgb(255, 255, 255),
+                    )
+                    .width();
+                let mut total_w = MENU_W;
+                if header_w > total_w {
+                    total_w = header_w + 40.0;
+                }
+                for action in &actions {
+                    let action_w = painter
+                        .text(
+                            pos2(0.0, 0.0),
+                            egui::Align2::LEFT_TOP,
+                            &action,
+                            egui::FontId::proportional(18.0),
+                            Color32::from_rgb(255, 255, 255),
+                        )
+                        .width();
+
+                    if action_w > total_w - 40.0 {
+                        total_w = action_w + 40.0;
+                    }
+                }
+
                 // ── Draw via Area so we control every pixel ───────────────────
                 egui::Area::new(egui::Id::new("action_menu_popup"))
                     .fixed_pos(origin)
                     .order(egui::Order::Foreground)
                     .show(ctx, |ui| {
-                        let menu_rect = Rect::from_min_size(origin, vec2(MENU_W, total_h));
+                        let menu_rect = Rect::from_min_size(origin, vec2(total_w, total_h));
                         let p = ui.painter();
 
                         // Drop shadow
@@ -554,7 +583,7 @@ impl Game {
                             egui::StrokeKind::Outside,
                         );
                         // Header accent bar
-                        let header_rect = Rect::from_min_size(origin, vec2(MENU_W, HEADER_H));
+                        let header_rect = Rect::from_min_size(origin, vec2(total_w, HEADER_H));
                         p.rect_filled(
                             header_rect,
                             egui::CornerRadius {
@@ -567,13 +596,13 @@ impl Game {
                         );
                         // Header separator line
                         p.hline(
-                            origin.x + 8.0..=origin.x + MENU_W - 8.0,
+                            origin.x + 8.0..=origin.x + total_w - 8.0,
                             origin.y + HEADER_H,
                             egui::Stroke::new(1.0, ACCENT),
                         );
                         // Prompt text in header
                         p.text(
-                            pos2(origin.x + MENU_W / 2.0, origin.y + HEADER_H / 2.0),
+                            pos2(origin.x + total_w / 2.0, origin.y + HEADER_H / 2.0),
                             egui::Align2::CENTER_CENTER,
                             &prompt,
                             egui::FontId::proportional(14.0),
@@ -583,7 +612,7 @@ impl Game {
                         // Action rows
                         for (idx, action) in actions.iter().enumerate() {
                             let row_y = origin.y + HEADER_H + idx as f32 * ROW_H;
-                            let row_rect = Rect::from_min_size(pos2(origin.x + 1.0, row_y), vec2(MENU_W - 2.0, ROW_H));
+                            let row_rect = Rect::from_min_size(pos2(origin.x + 1.0, row_y), vec2(total_w - 2.0, ROW_H));
                             // Last row gets rounded bottom corners
                             let row_cr = if idx + 1 == actions.len() {
                                 egui::CornerRadius {
@@ -607,7 +636,7 @@ impl Game {
                             // Separator (skip before first row)
                             if idx > 0 {
                                 p.hline(
-                                    origin.x + 12.0..=origin.x + MENU_W - 12.0,
+                                    origin.x + 12.0..=origin.x + total_w - 12.0,
                                     row_y,
                                     egui::Stroke::new(0.5, SEP),
                                 );
