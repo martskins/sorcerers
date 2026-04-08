@@ -1,5 +1,5 @@
 use crate::{
-    config::realm_rect,
+    config::{realm_rect, screen_rect},
     scene::game::{GameData, Status},
 };
 use egui::{
@@ -271,4 +271,181 @@ pub fn render_card_preview(card: &CardRect, data: &mut GameData, painter: &Paint
 
 pub fn wrap_text<S: AsRef<str>>(text: S, _max_width: f32, _font_size: u16) -> String {
     text.as_ref().to_string()
+}
+
+pub fn popup_action_menu(
+    ctx: &egui::Context,
+    anchor: Option<Pos2>,
+    prompt: &str,
+    options: &[String],
+    painter: &Painter,
+) -> Option<usize> {
+    let mut result: Option<usize> = None;
+
+    // ── Layout constants ──────────────────────────────────────────
+    const MENU_W: f32 = 230.0;
+    const HEADER_H: f32 = 36.0;
+    const ROW_H: f32 = 46.0;
+    const CORNER: f32 = 10.0;
+    const ACCENT: Color32 = Color32::from_rgb(90, 160, 255);
+    const BG: Color32 = Color32::from_rgb(14, 16, 28);
+    const BG_ROW_HOVER: Color32 = Color32::from_rgb(35, 55, 100);
+    const SEP: Color32 = Color32::from_rgb(40, 44, 68);
+
+    let total_h = HEADER_H + options.len() as f32 * ROW_H + 2.0;
+    let screen = screen_rect().unwrap_or(Rect::from_min_size(pos2(0.0, 0.0), vec2(1280.0, 720.0)));
+    let origin = if let Some(card_pos) = anchor {
+        let mut x = card_pos.x + 60.0;
+        let mut y = card_pos.y - total_h / 2.0;
+        if x + MENU_W > screen.max.x - 8.0 {
+            x = card_pos.x - MENU_W - 60.0;
+        }
+        y = y.clamp(screen.min.y + 8.0, screen.max.y - total_h - 8.0);
+        pos2(x, y)
+    } else {
+        pos2((screen.width() - MENU_W) / 2.0, (screen.height() - total_h) / 2.0)
+    };
+
+    // ── Determine position ────────────────────────────────────────
+    let header_w = painter
+        .text(
+            pos2(0.0, 0.0),
+            egui::Align2::LEFT_TOP,
+            &prompt,
+            egui::FontId::proportional(14.0),
+            Color32::from_rgb(255, 255, 255),
+        )
+        .width();
+    let mut total_w = MENU_W;
+    if header_w > total_w {
+        total_w = header_w + 40.0;
+    }
+    for option in options {
+        let option_w = painter
+            .text(
+                pos2(0.0, 0.0),
+                egui::Align2::LEFT_TOP,
+                &option,
+                egui::FontId::proportional(18.0),
+                Color32::from_rgb(255, 255, 255),
+            )
+            .width();
+
+        if option_w > total_w - 40.0 {
+            total_w = option_w + 40.0;
+        }
+    }
+
+    // ── Draw via Area so we control every pixel ───────────────────
+    egui::Area::new(egui::Id::new("action_menu_popup"))
+        .fixed_pos(origin)
+        .order(egui::Order::Foreground)
+        .show(ctx, |ui| {
+            let menu_rect = Rect::from_min_size(origin, vec2(total_w, total_h));
+            let p = ui.painter();
+
+            // Drop shadow
+            p.rect_filled(
+                menu_rect.translate(vec2(4.0, 4.0)),
+                egui::CornerRadius::same(CORNER as u8),
+                Color32::from_black_alpha(120),
+            );
+            // Main background
+            p.rect_filled(menu_rect, egui::CornerRadius::same(CORNER as u8), BG);
+            // Accent border
+            p.rect_stroke(
+                menu_rect,
+                egui::CornerRadius::same(CORNER as u8),
+                egui::Stroke::new(1.5, ACCENT),
+                egui::StrokeKind::Outside,
+            );
+            // Header accent bar
+            let header_rect = Rect::from_min_size(origin, vec2(total_w, HEADER_H));
+            p.rect_filled(
+                header_rect,
+                egui::CornerRadius {
+                    nw: CORNER as u8,
+                    ne: CORNER as u8,
+                    sw: 0,
+                    se: 0,
+                },
+                Color32::from_rgb(22, 32, 60),
+            );
+            // Header separator line
+            p.hline(
+                origin.x + 8.0..=origin.x + total_w - 8.0,
+                origin.y + HEADER_H,
+                egui::Stroke::new(1.0, ACCENT),
+            );
+            // Prompt text in header
+            p.text(
+                pos2(origin.x + total_w / 2.0, origin.y + HEADER_H / 2.0),
+                egui::Align2::CENTER_CENTER,
+                &prompt,
+                egui::FontId::proportional(14.0),
+                Color32::from_rgb(180, 200, 240),
+            );
+
+            // Action rows
+            for (idx, option) in options.iter().enumerate() {
+                let row_y = origin.y + HEADER_H + idx as f32 * ROW_H;
+                let row_rect = Rect::from_min_size(pos2(origin.x + 1.0, row_y), vec2(total_w - 2.0, ROW_H));
+                // Last row gets rounded bottom corners
+                let row_cr = if idx + 1 == options.len() {
+                    egui::CornerRadius {
+                        nw: 0,
+                        ne: 0,
+                        sw: CORNER as u8,
+                        se: CORNER as u8,
+                    }
+                } else {
+                    egui::CornerRadius::ZERO
+                };
+
+                let resp = ui.interact(row_rect, egui::Id::new(("action_row", idx)), egui::Sense::click());
+                if resp.hovered() {
+                    p.rect_filled(row_rect, row_cr, BG_ROW_HOVER);
+                }
+                if resp.clicked() {
+                    result = Some(idx);
+                }
+
+                // Separator (skip before first row)
+                if idx > 0 {
+                    p.hline(
+                        origin.x + 12.0..=origin.x + total_w - 12.0,
+                        row_y,
+                        egui::Stroke::new(0.5, SEP),
+                    );
+                }
+
+                // Arrow glyph
+                p.text(
+                    pos2(origin.x + 18.0, row_y + ROW_H / 2.0),
+                    egui::Align2::LEFT_CENTER,
+                    "▸",
+                    egui::FontId::proportional(14.0),
+                    if resp.hovered() {
+                        ACCENT
+                    } else {
+                        Color32::from_rgb(80, 100, 140)
+                    },
+                );
+
+                // Action label
+                p.text(
+                    pos2(origin.x + 36.0, row_y + ROW_H / 2.0),
+                    egui::Align2::LEFT_CENTER,
+                    option.as_str(),
+                    egui::FontId::proportional(18.0),
+                    if resp.hovered() {
+                        Color32::WHITE
+                    } else {
+                        Color32::from_rgb(200, 210, 230)
+                    },
+                );
+            }
+        });
+
+    result
 }
