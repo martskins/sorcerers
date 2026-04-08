@@ -352,7 +352,7 @@ impl CardMatcher {
         }
 
         if let Some(mc) = &self.mana_cost {
-            if card.get_costs(state).unwrap_or_default().mana_cost() > *mc {
+            if card.get_costs(state).unwrap().mana_cost() > *mc {
                 return false;
             }
         }

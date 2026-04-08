@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Edition, Rarity, Region, Zone},
+    card::{Ability, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
     effect::{AbilityCounter, Effect},
     game::PlayerId,
     query::EffectQuery,
@@ -21,7 +21,7 @@ impl FrostNova {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(4, "WW"),
+                costs: Costs::from_mana_and_threshold(4, "WW"),
                 region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,

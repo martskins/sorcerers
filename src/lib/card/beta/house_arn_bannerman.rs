@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    card::{AreaModifiers, Card, CardBase, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{AreaModifiers, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Counter,
     game::PlayerId,
     state::{CardMatcher, State},
@@ -30,7 +30,7 @@ impl HouseArnBannerman {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(4, "EE"),
+                costs: Costs::from_mana_and_threshold(4, "EE"),
                 region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,

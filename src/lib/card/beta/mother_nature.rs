@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{PlayerId, reveal_cards, take_action},
     state::State,
@@ -28,7 +28,7 @@ impl MotherNature {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(6, "WWW"),
+                costs: Costs::from_mana_and_threshold(6, "WWW"),
                 region: Region::Surface,
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,

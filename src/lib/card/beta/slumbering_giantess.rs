@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::{AbilityCounter, Effect},
     game::PlayerId,
     query::{CardQuery, EffectQuery},
@@ -29,7 +29,7 @@ impl SlumberingGiantess {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(3, "E"),
+                costs: Costs::from_mana_and_threshold(3, "E"),
                 region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,

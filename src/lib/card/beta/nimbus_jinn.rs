@@ -1,9 +1,9 @@
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Ability, Card, CardBase, CardType, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{ActivatedAbility, PlayerId},
     query::CardQuery,
-    state::State,
+    state::{CardMatcher, State},
 };
 
 #[derive(Debug, Clone)]
@@ -22,13 +22,11 @@ impl ActivatedAbility for DealDamage {
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
         let card = state.get_card(card_id);
-        let units = state
-            .get_units_in_zone(card.get_zone())
-            .iter()
-            .filter(|c| c.get_id() != card_id)
-            .map(|c| c.get_id().clone())
-            .collect::<Vec<uuid::Uuid>>();
-        if units.len() == 0 {
+        let possible_targets = CardMatcher::new()
+            .in_zone(card.get_zone())
+            .not_in_ids(vec![card_id.clone()])
+            .with_card_types(vec![CardType::Minion, CardType::Avatar]);
+        if possible_targets.resolve_ids(state).len() == 0 {
             return Ok(vec![]);
         }
 
@@ -38,7 +36,7 @@ impl ActivatedAbility for DealDamage {
             player_id: card.get_controller_id(state).clone(),
             query: CardQuery::RandomTarget {
                 id: uuid::Uuid::new_v4(),
-                possible_targets: units,
+                possible_targets,
             },
         }])
     }
@@ -67,7 +65,7 @@ impl NimbusJinn {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(6, "AA"),
+                costs: Costs::from_mana_and_threshold(6, "AA"),
                 region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,

@@ -1,6 +1,7 @@
 use crate::{
     card::{
-        AdditionalCost, AreaModifiers, Artifact, ArtifactBase, Card, CardBase, Cost, Edition, Rarity, Region, Zone,
+        AdditionalCost, AreaModifiers, Artifact, ArtifactBase, Card, CardBase, Cost, Costs, Edition, Rarity, Region,
+        Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, CARDINAL_DIRECTIONS, PlayerId, pick_direction},
@@ -18,15 +19,9 @@ impl ActivatedAbility for RollBoulder {
     }
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
-        Ok(Cost {
-            additional: vec![AdditionalCost::Tap {
-                card: CardQuery::Specific {
-                    id: uuid::Uuid::new_v4(),
-                    card_id: card_id.clone(),
-                },
-            }],
-            ..Default::default()
-        })
+        Ok(Cost::ZERO.with_additional(AdditionalCost::Tap {
+            card: CardQuery::from_id(card_id.clone()),
+        }))
     }
 
     async fn on_select(
@@ -109,7 +104,7 @@ impl RollingBoulder {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(4, ""),
+                costs: Costs::from_mana_and_threshold(4, ""),
                 region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,

@@ -1,9 +1,7 @@
 use crate::{
-    card::{
-        Ability, AdditionalCost, Card, CardBase, Cost, CostType, Edition, MinionType, Rarity, Region, UnitBase, Zone,
-    },
+    card::{Ability, AdditionalCost, Card, CardBase, Cost, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
-    game::{ActivatedAbility, PlayerId, Thresholds},
+    game::{ActivatedAbility, PlayerId},
     query::{CardQuery, ZoneQuery},
     state::{CardMatcher, State},
 };
@@ -50,15 +48,9 @@ impl ActivatedAbility for TapToStrikeNearbyMinions {
     }
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
-        Ok(Cost {
-            label: None,
-            mana: 0,
-            thresholds: Thresholds::new(),
-            additional: vec![AdditionalCost::Surface {
-                card: CardQuery::from_id(card_id.clone()),
-            }],
-            cost_type: CostType::ManaCost,
-        })
+        Ok(Cost::ZERO.with_additional(AdditionalCost::Surface {
+            card: CardQuery::from_id(card_id.clone()),
+        }))
     }
 }
 
@@ -85,7 +77,7 @@ impl DiluvianKraken {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(8, "WWW"),
+                costs: Costs::from_mana_and_threshold(8, "WWW"),
                 region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,

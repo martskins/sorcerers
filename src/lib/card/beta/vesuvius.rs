@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, CostType, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
+    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
     effect::{Effect, TokenType},
     game::{ActivatedAbility, PlayerId, Thresholds},
     state::{CardMatcher, State},
@@ -15,13 +15,7 @@ impl ActivatedAbility for UseAbility {
     }
 
     fn get_cost(&self, _card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
-        Ok(Cost {
-            label: None,
-            mana: 0,
-            thresholds: Thresholds::parse("FFF"),
-            additional: vec![],
-            cost_type: CostType::ManaCost,
-        })
+        Ok(Cost::from_thresholds("FFF"))
     }
 
     async fn on_select(&self, card_id: &uuid::Uuid, _: &PlayerId, state: &State) -> anyhow::Result<Vec<Effect>> {
@@ -71,7 +65,7 @@ impl Vesuvius {
                 owner_id,
                 tapped: false,
                 zone: Zone::Atlasbook,
-                cost: Cost::zero(),
+                costs: Costs::ZERO,
                 region: Region::Surface,
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,

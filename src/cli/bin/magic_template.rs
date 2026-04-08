@@ -1,5 +1,5 @@
 pub const MAGIC_TEMPLATE: &str = r#"use crate::{
-    card::{Card, CardBase, Cost, Edition, Region, Rarity, Zone},
+    card::{Card, CardBase, Costs, Edition, Region, Rarity, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds},
     state::State,

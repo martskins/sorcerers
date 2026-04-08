@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardType, Cost, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
+    card::{Card, CardBase, CardType, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds, pick_zone},
     state::{CardMatcher, State},
@@ -27,7 +27,7 @@ impl Maelström {
                 owner_id,
                 tapped: false,
                 zone: Zone::Atlasbook,
-                cost: Cost::zero(),
+                costs: Costs::ZERO,
                 region: Region::Surface,
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,

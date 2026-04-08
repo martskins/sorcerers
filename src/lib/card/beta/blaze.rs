@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Edition, Rarity, Region, Zone},
+    card::{Ability, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
     effect::{AbilityCounter, Effect},
     game::{PlayerId, pick_card},
     query::{CardQuery, EffectQuery},
@@ -23,7 +23,7 @@ impl Blaze {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(3, "F"),
+                costs: Costs::from_mana_and_threshold(3, "F"),
                 region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,

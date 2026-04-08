@@ -1,9 +1,9 @@
 use crate::{
-    card::{Aura, AuraBase, Card, CardBase, Cost, Edition, Rarity, Region, Zone},
+    card::{Aura, AuraBase, Card, CardBase, CardType, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::PlayerId,
     query::{CardQuery, ZoneQuery},
-    state::State,
+    state::{CardMatcher, State},
 };
 
 #[derive(Debug, Clone)]
@@ -22,7 +22,7 @@ impl Thunderstorm {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(4, "AA"),
+                costs: Costs::from_mana_and_threshold(4, "AA"),
                 region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
@@ -80,15 +80,6 @@ impl Card for Thunderstorm {
 
         let zones = self.get_valid_move_zones(state)?;
         let affected_zones = self.get_affected_zones(state);
-        let units = affected_zones
-            .iter()
-            .flat_map(|zone| {
-                zone.get_units(state, None)
-                    .iter()
-                    .map(|c| c.get_id().clone())
-                    .collect::<Vec<uuid::Uuid>>()
-            })
-            .collect::<Vec<uuid::Uuid>>();
         let effects = vec![
             Effect::MoveCard {
                 player_id: self.get_controller_id(state).clone(),
@@ -107,7 +98,9 @@ impl Card for Thunderstorm {
                 player_id: self.get_controller_id(state).clone(),
                 query: CardQuery::RandomTarget {
                     id: uuid::Uuid::new_v4(),
-                    possible_targets: units,
+                    possible_targets: CardMatcher::new()
+                        .with_card_types(vec![CardType::Minion, CardType::Avatar])
+                        .in_zones(&affected_zones),
                 },
                 from: self.get_id().clone(),
                 damage: 3,

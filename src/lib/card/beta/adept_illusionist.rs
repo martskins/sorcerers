@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{ActivatedAbility, Element, PlayerId, pick_card_with_preview, pick_zone_near},
     state::{CardMatcher, State},
@@ -84,7 +84,7 @@ impl AdeptIllusionist {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(2, "WW"),
+                costs: Costs::from_mana_and_threshold(2, "WW"),
                 region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,

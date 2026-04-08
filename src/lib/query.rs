@@ -80,6 +80,7 @@ impl QueryCache {
                 }
 
                 possible_targets
+                    .resolve_ids(state)
                     .choose(&mut rand::rng())
                     .ok_or(anyhow::anyhow!("failed to get random card"))?
                     .clone()
@@ -377,7 +378,7 @@ pub enum CardQuery {
     },
     RandomTarget {
         id: uuid::Uuid,
-        possible_targets: Vec<uuid::Uuid>,
+        possible_targets: CardMatcher,
     },
     FromOptions {
         id: uuid::Uuid,
@@ -448,7 +449,7 @@ impl CardQuery {
             }
             CardQuery::OwnedBy { owner, .. } => CardMatcher::new().controlled_by(owner).resolve_ids(state),
             CardQuery::FromOptions { options, .. } => options.clone(),
-            CardQuery::RandomTarget { possible_targets, .. } => possible_targets.to_vec(),
+            CardQuery::RandomTarget { possible_targets, .. } => possible_targets.resolve_ids(state),
             CardQuery::RandomUnitInZone { .. } => unreachable!(),
         }
     }

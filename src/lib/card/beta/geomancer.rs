@@ -1,5 +1,5 @@
 use crate::{
-    card::{AvatarBase, Card, CardBase, Cost, Edition, Rarity, Region, Rubble, UnitBase, Zone},
+    card::{AvatarBase, Card, CardBase, Costs, Edition, Rarity, Region, Rubble, UnitBase, Zone},
     effect::{Effect, TokenType},
     game::{ActivatedAbility, AvatarAction, Element, PlayerId, pick_card, pick_zone},
     query::ZoneQuery,
@@ -166,7 +166,7 @@ impl Geomancer {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::zero(),
+                costs: Costs::ZERO,
                 region: Region::Surface,
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,

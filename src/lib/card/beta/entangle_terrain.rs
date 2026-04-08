@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, AreaModifiers, Aura, AuraBase, Card, CardBase, Cost, Edition, Rarity, Region, Zone},
+    card::{Ability, AreaModifiers, Aura, AuraBase, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::PlayerId,
     state::State,
@@ -21,7 +21,7 @@ impl EntangleTerrain {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(4, "EE"),
+                costs: Costs::from_mana_and_threshold(4, "EE"),
                 region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,

@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Artifact, ArtifactBase, Card, CardBase, Cost, Edition, Rarity, Region, Zone},
+    card::{Ability, Artifact, ArtifactBase, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
     game::PlayerId,
     state::{CardMatcher, ContinuousEffect, State},
 };
@@ -24,7 +24,7 @@ impl AllTerrainVestments {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(3, ""),
+                costs: Costs::from_mana_and_threshold(3, ""),
                 region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,

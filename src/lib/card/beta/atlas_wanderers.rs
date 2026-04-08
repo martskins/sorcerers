@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{PlayerId, pick_card_with_preview},
     state::State,
@@ -28,7 +28,7 @@ impl AtlasWanderers {
                 owner_id,
                 tapped: false,
                 zone: Zone::Atlasbook,
-                cost: Cost::new(5, "EEE"),
+                costs: Costs::from_mana_and_threshold(5, "EEE"),
                 region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,

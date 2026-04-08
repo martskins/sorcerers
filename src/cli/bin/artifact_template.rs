@@ -1,5 +1,5 @@
 pub const ARTIFACT_TEMPLATE: &str = r#"use crate::{
-    card::{Artifact, ArtifactBase, Card, CardBase, Cost, Edition, Region, Rarity, Zone},
+    card::{Artifact, ArtifactBase, Card, CardBase, Costs, Edition, Region, Rarity, Zone},
     game::{PlayerId, Thresholds},
 };
 

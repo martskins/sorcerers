@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
+    card::{Ability, Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
     effect::{AbilityCounter, Effect},
     game::{PlayerId, Thresholds},
     query::EffectQuery,
@@ -28,7 +28,7 @@ impl Quagmire {
                 owner_id,
                 tapped: false,
                 zone: Zone::Atlasbook,
-                cost: Cost::zero(),
+                costs: Costs::ZERO,
                 region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,

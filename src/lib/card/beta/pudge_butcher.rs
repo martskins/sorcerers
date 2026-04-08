@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, AdditionalCost, Card, CardBase, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Ability, AdditionalCost, Card, CardBase, Cost, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{ActivatedAbility, BaseOption, CARDINAL_DIRECTIONS, PlayerId, pick_direction, pick_option},
     query::{CardQuery, ZoneQuery},
@@ -95,15 +95,9 @@ impl ActivatedAbility for ShootProjectile {
     }
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
-        Ok(Cost {
-            additional: vec![AdditionalCost::Tap {
-                card: CardQuery::Specific {
-                    id: uuid::Uuid::new_v4(),
-                    card_id: card_id.clone(),
-                },
-            }],
-            ..Default::default()
-        })
+        Ok(Cost::ZERO.with_additional(AdditionalCost::Tap {
+            card: CardQuery::from_id(card_id.clone()),
+        }))
     }
 }
 
@@ -130,7 +124,7 @@ impl PudgeButcher {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(4, "EE"),
+                costs: Costs::from_mana_and_threshold(4, "EE"),
                 region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,

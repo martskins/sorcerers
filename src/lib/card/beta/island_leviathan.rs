@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, CostType, Edition, MinionType, Rarity, Region, Site, SiteBase, UnitBase, Zone},
+    card::{Card, CardBase, Cost, Costs, Edition, MinionType, Rarity, Region, Site, SiteBase, UnitBase, Zone},
     effect::{Effect, TokenType},
     game::{ActivatedAbility, PlayerId, Thresholds},
     state::State,
@@ -48,13 +48,7 @@ impl ActivatedAbility for TransformIntoAMonster {
     }
 
     fn get_cost(&self, _card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
-        Ok(Cost {
-            label: None,
-            mana: 0,
-            thresholds: Thresholds::parse("WWWWWWWW"),
-            additional: vec![],
-            cost_type: CostType::ManaCost,
-        })
+        Ok(Cost::from_thresholds("WWWWWWWW"))
     }
 }
 
@@ -81,7 +75,7 @@ impl IslandLeviathan {
                 owner_id,
                 tapped: false,
                 zone: Zone::Atlasbook,
-                cost: Cost::zero(),
+                costs: Costs::ZERO,
                 region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,

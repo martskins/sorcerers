@@ -1,5 +1,5 @@
 use crate::{
-    card::{Artifact, ArtifactBase, Card, CardBase, Cost, Edition, Rarity, Region, ResourceProvider, Zone},
+    card::{Artifact, ArtifactBase, Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Zone},
     game::{PlayerId, Thresholds},
     state::State,
 };
@@ -24,7 +24,7 @@ impl AmethystCore {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(1, ""),
+                costs: Costs::from_mana_and_threshold(1, ""),
                 region: Region::Surface,
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,

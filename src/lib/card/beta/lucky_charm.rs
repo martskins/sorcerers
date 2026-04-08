@@ -1,7 +1,7 @@
 use rand::seq::IndexedRandom;
 
 use crate::{
-    card::{Artifact, ArtifactBase, Card, CardBase, Cost, Edition, Rarity, Region, Zone},
+    card::{Artifact, ArtifactBase, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
     game::PlayerId,
     query::{CardQuery, ZoneQuery},
     state::State,
@@ -27,7 +27,7 @@ impl LuckyCharm {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(1, ""),
+                costs: Costs::from_mana_and_threshold(1, ""),
                 region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
@@ -93,6 +93,7 @@ impl Card for LuckyCharm {
     fn card_query_override(&self, state: &State, query: &CardQuery) -> anyhow::Result<Option<CardQuery>> {
         match query {
             CardQuery::RandomTarget { possible_targets, .. } => {
+                let possible_targets = possible_targets.resolve_ids(state);
                 if possible_targets.is_empty() {
                     return Ok(None);
                 }

@@ -128,6 +128,12 @@ pub enum ServerMessage {
         cards: Vec<uuid::Uuid>,
         preview: bool,
     },
+    PickAmount {
+        prompt: String,
+        player_id: PlayerId,
+        min_amount: u8,
+        max_amount: u8,
+    },
     PickAction {
         prompt: String,
         player_id: PlayerId,
@@ -185,6 +191,7 @@ impl ServerMessage {
             ServerMessage::PickCards { player_id, .. } => player_id.clone(),
             ServerMessage::RevealCards { player_id, .. } => player_id.clone(),
             ServerMessage::DistributeDamage { player_id, .. } => player_id.clone(),
+            ServerMessage::PickAmount { player_id, .. } => player_id.clone(),
         }
     }
 }
@@ -258,6 +265,11 @@ pub enum ClientMessage {
         player_id: PlayerId,
         zone: Zone,
     },
+    PickAmount {
+        game_id: uuid::Uuid,
+        player_id: PlayerId,
+        amount: u8,
+    },
     PickAction {
         game_id: uuid::Uuid,
         player_id: PlayerId,
@@ -290,6 +302,7 @@ impl ClientMessage {
             ClientMessage::PickCards { game_id, .. } => game_id.clone(),
             ClientMessage::ResolveCombat { game_id, .. } => game_id.clone(),
             ClientMessage::ResolveAction { game_id, .. } => game_id.clone(),
+            ClientMessage::PickAmount { game_id, .. } => game_id.clone(),
         }
     }
 
@@ -311,6 +324,7 @@ impl ClientMessage {
             ClientMessage::PickCards { player_id, .. } => player_id,
             ClientMessage::ResolveCombat { player_id, .. } => player_id,
             ClientMessage::ResolveAction { player_id, .. } => player_id,
+            ClientMessage::PickAmount { player_id, .. } => player_id,
         }
     }
 }

@@ -1,5 +1,5 @@
 use crate::{
-    card::{AvatarBase, Card, CardBase, Cost, Edition, Rarity, Region, UnitBase, Zone},
+    card::{AvatarBase, Card, CardBase, Costs, Edition, Rarity, Region, UnitBase, Zone},
     game::PlayerId,
 };
 
@@ -25,7 +25,7 @@ impl Sparkmage {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::zero(),
+                costs: Costs::ZERO,
                 region: Region::Surface,
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,

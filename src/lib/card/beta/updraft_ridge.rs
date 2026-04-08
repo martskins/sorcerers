@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     card::{
-        Ability, AreaModifiers, Card, CardBase, Cost, Edition, Rarity, Region, ResourceProvider, Site, SiteBase,
+        Ability, AreaModifiers, Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase,
         SiteType, Zone,
     },
     game::{PlayerId, Thresholds},
@@ -31,7 +31,7 @@ impl UpdraftRidge {
                 owner_id,
                 tapped: false,
                 zone: Zone::Atlasbook,
-                cost: Cost::zero(),
+                costs: Costs::ZERO,
                 region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,

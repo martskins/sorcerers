@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardType, Cost, Edition, Rarity, Region, Zone},
+    card::{Card, CardBase, CardType, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::{CARDINAL_DIRECTIONS, PlayerId, pick_card, pick_direction, yes_or_no},
     state::{CardMatcher, State},
@@ -20,7 +20,7 @@ impl GrappleShot {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(3, "A"),
+                costs: Costs::from_mana_and_threshold(3, "A"),
                 region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,

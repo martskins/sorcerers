@@ -1,5 +1,5 @@
 use crate::{
-    card::{Aura, AuraBase, Card, CardBase, CardType, Cost, Edition, Rarity, Region, Zone},
+    card::{Aura, AuraBase, Card, CardBase, CardType, Costs, Edition, Rarity, Region, Zone},
     game::PlayerId,
     state::{CardMatcher, ContinuousEffect, State},
 };
@@ -20,7 +20,7 @@ impl Abundance {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(5, "WW"),
+                costs: Costs::from_mana_and_threshold(5, "WW"),
                 region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,

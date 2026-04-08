@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     game::PlayerId,
     state::{CardMatcher, ContinuousEffect, State},
 };
@@ -27,7 +27,7 @@ impl KingOfTheRealm {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(7, "EEE"),
+                costs: Costs::from_mana_and_threshold(7, "EEE"),
                 region: Region::Surface,
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,

@@ -322,6 +322,35 @@ pub async fn yes_or_no(
     Ok(options[choice] == BaseOption::Yes)
 }
 
+pub async fn pick_amount(
+    player_id: impl AsRef<PlayerId>,
+    min_amount: u8,
+    max_amount: u8,
+    state: &State,
+    prompt: impl AsRef<str>,
+) -> anyhow::Result<u8> {
+    state
+        .get_sender()
+        .send(ServerMessage::PickAmount {
+            prompt: prompt.as_ref().to_string(),
+            player_id: player_id.as_ref().clone(),
+            min_amount,
+            max_amount,
+        })
+        .await?;
+
+    loop {
+        let msg = state.get_receiver().recv().await?;
+        match msg {
+            ClientMessage::PickAmount { amount, .. } => break Ok(amount),
+            ClientMessage::PlayerDisconnected { player_id, .. } => {
+                return Err(GameError::PlayerDisconnected(player_id.clone()).into());
+            }
+            _ => panic!("expected PickAction, got {:?}", msg),
+        }
+    }
+}
+
 pub async fn pick_option(
     player_id: impl AsRef<PlayerId>,
     options: &[String],
@@ -778,7 +807,7 @@ pub trait ActivatedAbility: std::fmt::Debug + Send + Sync + CloneBoxedAction {
     }
 
     fn get_cost(&self, _card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
-        Ok(Cost::zero())
+        Ok(Cost::ZERO)
     }
 }
 

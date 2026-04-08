@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Rarity, Region, SiteType, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, SiteType, UnitBase, Zone},
     game::{Element, PlayerId},
     state::State,
 };
@@ -27,7 +27,7 @@ impl SpireLich {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(3, "A"),
+                costs: Costs::from_mana_and_threshold(3, "A"),
                 region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,

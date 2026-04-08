@@ -81,7 +81,7 @@ Every playable card is a Rust struct in `src/lib/card/{edition}/`. To add a new 
 
     ```rust
     use crate::{
-        card::{Card, CardBase, Cost, Edition, Rarity, Region, Zone},
+        card::{Card, CardBase, Costs, Edition, Rarity, Region, Zone},
         effect::Effect,
         game::PlayerId,
         state::State,

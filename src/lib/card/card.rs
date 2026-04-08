@@ -3,7 +3,7 @@ use crate::{
     effect::{AbilityCounter, Counter, Effect, TokenType},
     game::{
         ActivatedAbility, AvatarAction, Direction, Element, PlayerId, Thresholds, UnitAction, are_adjacent, are_nearby,
-        get_adjacent_zones, get_nearby_zones, pick_card, pick_option, pick_zone,
+        get_adjacent_zones, get_nearby_zones, pick_amount, pick_card, pick_option, pick_zone,
     },
     query::{CardQuery, ZoneQuery},
     state::{CardMatcher, ContinuousEffect, State, TemporaryEffect},
@@ -363,18 +363,196 @@ pub enum AdditionalCost {
     Surface { card: CardQuery },
 }
 
-#[derive(Debug, PartialEq, Clone, Default)]
-pub enum CostType {
-    #[default]
-    ManaCost,
-    AlternativeCost,
+#[derive(Debug, Clone)]
+enum CostType {
+    ManaCost(u8),
+    VariableManaCost,
+    Thresholds(Thresholds),
+    Additional(Vec<AdditionalCost>),
+}
+
+impl Default for CostType {
+    fn default() -> Self {
+        CostType::ManaCost(0)
+    }
+}
+
+impl CostType {
+    async fn pay(&self, state: &mut State, player_id: &PlayerId) -> anyhow::Result<()> {
+        match self {
+            CostType::Thresholds(_) => {}
+            CostType::VariableManaCost => {
+                let resources = state.get_player_resources(player_id)?;
+                let max_mana = resources.mana;
+                if max_mana == 0 {
+                    anyhow::bail!("No mana available to pay variable mana cost");
+                }
+                let mana_to_pay = pick_amount(player_id, 1, max_mana, state, "Choose how much mana to pay").await?;
+                let mana = state.get_player_mana_mut(player_id);
+                *mana = mana.saturating_sub(mana_to_pay);
+            }
+            CostType::ManaCost(mc) => {
+                let mana = state.get_player_mana_mut(player_id);
+                *mana = mana.saturating_sub(*mc);
+            }
+            CostType::Additional(additional_costs) => {
+                for additional_cost in additional_costs {
+                    match additional_cost {
+                        AdditionalCost::Surface { card } => {
+                            let card_id = card.resolve(player_id, state).await?;
+                            let card = state.get_card(&card_id);
+                            let effect = Effect::MoveCard {
+                                card_id,
+                                player_id: card.get_controller_id(state).clone(),
+                                from: card.get_zone().clone(),
+                                to: ZoneQuery::from_zone(card.get_zone().clone()),
+                                tap: true,
+                                region: Region::Surface,
+                                through_path: None,
+                            };
+                            effect.apply(state).await?;
+                            state.effect_log.push(effect.into());
+                        }
+                        AdditionalCost::Tap { card } => {
+                            let card_id = card.resolve(player_id, state).await?;
+                            let effect = Effect::TapCard { card_id };
+                            effect.apply(state).await?;
+                            state.effect_log.push(effect.into());
+                        }
+                        AdditionalCost::Discard { card } => {
+                            let card_id = card.resolve(player_id, state).await?;
+                            let effect = Effect::DiscardCard {
+                                card_id,
+                                player_id: player_id.clone(),
+                            };
+                            effect.apply(state).await?;
+                            state.effect_log.push(effect.into());
+                        }
+                        AdditionalCost::Sacrifice { card } => {
+                            let card_id = card.resolve(player_id, state).await?;
+                            let card = state.get_card(&card_id);
+                            let effect = Effect::MoveCard {
+                                card_id,
+                                player_id: player_id.clone(),
+                                from: card.get_zone().clone(),
+                                to: ZoneQuery::Specific {
+                                    id: uuid::Uuid::new_v4(),
+                                    zone: Zone::Cemetery,
+                                },
+                                tap: false,
+                                region: Region::Surface,
+                                through_path: None,
+                            };
+                            effect.apply(state).await?;
+                            state.effect_log.push(effect.into());
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn can_afford(&self, state: &State, player_id: impl AsRef<PlayerId>) -> anyhow::Result<bool> {
+        let resources = state.get_player_resources(player_id.as_ref())?;
+        let thresholds = state.get_thresholds_for_player(player_id.as_ref());
+
+        match self {
+            CostType::VariableManaCost => Ok(resources.mana > 0),
+            CostType::ManaCost(mc) => Ok(resources.mana >= *mc),
+            CostType::Thresholds(tc) => Ok(thresholds.fire >= tc.fire
+                && thresholds.air >= tc.air
+                && thresholds.earth >= tc.earth
+                && thresholds.water >= tc.water),
+            CostType::Additional(additional) => {
+                let mut snapshot = state.snapshot();
+                for other in additional {
+                    match other {
+                        AdditionalCost::Surface { card } => {
+                            let options: Vec<uuid::Uuid> = card.options(&snapshot);
+                            if options.is_empty() {
+                                return Ok(false);
+                            }
+
+                            let card_id = options.first().expect("options to have exactly one element");
+                            let card = snapshot.get_card_mut(card_id);
+                            if card.is_tapped() {
+                                return Ok(false);
+                            }
+
+                            if card.get_region(state) != &Region::Surface {
+                                return Ok(false);
+                            }
+
+                            card.get_base_mut().region = Region::Surface;
+                        }
+                        AdditionalCost::Tap { card } => {
+                            let options: Vec<uuid::Uuid> = card
+                                .options(&snapshot)
+                                .iter()
+                                .map(|cid| snapshot.get_card(cid))
+                                .filter(|c| !c.is_tapped())
+                                .map(|c| c.get_id())
+                                .cloned()
+                                .collect();
+                            if options.is_empty() {
+                                return Ok(false);
+                            }
+
+                            let card_id = options.first().expect("options to have at least one element");
+                            snapshot.get_card_mut(card_id).get_base_mut().tapped = true;
+                        }
+                        AdditionalCost::Discard { card } => {
+                            let options = card.options(&snapshot);
+                            if options.is_empty() {
+                                return Ok(false);
+                            }
+
+                            let card_id = options.first().expect("options to have at least one element");
+                            snapshot.get_card_mut(card_id).set_zone(Zone::Cemetery);
+                        }
+                        AdditionalCost::Sacrifice { card } => {
+                            let options = card.options(&snapshot);
+                            if options.is_empty() {
+                                return Ok(false);
+                            }
+
+                            let card_id = options.first().expect("options to have at least one element");
+                            snapshot.get_card_mut(card_id).set_zone(Zone::Cemetery);
+                        }
+                    }
+                }
+
+                Ok(true)
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct Costs(Vec<Cost>);
 
 impl Costs {
-    pub fn new(costs: Vec<Cost>) -> Self {
+    pub const ZERO: Costs = Costs(vec![]);
+
+    pub fn from_cost(cost: Cost) -> Self {
+        Self(vec![cost])
+    }
+
+    pub fn from_mana(mana: u8) -> Self {
+        Self(vec![Cost::new(mana, "")])
+    }
+
+    pub fn from_mana_and_threshold(mana: u8, thresholds: impl Into<Thresholds>) -> Self {
+        Self(vec![Cost::new(mana, thresholds)])
+    }
+
+    pub fn from_threshold(thresholds: impl Into<Thresholds>) -> Self {
+        Self(vec![Cost::new(0, thresholds)])
+    }
+
+    pub fn from_alternatives(costs: Vec<Cost>) -> Self {
         Self(costs)
     }
 
@@ -383,7 +561,15 @@ impl Costs {
             return 0;
         }
 
-        self.0.iter().find(|c| c.cost_type == CostType::ManaCost).unwrap().mana
+        for cost in &self.0 {
+            for cost_type in &cost.0 {
+                if let CostType::ManaCost(mc) = cost_type {
+                    return *mc;
+                }
+            }
+        }
+
+        0
     }
 
     pub fn thresholds_cost(&self) -> &Thresholds {
@@ -391,12 +577,20 @@ impl Costs {
             return &Thresholds::ZERO;
         }
 
-        &self
-            .0
-            .iter()
-            .find(|c| c.cost_type == CostType::ManaCost)
-            .unwrap()
-            .thresholds
+        for cost in &self.0 {
+            for cost_type in &cost.0 {
+                if let CostType::Thresholds(tc) = cost_type {
+                    return tc;
+                }
+            }
+        }
+
+        &Thresholds::ZERO
+    }
+
+    pub fn with_alternative(mut self, alternative_cost: Cost) -> Self {
+        self.0.push(alternative_cost);
+        Self(self.0)
     }
 
     pub async fn pay(&self, state: &mut State, player_id: &PlayerId) -> anyhow::Result<()> {
@@ -430,175 +624,80 @@ impl Costs {
     }
 }
 
+// Cost represents the cost to play a card or activate an ability. It is represented as a vec of
+// vecs of ECost, where the other vec are alternative costs and the costs in the inner vec are costs
+// that must all be paid together.
+// For example, a cost of [[ManaCost(2), Additional(Tap { card: CardQuery::This })], [ManaCost(3)]]
+// means that the player can either pay 2 mana and tap the card, or pay 3 mana.
 #[derive(Debug, Clone, Default)]
-pub struct Cost {
-    pub label: Option<String>,
-    pub mana: u8,
-    pub thresholds: Thresholds,
-    pub additional: Vec<AdditionalCost>,
-    pub cost_type: CostType,
-}
+pub struct Cost(Vec<CostType>);
 
 impl Cost {
+    pub const ZERO: Cost = Cost(vec![]);
+
     pub fn new(mana: u8, thresholds: impl Into<Thresholds>) -> Self {
-        Self {
-            label: None,
-            mana,
-            thresholds: thresholds.into(),
-            additional: vec![],
-            cost_type: CostType::ManaCost,
+        let mut basic_cost = vec![];
+        if mana > 0 {
+            basic_cost.push(CostType::ManaCost(mana));
         }
+
+        let thresholds = thresholds.into();
+        if thresholds != Thresholds::ZERO {
+            basic_cost.push(CostType::Thresholds(thresholds));
+        }
+
+        Self(basic_cost)
+    }
+
+    pub fn from_variable_mana(thresholds: impl Into<Thresholds>) -> Self {
+        let mut basic_cost = vec![CostType::VariableManaCost];
+        let thresholds = thresholds.into();
+        if thresholds != Thresholds::ZERO {
+            basic_cost.push(CostType::Thresholds(thresholds));
+        }
+
+        Self(basic_cost)
+    }
+
+    pub fn from_mana(mana: u8) -> Self {
+        Self::new(mana, Thresholds::ZERO)
+    }
+
+    pub fn from_thresholds(thresholds: impl Into<Thresholds>) -> Self {
+        Self::new(0, thresholds)
+    }
+
+    pub fn with_additional(mut self, additional: AdditionalCost) -> Self {
+        self.0.push(CostType::Additional(vec![additional]));
+        Self(self.0)
     }
 
     pub fn get_label(&self) -> String {
-        match self.cost_type {
-            CostType::ManaCost => "Mana Cost".to_string(),
-            CostType::AlternativeCost => {
-                if let Some(label) = &self.label {
-                    label.to_string()
-                } else {
-                    "Alternative Cost".to_string()
-                }
-            }
-        }
+        "TODO".to_string()
+        // match self.cost_type {
+        //     CostType::ManaCost => "Mana Cost".to_string(),
+        //     CostType::AlternativeCost => {
+        //         if let Some(label) = &self.label {
+        //             label.to_string()
+        //         } else {
+        //             "Alternative Cost".to_string()
+        //         }
+        //     }
+        // }
     }
 
     pub async fn pay(&self, state: &mut State, player_id: &PlayerId) -> anyhow::Result<()> {
-        let mana = state.get_player_mana_mut(player_id);
-        *mana = mana.saturating_sub(self.mana);
-
-        for other in &self.additional {
-            match other {
-                AdditionalCost::Surface { card } => {
-                    let card_id = card.resolve(player_id, state).await?;
-                    let card = state.get_card(&card_id);
-                    let effect = Effect::MoveCard {
-                        card_id,
-                        player_id: card.get_controller_id(state).clone(),
-                        from: card.get_zone().clone(),
-                        to: ZoneQuery::from_zone(card.get_zone().clone()),
-                        tap: true,
-                        region: Region::Surface,
-                        through_path: None,
-                    };
-                    effect.apply(state).await?;
-                    state.effect_log.push(effect.into());
-                }
-                AdditionalCost::Tap { card } => {
-                    let card_id = card.resolve(player_id, state).await?;
-                    let effect = Effect::TapCard { card_id };
-                    effect.apply(state).await?;
-                    state.effect_log.push(effect.into());
-                }
-                AdditionalCost::Discard { card } => {
-                    let card_id = card.resolve(player_id, state).await?;
-                    let effect = Effect::DiscardCard {
-                        card_id,
-                        player_id: player_id.clone(),
-                    };
-                    effect.apply(state).await?;
-                    state.effect_log.push(effect.into());
-                }
-                AdditionalCost::Sacrifice { card } => {
-                    let card_id = card.resolve(player_id, state).await?;
-                    let card = state.get_card(&card_id);
-                    let effect = Effect::MoveCard {
-                        card_id,
-                        player_id: player_id.clone(),
-                        from: card.get_zone().clone(),
-                        to: ZoneQuery::Specific {
-                            id: uuid::Uuid::new_v4(),
-                            zone: Zone::Cemetery,
-                        },
-                        tap: false,
-                        region: Region::Surface,
-                        through_path: None,
-                    };
-                    effect.apply(state).await?;
-                    state.effect_log.push(effect.into());
-                }
-            }
+        for cost_type in &self.0 {
+            cost_type.pay(state, player_id).await?;
         }
 
         Ok(())
     }
 
-    pub fn zero() -> Self {
-        Self {
-            label: None,
-            mana: 0,
-            thresholds: Thresholds::new(),
-            additional: vec![],
-            cost_type: CostType::ManaCost,
-        }
-    }
-
     pub fn can_afford(&self, state: &State, player_id: impl AsRef<PlayerId>) -> anyhow::Result<bool> {
-        let resources = state.get_player_resources(player_id.as_ref())?;
-        let thresholds = state.get_thresholds_for_player(player_id.as_ref());
-        let has_resources = resources.mana >= self.mana
-            && thresholds.fire >= self.thresholds.fire
-            && thresholds.air >= self.thresholds.air
-            && thresholds.earth >= self.thresholds.earth
-            && thresholds.water >= self.thresholds.water;
-
-        if !has_resources {
-            return Ok(false);
-        }
-
-        let mut snapshot = state.snapshot();
-        for other in &self.additional {
-            match other {
-                AdditionalCost::Surface { card } => {
-                    let options: Vec<uuid::Uuid> = card.options(&snapshot);
-                    if options.is_empty() {
-                        return Ok(false);
-                    }
-
-                    let card_id = options.first().expect("options to have exactly one element");
-                    let card = snapshot.get_card(card_id);
-                    if card.is_tapped() {
-                        return Ok(false);
-                    }
-
-                    if card.get_region(state) == &Region::Surface {
-                        return Ok(false);
-                    }
-                }
-                AdditionalCost::Tap { card } => {
-                    let options: Vec<uuid::Uuid> = card
-                        .options(&snapshot)
-                        .iter()
-                        .map(|cid| snapshot.get_card(cid))
-                        .filter(|c| !c.is_tapped())
-                        .map(|c| c.get_id())
-                        .cloned()
-                        .collect();
-                    if options.is_empty() {
-                        return Ok(false);
-                    }
-
-                    let card_id = options.first().expect("options to have at least one element");
-                    snapshot.get_card_mut(card_id).get_base_mut().tapped = true;
-                }
-                AdditionalCost::Discard { card } => {
-                    let options = card.options(&snapshot);
-                    if options.is_empty() {
-                        return Ok(false);
-                    }
-
-                    let card_id = options.first().expect("options to have at least one element");
-                    snapshot.get_card_mut(card_id).set_zone(Zone::Cemetery);
-                }
-                AdditionalCost::Sacrifice { card } => {
-                    let options = card.options(&snapshot);
-                    if options.is_empty() {
-                        return Ok(false);
-                    }
-
-                    let card_id = options.first().expect("options to have at least one element");
-                    snapshot.get_card_mut(card_id).set_zone(Zone::Cemetery);
-                }
+        for cost_type in &self.0 {
+            if !cost_type.can_afford(state, player_id.as_ref())? {
+                return Ok(false);
             }
         }
 
@@ -1328,14 +1427,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(self.base_get_power(state))
     }
 
-    fn get_costs(&self, state: &State) -> anyhow::Result<Costs> {
-        let mut cost = self.get_base().cost.clone();
-        cost.additional = self.get_additional_costs(state)?;
-        Ok(Costs::new(vec![cost]))
-    }
-
-    fn get_additional_costs(&self, _state: &State) -> anyhow::Result<Vec<AdditionalCost>> {
-        Ok(vec![])
+    fn get_costs(&self, _state: &State) -> anyhow::Result<&Costs> {
+        Ok(&self.get_base().costs)
     }
 
     // Returns the avatar base if the card is an avatar, None otherwise.
@@ -1957,7 +2050,7 @@ pub struct CardBase {
     pub controller_id: PlayerId,
     pub tapped: bool,
     pub zone: Zone,
-    pub cost: Cost,
+    pub costs: Costs,
     pub region: Region,
     pub rarity: Rarity,
     pub edition: Edition,
@@ -2016,20 +2109,17 @@ mod tests {
     fn test_additional_cost_tap() {
         let mut state = State::new_mock_state(Zone::all_realm());
         let player_id = state.players[0].id.clone();
-        let cost = Cost {
-            additional: vec![AdditionalCost::Tap {
-                card: CardQuery::InZone {
-                    id: uuid::Uuid::new_v4(),
-                    zone: Zone::Realm(10),
-                    card_types: Some(vec![CardType::Minion, CardType::Avatar]),
-                    regions: None,
-                    owner: None,
-                    prompt: None,
-                    tapped: Some(false),
-                },
-            }],
-            ..Default::default()
-        };
+        let cost = Cost::ZERO.with_additional(AdditionalCost::Tap {
+            card: CardQuery::InZone {
+                id: uuid::Uuid::new_v4(),
+                zone: Zone::Realm(10),
+                card_types: Some(vec![CardType::Minion, CardType::Avatar]),
+                regions: None,
+                owner: None,
+                prompt: None,
+                tapped: Some(false),
+            },
+        });
         let can_afford = cost.can_afford(&state, &player_id).expect("should not error");
         assert!(!can_afford, "no units in the zone");
 
@@ -2050,33 +2140,29 @@ mod tests {
     fn test_additional_cost_two_taps() {
         let mut state = State::new_mock_state(Zone::all_realm());
         let player_id = state.players[0].id.clone();
-        let cost = Cost {
-            additional: vec![
-                AdditionalCost::Tap {
-                    card: CardQuery::InZone {
-                        id: uuid::Uuid::new_v4(),
-                        zone: Zone::Realm(10),
-                        card_types: Some(vec![CardType::Minion, CardType::Avatar]),
-                        regions: None,
-                        owner: None,
-                        prompt: None,
-                        tapped: Some(false),
-                    },
+        let cost = Cost::ZERO
+            .with_additional(AdditionalCost::Tap {
+                card: CardQuery::InZone {
+                    id: uuid::Uuid::new_v4(),
+                    zone: Zone::Realm(10),
+                    card_types: Some(vec![CardType::Minion, CardType::Avatar]),
+                    regions: None,
+                    owner: None,
+                    prompt: None,
+                    tapped: Some(false),
                 },
-                AdditionalCost::Tap {
-                    card: CardQuery::InZone {
-                        id: uuid::Uuid::new_v4(),
-                        zone: Zone::Realm(10),
-                        card_types: Some(vec![CardType::Minion, CardType::Avatar]),
-                        regions: None,
-                        owner: None,
-                        prompt: None,
-                        tapped: Some(false),
-                    },
+            })
+            .with_additional(AdditionalCost::Tap {
+                card: CardQuery::InZone {
+                    id: uuid::Uuid::new_v4(),
+                    zone: Zone::Realm(10),
+                    card_types: Some(vec![CardType::Minion, CardType::Avatar]),
+                    regions: None,
+                    owner: None,
+                    prompt: None,
+                    tapped: Some(false),
                 },
-            ],
-            ..Default::default()
-        };
+            });
         let can_afford = cost.can_afford(&state, &player_id).expect("should not error");
         assert!(!can_afford, "no units in the zone");
 

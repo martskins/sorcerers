@@ -1,9 +1,9 @@
 use crate::{
     card::{
-        AdditionalCost, AvatarBase, Card, CardBase, CardType, Cost, CostType, Edition, Rarity, Region, UnitBase, Zone,
+        AdditionalCost, AvatarBase, Card, CardBase, CardType, Cost, Costs, Edition, Rarity, Region, UnitBase, Zone,
     },
     effect::Effect,
-    game::{ActivatedAbility, PlayerId, Thresholds, pick_card, yes_or_no},
+    game::{ActivatedAbility, PlayerId, pick_card, yes_or_no},
     query::CardQuery,
     state::{CardMatcher, ContinuousEffect, State},
 };
@@ -54,15 +54,9 @@ impl ActivatedAbility for FloodSite {
     }
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
-        Ok(Cost {
-            label: None,
-            mana: 0,
-            thresholds: Thresholds::ZERO,
-            additional: vec![AdditionalCost::Tap {
-                card: CardQuery::from_id(card_id.clone()),
-            }],
-            cost_type: CostType::ManaCost,
-        })
+        Ok(Cost::ZERO.with_additional(AdditionalCost::Tap {
+            card: CardQuery::from_id(card_id.clone()),
+        }))
     }
 }
 
@@ -89,7 +83,7 @@ impl AvatarOfWater {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::zero(),
+                costs: Costs::ZERO,
                 region: Region::Surface,
                 rarity: Rarity::Unique,
                 edition: Edition::Alpha,

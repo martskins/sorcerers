@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, Rarity, Region, Zone},
+    card::{Card, CardBase, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::{PlayerId, pick_zone_group},
     state::State,
@@ -20,7 +20,7 @@ impl MarineVoyage {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(2, "W"),
+                costs: Costs::from_mana_and_threshold(2, "W"),
                 region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,

@@ -1,5 +1,5 @@
 pub const AURA_TEMPLATE: &str = r#"use crate::{
-    card::{Aura, AuraBase, Card, CardBase, Cost, Edition, Region, Rarity, Zone},
+    card::{Aura, AuraBase, Card, CardBase, Costs, Edition, Region, Rarity, Zone},
     game::{PlayerId, Thresholds},
 };
 

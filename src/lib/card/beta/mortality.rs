@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardType, Cost, Edition, MinionType, Rarity, Region, Zone},
+    card::{Card, CardBase, CardType, Costs, Edition, MinionType, Rarity, Region, Zone},
     effect::Effect,
     game::{PlayerId, pick_zone},
     state::{CardMatcher, State},
@@ -20,7 +20,7 @@ impl Mortality {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(2, "A"),
+                costs: Costs::from_mana_and_threshold(2, "A"),
                 region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,

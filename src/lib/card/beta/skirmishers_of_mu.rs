@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{BaseOption, PlayerId, pick_card, pick_option, pick_zone},
     state::{CardMatcher, State},
@@ -28,7 +28,7 @@ impl SkirmishersOfMu {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(4, "AA"),
+                costs: Costs::from_mana_and_threshold(4, "AA"),
                 region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,

@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardType, Cost, Edition, Rarity, Region, Zone},
+    card::{Card, CardBase, CardType, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::{PlayerId, pick_card},
     state::{CardMatcher, State},
@@ -20,7 +20,7 @@ impl Upwelling {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(4, "WW"),
+                costs: Costs::from_mana_and_threshold(4, "WW"),
                 region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,

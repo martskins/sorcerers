@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Rarity, Region, ResourceProvider, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, ResourceProvider, UnitBase, Zone},
     game::{PlayerId, Thresholds},
     state::State,
 };
@@ -27,7 +27,7 @@ impl AlvalinneDryads {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(3, "W"),
+                costs: Costs::from_mana_and_threshold(3, "W"),
                 region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,

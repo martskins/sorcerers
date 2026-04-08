@@ -1,9 +1,9 @@
 use crate::{
     card::{
-        AdditionalCost, Artifact, ArtifactBase, Card, CardBase, CardType, Cost, CostType, Edition, Rarity, Region, Zone,
+        AdditionalCost, Artifact, ArtifactBase, Card, CardBase, CardType, Cost, Costs, Edition, Rarity, Region, Zone,
     },
     effect::Effect,
-    game::{ActivatedAbility, PlayerId, Thresholds, pick_card},
+    game::{ActivatedAbility, PlayerId, pick_card},
     query::CardQuery,
     state::State,
 };
@@ -24,31 +24,21 @@ impl ActivatedAbility for TapToDealDamage {
             .ok_or(anyhow::anyhow!("Card is not an artifact"))?
             .get_bearer()?
             .ok_or(anyhow::anyhow!("Artifact has no bearer"))?;
-        Ok(Cost {
-            label: None,
-            mana: 0,
-            thresholds: Thresholds::new(),
-            additional: vec![
-                AdditionalCost::Tap {
-                    card: CardQuery::Specific {
-                        id: uuid::Uuid::new_v4(),
-                        card_id: bearer.clone(),
-                    },
+        Ok(Cost::ZERO
+            .with_additional(AdditionalCost::Tap {
+                card: CardQuery::from_id(bearer.clone()),
+            })
+            .with_additional(AdditionalCost::Tap {
+                card: CardQuery::InZone {
+                    id: uuid::Uuid::new_v4(),
+                    zone: card.get_zone().clone(),
+                    card_types: Some(vec![CardType::Minion, CardType::Avatar]),
+                    regions: None,
+                    owner: Some(card.get_controller_id(state).clone()),
+                    prompt: Some("Tap an untapped ally here".to_string()),
+                    tapped: Some(false),
                 },
-                AdditionalCost::Tap {
-                    card: CardQuery::InZone {
-                        id: uuid::Uuid::new_v4(),
-                        zone: card.get_zone().clone(),
-                        card_types: Some(vec![CardType::Minion, CardType::Avatar]),
-                        regions: None,
-                        owner: Some(card.get_controller_id(state).clone()),
-                        prompt: Some("Tap an untapped ally here".to_string()),
-                        tapped: Some(false),
-                    },
-                },
-            ],
-            cost_type: CostType::ManaCost,
-        })
+            }))
     }
 
     async fn on_select(
@@ -111,7 +101,7 @@ impl SiegeBallista {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(3, ""),
+                costs: Costs::from_mana(3),
                 region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,

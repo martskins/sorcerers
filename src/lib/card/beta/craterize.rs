@@ -1,8 +1,8 @@
 use crate::{
-    card::{AdditionalCost, Card, CardBase, CardType, Cost, Edition, Rarity, Region, Zone},
+    card::{Card, CardBase, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::{Direction, PlayerId, pick_card},
-    query::{CardQuery, ZoneQuery},
+    query::ZoneQuery,
     state::State,
 };
 
@@ -21,7 +21,7 @@ impl Craterize {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(8, "EE"),
+                costs: Costs::from_mana_and_threshold(8, "EE"),
                 region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
@@ -47,32 +47,33 @@ impl Card for Craterize {
         &self.card_base
     }
 
-    fn get_additional_costs(&self, state: &State) -> anyhow::Result<Vec<AdditionalCost>> {
-        Ok(vec![
-            AdditionalCost::Discard {
-                card: CardQuery::InZone {
-                    id: uuid::Uuid::new_v4(),
-                    zone: Zone::Hand,
-                    card_types: Some(vec![CardType::Site]),
-                    regions: None,
-                    owner: Some(self.get_controller_id(state)),
-                    prompt: Some("Craterize: Discard a site from your hand".to_string()),
-                    tapped: None,
-                },
-            },
-            AdditionalCost::Discard {
-                card: CardQuery::InZone {
-                    id: uuid::Uuid::new_v4(),
-                    zone: Zone::Hand,
-                    card_types: Some(vec![CardType::Site]),
-                    regions: None,
-                    owner: Some(self.get_controller_id(state)),
-                    prompt: Some("Craterize: Discard a site from your hand".to_string()),
-                    tapped: None,
-                },
-            },
-        ])
-    }
+    // TODO: Fix this
+    // fn get_additional_costs(&self, state: &State) -> anyhow::Result<Vec<AdditionalCost>> {
+    //     Ok(vec![
+    //         AdditionalCost::Discard {
+    //             card: CardQuery::InZone {
+    //                 id: uuid::Uuid::new_v4(),
+    //                 zone: Zone::Hand,
+    //                 card_types: Some(vec![CardType::Site]),
+    //                 regions: None,
+    //                 owner: Some(self.get_controller_id(state)),
+    //                 prompt: Some("Craterize: Discard a site from your hand".to_string()),
+    //                 tapped: None,
+    //             },
+    //         },
+    //         AdditionalCost::Discard {
+    //             card: CardQuery::InZone {
+    //                 id: uuid::Uuid::new_v4(),
+    //                 zone: Zone::Hand,
+    //                 card_types: Some(vec![CardType::Site]),
+    //                 regions: None,
+    //                 owner: Some(self.get_controller_id(state)),
+    //                 prompt: Some("Craterize: Discard a site from your hand".to_string()),
+    //                 tapped: None,
+    //             },
+    //         },
+    //     ])
+    // }
 
     async fn on_cast(&mut self, state: &State, caster_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
         let sites = state

@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardType, Cost, Edition, Rarity, Region, Zone},
+    card::{Card, CardBase, CardType, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::PlayerId,
     state::{CardMatcher, State},
@@ -20,7 +20,7 @@ impl RainOfArrows {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(2, "A"),
+                costs: Costs::from_mana_and_threshold(2, "A"),
                 region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    card::{Ability, AreaModifiers, Card, CardBase, Cost, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Ability, AreaModifiers, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     game::{Direction, PlayerId},
     state::State,
 };
@@ -29,7 +29,7 @@ impl HillockBasilisk {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(4, "F"),
+                costs: Costs::from_mana_and_threshold(4, "F"),
                 region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,

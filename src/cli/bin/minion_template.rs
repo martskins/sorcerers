@@ -1,5 +1,5 @@
 pub const MINION_TEMPLATE: &str = r#"use crate::{
-    card::{Ability, Card, CardBase, Cost, Edition, MinionType, Region, Rarity, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Region, Rarity, UnitBase, Zone},
     game::PlayerId,
 };
 

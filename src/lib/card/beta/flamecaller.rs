@@ -1,5 +1,5 @@
 use crate::{
-    card::{AvatarBase, Card, CardBase, Cost, Edition, Rarity, Region, UnitBase, Zone},
+    card::{AvatarBase, Card, CardBase, Costs, Edition, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{ActivatedAbility, CARDINAL_DIRECTIONS, Element, PlayerId, Thresholds, pick_direction},
     state::State,
@@ -32,7 +32,7 @@ impl ActivatedAbility for ShootProjectile {
             .iter()
             .filter(|c| c.get_zone() == &Zone::Cemetery)
             .filter(|c| c.get_elements(state).unwrap_or_default().contains(&Element::Fire))
-            .map(|c| c.get_costs(state).unwrap_or_default().thresholds_cost().clone())
+            .map(|c| c.get_costs(state).unwrap().thresholds_cost().clone())
             .sum::<Thresholds>()
             .fire as u16;
         let avatar = state.get_card(card_id);
@@ -86,7 +86,7 @@ impl Flamecaller {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::zero(),
+                costs: Costs::ZERO,
                 region: Region::Surface,
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,

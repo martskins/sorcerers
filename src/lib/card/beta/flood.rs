@@ -1,5 +1,5 @@
 use crate::{
-    card::{Aura, AuraBase, Card, CardBase, CardType, Cost, Edition, Rarity, Region, Zone},
+    card::{Aura, AuraBase, Card, CardBase, CardType, Costs, Edition, Rarity, Region, Zone},
     game::PlayerId,
     state::{CardMatcher, ContinuousEffect, State},
 };
@@ -20,7 +20,7 @@ impl Flood {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(4, "F"),
+                costs: Costs::from_mana_and_threshold(4, "F"),
                 region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,

@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Aura, AuraBase, Card, CardBase, Cost, Edition, Rarity, Region, Zone},
+    card::{Ability, Aura, AuraBase, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
     effect::{AbilityCounter, Effect},
     game::PlayerId,
     query::{CardQuery, EffectQuery},
@@ -22,7 +22,7 @@ impl AtlanteanFate {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(5, "WW"),
+                costs: Costs::from_mana_and_threshold(5, "WW"),
                 region: Region::Surface,
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,

@@ -1,7 +1,7 @@
 use rand::seq::SliceRandom;
 
 use crate::{
-    card::{Card, CardBase, CardType, Cost, Edition, MinionType, Rarity, Region, Zone},
+    card::{Card, CardBase, CardType, Cost, Costs, Edition, MinionType, Rarity, Region, Zone},
     effect::Effect,
     game::{PlayerId, pick_card, pick_option, reveal_cards, yes_or_no},
     state::{CardMatcher, State},
@@ -22,7 +22,7 @@ impl AssortedAnimals {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(0, "EE"),
+                costs: Costs::from_cost(Cost::from_variable_mana("EE")),
                 region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
@@ -52,12 +52,6 @@ impl Card for AssortedAnimals {
         let controller_id = self.get_controller_id(state);
         let deck = state.get_player_deck(&controller_id)?.clone();
 
-        let max_x = state.get_player_resources(&controller_id)?.mana;
-        let x_options = (0..=max_x).map(|x| x.to_string()).collect::<Vec<_>>();
-        let picked_x_idx =
-            pick_option(&controller_id, &x_options, state, "Assorted Animals: Choose X to spend").await?;
-        let x_cost = picked_x_idx as u8;
-
         let mut beasts = CardMatcher::new()
             .in_zone(&Zone::Spellbook)
             .with_card_type(CardType::Minion)
@@ -75,7 +69,7 @@ impl Card for AssortedAnimals {
                 (
                     card.get_name().to_string(),
                     card.get_id().clone(),
-                    card.get_base().cost.mana,
+                    card.get_base().costs.mana_cost(),
                 )
             })
             .collect::<Vec<_>>();

@@ -1,9 +1,9 @@
 use crate::{
     card::{
-        AdditionalCost, Artifact, ArtifactBase, Card, CardBase, CardType, Cost, CostType, Edition, Rarity, Region, Zone,
+        AdditionalCost, Artifact, ArtifactBase, Card, CardBase, CardType, Cost, Costs, Edition, Rarity, Region, Zone,
     },
     effect::Effect,
-    game::{ActivatedAbility, PlayerId, Thresholds, pick_zone},
+    game::{ActivatedAbility, PlayerId, pick_zone},
     query::CardQuery,
     state::State,
 };
@@ -45,44 +45,34 @@ impl ActivatedAbility for ShootPayload {
         match bearer_id {
             Some(bearer_id) => {
                 let bearer = state.get_card(&bearer_id);
-                Ok(Cost {
-                    label: None,
-                    mana: 0,
-                    thresholds: Thresholds::new(),
-                    additional: vec![
-                        AdditionalCost::Tap {
-                            card: CardQuery::Specific {
-                                id: uuid::Uuid::new_v4(),
-                                card_id: bearer_id.clone(),
-                            },
+                Ok(Cost::ZERO
+                    .with_additional(AdditionalCost::Tap {
+                        card: CardQuery::from_id(bearer_id.clone()),
+                    })
+                    .with_additional(AdditionalCost::Tap {
+                        card: CardQuery::InZone {
+                            id: uuid::Uuid::new_v4(),
+                            zone: bearer.get_zone().clone(),
+                            card_types: Some(vec![CardType::Minion, CardType::Avatar]),
+                            regions: None,
+                            owner: Some(bearer.get_controller_id(state).clone()),
+                            prompt: Some("Tap an untapped ally here".to_string()),
+                            tapped: Some(false),
                         },
-                        AdditionalCost::Tap {
-                            card: CardQuery::InZone {
-                                id: uuid::Uuid::new_v4(),
-                                zone: bearer.get_zone().clone(),
-                                card_types: Some(vec![CardType::Minion, CardType::Avatar]),
-                                regions: None,
-                                owner: Some(bearer.get_controller_id(state).clone()),
-                                prompt: Some("Tap an untapped ally here".to_string()),
-                                tapped: Some(false),
-                            },
+                    })
+                    .with_additional(AdditionalCost::Discard {
+                        card: CardQuery::InZone {
+                            id: uuid::Uuid::new_v4(),
+                            zone: Zone::Hand,
+                            card_types: None,
+                            prompt: Some("Discard a card from your hand".to_string()),
+                            regions: None,
+                            owner: Some(bearer.get_controller_id(state).clone()),
+                            tapped: None,
                         },
-                        AdditionalCost::Discard {
-                            card: CardQuery::InZone {
-                                id: uuid::Uuid::new_v4(),
-                                zone: Zone::Hand,
-                                card_types: None,
-                                prompt: Some("Discard a card from your hand".to_string()),
-                                regions: None,
-                                owner: Some(bearer.get_controller_id(state).clone()),
-                                tapped: None,
-                            },
-                        },
-                    ],
-                    cost_type: CostType::ManaCost,
-                })
+                    }))
             }
-            None => Ok(Cost::zero()),
+            None => Ok(Cost::ZERO),
         }
     }
 }
@@ -107,7 +97,7 @@ impl PayloadTrebuchet {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(5, ""),
+                costs: Costs::from_mana_and_threshold(5, ""),
                 region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,

@@ -43,6 +43,11 @@ pub enum Status {
         prompt: String,
         multiple: bool,
     },
+    SelectingAmount {
+        prompt: String,
+        min_amount: u8,
+        max_amount: u8,
+    },
     SelectingPath {
         paths: Vec<Vec<Zone>>,
         prompt: String,
@@ -158,6 +163,7 @@ pub struct Game {
     components: Vec<Box<dyn Component>>,
     data: GameData,
     audio_manager: AudioManager<DefaultBackend>,
+    selected_value: Option<Box<dyn std::any::Any>>,
 }
 
 impl Game {
@@ -195,6 +201,7 @@ impl Game {
             ],
             data: GameData::new(&player_id, cards),
             audio_manager,
+            selected_value: None,
         }
     }
 
@@ -412,6 +419,83 @@ impl Game {
                     FontId::proportional(FONT_SIZE),
                     Color32::WHITE,
                 );
+                None
+            }
+            Status::SelectingAmount {
+                prompt,
+                min_amount,
+                max_amount,
+            } => {
+                if self.selected_value.is_none() {
+                    self.selected_value = Some(Box::new(*min_amount as i32));
+                }
+
+                let selected_amount = self.selected_value.as_mut().unwrap().downcast_mut::<i32>().unwrap();
+                let mut submitted = false;
+                let menu_w = 260.0;
+                let menu_h = 170.0;
+                let screen = screen_rect().unwrap_or(Rect::from_min_size(pos2(0.0, 0.0), vec2(1280.0, 720.0)));
+                let origin = pos2((screen.width() - menu_w) / 2.0, (screen.height() - menu_h) / 2.0);
+                egui::Area::new(egui::Id::new("amount_picker_popup"))
+                    .fixed_pos(origin)
+                    .order(egui::Order::Foreground)
+                    .show(ctx, |ui| {
+                        ui.vertical_centered(|ui| {
+                            ui.horizontal(|ui| {
+                                ui.add_space(16.0);
+                                ui.label(RichText::new(prompt).size(16.0).color(Color32::from_rgb(180, 200, 240)));
+                                ui.add_space(18.0);
+                                if ui
+                                    .add_enabled(
+                                        *selected_amount > *min_amount as i32,
+                                        egui::Button::new("-").min_size(vec2(32.0, 32.0)),
+                                    )
+                                    .clicked()
+                                {
+                                    *selected_amount -= 1;
+                                }
+                                let amt_field = egui::DragValue::new(selected_amount)
+                                    .range(*min_amount as i32..=*max_amount as i32)
+                                    .speed(1)
+                                    .fixed_decimals(0)
+                                    .min_decimals(0)
+                                    .max_decimals(0)
+                                    .prefix("")
+                                    .suffix("");
+                                ui.add_sized([60.0, 32.0], amt_field);
+                                if ui
+                                    .add_enabled(
+                                        *selected_amount < *max_amount as i32,
+                                        egui::Button::new("+").min_size(vec2(32.0, 32.0)),
+                                    )
+                                    .clicked()
+                                {
+                                    *selected_amount += 1;
+                                }
+                                ui.add_space(18.0);
+                                if ui
+                                    .add(
+                                        egui::Button::new(RichText::new("Submit").size(18.0).color(Color32::WHITE))
+                                            .min_size(vec2(120.0, 36.0)),
+                                    )
+                                    .clicked()
+                                {
+                                    submitted = true;
+                                }
+                            });
+                        });
+                    });
+                if submitted {
+                    self.client
+                        .send(ClientMessage::PickAmount {
+                            game_id: self.game_id,
+                            player_id: self.data.player_id,
+                            amount: *selected_amount as u8,
+                        })
+                        .ok();
+                    Mouse::set_enabled(false);
+                    self.data.status = Status::Idle;
+                }
                 None
             }
             Status::SelectingAction { prompt, actions } => {
@@ -650,6 +734,19 @@ impl Game {
             ServerMessage::PickZone { zones, prompt, .. } => {
                 self.data.status = Status::SelectingZone {
                     zones: zones.clone(),
+                    prompt: prompt.clone(),
+                };
+                None
+            }
+            ServerMessage::PickAmount {
+                prompt,
+                min_amount,
+                max_amount,
+                ..
+            } => {
+                self.data.status = Status::SelectingAmount {
+                    min_amount: *min_amount,
+                    max_amount: *max_amount,
                     prompt: prompt.clone(),
                 };
                 None

@@ -1,5 +1,5 @@
 pub const SITE_TEMPLATE: &str = r#"use crate::{
-    card::{Card, CardBase, Cost, Edition, Region, Rarity, ResourceProvider, Site, SiteBase, SiteType, Zone},
+    card::{Card, CardBase, Costs, Edition, Region, Rarity, ResourceProvider, Site, SiteBase, SiteType, Zone},
     game::{PlayerId, Thresholds},
 };
 
@@ -25,7 +25,7 @@ impl {StructName} {
                 owner_id,
                 tapped: false,
                 zone: Zone::Atlasbook,
-                cost: Cost::zero(),
+                cost: Costs::ZERO,
                 region: Region::Surface,
                 rarity: Rarity::{Rarity},
                 edition: Edition::{Edition},

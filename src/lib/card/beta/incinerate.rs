@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Edition, MinionType, Rarity, Region, Zone},
+    card::{Card, CardBase, Costs, Edition, MinionType, Rarity, Region, Zone},
     effect::Effect,
     game::{PlayerId, pick_zone},
     state::State,
@@ -20,7 +20,7 @@ impl Incinerate {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                cost: Cost::new(2, "F"),
+                costs: Costs::from_mana_and_threshold(2, "F"),
                 region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
