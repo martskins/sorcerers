@@ -495,6 +495,10 @@ impl RealmComponent {
         data: &mut GameData,
         ctx: &Context,
     ) -> anyhow::Result<()> {
+        if let Status::SelectingCard { preview: true, .. } = &data.status {
+            return Ok(());
+        }
+
         if !in_turn && !matches!(data.status, Status::SelectingCard { .. }) {
             return Ok(());
         }

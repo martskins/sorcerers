@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Aura, CardType, Cost, Region, Zone},
+    card::{Ability, Aura, CardData, CardType, Cost, Region, Zone},
     effect::Effect,
     error::GameError,
     networking::{
@@ -97,12 +97,23 @@ pub async fn pick_card_with_preview(
     state: &State,
     prompt: &str,
 ) -> anyhow::Result<uuid::Uuid> {
+    pick_card_with_options(player_id, card_ids, card_ids, state, prompt).await
+}
+
+pub async fn pick_card_with_options(
+    player_id: impl AsRef<PlayerId>,
+    card_ids: &[uuid::Uuid],
+    pickable_card_ids: &[uuid::Uuid],
+    state: &State,
+    prompt: &str,
+) -> anyhow::Result<uuid::Uuid> {
     state
         .get_sender()
         .send(ServerMessage::PickCard {
             prompt: prompt.to_string(),
             player_id: player_id.as_ref().clone(),
             cards: card_ids.to_vec(),
+            pickable_cards: pickable_card_ids.to_vec(),
             preview: true,
         })
         .await?;
@@ -237,6 +248,7 @@ pub async fn pick_card(
             prompt: prompt.to_string(),
             player_id: player_id.as_ref().clone(),
             cards: card_ids.to_vec(),
+            pickable_cards: card_ids.to_vec(),
             preview: false,
         })
         .await?;
@@ -254,6 +266,17 @@ pub async fn pick_card(
 
     resume(&opponent_id, state).await?;
     card
+}
+
+pub async fn pick_card_with_cards(
+    player_id: impl AsRef<PlayerId>,
+    cards: &[CardData],
+    pickable_card_ids: &[uuid::Uuid],
+    state: &State,
+    prompt: &str,
+) -> anyhow::Result<uuid::Uuid> {
+    let card_ids = cards.iter().map(|card| card.id).collect::<Vec<_>>();
+    pick_card_with_options(player_id, &card_ids, pickable_card_ids, state, prompt).await
 }
 
 pub async fn pick_action<'a>(

@@ -126,6 +126,7 @@ pub enum ServerMessage {
         prompt: String,
         player_id: PlayerId,
         cards: Vec<uuid::Uuid>,
+        pickable_cards: Vec<uuid::Uuid>,
         preview: bool,
     },
     PickAmount {

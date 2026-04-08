@@ -234,6 +234,7 @@ impl Game {
                 &self.game_id,
                 &self.data.player_id,
                 renderables,
+                cards.clone(),
                 prompt,
                 behaviour.clone(),
             )));
@@ -650,6 +651,7 @@ impl Game {
                         .ok();
                     Mouse::set_enabled(false);
                     self.data.status = Status::Idle;
+                    self.data.last_clicked_card_pos = None;
                 }
                 None
             }
@@ -788,6 +790,7 @@ impl Game {
                         &self.game_id,
                         &self.data.player_id,
                         renderables,
+                        cards.clone(),
                         prompt,
                         SelectionOverlayBehaviour::Pick,
                     )));
@@ -826,7 +829,11 @@ impl Game {
                 None
             }
             ServerMessage::PickCard {
-                cards, prompt, preview, ..
+                cards,
+                pickable_cards,
+                prompt,
+                preview,
+                ..
             } => {
                 self.data.status = Status::SelectingCard {
                     cards: cards.clone(),
@@ -841,6 +848,7 @@ impl Game {
                         &self.game_id,
                         &self.data.player_id,
                         renderables,
+                        pickable_cards.clone(),
                         prompt,
                         SelectionOverlayBehaviour::Pick,
                     )));

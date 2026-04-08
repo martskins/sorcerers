@@ -3,7 +3,7 @@ use rand::seq::SliceRandom;
 use crate::{
     card::{Card, CardBase, CardType, Cost, CostType, Costs, Edition, MinionType, Rarity, Region, Zone},
     effect::Effect,
-    game::{PlayerId, pick_card, reveal_cards, yes_or_no},
+    game::{PlayerId, pick_card_with_options, reveal_cards, yes_or_no},
     state::{CardMatcher, State},
 };
 
@@ -88,11 +88,14 @@ impl Card for AssortedAnimals {
             .collect::<Vec<_>>();
 
         beasts.sort_by(|a, b| a.0.cmp(&b.0));
-        beasts.dedup_by(|a, b| a.0 == b.0);
 
         let mut remaining_mana = x_cost;
         let mut chosen = Vec::new();
 
+        let mut display_card_ids: Vec<uuid::Uuid> = CardMatcher::new()
+            .with_controller_id(&controller_id)
+            .in_zone(&Zone::Spellbook)
+            .resolve_ids(state);
         loop {
             let affordable: Vec<_> = beasts
                 .iter()
@@ -107,8 +110,9 @@ impl Card for AssortedAnimals {
                 break;
             }
 
-            let picked_id = pick_card(
+            let picked_id = pick_card_with_options(
                 &controller_id,
+                &display_card_ids,
                 &affordable.iter().map(|(_, id, _)| id.clone()).collect::<Vec<_>>(),
                 state,
                 "Assorted Animals: Pick a Beast to put into your hand",
@@ -123,6 +127,7 @@ impl Card for AssortedAnimals {
             remaining_mana = remaining_mana.saturating_sub(picked.2);
             chosen.push(picked);
             beasts.retain(|(_, id, _)| id != &picked_id);
+            display_card_ids.retain(|id| id != &picked_id);
         }
 
         let chosen_ids: Vec<uuid::Uuid> = chosen.iter().map(|(_, id, _)| id.clone()).collect();

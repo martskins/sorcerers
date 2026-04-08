@@ -127,7 +127,12 @@ impl PlayerHandComponent {
             0.0
         };
 
-        let total_width = spells_width + if site_count > 0 { site_spacing_x + sites_width } else { 0.0 };
+        let total_width = spells_width
+            + if site_count > 0 {
+                site_spacing_x + sites_width
+            } else {
+                0.0
+            };
         let start_x = self.rect.min.x + (self.rect.width() - total_width) / 2.0;
         let spells_y = self.rect.min.y + self.rect.height() / 2.0 - spell_dim.y / 2.0;
 
@@ -205,12 +210,21 @@ impl Component for PlayerHandComponent {
         Ok(())
     }
 
-    fn process_input(&mut self, in_turn: bool, data: &mut GameData, ctx: &Context) -> anyhow::Result<Option<ComponentCommand>> {
+    fn process_input(
+        &mut self,
+        in_turn: bool,
+        data: &mut GameData,
+        ctx: &Context,
+    ) -> anyhow::Result<Option<ComponentCommand>> {
         if !Mouse::enabled() {
             return Ok(None);
         }
 
         if let Status::SelectingAction { .. } = &data.status {
+            return Ok(None);
+        }
+
+        if let Status::SelectingCard { preview: true, .. } = &data.status {
             return Ok(None);
         }
 
@@ -244,7 +258,11 @@ impl Component for PlayerHandComponent {
 
         match &data.status {
             Status::Idle => {
-                for card_rect in self.card_rects.iter().filter(|c| c.card.zone.is_in_play() || c.card.zone == Zone::Hand) {
+                for card_rect in self
+                    .card_rects
+                    .iter()
+                    .filter(|c| c.card.zone.is_in_play() || c.card.zone == Zone::Hand)
+                {
                     if card_rect.is_hovered && clicked {
                         data.last_clicked_card_pos = Some(card_rect.rect.center());
                         self.client.send(ClientMessage::ClickCard {
@@ -255,7 +273,9 @@ impl Component for PlayerHandComponent {
                     }
                 }
             }
-            Status::SelectingCard { cards, preview: true, .. } => {
+            Status::SelectingCard {
+                cards, preview: true, ..
+            } => {
                 let mut selected_id = None;
                 for card_rect in self.card_rects.iter().filter(|c| cards.contains(&c.card.id)) {
                     if card_rect.rect.contains(mp) && clicked {
@@ -271,7 +291,12 @@ impl Component for PlayerHandComponent {
                     data.status = Status::Idle;
                 }
             }
-            Status::SelectingCard { cards, multiple: false, preview: false, .. } => {
+            Status::SelectingCard {
+                cards,
+                multiple: false,
+                preview: false,
+                ..
+            } => {
                 let mut selected_id = None;
                 for card_rect in self.card_rects.iter().filter(|c| cards.contains(&c.card.id)) {
                     if card_rect.rect.contains(mp) && clicked {
@@ -317,8 +342,12 @@ impl Component for PlayerHandComponent {
     fn process_command(&mut self, command: &ComponentCommand, data: &mut GameData) -> anyhow::Result<()> {
         match command {
             ComponentCommand::DonePicking if matches!(data.status, Status::Mulligan) => {
-                let selected_cards: Vec<uuid::Uuid> =
-                    self.card_rects.iter().filter(|c| c.is_selected).map(|c| c.card.id).collect();
+                let selected_cards: Vec<uuid::Uuid> = self
+                    .card_rects
+                    .iter()
+                    .filter(|c| c.is_selected)
+                    .map(|c| c.card.id)
+                    .collect();
                 self.client.send(ClientMessage::PickCards {
                     player_id: self.player_id,
                     game_id: self.game_id,
@@ -326,7 +355,10 @@ impl Component for PlayerHandComponent {
                 })?;
                 data.status = Status::Idle;
             }
-            ComponentCommand::SetRect { component_type: ComponentType::PlayerHand, rect } => {
+            ComponentCommand::SetRect {
+                component_type: ComponentType::PlayerHand,
+                rect,
+            } => {
                 self.rect = *rect;
             }
             _ => {}
