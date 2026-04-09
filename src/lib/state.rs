@@ -9,6 +9,7 @@ use crate::{
 use async_channel::{Receiver, Sender};
 use std::{
     collections::{HashMap, HashSet, VecDeque},
+    pin::Pin,
     sync::Arc,
 };
 
@@ -492,7 +493,15 @@ impl CardMatcher {
 pub struct DeferredEffect {
     pub trigger_on_effect: EffectQuery,
     pub expires_on_effect: Option<EffectQuery>,
-    pub on_effect: Arc<dyn Sync + Send + Fn(&State, &uuid::Uuid, &Effect) -> Vec<Effect>>,
+    pub on_effect: Arc<
+        dyn Sync
+            + Send
+            + for<'a> Fn(
+                &'a State,
+                &'a uuid::Uuid,
+                &'a Effect,
+            ) -> Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + 'a>>,
+    >,
 }
 
 impl std::fmt::Debug for DeferredEffect {

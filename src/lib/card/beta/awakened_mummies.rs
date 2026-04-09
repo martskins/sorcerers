@@ -65,14 +65,15 @@ impl AwakenedMummies {
                 },
             },
             expires_on_effect: None,
-            on_effect: Arc::new(
-                move |state: &State, card_id: &uuid::Uuid, _effect: &Effect| -> Vec<Effect> {
+            on_effect: Arc::new(move |state: &State, card_id: &uuid::Uuid, _effect: &Effect| {
+                let mummy_id = mummy_id.clone();
+                Box::pin(async move {
                     let mummy = state.get_card(&mummy_id);
                     if mummy.get_region(state) != &Region::Underground {
-                        return vec![];
+                        return Ok(vec![]);
                     }
 
-                    vec![
+                    Ok(vec![
                         Effect::SetCardRegion {
                             card_id: mummy_id.clone(),
                             region: Region::Surface,
@@ -82,9 +83,9 @@ impl AwakenedMummies {
                             attacker_id: mummy_id.clone(),
                             defender_id: card_id.clone(),
                         },
-                    ]
-                },
-            ),
+                    ])
+                })
+            }),
         })
     }
 }

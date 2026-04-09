@@ -346,3 +346,5 @@ pub mod blizzard;
 pub use blizzard::*;
 pub mod boil;
 pub use boil::*;
+pub mod bone_rabble;
+pub use bone_rabble::*;

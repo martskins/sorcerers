@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::{
     card::{Ability, Card, CardBase, Cost, Costs, Edition, Rarity, Region, Zone},
     effect::{AbilityCounter, Effect},
-    game::{PlayerId, pick_card},
+    game::{pick_card, PlayerId},
     query::{CardQuery, EffectQuery},
     state::{DeferredEffect, State},
 };
@@ -79,31 +79,33 @@ impl Card for Blaze {
                         card: CardQuery::from_id(picked_card),
                     },
                     expires_on_effect: Some(EffectQuery::TurnEnd { player_id: None }),
-                    on_effect: Arc::new(|_state: &State, card_id: &uuid::Uuid, effect: &Effect| -> Vec<Effect> {
-                        match effect {
-                            Effect::MoveCard {
-                                player_id,
-                                through_path,
-                                ..
-                            } => {
-                                let mut effects = vec![];
-                                if let Some(path) = through_path {
-                                    for zone in path {
-                                        if Some(zone) != path.last() {
-                                            effects.push(Effect::DealDamageAllUnitsInZone {
-                                                player_id: player_id.clone(),
-                                                zone: zone.clone().into(),
-                                                from: card_id.clone(),
-                                                damage: 2,
-                                            });
+                    on_effect: Arc::new(|_state: &State, card_id: &uuid::Uuid, effect: &Effect| {
+                        Box::pin(async move {
+                            match effect {
+                                Effect::MoveCard {
+                                    player_id,
+                                    through_path,
+                                    ..
+                                } => {
+                                    let mut effects = vec![];
+                                    if let Some(path) = through_path {
+                                        for zone in path {
+                                            if Some(zone) != path.last() {
+                                                effects.push(Effect::DealDamageAllUnitsInZone {
+                                                    player_id: player_id.clone(),
+                                                    zone: zone.clone().into(),
+                                                    from: card_id.clone(),
+                                                    damage: 2,
+                                                });
+                                            }
                                         }
                                     }
-                                }
 
-                                effects
+                                    Ok(effects)
+                                }
+                                _ => unreachable!(),
                             }
-                            _ => unreachable!(),
-                        }
+                        })
                     }),
                 },
             },

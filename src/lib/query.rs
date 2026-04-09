@@ -478,6 +478,12 @@ pub enum EffectQuery {
     MoveCard {
         card: CardQuery,
     },
+    PlayCard {
+        card: CardMatcher,
+    },
+    SummonCard {
+        card: CardMatcher,
+    },
 }
 
 impl EffectQuery {
@@ -547,6 +553,12 @@ impl EffectQuery {
                     return Ok(false);
                 }
 
+                Ok(true)
+            }
+            (EffectQuery::SummonCard { card }, Effect::SummonCard { card_id, .. }) if card.matches(card_id, state) => {
+                Ok(true)
+            }
+            (EffectQuery::PlayCard { card }, Effect::PlayCard { card_id, .. }) if card.matches(card_id, state) => {
                 Ok(true)
             }
             _ => Ok(false),

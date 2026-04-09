@@ -477,7 +477,7 @@ impl Effect {
         for (idx, de) in state.deferred_effects.iter().enumerate() {
             if de.trigger_on_effect.matches(effect, state).await? {
                 if let Some(source_id) = effect.source_id() {
-                    let effects = (de.on_effect)(state, source_id, effect);
+                    let effects = (de.on_effect)(state, source_id, effect).await?;
                     state.effects.extend(effects.into_iter().map(|e| e.into()));
                 }
 
