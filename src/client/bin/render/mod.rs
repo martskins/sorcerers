@@ -90,7 +90,7 @@ fn draw_rotated_image(painter: &Painter, tex_handle: &TextureHandle, rect: Rect,
     painter.add(Shape::mesh(mesh));
 }
 
-pub fn draw_card(card_rect: &CardRect, is_ally: bool, draw_accessories: bool, painter: &Painter) {
+fn draw_card_internal(card_rect: &CardRect, is_ally: bool, draw_accessories: bool, painter: &Painter, rotation: f32) {
     let rect = card_rect.rect;
     let scale = if card_rect.is_hovered || card_rect.is_selected {
         1.1f32
@@ -106,7 +106,7 @@ pub fn draw_card(card_rect: &CardRect, is_ally: bool, draw_accessories: bool, pa
         } else {
             Color32::WHITE
         };
-        if card_rect.rotation() == 0.0 {
+        if rotation == 0.0 {
             painter.image(
                 tex.id(),
                 scaled_rect,
@@ -117,7 +117,7 @@ pub fn draw_card(card_rect: &CardRect, is_ally: bool, draw_accessories: bool, pa
             // Rotate the image 90° around the card's centre.  We keep the
             // *original* portrait rect as the mesh base; draw_rotated_image
             // will rotate its four corners, producing a landscape footprint.
-            draw_rotated_image(painter, tex, scaled_rect, std::f32::consts::FRAC_PI_2, tint);
+            draw_rotated_image(painter, tex, scaled_rect, rotation, tint);
         }
     } else {
         painter.rect_filled(scaled_rect, 4.0, Color32::DARK_GRAY);
@@ -138,7 +138,7 @@ pub fn draw_card(card_rect: &CardRect, is_ally: bool, draw_accessories: bool, pa
         let card_h = rect.height() * scale;
         let card_center_x = rect.min.x + card_w / 2.0;
         let card_center_y = rect.min.y + card_h / 2.0;
-        let (sin, cos) = card_rect.rotation().sin_cos();
+        let (sin, cos) = rotation.sin_cos();
         let rotate = |vx: f32, vy: f32| -> Pos2 {
             pos2(cos * vx - sin * vy + card_center_x, sin * vx + cos * vy + card_center_y)
         };
@@ -168,14 +168,12 @@ pub fn draw_card(card_rect: &CardRect, is_ally: bool, draw_accessories: bool, pa
         vec2(w / 2.0, h / 2.0),
         vec2(-w / 2.0, h / 2.0),
     ];
-    let (sin, cos) = card_rect.rotation().sin_cos();
+    let (sin, cos) = rotation.sin_cos();
     let rotated: Vec<Pos2> = corners_raw
         .iter()
         .map(|v| pos2(cos * v.x - sin * v.y + cx, sin * v.x + cos * v.y + cy))
         .collect();
-    for i in 0..4 {
-        painter.line_segment([rotated[i], rotated[(i + 1) % 4]], Stroke::new(2.0, sleeve_color));
-    }
+    painter.add(Shape::closed_line(rotated, Stroke::new(2.0, sleeve_color)));
 
     if card_rect.card.abilities.contains(&Ability::SummoningSickness) {
         let icon_size = 22.0;
@@ -237,6 +235,20 @@ pub fn draw_card(card_rect: &CardRect, is_ally: bool, draw_accessories: bool, pa
             egui::StrokeKind::Outside,
         );
     }
+}
+
+pub fn draw_card(card_rect: &CardRect, is_ally: bool, draw_accessories: bool, painter: &Painter) {
+    draw_card_internal(card_rect, is_ally, draw_accessories, painter, card_rect.rotation());
+}
+
+pub fn draw_card_with_rotation(
+    card_rect: &CardRect,
+    is_ally: bool,
+    draw_accessories: bool,
+    painter: &Painter,
+    rotation: f32,
+) {
+    draw_card_internal(card_rect, is_ally, draw_accessories, painter, rotation);
 }
 
 pub fn render_card_preview(card: &CardRect, data: &mut GameData, painter: &Painter) -> anyhow::Result<()> {

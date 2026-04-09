@@ -600,7 +600,7 @@ impl Costs {
 
     pub async fn pay(&self, state: &mut State, player_id: &PlayerId) -> anyhow::Result<Cost> {
         match self.0.len() {
-            0 => unreachable!(),
+            0 => Ok(Cost(vec![])),
             1 => {
                 let cost = self.0.first().expect("costs to have one item");
                 Box::pin(cost.pay(state, player_id)).await
@@ -631,7 +631,7 @@ impl Costs {
 }
 
 // Cost represents the cost to play a card or activate an ability. It is represented as a vec of
-// vecs of ECost, where the other vec are alternative costs and the costs in the inner vec are costs
+// vecs of CostType, where the other vec are alternative costs and the costs in the inner vec are costs
 // that must all be paid together.
 // For example, a cost of [[ManaCost(2), Additional(Tap { card: CardQuery::This })], [ManaCost(3)]]
 // means that the player can either pay 2 mana and tap the card, or pay 3 mana.

@@ -265,6 +265,10 @@ impl Component for PlayerHandComponent {
                 {
                     if card_rect.is_hovered && clicked {
                         data.last_clicked_card_pos = Some(card_rect.rect.center());
+                        data.last_clicked_card_time = Some(ctx.input(|i| i.time));
+                        if card_rect.card.zone == Zone::Hand {
+                            data.last_clicked_card_id = Some(card_rect.card.id);
+                        }
                         self.client.send(ClientMessage::ClickCard {
                             card_id: card_rect.card.id,
                             player_id: self.player_id,

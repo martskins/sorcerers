@@ -77,6 +77,39 @@ pub fn site_dimensions(cell_rect: &Rect) -> Vec2 {
     vec2(card_height(cell_rect), card_width(cell_rect))
 }
 
+fn card_rotation(card: &CardData) -> f32 {
+    if card.tapped { std::f32::consts::FRAC_PI_2 } else { 0.0 }
+}
+
+const CARD_FLIGHT_DURATION: f64 = 0.28;
+
+#[derive(Clone)]
+struct CardFlight {
+    card_id: uuid::Uuid,
+    card: CardData,
+    from: Rect,
+    to: Rect,
+    from_rotation: f32,
+    to_rotation: f32,
+    started_at: f64,
+    image: Option<egui::TextureHandle>,
+}
+
+impl std::fmt::Debug for CardFlight {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CardFlight")
+            .field("card_id", &self.card_id)
+            .field("card", &self.card)
+            .field("from", &self.from)
+            .field("to", &self.to)
+            .field("from_rotation", &self.from_rotation)
+            .field("to_rotation", &self.to_rotation)
+            .field("started_at", &self.started_at)
+            .field("image", &self.image.as_ref().map(|_| "<TextureHandle>"))
+            .finish()
+    }
+}
+
 #[derive(Debug)]
 pub struct RealmComponent {
     game_id: uuid::Uuid,
@@ -89,6 +122,7 @@ pub struct RealmComponent {
     visible: bool,
     rect: Rect,
     last_mouse_pos: Pos2,
+    card_flights: Vec<CardFlight>,
 }
 
 impl RealmComponent {
@@ -130,28 +164,68 @@ impl RealmComponent {
             visible: true,
             rect,
             last_mouse_pos: pos2(0.0, 0.0),
+            card_flights: Vec::new(),
         }
+    }
+
+    fn start_card_flight(
+        &mut self,
+        card: CardData,
+        image: Option<egui::TextureHandle>,
+        from_rect: Rect,
+        to_rect: Rect,
+        from_rotation: f32,
+        to_rotation: f32,
+        ctx: &Context,
+    ) {
+        if self.card_flights.iter().any(|flight| flight.card_id == card.id) {
+            return;
+        }
+
+        self.card_flights.push(CardFlight {
+            card_id: card.id,
+            card,
+            from: from_rect,
+            to: to_rect,
+            from_rotation,
+            to_rotation,
+            started_at: ctx.input(|i| i.time),
+            image,
+        });
     }
 
     fn compute_rects(&mut self, cards: &[CardData], ctx: &Context) -> anyhow::Result<()> {
         use rand::Rng;
 
         let mut new_cards = Vec::new();
+        let mut pending_flights: Vec<(CardData, Option<egui::TextureHandle>, Rect, Rect, f32, f32)> = Vec::new();
         let mut rng = rand::rngs::SmallRng::seed_from_u64(1);
         for card in cards {
-            let mut existing = self.card_rects.iter_mut().find(|c| c.card.id == card.id);
-            if let Some(existing) = existing.as_mut() {
+            let existing = self.card_rects.iter().find(|c| c.card.id == card.id);
+            if let Some(existing) = existing {
                 if card.zone == existing.card.zone && card.power == existing.card.power {
-                    existing.card.tapped = card.tapped;
-                    existing.card.controller_id = card.controller_id;
-                    existing.card.power = card.power;
-                    existing.card.abilities = card.abilities.clone();
-                    existing.card.damage_taken = card.damage_taken;
-                    // Update texture if not loaded yet
-                    if existing.image.is_none() {
-                        existing.image = TextureCache::get_card_texture_blocking(card, ctx);
+                    let mut new_card = existing.clone();
+                    if existing.card.tapped != card.tapped && card.zone.is_in_play() {
+                        pending_flights.push((
+                            card.clone(),
+                            new_card.image.clone(),
+                            existing.rect,
+                            existing.rect,
+                            card_rotation(&existing.card),
+                            card_rotation(card),
+                        ));
                     }
-                    new_cards.push(existing.clone());
+
+                    new_card.card.tapped = card.tapped;
+                    new_card.card.controller_id = card.controller_id;
+                    new_card.card.power = card.power;
+                    new_card.card.abilities = card.abilities.clone();
+                    new_card.card.damage_taken = card.damage_taken;
+                    // Update texture if not loaded yet
+                    if new_card.image.is_none() {
+                        new_card.image = TextureCache::get_card_texture_blocking(card, ctx);
+                    }
+                    new_cards.push(new_card);
                     continue;
                 }
             }
@@ -159,6 +233,7 @@ impl RealmComponent {
             match &card.zone {
                 Zone::Realm(square) => {
                     if let Some(cell) = self.cell_rects.iter().find(|c| &c.id == square) {
+                        let existing = self.card_rects.iter().find(|c| c.card.id == card.id);
                         let rect = cell.rect;
                         let mut dimensions = spell_dimensions(&rect);
                         if card.card_type == CardType::Site {
@@ -180,13 +255,24 @@ impl RealmComponent {
                             pos_y += jitter_y;
                         }
 
-                        let (hovered, selected) = self
-                            .card_rects
-                            .iter()
-                            .find(|c| c.card.id == card.id)
-                            .map_or((false, false), |c| (c.is_hovered, c.is_selected));
+                        let (hovered, selected) = existing.map_or((false, false), |c| (c.is_hovered, c.is_selected));
+                        let image = existing
+                            .and_then(|c| c.image.clone())
+                            .or_else(|| TextureCache::get_card_texture_blocking(card, ctx));
+                        if let Some(existing) = existing {
+                            if existing.card.zone.is_in_play() {
+                                pending_flights.push((
+                                    card.clone(),
+                                    image.clone(),
+                                    existing.rect,
+                                    Rect::from_min_size(pos2(pos_x, pos_y), dimensions),
+                                    card_rotation(&existing.card),
+                                    card_rotation(card),
+                                ));
+                            }
+                        }
                         new_cards.push(CardRect {
-                            image: TextureCache::get_card_texture_blocking(card, ctx),
+                            image,
                             rect: Rect::from_min_size(pos2(pos_x, pos_y), dimensions),
                             is_hovered: hovered,
                             is_selected: selected,
@@ -196,6 +282,7 @@ impl RealmComponent {
                 }
                 Zone::Intersection(locs) => {
                     if let Some(intersection) = self.intersection_rects.iter().find(|c| &c.locations == locs) {
+                        let existing = self.card_rects.iter().find(|c| c.card.id == card.id);
                         let rect = intersection.rect;
                         let mut dimensions = spell_dimensions(&self.cell_rects[0].rect);
                         if card.card_type == CardType::Site {
@@ -207,13 +294,24 @@ impl RealmComponent {
                         let card_rect =
                             Rect::from_min_size(pos2(rect.min.x + jitter_x, rect.min.y + jitter_y), dimensions);
 
-                        let (hovered, selected) = self
-                            .card_rects
-                            .iter()
-                            .find(|c| c.card.id == card.id)
-                            .map_or((false, false), |c| (c.is_hovered, c.is_selected));
+                        let (hovered, selected) = existing.map_or((false, false), |c| (c.is_hovered, c.is_selected));
+                        let image = existing
+                            .and_then(|c| c.image.clone())
+                            .or_else(|| TextureCache::get_card_texture_blocking(card, ctx));
+                        if let Some(existing) = existing {
+                            if existing.card.zone.is_in_play() {
+                                pending_flights.push((
+                                    card.clone(),
+                                    image.clone(),
+                                    existing.rect,
+                                    card_rect,
+                                    card_rotation(&existing.card),
+                                    card_rotation(card),
+                                ));
+                            }
+                        }
                         new_cards.push(CardRect {
-                            image: TextureCache::get_card_texture_blocking(card, ctx),
+                            image,
                             rect: card_rect,
                             is_hovered: hovered,
                             is_selected: selected,
@@ -226,6 +324,9 @@ impl RealmComponent {
         }
 
         self.card_rects = new_cards;
+        for (card, image, from_rect, to_rect, from_rotation, to_rotation) in pending_flights {
+            self.start_card_flight(card, image, from_rect, to_rect, from_rotation, to_rotation, ctx);
+        }
         Ok(())
     }
 
@@ -720,6 +821,37 @@ impl Component for RealmComponent {
             cell.rect = cell_rect(&self.rect, cell.id, self.mirrored);
         }
 
+        if let Some(card_id) = data.last_clicked_card_id {
+            let click_age = data
+                .last_clicked_card_time
+                .map(|click_time| ctx.input(|i| i.time) - click_time)
+                .unwrap_or(0.0);
+
+            if click_age > 3.0 {
+                data.last_clicked_card_id = None;
+                data.last_clicked_card_time = None;
+            } else if let Some((card, rect, image)) = self
+                .card_rects
+                .iter()
+                .find(|c| c.card.id == card_id && c.card.zone.is_in_play())
+                .map(|card_rect| (card_rect.card.clone(), card_rect.rect, card_rect.image.clone()))
+            {
+                let source_center = data.last_clicked_card_pos.unwrap_or(rect.center());
+                let to_rotation = card_rotation(&card);
+                self.start_card_flight(
+                    card,
+                    image,
+                    Rect::from_center_size(source_center, rect.size()),
+                    rect,
+                    0.0,
+                    to_rotation,
+                    ctx,
+                );
+                data.last_clicked_card_id = None;
+                data.last_clicked_card_time = None;
+            }
+        }
+
         let mut dragging_card: Option<uuid::Uuid> = None;
         for card in &self.card_rects {
             if card.is_hovered && Mouse::dragging(ctx) {
@@ -761,11 +893,20 @@ impl Component for RealmComponent {
         Ok(())
     }
 
-    fn render(&mut self, data: &mut GameData, _ui: &mut Ui, painter: &Painter) -> anyhow::Result<()> {
+    fn render(&mut self, data: &mut GameData, ui: &mut Ui, painter: &Painter) -> anyhow::Result<()> {
+        let now = ui.ctx().input(|i| i.time);
         self.render_grid(data, painter);
 
         for card_rect in &self.card_rects {
             if !card_rect.card.zone.is_in_play() {
+                continue;
+            }
+
+            if self
+                .card_flights
+                .iter()
+                .any(|flight| flight.card_id == card_rect.card.id)
+            {
                 continue;
             }
 
@@ -784,6 +925,42 @@ impl Component for RealmComponent {
                 }
             }
         }
+
+        self.card_flights.retain_mut(|flight| {
+            let elapsed = now - flight.started_at;
+            let progress = (elapsed / CARD_FLIGHT_DURATION).clamp(0.0, 1.0) as f32;
+            let eased = progress * progress * (3.0 - 2.0 * progress);
+            if flight.image.is_none() {
+                flight.image = TextureCache::get_card_texture_blocking(&flight.card, ui.ctx());
+            }
+            let from = flight.from;
+            let to = flight.to;
+            let min = pos2(
+                from.min.x + (to.min.x - from.min.x) * eased,
+                from.min.y + (to.min.y - from.min.y) * eased,
+            );
+            let size = vec2(
+                from.width() + (to.width() - from.width()) * eased,
+                from.height() + (to.height() - from.height()) * eased,
+            );
+            let rotation = flight.from_rotation + (flight.to_rotation - flight.from_rotation) * eased;
+            let rect = Rect::from_min_size(min, size);
+            let card_rect = CardRect {
+                rect,
+                card: flight.card.clone(),
+                image: flight.image.clone(),
+                is_hovered: false,
+                is_selected: false,
+            };
+            render::draw_card_with_rotation(
+                &card_rect,
+                card_rect.card.controller_id == self.player_id,
+                true,
+                painter,
+                rotation,
+            );
+            progress < 1.0
+        });
 
         self.render_card_preview(data, painter)?;
         self.render_paths(data, painter);
