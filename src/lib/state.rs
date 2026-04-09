@@ -2,7 +2,7 @@ use crate::{
     card::{Ability, ArtifactType, Card, CardData, CardType, DodgeRoll, MinionType, Region, SiteType, Zone},
     deck::Deck,
     effect::Effect,
-    game::{pick_zone, yes_or_no, Element, InputStatus, PlayerId, Resources, Thresholds},
+    game::{Element, InputStatus, PlayerId, Resources, Thresholds, pick_zone, yes_or_no},
     networking::message::{ClientMessage, ServerMessage},
     query::{EffectQuery, ZoneQuery},
 };
@@ -34,6 +34,7 @@ pub struct PlayerWithDeck {
 pub struct CardMatcher {
     pub ids: Option<Vec<uuid::Uuid>>,
     pub card_names: Option<Vec<String>>,
+    pub card_name_contains: Option<String>,
     pub controller_id: Option<PlayerId>,
     pub not_in_ids: Option<Vec<uuid::Uuid>>,
     pub abilities: Option<Vec<Ability>>,
@@ -92,6 +93,13 @@ impl CardMatcher {
             })
             .map(|c| c.get_id().clone())
             .collect()
+    }
+
+    pub fn with_card_name_contains(self, name: &str) -> Self {
+        Self {
+            card_name_contains: Some(name.to_string()),
+            ..self
+        }
     }
 
     pub fn with_name(self, name: &str) -> Self {
@@ -305,6 +313,13 @@ impl CardMatcher {
         }
     }
 
+    pub fn with_artifact_type(self, artifact_type: ArtifactType) -> Self {
+        Self {
+            artifact_types: Some(vec![artifact_type]),
+            ..self
+        }
+    }
+
     pub fn with_artifact_types(self, artifact_types: Vec<ArtifactType>) -> Self {
         Self {
             artifact_types: Some(artifact_types),
@@ -323,6 +338,12 @@ impl CardMatcher {
         let card = state.get_card(card_id);
         if let Some(ids) = &self.ids {
             if !ids.contains(card_id) {
+                return false;
+            }
+        }
+
+        if let Some(name) = &self.card_name_contains {
+            if !card.get_name().contains(name) {
                 return false;
             }
         }

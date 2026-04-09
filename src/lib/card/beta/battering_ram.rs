@@ -1,15 +1,37 @@
 use crate::{
     card::{
-        AreaModifiers, Artifact, ArtifactBase, ArtifactType, Card, CardBase, Cost, Costs, Edition, Rarity, Region, Zone,
+        AreaModifiers, Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardType, Cost, Costs, Edition, Rarity,
+        Region, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_card},
     query::CardQuery,
-    state::State,
+    state::{CardMatcher, State},
 };
 
 #[derive(Debug, Clone)]
 struct RamStrike;
+
+impl RamStrike {
+    fn valid_targets(&self, card_id: &uuid::Uuid, state: &State) -> Vec<uuid::Uuid> {
+        let card = state.get_card(card_id);
+        let walls = CardMatcher::new()
+            .with_card_type(CardType::Aura)
+            .with_zone_adjacent_to(card.get_zone())
+            .with_name("Wall ")
+            .resolve_ids(state);
+        let monuments = CardMatcher::new()
+            .with_card_type(CardType::Artifact)
+            .with_zone_adjacent_to(card.get_zone())
+            .with_artifact_type(ArtifactType::Monument)
+            .resolve_ids(state);
+
+        let mut targets = vec![];
+        targets.extend(walls);
+        targets.extend(monuments);
+        targets
+    }
+}
 
 #[async_trait::async_trait]
 impl ActivatedAbility for RamStrike {
@@ -18,19 +40,8 @@ impl ActivatedAbility for RamStrike {
     }
 
     fn can_activate(&self, card_id: &uuid::Uuid, _player_id: &PlayerId, state: &State) -> anyhow::Result<bool> {
-        let card = state.get_card(card_id);
-        Ok(state.cards.iter().any(|c| {
-            c.is_site()
-                && c.get_zone() != card.get_zone()
-                && c.get_zone().is_adjacent(card.get_zone())
-                && c.can_be_targetted_by(state, &card.get_controller_id(state))
-        }))
-    }
-
-    fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
-        Ok(Cost::from_additional(crate::card::AdditionalCost::Tap {
-            card: CardQuery::from_id(card_id.clone()),
-        }))
+        let targets = self.valid_targets(card_id, state);
+        Ok(!targets.is_empty())
     }
 
     async fn on_select(
@@ -39,22 +50,25 @@ impl ActivatedAbility for RamStrike {
         player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
-        let card = state.get_card(card_id);
-        let targets: Vec<uuid::Uuid> = state
-            .cards
-            .iter()
-            .filter(|c| c.is_site())
-            .filter(|c| c.get_zone() != card.get_zone())
-            .filter(|c| c.get_zone().is_adjacent(card.get_zone()))
-            .filter(|c| c.can_be_targetted_by(state, player_id))
-            .map(|c| c.get_id().clone())
-            .collect();
+        let targets = self.valid_targets(card_id, state);
         if targets.is_empty() {
             return Ok(vec![]);
         }
 
-        let picked = pick_card(player_id, &targets, state, "Battering Ram: Pick a site to destroy").await?;
+        let picked = pick_card(
+            player_id,
+            &targets,
+            state,
+            "Battering Ram: Pick a wall or monument to destroy",
+        )
+        .await?;
         Ok(vec![Effect::BuryCard { card_id: picked }])
+    }
+
+    fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
+        Ok(Cost::from_additional(crate::card::AdditionalCost::Tap {
+            card: CardQuery::from_id(card_id.clone()),
+        }))
     }
 }
 
