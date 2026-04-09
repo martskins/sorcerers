@@ -139,6 +139,7 @@ pub enum ServerMessage {
         prompt: String,
         player_id: PlayerId,
         actions: Vec<String>,
+        anchor_on_cursor: bool,
     },
     PickPath {
         prompt: String,

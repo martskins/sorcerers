@@ -65,7 +65,14 @@ impl Card for SkirmishersOfMu {
     async fn on_move(&self, state: &State, path: &[Zone]) -> anyhow::Result<Vec<Effect>> {
         let options = vec![BaseOption::Yes, BaseOption::No];
         let option_labels = options.iter().map(|o| o.to_string()).collect::<Vec<_>>();
-        let picked_option = pick_option(self.get_controller_id(state), &option_labels, state, "Ranged strike?").await?;
+        let picked_option = pick_option(
+            self.get_controller_id(state),
+            &option_labels,
+            state,
+            "Ranged strike?",
+            false,
+        )
+        .await?;
         if options[picked_option] == BaseOption::No {
             return Ok(vec![]);
         }

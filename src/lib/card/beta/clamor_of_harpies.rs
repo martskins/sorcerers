@@ -118,7 +118,14 @@ impl Card for ClamorOfHarpies {
             Box::new(ClamorOfHarpiesAction::DoNotStrike),
         ];
         let prompt = "Clamor of Harpies: Strike selected unit?";
-        let action = pick_action(self.get_controller_id(state), &activated_abilities, state, prompt).await?;
+        let action = pick_action(
+            self.get_controller_id(state),
+            &activated_abilities,
+            state,
+            prompt,
+            false,
+        )
+        .await?;
         let mut effects = vec![Effect::MoveCard {
             player_id: self.get_controller_id(state).clone(),
             card_id,

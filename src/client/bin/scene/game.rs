@@ -36,6 +36,7 @@ pub enum Status {
     SelectingAction {
         actions: Vec<String>,
         prompt: String,
+        anchor_on_cursor: bool,
     },
     SelectingCard {
         cards: Vec<uuid::Uuid>,
@@ -501,8 +502,18 @@ impl Game {
                 }
                 None
             }
-            Status::SelectingAction { prompt, actions } => {
-                let result = popup_action_menu(ctx, self.data.last_clicked_card_pos, &prompt, &actions, painter);
+            Status::SelectingAction {
+                prompt,
+                actions,
+                anchor_on_cursor,
+                ..
+            } => {
+                let pos = if *anchor_on_cursor {
+                    self.data.last_clicked_card_pos
+                } else {
+                    None
+                };
+                let result = popup_action_menu(ctx, pos, &prompt, &actions, painter);
                 if let Some(idx) = result {
                     self.client
                         .send(ClientMessage::PickAction {
@@ -513,7 +524,6 @@ impl Game {
                         .ok();
                     Mouse::set_enabled(false);
                     self.data.status = Status::Idle;
-                    self.data.last_clicked_card_pos = None;
                 }
                 None
             }
@@ -717,10 +727,16 @@ impl Game {
                 }
                 None
             }
-            ServerMessage::PickAction { prompt, actions, .. } => {
+            ServerMessage::PickAction {
+                prompt,
+                actions,
+                anchor_on_cursor,
+                ..
+            } => {
                 self.data.status = Status::SelectingAction {
                     prompt: prompt.to_string(),
                     actions: actions.clone(),
+                    anchor_on_cursor: *anchor_on_cursor,
                 };
                 None
             }

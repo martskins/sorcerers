@@ -80,6 +80,7 @@ impl ActivatedAbility for ShootProjectile {
                 &option_labels,
                 state,
                 format!("Pudge Butcher: Fight {}?", target_name),
+                false,
             )
             .await?;
             if options[picked_option] == BaseOption::Yes {

@@ -613,7 +613,7 @@ impl Costs {
                     .cloned()
                     .collect::<Vec<_>>();
                 let cost_labels = affordable_costs.iter().map(|c| c.get_label()).collect::<Vec<_>>();
-                let picked_cost_idx = pick_option(player_id, &cost_labels, state, "Pick a cost to pay").await?;
+                let picked_cost_idx = pick_option(player_id, &cost_labels, state, "Pick a cost to pay", false).await?;
                 Box::pin(affordable_costs[picked_cost_idx].pay(state, player_id)).await
             }
         }

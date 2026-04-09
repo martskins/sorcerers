@@ -103,6 +103,7 @@ impl Card for ChainLightning {
                 &option_labels,
                 state,
                 "Chain Lightning: Pay 2 to deal an additional 2 damage to another unit?",
+                false,
             )
             .await?;
             if options[picked_option] == BaseOption::No {

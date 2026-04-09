@@ -75,6 +75,7 @@ impl Card for SimpleVillage {
             &option_labels,
             state,
             "Humble Village: Pay 1 to summon a foot soldier?",
+            false,
         )
         .await?;
         if options[picked_option] == BaseOption::No {

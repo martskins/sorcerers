@@ -284,6 +284,7 @@ pub async fn pick_action<'a>(
     actions: &'a [Box<dyn ActivatedAbility>],
     state: &State,
     prompt: &str,
+    anchor_on_cursor: bool,
 ) -> anyhow::Result<&'a Box<dyn ActivatedAbility>> {
     state
         .get_sender()
@@ -291,6 +292,7 @@ pub async fn pick_action<'a>(
             prompt: prompt.to_string(),
             player_id: player_id.as_ref().clone(),
             actions: actions.iter().map(|c| c.get_name().to_string()).collect(),
+            anchor_on_cursor: anchor_on_cursor,
         })
         .await?;
 
@@ -339,7 +341,7 @@ pub async fn yes_or_no(
 
     let options = vec![BaseOption::Yes, BaseOption::No];
     let option_labels = options.iter().map(|o| o.to_string()).collect::<Vec<String>>();
-    let choice = pick_option(player_id, &option_labels, state, prompt).await?;
+    let choice = pick_option(player_id, &option_labels, state, prompt, false).await?;
 
     resume(&opponent_id, state).await?;
     Ok(options[choice] == BaseOption::Yes)
@@ -379,6 +381,7 @@ pub async fn pick_option(
     options: &[String],
     state: &State,
     prompt: impl AsRef<str>,
+    anchor_on_cursor: bool,
 ) -> anyhow::Result<usize> {
     state
         .get_sender()
@@ -386,6 +389,7 @@ pub async fn pick_option(
             prompt: prompt.as_ref().to_string(),
             player_id: player_id.as_ref().clone(),
             actions: options.to_vec(),
+            anchor_on_cursor,
         })
         .await?;
 
@@ -586,6 +590,7 @@ pub async fn pick_direction(
             prompt: prompt.to_string(),
             player_id: player_id.as_ref().clone(),
             actions: directions.iter().map(|c| c.get_name()).collect(),
+            anchor_on_cursor: false,
         })
         .await?;
 
@@ -1226,6 +1231,7 @@ impl ActivatedAbility for UnitAction {
                         &options,
                         state,
                         format!("Intercept {} with...", card.get_name()),
+                        false,
                     )
                     .await?;
                     if action_idx < interceptors.len() {
@@ -1481,7 +1487,7 @@ impl Game {
 
                         actions.push(Box::new(CancelAction));
                         let prompt = format!("{}: Pick action", card.get_name());
-                        let action = pick_action(player_id, &actions, &self.state, &prompt).await?;
+                        let action = pick_action(player_id, &actions, &self.state, &prompt, true).await?;
                         let cost = action.get_cost(card_id, &self.state)?.clone();
                         cost.pay(&mut self.state, player_id).await?;
                         let effects = action.on_select(card.get_id(), player_id, &self.state).await?;

@@ -106,8 +106,10 @@ impl Card for AssortedAnimals {
                 break;
             }
 
-            if !yes_or_no(&controller_id, state, "Assorted Animals: Search for another Beast?").await? {
-                break;
+            if !chosen.is_empty() {
+                if !yes_or_no(&controller_id, state, "Assorted Animals: Search for another Beast?").await? {
+                    break;
+                }
             }
 
             let picked_id = pick_card_with_options(

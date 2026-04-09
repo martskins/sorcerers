@@ -788,7 +788,7 @@ impl Effect {
                 for _ in 0..*count {
                     let options: Vec<BaseAction> = vec![BaseAction::DrawSite, BaseAction::DrawSpell];
                     let option_labels = options.iter().map(|a| a.get_name().to_string()).collect::<Vec<_>>();
-                    let picked_option_idx = pick_option(player_id, &option_labels, state, "Draw a card").await?;
+                    let picked_option_idx = pick_option(player_id, &option_labels, state, "Draw a card", false).await?;
                     state.effects.extend(
                         options[picked_option_idx]
                             .on_select(player_id, state)
@@ -932,7 +932,7 @@ impl Effect {
                 let options: Vec<BaseAction> = vec![BaseAction::DrawSite, BaseAction::DrawSpell];
                 let option_labels: Vec<String> = options.iter().map(|a| a.get_name().to_string()).collect();
                 let prompt = "Start Turn: Pick card to draw";
-                let picked_option_idx = pick_option(player_id, &option_labels, state, prompt).await?;
+                let picked_option_idx = pick_option(player_id, &option_labels, state, prompt, false).await?;
                 let effects = options[picked_option_idx].on_select(player_id, state).await?;
                 state.effects.extend(effects.into_iter().map(|e| e.into()));
 

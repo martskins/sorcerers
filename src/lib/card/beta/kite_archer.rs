@@ -66,7 +66,8 @@ impl Card for KiteArcher {
     async fn after_ranged_attack(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let options = vec![BaseOption::Yes, BaseOption::No];
         let option_labels = options.iter().map(|o| o.to_string()).collect::<Vec<_>>();
-        let picked_action = pick_option(self.get_controller_id(state), &option_labels, state, "Take Step").await?;
+        let picked_action =
+            pick_option(self.get_controller_id(state), &option_labels, state, "Take Step", false).await?;
         if options[picked_action] == BaseOption::No {
             return Ok(vec![]);
         }
