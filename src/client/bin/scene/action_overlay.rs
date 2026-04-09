@@ -1,6 +1,6 @@
 use crate::{
     components::{Component, ComponentCommand, ComponentType},
-    config::{card_height, screen_rect, CARD_ASPECT_RATIO},
+    config::{CARD_ASPECT_RATIO, card_height, screen_rect},
     render::{self, CardRect},
     scene::game::GameData,
     texture_cache::TextureCache,
@@ -65,14 +65,12 @@ impl ActionOverlay {
                 *x += size.x + card_spacing;
                 Some((rect, *card))
             })
-            .map(|(rect, card)| {
-                CardRect {
-                    rect,
-                    card: (*card).clone(),
-                    image: None,
-                    is_hovered: false,
-                    is_selected: false,
-                }
+            .map(|(rect, card)| CardRect {
+                rect,
+                card: (*card).clone(),
+                image: None,
+                is_hovered: false,
+                is_selected: false,
             })
             .collect();
 

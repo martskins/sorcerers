@@ -36,15 +36,15 @@ pub fn event_log_rect() -> Rect {
 
 pub fn hand_rect() -> anyhow::Result<Rect> {
     let rr = realm_rect()?;
-    Ok(Rect::from_min_size(pos2(rr.min.x, rr.max.y), Vec2::new(rr.width(), hand_space_height()?)))
+    Ok(Rect::from_min_size(
+        pos2(rr.min.x, rr.max.y),
+        Vec2::new(rr.width(), hand_space_height()?),
+    ))
 }
 
 pub fn realm_rect() -> anyhow::Result<Rect> {
     let sr = screen_rect()?;
     let x = (sr.width() * 0.2).clamp(200.0, 250.0);
     let hsh = hand_space_height()?;
-    Ok(Rect::from_min_max(
-        pos2(x, 0.0),
-        pos2(sr.width(), sr.height() - hsh),
-    ))
+    Ok(Rect::from_min_max(pos2(x, 0.0), pos2(sr.width(), sr.height() - hsh)))
 }

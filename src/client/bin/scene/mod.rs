@@ -1,5 +1,5 @@
-use sorcerers::networking::message::ServerMessage;
 use egui::{Context, Ui};
+use sorcerers::networking::message::ServerMessage;
 
 pub mod action_overlay;
 pub mod combat_resolution_overlay;

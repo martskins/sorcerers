@@ -1,5 +1,5 @@
-use egui::Rect;
 use crate::scene::game::GameData;
+use egui::Rect;
 
 pub mod event_log;
 pub mod player_hand;
@@ -33,7 +33,12 @@ pub enum ComponentCommand {
 pub trait Component: std::fmt::Debug {
     fn update(&mut self, data: &mut GameData, ctx: &egui::Context) -> anyhow::Result<()>;
     fn render(&mut self, data: &mut GameData, ui: &mut egui::Ui, painter: &egui::Painter) -> anyhow::Result<()>;
-    fn process_input(&mut self, in_turn: bool, data: &mut GameData, ctx: &egui::Context) -> anyhow::Result<Option<ComponentCommand>>;
+    fn process_input(
+        &mut self,
+        in_turn: bool,
+        data: &mut GameData,
+        ctx: &egui::Context,
+    ) -> anyhow::Result<Option<ComponentCommand>>;
     fn process_command(&mut self, command: &ComponentCommand, data: &mut GameData) -> anyhow::Result<()>;
     fn toggle_visibility(&mut self);
     fn is_visible(&self) -> bool;
