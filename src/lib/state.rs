@@ -528,6 +528,14 @@ pub enum ContinuousEffect {
         mana_diff: i8,
         affected_cards: CardMatcher,
     },
+    SetInterceptable {
+        interceptable: bool,
+        affected_cards: CardMatcher,
+    },
+    SetAttackable {
+        attackable: bool,
+        affected_cards: CardMatcher,
+    },
 }
 
 #[derive(Debug)]

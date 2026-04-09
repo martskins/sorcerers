@@ -1311,6 +1311,22 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             .filter(|c| c.is_unit() || c.is_site())
             .filter(|c| c.can_be_targetted_by(state, &self.get_controller_id(state)))
             .filter(|c| {
+                if c.has_ability(state, &Ability::Unattackable) {
+                    return false;
+                }
+
+                let mut can_be_attacked = false;
+                state.continuous_effects.iter().for_each(|ce| match ce {
+                    ContinuousEffect::SetAttackable {
+                        attackable,
+                        affected_cards,
+                    } if affected_cards.resolve_ids(state).contains(c.get_id()) => can_be_attacked = *attackable,
+                    _ => {}
+                });
+
+                can_be_attacked
+            })
+            .filter(|c| {
                 let same_region = c.get_base().region == self.get_base().region;
                 let ranged_on_airborne =
                     ranged && self.get_base().region == Region::Surface && c.has_ability(state, &Ability::Airborne);
@@ -2031,6 +2047,8 @@ pub enum Ability {
     Waterbound,
     Lifesteal,
     FirstStrike,
+    Unattackable,
+    Uninterceptable,
 }
 
 #[derive(Debug, Default, Clone)]

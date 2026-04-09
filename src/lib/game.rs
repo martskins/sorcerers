@@ -7,7 +7,7 @@ use crate::{
         message::{ClientMessage, ServerMessage},
     },
     query::{QueryCache, ZoneQuery},
-    state::{Phase, PlayerWithDeck, State},
+    state::{ContinuousEffect, Phase, PlayerWithDeck, State},
 };
 use async_channel::{Receiver, Sender};
 use chrono::Utc;
@@ -1190,6 +1190,17 @@ impl ActivatedAbility for UnitAction {
                     paths.first().ok_or(anyhow::anyhow!("no paths found"))?.to_vec()
                 };
 
+                let mut can_be_intercepted = !card.has_ability(state, &Ability::Uninterceptable);
+                if can_be_intercepted {
+                    state.continuous_effects.iter().for_each(|ce| match ce {
+                        ContinuousEffect::SetInterceptable {
+                            interceptable,
+                            affected_cards,
+                        } if affected_cards.resolve_ids(state).contains(card_id) => can_be_intercepted = *interceptable,
+                        _ => {}
+                    });
+                }
+
                 let opponent = state
                     .players
                     .iter()
@@ -1197,7 +1208,7 @@ impl ActivatedAbility for UnitAction {
                     .ok_or(anyhow::anyhow!("opponent not found"))?;
                 let interceptors = state.get_interceptors_for_move(&path, &opponent.id);
                 let mut interceptor: Option<(uuid::Uuid, Zone)> = None;
-                if !interceptors.is_empty() {
+                if can_be_intercepted && !interceptors.is_empty() {
                     let mut options = interceptors
                         .iter()
                         .map(|(id, zone)| {
