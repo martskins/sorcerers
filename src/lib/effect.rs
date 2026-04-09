@@ -1,6 +1,6 @@
 use crate::{
     card::{Ability, Battlemage, Card, CardType, FootSoldier, Frog, Region, Rubble, UnitBase, Zone},
-    game::{BaseAction, Direction, PlayerAction, PlayerId, SoundEffect, pick_card, pick_option},
+    game::{BaseAction, Direction, PlayerAction, PlayerId, SoundEffect, pick_card, pick_option, yes_or_no},
     networking::message::ServerMessage,
     query::{CardQuery, EffectQuery, QueryCache, ZoneQuery},
     state::{CardMatcher, DeferredEffect, Phase, State, TemporaryEffect},
@@ -134,6 +134,9 @@ pub enum Effect {
     TapCard {
         card_id: uuid::Uuid,
     },
+    UntapCard {
+        card_id: uuid::Uuid,
+    },
     EndTurn {
         player_id: uuid::Uuid,
     },
@@ -265,6 +268,7 @@ impl Effect {
             Effect::PlayCard { card_id, .. } => Some(card_id),
             Effect::SummonCard { card_id, .. } => Some(card_id),
             Effect::TapCard { card_id } => Some(card_id),
+            Effect::UntapCard { card_id } => Some(card_id),
             Effect::EndTurn { player_id } => Some(player_id),
             Effect::StartTurn { player_id } => Some(player_id),
             Effect::ConsumeMana { player_id, .. } => Some(player_id),
@@ -400,6 +404,7 @@ impl Effect {
             }
             Effect::SummonCard { .. } => None,
             Effect::TapCard { .. } => None,
+            Effect::UntapCard { .. } => None,
             Effect::EndTurn { player_id, .. } => Some(format!("{} passes the turn", player_name(player_id, state))),
             Effect::StartTurn { .. } => None,
             Effect::ConsumeMana { .. } => None,
@@ -963,6 +968,14 @@ impl Effect {
                     .expect("to find card");
                 card.get_base_mut().tapped = true;
             }
+            Effect::UntapCard { card_id, .. } => {
+                let card = state
+                    .cards
+                    .iter_mut()
+                    .find(|c| c.get_id() == card_id)
+                    .expect("to find card");
+                card.get_base_mut().tapped = false;
+            }
             Effect::StartTurn { player_id, .. } => {
                 let previous_player = state.current_player.clone();
                 state
@@ -1245,25 +1258,6 @@ impl Effect {
                     .collect();
                 for borne_card_id in borne_cards {
                     state.get_card_mut(&borne_card_id).set_bearer_id(None);
-                }
-
-                if let Some(killer_id) = state.effect_log.iter().rev().find_map(|effect| match effect.as_ref() {
-                    Effect::TakeDamage {
-                        card_id: damaged_id,
-                        from,
-                        ..
-                    } if damaged_id == card_id => Some(from.clone()),
-                    _ => None,
-                }) {
-                    if state.get_card(&killer_id).get_name() == Battlemage::NAME {
-                        state.effects.push_back(
-                            Effect::DrawSpell {
-                                player_id: state.get_card(&killer_id).get_controller_id(state),
-                                count: 1,
-                            }
-                            .into(),
-                        );
-                    }
                 }
             }
             Effect::AddCounter { card_id, counter, .. } => {
