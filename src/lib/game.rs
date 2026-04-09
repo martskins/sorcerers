@@ -1015,6 +1015,8 @@ pub enum UnitAction {
         artifact_id: uuid::Uuid,
         artifact_name: String,
     },
+    PickUpMinion,
+    DropMinion,
 }
 
 #[async_trait::async_trait]
@@ -1029,6 +1031,8 @@ impl ActivatedAbility for UnitAction {
             UnitAction::Surface => "Surface".to_string(),
             UnitAction::PickUpArtifact { artifact_name, .. } => format!("Pick Up {}", artifact_name),
             UnitAction::DropArtifact { artifact_name, .. } => format!("Drop {}", artifact_name),
+            UnitAction::PickUpMinion => "Pick Up Minion".to_string(),
+            UnitAction::DropMinion => "Drop Minion".to_string(),
         }
     }
 
@@ -1303,6 +1307,52 @@ impl ActivatedAbility for UnitAction {
                 card_id: artifact_id.clone(),
                 bearer_id: None,
             }]),
+            UnitAction::PickUpMinion => {
+                let card = state.get_card(card_id);
+                let minions = card
+                    .get_zone()
+                    .get_minions(state, Some(&card.get_controller_id(state)))
+                    .into_iter()
+                    .filter(|minion| minion.get_id() != card.get_id())
+                    .filter(|minion| minion.get_bearer_id().unwrap_or_default().is_none())
+                    .collect::<Vec<_>>();
+                let picked = pick_cards(
+                    player_id,
+                    &minions.iter().map(|c| c.get_id().clone()).collect::<Vec<_>>(),
+                    state,
+                    "Pick minions to carry",
+                )
+                .await?;
+                Ok(picked
+                    .into_iter()
+                    .map(|minion_id| Effect::SetBearer {
+                        card_id: minion_id,
+                        bearer_id: Some(card_id.clone()),
+                    })
+                    .collect())
+            }
+            UnitAction::DropMinion => {
+                let minions = state
+                    .cards
+                    .iter()
+                    .filter(|minion| minion.is_minion())
+                    .filter(|minion| minion.get_bearer_id().unwrap_or_default() == Some(card_id.clone()))
+                    .collect::<Vec<_>>();
+                let picked = pick_cards(
+                    player_id,
+                    &minions.iter().map(|c| c.get_id().clone()).collect::<Vec<_>>(),
+                    state,
+                    "Drop carried minions",
+                )
+                .await?;
+                Ok(picked
+                    .into_iter()
+                    .map(|minion_id| Effect::SetBearer {
+                        card_id: minion_id,
+                        bearer_id: None,
+                    })
+                    .collect())
+            }
         }
     }
 }
@@ -1587,12 +1637,10 @@ impl Game {
             .cards
             .iter()
             .filter(|c| c.is_artifact())
-            .filter_map(
-                |c| match c.get_artifact_base().expect("artifact to have a base").bearer {
-                    Some(attached_to) => Some((c.get_id().clone(), attached_to.clone())),
-                    None => None,
-                },
-            )
+            .filter_map(|c| match c.get_base().bearer {
+                Some(attached_to) => Some((c.get_id().clone(), attached_to.clone())),
+                None => None,
+            })
             .collect();
         for (artifact_id, unit_id) in attached_artifacts {
             let unit = self.state.get_card(&unit_id);

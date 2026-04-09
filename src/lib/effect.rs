@@ -451,7 +451,16 @@ impl Effect {
             Effect::DealDamageAllUnitsInZone { .. } => None,
             Effect::TeleportUnitToZone { .. } => None,
             Effect::RearrangeDeck { .. } => None,
-            Effect::SetBearer { .. } => None,
+            Effect::SetBearer { card_id, bearer_id } => {
+                let card = state.get_card(card_id);
+                match bearer_id {
+                    Some(carrier_id) => {
+                        let carrier = state.get_card(carrier_id);
+                        Some(format!("{} is now carried by {}", card.get_name(), carrier.get_name()))
+                    }
+                    None => Some(format!("{} is no longer carried", card.get_name())),
+                }
+            }
             Effect::ShuffleDeck { player_id } => Some(format!("{} shuffles their deck", player_name(player_id, state))),
         };
 
@@ -699,8 +708,37 @@ impl Effect {
             }
             Effect::TeleportCard { card_id, to, .. } => {
                 let snapshot = state.snapshot();
-                let card = state.get_card_mut(card_id);
-                card.set_zone(to.clone());
+                let bearer_id = {
+                    let card = state.get_card_mut(card_id);
+                    card.set_zone(to.clone());
+                    card.get_bearer_id()?
+                };
+                if let Some(bearer_id) = bearer_id {
+                    let bearer = state.get_card(&bearer_id);
+                    let card = state.get_card(card_id);
+                    if bearer.get_zone() != card.get_zone() || bearer.get_region(state) != card.get_region(state) {
+                        state.get_card_mut(card_id).set_bearer_id(None);
+                    }
+                }
+                let carried_cards: Vec<uuid::Uuid> = state
+                    .cards
+                    .iter()
+                    .filter(|c| c.get_zone().is_in_play())
+                    .filter_map(|c| {
+                        c.get_bearer_id()
+                            .ok()
+                            .flatten()
+                            .filter(|bearer_id| bearer_id == card_id)
+                            .map(|_| c.get_id().clone())
+                    })
+                    .collect();
+                let carried_region = state.get_card(card_id).get_region(state).clone();
+                for carried_card_id in carried_cards {
+                    let carried = state.get_card_mut(&carried_card_id);
+                    carried.set_zone(to.clone());
+                    carried.get_base_mut().region = carried_region.clone();
+                }
+                let card = state.get_card(card_id);
                 let effects = card.on_visit_zone(&snapshot, to).await?;
                 state.effects.extend(effects.into_iter().map(|e| e.into()));
             }
@@ -729,10 +767,22 @@ impl Effect {
                             }
                             .resolve(player_id, state)
                             .await?;
-                            let card = state.get_card_mut(card_id);
-                            card.set_zone(zone.clone());
-                            if *tap {
-                                card.get_base_mut().tapped = true;
+                            let bearer_id = {
+                                let card = state.get_card_mut(card_id);
+                                card.set_zone(zone.clone());
+                                if *tap {
+                                    card.get_base_mut().tapped = true;
+                                }
+                                card.get_bearer_id()?
+                            };
+                            if let Some(bearer_id) = bearer_id {
+                                let bearer = state.get_card(&bearer_id);
+                                let card = state.get_card(card_id);
+                                if bearer.get_zone() != card.get_zone()
+                                    || bearer.get_region(state) != card.get_region(state)
+                                {
+                                    state.get_card_mut(card_id).set_bearer_id(None);
+                                }
                             }
 
                             let card = state.get_card(card_id);
@@ -748,10 +798,22 @@ impl Effect {
                     None => {
                         let snapshot = state.snapshot();
                         let zone = to.resolve(player_id, state).await?;
-                        let card = state.get_card_mut(card_id);
-                        card.set_zone(zone.clone());
-                        if *tap {
-                            card.get_base_mut().tapped = true;
+                        let bearer_id = {
+                            let card = state.get_card_mut(card_id);
+                            card.set_zone(zone.clone());
+                            if *tap {
+                                card.get_base_mut().tapped = true;
+                            }
+                            card.get_bearer_id()?
+                        };
+                        if let Some(bearer_id) = bearer_id {
+                            let bearer = state.get_card(&bearer_id);
+                            let card = state.get_card(card_id);
+                            if bearer.get_zone() != card.get_zone()
+                                || bearer.get_region(state) != card.get_region(state)
+                            {
+                                state.get_card_mut(card_id).set_bearer_id(None);
+                            }
                         }
 
                         let card = state.get_card(card_id);
@@ -1139,14 +1201,29 @@ impl Effect {
             }
             Effect::BanishCard { card_id, .. } => {
                 let card = state.get_card_mut(card_id);
+                card.set_bearer_id(None);
                 card.set_zone(Zone::Banish);
+
+                let borne_cards: Vec<uuid::Uuid> = state
+                    .cards
+                    .iter()
+                    .filter(|c| c.get_zone().is_in_play())
+                    .filter_map(|c| {
+                        c.get_bearer_id()
+                            .ok()
+                            .flatten()
+                            .filter(|bearer_id| bearer_id == card_id)
+                            .map(|_| c.get_id().clone())
+                    })
+                    .collect();
+                for borne_card_id in borne_cards {
+                    state.get_card_mut(&borne_card_id).set_bearer_id(None);
+                }
             }
             Effect::BuryCard { card_id, .. } => {
                 let card = state.get_card_mut(card_id);
                 let original_zone = card.get_zone().clone();
-                if card.is_artifact() {
-                    card.get_artifact_base_mut().unwrap().bearer = None;
-                }
+                card.set_bearer_id(None);
                 card.set_zone(Zone::Cemetery);
 
                 let snapshot = state.snapshot();
@@ -1154,21 +1231,20 @@ impl Effect {
                 let effects = card.deathrite(&snapshot, &original_zone);
                 state.effects.extend(effects.into_iter().map(|e| e.into()));
 
-                let borne_artifacts: Vec<uuid::Uuid> = state
+                let borne_cards: Vec<uuid::Uuid> = state
                     .cards
                     .iter()
-                    .filter(|c| c.is_artifact())
-                    .filter(|c| match c.get_artifact() {
-                        Some(artifact) => artifact.get_bearer().unwrap_or_default() == Some(card_id.clone()),
-                        None => false,
+                    .filter(|c| c.get_zone().is_in_play())
+                    .filter_map(|c| {
+                        c.get_bearer_id()
+                            .ok()
+                            .flatten()
+                            .filter(|bearer_id| bearer_id == card_id)
+                            .map(|_| c.get_id().clone())
                     })
-                    .map(|c| c.get_id().clone())
                     .collect();
-                for artifact_id in borne_artifacts {
-                    let artifact = state.get_card_mut(&artifact_id);
-                    if let Some(base) = artifact.get_artifact_base_mut() {
-                        base.bearer = None;
-                    }
+                for borne_card_id in borne_cards {
+                    state.get_card_mut(&borne_card_id).set_bearer_id(None);
                 }
 
                 if let Some(killer_id) = state.effect_log.iter().rev().find_map(|effect| match effect.as_ref() {
@@ -1317,10 +1393,8 @@ impl Effect {
                     .extend(change_region_effects.into_iter().map(|e| e.into()));
             }
             Effect::SetBearer { card_id, bearer_id } => {
-                let artifact = state.get_card_mut(card_id);
-                if let Some(artifact_base) = artifact.get_artifact_base_mut() {
-                    artifact_base.bearer = bearer_id.clone();
-                }
+                let target = state.get_card_mut(card_id);
+                target.set_bearer_id(bearer_id.clone());
             }
             Effect::ShuffleDeck { player_id } => {
                 let deck = state

@@ -848,6 +848,18 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         controller
     }
 
+    fn get_bearer_id(&self) -> anyhow::Result<Option<uuid::Uuid>> {
+        if let Some(artifact) = self.get_artifact() {
+            return artifact.get_bearer();
+        }
+
+        Ok(self.get_base().bearer.clone())
+    }
+
+    fn set_bearer_id(&mut self, bearer_id: Option<uuid::Uuid>) {
+        self.get_base_mut().bearer = bearer_id;
+    }
+
     async fn after_ranged_attack(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![])
     }
@@ -1373,6 +1385,20 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     }
                 }
 
+                if let Some(bearer_id) = self.get_bearer_id().ok().flatten() {
+                    let bearer = state.get_card(&bearer_id);
+                    for ability in [
+                        Ability::Airborne,
+                        Ability::Burrowing,
+                        Ability::Submerge,
+                        Ability::Voidwalk,
+                    ] {
+                        if bearer.has_ability(state, &ability) {
+                            modifiers.push(ability);
+                        }
+                    }
+                }
+
                 for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
                     if card.is_flooded_site(state) {
                         continue;
@@ -1402,14 +1428,9 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     fn has_attachments(&self, state: &State) -> anyhow::Result<bool> {
-        for card in state.cards.iter().filter(|c| c.get_card_type() == CardType::Artifact) {
-            let artifact = card
-                .get_artifact()
-                .ok_or(anyhow::anyhow!("artifact card does not implement artifact"))?;
-            if let Some(bearer) = artifact.get_bearer()? {
-                if &bearer == self.get_id() {
-                    return Ok(true);
-                }
+        for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
+            if card.get_bearer_id()? == Some(self.get_id().clone()) {
+                return Ok(true);
             }
         }
 
@@ -2021,6 +2042,7 @@ pub struct UnitBase {
     pub power_counters: Vec<Counter>,
     pub modifier_counters: Vec<AbilityCounter>,
     pub types: Vec<MinionType>,
+    pub carried_by: Option<uuid::Uuid>,
 }
 
 #[derive(Debug, Default, PartialEq, Serialize, Deserialize, Clone)]
@@ -2055,7 +2077,6 @@ pub enum ArtifactType {
 
 #[derive(Debug, Clone)]
 pub struct ArtifactBase {
-    pub bearer: Option<uuid::Uuid>,
     pub needs_bearer: bool,
     pub types: Vec<ArtifactType>,
 }
@@ -2082,11 +2103,7 @@ pub trait Artifact: Card {
     }
 
     fn get_bearer(&self) -> anyhow::Result<Option<uuid::Uuid>> {
-        Ok(self
-            .get_artifact_base()
-            .ok_or(anyhow::anyhow!("artifact card has no base"))?
-            .bearer
-            .clone())
+        Ok(self.get_base().bearer.clone())
     }
 }
 
@@ -2099,6 +2116,10 @@ pub struct CardBase {
     pub zone: Zone,
     pub costs: Costs,
     pub region: Region,
+    // In the case of artifacts, bearer is the id of the card that has the artifact equipped. This
+    // field can also be used for units to track when another unit is carrying them (e.g. a unit
+    // being carried by Beast of Burden).
+    pub bearer: Option<uuid::Uuid>,
     pub rarity: Rarity,
     pub edition: Edition,
     pub is_token: bool,

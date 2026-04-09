@@ -39,10 +39,7 @@ impl ActivatedAbility for ShootPayload {
     }
 
     fn get_cost(&self, card_id: &uuid::Uuid, state: &State) -> anyhow::Result<Cost> {
-        let bearer_id = state
-            .get_card(card_id)
-            .get_artifact_base()
-            .and_then(|ab| ab.bearer.clone());
+        let bearer_id = state.get_card(card_id).get_base().bearer;
         match bearer_id {
             Some(bearer_id) => {
                 let bearer = state.get_card(&bearer_id);
@@ -90,7 +87,6 @@ impl PayloadTrebuchet {
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
             artifact_base: ArtifactBase {
-                bearer: None,
                 needs_bearer: true,
                 types: vec![ArtifactType::Weapon],
             },

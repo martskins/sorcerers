@@ -2,7 +2,7 @@ use crate::{
     card::{Ability, ArtifactType, Card, CardData, CardType, DodgeRoll, MinionType, Region, SiteType, Zone},
     deck::Deck,
     effect::Effect,
-    game::{Element, InputStatus, PlayerId, Resources, Thresholds, pick_zone, yes_or_no},
+    game::{pick_zone, yes_or_no, Element, InputStatus, PlayerId, Resources, Thresholds},
     networking::message::{ClientMessage, ServerMessage},
     query::{EffectQuery, ZoneQuery},
 };
@@ -824,9 +824,7 @@ impl State {
                 abilities: c.get_abilities(&self).unwrap_or_default(),
                 region: c.get_region(&self).clone(),
                 damage_taken: c.get_damage_taken().unwrap_or(0),
-                bearer: c
-                    .get_artifact()
-                    .and_then(|c| c.get_bearer().unwrap_or_default().clone()),
+                bearer: c.get_bearer_id().unwrap_or_default(),
                 rarity: c.get_base().rarity.clone(),
                 power: c.get_power(&self).unwrap_or_default().unwrap_or_default(),
                 has_attachments: c.has_attachments(self).unwrap_or_default(),

@@ -86,12 +86,7 @@ impl Card for Disintegrate {
             .cards
             .iter()
             .filter(|c| c.is_artifact())
-            .filter(|c| {
-                c.get_artifact_base()
-                    .and_then(|ab| ab.bearer.as_ref())
-                    .map(|bearer| bearer == &target_id)
-                    .unwrap_or(false)
-            })
+            .filter(|c| c.get_base().bearer == Some(target_id))
             .map(|c| c.get_id().clone())
             .collect();
 

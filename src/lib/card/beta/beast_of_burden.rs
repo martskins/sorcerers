@@ -1,7 +1,7 @@
 use crate::{
-    card::{Ability, AreaModifiers, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
-    game::PlayerId,
+    game::{ActivatedAbility, PlayerId, UnitAction},
     state::State,
 };
 
@@ -61,6 +61,37 @@ impl Card for BeastOfBurden {
         Some(&mut self.unit_base)
     }
 
+    fn get_additional_activated_abilities(&self, state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+        let controller_id = self.get_controller_id(state);
+        let can_pick_up = state
+            .cards
+            .iter()
+            .filter(|card| card.is_minion())
+            .filter(|card| card.get_controller_id(state) == controller_id)
+            .filter(|card| card.get_zone() == self.get_zone())
+            .filter(|card| card.get_id() != self.get_id())
+            .filter(|card| card.get_bearer_id().unwrap_or_default().is_none())
+            .next()
+            .is_some();
+
+        let can_drop = state
+            .cards
+            .iter()
+            .filter(|card| card.is_minion())
+            .filter(|card| card.get_bearer_id().unwrap_or_default() == Some(self.get_id().clone()))
+            .next()
+            .is_some();
+
+        let mut abilities = vec![];
+        if can_pick_up {
+            abilities.push(Box::new(UnitAction::PickUpMinion) as Box<dyn ActivatedAbility>);
+        }
+        if can_drop {
+            abilities.push(Box::new(UnitAction::DropMinion) as Box<dyn ActivatedAbility>);
+        }
+        Ok(abilities)
+    }
+
     async fn on_move(&self, state: &State, path: &[Zone]) -> anyhow::Result<Vec<Effect>> {
         if path.is_empty() {
             return Ok(vec![]);
@@ -85,6 +116,7 @@ impl Card for BeastOfBurden {
             .filter(|card| card.is_minion())
             .filter(|card| card.get_controller_id(state) == controller_id)
             .filter(|card| card.get_zone() == &from_zone)
+            .filter(|card| card.get_bearer_id().unwrap_or_default() == Some(self.get_id().clone()))
             .filter(|card| card.get_id() != self.get_id())
             .map(|card| Effect::MoveCard {
                 player_id: controller_id.clone(),

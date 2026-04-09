@@ -32,6 +32,7 @@ impl ActivatedAbility for TransformIntoAMonster {
                     power_counters: vec![],
                     modifier_counters: vec![],
                     types: vec![MinionType::Monster],
+                    ..Default::default()
                 }),
             },
             Effect::SummonToken {

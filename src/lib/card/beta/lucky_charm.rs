@@ -19,7 +19,6 @@ impl LuckyCharm {
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
             artifact_base: ArtifactBase {
-                bearer: None,
                 needs_bearer: true,
                 types: vec![ArtifactType::Relic],
             },
