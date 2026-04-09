@@ -291,6 +291,7 @@ pub fn popup_action_menu(
     const BG: Color32 = Color32::from_rgb(14, 16, 28);
     const BG_ROW_HOVER: Color32 = Color32::from_rgb(35, 55, 100);
     const SEP: Color32 = Color32::from_rgb(40, 44, 68);
+    const PADDING_X: f32 = 20.0;
 
     let total_h = HEADER_H + options.len() as f32 * ROW_H + 2.0;
     let screen = screen_rect().unwrap_or(Rect::from_min_size(pos2(0.0, 0.0), vec2(1280.0, 720.0)));
@@ -307,34 +308,34 @@ pub fn popup_action_menu(
     };
 
     // ── Determine position ────────────────────────────────────────
-    let header_w = painter
-        .text(
-            pos2(0.0, 0.0),
-            egui::Align2::LEFT_TOP,
-            &prompt,
+    let title = painter.fonts(|f| {
+        f.layout_no_wrap(
+            prompt.to_string(),
             egui::FontId::proportional(14.0),
-            Color32::from_rgb(255, 255, 255),
+            Color32::from_rgb(180, 200, 240),
         )
-        .width();
-    let mut total_w = MENU_W;
-    if header_w > total_w {
-        total_w = header_w + 40.0;
-    }
-    for option in options {
-        let option_w = painter
-            .text(
-                pos2(0.0, 0.0),
-                egui::Align2::LEFT_TOP,
-                &option,
-                egui::FontId::proportional(18.0),
-                Color32::from_rgb(255, 255, 255),
-            )
-            .width();
+    });
 
-        if option_w > total_w - 40.0 {
-            total_w = option_w + 40.0;
+    let option_galleys = options
+        .iter()
+        .map(|option| {
+            painter.fonts(|f| {
+                f.layout_no_wrap(
+                    option.clone(),
+                    egui::FontId::proportional(18.0),
+                    Color32::from_rgb(200, 210, 230),
+                )
+            })
+        })
+        .collect::<Vec<_>>();
+
+    let mut total_w = title.size().x;
+    for og in &option_galleys {
+        if og.size().x > total_w {
+            total_w = og.size().x;
         }
     }
+    total_w += PADDING_X;
 
     // ── Draw via Area so we control every pixel ───────────────────
     egui::Area::new(egui::Id::new("action_menu_popup"))
@@ -373,21 +374,18 @@ pub fn popup_action_menu(
             );
             // Header separator line
             p.hline(
-                origin.x + 8.0..=origin.x + total_w - 8.0,
+                origin.x..=origin.x + total_w,
                 origin.y + HEADER_H,
                 egui::Stroke::new(1.0, ACCENT),
             );
-            // Prompt text in header
-            p.text(
-                pos2(origin.x + total_w / 2.0, origin.y + HEADER_H / 2.0),
-                egui::Align2::CENTER_CENTER,
-                &prompt,
-                egui::FontId::proportional(14.0),
-                Color32::from_rgb(180, 200, 240),
+            p.galley(
+                pos2(origin.x + PADDING_X / 2.0, origin.y + title.size().y / 2.0),
+                title,
+                Color32::WHITE,
             );
 
             // Action rows
-            for (idx, option) in options.iter().enumerate() {
+            for (idx, _option) in options.iter().enumerate() {
                 let row_y = origin.y + HEADER_H + idx as f32 * ROW_H;
                 let row_rect = Rect::from_min_size(pos2(origin.x + 1.0, row_y), vec2(total_w - 2.0, ROW_H));
                 // Last row gets rounded bottom corners
@@ -433,11 +431,10 @@ pub fn popup_action_menu(
                 );
 
                 // Action label
-                p.text(
-                    pos2(origin.x + 36.0, row_y + ROW_H / 2.0),
-                    egui::Align2::LEFT_CENTER,
-                    option.as_str(),
-                    egui::FontId::proportional(18.0),
+                let galley = option_galleys[idx].clone();
+                p.galley_with_override_text_color(
+                    pos2(origin.x + 36.0, row_y + galley.size().y / 2.0),
+                    galley,
                     if resp.hovered() {
                         Color32::WHITE
                     } else {

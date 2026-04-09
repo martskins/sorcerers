@@ -676,7 +676,9 @@ impl RealmComponent {
         let prompt = match &data.status {
             Status::SelectingZone { prompt, .. } => Some(prompt.as_str()),
             Status::SelectingZoneGroup { prompt, .. } => Some(prompt.as_str()),
-            Status::SelectingCard { prompt, .. } => Some(prompt.as_str()),
+            Status::SelectingCard {
+                prompt, preview: false, ..
+            } => Some(prompt.as_str()),
             Status::SelectingPath { prompt, .. } => Some(prompt.as_str()),
             _ => None,
         };
@@ -685,16 +687,21 @@ impl RealmComponent {
             let text_size = 32.0;
             let rect_w = self.rect.width();
             let rect_h = 60.0;
+            let title = painter.fonts(|f| {
+                f.layout_no_wrap(
+                    prompt.to_string(),
+                    egui::FontId::proportional(text_size),
+                    Color32::WHITE,
+                )
+            });
             painter.rect_filled(
                 Rect::from_min_size(pos2(self.rect.min.x, 0.0), vec2(rect_w, rect_h)),
                 0.0,
                 Color32::from_rgba_unmultiplied(38, 46, 56, 179),
             );
-            painter.text(
-                pos2(self.rect.min.x + rect_w / 2.0, text_size + 5.0),
-                egui::Align2::CENTER_TOP,
-                prompt,
-                egui::FontId::proportional(text_size),
+            painter.galley(
+                pos2(self.rect.min.x + rect_w / 2.0 - title.size().x / 2.0, 5.0),
+                title,
                 Color32::WHITE,
             );
         }

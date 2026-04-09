@@ -338,7 +338,9 @@ impl Game {
             Status::SelectingZone { prompt, .. }
             | Status::SelectingZoneGroup { prompt, .. }
             | Status::SelectingPath { prompt, .. }
-            | Status::SelectingCard { prompt, .. } => Some(prompt.clone()),
+            | Status::SelectingCard {
+                prompt, preview: false, ..
+            } => Some(prompt.clone()),
             Status::Mulligan => Some("Select cards to\nmulligan".to_string()),
             _ => None,
         };

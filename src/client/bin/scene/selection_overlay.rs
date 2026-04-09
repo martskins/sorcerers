@@ -299,19 +299,20 @@ impl Component for SelectionOverlay {
     fn render(&mut self, _data: &mut GameData, ui: &mut Ui, painter: &Painter) -> anyhow::Result<()> {
         let sw = screen_rect().map(|r| r.width()).unwrap_or(1280.0);
         let sh = screen_rect().map(|r| r.height()).unwrap_or(720.0);
+        let title = ui.fonts(|f| {
+            f.layout_no_wrap(
+                self.prompt.clone(),
+                egui::FontId::proportional(FONT_SIZE),
+                Color32::WHITE,
+            )
+        });
+
         painter.rect_filled(
             Rect::from_min_size(pos2(0.0, 0.0), vec2(sw, sh)),
             0.0,
             Color32::from_rgba_unmultiplied(0, 0, 0, 204),
         );
-
-        painter.text(
-            pos2(sw / 2.0, 30.0),
-            egui::Align2::CENTER_TOP,
-            &self.prompt,
-            egui::FontId::proportional(FONT_SIZE),
-            Color32::WHITE,
-        );
+        painter.galley(pos2(sw / 2.0 - title.size().x / 2.0, 30.0), title, Color32::WHITE);
 
         for card_rect in &self.card_rects {
             render::draw_card(
