@@ -10,6 +10,7 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Debug};
+use strum_macros::EnumIter;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum CardType {
@@ -1853,7 +1854,7 @@ pub struct AreaModifiers {
     pub grants_counters: HashMap<uuid::Uuid, Vec<Counter>>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, EnumIter)]
 pub enum MinionType {
     Monster,
     Goblin,

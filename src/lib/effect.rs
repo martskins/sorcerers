@@ -152,6 +152,10 @@ pub enum Effect {
         attacker_id: uuid::Uuid,
         defender_id: uuid::Uuid,
     },
+    Strike {
+        attacker_id: uuid::Uuid,
+        defender_id: uuid::Uuid,
+    },
     Attack {
         attacker_id: uuid::Uuid,
         defender_id: uuid::Uuid,
@@ -265,6 +269,7 @@ impl Effect {
             Effect::StartTurn { player_id } => Some(player_id),
             Effect::ConsumeMana { player_id, .. } => Some(player_id),
             Effect::AddMana { player_id, .. } => Some(player_id),
+            Effect::Strike { attacker_id, .. } => Some(attacker_id),
             Effect::RangedStrike { attacker_id, .. } => Some(attacker_id),
             Effect::Attack { attacker_id, .. } => Some(attacker_id),
             Effect::TakeDamage { card_id, .. } => Some(card_id),
@@ -399,6 +404,15 @@ impl Effect {
             Effect::StartTurn { .. } => None,
             Effect::ConsumeMana { .. } => None,
             Effect::AddMana { .. } => None,
+            Effect::Strike {
+                attacker_id,
+                defender_id,
+            } => Some(format!(
+                "{} strikes {} with {}",
+                player_name(&state.get_card(attacker_id).get_controller_id(state), state),
+                state.get_card(defender_id).get_name(),
+                state.get_card(attacker_id).get_name(),
+            )),
             Effect::Attack {
                 attacker_id,
                 defender_id,
@@ -994,6 +1008,25 @@ impl Effect {
             Effect::AddMana { player_id, mana, .. } => {
                 let player_mana = state.get_player_mana_mut(player_id);
                 *player_mana += mana;
+            }
+            Effect::Strike {
+                attacker_id,
+                defender_id,
+            } => {
+                let snapshot = state.snapshot();
+                let attacker = state.get_card(attacker_id);
+                let defender = state.get_card(defender_id);
+                let mut effects = vec![Effect::TakeDamage {
+                    card_id: defender_id.clone(),
+                    from: attacker_id.clone(),
+                    damage: attacker
+                        .get_power(&snapshot)?
+                        .ok_or(anyhow::anyhow!("attacker has no power"))?,
+                }];
+
+                effects.extend(defender.on_defend(state, attacker_id)?.into_iter().map(|e| e.into()));
+                effects.reverse();
+                state.effects.extend(effects.into_iter().map(|e| e.into()));
             }
             Effect::Attack {
                 attacker_id,
