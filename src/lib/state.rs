@@ -48,6 +48,7 @@ pub struct CardMatcher {
     pub in_regions: Option<Vec<Region>>,
     pub tapped: Option<bool>,
     pub include_not_in_play: Option<bool>,
+    pub elements: Option<Vec<Element>>,
 }
 
 impl CardMatcher {
@@ -178,6 +179,13 @@ impl CardMatcher {
         let zones = zone.get_nearby();
         Self {
             in_zones: Some(zones),
+            ..self
+        }
+    }
+
+    pub fn with_element(self, element: Element) -> Self {
+        Self {
+            elements: Some(vec![element]),
             ..self
         }
     }
@@ -338,6 +346,21 @@ impl CardMatcher {
         let card = state.get_card(card_id);
         if let Some(ids) = &self.ids {
             if !ids.contains(card_id) {
+                return false;
+            }
+        }
+
+        if let Some(elements) = &self.elements {
+            let card_elements = card.get_elements(state).unwrap_or_default();
+            let mut has_element = false;
+            for element in elements {
+                if card_elements.contains(element) {
+                    has_element = true;
+                    break;
+                }
+            }
+
+            if !has_element {
                 return false;
             }
         }

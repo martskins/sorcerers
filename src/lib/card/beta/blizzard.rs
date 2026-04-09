@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, AreaModifiers, Aura, AuraBase, Card, CardBase, CardType, Costs, Edition, Rarity, Region, Zone},
+    card::{Ability, AreaModifiers, Aura, AuraBase, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::PlayerId,
     state::State,

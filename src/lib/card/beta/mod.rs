@@ -344,3 +344,5 @@ pub mod backstab;
 pub use backstab::*;
 pub mod blizzard;
 pub use blizzard::*;
+pub mod boil;
+pub use boil::*;
