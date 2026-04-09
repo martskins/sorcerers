@@ -600,7 +600,7 @@ impl Costs {
 
     pub async fn pay(&self, state: &mut State, player_id: &PlayerId) -> anyhow::Result<Cost> {
         match self.0.len() {
-            0 => Ok(Cost(vec![])),
+            0 => Ok(Cost::ZERO),
             1 => {
                 let cost = self.0.first().expect("costs to have one item");
                 Box::pin(cost.pay(state, player_id)).await

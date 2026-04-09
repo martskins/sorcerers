@@ -78,6 +78,8 @@ impl Card for AtlanteanFate {
             return Ok(vec![]);
         }
 
+        // TODO: This is missing the effect of removing all other abilities and affinities from the
+        // affected sites.
         Ok(vec![ContinuousEffect::FloodSites {
             affected_sites: CardMatcher::from_ids(flooded_sites),
         }])
@@ -95,22 +97,6 @@ impl Card for AtlanteanFate {
                 }
                 if !card.is_minion() && !card.is_artifact() {
                     continue;
-                }
-
-                if card.is_minion() {
-                    effects.push(Effect::AddAbilityCounter {
-                        card_id: card.get_id().clone(),
-                        counter: AbilityCounter {
-                            id: uuid::Uuid::new_v4(),
-                            ability: Ability::Submerge,
-                            expires_on_effect: Some(EffectQuery::MoveCard {
-                                card: CardQuery::Specific {
-                                    id: uuid::Uuid::new_v4(),
-                                    card_id: card.get_id().clone(),
-                                },
-                            }),
-                        },
-                    });
                 }
 
                 effects.push(Effect::SetCardRegion {

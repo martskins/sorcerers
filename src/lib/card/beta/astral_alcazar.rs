@@ -71,6 +71,8 @@ impl Card for AstralAlcazar {
     }
 
     fn area_modifiers(&self, state: &State) -> crate::card::AreaModifiers {
+        // TODO: This ability is not quite right. It should grant the ability of moving to any void
+        // as if it were adjacent to this site.
         let grants_abilities = self
             .get_zone()
             .get_units(state, None)
