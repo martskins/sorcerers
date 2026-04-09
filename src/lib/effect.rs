@@ -1,6 +1,6 @@
 use crate::{
-    card::{Ability, Battlemage, Card, CardType, FootSoldier, Frog, Region, Rubble, UnitBase, Zone},
-    game::{BaseAction, Direction, PlayerAction, PlayerId, SoundEffect, pick_card, pick_option, yes_or_no},
+    card::{Ability, Card, CardType, FootSoldier, Frog, Region, Rubble, UnitBase, Zone},
+    game::{pick_card, pick_option, BaseAction, Direction, PlayerAction, PlayerId, SoundEffect},
     networking::message::ServerMessage,
     query::{CardQuery, EffectQuery, QueryCache, ZoneQuery},
     state::{CardMatcher, DeferredEffect, Phase, State, TemporaryEffect},
@@ -483,7 +483,7 @@ impl Effect {
 
                 effects_to_remove.push(idx);
             } else {
-                // If the effect was no triggered, check whether it needs to expire.
+                // If the effect was not triggered, check whether it needs to expire.
                 if let Some(expires_on_effect) = &de.expires_on_effect {
                     if expires_on_effect.matches(effect, state).await? {
                         effects_to_remove.push(idx);

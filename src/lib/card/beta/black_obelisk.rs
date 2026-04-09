@@ -1,8 +1,8 @@
 use crate::{
-    card::{Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
+    card::{Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardType, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::PlayerId,
-    state::State,
+    state::{CardMatcher, ContinuousEffect, State},
 };
 
 #[derive(Debug, Clone)]
@@ -65,24 +65,36 @@ impl Card for BlackObelisk {
         Some(self)
     }
 
-    async fn on_turn_start(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        if self.get_zone().get_site(state).is_none() {
+    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+        if !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }
 
-        let controller_id = self.get_controller_id(state);
+        Ok(vec![ContinuousEffect::ModifyProvidedMana {
+            mana_diff: 2,
+            affected_cards: CardMatcher::new()
+                .in_zone(self.get_zone())
+                .with_card_type(CardType::Site),
+        }])
+    }
+
+    async fn on_turn_start(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+        let Some(site) = self.get_zone().get_site(state) else {
+            return Ok(vec![]);
+        };
+
+        let controller_id = site.get_controller_id(state);
+        if controller_id != state.current_player {
+            return Ok(vec![]);
+        }
+
+        // TODO: This shouldn't trigger if the site is disabled.
         let avatar_id = state.get_player_avatar_id(&controller_id)?;
-        Ok(vec![
-            Effect::TakeDamage {
-                card_id: avatar_id,
-                from: self.get_id().clone(),
-                damage: 2,
-            },
-            Effect::AddMana {
-                player_id: controller_id,
-                mana: 2,
-            },
-        ])
+        Ok(vec![Effect::TakeDamage {
+            card_id: avatar_id,
+            from: site.get_id().clone(),
+            damage: 2,
+        }])
     }
 }
 
