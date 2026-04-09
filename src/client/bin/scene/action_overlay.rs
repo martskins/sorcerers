@@ -1,6 +1,6 @@
 use crate::{
     components::{Component, ComponentCommand, ComponentType},
-    config::{card_height, card_width, screen_rect},
+    config::{card_height, screen_rect, CARD_ASPECT_RATIO},
     render::{self, CardRect},
     scene::game::GameData,
     texture_cache::TextureCache,
@@ -26,6 +26,16 @@ pub struct ActionOverlay {
 }
 
 impl ActionOverlay {
+    fn portrait_card_size(scale: f32) -> egui::Vec2 {
+        let height = card_height().unwrap_or(112.0) * scale;
+        vec2(height * CARD_ASPECT_RATIO, height)
+    }
+
+    fn landscape_card_size(scale: f32) -> egui::Vec2 {
+        let portrait = Self::portrait_card_size(scale);
+        vec2(portrait.y, portrait.x)
+    }
+
     pub fn new(
         client: networking::client::Client,
         game_id: &uuid::Uuid,
@@ -36,21 +46,28 @@ impl ActionOverlay {
     ) -> Self {
         let sw = screen_rect().map(|r| r.width()).unwrap_or(1280.0);
         let sh = screen_rect().map(|r| r.height()).unwrap_or(720.0);
-        let cw = card_width().unwrap_or(80.0) * 1.2;
-        let ch = card_height().unwrap_or(112.0) * 1.2;
+        let portrait = Self::portrait_card_size(1.2);
+        let landscape = Self::landscape_card_size(1.2);
         let card_spacing = 20.0;
-        let preview_y = (sh / 3.0) - (ch / 2.0);
-        let defender_count = card_previews.len();
-        let defenders_area_width = defender_count as f32 * cw + (defender_count as f32 - 1.0) * card_spacing;
+        let preview_y = (sh / 3.0) - (portrait.y / 2.0);
+        let defenders_area_width = card_previews
+            .iter()
+            .map(|card| if card.is_site() { landscape.x } else { portrait.x })
+            .sum::<f32>()
+            + (card_previews.len().saturating_sub(1) as f32 * card_spacing);
         let defenders_start_x = (sw - defenders_area_width) / 2.0;
 
         let rects = card_previews
             .iter()
-            .enumerate()
-            .map(|(idx, card)| {
-                let x = defenders_start_x + idx as f32 * (cw + card_spacing);
+            .scan(defenders_start_x, |x, card| {
+                let size = if card.is_site() { landscape } else { portrait };
+                let rect = Rect::from_min_size(pos2(*x, preview_y), size);
+                *x += size.x + card_spacing;
+                Some((rect, *card))
+            })
+            .map(|(rect, card)| {
                 CardRect {
-                    rect: Rect::from_min_size(pos2(x, preview_y), vec2(cw, ch)),
+                    rect,
                     card: (*card).clone(),
                     image: None,
                     is_hovered: false,
