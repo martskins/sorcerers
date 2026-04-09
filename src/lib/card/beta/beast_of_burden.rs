@@ -61,22 +61,6 @@ impl Card for BeastOfBurden {
         Some(&mut self.unit_base)
     }
 
-    fn area_modifiers(&self, state: &State) -> AreaModifiers {
-        let controller_id = self.get_controller_id(state);
-        let carried_minions = self
-            .get_zone()
-            .get_minions(state, Some(&controller_id))
-            .iter()
-            .filter(|minion| minion.get_id() != self.get_id())
-            .map(|minion| (minion.get_id().clone(), vec![Ability::Immobile]))
-            .collect();
-
-        AreaModifiers {
-            grants_abilities: carried_minions,
-            ..Default::default()
-        }
-    }
-
     async fn on_move(&self, state: &State, path: &[Zone]) -> anyhow::Result<Vec<Effect>> {
         if path.is_empty() {
             return Ok(vec![]);

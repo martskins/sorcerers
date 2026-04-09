@@ -1,5 +1,7 @@
 use crate::{
-    card::{Artifact, ArtifactBase, Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Zone},
+    card::{
+        Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Zone,
+    },
     game::{PlayerId, Thresholds},
     state::State,
 };
@@ -18,6 +20,7 @@ impl AquamarineCore {
             artifact_base: ArtifactBase {
                 bearer: None,
                 needs_bearer: true,
+                types: vec![ArtifactType::Relic],
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),

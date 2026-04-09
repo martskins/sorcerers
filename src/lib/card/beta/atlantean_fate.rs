@@ -1,8 +1,7 @@
 use crate::{
-    card::{Ability, Aura, AuraBase, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
-    effect::{AbilityCounter, Effect},
+    card::{Aura, AuraBase, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
+    effect::Effect,
     game::PlayerId,
-    query::{CardQuery, EffectQuery},
     state::{CardMatcher, ContinuousEffect, State},
 };
 

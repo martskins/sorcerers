@@ -1,8 +1,5 @@
 use crate::{
-    card::{
-        Ability, Battlemage, BrokenArmor, BrokenWeapon, Card, CardType, FootSoldier, Frog, Region, Rubble, UnitBase,
-        Zone,
-    },
+    card::{Ability, Battlemage, Card, CardType, FootSoldier, Frog, Region, Rubble, UnitBase, Zone},
     game::{BaseAction, Direction, PlayerAction, PlayerId, SoundEffect, pick_card, pick_option},
     networking::message::ServerMessage,
     query::{CardQuery, EffectQuery, QueryCache, ZoneQuery},
@@ -41,8 +38,6 @@ pub enum TokenType {
     Rubble,
     FootSoldier,
     Frog,
-    BrokenWeapon,
-    BrokenArmor,
 }
 
 #[derive(Debug)]
@@ -310,8 +305,6 @@ impl Effect {
                     TokenType::Rubble => "Rubble",
                     TokenType::FootSoldier => "Foot Soldier",
                     TokenType::Frog => "Frog",
-                    TokenType::BrokenWeapon => "Broken Weapon",
-                    TokenType::BrokenArmor => "Broken Armor",
                 };
                 Some(format!(
                     "{} summons a {} in zone {}",
@@ -624,8 +617,6 @@ impl Effect {
                     TokenType::Rubble => Box::new(Rubble::new(player_id.clone())),
                     TokenType::FootSoldier => Box::new(FootSoldier::new(player_id.clone())),
                     TokenType::Frog => Box::new(Frog::new(player_id.clone())),
-                    TokenType::BrokenWeapon => Box::new(BrokenWeapon::new(player_id.clone())),
-                    TokenType::BrokenArmor => Box::new(BrokenArmor::new(player_id.clone())),
                 };
                 token.set_zone(zone.clone());
                 state.cards.push(token);

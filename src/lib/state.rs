@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardData, CardType, DodgeRoll, MinionType, Region, SiteType, Zone},
+    card::{Ability, ArtifactType, Card, CardData, CardType, DodgeRoll, MinionType, Region, SiteType, Zone},
     deck::Deck,
     effect::Effect,
     game::{Element, InputStatus, PlayerId, Resources, Thresholds, pick_zone, yes_or_no},
@@ -39,6 +39,7 @@ pub struct CardMatcher {
     pub abilities: Option<Vec<Ability>>,
     pub card_types: Option<Vec<CardType>>,
     pub minion_types: Option<Vec<MinionType>>,
+    pub artifact_types: Option<Vec<ArtifactType>>,
     pub mana_cost: Option<u8>,
     pub site_types: Option<Vec<SiteType>>,
     pub with_affinity: Option<Vec<Element>>,
@@ -300,6 +301,13 @@ impl CardMatcher {
     pub fn with_mana_cost_less_than_or_equal_to(self, mc: u8) -> Self {
         Self {
             mana_cost: Some(mc),
+            ..self
+        }
+    }
+
+    pub fn with_artifact_types(self, artifact_types: Vec<ArtifactType>) -> Self {
+        Self {
+            artifact_types: Some(artifact_types),
             ..self
         }
     }

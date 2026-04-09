@@ -1,5 +1,7 @@
 use crate::{
-    card::{AreaModifiers, Artifact, ArtifactBase, Card, CardBase, Cost, Costs, Edition, Rarity, Region, Zone},
+    card::{
+        AreaModifiers, Artifact, ArtifactBase, ArtifactType, Card, CardBase, Cost, Costs, Edition, Rarity, Region, Zone,
+    },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_card},
     query::CardQuery,
@@ -70,6 +72,7 @@ impl BatteringRam {
             artifact_base: ArtifactBase {
                 bearer: None,
                 needs_bearer: false,
+                types: vec![ArtifactType::Device],
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),

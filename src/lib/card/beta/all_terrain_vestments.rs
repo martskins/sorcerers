@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Artifact, ArtifactBase, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
+    card::{Ability, Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
     game::PlayerId,
     state::{CardMatcher, ContinuousEffect, State},
 };
@@ -18,6 +18,7 @@ impl AllTerrainVestments {
             artifact_base: ArtifactBase {
                 bearer: None,
                 needs_bearer: true,
+                types: vec![ArtifactType::Armor],
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),

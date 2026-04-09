@@ -1,8 +1,8 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
-    effect::{Effect, TokenType},
-    game::{PlayerId, Thresholds, pick_option},
-    state::State,
+    card::{ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
+    effect::Effect,
+    game::{PlayerId, Thresholds, pick_card},
+    state::{CardMatcher, State},
 };
 
 #[derive(Debug, Clone)]
@@ -72,24 +72,21 @@ impl Card for Battlefield {
 
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        let choice = pick_option(
-            &controller_id,
-            &["Broken Weapon".to_string(), "Broken Armor".to_string()],
+        let weapons_and_armor = CardMatcher::new()
+            .in_zone(&Zone::Cemetery)
+            .with_artifact_types(vec![ArtifactType::Weapon, ArtifactType::Armor])
+            .resolve_ids(state);
+        let picked_card_id = pick_card(
+            controller_id,
+            &weapons_and_armor,
             state,
-            "Battlefield: Choose a broken Weapon or Armor to conjure here",
-            false,
+            "Battlefield: Pick a weapon or armor to conjure",
         )
         .await?;
 
-        let token_type = if choice == 0 {
-            TokenType::BrokenWeapon
-        } else {
-            TokenType::BrokenArmor
-        };
-
-        Ok(vec![Effect::SummonToken {
+        Ok(vec![Effect::SummonCard {
             player_id: controller_id,
-            token_type,
+            card_id: picked_card_id,
             zone: self.get_zone().clone(),
         }])
     }

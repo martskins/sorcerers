@@ -1,6 +1,7 @@
 use crate::{
     card::{
-        AdditionalCost, Artifact, ArtifactBase, Card, CardBase, CardType, Cost, Costs, Edition, Rarity, Region, Zone,
+        AdditionalCost, Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardType, Cost, Costs, Edition, Rarity,
+        Region, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_card},
@@ -95,6 +96,7 @@ impl SiegeBallista {
             artifact_base: ArtifactBase {
                 bearer: None,
                 needs_bearer: true,
+                types: vec![ArtifactType::Weapon],
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),

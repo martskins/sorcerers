@@ -1,7 +1,7 @@
 use rand::seq::IndexedRandom;
 
 use crate::{
-    card::{Artifact, ArtifactBase, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
+    card::{Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
     game::PlayerId,
     query::{CardQuery, ZoneQuery},
     state::State,
@@ -21,6 +21,7 @@ impl LuckyCharm {
             artifact_base: ArtifactBase {
                 bearer: None,
                 needs_bearer: true,
+                types: vec![ArtifactType::Relic],
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),

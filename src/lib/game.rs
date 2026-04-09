@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Aura, CardData, CardType, Cost, Region, Zone},
+    card::{Ability, Aura, CardType, Cost, Region, Zone},
     effect::Effect,
     error::GameError,
     networking::{
@@ -266,17 +266,6 @@ pub async fn pick_card(
 
     resume(&opponent_id, state).await?;
     card
-}
-
-pub async fn pick_card_with_cards(
-    player_id: impl AsRef<PlayerId>,
-    cards: &[CardData],
-    pickable_card_ids: &[uuid::Uuid],
-    state: &State,
-    prompt: &str,
-) -> anyhow::Result<uuid::Uuid> {
-    let card_ids = cards.iter().map(|card| card.id).collect::<Vec<_>>();
-    pick_card_with_options(player_id, &card_ids, pickable_card_ids, state, prompt).await
 }
 
 pub async fn pick_action<'a>(

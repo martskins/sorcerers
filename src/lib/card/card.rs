@@ -2044,9 +2044,20 @@ impl std::fmt::Display for Rarity {
 }
 
 #[derive(Debug, Clone)]
+pub enum ArtifactType {
+    Relic,
+    Weapon,
+    Armor,
+    Device,
+    Automaton,
+    Monument,
+}
+
+#[derive(Debug, Clone)]
 pub struct ArtifactBase {
     pub bearer: Option<uuid::Uuid>,
     pub needs_bearer: bool,
+    pub types: Vec<ArtifactType>,
 }
 
 pub trait Artifact: Card {
