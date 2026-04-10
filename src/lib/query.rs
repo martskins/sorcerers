@@ -15,6 +15,7 @@ pub struct QueryCache {
     zone_queries: HashMap<uuid::Uuid, Zone>,
     card_queries: HashMap<uuid::Uuid, uuid::Uuid>,
     effect_targets: HashMap<uuid::Uuid, Vec<uuid::Uuid>>,
+    matcher_queries: HashMap<uuid::Uuid, Vec<uuid::Uuid>>,
     game_queries: HashMap<uuid::Uuid, Vec<uuid::Uuid>>,
 }
 
@@ -25,11 +26,23 @@ impl QueryCache {
             card_queries: HashMap::new(),
             game_queries: HashMap::new(),
             effect_targets: HashMap::new(),
+            matcher_queries: HashMap::new(),
         }
     }
 
     pub fn init() {
         QUERY_CACHE.get_or_init(|| RwLock::new(QueryCache::new()));
+    }
+
+    pub async fn store_matcher_results(game_id: uuid::Uuid, matcher_id: uuid::Uuid, card_ids: Vec<uuid::Uuid>) {
+        let mut cache = QUERY_CACHE.get().expect("to get lock").write().await;
+        cache.matcher_queries.insert(matcher_id, card_ids);
+        cache.game_queries.entry(game_id).or_insert(Vec::new()).push(matcher_id);
+    }
+
+    pub async fn matcher_results(matcher_id: &uuid::Uuid) -> Option<Vec<uuid::Uuid>> {
+        let cache = QUERY_CACHE.get().expect("to get lock").read().await;
+        cache.matcher_queries.get(matcher_id).cloned()
     }
 
     pub async fn store_effect_targets(game_id: uuid::Uuid, effect_id: uuid::Uuid, affected_cards: Vec<uuid::Uuid>) {
@@ -218,6 +231,7 @@ impl QueryCache {
                     cache.zone_queries.remove(&qry_id);
                     cache.card_queries.remove(&qry_id);
                     cache.effect_targets.remove(&qry_id);
+                    cache.matcher_queries.remove(&qry_id);
                 }
             }
         }
@@ -466,8 +480,8 @@ pub enum EffectQuery {
         zone: ZoneQuery,
     },
     DamageDealt {
-        source: Option<CardQuery>,
-        target: Option<CardQuery>,
+        source: Option<CardMatcher>,
+        target: Option<CardMatcher>,
     },
     TurnEnd {
         player_id: Option<PlayerId>,
@@ -529,17 +543,15 @@ impl EffectQuery {
                     Ok(true)
                 }
             }
-            (EffectQuery::DamageDealt { source, target }, Effect::TakeDamage { card_id, from, .. }) => {
-                let card = state.get_card(card_id);
-                let player_id = card.get_controller_id(state);
+            (EffectQuery::DamageDealt { source, target }, Effect::TakeDamage { card_id, .. }) => {
                 if let Some(source) = source {
-                    if &source.resolve(&player_id, state).await? != from {
+                    if !source.matches(card_id, state) {
                         return Ok(false);
                     }
                 }
 
                 if let Some(target) = target {
-                    if &target.resolve(&player_id, state).await? != card_id {
+                    if !target.matches(card_id, state) {
                         return Ok(false);
                     }
                 }

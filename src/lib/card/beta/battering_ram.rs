@@ -66,7 +66,7 @@ impl ActivatedAbility for RamStrike {
     }
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
-        Ok(Cost::from_additional(crate::card::AdditionalCost::Tap {
+        Ok(Cost::additional_only(crate::card::AdditionalCost::Tap {
             card: CardQuery::from_id(card_id.clone()),
         }))
     }
@@ -92,7 +92,7 @@ impl BatteringRam {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::from_mana(2),
+                costs: Costs::mana_only(2),
                 region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,

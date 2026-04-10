@@ -96,7 +96,7 @@ impl ActivatedAbility for ShootProjectile {
     }
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
-        Ok(Cost::from_additional(AdditionalCost::Tap {
+        Ok(Cost::additional_only(AdditionalCost::Tap {
             card: CardQuery::from_id(card_id.clone()),
         }))
     }
@@ -125,7 +125,7 @@ impl PudgeButcher {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::from_mana_and_threshold(4, "EE"),
+                costs: Costs::basic(4, "EE"),
                 region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,

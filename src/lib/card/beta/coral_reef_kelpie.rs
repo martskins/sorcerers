@@ -26,7 +26,7 @@ impl CoralReefKelpie {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::from_mana_and_threshold(3, "W"),
+                costs: Costs::basic(3, "W"),
                 region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,

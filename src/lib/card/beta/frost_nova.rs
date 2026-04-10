@@ -21,7 +21,7 @@ impl FrostNova {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::from_mana_and_threshold(4, "WW"),
+                costs: Costs::basic(4, "WW"),
                 region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,

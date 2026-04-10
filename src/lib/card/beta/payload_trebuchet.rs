@@ -95,7 +95,7 @@ impl PayloadTrebuchet {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::from_mana(5),
+                costs: Costs::mana_only(5),
                 region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,

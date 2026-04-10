@@ -28,7 +28,7 @@ impl AramosMercenaries {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::from_mana_and_threshold(3, "FF").with_alternative(Cost::from_additional(
+                costs: Costs::basic(3, "FF").with_alternative(Cost::additional_only(
                     AdditionalCost::Discard {
                         card: CardQuery::RandomTarget {
                             id: uuid::Uuid::new_v4(),

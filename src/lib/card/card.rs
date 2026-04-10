@@ -536,29 +536,32 @@ impl CostType {
     }
 }
 
+// Costs represents the different ways a card or ability can be paid for. It is represented as a vec
+// of Cost, where each Cost is a different way to pay for the card, and the player can choose which
+// one to pay when playing the card.
 #[derive(Debug, Clone, Default)]
 pub struct Costs(Vec<Cost>);
 
 impl Costs {
     pub const ZERO: Costs = Costs(vec![]);
 
-    pub fn from_cost(cost: Cost) -> Self {
+    pub fn single(cost: Cost) -> Self {
         Self(vec![cost])
     }
 
-    pub fn from_mana(mana: u8) -> Self {
-        Self(vec![Cost::from_mana(mana)])
+    pub fn mana_only(mana: u8) -> Self {
+        Self(vec![Cost::mana_only(mana)])
     }
 
-    pub fn from_mana_and_threshold(mana: u8, thresholds: impl Into<Thresholds>) -> Self {
+    pub fn basic(mana: u8, thresholds: impl Into<Thresholds>) -> Self {
         Self(vec![Cost::new(mana, thresholds)])
     }
 
-    pub fn from_threshold(thresholds: impl Into<Thresholds>) -> Self {
+    pub fn threshold_only(thresholds: impl Into<Thresholds>) -> Self {
         Self(vec![Cost::new(0, thresholds)])
     }
 
-    pub fn from_alternatives(costs: Vec<Cost>) -> Self {
+    pub fn multi(costs: Vec<Cost>) -> Self {
         Self(costs)
     }
 
@@ -632,10 +635,8 @@ impl Costs {
 }
 
 // Cost represents the cost to play a card or activate an ability. It is represented as a vec of
-// vecs of CostType, where the other vec are alternative costs and the costs in the inner vec are costs
-// that must all be paid together.
-// For example, a cost of [[ManaCost(2), Additional(Tap { card: CardQuery::This })], [ManaCost(3)]]
-// means that the player can either pay 2 mana and tap the card, or pay 3 mana.
+// vecs of CostType, where each CostType is a different type of cost (e.g: mana, threshold,
+// additional costs) and all of them must be paid together.
 #[derive(Debug, Clone, Default)]
 pub struct Cost(Vec<CostType>);
 
@@ -675,15 +676,15 @@ impl Cost {
         Self(basic_cost)
     }
 
-    pub fn from_mana(mana: u8) -> Self {
+    pub fn mana_only(mana: u8) -> Self {
         Self::new(mana, Thresholds::ZERO)
     }
 
-    pub fn from_thresholds(thresholds: impl Into<Thresholds>) -> Self {
+    pub fn thresholds_only(thresholds: impl Into<Thresholds>) -> Self {
         Self::new(0, thresholds)
     }
 
-    pub fn from_additional(additional: AdditionalCost) -> Self {
+    pub fn additional_only(additional: AdditionalCost) -> Self {
         Self(vec![CostType::Additional(vec![additional])])
     }
 
@@ -766,6 +767,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         let name_for_url = unidecode(self.get_name())
             .to_string()
             .to_lowercase()
+            .replace("'", "")
             .replace(" ", "_")
             .replace("-", "_");
         let mut folder = "cards";
@@ -2195,7 +2197,7 @@ mod tests {
     fn test_additional_cost_tap() {
         let mut state = State::new_mock_state(Zone::all_realm());
         let player_id = state.players[0].id.clone();
-        let cost = Cost::from_additional(AdditionalCost::Tap {
+        let cost = Cost::additional_only(AdditionalCost::Tap {
             card: CardQuery::InZone {
                 id: uuid::Uuid::new_v4(),
                 zone: Zone::Realm(10),

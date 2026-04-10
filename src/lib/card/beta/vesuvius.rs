@@ -15,7 +15,7 @@ impl ActivatedAbility for UseAbility {
     }
 
     fn get_cost(&self, _card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
-        Ok(Cost::from_thresholds("FFF"))
+        Ok(Cost::thresholds_only("FFF"))
     }
 
     async fn on_select(&self, card_id: &uuid::Uuid, _: &PlayerId, state: &State) -> anyhow::Result<Vec<Effect>> {

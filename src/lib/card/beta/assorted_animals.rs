@@ -22,7 +22,7 @@ impl AssortedAnimals {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::from_cost(Cost::from_variable_mana("EE")),
+                costs: Costs::single(Cost::from_variable_mana("EE")),
                 region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,

@@ -54,7 +54,7 @@ impl ActivatedAbility for FloodSite {
     }
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
-        Ok(Cost::from_additional(AdditionalCost::Tap {
+        Ok(Cost::additional_only(AdditionalCost::Tap {
             card: CardQuery::from_id(card_id.clone()),
         }))
     }

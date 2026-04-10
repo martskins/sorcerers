@@ -49,7 +49,7 @@ impl ActivatedAbility for TransformIntoAMonster {
     }
 
     fn get_cost(&self, _card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
-        Ok(Cost::from_thresholds("WWWWWWWW"))
+        Ok(Cost::thresholds_only("WWWWWWWW"))
     }
 }
 

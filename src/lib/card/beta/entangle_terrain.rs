@@ -21,7 +21,7 @@ impl EntangleTerrain {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::from_mana_and_threshold(4, "EE"),
+                costs: Costs::basic(4, "EE"),
                 region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,

@@ -26,7 +26,7 @@ impl MountainGiant {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::from_mana_and_threshold(8, "EEEE"),
+                costs: Costs::basic(8, "EEEE"),
                 region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,

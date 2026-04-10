@@ -28,7 +28,7 @@ impl InfernalLegion {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::from_mana_and_threshold(6, "FFF"),
+                costs: Costs::basic(6, "FFF"),
                 region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,

@@ -28,7 +28,7 @@ impl ScentHounds {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::from_mana_and_threshold(2, "E"),
+                costs: Costs::basic(2, "E"),
                 region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,

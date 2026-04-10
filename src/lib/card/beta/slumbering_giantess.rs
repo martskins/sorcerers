@@ -2,8 +2,8 @@ use crate::{
     card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::{AbilityCounter, Effect},
     game::PlayerId,
-    query::{CardQuery, EffectQuery},
-    state::State,
+    query::EffectQuery,
+    state::{CardMatcher, State},
 };
 
 #[derive(Debug, Clone)]
@@ -29,7 +29,7 @@ impl SlumberingGiantess {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::from_mana_and_threshold(3, "E"),
+                costs: Costs::basic(3, "E"),
                 region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
@@ -71,10 +71,7 @@ impl Card for SlumberingGiantess {
                 ability: Ability::Disabled,
                 expires_on_effect: Some(EffectQuery::DamageDealt {
                     source: None,
-                    target: Some(CardQuery::Specific {
-                        id: uuid::Uuid::new_v4(),
-                        card_id: self.get_id().clone(),
-                    }),
+                    target: Some(CardMatcher::from_id(self.get_id().clone())),
                 }),
             },
         }])

@@ -20,7 +20,7 @@ impl DodgeRoll {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::from_mana_and_threshold(0, "WW"),
+                costs: Costs::basic(0, "WW"),
                 region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,

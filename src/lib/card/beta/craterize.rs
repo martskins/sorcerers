@@ -21,7 +21,7 @@ impl Craterize {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::from_cost(
+                costs: Costs::single(
                     Cost::new(8, "EE")
                         .with_additional(AdditionalCost::Discard {
                             card: CardQuery::InZone {

@@ -16,7 +16,7 @@ impl ActivatedAbility for FlyToVoid {
     }
 
     fn get_cost(&self, _card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
-        Ok(Cost::from_thresholds("AAA"))
+        Ok(Cost::thresholds_only("AAA"))
     }
 
     async fn on_select(

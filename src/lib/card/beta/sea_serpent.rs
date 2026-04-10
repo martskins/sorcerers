@@ -26,7 +26,7 @@ impl SeaSerpent {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::from_mana_and_threshold(4, "W"),
+                costs: Costs::basic(4, "W"),
                 region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,

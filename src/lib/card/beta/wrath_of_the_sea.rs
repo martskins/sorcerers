@@ -21,7 +21,7 @@ impl WrathOfTheSea {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::from_mana_and_threshold(7, "WW"),
+                costs: Costs::basic(7, "WW"),
                 region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,

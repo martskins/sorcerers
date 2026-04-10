@@ -28,7 +28,7 @@ impl EscyllionCyclops {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::from_mana_and_threshold(6, "FF"),
+                costs: Costs::basic(6, "FF"),
                 region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,

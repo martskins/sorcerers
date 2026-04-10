@@ -26,7 +26,7 @@ impl HighlandClansmen {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::from_mana_and_threshold(7, "A"),
+                costs: Costs::basic(7, "A"),
                 region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,

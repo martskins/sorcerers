@@ -33,6 +33,7 @@ pub struct PlayerWithDeck {
 
 #[derive(Debug, Default, Clone)]
 pub struct CardMatcher {
+    pub id: Option<uuid::Uuid>,
     pub ids: Option<Vec<uuid::Uuid>>,
     pub card_names: Option<Vec<String>>,
     pub card_name_contains: Option<String>,
@@ -64,6 +65,35 @@ impl CardMatcher {
         Self {
             ids: Some(vec![id]),
             ..Default::default()
+        }
+    }
+
+    /// Enable caching for this matcher. When `resolve_ids_cached` is called, the
+    /// result will be stored in `QueryCache` and reused on subsequent calls.
+    pub fn cached(self) -> Self {
+        Self {
+            id: Some(uuid::Uuid::new_v4()),
+            ..self
+        }
+    }
+
+    pub fn get_id(&self) -> Option<&uuid::Uuid> {
+        self.id.as_ref()
+    }
+
+    /// Like `resolve_ids`, but stores/retrieves results from `QueryCache` when
+    /// this matcher has a cache id (set via `.cached()`).
+    pub async fn resolve(&self, state: &State) -> Vec<uuid::Uuid> {
+        use crate::query::QueryCache;
+        if let Some(id) = &self.id {
+            if let Some(cached) = QueryCache::matcher_results(id).await {
+                return cached;
+            }
+            let result = self.resolve_ids(state);
+            QueryCache::store_matcher_results(state.game_id, *id, result.clone()).await;
+            result
+        } else {
+            self.resolve_ids(state)
         }
     }
 

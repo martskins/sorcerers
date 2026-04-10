@@ -27,7 +27,7 @@ impl PolarBears {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::from_mana_and_threshold(2, "W"),
+                costs: Costs::basic(2, "W"),
                 region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,

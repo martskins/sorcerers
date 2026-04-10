@@ -28,7 +28,7 @@ impl AtlasWanderers {
                 owner_id,
                 tapped: false,
                 zone: Zone::Atlasbook,
-                costs: Costs::from_mana_and_threshold(5, "EEE"),
+                costs: Costs::basic(5, "EEE"),
                 region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,

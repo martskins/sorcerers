@@ -67,7 +67,7 @@ impl AncientDragon {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::from_mana_and_threshold(7, "FFF"),
+                costs: Costs::basic(7, "FFF"),
                 region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,

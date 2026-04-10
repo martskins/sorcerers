@@ -48,7 +48,7 @@ impl ActivatedAbility for TapToStrikeNearbyMinions {
     }
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
-        Ok(Cost::from_additional(AdditionalCost::Surface {
+        Ok(Cost::additional_only(AdditionalCost::Surface {
             card: CardQuery::from_id(card_id.clone()),
         }))
     }
@@ -77,7 +77,7 @@ impl DiluvianKraken {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::from_mana_and_threshold(8, "WWW"),
+                costs: Costs::basic(8, "WWW"),
                 region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,

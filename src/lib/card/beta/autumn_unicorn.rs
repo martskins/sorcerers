@@ -26,7 +26,7 @@ impl AutumnUnicorn {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::from_mana_and_threshold(3, "EE"),
+                costs: Costs::basic(3, "EE"),
                 region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,

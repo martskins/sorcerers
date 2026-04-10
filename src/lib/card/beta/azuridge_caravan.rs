@@ -28,7 +28,7 @@ impl AzuridgeCaravan {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::from_mana_and_threshold(5, "F"),
+                costs: Costs::basic(5, "F"),
                 region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,

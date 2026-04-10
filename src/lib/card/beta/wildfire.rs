@@ -23,7 +23,7 @@ impl Wildfire {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::from_mana_and_threshold(4, "F"),
+                costs: Costs::basic(4, "F"),
                 region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,

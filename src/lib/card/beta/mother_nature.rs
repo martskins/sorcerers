@@ -28,7 +28,7 @@ impl MotherNature {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::from_mana_and_threshold(6, "WWW"),
+                costs: Costs::basic(6, "WWW"),
                 region: Region::Surface,
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,

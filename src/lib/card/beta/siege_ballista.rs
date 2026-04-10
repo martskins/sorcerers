@@ -102,7 +102,7 @@ impl SiegeBallista {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::from_mana(3),
+                costs: Costs::mana_only(3),
                 region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,

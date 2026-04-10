@@ -26,7 +26,7 @@ impl CaveTrolls {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::from_mana_and_threshold(3, "E"),
+                costs: Costs::basic(3, "E"),
                 region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,

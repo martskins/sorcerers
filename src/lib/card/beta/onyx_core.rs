@@ -26,7 +26,7 @@ impl OnyxCore {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::from_mana(1),
+                costs: Costs::mana_only(1),
                 region: Region::Surface,
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,

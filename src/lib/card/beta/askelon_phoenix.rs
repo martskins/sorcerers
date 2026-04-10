@@ -29,7 +29,7 @@ impl AskelonPhoenix {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::from_mana_and_threshold(5, "FF"),
+                costs: Costs::basic(5, "FF"),
                 region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,

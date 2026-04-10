@@ -20,7 +20,7 @@ impl ChainLightning {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::from_mana_and_threshold(2, "AA"),
+                costs: Costs::basic(2, "AA"),
                 region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
@@ -91,7 +91,7 @@ impl Card for ChainLightning {
 
             force_sync(self.get_controller_id(state), &local_state).await?;
 
-            let additional_hit_cost = Cost::from_mana(2);
+            let additional_hit_cost = Cost::mana_only(2);
             if !additional_hit_cost.can_afford(state, self.get_controller_id(state))? {
                 break;
             }

@@ -19,7 +19,7 @@ impl ActivatedAbility for RollBoulder {
     }
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
-        Ok(Cost::from_additional(AdditionalCost::Tap {
+        Ok(Cost::additional_only(AdditionalCost::Tap {
             card: CardQuery::from_id(card_id.clone()),
         }))
     }
@@ -104,7 +104,7 @@ impl RollingBoulder {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::from_mana(4),
+                costs: Costs::mana_only(4),
                 region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,

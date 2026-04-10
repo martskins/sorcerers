@@ -26,7 +26,7 @@ impl CloudSpirit {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::from_mana_and_threshold(2, "AA"),
+                costs: Costs::basic(2, "AA"),
                 region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
