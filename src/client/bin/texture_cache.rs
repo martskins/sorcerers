@@ -126,7 +126,7 @@ impl TextureCache {
                                 }
                             }
                         }
-                        _ => eprintln!("Failed to download image for {}", name),
+                        _ => eprintln!("Failed to download image for {} in {}", name, image_url),
                     });
                 }
             }

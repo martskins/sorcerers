@@ -3,9 +3,9 @@ use std::sync::Arc;
 use crate::{
     card::{Ability, Card, CardBase, Cost, Costs, Edition, Rarity, Region, Zone},
     effect::{AbilityCounter, Effect},
-    game::{pick_card, PlayerId},
-    query::{CardQuery, EffectQuery},
-    state::{DeferredEffect, State},
+    game::{PlayerId, pick_card},
+    query::EffectQuery,
+    state::{CardMatcher, DeferredEffect, State},
 };
 
 #[derive(Debug, Clone)]
@@ -76,7 +76,7 @@ impl Card for Blaze {
             Effect::AddDeferredEffect {
                 effect: DeferredEffect {
                     trigger_on_effect: EffectQuery::MoveCard {
-                        card: CardQuery::from_id(picked_card),
+                        card: CardMatcher::from_id(picked_card),
                     },
                     expires_on_effect: Some(EffectQuery::TurnEnd { player_id: None }),
                     on_effect: Arc::new(|_state: &State, card_id: &uuid::Uuid, effect: &Effect| {

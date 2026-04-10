@@ -760,13 +760,13 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     fn get_image_path(&self) -> String {
+        use unidecode::unidecode;
+
         let set = self.get_edition().url_name();
-        let name_for_url = self
-            .get_name()
+        let name_for_url = unidecode(self.get_name())
             .to_string()
             .to_lowercase()
             .replace(" ", "_")
-            .replace("ö", "o")
             .replace("-", "_");
         let mut folder = "cards";
         if self.is_site() {

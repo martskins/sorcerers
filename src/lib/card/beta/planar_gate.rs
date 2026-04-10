@@ -2,8 +2,8 @@ use crate::{
     card::{Ability, Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, SiteType, Zone},
     effect::{AbilityCounter, Effect},
     game::{PlayerId, Thresholds},
-    query::{CardQuery, EffectQuery, ZoneQuery},
-    state::State,
+    query::{EffectQuery, ZoneQuery},
+    state::{CardMatcher, State},
 };
 
 #[derive(Debug, Clone)]
@@ -53,10 +53,7 @@ impl Site for PlanarGate {
                 id: uuid::Uuid::new_v4(),
                 ability: Ability::Voidwalk,
                 expires_on_effect: Some(EffectQuery::EnterZone {
-                    card: CardQuery::Specific {
-                        id: uuid::Uuid::new_v4(),
-                        card_id: card_id.clone(),
-                    },
+                    card: CardMatcher::from_id(card_id.clone()),
                     zone: ZoneQuery::AnySite {
                         id: uuid::Uuid::new_v4(),
                         controlled_by: None,

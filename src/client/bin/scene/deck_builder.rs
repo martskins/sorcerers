@@ -1,5 +1,4 @@
-use std::collections::HashMap;
-
+use crate::{element_icon, scene::Scene, texture_cache::TextureCache};
 use egui::{Color32, Context, CornerRadius, Frame, Rect, ScrollArea, Sense, Stroke, StrokeKind, Ui, pos2, vec2};
 use sorcerers::deck::{CardNameWithCount, DeckList};
 use sorcerers::game::PlayerId;
@@ -8,8 +7,8 @@ use sorcerers::{
     game::{Element, Thresholds},
     networking::{self, message::PreconDeck},
 };
-
-use crate::{element_icon, scene::Scene, texture_cache::TextureCache};
+use std::collections::HashMap;
+use unidecode::unidecode;
 
 // ── Colors ──────────────────────────────────────────────────────────────────
 const BG: Color32 = Color32::from_rgb(8, 8, 14);
@@ -479,7 +478,7 @@ impl DeckBuilder {
 
         let mut list_ui = ui.new_child(egui::UiBuilder::new().max_rect(list_rect));
 
-        let search_lower = self.search.to_lowercase();
+        let search_lower = unidecode(&self.search).to_lowercase();
         let elem_filter = self.elem_filter.clone();
         let type_filter = self.type_filter.clone();
 
@@ -488,7 +487,7 @@ impl DeckBuilder {
             .all_cards
             .iter()
             .filter(|c| {
-                if !search_lower.is_empty() && !c.name.to_lowercase().contains(&search_lower) {
+                if !search_lower.is_empty() && !unidecode(&c.name).to_lowercase().contains(&search_lower) {
                     return false;
                 }
                 match &elem_filter {
@@ -562,17 +561,17 @@ impl DeckBuilder {
                 ui.painter().rect_filled(row_rect, CornerRadius::same(3), row_bg);
 
                 // Thumbnail
-                let thumb_rect = Rect::from_min_size(
-                    row_rect.min + vec2(4.0, (ROW_H - CARD_THUMB_H) / 2.0),
-                    vec2(CARD_THUMB_W, CARD_THUMB_H),
-                );
-
+                let mut image_size = vec2(CARD_THUMB_W, CARD_THUMB_H);
                 let fake_card_data = entry.as_card_data();
+                if fake_card_data.is_site() {
+                    image_size = vec2(CARD_THUMB_H, CARD_THUMB_W);
+                }
+                let thumb_rect =
+                    Rect::from_min_size(row_rect.min + vec2(4.0, (ROW_H - CARD_THUMB_H) / 2.0), image_size);
+
                 if let Some(tex) = TextureCache::get_card_texture_blocking(&fake_card_data, ctx) {
-                    // TODO: Change so that site images are rendered rotated 90° to fit the
-                    // thumbnail better
                     egui::Image::new(egui::ImageSource::Texture(egui::load::SizedTexture::from_handle(&tex)))
-                        .max_size(vec2(CARD_THUMB_W, CARD_THUMB_H))
+                        .max_size(image_size)
                         .paint_at(ui, thumb_rect);
                 } else {
                     ui.painter()
@@ -587,7 +586,7 @@ impl DeckBuilder {
                 }
 
                 // Card info
-                let info_x = thumb_rect.max.x + 8.0;
+                let info_x = thumb_rect.min.x + CARD_THUMB_H + 8.0;
                 let name_pos = pos2(info_x, row_rect.min.y + 10.0);
                 ui.painter().text(
                     name_pos,

@@ -462,7 +462,7 @@ impl CardQuery {
 #[derive(Debug, Clone)]
 pub enum EffectQuery {
     EnterZone {
-        card: CardQuery,
+        card: CardMatcher,
         zone: ZoneQuery,
     },
     DamageDealt {
@@ -476,7 +476,7 @@ pub enum EffectQuery {
         player_id: Option<PlayerId>,
     },
     MoveCard {
-        card: CardQuery,
+        card: CardMatcher,
     },
     PlayCard {
         card: CardMatcher,
@@ -495,10 +495,9 @@ impl EffectQuery {
                     player_id, card_id, to, ..
                 },
             ) => {
-                let cards = card.options(state);
                 let zones = zone.options(state);
                 let zone = to.resolve(player_id, state).await?;
-                Ok(cards.contains(card_id) && zones.contains(&zone))
+                Ok(card.matches(card_id, state) && zones.contains(&zone))
             }
             (
                 EffectQuery::TurnStart {
@@ -547,25 +546,12 @@ impl EffectQuery {
 
                 Ok(true)
             }
-            (EffectQuery::MoveCard { card }, Effect::MoveCard { card_id, .. }) => {
-                let player_id = state.get_card(card_id).get_controller_id(state);
-                if &card.resolve(&player_id, state).await? != card_id {
-                    return Ok(false);
-                }
-
-                Ok(true)
+            (EffectQuery::MoveCard { card }, Effect::MoveCard { card_id, .. }) => Ok(card.matches(&card_id, state)),
+            (EffectQuery::SummonCard { card }, Effect::SummonCard { card_id, .. }) => Ok(card.matches(card_id, state)),
+            (EffectQuery::SummonCard { card }, Effect::SummonCards { cards }) => {
+                Ok(cards.into_iter().any(|(_, card_id, _)| card.matches(card_id, state)))
             }
-            (EffectQuery::SummonCard { card }, Effect::SummonCard { card_id, .. }) if card.matches(card_id, state) => {
-                Ok(true)
-            }
-            (EffectQuery::SummonCard { card }, Effect::SummonCards { cards })
-                if cards.into_iter().any(|(_, card_id, _)| card.matches(card_id, state)) =>
-            {
-                Ok(true)
-            }
-            (EffectQuery::PlayCard { card }, Effect::PlayCard { card_id, .. }) if card.matches(card_id, state) => {
-                Ok(true)
-            }
+            (EffectQuery::PlayCard { card }, Effect::PlayCard { card_id, .. }) => Ok(card.matches(card_id, state)),
             _ => Ok(false),
         }
     }
