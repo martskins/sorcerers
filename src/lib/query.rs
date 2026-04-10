@@ -558,6 +558,11 @@ impl EffectQuery {
             (EffectQuery::SummonCard { card }, Effect::SummonCard { card_id, .. }) if card.matches(card_id, state) => {
                 Ok(true)
             }
+            (EffectQuery::SummonCard { card }, Effect::SummonCards { cards })
+                if cards.into_iter().any(|(_, card_id, _)| card.matches(card_id, state)) =>
+            {
+                Ok(true)
+            }
             (EffectQuery::PlayCard { card }, Effect::PlayCard { card_id, .. }) if card.matches(card_id, state) => {
                 Ok(true)
             }

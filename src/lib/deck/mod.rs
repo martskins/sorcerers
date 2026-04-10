@@ -196,7 +196,7 @@ impl DeckList {
 #[derive(Debug, Clone)]
 pub struct Deck {
     pub name: String,
-    pub player_id: uuid::Uuid,
+    pub player_id: PlayerId,
     pub sites: Vec<uuid::Uuid>,
     pub spells: Vec<uuid::Uuid>,
     pub avatar: uuid::Uuid,

@@ -1,5 +1,6 @@
 use egui::epaint::CornerRadius;
 use egui::{Color32, Context, Painter, Rect, Stroke, Ui, pos2, vec2};
+use sorcerers::game::PlayerId;
 use sorcerers::{
     card::Zone,
     game::{Element, Resources, Thresholds},
@@ -27,7 +28,7 @@ const BORDER: Color32 = Color32::from_rgb(55, 70, 110);
 #[derive(Debug)]
 pub struct PlayerStatusComponent {
     visible: bool,
-    player_id: uuid::Uuid,
+    player_id: PlayerId,
     /// `true` = local player (bottom of sidebar), `false` = opponent (top).
     player: bool,
     rect: Rect,
@@ -35,7 +36,7 @@ pub struct PlayerStatusComponent {
 }
 
 impl PlayerStatusComponent {
-    pub fn new(rect: Rect, player_id: uuid::Uuid, player: bool) -> Self {
+    pub fn new(rect: Rect, player_id: PlayerId, player: bool) -> Self {
         Self {
             visible: true,
             player_id,

@@ -348,3 +348,5 @@ pub mod boil;
 pub use boil::*;
 pub mod bone_rabble;
 pub use bone_rabble::*;
+pub mod boneyard;
+pub use boneyard::*;

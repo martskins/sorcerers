@@ -9,13 +9,14 @@ use crate::{
 use egui::{Color32, Context, Painter, Rect, Ui, pos2, vec2};
 use sorcerers::{
     card::{CardData, Zone},
+    game::PlayerId,
     networking::{self, message::ClientMessage},
 };
 
 #[derive(Debug)]
 pub struct PlayerHandComponent {
     game_id: uuid::Uuid,
-    player_id: uuid::Uuid,
+    player_id: PlayerId,
     card_rects: Vec<CardRect>,
     client: networking::client::Client,
     visible: bool,
@@ -25,7 +26,7 @@ pub struct PlayerHandComponent {
 }
 
 impl PlayerHandComponent {
-    pub fn new(game_id: &uuid::Uuid, player_id: &uuid::Uuid, client: networking::client::Client, rect: Rect) -> Self {
+    pub fn new(game_id: &uuid::Uuid, player_id: &PlayerId, client: networking::client::Client, rect: Rect) -> Self {
         Self {
             game_id: game_id.clone(),
             player_id: player_id.clone(),

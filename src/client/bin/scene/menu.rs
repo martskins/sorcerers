@@ -2,6 +2,7 @@ use crate::scene::{Scene, game::Game};
 use egui::{Color32, Context, Margin, Ui, vec2};
 use kira::{AudioManager, AudioManagerSettings, DefaultBackend, sound::static_sound::StaticSoundData};
 use sorcerers::deck::DeckList;
+use sorcerers::game::PlayerId;
 use sorcerers::networking::message::ServerMessage;
 use sorcerers::networking::{
     self,
@@ -11,7 +12,7 @@ use sorcerers::networking::{
 #[derive(Debug)]
 pub struct Menu {
     client: networking::client::Client,
-    player_id: Option<uuid::Uuid>,
+    player_id: Option<PlayerId>,
     available_decks: Vec<PreconDeck>,
     saved_decks: Vec<DeckList>,
     selected_saved_deck: Option<usize>,
@@ -43,7 +44,7 @@ impl Menu {
     /// Restore menu state without adding a custom deck (used by Back button).
     pub fn restore(
         client: networking::client::Client,
-        player_id: Option<uuid::Uuid>,
+        player_id: Option<PlayerId>,
         player_name: String,
         available_decks: Vec<PreconDeck>,
     ) -> Self {

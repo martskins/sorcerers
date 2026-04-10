@@ -1,6 +1,6 @@
 use crate::{
     card::{Ability, Card, CardType, FootSoldier, Frog, Region, Rubble, UnitBase, Zone},
-    game::{pick_card, pick_option, BaseAction, Direction, PlayerAction, PlayerId, SoundEffect},
+    game::{BaseAction, Direction, PlayerAction, PlayerId, SoundEffect, pick_card, pick_option},
     networking::message::ServerMessage,
     query::{CardQuery, EffectQuery, QueryCache, ZoneQuery},
     state::{CardMatcher, DeferredEffect, Phase, State, TemporaryEffect},
@@ -43,10 +43,10 @@ pub enum TokenType {
 #[derive(Debug)]
 pub enum Effect {
     PlayerLost {
-        player_id: uuid::Uuid,
+        player_id: PlayerId,
     },
     SummonToken {
-        player_id: uuid::Uuid,
+        player_id: PlayerId,
         token_type: TokenType,
         zone: Zone,
     },
@@ -56,7 +56,7 @@ pub enum Effect {
     },
     ShootProjectile {
         id: uuid::Uuid,
-        player_id: uuid::Uuid,
+        player_id: PlayerId,
         shooter: uuid::Uuid,
         from_zone: Zone,
         direction: Direction,
@@ -91,11 +91,11 @@ pub enum Effect {
         zone: Zone,
     },
     DiscardCard {
-        player_id: uuid::Uuid,
+        player_id: PlayerId,
         card_id: uuid::Uuid,
     },
     MoveCard {
-        player_id: uuid::Uuid,
+        player_id: PlayerId,
         card_id: uuid::Uuid,
         from: Zone,
         to: ZoneQuery,
@@ -104,30 +104,33 @@ pub enum Effect {
         through_path: Option<Vec<Zone>>,
     },
     DrawSite {
-        player_id: uuid::Uuid,
+        player_id: PlayerId,
         count: u8,
     },
     DrawSpell {
-        player_id: uuid::Uuid,
+        player_id: PlayerId,
         count: u8,
     },
     DrawCard {
-        player_id: uuid::Uuid,
+        player_id: PlayerId,
         count: u8,
     },
     PlayMagic {
-        player_id: uuid::Uuid,
+        player_id: PlayerId,
         card_id: uuid::Uuid,
         caster_id: uuid::Uuid,
         from: Zone,
     },
     PlayCard {
-        player_id: uuid::Uuid,
+        player_id: PlayerId,
         card_id: uuid::Uuid,
         zone: ZoneQuery,
     },
+    SummonCards {
+        cards: Vec<(PlayerId, uuid::Uuid, Zone)>,
+    },
     SummonCard {
-        player_id: uuid::Uuid,
+        player_id: PlayerId,
         card_id: uuid::Uuid,
         zone: Zone,
     },
@@ -138,17 +141,17 @@ pub enum Effect {
         card_id: uuid::Uuid,
     },
     EndTurn {
-        player_id: uuid::Uuid,
+        player_id: PlayerId,
     },
     StartTurn {
-        player_id: uuid::Uuid,
+        player_id: PlayerId,
     },
     ConsumeMana {
-        player_id: uuid::Uuid,
+        player_id: PlayerId,
         mana: u8,
     },
     AddMana {
-        player_id: uuid::Uuid,
+        player_id: PlayerId,
         mana: u8,
     },
     RangedStrike {
@@ -185,13 +188,13 @@ pub enum Effect {
         zone_query: ZoneQuery,
     },
     DealDamageAllUnitsInZone {
-        player_id: uuid::Uuid,
+        player_id: PlayerId,
         zone: ZoneQuery,
         from: uuid::Uuid,
         damage: u16,
     },
     DealDamageToTarget {
-        player_id: uuid::Uuid,
+        player_id: PlayerId,
         query: CardQuery,
         from: uuid::Uuid,
         damage: u16,
@@ -211,11 +214,11 @@ pub enum Effect {
         bearer_id: Option<uuid::Uuid>,
     },
     ShuffleDeck {
-        player_id: uuid::Uuid,
+        player_id: PlayerId,
     },
 }
 
-fn player_name<'a>(player_id: &uuid::Uuid, state: &'a State) -> &'a str {
+fn player_name<'a>(player_id: &PlayerId, state: &'a State) -> &'a str {
     match state.players.iter().find(|p| &p.id == player_id) {
         Some(player) => &player.name,
         None => "Unknown Player",
@@ -267,6 +270,7 @@ impl Effect {
             Effect::PlayMagic { card_id, .. } => Some(card_id),
             Effect::PlayCard { card_id, .. } => Some(card_id),
             Effect::SummonCard { card_id, .. } => Some(card_id),
+            Effect::SummonCards { .. } => None,
             Effect::TapCard { card_id } => Some(card_id),
             Effect::UntapCard { card_id } => Some(card_id),
             Effect::EndTurn { player_id } => Some(player_id),
@@ -402,6 +406,7 @@ impl Effect {
                     zone.resolve(player_id, state).await?,
                 ))
             }
+            Effect::SummonCards { .. } => None,
             Effect::SummonCard { .. } => None,
             Effect::TapCard { .. } => None,
             Effect::UntapCard { .. } => None,
@@ -942,23 +947,55 @@ impl Effect {
                 state.effects.extend(effects.into_iter().map(|e| e.into()));
                 state.effects.extend(cast_effects.into_iter().map(|e| e.into()));
             }
+            Effect::SummonCards { cards } => {
+                for (_, card_id, zone) in cards {
+                    let has_charge = state.get_card(card_id).has_ability(state, &Ability::Charge);
+                    let card = state.get_card_mut(card_id);
+                    card.set_zone(zone.clone());
+
+                    if !has_charge {
+                        card.add_modifier(Ability::SummoningSickness);
+                    }
+                }
+
+                // Force sync after all cards have been put on their zones, so that players see them
+                // on the board while resolving effects from on_summon, genesis and on_visit_zone.
+                for player in &state.players {
+                    crate::game::force_sync(&player.id, state).await?;
+                }
+
+                let mut effects = vec![];
+                for (_, card_id, zone) in cards {
+                    let card = state.get_card(card_id);
+                    effects.extend(card.on_summon(state)?);
+                    effects.extend(card.genesis(state).await?);
+                    effects.extend(card.on_visit_zone(state, zone).await?);
+                }
+
+                state.effects.extend(effects.into_iter().map(|e| e.into()));
+            }
             Effect::SummonCard { card_id, zone, .. } => {
-                let snapshot = state.snapshot();
-                let card = state
-                    .cards
-                    .iter_mut()
-                    .find(|c| c.get_id() == card_id)
-                    .expect("to find card");
-                let cast_effects = card.on_summon(&snapshot)?;
+                let has_charge = state.get_card(card_id).has_ability(state, &Ability::Charge);
+                let card = state.get_card_mut(card_id);
                 card.set_zone(zone.clone());
-                if !card.has_ability(&snapshot, &Ability::Charge) {
+
+                if !has_charge {
                     card.add_modifier(Ability::SummoningSickness);
                 }
 
-                let mut effects = card.genesis(&snapshot).await?;
-                effects.extend(card.on_visit_zone(&snapshot, zone).await?);
+                // Force sync after all cards have been put on their zones, so that players see them
+                // on the board while resolving effects from on_summon, genesis and on_visit_zone.
+                for player in &state.players {
+                    crate::game::force_sync(&player.id, state).await?;
+                }
+
+                let mut effects = vec![];
+                let card = state.get_card(card_id);
+                effects.extend(card.on_summon(state)?);
+                effects.extend(card.genesis(state).await?);
+                effects.extend(card.on_visit_zone(state, zone).await?);
+
                 state.effects.extend(effects.into_iter().map(|e| e.into()));
-                state.effects.extend(cast_effects.into_iter().map(|e| e.into()));
             }
             Effect::TapCard { card_id, .. } => {
                 let card = state

@@ -1,7 +1,7 @@
 use crate::{
     card::{Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
-    game::{PlayerId, pick_card_with_preview},
+    game::{PlayerId, pick_card},
     state::State,
 };
 
@@ -64,7 +64,7 @@ impl Card for AtlasWanderers {
             return Ok(vec![]);
         }
 
-        let picked_site_id = pick_card_with_preview(
+        let picked_site_id = pick_card(
             self.get_controller_id(state),
             &adjacent_sites,
             state,

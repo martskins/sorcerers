@@ -112,7 +112,7 @@ impl Card for AwakenedMummies {
         Some(&mut self.unit_base)
     }
 
-    fn on_summon(&mut self, state: &State) -> anyhow::Result<Vec<Effect>> {
+    fn on_summon(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![
             Effect::SetCardRegion {
                 card_id: self.get_id().clone(),

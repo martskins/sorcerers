@@ -97,16 +97,22 @@ pub async fn pick_card_with_preview(
     state: &State,
     prompt: &str,
 ) -> anyhow::Result<uuid::Uuid> {
-    pick_card_with_options(player_id, card_ids, card_ids, state, prompt).await
+    pick_card_with_options(player_id, card_ids, card_ids, false, state, prompt).await
 }
 
 pub async fn pick_card_with_options(
     player_id: impl AsRef<PlayerId>,
     card_ids: &[uuid::Uuid],
     pickable_card_ids: &[uuid::Uuid],
+    block_opponent: bool,
     state: &State,
     prompt: &str,
 ) -> anyhow::Result<uuid::Uuid> {
+    let opponent_id = state.get_opponent_id(player_id.as_ref())?;
+    if block_opponent {
+        wait_for_opponent(&opponent_id, state, "Wait for opponent...").await?;
+    }
+
     state
         .get_sender()
         .send(ServerMessage::PickCard {
@@ -118,7 +124,7 @@ pub async fn pick_card_with_options(
         })
         .await?;
 
-    loop {
+    let card = loop {
         let msg = state.get_receiver().recv().await?;
         match msg {
             ClientMessage::PickCard { card_id, .. } => break Ok(card_id),
@@ -127,7 +133,13 @@ pub async fn pick_card_with_options(
             }
             _ => unreachable!(),
         }
+    };
+
+    if block_opponent {
+        resume(&opponent_id, state).await?;
     }
+
+    card
 }
 
 pub async fn distribute_damage(

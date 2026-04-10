@@ -9,6 +9,7 @@ use crate::{
 use egui::{Color32, Context, Painter, Rect, Ui, pos2, vec2};
 use sorcerers::{
     card::CardData,
+    game::PlayerId,
     networking::{self, message::ClientMessage},
 };
 use std::collections::HashSet;
@@ -27,7 +28,7 @@ pub struct SelectionOverlay {
     prompt: String,
     behaviour: SelectionOverlayBehaviour,
     close: bool,
-    player_id: uuid::Uuid,
+    player_id: PlayerId,
     game_id: uuid::Uuid,
     client: networking::client::Client,
     pickable_cards: HashSet<uuid::Uuid>,
@@ -37,7 +38,7 @@ impl SelectionOverlay {
     pub fn new(
         client: networking::client::Client,
         game_id: &uuid::Uuid,
-        player_id: &uuid::Uuid,
+        player_id: &PlayerId,
         cards: Vec<&CardData>,
         pickable_cards: Vec<uuid::Uuid>,
         prompt: &str,

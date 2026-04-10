@@ -116,6 +116,7 @@ impl Card for AssortedAnimals {
                 &controller_id,
                 &display_card_ids,
                 &affordable.iter().map(|(_, id, _)| id.clone()).collect::<Vec<_>>(),
+                false,
                 state,
                 "Assorted Animals: Pick a Beast to put into your hand",
             )

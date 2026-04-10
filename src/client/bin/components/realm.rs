@@ -10,6 +10,7 @@ use egui::{Color32, Context, Painter, Pos2, Rect, Stroke, Ui, Vec2, epaint::Shap
 use rand::SeedableRng;
 use sorcerers::{
     card::{CardData, CardType, Zone},
+    game::PlayerId,
     networking::{self, message::ClientMessage},
 };
 
@@ -113,7 +114,7 @@ impl std::fmt::Debug for CardFlight {
 #[derive(Debug)]
 pub struct RealmComponent {
     game_id: uuid::Uuid,
-    player_id: uuid::Uuid,
+    player_id: PlayerId,
     cell_rects: Vec<CellRect>,
     intersection_rects: Vec<IntersectionRect>,
     card_rects: Vec<CardRect>,
@@ -128,7 +129,7 @@ pub struct RealmComponent {
 impl RealmComponent {
     pub fn new(
         game_id: &uuid::Uuid,
-        player_id: &uuid::Uuid,
+        player_id: &PlayerId,
         mirrored: bool,
         client: networking::client::Client,
         rect: Rect,

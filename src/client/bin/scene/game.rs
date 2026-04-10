@@ -123,7 +123,7 @@ pub struct GameData {
 }
 
 impl GameData {
-    pub fn new(player_id: &uuid::Uuid, cards: Vec<CardData>) -> Self {
+    pub fn new(player_id: &PlayerId, cards: Vec<CardData>) -> Self {
         Self {
             player_id: *player_id,
             cards,
@@ -174,7 +174,7 @@ pub struct Game {
 impl Game {
     pub fn new(
         game_id: uuid::Uuid,
-        player_id: uuid::Uuid,
+        player_id: PlayerId,
         opponent_id: uuid::Uuid,
         is_player_one: bool,
         cards: Vec<CardData>,

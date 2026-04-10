@@ -191,7 +191,7 @@ impl Zone {
         get_nearby_zones(self)
     }
 
-    pub fn get_minion_ids(&self, state: &State, controller_id: Option<&uuid::Uuid>) -> Vec<uuid::Uuid> {
+    pub fn get_minion_ids(&self, state: &State, controller_id: Option<&PlayerId>) -> Vec<uuid::Uuid> {
         self.get_minions(state, controller_id)
             .iter()
             .map(|c| c.get_id())
@@ -199,7 +199,7 @@ impl Zone {
             .collect()
     }
 
-    pub fn get_minions<'a>(&self, state: &'a State, controller_id: Option<&uuid::Uuid>) -> Vec<&'a Box<dyn Card>> {
+    pub fn get_minions<'a>(&self, state: &'a State, controller_id: Option<&PlayerId>) -> Vec<&'a Box<dyn Card>> {
         state
             .get_cards_in_zone(self)
             .iter()
@@ -215,7 +215,7 @@ impl Zone {
             .collect::<Vec<&Box<dyn Card>>>()
     }
 
-    pub fn get_units<'a>(&self, state: &'a State, controller_id: Option<&uuid::Uuid>) -> Vec<&'a Box<dyn Card>> {
+    pub fn get_units<'a>(&self, state: &'a State, controller_id: Option<&PlayerId>) -> Vec<&'a Box<dyn Card>> {
         state
             .get_cards_in_zone(self)
             .iter()
@@ -1673,7 +1673,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         }
     }
 
-    fn on_summon(&mut self, state: &State) -> anyhow::Result<Vec<Effect>> {
+    fn on_summon(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         if self.is_site() {
             return self.base_site_on_summon(state);
         }

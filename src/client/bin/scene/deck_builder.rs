@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use egui::{Color32, Context, CornerRadius, Frame, Rect, ScrollArea, Sense, Stroke, StrokeKind, Ui, pos2, vec2};
 use sorcerers::deck::{CardNameWithCount, DeckList};
+use sorcerers::game::PlayerId;
 use sorcerers::{
     card::{ALL_CARDS, CardType, Rarity, Zone},
     game::{Element, Thresholds},
@@ -92,8 +93,8 @@ impl CardEntry {
         CardData {
             id: uuid::Uuid::nil(),
             name: self.name.clone(),
-            owner_id: uuid::Uuid::nil(),
-            controller_id: uuid::Uuid::nil(),
+            owner_id: PlayerId::nil(),
+            controller_id: PlayerId::nil(),
             tapped: false,
             edition: Edition::Beta,
             zone: Zone::Spellbook,
@@ -114,7 +115,7 @@ impl CardEntry {
 // ── DeckBuilder scene ────────────────────────────────────────────────────────
 pub struct DeckBuilder {
     client: networking::client::Client,
-    player_id: Option<uuid::Uuid>,
+    player_id: Option<PlayerId>,
     player_name: String,
     prev_available_decks: Vec<PreconDeck>,
 
@@ -142,7 +143,7 @@ pub struct DeckBuilder {
 impl DeckBuilder {
     pub fn from_menu(
         client: networking::client::Client,
-        player_id: Option<uuid::Uuid>,
+        player_id: Option<PlayerId>,
         player_name: String,
         prev_available_decks: Vec<PreconDeck>,
     ) -> Self {
@@ -152,7 +153,7 @@ impl DeckBuilder {
     /// Open the deck builder pre-populated with an existing saved deck for editing.
     pub fn from_deck_list(
         client: networking::client::Client,
-        player_id: Option<uuid::Uuid>,
+        player_id: Option<PlayerId>,
         player_name: String,
         prev_available_decks: Vec<PreconDeck>,
         deck: sorcerers::deck::DeckList,
@@ -162,7 +163,7 @@ impl DeckBuilder {
 
     fn build(
         client: networking::client::Client,
-        player_id: Option<uuid::Uuid>,
+        player_id: Option<PlayerId>,
         player_name: String,
         prev_available_decks: Vec<PreconDeck>,
         existing: Option<sorcerers::deck::DeckList>,
