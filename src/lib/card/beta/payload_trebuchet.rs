@@ -5,8 +5,7 @@ use crate::{
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_zone},
-    query::CardQuery,
-    state::State,
+    state::{CardMatcher, State},
 };
 
 #[derive(Debug, Clone)]
@@ -44,31 +43,21 @@ impl ActivatedAbility for ShootPayload {
             Some(bearer_id) => {
                 let bearer = state.get_card(&bearer_id);
                 Ok(Cost::ZERO
-                    .with_additional(AdditionalCost::Tap {
-                        card: CardQuery::from_id(bearer_id.clone()),
-                    })
-                    .with_additional(AdditionalCost::Tap {
-                        card: CardQuery::InZone {
-                            id: uuid::Uuid::new_v4(),
-                            zone: bearer.get_zone().clone(),
-                            card_types: Some(vec![CardType::Minion, CardType::Avatar]),
-                            regions: None,
-                            owner: Some(bearer.get_controller_id(state).clone()),
-                            prompt: Some("Tap an untapped ally here".to_string()),
-                            tapped: Some(false),
-                        },
-                    })
-                    .with_additional(AdditionalCost::Discard {
-                        card: CardQuery::InZone {
-                            id: uuid::Uuid::new_v4(),
-                            zone: Zone::Hand,
-                            card_types: None,
-                            prompt: Some("Discard a card from your hand".to_string()),
-                            regions: None,
-                            owner: Some(bearer.get_controller_id(state).clone()),
-                            tapped: None,
-                        },
-                    }))
+                    .with_additional(AdditionalCost::tap(
+                        CardMatcher::from_id(bearer_id.clone()).with_tapped(false),
+                    ))
+                    .with_additional(AdditionalCost::tap(
+                        CardMatcher::new()
+                            .with_tapped(false)
+                            .with_zone(bearer.get_zone())
+                            .with_card_types(vec![CardType::Minion, CardType::Avatar])
+                            .with_controller_id(&bearer.get_controller_id(state)),
+                    ))
+                    .with_additional(AdditionalCost::discard(
+                        CardMatcher::new()
+                            .with_zone(&Zone::Hand)
+                            .with_controller_id(&bearer.get_controller_id(state)),
+                    )))
             }
             None => Ok(Cost::ZERO),
         }

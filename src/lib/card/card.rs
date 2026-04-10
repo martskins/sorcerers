@@ -357,11 +357,47 @@ where
 }
 
 #[derive(Debug, Clone)]
-pub enum AdditionalCost {
-    Tap { card: CardQuery },
-    Discard { card: CardQuery },
-    Sacrifice { card: CardQuery },
-    Surface { card: CardQuery },
+pub enum CostAction {
+    Tap,
+    Discard,
+    Sacrifice,
+    Surface,
+}
+
+#[derive(Debug, Clone)]
+pub struct AdditionalCost {
+    pub card: CardMatcher,
+    pub action: CostAction,
+}
+
+impl AdditionalCost {
+    pub fn tap(card: CardMatcher) -> Self {
+        Self {
+            card,
+            action: CostAction::Tap,
+        }
+    }
+
+    pub fn discard(card: CardMatcher) -> Self {
+        Self {
+            card,
+            action: CostAction::Discard,
+        }
+    }
+
+    pub fn sacrifice(card: CardMatcher) -> Self {
+        Self {
+            card,
+            action: CostAction::Sacrifice,
+        }
+    }
+
+    pub fn surface(card: CardMatcher) -> Self {
+        Self {
+            card,
+            action: CostAction::Surface,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -403,58 +439,70 @@ impl CostType {
                 Ok(self.clone())
             }
             CostType::Additional(additional_costs) => {
-                for additional_cost in additional_costs {
-                    match additional_cost {
-                        AdditionalCost::Surface { card } => {
-                            let card_id = card.resolve(player_id, state).await?;
-                            let card = state.get_card(&card_id);
-                            let effect = Effect::MoveCard {
-                                card_id,
-                                player_id: card.get_controller_id(state).clone(),
-                                from: card.get_zone().clone(),
-                                to: ZoneQuery::from_zone(card.get_zone().clone()),
-                                tap: true,
-                                region: Region::Surface,
-                                through_path: None,
-                            };
-                            effect.apply(state).await?;
-                            state.effect_log.push(effect.into());
-                        }
-                        AdditionalCost::Tap { card } => {
-                            let card_id = card.resolve(player_id, state).await?;
-                            let effect = Effect::TapCard { card_id };
-                            effect.apply(state).await?;
-                            state.effect_log.push(effect.into());
-                        }
-                        AdditionalCost::Discard { card } => {
-                            let card_id = card.resolve(player_id, state).await?;
-                            let effect = Effect::DiscardCard {
-                                card_id,
-                                player_id: player_id.clone(),
-                            };
-                            effect.apply(state).await?;
-                            state.effect_log.push(effect.into());
-                        }
-                        AdditionalCost::Sacrifice { card } => {
-                            let card_id = card.resolve(player_id, state).await?;
-                            let card = state.get_card(&card_id);
-                            let effect = Effect::MoveCard {
-                                card_id,
-                                player_id: player_id.clone(),
-                                from: card.get_zone().clone(),
-                                to: ZoneQuery::Specific {
-                                    id: uuid::Uuid::new_v4(),
-                                    zone: Zone::Cemetery,
-                                },
-                                tap: false,
-                                region: Region::Surface,
-                                through_path: None,
-                            };
-                            effect.apply(state).await?;
-                            state.effect_log.push(effect.into());
+                for ac in additional_costs {
+                    let ac = ac.clone();
+                    let mut query = ac.card;
+                    match ac.action {
+                        CostAction::Tap => query = query.with_tapped(false),
+                        CostAction::Discard => query = query.with_zone(&Zone::Hand),
+                        CostAction::Sacrifice => {} // TODO: add guard for sacrifice case
+                        CostAction::Surface => {
+                            query = query.with_region_in(vec![Region::Underwater, Region::Underground])
                         }
                     }
+
+                    let options = query.resolve_ids(state);
+                    let effect = match options.len() {
+                        0 => unreachable!(),
+                        1 => {
+                            let card_id = options.first().expect("options to have exactly one element");
+                            match ac.action {
+                                CostAction::Tap => Effect::TapCard {
+                                    card_id: card_id.clone(),
+                                },
+                                CostAction::Discard => Effect::DiscardCard {
+                                    card_id: card_id.clone(),
+                                    player_id: player_id.clone(),
+                                },
+                                CostAction::Sacrifice => Effect::BuryCard {
+                                    card_id: card_id.clone(),
+                                },
+                                CostAction::Surface => Effect::SetCardRegion {
+                                    card_id: card_id.clone(),
+                                    region: Region::Surface,
+                                    tap: false,
+                                },
+                            }
+                        }
+                        _ => {
+                            let card_id =
+                                pick_card(player_id, &options, state, "Choose a card to tap for additional cost")
+                                    .await?;
+                            match ac.action {
+                                CostAction::Tap => Effect::TapCard {
+                                    card_id: card_id.clone(),
+                                },
+                                CostAction::Discard => Effect::DiscardCard {
+                                    card_id: card_id.clone(),
+                                    player_id: player_id.clone(),
+                                },
+                                CostAction::Sacrifice => Effect::BuryCard {
+                                    card_id: card_id.clone(),
+                                },
+                                CostAction::Surface => Effect::SetCardRegion {
+                                    card_id: card_id.clone(),
+                                    region: Region::Surface,
+                                    tap: true,
+                                },
+                            }
+                        }
+                    };
+
+                    effect.apply(state).await?;
+                    state.effect_log.push(effect.into());
+                    crate::game::force_sync(player_id, state).await?;
                 }
+
                 Ok(self.clone())
             }
         }
@@ -471,62 +519,31 @@ impl CostType {
                 && thresholds.air >= tc.air
                 && thresholds.earth >= tc.earth
                 && thresholds.water >= tc.water),
-            CostType::Additional(additional) => {
+            CostType::Additional(additional_costs) => {
                 let mut snapshot = state.snapshot();
-                for other in additional {
-                    match other {
-                        AdditionalCost::Surface { card } => {
-                            let options: Vec<uuid::Uuid> = card.options(&snapshot);
-                            if options.is_empty() {
-                                return Ok(false);
-                            }
-
-                            let card_id = options.first().expect("options to have exactly one element");
-                            let card = snapshot.get_card_mut(card_id);
-                            if card.is_tapped() {
-                                return Ok(false);
-                            }
-
-                            if card.get_region(state) != &Region::Surface {
-                                return Ok(false);
-                            }
-
-                            card.get_base_mut().region = Region::Surface;
+                for ac in additional_costs {
+                    let ac = ac.clone();
+                    let mut query = ac.card;
+                    match ac.action {
+                        CostAction::Tap => query = query.with_tapped(false),
+                        CostAction::Discard => query = query.with_zone(&Zone::Hand),
+                        CostAction::Sacrifice => {} // TODO: add guard for sacrifice case
+                        CostAction::Surface => {
+                            query = query.with_region_in(vec![Region::Underwater, Region::Underground])
                         }
-                        AdditionalCost::Tap { card } => {
-                            let options: Vec<uuid::Uuid> = card
-                                .options(&snapshot)
-                                .iter()
-                                .map(|cid| snapshot.get_card(cid))
-                                .filter(|c| !c.is_tapped())
-                                .map(|c| c.get_id())
-                                .cloned()
-                                .collect();
-                            if options.is_empty() {
-                                return Ok(false);
-                            }
+                    }
 
-                            let card_id = options.first().expect("options to have at least one element");
-                            snapshot.get_card_mut(card_id).get_base_mut().tapped = true;
-                        }
-                        AdditionalCost::Discard { card } => {
-                            let options = card.options(&snapshot);
-                            if options.is_empty() {
-                                return Ok(false);
-                            }
+                    let options = query.resolve_ids(&snapshot);
+                    if options.is_empty() {
+                        return Ok(false);
+                    }
 
-                            let card_id = options.first().expect("options to have at least one element");
-                            snapshot.get_card_mut(card_id).set_zone(Zone::Cemetery);
-                        }
-                        AdditionalCost::Sacrifice { card } => {
-                            let options = card.options(&snapshot);
-                            if options.is_empty() {
-                                return Ok(false);
-                            }
-
-                            let card_id = options.first().expect("options to have at least one element");
-                            snapshot.get_card_mut(card_id).set_zone(Zone::Cemetery);
-                        }
+                    let card_id = options.first().expect("options to have at least one element");
+                    match ac.action {
+                        CostAction::Tap => snapshot.get_card_mut(card_id).get_base_mut().tapped = true,
+                        CostAction::Discard => snapshot.get_card_mut(card_id).set_zone(Zone::Cemetery),
+                        CostAction::Sacrifice => snapshot.get_card_mut(card_id).set_zone(Zone::Cemetery),
+                        CostAction::Surface => snapshot.get_card_mut(card_id).get_base_mut().region = Region::Surface,
                     }
                 }
 
@@ -702,11 +719,11 @@ impl Cost {
                 CostType::Thresholds(tc) => parts.push(format!("Thresholds: {:?}", tc)),
                 CostType::Additional(additional) => {
                     for add in additional {
-                        match add {
-                            AdditionalCost::Tap { .. } => parts.push("Tap card".to_string()),
-                            AdditionalCost::Discard { .. } => parts.push("Discard card".to_string()),
-                            AdditionalCost::Sacrifice { .. } => parts.push("Sacrifice card".to_string()),
-                            AdditionalCost::Surface { .. } => parts.push("Put card on Surface".to_string()),
+                        match add.action {
+                            CostAction::Tap { .. } => parts.push("Tap card".to_string()),
+                            CostAction::Discard { .. } => parts.push("Discard card".to_string()),
+                            CostAction::Sacrifice { .. } => parts.push("Sacrifice card".to_string()),
+                            CostAction::Surface { .. } => parts.push("Put card on Surface".to_string()),
                         }
                     }
                 }
@@ -1826,7 +1843,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
         let unborne_artifacts: Vec<(uuid::Uuid, String)> = CardMatcher::new()
             .with_card_type(CardType::Artifact)
-            .in_zone(self.get_zone())
+            .with_zone(self.get_zone())
             .with_region(self.get_region(state))
             .iter(state)
             .filter_map(|c| c.get_artifact())
@@ -2189,25 +2206,20 @@ pub fn from_name_and_zone(name: &str, player_id: &PlayerId, zone: Zone) -> Box<d
 mod tests {
     use crate::{
         card::{Ability, AdditionalCost, ApprenticeWizard, Card, CardType, Cost, RimlandNomads, Zone},
-        query::CardQuery,
-        state::State,
+        state::{CardMatcher, State},
     };
 
     #[test]
     fn test_additional_cost_tap() {
         let mut state = State::new_mock_state(Zone::all_realm());
         let player_id = state.players[0].id.clone();
-        let cost = Cost::additional_only(AdditionalCost::Tap {
-            card: CardQuery::InZone {
-                id: uuid::Uuid::new_v4(),
-                zone: Zone::Realm(10),
-                card_types: Some(vec![CardType::Minion, CardType::Avatar]),
-                regions: None,
-                owner: None,
-                prompt: None,
-                tapped: Some(false),
-            },
-        });
+        let cost = Cost::additional_only(AdditionalCost::tap(
+            CardMatcher::new()
+                .with_tapped(false)
+                .with_card_types(vec![CardType::Minion, CardType::Avatar])
+                .with_zone(&Zone::Realm(10))
+                .with_tapped(false),
+        ));
         let can_afford = cost.can_afford(&state, &player_id).expect("should not error");
         assert!(!can_afford, "no units in the zone");
 
@@ -2229,28 +2241,20 @@ mod tests {
         let mut state = State::new_mock_state(Zone::all_realm());
         let player_id = state.players[0].id.clone();
         let cost = Cost::ZERO
-            .with_additional(AdditionalCost::Tap {
-                card: CardQuery::InZone {
-                    id: uuid::Uuid::new_v4(),
-                    zone: Zone::Realm(10),
-                    card_types: Some(vec![CardType::Minion, CardType::Avatar]),
-                    regions: None,
-                    owner: None,
-                    prompt: None,
-                    tapped: Some(false),
-                },
-            })
-            .with_additional(AdditionalCost::Tap {
-                card: CardQuery::InZone {
-                    id: uuid::Uuid::new_v4(),
-                    zone: Zone::Realm(10),
-                    card_types: Some(vec![CardType::Minion, CardType::Avatar]),
-                    regions: None,
-                    owner: None,
-                    prompt: None,
-                    tapped: Some(false),
-                },
-            });
+            .with_additional(AdditionalCost::tap(
+                CardMatcher::new()
+                    .with_tapped(false)
+                    .with_card_types(vec![CardType::Minion, CardType::Avatar])
+                    .with_zone(&Zone::Realm(10))
+                    .with_tapped(false),
+            ))
+            .with_additional(AdditionalCost::tap(
+                CardMatcher::new()
+                    .with_tapped(false)
+                    .with_card_types(vec![CardType::Minion, CardType::Avatar])
+                    .with_zone(&Zone::Realm(10))
+                    .with_tapped(false),
+            ));
         let can_afford = cost.can_afford(&state, &player_id).expect("should not error");
         assert!(!can_afford, "no units in the zone");
 

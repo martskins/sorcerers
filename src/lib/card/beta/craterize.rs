@@ -2,8 +2,8 @@ use crate::{
     card::{AdditionalCost, Card, CardBase, CardType, Cost, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::{Direction, PlayerId, pick_card},
-    query::{CardQuery, ZoneQuery},
-    state::State,
+    query::ZoneQuery,
+    state::{CardMatcher, State},
 };
 
 #[derive(Debug, Clone)]
@@ -23,28 +23,18 @@ impl Craterize {
                 zone: Zone::Spellbook,
                 costs: Costs::single(
                     Cost::new(8, "EE")
-                        .with_additional(AdditionalCost::Discard {
-                            card: CardQuery::InZone {
-                                id: uuid::Uuid::new_v4(),
-                                zone: Zone::Hand,
-                                card_types: Some(vec![CardType::Site]),
-                                regions: None,
-                                owner: Some(owner_id.clone()),
-                                prompt: Some("Craterize: Discard a site from your hand".to_string()),
-                                tapped: None,
-                            },
-                        })
-                        .with_additional(AdditionalCost::Discard {
-                            card: CardQuery::InZone {
-                                id: uuid::Uuid::new_v4(),
-                                zone: Zone::Hand,
-                                card_types: Some(vec![CardType::Site]),
-                                regions: None,
-                                owner: Some(owner_id.clone()),
-                                prompt: Some("Craterize: Discard a site from your hand".to_string()),
-                                tapped: None,
-                            },
-                        }),
+                        .with_additional(AdditionalCost::discard(
+                            CardMatcher::new()
+                                .with_zone(&Zone::Hand)
+                                .with_card_type(CardType::Site)
+                                .with_controller_id(&owner_id),
+                        ))
+                        .with_additional(AdditionalCost::discard(
+                            CardMatcher::new()
+                                .with_zone(&Zone::Hand)
+                                .with_card_type(CardType::Site)
+                                .with_controller_id(&owner_id),
+                        )),
                 ),
                 region: Region::Surface,
                 rarity: Rarity::Elite,

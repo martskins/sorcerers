@@ -73,7 +73,7 @@ impl Card for Battlefield {
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
         let weapons_and_armor = CardMatcher::new()
-            .in_zone(&Zone::Cemetery)
+            .with_zone(&Zone::Cemetery)
             .with_artifact_types(vec![ArtifactType::Weapon, ArtifactType::Armor])
             .resolve_ids(state);
         let picked_card_id = pick_card(

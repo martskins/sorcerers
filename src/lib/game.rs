@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Aura, CardType, Cost, Region, Zone},
+    card::{Ability, AdditionalCost, Aura, CardType, Cost, Region, Zone},
     effect::Effect,
     error::GameError,
     networking::{
@@ -7,7 +7,7 @@ use crate::{
         message::{ClientMessage, ServerMessage},
     },
     query::{QueryCache, ZoneQuery},
-    state::{ContinuousEffect, Phase, PlayerWithDeck, State},
+    state::{CardMatcher, ContinuousEffect, Phase, PlayerWithDeck, State},
 };
 use async_channel::{Receiver, Sender};
 use chrono::Utc;
@@ -965,9 +965,17 @@ impl ActivatedAbility for AvatarAction {
         }
     }
 
+    fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
+        match self {
+            AvatarAction::PlaySite | AvatarAction::DrawSite => Ok(Cost::additional_only(AdditionalCost::tap(
+                CardMatcher::from_id(*card_id).with_tapped(false),
+            ))),
+        }
+    }
+
     async fn on_select(
         &self,
-        card_id: &uuid::Uuid,
+        _card_id: &uuid::Uuid,
         player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
@@ -987,26 +995,16 @@ impl ActivatedAbility for AvatarAction {
                 let zones = picked_card.get_valid_play_zones(state)?;
                 let prompt = "Pick a zone to play the site";
                 let zone = pick_zone(player_id, &zones, state, false, prompt).await?;
-                Ok(vec![
-                    Effect::PlayCard {
-                        player_id: player_id.clone(),
-                        card_id: picked_card_id.clone(),
-                        zone: zone.clone().into(),
-                    },
-                    Effect::TapCard {
-                        card_id: card_id.clone(),
-                    },
-                ])
-            }
-            AvatarAction::DrawSite => Ok(vec![
-                Effect::DrawSite {
+                Ok(vec![Effect::PlayCard {
                     player_id: player_id.clone(),
-                    count: 1,
-                },
-                Effect::TapCard {
-                    card_id: card_id.clone(),
-                },
-            ]),
+                    card_id: picked_card_id.clone(),
+                    zone: zone.clone().into(),
+                }])
+            }
+            AvatarAction::DrawSite => Ok(vec![Effect::DrawSite {
+                player_id: player_id.clone(),
+                count: 1,
+            }]),
         }
     }
 }

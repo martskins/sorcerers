@@ -34,6 +34,8 @@ pub struct PlayerWithDeck {
 #[derive(Debug, Default, Clone)]
 pub struct CardMatcher {
     pub id: Option<uuid::Uuid>,
+    pub randomise: Option<bool>,
+    pub count: Option<usize>,
     pub ids: Option<Vec<uuid::Uuid>>,
     pub card_names: Option<Vec<String>>,
     pub card_name_contains: Option<String>,
@@ -81,6 +83,20 @@ impl CardMatcher {
         self.id.as_ref()
     }
 
+    pub fn count(self, count: usize) -> Self {
+        Self {
+            count: Some(count),
+            ..self
+        }
+    }
+
+    pub fn randomised(self) -> Self {
+        Self {
+            randomise: Some(true),
+            ..self
+        }
+    }
+
     /// Like `resolve_ids`, but stores/retrieves results from `QueryCache` when
     /// this matcher has a cache id (set via `.cached()`).
     pub async fn resolve(&self, state: &State) -> Vec<uuid::Uuid> {
@@ -112,7 +128,9 @@ impl CardMatcher {
     }
 
     pub fn resolve_ids(&self, state: &State) -> Vec<uuid::Uuid> {
-        state
+        use rand::seq::SliceRandom;
+
+        let mut card_ids: Vec<uuid::Uuid> = state
             .cards
             .iter()
             .filter(|c| self.matches(c.get_id(), state))
@@ -124,7 +142,18 @@ impl CardMatcher {
                 }
             })
             .map(|c| c.get_id().clone())
-            .collect()
+            .collect();
+
+        if let Some(true) = self.randomise {
+            let mut rng = rand::rng();
+            card_ids.shuffle(&mut rng);
+        }
+
+        if let Some(count) = self.count {
+            card_ids.into_iter().take(count).collect()
+        } else {
+            card_ids
+        }
     }
 
     pub fn with_card_name_contains(self, name: &str) -> Self {
@@ -168,7 +197,7 @@ impl CardMatcher {
         }
     }
 
-    pub fn in_zone(self, zone: &Zone) -> Self {
+    pub fn with_zone(self, zone: &Zone) -> Self {
         Self {
             in_zones: Some(vec![zone.clone()]),
             include_not_in_play: Some(true),
@@ -183,7 +212,7 @@ impl CardMatcher {
         }
     }
 
-    pub fn tapped(self, tapped: bool) -> Self {
+    pub fn with_tapped(self, tapped: bool) -> Self {
         Self {
             tapped: Some(tapped),
             ..self
@@ -680,7 +709,7 @@ impl State {
                 let dodge_rolls_in_hand = CardMatcher::new()
                     .with_name(DodgeRoll::NAME)
                     .with_controller_id(&defender_controller)
-                    .in_zone(&Zone::Hand)
+                    .with_zone(&Zone::Hand)
                     .resolve_ids(self);
                 if dodge_rolls_in_hand.is_empty() {
                     return Ok(None);

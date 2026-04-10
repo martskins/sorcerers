@@ -68,7 +68,7 @@ impl Card for Boil {
         let site = state.get_card(&picked_site_id);
 
         Ok(CardMatcher::new()
-            .in_zone(site.get_zone())
+            .with_zone(site.get_zone())
             .with_card_type(CardType::Minion)
             .resolve_ids(state)
             .into_iter()

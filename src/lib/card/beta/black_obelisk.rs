@@ -73,7 +73,7 @@ impl Card for BlackObelisk {
         Ok(vec![ContinuousEffect::ModifyProvidedMana {
             mana_diff: 2,
             affected_cards: CardMatcher::new()
-                .in_zone(self.get_zone())
+                .with_zone(self.get_zone())
                 .with_card_type(CardType::Site),
         }])
     }

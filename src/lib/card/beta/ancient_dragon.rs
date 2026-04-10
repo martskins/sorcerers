@@ -1,5 +1,8 @@
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{
+        Ability, AdditionalCost, Card, CardBase, CardType, Cost, Costs, Edition, MinionType, Rarity, Region, UnitBase,
+        Zone,
+    },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_zone_near},
     state::{CardMatcher, State},
@@ -12,6 +15,12 @@ struct AncientDragonAbility;
 impl ActivatedAbility for AncientDragonAbility {
     fn get_name(&self) -> String {
         "Tap to deal 4 damage".to_string()
+    }
+
+    fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
+        Ok(Cost::additional_only(AdditionalCost::tap(CardMatcher::from_id(
+            card_id.clone(),
+        ))))
     }
 
     async fn on_select(
@@ -30,12 +39,11 @@ impl ActivatedAbility for AncientDragonAbility {
         )
         .await?;
         let unit_ids = CardMatcher::new()
-            .in_zone(&picked_zone)
+            .with_zone(&picked_zone)
+            .with_card_types(vec![CardType::Minion, CardType::Avatar])
             .with_id_not_in(vec![card_id.clone()])
             .resolve_ids(state);
-        let mut effects = vec![Effect::TapCard {
-            card_id: card_id.clone(),
-        }];
+        let mut effects = vec![];
         for unit_id in unit_ids {
             effects.push(Effect::take_damage(&unit_id, card_id, 4));
         }

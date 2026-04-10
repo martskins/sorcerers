@@ -2,8 +2,8 @@ use crate::{
     card::{Ability, AdditionalCost, Card, CardBase, Cost, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{ActivatedAbility, BaseOption, CARDINAL_DIRECTIONS, PlayerId, pick_direction, pick_option},
-    query::{CardQuery, ZoneQuery},
-    state::State,
+    query::ZoneQuery,
+    state::{CardMatcher, State},
 };
 
 #[derive(Debug, Clone)]
@@ -96,9 +96,9 @@ impl ActivatedAbility for ShootProjectile {
     }
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
-        Ok(Cost::additional_only(AdditionalCost::Tap {
-            card: CardQuery::from_id(card_id.clone()),
-        }))
+        Ok(Cost::additional_only(AdditionalCost::tap(
+            CardMatcher::from_id(card_id.clone()).with_tapped(false),
+        )))
     }
 }
 

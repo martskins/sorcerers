@@ -5,8 +5,7 @@ use crate::{
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_card},
-    query::CardQuery,
-    state::State,
+    state::{CardMatcher, State},
 };
 
 #[derive(Debug, Clone)]
@@ -26,20 +25,16 @@ impl ActivatedAbility for TapToDealDamage {
             .get_bearer()?
             .ok_or(anyhow::anyhow!("Artifact has no bearer"))?;
         Ok(Cost::ZERO
-            .with_additional(AdditionalCost::Tap {
-                card: CardQuery::from_id(bearer.clone()),
-            })
-            .with_additional(AdditionalCost::Tap {
-                card: CardQuery::InZone {
-                    id: uuid::Uuid::new_v4(),
-                    zone: card.get_zone().clone(),
-                    card_types: Some(vec![CardType::Minion, CardType::Avatar]),
-                    regions: None,
-                    owner: Some(card.get_controller_id(state).clone()),
-                    prompt: Some("Tap an untapped ally here".to_string()),
-                    tapped: Some(false),
-                },
-            }))
+            .with_additional(AdditionalCost::tap(
+                CardMatcher::from_id(bearer.clone()).with_tapped(false),
+            ))
+            .with_additional(AdditionalCost::tap(
+                CardMatcher::new()
+                    .with_zone(card.get_zone())
+                    .with_tapped(false)
+                    .with_card_types(vec![CardType::Minion, CardType::Avatar])
+                    .with_controller_id(&card.get_controller_id(state)),
+            )))
     }
 
     async fn on_select(

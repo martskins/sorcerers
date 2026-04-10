@@ -73,7 +73,7 @@ impl Card for Backstab {
         let target_ids = CardMatcher::new()
             .with_card_types(vec![CardType::Minion])
             .with_region(&caster_region)
-            .tapped(true)
+            .with_tapped(true)
             .in_zones(&mover.get_zone().get_adjacent())
             .with_id_not_in(vec![mover_id.clone()])
             .resolve_ids(state);

@@ -1,11 +1,10 @@
 use crate::{
     card::{
-        AreaModifiers, Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardType, Cost, Costs, Edition, Rarity,
-        Region, Zone,
+        AdditionalCost, AreaModifiers, Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardType, Cost, Costs,
+        Edition, Rarity, Region, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_card},
-    query::CardQuery,
     state::{CardMatcher, State},
 };
 
@@ -66,9 +65,9 @@ impl ActivatedAbility for RamStrike {
     }
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
-        Ok(Cost::additional_only(crate::card::AdditionalCost::Tap {
-            card: CardQuery::from_id(card_id.clone()),
-        }))
+        Ok(Cost::additional_only(AdditionalCost::tap(
+            CardMatcher::from_id(card_id.clone()).with_tapped(false),
+        )))
     }
 }
 

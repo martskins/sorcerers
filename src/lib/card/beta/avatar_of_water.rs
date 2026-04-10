@@ -4,7 +4,6 @@ use crate::{
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_card, yes_or_no},
-    query::CardQuery,
     state::{CardMatcher, ContinuousEffect, State},
 };
 
@@ -54,9 +53,9 @@ impl ActivatedAbility for FloodSite {
     }
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
-        Ok(Cost::additional_only(AdditionalCost::Tap {
-            card: CardQuery::from_id(card_id.clone()),
-        }))
+        Ok(Cost::additional_only(AdditionalCost::tap(
+            CardMatcher::from_id(card_id.clone()).with_tapped(false),
+        )))
     }
 }
 

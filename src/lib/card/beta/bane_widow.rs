@@ -65,7 +65,7 @@ impl Card for BaneWidow {
         let controller_id = self.get_controller_id(state);
         let targets = CardMatcher::new()
             .with_card_type(CardType::Minion)
-            .in_zone(self.get_zone())
+            .with_zone(self.get_zone())
             .with_id_not_in(vec![self.get_id().clone()])
             .resolve_ids(state);
         if targets.is_empty() {

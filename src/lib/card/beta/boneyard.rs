@@ -78,7 +78,7 @@ impl Card for Boneyard {
             let zone = self.get_zone().clone();
 
             let minions = &CardMatcher::new()
-                .in_zone(&Zone::Cemetery)
+                .with_zone(&Zone::Cemetery)
                 .with_controller_id(&player_id)
                 .resolve_ids(&state);
             let picked_minion_id = pick_card_with_options(

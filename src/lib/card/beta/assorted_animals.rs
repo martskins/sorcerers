@@ -66,7 +66,7 @@ impl Card for AssortedAnimals {
             .unwrap_or_default();
 
         let mut beasts = CardMatcher::new()
-            .in_zone(&Zone::Spellbook)
+            .with_zone(&Zone::Spellbook)
             .with_card_type(CardType::Minion)
             .with_minion_types(vec![MinionType::Beast])
             .with_mana_cost_less_than_or_equal_to(x_cost)
@@ -94,7 +94,7 @@ impl Card for AssortedAnimals {
 
         let mut display_card_ids: Vec<uuid::Uuid> = CardMatcher::new()
             .with_controller_id(&controller_id)
-            .in_zone(&Zone::Spellbook)
+            .with_zone(&Zone::Spellbook)
             .resolve_ids(state);
         loop {
             let affordable: Vec<_> = beasts

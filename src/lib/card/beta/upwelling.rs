@@ -59,7 +59,7 @@ impl Card for Upwelling {
         let site_id = pick_card(controller_id, &nearby_sites, state, prompt).await?;
         let site = state.get_card(&site_id);
         let cards = CardMatcher::new()
-            .in_zone(site.get_zone())
+            .with_zone(site.get_zone())
             .with_card_types(vec![CardType::Minion, CardType::Artifact])
             .resolve_ids(state);
         Ok(cards

@@ -1,8 +1,8 @@
 use crate::{
-    card::{AvatarBase, Card, CardBase, Costs, Edition, Rarity, Region, UnitBase, Zone},
+    card::{AdditionalCost, AvatarBase, Card, CardBase, Cost, Costs, Edition, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{ActivatedAbility, CARDINAL_DIRECTIONS, Element, PlayerId, Thresholds, pick_direction},
-    state::State,
+    state::{CardMatcher, State},
 };
 
 #[derive(Debug, Clone)]
@@ -12,6 +12,12 @@ struct ShootProjectile;
 impl ActivatedAbility for ShootProjectile {
     fn get_name(&self) -> String {
         "Shoot Projectile".to_string()
+    }
+
+    fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
+        Ok(Cost::additional_only(AdditionalCost::tap(CardMatcher::from_id(
+            card_id.clone(),
+        ))))
     }
 
     async fn on_select(
@@ -38,21 +44,16 @@ impl ActivatedAbility for ShootProjectile {
         let avatar = state.get_card(card_id);
         let prompt = "Flamecaller: Pick a direction to shoot the projectile:";
         let direction = pick_direction(avatar.get_owner_id(), &CARDINAL_DIRECTIONS, state, prompt).await?;
-        let mut effects = vec![
-            Effect::ShootProjectile {
-                id: uuid::Uuid::new_v4(),
-                player_id: avatar.get_owner_id().clone(),
-                from_zone: avatar.get_zone().clone(),
-                shooter: card_id.clone(),
-                direction,
-                damage,
-                piercing: false,
-                splash_damage: None,
-            },
-            Effect::TapCard {
-                card_id: card_id.clone(),
-            },
-        ];
+        let mut effects = vec![Effect::ShootProjectile {
+            id: uuid::Uuid::new_v4(),
+            player_id: avatar.get_owner_id().clone(),
+            from_zone: avatar.get_zone().clone(),
+            shooter: card_id.clone(),
+            direction,
+            damage,
+            piercing: false,
+            splash_damage: None,
+        }];
         for minion_id in fire_minions {
             effects.push(Effect::BanishCard {
                 card_id: minion_id,

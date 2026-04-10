@@ -66,7 +66,7 @@ impl Card for Mortality {
         let minion_ids = CardMatcher::new()
             .with_card_types(vec![CardType::Minion])
             .with_minion_types(vec![MinionType::Mortal])
-            .in_zone(&target_zone)
+            .with_zone(&target_zone)
             .resolve_ids(state);
         let mut effects = Vec::new();
         for minion_id in minion_ids {

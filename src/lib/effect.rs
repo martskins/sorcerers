@@ -1462,6 +1462,10 @@ impl Effect {
         self.process_deferred_effects(state, self).await?;
         self.expire_temporary_effects(state, self).await?;
 
+        for player in &state.players {
+            crate::game::force_sync(&player.id, state).await?;
+        }
+
         Ok(())
     }
 }

@@ -2,7 +2,7 @@ use crate::{
     card::{Ability, AdditionalCost, Card, CardBase, Cost, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{ActivatedAbility, PlayerId},
-    query::{CardQuery, ZoneQuery},
+    query::ZoneQuery,
     state::{CardMatcher, State},
 };
 
@@ -48,9 +48,9 @@ impl ActivatedAbility for TapToStrikeNearbyMinions {
     }
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
-        Ok(Cost::additional_only(AdditionalCost::Surface {
-            card: CardQuery::from_id(card_id.clone()),
-        }))
+        Ok(Cost::additional_only(AdditionalCost::surface(CardMatcher::from_id(
+            card_id.clone(),
+        ))))
     }
 }
 
