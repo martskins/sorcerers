@@ -63,6 +63,9 @@ pub struct AdeptIllusionist {
 
 impl AdeptIllusionist {
     pub const NAME: &'static str = "Adept Illusionist";
+    pub const DESCRIPTION: &'static str = "Spellcaster
+
+Tap → Search your hand, cemetery, or spellbook for another Adept Illusionist and summon it nearby. Shuffle if needed.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -99,6 +102,10 @@ impl AdeptIllusionist {
 impl Card for AdeptIllusionist {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

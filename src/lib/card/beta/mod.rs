@@ -350,3 +350,5 @@ pub mod bone_rabble;
 pub use bone_rabble::*;
 pub mod boneyard;
 pub use boneyard::*;
+pub mod blasted_oak;
+pub use blasted_oak::*;

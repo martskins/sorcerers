@@ -758,6 +758,9 @@ impl Cost {
 #[async_trait::async_trait]
 pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     fn get_name(&self) -> &str;
+    fn get_description(&self) -> &str {
+        ""
+    }
     fn get_base(&self) -> &CardBase;
     fn get_base_mut(&mut self) -> &mut CardBase;
 

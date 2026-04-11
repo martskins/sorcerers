@@ -13,6 +13,9 @@ pub struct AccursedAlbatross {
 
 impl AccursedAlbatross {
     pub const NAME: &'static str = "Accursed Albatross";
+    pub const DESCRIPTION: &'static str = "Airborne
+
+When a unit kills Accursed Albatross, kill that unit's other allied minions it's nearby.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -44,6 +47,10 @@ impl AccursedAlbatross {
 impl Card for AccursedAlbatross {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {
