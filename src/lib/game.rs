@@ -242,7 +242,7 @@ pub async fn take_action(
             ClientMessage::PlayerDisconnected { player_id, .. } => {
                 return Err(GameError::PlayerDisconnected(player_id.clone()).into());
             }
-            _ => unreachable!(),
+            n => unreachable!("expected ResolveAction, got {:?}", n),
         }
     }
 }

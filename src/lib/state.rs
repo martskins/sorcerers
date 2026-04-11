@@ -36,6 +36,7 @@ pub struct PlayerWithDeck {
 #[derive(Debug, Default, Clone)]
 pub struct CardQuery {
     id: uuid::Uuid,
+    carried_by: Option<uuid::Uuid>,
     randomise: Option<bool>,
     count: Option<usize>,
     ids: Option<Vec<uuid::Uuid>>,
@@ -74,6 +75,13 @@ impl CardQuery {
         Self {
             ids: Some(vec![id]),
             ..Default::default()
+        }
+    }
+
+    pub fn carried_by(self, carrier_id: &uuid::Uuid) -> Self {
+        Self {
+            carried_by: Some(carrier_id.clone()),
+            ..self
         }
     }
 
@@ -389,6 +397,12 @@ impl CardQuery {
         let card = state.get_card(card_id);
         if let Some(ids) = &self.ids {
             if !ids.contains(card_id) {
+                return false;
+            }
+        }
+
+        if let Some(carrier_id) = &self.carried_by {
+            if card.get_base().bearer.as_ref() != Some(carrier_id) {
                 return false;
             }
         }

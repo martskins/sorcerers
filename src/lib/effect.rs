@@ -732,6 +732,15 @@ impl Effect {
                                 card.get_base_mut().tapped = true;
                             }
 
+                            let carried_cards = CardQuery::new().carried_by(card_id).all(state);
+                            for cid in carried_cards {
+                                let carried_card = state.get_card_mut(&cid);
+                                carried_card.set_zone(zone.clone());
+                                if *tap {
+                                    carried_card.get_base_mut().tapped = true;
+                                }
+                            }
+
                             let card = state.get_card(card_id);
                             let mut effects = card.on_move(&snapshot, path).await?;
                             effects.extend(card.on_visit_zone(&snapshot, &zone).await?);
@@ -749,6 +758,15 @@ impl Effect {
                         card.set_zone(zone.clone());
                         if *tap {
                             card.get_base_mut().tapped = true;
+                        }
+
+                        let carried_cards = CardQuery::new().carried_by(card_id).all(state);
+                        for cid in carried_cards {
+                            let carried_card = state.get_card_mut(&cid);
+                            carried_card.set_zone(zone.clone());
+                            if *tap {
+                                carried_card.get_base_mut().tapped = true;
+                            }
                         }
 
                         let card = state.get_card(card_id);
@@ -917,6 +935,11 @@ impl Effect {
                     .find(|c| c.get_id() == card_id)
                     .expect("to find card");
                 card.get_base_mut().tapped = true;
+
+                let carried_cards = CardQuery::new().carried_by(card_id).all(state);
+                for cid in carried_cards {
+                    state.get_card_mut(&cid).get_base_mut().tapped = true;
+                }
             }
             Effect::UntapCard { card_id, .. } => {
                 let card = state
@@ -925,6 +948,11 @@ impl Effect {
                     .find(|c| c.get_id() == card_id)
                     .expect("to find card");
                 card.get_base_mut().tapped = false;
+
+                let carried_cards = CardQuery::new().carried_by(card_id).all(state);
+                for cid in carried_cards {
+                    state.get_card_mut(&cid).get_base_mut().tapped = true;
+                }
             }
             Effect::StartTurn { player_id, .. } => {
                 let previous_player = state.current_player.clone();
@@ -1295,24 +1323,14 @@ impl Effect {
                 // Compute change region effects before updating the card's region.
                 let mut change_region_effects = card.on_region_change(state, from_region, region)?;
 
-                if card.is_unit() {
-                    let borne_artifacts = CardQuery::new()
-                        .artifacts()
-                        .iter(state)
-                        .filter_map(|c| c.get_artifact())
-                        .filter(|a| a.get_bearer().unwrap_or_default() == Some(card_id.clone()))
-                        .map(|c| c.get_id().clone())
-                        .collect::<Vec<_>>();
-                    // Append these to the change_region_effects so that the effects of changing
-                    // region are applied after the region change itself.
-                    change_region_effects.extend(borne_artifacts.into_iter().map(|artifact_id| {
-                        Effect::SetCardRegion {
-                            card_id: artifact_id,
-                            region: region.clone(),
-                            tap: false,
-                        }
-                    }));
-                }
+                let borne_artifacts = CardQuery::new().carried_by(card_id).all(state);
+                // Append these to the change_region_effects so that the effects of changing
+                // region are applied after the region change itself.
+                change_region_effects.extend(borne_artifacts.into_iter().map(|artifact_id| Effect::SetCardRegion {
+                    card_id: artifact_id,
+                    region: region.clone(),
+                    tap: false,
+                }));
 
                 let card = state.get_card_mut(card_id);
                 card.get_base_mut().region = region.clone();
