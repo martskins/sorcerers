@@ -76,11 +76,6 @@ pub enum Effect {
         card_id: uuid::Uuid,
         counter: Counter,
     },
-    TeleportCard {
-        card_id: uuid::Uuid,
-        from: Zone,
-        to: Zone,
-    },
     SetCardRegion {
         card_id: uuid::Uuid,
         region: Region,
@@ -182,10 +177,10 @@ pub enum Effect {
         card_id: uuid::Uuid,
         data: Box<dyn std::any::Any + Send + Sync>,
     },
-    TeleportUnitToZone {
+    TeleportCard {
         player_id: PlayerId,
-        unit_query: CardQuery,
-        zone_query: ZoneQuery,
+        card_id: uuid::Uuid,
+        to_zone: Zone,
     },
     DealDamageAllUnitsInZone {
         player_id: PlayerId,
@@ -259,7 +254,6 @@ impl Effect {
             Effect::RemoveAbility { card_id, .. } => Some(card_id),
             Effect::AddAbilityCounter { card_id, .. } => Some(card_id),
             Effect::AddCounter { card_id, .. } => Some(card_id),
-            Effect::TeleportCard { card_id, .. } => Some(card_id),
             Effect::SetCardRegion { card_id, .. } => Some(card_id),
             Effect::SetCardZone { card_id, .. } => Some(card_id),
             Effect::MoveCard { card_id, .. } => Some(card_id),
@@ -284,7 +278,7 @@ impl Effect {
             Effect::BanishCard { card_id, .. } => Some(card_id),
             Effect::BuryCard { card_id } => Some(card_id),
             Effect::SetCardData { card_id, .. } => Some(card_id),
-            Effect::TeleportUnitToZone { player_id, .. } => Some(player_id),
+            Effect::TeleportCard { player_id, .. } => Some(player_id),
             Effect::DealDamageAllUnitsInZone { from, .. } => Some(from),
             Effect::DealDamageToTarget { from, .. } => Some(from),
             Effect::RearrangeDeck { .. } => None,
@@ -344,7 +338,6 @@ impl Effect {
             }
             Effect::AddAbilityCounter { .. } => None,
             Effect::AddCounter { .. } => None,
-            Effect::TeleportCard { .. } => None,
             Effect::SetCardZone { .. } => None,
             Effect::DiscardCard { card_id, player_id } => {
                 let card = state.get_card(card_id).get_name();
@@ -459,7 +452,7 @@ impl Effect {
             Effect::RangedStrike { .. } => None,
             Effect::DealDamageToTarget { .. } => None,
             Effect::DealDamageAllUnitsInZone { .. } => None,
-            Effect::TeleportUnitToZone { .. } => None,
+            Effect::TeleportCard { .. } => None,
             Effect::RearrangeDeck { .. } => None,
             Effect::SetBearer { card_id, bearer_id } => {
                 let card = state.get_card(card_id);
@@ -712,32 +705,6 @@ impl Effect {
                 for effect in effects {
                     state.effects.push_back(effect.into());
                 }
-            }
-            Effect::TeleportCard { card_id, to, .. } => {
-                let snapshot = state.snapshot();
-                let card = state.get_card_mut(card_id);
-                card.set_zone(to.clone());
-                let carried_cards: Vec<uuid::Uuid> = state
-                    .cards
-                    .iter()
-                    .filter(|c| c.get_zone().is_in_play())
-                    .filter_map(|c| {
-                        c.get_bearer_id()
-                            .ok()
-                            .flatten()
-                            .filter(|bearer_id| bearer_id == card_id)
-                            .map(|_| c.get_id().clone())
-                    })
-                    .collect();
-                let carried_region = state.get_card(card_id).get_region(state).clone();
-                for carried_card_id in carried_cards {
-                    let carried = state.get_card_mut(&carried_card_id);
-                    carried.set_zone(to.clone());
-                    carried.get_base_mut().region = carried_region.clone();
-                }
-                let card = state.get_card(card_id);
-                let effects = card.on_visit_zone(&snapshot, to).await?;
-                state.queue(effects);
             }
             Effect::MoveCard {
                 player_id,
@@ -1275,24 +1242,44 @@ impl Effect {
                 effects.extend(defender.on_defend(state, attacker_id)?.into_iter().map(|e| e.into()));
                 state.queue(effects);
             }
-            Effect::TeleportUnitToZone {
+            Effect::TeleportCard {
                 player_id,
-                unit_query,
-                zone_query,
+                card_id,
+                to_zone,
                 ..
             } => {
-                let unit_id = unit_query.pick(player_id, state, false).await?.expect("to find unit");
-                let unit = state.get_card(&unit_id);
-                let zone = zone_query.resolve(player_id, state).await?;
-                state.queue_one(Effect::MoveCard {
+                let card = state.get_card(&card_id);
+                let mut effects = vec![Effect::MoveCard {
                     player_id: player_id.clone(),
-                    card_id: unit_id.clone(),
-                    from: unit.get_zone().clone(),
-                    to: ZoneQuery::from_zone(zone),
+                    card_id: card_id.clone(),
+                    from: card.get_zone().clone(),
+                    to: ZoneQuery::from_zone(to_zone.clone()),
                     tap: false,
                     region: Region::Surface,
                     through_path: None,
-                });
+                }];
+
+                let carried_cards: Vec<uuid::Uuid> = state
+                    .cards
+                    .iter()
+                    .filter(|c| c.get_zone().is_in_play())
+                    .filter_map(|c| {
+                        c.get_bearer_id()
+                            .ok()
+                            .flatten()
+                            .filter(|bearer_id| bearer_id == card_id)
+                            .map(|_| c.get_id().clone())
+                    })
+                    .collect();
+                let carried_region = state.get_card(&card_id).get_region(state).clone();
+                for carried_card_id in carried_cards {
+                    let carried = state.get_card_mut(&carried_card_id);
+                    carried.set_zone(to_zone.clone());
+                    carried.get_base_mut().region = carried_region.clone();
+                }
+                let card = state.get_card(&card_id);
+                effects.extend(card.on_visit_zone(&state, to_zone).await?);
+                state.queue(effects);
             }
             Effect::RearrangeDeck { spells, sites, .. } => {
                 let deck = state

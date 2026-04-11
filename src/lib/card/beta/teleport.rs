@@ -53,14 +53,22 @@ impl Card for Teleport {
         _caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
-        Ok(vec![Effect::TeleportUnitToZone {
+        let controller_id = self.get_controller_id(state);
+        let card_id = CardQuery::new()
+            .count(1)
+            .with_prompt("Teleport: Choose an ally to teleport")
+            .units()
+            .controlled_by(&controller_id)
+            .pick(&controller_id, state, false)
+            .await?;
+        let card_id = card_id.expect("value not to be None");
+        let zone = ZoneQuery::any_site(None, Some("Teleport: Choose site to teleport to".to_string()))
+            .pick(&controller_id, state)
+            .await?;
+        Ok(vec![Effect::TeleportCard {
             player_id: self.get_owner_id().clone(),
-            unit_query: CardQuery::new()
-                .count(1)
-                .with_prompt("Teleport: Choose an ally to teleport")
-                .units()
-                .controlled_by(&self.get_controller_id(state)),
-            zone_query: ZoneQuery::any_site(None, Some("Teleport: Choose site to teleport to".to_string())),
+            card_id,
+            to_zone: zone,
         }])
     }
 }

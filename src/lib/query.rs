@@ -184,11 +184,19 @@ impl ZoneQuery {
         }
     }
 
-    /// Player picks any realm zone.
-    pub fn any(prompt: Option<String>) -> Self {
+    pub fn adjacent_to(self, zone: &Zone) -> Self {
+        let zones = zone.get_adjacent();
         Self {
-            prompt,
-            ..Self::default()
+            options: Some(zones),
+            ..self
+        }
+    }
+
+    pub fn near(self, zone: &Zone) -> Self {
+        let zones = zone.get_nearby();
+        Self {
+            options: Some(zones),
+            ..self
         }
     }
 
@@ -231,11 +239,7 @@ impl ZoneQuery {
         Self { random: true, ..self }
     }
 
-    pub fn get_id(&self) -> &uuid::Uuid {
-        &self.id
-    }
-
-    pub fn prompt(&self) -> &str {
+    fn prompt(&self) -> &str {
         self.prompt.as_deref().unwrap_or(if self.sites_only {
             "Pick a site zone"
         } else {

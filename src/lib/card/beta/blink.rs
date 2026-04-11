@@ -1,8 +1,9 @@
 use crate::{
     card::{Card, CardBase, Cost, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
-    game::{PlayerId, pick_card, pick_zone},
-    state::State,
+    game::PlayerId,
+    query::ZoneQuery,
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -53,30 +54,27 @@ impl Card for Blink {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let caster = state.get_card(caster_id);
-        let cards = state
-            .cards
-            .iter()
-            .filter(|c| c.get_controller_id(state) == caster.get_controller_id(state))
-            .filter(|c| c.get_id() != caster_id)
-            .map(|c| c.get_id().clone())
-            .collect::<Vec<_>>();
-        let picked_card = pick_card(self.get_controller_id(state), &cards, state, "Pick an ally to teleport").await?;
+        let controller_id = caster.get_controller_id(state);
+        let card_id = CardQuery::new()
+            .units()
+            .controlled_by(&controller_id)
+            .with_prompt("Blink: Pick an ally to teleport")
+            .id_not_in(vec![caster_id.clone()])
+            .pick(&controller_id, state, false)
+            .await?;
+        let card_id = card_id.expect("value not to be None");
+        let card = state.get_card(&card_id);
+        let zone = ZoneQuery::new()
+            .near(card.get_zone())
+            .with_prompt("Blink: Pick a zone to teleport to")
+            .pick(&controller_id, state)
+            .await?;
 
-        let zone = state.get_card(&picked_card).get_zone();
-        let zones = zone.get_nearby();
-        let picked_zone = pick_zone(
-            self.get_controller_id(state),
-            &zones,
-            state,
-            false,
-            "Pick a zone to teleport to",
-        )
-        .await?;
         Ok(vec![
             Effect::TeleportCard {
-                card_id: picked_card.clone(),
-                from: zone.clone(),
-                to: picked_zone.clone(),
+                player_id: controller_id.clone(),
+                card_id,
+                to_zone: zone,
             },
             Effect::DrawCard {
                 player_id: self.get_controller_id(state).clone(),
