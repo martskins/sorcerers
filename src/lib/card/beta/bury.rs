@@ -74,10 +74,7 @@ impl Card for Bury {
             player_id: self.get_controller_id(state).clone(),
             card_id: picked_card_id.clone(),
             from: picked_card.get_zone().clone(),
-            to: ZoneQuery::Specific {
-                id: uuid::Uuid::new_v4(),
-                zone: picked_card.get_zone().clone(),
-            },
+            to: ZoneQuery::from_zone(picked_card.get_zone().clone()),
             tap: false,
             region: Region::Underground,
             through_path: None,

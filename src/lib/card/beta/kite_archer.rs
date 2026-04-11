@@ -78,10 +78,7 @@ impl Card for KiteArcher {
             player_id: self.get_owner_id().clone(),
             card_id: self.get_id().clone(),
             from: self.get_zone().clone(),
-            to: ZoneQuery::Specific {
-                id: uuid::Uuid::new_v4(),
-                zone: picked_zone.clone(),
-            },
+            to: ZoneQuery::from_zone(picked_zone.clone()),
             tap: false,
             region: self.card_base.region.clone(),
             through_path: None,

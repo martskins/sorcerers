@@ -67,26 +67,25 @@ impl Card for LuckyCharm {
         Some(self)
     }
 
-    fn zone_query_override(&self, _state: &State, query: &ZoneQuery) -> anyhow::Result<Option<ZoneQuery>> {
-        match query {
-            ZoneQuery::Random { options, .. } => {
-                let zones = vec![
-                    options
-                        .choose(&mut rand::rng())
-                        .ok_or(anyhow::anyhow!("failed to pick random card"))?
-                        .clone(),
-                    options
-                        .choose(&mut rand::rng())
-                        .ok_or(anyhow::anyhow!("failed to pick random card"))?
-                        .clone(),
-                ];
-                Ok(Some(ZoneQuery::FromOptions {
-                    id: uuid::Uuid::new_v4(),
-                    options: zones,
-                    prompt: Some("Lucky Charm: Choose a zone".to_string()),
-                }))
-            }
-            _ => Ok(None),
+    fn zone_query_override(&self, state: &State, query: &ZoneQuery) -> anyhow::Result<Option<ZoneQuery>> {
+        if query.is_randomised() {
+            let options = query.options(state);
+            let zones = vec![
+                options
+                    .choose(&mut rand::rng())
+                    .ok_or(anyhow::anyhow!("failed to pick random zone"))?
+                    .clone(),
+                options
+                    .choose(&mut rand::rng())
+                    .ok_or(anyhow::anyhow!("failed to pick random zone"))?
+                    .clone(),
+            ];
+            Ok(Some(ZoneQuery::from_options(
+                zones,
+                Some("Lucky Charm: Choose a zone".to_string()),
+            )))
+        } else {
+            Ok(None)
         }
     }
 

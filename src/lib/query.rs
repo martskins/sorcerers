@@ -37,7 +37,7 @@ impl QueryCache {
     pub async fn store_matcher_results(game_id: uuid::Uuid, matcher_id: uuid::Uuid, card_ids: Vec<uuid::Uuid>) {
         let mut cache = QUERY_CACHE.get().expect("to get lock").write().await;
         cache.matcher_queries.insert(matcher_id, card_ids);
-        cache.game_queries.entry(game_id).or_insert(Vec::new()).push(matcher_id);
+        cache.game_queries.entry(game_id).or_default().push(matcher_id);
     }
 
     pub async fn matcher_results(matcher_id: &uuid::Uuid) -> Option<Vec<uuid::Uuid>> {
@@ -49,11 +49,7 @@ impl QueryCache {
         let mut cache = QUERY_CACHE.get().expect("to get lock").write().await;
         cache.effect_targets.insert(effect_id.clone(), affected_cards);
 
-        cache
-            .game_queries
-            .entry(game_id)
-            .or_insert(Vec::new())
-            .push(effect_id.clone());
+        cache.game_queries.entry(game_id).or_default().push(effect_id.clone());
     }
 
     pub async fn effect_targets(effect_id: &uuid::Uuid) -> Option<Vec<uuid::Uuid>> {
@@ -68,72 +64,48 @@ impl QueryCache {
             .read()
             .await
             .zone_queries
-            .get(&qry.get_id())
+            .get(&qry.id)
         {
             return Ok(cached.clone());
         }
 
-        let zone = match qry {
-            ZoneQuery::Any { prompt, .. } => {
-                pick_zone(
-                    player_id,
-                    &Zone::all_realm(),
-                    state,
-                    false,
-                    prompt.as_ref().map_or("Pick a zone", |v| v),
-                )
-                .await?
-            }
-            ZoneQuery::Specific { zone, .. } => zone.clone(),
-            ZoneQuery::AnySite { prompt, .. } => {
-                let mut sites = state
-                    .cards
-                    .iter()
-                    .filter(|c| c.is_site())
-                    .filter(|c| c.get_zone().is_in_play())
-                    .map(|c| c.get_zone().clone())
-                    .collect::<Vec<Zone>>();
-                sites.dedup();
-                pick_zone(
-                    player_id,
-                    &sites,
-                    state,
-                    false,
-                    prompt.as_ref().map_or("Pick a zone", |v| v),
-                )
-                .await?
-            }
-            ZoneQuery::Random { options, .. } => {
-                for card in &state.cards {
-                    if let Some(query) = card.zone_query_override(state, qry)? {
-                        return Ok(Box::pin(query.resolve(player_id, state)).await?);
-                    }
+        let zone = if let Some(zone) = &qry.zone {
+            zone.clone()
+        } else if qry.random {
+            let options = qry.options.as_deref().unwrap_or(&[]);
+            for card in &state.cards {
+                if let Some(query) = card.zone_query_override(state, qry)? {
+                    return Ok(Box::pin(query.resolve(player_id, state)).await?);
                 }
-
-                options
-                    .choose(&mut rand::rng())
-                    .expect("failed to get random zone")
-                    .clone()
             }
-            ZoneQuery::FromOptions { options, prompt, .. } => {
-                pick_zone(
-                    player_id,
-                    options,
-                    state,
-                    false,
-                    prompt.as_ref().map_or("Pick a zone", |v| v),
-                )
-                .await?
-            }
+            options
+                .choose(&mut rand::rng())
+                .expect("failed to get random zone")
+                .clone()
+        } else if let Some(options) = &qry.options {
+            pick_zone(player_id, options, state, false, qry.prompt()).await?
+        } else if qry.sites_only {
+            let mut sites: Vec<Zone> = state
+                .cards
+                .iter()
+                .filter(|c| c.is_site())
+                .filter(|c| c.get_zone().is_in_play())
+                .filter(|c| {
+                    qry.controlled_by
+                        .as_ref()
+                        .map_or(true, |p| c.get_controller_id(state) == *p)
+                })
+                .map(|c| c.get_zone().clone())
+                .collect();
+            sites.dedup();
+            pick_zone(player_id, &sites, state, false, qry.prompt()).await?
+        } else {
+            pick_zone(player_id, &Zone::all_realm(), state, false, qry.prompt()).await?
         };
 
         let mut cache = QUERY_CACHE.get().expect("failed to get random zone").write().await;
-        cache.zone_queries.insert(qry.get_id().clone(), zone.clone());
-        cache
-            .game_queries
-            .entry(state.game_id)
-            .or_insert(Vec::new())
-            .push(qry.get_id().clone());
+        cache.zone_queries.insert(qry.id, zone.clone());
+        cache.game_queries.entry(state.game_id).or_default().push(qry.id);
 
         Ok(zone)
     }
@@ -154,122 +126,164 @@ impl QueryCache {
 }
 
 #[derive(Debug, Clone)]
-pub enum ZoneQuery {
-    Any {
-        id: uuid::Uuid,
-        prompt: Option<String>,
-    },
-    AnySite {
-        id: uuid::Uuid,
-        controlled_by: Option<PlayerId>,
-        prompt: Option<String>,
-    },
-    Specific {
-        id: uuid::Uuid,
-        zone: Zone,
-    },
-    Random {
-        id: uuid::Uuid,
-        options: Vec<Zone>,
-    },
-    FromOptions {
-        id: uuid::Uuid,
-        options: Vec<Zone>,
-        prompt: Option<String>,
-    },
+pub struct ZoneQuery {
+    id: uuid::Uuid,
+    /// A fixed zone — resolves immediately without prompting the player.
+    zone: Option<Zone>,
+    /// Explicit list of zones to pick from (or randomly select from when `random` is true).
+    options: Option<Vec<Zone>>,
+    /// When true, a zone is chosen randomly from `options` (subject to `zone_query_override`).
+    random: bool,
+    /// When true, the option pool is restricted to in-play site zones.
+    sites_only: bool,
+    /// Optionally filter `sites_only` results to zones controlled by this player.
+    controlled_by: Option<PlayerId>,
+    prompt: Option<String>,
 }
 
-impl Into<ZoneQuery> for &Zone {
-    fn into(self) -> ZoneQuery {
-        ZoneQuery::Specific {
+impl Default for ZoneQuery {
+    fn default() -> Self {
+        Self {
             id: uuid::Uuid::new_v4(),
-            zone: self.clone(),
+            zone: None,
+            options: None,
+            random: false,
+            sites_only: false,
+            controlled_by: None,
+            prompt: None,
         }
     }
 }
 
-impl Into<ZoneQuery> for Zone {
-    fn into(self) -> ZoneQuery {
-        ZoneQuery::Specific {
-            id: uuid::Uuid::new_v4(),
-            zone: self,
-        }
+impl From<Zone> for ZoneQuery {
+    fn from(zone: Zone) -> Self {
+        ZoneQuery::from_zone(zone)
+    }
+}
+
+impl From<&Zone> for ZoneQuery {
+    fn from(zone: &Zone) -> Self {
+        ZoneQuery::from_zone(zone.clone())
     }
 }
 
 impl ZoneQuery {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn is_randomised(&self) -> bool {
+        self.random
+    }
+
+    /// Resolves to a specific zone without prompting.
     pub fn from_zone(zone: Zone) -> Self {
-        ZoneQuery::Specific {
-            id: uuid::Uuid::new_v4(),
-            zone,
+        Self {
+            zone: Some(zone),
+            ..Self::default()
         }
+    }
+
+    /// Player picks any realm zone.
+    pub fn any(prompt: Option<String>) -> Self {
+        Self {
+            prompt,
+            ..Self::default()
+        }
+    }
+
+    /// Player picks from in-play site zones, optionally filtered by controller.
+    pub fn any_site(controlled_by: Option<PlayerId>, prompt: Option<String>) -> Self {
+        Self {
+            sites_only: true,
+            controlled_by,
+            prompt,
+            ..Self::default()
+        }
+    }
+
+    /// A zone is chosen randomly from `options` (cards may override via `zone_query_override`).
+    pub fn random(options: Vec<Zone>) -> Self {
+        Self {
+            options: Some(options),
+            random: true,
+            ..Self::default()
+        }
+    }
+
+    /// Player picks from the given list of zones.
+    pub fn from_options(options: Vec<Zone>, prompt: Option<String>) -> Self {
+        Self {
+            options: Some(options),
+            prompt,
+            ..Self::default()
+        }
+    }
+
+    pub fn with_prompt(self, prompt: impl Into<String>) -> Self {
+        Self {
+            prompt: Some(prompt.into()),
+            ..self
+        }
+    }
+
+    pub fn randomised(self) -> Self {
+        Self { random: true, ..self }
     }
 
     pub fn get_id(&self) -> &uuid::Uuid {
-        match self {
-            ZoneQuery::Any { id, .. } => id,
-            ZoneQuery::Specific { id, .. } => id,
-            ZoneQuery::AnySite { id, .. } => id,
-            ZoneQuery::Random { id, .. } => id,
-            ZoneQuery::FromOptions { id, .. } => id,
-        }
+        &self.id
     }
 
     pub fn prompt(&self) -> &str {
-        match self {
-            ZoneQuery::Any { prompt, .. } => {
-                if let Some(p) = prompt {
-                    p.as_ref()
-                } else {
-                    "Pick a zone"
-                }
-            }
-            ZoneQuery::Specific { .. } => "Pick a zone",
-            ZoneQuery::AnySite { prompt, .. } => {
-                if let Some(p) = prompt {
-                    p.as_ref()
-                } else {
-                    "Pick a site zone"
-                }
-            }
-            ZoneQuery::Random { .. } => "Pick a zone",
-            ZoneQuery::FromOptions { prompt, .. } => {
-                if let Some(p) = prompt {
-                    p.as_ref()
-                } else {
-                    "Pick a zone"
-                }
-            }
-        }
+        self.prompt.as_deref().unwrap_or(if self.sites_only {
+            "Pick a site zone"
+        } else {
+            "Pick a zone"
+        })
     }
 
+    /// Returns the set of candidate zones for this query given current game state.
     pub fn options(&self, state: &State) -> Vec<Zone> {
-        match self {
-            ZoneQuery::Any { .. } => Zone::all_realm(),
-            ZoneQuery::Specific { zone, .. } => vec![zone.clone()],
-            ZoneQuery::AnySite { .. } => {
-                let mut sites = state
-                    .cards
-                    .iter()
-                    .filter(|c| c.is_site())
-                    .filter(|c| c.get_zone().is_in_play())
-                    .map(|c| c.get_zone().clone())
-                    .collect::<Vec<Zone>>();
-                sites.dedup();
-                sites
-            }
-            ZoneQuery::Random { options, .. } => {
-                vec![
-                    options
-                        .choose(&mut rand::rng())
-                        .expect("failed to get random zone")
-                        .clone(),
-                ]
-            }
-            ZoneQuery::FromOptions { options, .. } => options.clone(),
+        if let Some(zone) = &self.zone {
+            return vec![zone.clone()];
         }
+        if self.random {
+            let opts = self.options.as_deref().unwrap_or(&[]);
+            return vec![
+                opts.choose(&mut rand::rng())
+                    .expect("failed to get random zone")
+                    .clone(),
+            ];
+        }
+        if let Some(opts) = &self.options {
+            return opts.clone();
+        }
+        if self.sites_only {
+            let mut sites: Vec<Zone> = state
+                .cards
+                .iter()
+                .filter(|c| c.is_site())
+                .filter(|c| c.get_zone().is_in_play())
+                .filter(|c| {
+                    self.controlled_by
+                        .as_ref()
+                        .map_or(true, |p| c.get_controller_id(state) == *p)
+                })
+                .map(|c| c.get_zone().clone())
+                .collect();
+            sites.dedup();
+            return sites;
+        }
+        Zone::all_realm()
     }
 
+    /// Resolves the query, prompting the player if needed. Caches the result.
+    pub async fn pick(&self, player_id: &PlayerId, state: &State) -> anyhow::Result<Zone> {
+        QueryCache::resolve_zone(self, player_id, state).await
+    }
+
+    /// Alias for `pick` — use `pick` for new call sites.
     pub async fn resolve(&self, player_id: &PlayerId, state: &State) -> anyhow::Result<Zone> {
         QueryCache::resolve_zone(self, player_id, state).await
     }
@@ -302,6 +316,10 @@ pub enum EffectQuery {
     },
 }
 
+fn optional_player_matches(query: &Option<PlayerId>, actual: &PlayerId) -> bool {
+    query.as_ref().map_or(true, |q| q == actual)
+}
+
 impl EffectQuery {
     pub async fn matches(&self, effect: &Effect, state: &State) -> anyhow::Result<bool> {
         match (self, effect) {
@@ -323,13 +341,7 @@ impl EffectQuery {
                     player_id: effect_player_id,
                     ..
                 },
-            ) => {
-                if let Some(query_player_id) = query_player_id {
-                    Ok(query_player_id == effect_player_id)
-                } else {
-                    Ok(true)
-                }
-            }
+            ) => Ok(optional_player_matches(query_player_id, effect_player_id)),
             (
                 EffectQuery::TurnEnd {
                     player_id: query_player_id,
@@ -338,13 +350,7 @@ impl EffectQuery {
                     player_id: effect_player_id,
                     ..
                 },
-            ) => {
-                if let Some(query_player_id) = query_player_id {
-                    Ok(query_player_id == effect_player_id)
-                } else {
-                    Ok(true)
-                }
-            }
+            ) => Ok(optional_player_matches(query_player_id, effect_player_id)),
             (EffectQuery::DamageDealt { source, target }, Effect::TakeDamage { card_id, .. }) => {
                 if let Some(source) = source {
                     if !source.matches(card_id, state) {

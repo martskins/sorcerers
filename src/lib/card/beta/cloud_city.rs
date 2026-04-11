@@ -51,10 +51,7 @@ impl ActivatedAbility for FlyToVoid {
                 player_id: player_id.clone(),
                 card_id: card.get_id().clone(),
                 from: card.get_zone().clone(),
-                to: ZoneQuery::Specific {
-                    id: uuid::Uuid::new_v4(),
-                    zone: picked_void.clone(),
-                },
+                to: ZoneQuery::from_zone(picked_void.clone()),
                 tap: false,
                 region: Region::Surface,
                 through_path: None,
@@ -71,10 +68,7 @@ impl ActivatedAbility for FlyToVoid {
                 player_id: player_id.clone(),
                 card_id: unit.get_id().clone(),
                 from: card.get_zone().clone(),
-                to: ZoneQuery::Specific {
-                    id: uuid::Uuid::new_v4(),
-                    zone: picked_void.clone(),
-                },
+                to: ZoneQuery::from_zone(picked_void.clone()),
                 tap: false,
                 region: unit.get_base().region.clone(),
                 through_path: None,

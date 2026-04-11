@@ -125,10 +125,7 @@ impl ActivatedAbility for GeomancerAbility {
                             player_id: card.get_controller_id(state).clone(),
                             card_id: site_id.clone(),
                             from: Zone::Atlasbook,
-                            to: ZoneQuery::Specific {
-                                id: site_id.clone(),
-                                zone: rubble.get_zone().clone(),
-                            },
+                            to: ZoneQuery::from_zone(rubble.get_zone().clone()),
                             tap: false,
                             region: Region::Surface,
                             through_path: None,

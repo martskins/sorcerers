@@ -132,10 +132,7 @@ impl Card for Craterize {
 
                 effects.push(Effect::DealDamageAllUnitsInZone {
                     player_id: self.get_controller_id(state).clone(),
-                    zone: ZoneQuery::Specific {
-                        id: uuid::Uuid::new_v4(),
-                        zone: zone,
-                    },
+                    zone: ZoneQuery::from_zone(zone),
                     from: caster_id.clone(),
                     damage: damage,
                 });

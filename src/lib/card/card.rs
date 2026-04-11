@@ -1741,10 +1741,18 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                             format!("Pick a unit to attach {} to", self.get_name()).as_str(),
                         )
                         .await?;
-                        Ok(vec![Effect::SetBearer {
-                            card_id: card_id.clone(),
-                            bearer_id: Some(picked_card_id.clone()),
-                        }])
+                        let picked_card = state.get_card(&picked_card_id);
+                        Ok(vec![
+                            Effect::PlayCard {
+                                player_id: controller_id.clone(),
+                                card_id: card_id.clone(),
+                                zone: picked_card.get_zone().clone().into(),
+                            },
+                            Effect::SetBearer {
+                                card_id: card_id.clone(),
+                                bearer_id: Some(picked_card_id.clone()),
+                            },
+                        ])
                     }
                     false => {
                         let picked_zone = pick_zone(
@@ -1755,14 +1763,11 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                             "Pick a zone to play the artifact",
                         )
                         .await?;
-                        Ok(vec![
-                            Effect::PlayCard {
-                                player_id: controller_id.clone(),
-                                card_id: card_id.clone(),
-                                zone: picked_zone.clone().into(),
-                            }
-                            .into(),
-                        ])
+                        Ok(vec![Effect::PlayCard {
+                            player_id: controller_id.clone(),
+                            card_id: card_id.clone(),
+                            zone: picked_zone.clone().into(),
+                        }])
                     }
                 }
             }

@@ -54,10 +54,7 @@ impl AwakenedMummies {
                     .units()
                     .in_region(&Region::Surface)
                     .controlled_by(&opponent_id),
-                zone: ZoneQuery::Specific {
-                    id: uuid::Uuid::new_v4(),
-                    zone,
-                },
+                zone: ZoneQuery::from_zone(zone),
             },
             expires_on_effect: None,
             on_effect: Arc::new(move |state: &State, card_id: &uuid::Uuid, _effect: &Effect| {

@@ -53,7 +53,7 @@ The core library. Key modules:
 
 - **`card/`** — The `Card` trait and all card implementations. `card/card.rs` defines the trait, `CardBase`, `UnitBase`, `SiteBase`, `MinionType`, `Region`, `Zone`, and shared helpers. `card/beta/` contains one file per card.
 - **`effect.rs`** — The `Effect` enum, which represents every discrete game action (dealing damage, moving cards, shooting projectiles, etc.). Effects are returned by card methods and applied by the server.
-- **`state.rs`** — `State` holds all in-flight game data (players, cards, mana, phase). `CardMatcher` is a composable filter for querying cards from state.
+- **`state.rs`** — `State` holds all in-flight game data (players, cards, mana, phase). `CardQuery` is a composable filter for querying cards from state.
 - **`game.rs`** — Input helpers (`pick_card`, `pick_zone`, `pick_direction`, `yes_or_no`) that pause execution and request input from the active player, plus data types like `PlayerId`, `Direction`, and `Thresholds`.
 - **`query.rs`** — `CardQuery` and `ZoneQuery` — lazy descriptors resolved at effect-application time.
 - **`networking/`** — Shared client/server message types (`ClientMessage`, `ServerMessage`).
@@ -150,7 +150,7 @@ The most commonly used `Effect` variants:
 | `Effect::SummonToken { player_id, token_type, zone }` | Summon a token |
 | `Effect::AddCounter { card_id, counter }` | Add a +N/+N counter |
 
-Use `state.cards.iter()` with `CardMatcher` to query cards, and `card.get_region(state)`, `card.get_zone()`, `card.is_minion()`, etc. to inspect them.
+Use `state.cards.iter()` with `CardQuery` to query cards, and `card.get_region(state)`, `card.get_zone()`, `card.is_minion()`, etc. to inspect them.
 
 ## License
 

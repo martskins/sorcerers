@@ -64,10 +64,7 @@ impl ActivatedAbility for ShootProjectile {
                 card_id: target.clone(),
                 player_id: player_id.clone(),
                 from: state.get_card(&target).get_zone().clone(),
-                to: ZoneQuery::Specific {
-                    id: uuid::Uuid::new_v4(),
-                    zone: pudge.get_zone().clone(),
-                },
+                to: ZoneQuery::from_zone(pudge.get_zone().clone()),
                 tap: false,
                 region: pudge.get_region(state).clone(),
                 through_path: None,

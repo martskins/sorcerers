@@ -60,11 +60,7 @@ impl Card for Teleport {
                 .with_prompt("Teleport: Choose an ally to teleport")
                 .units()
                 .controlled_by(&self.get_controller_id(state)),
-            zone_query: ZoneQuery::AnySite {
-                id: uuid::Uuid::new_v4(),
-                controlled_by: None,
-                prompt: Some("Teleport: Choose site to teleport to".to_string()),
-            },
+            zone_query: ZoneQuery::any_site(None, Some("Teleport: Choose site to teleport to".to_string())),
         }])
     }
 }

@@ -10,6 +10,7 @@ use async_channel::{Receiver, Sender};
 use rand::seq::SliceRandom;
 use std::{
     collections::{HashMap, HashSet, VecDeque},
+    future::Future,
     pin::Pin,
     sync::Arc,
 };
@@ -548,19 +549,21 @@ impl CardQuery {
     }
 }
 
+pub type DeferredCallback = Arc<
+    dyn Sync
+        + Send
+        + for<'a> Fn(
+            &'a State,
+            &'a uuid::Uuid,
+            &'a Effect,
+        ) -> Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + 'a>>,
+>;
+
 #[derive(Clone)]
 pub struct DeferredEffect {
     pub trigger_on_effect: EffectQuery,
     pub expires_on_effect: Option<EffectQuery>,
-    pub on_effect: Arc<
-        dyn Sync
-            + Send
-            + for<'a> Fn(
-                &'a State,
-                &'a uuid::Uuid,
-                &'a Effect,
-            ) -> Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + 'a>>,
-    >,
+    pub on_effect: DeferredCallback,
 }
 
 impl std::fmt::Debug for DeferredEffect {
@@ -757,6 +760,18 @@ impl State {
 
     pub fn get_player_mana_mut(&mut self, player_id: &PlayerId) -> &mut u8 {
         self.player_mana.entry(player_id.clone()).or_insert(0)
+    }
+
+    pub fn queue(&mut self, effects: impl IntoIterator<Item = Effect>) {
+        self.effects.extend(effects.into_iter().map(Arc::new));
+    }
+
+    pub fn queue_one(&mut self, effect: Effect) {
+        self.effects.push_back(Arc::new(effect));
+    }
+
+    pub fn queue_front(&mut self, effect: Effect) {
+        self.effects.push_front(Arc::new(effect));
     }
 
     pub fn get_thresholds_for_player(&self, player_id: &PlayerId) -> Thresholds {

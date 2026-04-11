@@ -59,10 +59,7 @@ impl ActivatedAbility for RollBoulder {
                 effects.push(Effect::MoveCard {
                     card_id: boulder.get_id().clone(),
                     from: last_zone.clone(),
-                    to: ZoneQuery::Specific {
-                        id: uuid::Uuid::new_v4(),
-                        zone: zone.clone(),
-                    },
+                    to: ZoneQuery::from_zone(zone.clone()),
                     player_id: boulder.get_controller_id(state).clone(),
                     tap: false,
                     region: Region::Surface,

@@ -1113,10 +1113,7 @@ impl ActivatedAbility for UnitAction {
                                         player_id: opponent.id.clone(),
                                         card_id: defender_id.clone(),
                                         from: defender.get_zone().clone(),
-                                        to: ZoneQuery::Specific {
-                                            id: uuid::Uuid::new_v4(),
-                                            zone: attacker.get_zone().clone(),
-                                        },
+                                        to: ZoneQuery::from_zone(attacker.get_zone().clone()),
                                         tap: true,
                                         region: attacker.get_region(state).clone(),
                                         through_path: None,
@@ -1136,10 +1133,7 @@ impl ActivatedAbility for UnitAction {
                                             player_id: opponent.id.clone(),
                                             card_id: defender_id.clone(),
                                             from: defender_zone,
-                                            to: ZoneQuery::Specific {
-                                                id: uuid::Uuid::new_v4(),
-                                                zone: attacker.get_zone().clone(),
-                                            },
+                                            to: ZoneQuery::from_zone(attacker.get_zone().clone()),
                                             tap: true,
                                             region: attacker.get_region(state).clone(),
                                             through_path: None,
@@ -1266,10 +1260,7 @@ impl ActivatedAbility for UnitAction {
                         player_id: player_id.clone(),
                         card_id: card_id.clone(),
                         from: zone.clone(),
-                        to: ZoneQuery::Specific {
-                            id: uuid::Uuid::new_v4(),
-                            zone: to_zone.clone(),
-                        },
+                        to: ZoneQuery::from_zone(to_zone.clone()),
                         tap: true,
                         region: card.get_base().region.clone(),
                         through_path: Some(path.clone()),
@@ -1285,10 +1276,7 @@ impl ActivatedAbility for UnitAction {
                             player_id: opponent.id.clone(),
                             card_id: interceptor_id.clone(),
                             from: interceptor_card.get_zone().clone(),
-                            to: ZoneQuery::Specific {
-                                id: uuid::Uuid::new_v4(),
-                                zone: zone.clone(),
-                            },
+                            to: ZoneQuery::from_zone(zone.clone()),
                             tap: true,
                             region: card.get_base().region.clone(),
                             through_path: Some(path.clone()),
@@ -1501,7 +1489,7 @@ impl Game {
                 match (card.get_card_type(), card.get_zone()) {
                     (CardType::Artifact, Zone::Hand) | (CardType::Minion, Zone::Hand) => {
                         let effects = card.play_mechanic(&self.state).await?;
-                        self.state.effects.extend(effects.into_iter().map(|e| e.into()));
+                        self.state.queue(effects);
                     }
                     (CardType::Magic, Zone::Hand) => {
                         let spellcasters: Vec<uuid::Uuid> = self
@@ -1514,15 +1502,12 @@ impl Game {
                         let prompt = "Pick a spellcaster to cast the spell";
                         let caster_id = pick_card(player_id, &spellcasters, &self.state, prompt).await?;
                         let caster = self.state.get_card(&caster_id);
-                        self.state.effects.push_back(
-                            Effect::PlayMagic {
-                                player_id: player_id.clone(),
-                                card_id: card_id.clone(),
-                                caster_id,
-                                from: caster.get_zone().clone(),
-                            }
-                            .into(),
-                        );
+                        self.state.queue_one(Effect::PlayMagic {
+                            player_id: player_id.clone(),
+                            card_id: card_id.clone(),
+                            caster_id,
+                            from: caster.get_zone().clone(),
+                        });
                     }
                     (_, Zone::Realm(_)) => {
                         let unit_disabled =
@@ -1555,18 +1540,15 @@ impl Game {
                         // cards, which would result in no valid targets, as the card would already
                         // be in the cemetery at the point of execution the action.
                         cost.pay(&mut self.state, player_id).await?;
-                        self.state.effects.extend(effects.into_iter().map(|e| e.into()));
+                        self.state.queue(effects);
                     }
                     _ => {}
                 }
             }
             ClientMessage::EndTurn { player_id, .. } => {
-                self.state.effects.push_back(
-                    Effect::EndTurn {
-                        player_id: player_id.clone(),
-                    }
-                    .into(),
-                );
+                self.state.queue_one(Effect::EndTurn {
+                    player_id: player_id.clone(),
+                });
             }
             ClientMessage::PickCards {
                 card_ids, player_id, ..
@@ -1603,7 +1585,7 @@ impl Game {
                     },
                 ];
                 self.state.players_with_accepted_hands.insert(player_id.clone());
-                self.state.effects.extend(effects.into_iter().map(|e| e.into()));
+                self.state.queue(effects);
                 if self.state.players_with_accepted_hands.len() == self.state.players.len() {
                     self.state.phase = Phase::Main;
                     self.process_effects().await?;
@@ -1715,10 +1697,7 @@ impl Game {
                 player_id: player_id.clone(),
                 card_id: avatar_id,
                 from: Zone::Spellbook,
-                to: ZoneQuery::Specific {
-                    id: uuid::Uuid::new_v4(),
-                    zone: Zone::Realm(square),
-                },
+                to: ZoneQuery::from_zone(Zone::Realm(square)),
                 tap: false,
                 region: Region::Surface,
                 through_path: None,
@@ -1744,7 +1723,7 @@ impl Game {
 
             let card = state.get_card(&aura_id);
             let effects = card.deathrite(state, card.get_zone());
-            state.effects.extend(effects.into_iter().map(|e| e.into()));
+            state.queue(effects);
         }
 
         Ok(())

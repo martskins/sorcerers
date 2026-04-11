@@ -54,11 +54,7 @@ impl Site for PlanarGate {
                 ability: Ability::Voidwalk,
                 expires_on_effect: Some(EffectQuery::EnterZone {
                     card: CardQuery::from_id(card_id.clone()),
-                    zone: ZoneQuery::AnySite {
-                        id: uuid::Uuid::new_v4(),
-                        controlled_by: None,
-                        prompt: None,
-                    },
+                    zone: ZoneQuery::any_site(None, None),
                 }),
             },
         }]

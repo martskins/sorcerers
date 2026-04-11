@@ -92,10 +92,7 @@ impl Card for CaveIn {
                 player_id: self.get_controller_id(state).clone(),
                 card_id: card_id.clone(),
                 from: picked_site.get_zone().clone(),
-                to: ZoneQuery::Specific {
-                    id: uuid::Uuid::new_v4(),
-                    zone: picked_site.get_zone().clone(),
-                },
+                to: ZoneQuery::from_zone(picked_site.get_zone().clone()),
                 tap: false,
                 region: Region::Underground,
                 through_path: None,
