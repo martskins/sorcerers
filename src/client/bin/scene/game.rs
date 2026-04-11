@@ -265,6 +265,8 @@ impl Game {
             if !overlay.is_visible() {
                 self.overlay = None;
             }
+            // Don't let clicks fall through to cards behind the overlay.
+            return;
         }
 
         let mut component_actions = vec![];
