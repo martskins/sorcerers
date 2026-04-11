@@ -3,7 +3,7 @@ use crate::{
     effect::Effect,
     game::PlayerId,
     query::ZoneQuery,
-    state::{CardMatcher, State},
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -73,8 +73,10 @@ impl Card for UnlandAngler {
         }
 
         let controller_id = self.get_controller_id(state);
-        let minions = CardMatcher::minions_adjacent(self.get_zone()).resolve_ids(state);
-        Ok(minions
+        let effects = CardQuery::new()
+            .minions()
+            .adjacent_to(self.get_zone())
+            .all(state)
             .into_iter()
             .map(|minion_id| {
                 let minion = state.get_card(&minion_id);
@@ -88,7 +90,8 @@ impl Card for UnlandAngler {
                     through_path: None,
                 }
             })
-            .collect::<Vec<Effect>>())
+            .collect();
+        Ok(effects)
     }
 }
 

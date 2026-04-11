@@ -3,7 +3,7 @@ use crate::{
     effect::{AbilityCounter, Effect},
     game::{PlayerId, Thresholds},
     query::EffectQuery,
-    state::{CardMatcher, State},
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -69,8 +69,10 @@ impl Card for Quagmire {
     }
 
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        let effects = CardMatcher::units_near(self.get_zone())
-            .resolve_ids(state)
+        let effects = CardQuery::new()
+            .units()
+            .near_to(self.get_zone())
+            .all(state)
             .into_iter()
             .map(|card_id| Effect::AddAbilityCounter {
                 card_id: card_id,

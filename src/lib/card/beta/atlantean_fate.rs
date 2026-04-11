@@ -2,7 +2,7 @@ use crate::{
     card::{Aura, AuraBase, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::PlayerId,
-    state::{CardMatcher, ContinuousEffect, State},
+    state::{CardQuery, ContinuousEffect, State},
 };
 
 #[derive(Debug, Clone)]
@@ -80,7 +80,7 @@ impl Card for AtlanteanFate {
         // TODO: This is missing the effect of removing all other abilities and affinities from the
         // affected sites.
         Ok(vec![ContinuousEffect::FloodSites {
-            affected_sites: CardMatcher::from_ids(flooded_sites),
+            affected_sites: CardQuery::from_ids(flooded_sites),
         }])
     }
 

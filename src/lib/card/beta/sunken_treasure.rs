@@ -1,8 +1,8 @@
 use crate::{
-    card::{Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardType, Costs, Edition, Rarity, Region, Zone},
+    card::{Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
-    game::{Element, PlayerId, pick_card},
-    state::{CardMatcher, State},
+    game::{Element, PlayerId},
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -69,13 +69,17 @@ impl Card for SunkenTreasure {
         let controller_id = self.get_controller_id(state);
         let opponent_id = state.get_opponent_id(&controller_id)?;
 
-        let allied_water_sites = CardMatcher::new()
-            .with_controller_id(&controller_id)
-            .with_card_type(CardType::Site)
+        let picked_card_id = CardQuery::new()
+            .controlled_by(&controller_id)
+            .sites()
+            .with_prompt("Sunken Treasure: Pick a water site to place the treasure under")
             .with_affinity(Element::Water)
-            .resolve_ids(state);
-        let prompt = format!("Sunken Treasure: Pick a water site to place the treasure under");
-        let picked_card_id = pick_card(opponent_id, &allied_water_sites, state, &prompt).await?;
+            .pick(&opponent_id, state, false)
+            .await?;
+        if picked_card_id.is_none() {
+            return Ok(vec![]);
+        }
+        let picked_card_id = picked_card_id.expect("value not to be None");
         let picked_zone = state.get_card(&picked_card_id).get_zone();
         Ok(vec![
             Effect::SetCardRegion {

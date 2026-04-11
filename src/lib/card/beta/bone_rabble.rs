@@ -1,11 +1,11 @@
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use crate::{
-    card::{Ability, Card, CardBase, CardType, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{Element, PlayerId, yes_or_no},
     query::EffectQuery,
-    state::{CardMatcher, DeferredEffect, State},
+    state::{CardQuery, DeferredEffect, State},
 };
 
 #[derive(Debug, Clone)]
@@ -71,13 +71,13 @@ impl Card for BoneRabble {
         vec![Effect::AddDeferredEffect {
             effect: DeferredEffect {
                 trigger_on_effect: EffectQuery::PlayCard {
-                    card: CardMatcher::new()
+                    card: CardQuery::new()
                         .with_element(Element::Earth)
-                        .with_controller_id(&owner_id)
-                        .with_card_type(CardType::Site),
+                        .controlled_by(&owner_id)
+                        .sites(),
                 },
                 expires_on_effect: Some(EffectQuery::SummonCard {
-                    card: CardMatcher::from_id(self.get_id().clone()),
+                    card: CardQuery::from_id(self.get_id().clone()),
                 }),
                 on_effect: Arc::new(move |state: &State, card_id: &uuid::Uuid, _effect: &Effect| {
                     let owner_id = owner_id.clone();

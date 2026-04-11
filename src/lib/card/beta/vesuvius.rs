@@ -1,8 +1,10 @@
 use crate::{
-    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
-    effect::{Effect, TokenType},
+    card::{
+        AdditionalCost, Card, CardBase, Cost, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone,
+    },
+    effect::Effect,
     game::{ActivatedAbility, PlayerId, Thresholds},
-    state::{CardMatcher, State},
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -14,23 +16,17 @@ impl ActivatedAbility for UseAbility {
         "Use Vesuvius Ability".to_string()
     }
 
-    fn get_cost(&self, _card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
-        Ok(Cost::thresholds_only("FFF"))
+    fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
+        Ok(
+            Cost::thresholds_only("FFF")
+                .with_additional(AdditionalCost::sacrifice(CardQuery::from_id(card_id.clone()))),
+        )
     }
 
     async fn on_select(&self, card_id: &uuid::Uuid, _: &PlayerId, state: &State) -> anyhow::Result<Vec<Effect>> {
         let card = state.get_card(card_id);
-        let site_ids = CardMatcher::sites_near(card.get_zone()).resolve_ids(state);
-        let mut effects = vec![
-            Effect::BuryCard {
-                card_id: card.get_id().clone(),
-            },
-            Effect::SummonToken {
-                player_id: card.get_controller_id(state).clone(),
-                token_type: TokenType::Rubble,
-                zone: card.get_zone().clone(),
-            },
-        ];
+        let site_ids = CardQuery::new().sites().near_to(card.get_zone()).all(state);
+        let mut effects = vec![];
         for site_id in site_ids {
             let site = state.get_card(&site_id);
             let units = state.get_units_in_zone(site.get_zone());

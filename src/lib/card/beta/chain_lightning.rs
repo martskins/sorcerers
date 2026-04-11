@@ -1,8 +1,8 @@
 use crate::{
     card::{Card, CardBase, Cost, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
-    game::{BaseOption, PlayerId, force_sync, pick_card, pick_option},
-    state::{CardMatcher, State},
+    game::{BaseOption, PlayerId, force_sync, pick_option},
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -57,17 +57,21 @@ impl Card for ChainLightning {
         let mut last_hit_zone = caster.get_zone().clone();
         let mut first_pick = true;
         let mut local_state = state.snapshot();
+        let controller_id = self.get_controller_id(state);
         loop {
-            let units_nearby = CardMatcher::units_near(&last_hit_zone).resolve_ids(state);
-            let picked_card = pick_card(
-                self.get_owner_id(),
-                &units_nearby,
-                &local_state,
-                "Chain Lightning: Pick a unit to deal 2 damage to",
-            )
-            .await?;
+            let picked_card_id = CardQuery::new()
+                .units()
+                .near_to(&last_hit_zone)
+                .with_prompt("Chain Lightning: Pick a unit to deal 2 damage to")
+                .pick(&controller_id, &local_state, false)
+                .await?;
+            if picked_card_id.is_none() {
+                break;
+            }
+            let picked_card_id = picked_card_id.expect("value to not be None");
+
             let effect = Effect::TakeDamage {
-                card_id: picked_card,
+                card_id: picked_card_id.clone(),
                 from: self.get_id().clone(),
                 damage: 2,
             };
@@ -110,7 +114,7 @@ impl Card for ChainLightning {
                 break;
             }
 
-            last_hit_zone = state.get_card(&picked_card).get_zone().clone();
+            last_hit_zone = state.get_card(&picked_card_id).get_zone().clone();
             first_pick = false;
         }
 

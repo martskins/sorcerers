@@ -3,7 +3,7 @@ use crate::{
     effect::{AbilityCounter, Effect},
     game::PlayerId,
     query::EffectQuery,
-    state::{CardMatcher, State},
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -54,9 +54,11 @@ impl Card for FrostNova {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        let nearby_enemies = CardMatcher::minions_near(self.get_zone())
-            .with_controller_id(&controller_id)
-            .resolve_ids(state);
+        let nearby_enemies = CardQuery::new()
+            .minions()
+            .near_to(self.get_zone())
+            .controlled_by(&controller_id)
+            .all(state);
         Ok(nearby_enemies
             .into_iter()
             .map(|card_id| Effect::AddAbilityCounter {

@@ -1,11 +1,11 @@
 use crate::{
     card::{
-        Ability, AdditionalCost, Card, CardBase, CardType, Cost, Costs, Edition, MinionType, Rarity, Region, UnitBase,
+        Ability, AdditionalCost, Card, CardBase, Cost, Costs, Edition, MinionType, Rarity, Region, UnitBase,
         Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_zone_near},
-    state::{CardMatcher, State},
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -18,7 +18,7 @@ impl ActivatedAbility for AncientDragonAbility {
     }
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
-        Ok(Cost::additional_only(AdditionalCost::tap(CardMatcher::from_id(
+        Ok(Cost::additional_only(AdditionalCost::tap(CardQuery::from_id(
             card_id.clone(),
         ))))
     }
@@ -38,11 +38,11 @@ impl ActivatedAbility for AncientDragonAbility {
             "Pick a zone to deal damage in",
         )
         .await?;
-        let unit_ids = CardMatcher::new()
-            .with_zone(&picked_zone)
-            .with_card_types(vec![CardType::Minion, CardType::Avatar])
-            .with_id_not_in(vec![card_id.clone()])
-            .resolve_ids(state);
+        let unit_ids = CardQuery::new()
+            .in_zone(&picked_zone)
+            .units()
+            .id_not_in(vec![card_id.clone()])
+            .all(state);
         let mut effects = vec![];
         for unit_id in unit_ids {
             effects.push(Effect::take_damage(&unit_id, card_id, 4));

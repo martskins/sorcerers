@@ -1,7 +1,7 @@
 use crate::{
-    card::{Aura, AuraBase, Card, CardBase, CardType, Costs, Edition, Rarity, Region, Zone},
+    card::{Aura, AuraBase, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
     game::PlayerId,
-    state::{CardMatcher, ContinuousEffect, State},
+    state::{CardQuery, ContinuousEffect, State},
 };
 
 #[derive(Debug, Clone)]
@@ -61,9 +61,7 @@ impl Card for Abundance {
         let affected_zones = self.get_affected_zones(state);
         Ok(vec![ContinuousEffect::ModifyProvidedMana {
             mana_diff: 1,
-            affected_cards: CardMatcher::new()
-                .in_zones(&affected_zones)
-                .with_card_type(CardType::Site),
+            affected_cards: CardQuery::new().in_zones(&affected_zones).sites(),
         }])
     }
 }

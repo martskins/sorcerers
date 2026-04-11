@@ -1,8 +1,8 @@
 use crate::{
-    card::{Card, CardBase, CardType, Cost, Costs, Edition, Rarity, Region, Zone},
+    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
-    game::{Element, PlayerId, pick_card},
-    state::{CardMatcher, State},
+    game::{Element, PlayerId},
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -52,25 +52,24 @@ impl Card for Boil {
         caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
+        let controller_id = self.get_controller_id(state);
         let card = state.get_card(caster_id);
         let zones = card.get_zones_within_steps(state, 2);
-        let water_sites = CardMatcher::new()
+        let picked_site_id = CardQuery::new()
             .with_element(Element::Water)
             .in_zones(&zones)
-            .with_card_type(CardType::Site)
-            .resolve_ids(state);
-        if water_sites.len() == 0 {
+            .sites()
+            .pick(&controller_id, state, false)
+            .await?;
+        if picked_site_id.is_none() {
             return Ok(vec![]);
         }
-
-        let controller_id = card.get_controller_id(state);
-        let picked_site_id = pick_card(&controller_id, &water_sites, state, "Choose a Water Site to destroy.").await?;
+        let picked_site_id = picked_site_id.expect("value to not be None");
         let site = state.get_card(&picked_site_id);
-
-        Ok(CardMatcher::new()
-            .with_zone(site.get_zone())
-            .with_card_type(CardType::Minion)
-            .resolve_ids(state)
+        Ok(CardQuery::new()
+            .in_zone(site.get_zone())
+            .minions()
+            .all(state)
             .into_iter()
             .map(|minion_id| Effect::BuryCard { card_id: minion_id })
             .collect())

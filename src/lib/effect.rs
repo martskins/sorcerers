@@ -1,9 +1,9 @@
 use crate::{
-    card::{Ability, Card, CardType, FootSoldier, Frog, Region, Rubble, UnitBase, Zone},
+    card::{Ability, Card, FootSoldier, Frog, Region, Rubble, UnitBase, Zone},
     game::{BaseAction, Direction, PlayerAction, PlayerId, SoundEffect, pick_card, pick_option},
     networking::message::ServerMessage,
-    query::{CardQuery, EffectQuery, QueryCache, ZoneQuery},
-    state::{CardMatcher, DeferredEffect, Phase, State, TemporaryEffect},
+    query::{EffectQuery, QueryCache, ZoneQuery},
+    state::{CardQuery, DeferredEffect, Phase, State, TemporaryEffect},
 };
 use std::fmt::Debug;
 
@@ -1229,15 +1229,16 @@ impl Effect {
                 damage,
                 ..
             } => {
-                let target = query.resolve(player_id, state).await?;
-                state.effects.push_back(
-                    Effect::TakeDamage {
-                        card_id: target,
-                        from: from.clone(),
-                        damage: *damage,
-                    }
-                    .into(),
-                );
+                if let Some(target) = query.pick(player_id, state, false).await? {
+                    state.effects.push_back(
+                        Effect::TakeDamage {
+                            card_id: target,
+                            from: from.clone(),
+                            damage: *damage,
+                        }
+                        .into(),
+                    );
+                }
             }
             Effect::TakeDamage {
                 card_id, damage, from, ..
@@ -1344,7 +1345,7 @@ impl Effect {
                 zone_query,
                 ..
             } => {
-                let unit_id = unit_query.resolve(player_id, state).await?;
+                let unit_id = unit_query.pick(player_id, state, false).await?.expect("to find unit");
                 let unit = state.get_card(&unit_id);
                 let zone = zone_query.resolve(player_id, state).await?;
                 state.effects.push_back(
@@ -1378,8 +1379,8 @@ impl Effect {
                 let mut change_region_effects = card.on_region_change(state, from_region, region)?;
 
                 if card.is_unit() {
-                    let borne_artifacts = CardMatcher::new()
-                        .with_card_type(CardType::Artifact)
+                    let borne_artifacts = CardQuery::new()
+                        .artifacts()
                         .iter(state)
                         .filter_map(|c| c.get_artifact())
                         .filter(|a| a.get_bearer().unwrap_or_default() == Some(card_id.clone()))

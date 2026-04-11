@@ -2,7 +2,7 @@ use crate::{
     card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::PlayerId,
-    state::{CardMatcher, State},
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -64,10 +64,12 @@ impl Card for ScentHounds {
 
     fn area_effects(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let opponent_id = state.get_opponent_id(&self.get_controller_id(state))?;
-        let effects = CardMatcher::units_near(self.get_zone())
-            .with_controller_id(&opponent_id)
+        let effects = CardQuery::new()
+            .units()
+            .near_to(self.get_zone())
+            .controlled_by(&opponent_id)
             .with_abilities(vec![Ability::Stealth])
-            .resolve_ids(state)
+            .all(state)
             .into_iter()
             .map(|card_id| Effect::RemoveAbility {
                 card_id: card_id,

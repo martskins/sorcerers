@@ -2,11 +2,12 @@ use crate::{
     card::{Ability, ArtifactType, Card, CardData, CardType, DodgeRoll, MinionType, Region, SiteType, Zone},
     deck::Deck,
     effect::Effect,
-    game::{Element, InputStatus, PlayerId, Resources, Thresholds, pick_zone, yes_or_no},
+    game::{Element, InputStatus, PlayerId, Resources, Thresholds, pick_card, pick_zone, yes_or_no},
     networking::message::{ClientMessage, ServerMessage},
     query::{EffectQuery, ZoneQuery},
 };
 use async_channel::{Receiver, Sender};
+use rand::seq::SliceRandom;
 use std::{
     collections::{HashMap, HashSet, VecDeque},
     pin::Pin,
@@ -32,30 +33,35 @@ pub struct PlayerWithDeck {
 }
 
 #[derive(Debug, Default, Clone)]
-pub struct CardMatcher {
-    pub id: Option<uuid::Uuid>,
-    pub randomise: Option<bool>,
-    pub count: Option<usize>,
-    pub ids: Option<Vec<uuid::Uuid>>,
-    pub card_names: Option<Vec<String>>,
-    pub card_name_contains: Option<String>,
-    pub controller_id: Option<PlayerId>,
-    pub not_in_ids: Option<Vec<uuid::Uuid>>,
-    pub abilities: Option<Vec<Ability>>,
-    pub card_types: Option<Vec<CardType>>,
-    pub minion_types: Option<Vec<MinionType>>,
-    pub artifact_types: Option<Vec<ArtifactType>>,
-    pub mana_cost: Option<u8>,
-    pub site_types: Option<Vec<SiteType>>,
-    pub with_affinity: Option<Vec<Element>>,
-    pub in_zones: Option<Vec<Zone>>,
-    pub in_regions: Option<Vec<Region>>,
-    pub tapped: Option<bool>,
-    pub include_not_in_play: Option<bool>,
-    pub elements: Option<Vec<Element>>,
+pub struct CardQuery {
+    id: uuid::Uuid,
+    randomise: Option<bool>,
+    count: Option<usize>,
+    ids: Option<Vec<uuid::Uuid>>,
+    card_names: Option<Vec<String>>,
+    card_name_contains: Option<String>,
+    controller_id: Option<PlayerId>,
+    not_in_ids: Option<Vec<uuid::Uuid>>,
+    abilities: Option<Vec<Ability>>,
+    card_types: Option<Vec<CardType>>,
+    minion_types: Option<Vec<MinionType>>,
+    artifact_types: Option<Vec<ArtifactType>>,
+    mana_cost: Option<u8>,
+    site_types: Option<Vec<SiteType>>,
+    with_affinity: Option<Vec<Element>>,
+    in_zones: Option<Vec<Zone>>,
+    in_regions: Option<Vec<Region>>,
+    tapped: Option<bool>,
+    include_not_in_play: Option<bool>,
+    elements: Option<Vec<Element>>,
+    prompt: Option<String>,
 }
 
-impl CardMatcher {
+impl CardQuery {
+    pub fn is_randomised(&self) -> bool {
+        self.randomise.unwrap_or_default()
+    }
+
     pub fn from_ids(ids: Vec<uuid::Uuid>) -> Self {
         Self {
             ids: Some(ids),
@@ -68,19 +74,6 @@ impl CardMatcher {
             ids: Some(vec![id]),
             ..Default::default()
         }
-    }
-
-    /// Enable caching for this matcher. When `resolve_ids_cached` is called, the
-    /// result will be stored in `QueryCache` and reused on subsequent calls.
-    pub fn cached(self) -> Self {
-        Self {
-            id: Some(uuid::Uuid::new_v4()),
-            ..self
-        }
-    }
-
-    pub fn get_id(&self) -> Option<&uuid::Uuid> {
-        self.id.as_ref()
     }
 
     pub fn count(self, count: usize) -> Self {
@@ -97,96 +90,111 @@ impl CardMatcher {
         }
     }
 
-    /// Like `resolve_ids`, but stores/retrieves results from `QueryCache` when
-    /// this matcher has a cache id (set via `.cached()`).
-    pub async fn resolve(&self, state: &State) -> Vec<uuid::Uuid> {
+    pub async fn pick(
+        &self,
+        player_id: &PlayerId,
+        state: &State,
+        use_preview: bool,
+    ) -> anyhow::Result<Option<uuid::Uuid>> {
         use crate::query::QueryCache;
-        if let Some(id) = &self.id {
-            if let Some(cached) = QueryCache::matcher_results(id).await {
-                return cached;
-            }
-            let result = self.resolve_ids(state);
-            QueryCache::store_matcher_results(state.game_id, *id, result.clone()).await;
-            result
-        } else {
-            self.resolve_ids(state)
+
+        if let Some(cached) = QueryCache::matcher_results(&self.id).await {
+            return Ok(Some(
+                cached
+                    .first()
+                    .expect("Expected at least one card to be returned from cache")
+                    .clone(),
+            ));
         }
+
+        if let Some(count) = &self.count {
+            if *count != 1 {
+                return Err(anyhow::anyhow!("resolve_one can only be used with count 1"));
+            }
+        }
+
+        let mut card_ids = self.all(state);
+        if card_ids.is_empty() {
+            return Ok(None);
+        }
+
+        let output = if let Some(true) = self.randomise {
+            for card in &state.cards {
+                if &card.get_controller_id(state) != player_id {
+                    continue;
+                }
+
+                if let Some(query) = card.card_query_override(state, self).await? {
+                    let output = Box::pin(query.pick(player_id, state, use_preview)).await?;
+
+                    QueryCache::store_matcher_results(state.game_id, self.id, output.map_or(vec![], |o| vec![o])).await;
+                    return Ok(output);
+                }
+            }
+
+            let mut rng = rand::rng();
+            card_ids.shuffle(&mut rng);
+            card_ids
+                .iter()
+                .next()
+                .expect("Expected at least one card to be returned from resolve_ids")
+                .clone()
+        } else {
+            let prompt = self.prompt.clone().unwrap_or_else(|| "Pick a card".to_string());
+            pick_card(player_id, &card_ids, state, &prompt).await?
+        };
+
+        QueryCache::store_matcher_results(state.game_id, self.id, vec![output.clone()]).await;
+
+        Ok(Some(output))
     }
 
     pub fn iter<'a>(&'a self, state: &'a State) -> impl Iterator<Item = &'a Box<dyn Card>> {
+        state.cards.iter().filter(|c| self.matches(c.get_id(), state))
+    }
+
+    pub fn all(&self, state: &State) -> Vec<uuid::Uuid> {
         state
             .cards
             .iter()
             .filter(|c| self.matches(c.get_id(), state))
-            .filter(|c| {
-                if !self.include_not_in_play.unwrap_or_default() {
-                    c.get_zone().is_in_play()
-                } else {
-                    true
-                }
-            })
-    }
-
-    pub fn resolve_ids(&self, state: &State) -> Vec<uuid::Uuid> {
-        use rand::seq::SliceRandom;
-
-        let mut card_ids: Vec<uuid::Uuid> = state
-            .cards
-            .iter()
-            .filter(|c| self.matches(c.get_id(), state))
-            .filter(|c| {
-                if !self.include_not_in_play.unwrap_or_default() {
-                    c.get_zone().is_in_play()
-                } else {
-                    true
-                }
-            })
             .map(|c| c.get_id().clone())
-            .collect();
+            .collect()
+    }
 
-        if let Some(true) = self.randomise {
-            let mut rng = rand::rng();
-            card_ids.shuffle(&mut rng);
-        }
-
-        if let Some(count) = self.count {
-            card_ids.into_iter().take(count).collect()
-        } else {
-            card_ids
+    pub fn with_prompt(self, prompt: &str) -> Self {
+        Self {
+            prompt: Some(prompt.to_string()),
+            ..self
         }
     }
 
-    pub fn with_card_name_contains(self, name: &str) -> Self {
+    pub fn card_name_contains(self, name: &str) -> Self {
         Self {
             card_name_contains: Some(name.to_string()),
             ..self
         }
     }
 
-    pub fn with_name(self, name: &str) -> Self {
+    pub fn cards_named(self, name: &str) -> Self {
         Self {
             card_names: Some(vec![name.to_string()]),
             ..self
         }
     }
 
-    pub fn with_names(self, names: Vec<String>) -> Self {
+    pub fn cards_with_names(self, names: Vec<String>) -> Self {
         Self {
             card_names: Some(names),
             ..self
         }
     }
 
-    pub fn units_in_zone(zones: Vec<Zone>) -> Self {
+    pub fn new() -> Self {
         Self {
-            card_types: Some(vec![CardType::Minion, CardType::Avatar]),
-            in_zones: Some(zones),
+            id: uuid::Uuid::new_v4(),
             ..Default::default()
         }
-    }
-
-    pub fn new() -> Self {
-        Self::default()
     }
 
     pub fn in_zones(self, zones: &[Zone]) -> Self {
@@ -197,7 +205,7 @@ impl CardMatcher {
         }
     }
 
-    pub fn with_zone(self, zone: &Zone) -> Self {
+    pub fn in_zone(self, zone: &Zone) -> Self {
         Self {
             in_zones: Some(vec![zone.clone()]),
             include_not_in_play: Some(true),
@@ -205,14 +213,14 @@ impl CardMatcher {
         }
     }
 
-    pub fn include_not_in_play(self, in_play: bool) -> Self {
+    pub fn including_not_in_play(self) -> Self {
         Self {
-            include_not_in_play: Some(in_play),
+            include_not_in_play: Some(true),
             ..self
         }
     }
 
-    pub fn with_tapped(self, tapped: bool) -> Self {
+    pub fn tapped(self, tapped: bool) -> Self {
         Self {
             tapped: Some(tapped),
             ..self
@@ -227,7 +235,7 @@ impl CardMatcher {
         }
     }
 
-    pub fn with_zone_adjacent_to(self, zone: &Zone) -> Self {
+    pub fn adjacent_to(self, zone: &Zone) -> Self {
         let zones = zone.get_adjacent();
         Self {
             in_zones: Some(zones),
@@ -235,7 +243,7 @@ impl CardMatcher {
         }
     }
 
-    pub fn with_zone_near_to(self, zone: &Zone) -> Self {
+    pub fn near_to(self, zone: &Zone) -> Self {
         let zones = zone.get_nearby();
         Self {
             in_zones: Some(zones),
@@ -250,14 +258,14 @@ impl CardMatcher {
         }
     }
 
-    pub fn with_region_in(self, region: Vec<Region>) -> Self {
+    pub fn in_regions(self, region: Vec<Region>) -> Self {
         Self {
             in_regions: Some(region),
             ..self
         }
     }
 
-    pub fn with_region(self, region: &Region) -> Self {
+    pub fn in_region(self, region: &Region) -> Self {
         Self {
             in_regions: Some(vec![region.clone()]),
             ..self
@@ -278,60 +286,6 @@ impl CardMatcher {
         }
     }
 
-    pub fn sites_adjacent(zone: &Zone) -> Self {
-        let zones = zone.get_adjacent();
-        Self {
-            card_types: Some(vec![CardType::Site]),
-            in_zones: Some(zones),
-            ..Default::default()
-        }
-    }
-
-    pub fn units_adjacent(zone: &Zone) -> Self {
-        let zones = zone.get_adjacent();
-        Self {
-            card_types: Some(vec![CardType::Minion, CardType::Avatar]),
-            in_zones: Some(zones),
-            ..Default::default()
-        }
-    }
-
-    pub fn minions_adjacent(zone: &Zone) -> Self {
-        let zones = zone.get_adjacent();
-        Self {
-            card_types: Some(vec![CardType::Minion]),
-            in_zones: Some(zones),
-            ..Default::default()
-        }
-    }
-
-    pub fn sites_near(zone: &Zone) -> Self {
-        let zones = zone.get_nearby();
-        Self {
-            card_types: Some(vec![CardType::Site]),
-            in_zones: Some(zones),
-            ..Default::default()
-        }
-    }
-
-    pub fn units_near(zone: &Zone) -> Self {
-        let zones = zone.get_nearby();
-        Self {
-            card_types: Some(vec![CardType::Minion, CardType::Avatar]),
-            in_zones: Some(zones),
-            ..Default::default()
-        }
-    }
-
-    pub fn minions_near(zone: &Zone) -> Self {
-        let zones = zone.get_nearby();
-        Self {
-            card_types: Some(vec![CardType::Minion]),
-            in_zones: Some(zones),
-            ..Default::default()
-        }
-    }
-
     pub fn with_abilities(self, abilities: Vec<Ability>) -> Self {
         Self {
             abilities: Some(abilities),
@@ -339,63 +293,91 @@ impl CardMatcher {
         }
     }
 
-    pub fn with_controller_id(self, controller_id: &PlayerId) -> Self {
+    pub fn controlled_by(self, controller_id: &PlayerId) -> Self {
         Self {
             controller_id: Some(controller_id.clone()),
             ..self
         }
     }
 
-    pub fn with_id_not_in(self, not_in_ids: Vec<uuid::Uuid>) -> Self {
+    pub fn id_not_in(self, not_in_ids: Vec<uuid::Uuid>) -> Self {
         Self {
             not_in_ids: Some(not_in_ids),
             ..self
         }
     }
 
-    pub fn with_site_types(self, site_types: Vec<SiteType>) -> Self {
+    pub fn site_types(self, site_types: Vec<SiteType>) -> Self {
         Self {
             site_types: Some(site_types),
             ..self
         }
     }
 
-    pub fn with_card_type(self, card_type: CardType) -> Self {
+    pub fn artifacts(self) -> Self {
         Self {
-            card_types: Some(vec![card_type]),
+            card_types: Some(vec![CardType::Artifact]),
             ..self
         }
     }
 
-    pub fn with_card_types(self, card_types: Vec<CardType>) -> Self {
+    pub fn auras(self) -> Self {
+        Self {
+            card_types: Some(vec![CardType::Aura]),
+            ..self
+        }
+    }
+
+    pub fn sites(self) -> Self {
+        Self {
+            card_types: Some(vec![CardType::Site]),
+            ..self
+        }
+    }
+
+    pub fn minions(self) -> Self {
+        Self {
+            card_types: Some(vec![CardType::Minion]),
+            ..self
+        }
+    }
+
+    pub fn units(self) -> Self {
+        Self {
+            card_types: Some(vec![CardType::Minion, CardType::Avatar]),
+            ..self
+        }
+    }
+
+    pub fn card_types(self, card_types: Vec<CardType>) -> Self {
         Self {
             card_types: Some(card_types),
             ..self
         }
     }
 
-    pub fn with_mana_cost_less_than_or_equal_to(self, mc: u8) -> Self {
+    pub fn mana_cost_less_than_or_equal_to(self, mc: u8) -> Self {
         Self {
             mana_cost: Some(mc),
             ..self
         }
     }
 
-    pub fn with_artifact_type(self, artifact_type: ArtifactType) -> Self {
+    pub fn artifact_type(self, artifact_type: ArtifactType) -> Self {
         Self {
             artifact_types: Some(vec![artifact_type]),
             ..self
         }
     }
 
-    pub fn with_artifact_types(self, artifact_types: Vec<ArtifactType>) -> Self {
+    pub fn artifact_types(self, artifact_types: Vec<ArtifactType>) -> Self {
         Self {
             artifact_types: Some(artifact_types),
             ..self
         }
     }
 
-    pub fn with_minion_types(self, minion_types: Vec<MinionType>) -> Self {
+    pub fn minion_types(self, minion_types: Vec<MinionType>) -> Self {
         Self {
             minion_types: Some(minion_types),
             ..self
@@ -520,6 +502,24 @@ impl CardMatcher {
             }
         }
 
+        if let Some(artifact_types) = &self.artifact_types {
+            if let Some(base) = card.get_artifact_base() {
+                let types = &base.types;
+                let mut found_type = false;
+                for artifact_type in artifact_types {
+                    if types.contains(artifact_type) {
+                        found_type = true;
+                    }
+                }
+
+                if !found_type {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+
         if let Some(minion_types) = &self.minion_types {
             if let Some(base) = card.get_unit_base() {
                 let types = &base.types;
@@ -575,7 +575,7 @@ impl std::fmt::Debug for DeferredEffect {
 #[derive(Debug, Clone)]
 pub enum TemporaryEffect {
     FloodSites {
-        affected_sites: CardMatcher,
+        affected_sites: CardQuery,
         expires_on_effect: EffectQuery,
     },
 }
@@ -583,7 +583,7 @@ pub enum TemporaryEffect {
 impl TemporaryEffect {
     pub fn affected_cards(&self, state: &State) -> Vec<uuid::Uuid> {
         match self {
-            TemporaryEffect::FloodSites { affected_sites, .. } => affected_sites.resolve_ids(state),
+            TemporaryEffect::FloodSites { affected_sites, .. } => affected_sites.all(state),
         }
     }
 
@@ -598,34 +598,34 @@ impl TemporaryEffect {
 pub enum ContinuousEffect {
     ControllerOverride {
         controller_id: PlayerId,
-        affected_cards: CardMatcher,
+        affected_cards: CardQuery,
     },
     ModifyPower {
         power_diff: i16,
-        affected_cards: CardMatcher,
+        affected_cards: CardQuery,
     },
     FloodSites {
-        affected_sites: CardMatcher,
+        affected_sites: CardQuery,
     },
     ChangeSiteType {
         site_type: SiteType,
-        affected_sites: CardMatcher,
+        affected_sites: CardQuery,
     },
     GrantAbility {
         ability: Ability,
-        affected_cards: CardMatcher,
+        affected_cards: CardQuery,
     },
     ModifyProvidedMana {
         mana_diff: i8,
-        affected_cards: CardMatcher,
+        affected_cards: CardQuery,
     },
     SetInterceptable {
         interceptable: bool,
-        affected_cards: CardMatcher,
+        affected_cards: CardQuery,
     },
     SetAttackable {
         attackable: bool,
-        affected_cards: CardMatcher,
+        affected_cards: CardQuery,
     },
 }
 
@@ -706,11 +706,11 @@ impl State {
                 }
 
                 let defender_controller = defender.get_controller_id(self);
-                let dodge_rolls_in_hand = CardMatcher::new()
-                    .with_name(DodgeRoll::NAME)
-                    .with_controller_id(&defender_controller)
-                    .with_zone(&Zone::Hand)
-                    .resolve_ids(self);
+                let dodge_rolls_in_hand = CardQuery::new()
+                    .cards_named(DodgeRoll::NAME)
+                    .controlled_by(&defender_controller)
+                    .in_zone(&Zone::Hand)
+                    .all(self);
                 if dodge_rolls_in_hand.is_empty() {
                     return Ok(None);
                 }
@@ -893,9 +893,11 @@ impl State {
 
     pub fn get_defenders_for_attack(&self, defender_id: &uuid::Uuid) -> Vec<uuid::Uuid> {
         let defender = self.get_card(defender_id);
-        CardMatcher::units_near(defender.get_zone())
-            .with_controller_id(&defender.get_controller_id(self))
-            .resolve_ids(self)
+        CardQuery::new()
+            .units()
+            .near_to(defender.get_zone())
+            .controlled_by(&defender.get_controller_id(self))
+            .all(self)
     }
 
     pub fn get_interceptors_for_move(&self, path: &[Zone], controller_id: &PlayerId) -> Vec<(uuid::Uuid, Zone)> {

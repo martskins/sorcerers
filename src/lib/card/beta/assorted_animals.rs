@@ -1,10 +1,10 @@
 use rand::seq::SliceRandom;
 
 use crate::{
-    card::{Card, CardBase, CardType, Cost, CostType, Costs, Edition, MinionType, Rarity, Region, Zone},
+    card::{Card, CardBase, Cost, CostType, Costs, Edition, MinionType, Rarity, Region, Zone},
     effect::Effect,
     game::{PlayerId, pick_card_with_options, reveal_cards, yes_or_no},
-    state::{CardMatcher, State},
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -65,13 +65,13 @@ impl Card for AssortedAnimals {
             })
             .unwrap_or_default();
 
-        let mut beasts = CardMatcher::new()
-            .with_zone(&Zone::Spellbook)
-            .with_card_type(CardType::Minion)
-            .with_minion_types(vec![MinionType::Beast])
-            .with_mana_cost_less_than_or_equal_to(x_cost)
-            .with_controller_id(&controller_id)
-            .resolve_ids(state)
+        let mut beasts = CardQuery::new()
+            .in_zone(&Zone::Spellbook)
+            .minions()
+            .minion_types(vec![MinionType::Beast])
+            .mana_cost_less_than_or_equal_to(x_cost)
+            .controlled_by(&controller_id)
+            .all(state)
             .into_iter()
             .map(|id| {
                 let card = state
@@ -92,10 +92,10 @@ impl Card for AssortedAnimals {
         let mut remaining_mana = x_cost;
         let mut chosen = Vec::new();
 
-        let mut display_card_ids: Vec<uuid::Uuid> = CardMatcher::new()
-            .with_controller_id(&controller_id)
-            .with_zone(&Zone::Spellbook)
-            .resolve_ids(state);
+        let mut display_card_ids: Vec<uuid::Uuid> = CardQuery::new()
+            .controlled_by(&controller_id)
+            .in_zone(&Zone::Spellbook)
+            .all(state);
         loop {
             let affordable: Vec<_> = beasts
                 .iter()

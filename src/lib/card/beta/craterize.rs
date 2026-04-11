@@ -1,9 +1,9 @@
 use crate::{
-    card::{AdditionalCost, Card, CardBase, CardType, Cost, Costs, Edition, Rarity, Region, Zone},
+    card::{AdditionalCost, Card, CardBase, Cost, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::{Direction, PlayerId, pick_card},
     query::ZoneQuery,
-    state::{CardMatcher, State},
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -24,16 +24,10 @@ impl Craterize {
                 costs: Costs::single(
                     Cost::new(8, "EE")
                         .with_additional(AdditionalCost::discard(
-                            CardMatcher::new()
-                                .with_zone(&Zone::Hand)
-                                .with_card_type(CardType::Site)
-                                .with_controller_id(&owner_id),
+                            CardQuery::new().in_zone(&Zone::Hand).sites().controlled_by(&owner_id),
                         ))
                         .with_additional(AdditionalCost::discard(
-                            CardMatcher::new()
-                                .with_zone(&Zone::Hand)
-                                .with_card_type(CardType::Site)
-                                .with_controller_id(&owner_id),
+                            CardQuery::new().in_zone(&Zone::Hand).sites().controlled_by(&owner_id),
                         )),
                 ),
                 region: Region::Surface,

@@ -1,9 +1,9 @@
 use crate::{
-    card::{Card, CardBase, CardType, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
+    card::{Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
     effect::Effect,
-    game::{PlayerId, Thresholds, pick_card, pick_zone},
+    game::{PlayerId, Thresholds, pick_zone},
     query::ZoneQuery,
-    state::{CardMatcher, State},
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -73,12 +73,17 @@ impl Card for Undertow {
         let body_of_water = state
             .get_body_of_water_at(self.get_zone())
             .ok_or(anyhow::anyhow!("Undertow must be in a body of water"))?;
-        let units = CardMatcher::new()
-            .with_card_types(vec![CardType::Minion, CardType::Avatar])
+        let controller_id = self.get_controller_id(state);
+        let unit_id = CardQuery::new()
+            .units()
+            .with_prompt("Undertow: Choose a unit in the same body of water to move")
             .in_zones(&body_of_water)
-            .resolve_ids(state);
-        let prompt = "Undertow: Choose a unit in the same body of water to move";
-        let unit_id = pick_card(player_id, &units, state, prompt).await?;
+            .pick(&controller_id, state, false)
+            .await?;
+        if unit_id.is_none() {
+            return Ok(vec![]);
+        }
+        let unit_id = unit_id.expect("value to not be None");
         let unit = state.get_card(&unit_id);
         let zones = unit.get_zones_within_steps(state, 1);
         let picked_zone = pick_zone(

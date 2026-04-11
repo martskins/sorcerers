@@ -7,7 +7,7 @@ use crate::{
         message::{ClientMessage, ServerMessage},
     },
     query::{QueryCache, ZoneQuery},
-    state::{CardMatcher, ContinuousEffect, Phase, PlayerWithDeck, State},
+    state::{CardQuery, ContinuousEffect, Phase, PlayerWithDeck, State},
 };
 use async_channel::{Receiver, Sender};
 use chrono::Utc;
@@ -968,7 +968,7 @@ impl ActivatedAbility for AvatarAction {
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
         match self {
             AvatarAction::PlaySite | AvatarAction::DrawSite => Ok(Cost::additional_only(AdditionalCost::tap(
-                CardMatcher::from_id(*card_id).with_tapped(false),
+                CardQuery::from_id(*card_id).tapped(false),
             ))),
         }
     }
@@ -1206,7 +1206,7 @@ impl ActivatedAbility for UnitAction {
                         ContinuousEffect::SetInterceptable {
                             interceptable,
                             affected_cards,
-                        } if affected_cards.resolve_ids(state).contains(card_id) => can_be_intercepted = *interceptable,
+                        } if affected_cards.all(state).contains(card_id) => can_be_intercepted = *interceptable,
                         _ => {}
                     });
                 }
@@ -1549,8 +1549,12 @@ impl Game {
                         let prompt = format!("{}: Pick action", card.get_name());
                         let action = pick_action(player_id, &actions, &self.state, &prompt, true).await?;
                         let cost = action.get_cost(card_id, &self.state)?.clone();
-                        cost.pay(&mut self.state, player_id).await?;
                         let effects = action.on_select(card.get_id(), player_id, &self.state).await?;
+                        // Pay costs after selecting the action to work around scenarios where
+                        // the cost includes sacricing the card and the effects involve nearby
+                        // cards, which would result in no valid targets, as the card would already
+                        // be in the cemetery at the point of execution the action.
+                        cost.pay(&mut self.state, player_id).await?;
                         self.state.effects.extend(effects.into_iter().map(|e| e.into()));
                     }
                     _ => {}

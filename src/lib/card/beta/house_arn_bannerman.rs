@@ -4,7 +4,7 @@ use crate::{
     card::{AreaModifiers, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Counter,
     game::PlayerId,
-    state::{CardMatcher, State},
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -65,10 +65,12 @@ impl Card for HouseArnBannerman {
     }
 
     fn area_modifiers(&self, state: &State) -> AreaModifiers {
-        let nearby_allies = CardMatcher::units_near(self.get_zone())
-            .with_controller_id(&self.get_controller_id(state))
-            .with_id_not_in(vec![self.get_id().clone()])
-            .resolve_ids(state);
+        let nearby_allies = CardQuery::new()
+            .units()
+            .near_to(self.get_zone())
+            .controlled_by(&self.get_controller_id(state))
+            .id_not_in(vec![self.get_id().clone()])
+            .all(state);
 
         let counters: HashMap<uuid::Uuid, Vec<Counter>> = nearby_allies
             .into_iter()

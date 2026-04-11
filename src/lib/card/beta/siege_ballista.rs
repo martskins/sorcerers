@@ -1,11 +1,11 @@
 use crate::{
     card::{
-        AdditionalCost, Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardType, Cost, Costs, Edition, Rarity,
+        AdditionalCost, Artifact, ArtifactBase, ArtifactType, Card, CardBase, Cost, Costs, Edition, Rarity,
         Region, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_card},
-    state::{CardMatcher, State},
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -25,15 +25,13 @@ impl ActivatedAbility for TapToDealDamage {
             .get_bearer()?
             .ok_or(anyhow::anyhow!("Artifact has no bearer"))?;
         Ok(Cost::ZERO
+            .with_additional(AdditionalCost::tap(CardQuery::from_id(bearer.clone()).tapped(false)))
             .with_additional(AdditionalCost::tap(
-                CardMatcher::from_id(bearer.clone()).with_tapped(false),
-            ))
-            .with_additional(AdditionalCost::tap(
-                CardMatcher::new()
-                    .with_zone(card.get_zone())
-                    .with_tapped(false)
-                    .with_card_types(vec![CardType::Minion, CardType::Avatar])
-                    .with_controller_id(&card.get_controller_id(state)),
+                CardQuery::new()
+                    .in_zone(card.get_zone())
+                    .tapped(false)
+                    .units()
+                    .controlled_by(&card.get_controller_id(state)),
             )))
     }
 

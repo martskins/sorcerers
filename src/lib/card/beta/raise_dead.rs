@@ -2,8 +2,7 @@ use crate::{
     card::{Card, CardBase, Cost, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::{PlayerId, pick_zone},
-    query::CardQuery,
-    state::State,
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -54,17 +53,20 @@ impl Card for RaiseDead {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let prompt = "Summon a random dead minion".to_string();
-        let query = CardQuery::RandomUnitInZone {
-            id: uuid::Uuid::new_v4(),
-            zone: Zone::Cemetery,
-        };
-        let unit_id = query.resolve(self.get_owner_id(), state).await?;
-        let unit = state.get_card(&unit_id);
-        let zones = unit.get_valid_play_zones(state)?;
+        let minion_id = CardQuery::new()
+            .count(1)
+            .randomised()
+            .in_zone(&Zone::Cemetery)
+            .minions()
+            .pick(self.get_owner_id(), state, false)
+            .await?
+            .expect("Raise Dead: No valid targets in cemetery");
+        let minion = state.get_card(&minion_id);
+        let zones = minion.get_valid_play_zones(state)?;
         let picked_zone = pick_zone(self.get_owner_id(), &zones, state, false, &prompt).await?;
         Ok(vec![Effect::SummonCard {
             player_id: self.get_owner_id().clone(),
-            card_id: unit_id,
+            card_id: minion_id,
             zone: picked_zone,
         }])
     }

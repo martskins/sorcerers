@@ -1,10 +1,10 @@
 use crate::{
     card::{
-        AdditionalCost, AvatarBase, Card, CardBase, CardType, Cost, Costs, Edition, Rarity, Region, UnitBase, Zone,
+        AdditionalCost, AvatarBase, Card, CardBase, Cost, Costs, Edition, Rarity, Region, UnitBase, Zone,
     },
     effect::Effect,
-    game::{ActivatedAbility, PlayerId, pick_card, yes_or_no},
-    state::{CardMatcher, ContinuousEffect, State},
+    game::{ActivatedAbility, PlayerId, yes_or_no},
+    state::{CardQuery, ContinuousEffect, State},
 };
 
 #[derive(Debug, Clone)]
@@ -23,18 +23,20 @@ impl ActivatedAbility for FloodSite {
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
         let avatar = state.get_card(card_id);
+        let controller_id = avatar.get_controller_id(state);
         match state.get_body_of_water_at(avatar.get_zone()) {
             Some(body_of_water) => {
-                let adjacent_sites = CardMatcher::new()
+                let picked_site_id = CardQuery::new()
                     .adjacent_to_zones(&body_of_water)
-                    .with_card_type(CardType::Site)
-                    .resolve_ids(state);
-                let prompt = "Avatar of Water: Pick a site to flood";
-                let picked_site_id = pick_card(player_id, &adjacent_sites, state, prompt).await?;
+                    .sites()
+                    .with_prompt("Avatar of Water: Pick a site to flood")
+                    .pick(&controller_id, state, false)
+                    .await?
+                    .expect("Expected to pick a site");
                 let mut effects = vec![Effect::SetCardData {
                     card_id: card_id.clone(),
                     data: Box::new(ContinuousEffect::FloodSites {
-                        affected_sites: CardMatcher::from_id(picked_site_id),
+                        affected_sites: CardQuery::from_id(picked_site_id),
                     }),
                 }];
                 let teleport = yes_or_no(player_id, state, "Avatar of Water: Teleport to the flooded site?").await?;
@@ -54,7 +56,7 @@ impl ActivatedAbility for FloodSite {
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
         Ok(Cost::additional_only(AdditionalCost::tap(
-            CardMatcher::from_id(card_id.clone()).with_tapped(false),
+            CardQuery::from_id(card_id.clone()).tapped(false),
         )))
     }
 }

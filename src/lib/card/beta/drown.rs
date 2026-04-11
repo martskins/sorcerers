@@ -1,8 +1,8 @@
 use crate::{
     card::{Card, CardBase, CardType, Cost, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
-    game::{PlayerId, pick_card},
-    state::{CardMatcher, State},
+    game::PlayerId,
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -52,18 +52,20 @@ impl Card for Drown {
         _caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
-        let possible_targets = CardMatcher::new()
-            .with_card_types(vec![CardType::Minion, CardType::Artifact])
-            .with_region_in(vec![Region::Surface])
-            .resolve_ids(state);
-        if possible_targets.is_empty() {
+        let controller_id = self.get_controller_id(state);
+        let picked_card_id = CardQuery::new()
+            .card_types(vec![CardType::Minion, CardType::Artifact])
+            .in_regions(vec![Region::Surface])
+            .with_prompt("Drown: Pick a minion or artifact to submerge")
+            .pick(&controller_id, state, false)
+            .await?;
+        if picked_card_id.is_none() {
             return Ok(vec![]);
         }
+        let picked_card_id = picked_card_id.expect("value to not be None");
 
-        let prompt = "Drown: Pick a minion or artifact to submerge";
-        let picked_card = pick_card(self.get_controller_id(state), &possible_targets, state, prompt).await?;
         Ok(vec![Effect::SetCardRegion {
-            card_id: picked_card,
+            card_id: picked_card_id,
             region: Region::Underwater,
             tap: false,
         }])

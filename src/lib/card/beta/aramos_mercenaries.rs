@@ -1,7 +1,7 @@
 use crate::{
     card::{AdditionalCost, Card, CardBase, Cost, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     game::PlayerId,
-    state::CardMatcher,
+    state::CardQuery,
 };
 
 #[derive(Debug, Clone)]
@@ -28,9 +28,9 @@ impl AramosMercenaries {
                 tapped: false,
                 zone: Zone::Spellbook,
                 costs: Costs::basic(3, "FF").with_alternative(Cost::additional_only(AdditionalCost::discard(
-                    CardMatcher::new()
-                        .with_zone(&Zone::Hand)
-                        .with_controller_id(&owner_id)
+                    CardQuery::new()
+                        .in_zone(&Zone::Hand)
+                        .controlled_by(&owner_id)
                         .count(1)
                         .randomised(),
                 ))),

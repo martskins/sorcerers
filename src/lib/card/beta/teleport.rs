@@ -2,8 +2,8 @@ use crate::{
     card::{Card, CardBase, Cost, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::PlayerId,
-    query::{CardQuery, ZoneQuery},
-    state::State,
+    query::ZoneQuery,
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -49,17 +49,17 @@ impl Card for Teleport {
 
     async fn on_cast(
         &mut self,
-        _state: &State,
+        state: &State,
         _caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![Effect::TeleportUnitToZone {
             player_id: self.get_owner_id().clone(),
-            unit_query: CardQuery::OwnedBy {
-                id: uuid::Uuid::new_v4(),
-                owner: self.get_owner_id().clone(),
-                prompt: Some("Teleport: Choose an ally to teleport".to_string()),
-            },
+            unit_query: CardQuery::new()
+                .count(1)
+                .with_prompt("Teleport: Choose an ally to teleport")
+                .units()
+                .controlled_by(&self.get_controller_id(state)),
             zone_query: ZoneQuery::AnySite {
                 id: uuid::Uuid::new_v4(),
                 controlled_by: None,

@@ -2,7 +2,7 @@ use crate::{
     card::{Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::PlayerId,
-    state::{CardMatcher, State},
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -70,8 +70,10 @@ impl Card for Belfry {
             return Ok(vec![]);
         }
 
-        Ok(CardMatcher::units_near(self.get_zone())
-            .resolve_ids(state)
+        Ok(CardQuery::new()
+            .units()
+            .near_to(self.get_zone())
+            .all(state)
             .into_iter()
             .filter(|card_id| state.get_card(card_id).get_controller_id(state) == self.get_controller_id(state))
             .map(|card_id| Effect::UntapCard { card_id })

@@ -1,9 +1,8 @@
 use crate::{
-    card::{Card, CardBase, CardType, Cost, Costs, Edition, Rarity, Region, Zone},
+    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::{CARDINAL_DIRECTIONS, PlayerId, pick_direction},
-    query::CardQuery,
-    state::State,
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -67,32 +66,20 @@ impl Card for IceLance {
         let mut effects = vec![];
         for (zone, dmg) in zone_dmg {
             if let Some(zone) = zone {
-                let qry = CardQuery::InZone {
-                    id: uuid::Uuid::new_v4(),
-                    zone: zone.clone(),
-                    card_types: Some(vec![CardType::Minion, CardType::Avatar]),
-                    regions: Some(vec![caster.get_region(state).clone()]),
-                    owner: None,
-                    prompt: Some("Pick a unit to damage with Ice Lance".to_string()),
-                    tapped: None,
-                };
+                let qry = CardQuery::new()
+                    .in_zone(&zone)
+                    .units()
+                    .id_not_in(vec![caster_id.clone()])
+                    .in_region(caster.get_region(state))
+                    .with_prompt("Pick a unit to damage with Ice Lance");
 
-                let options = qry.options(state);
-                if options.is_empty() {
-                    continue;
+                if let Some(card_id) = qry.pick(&controller_id, state, false).await? {
+                    effects.push(Effect::TakeDamage {
+                        card_id,
+                        from: caster_id.clone(),
+                        damage: dmg,
+                    });
                 }
-
-                if options.len() == 1 && &options[0] == caster_id {
-                    // Don't allow self-damage if it's the only option
-                    continue;
-                }
-
-                let card_id = qry.resolve(&controller_id, state).await?;
-                effects.push(Effect::TakeDamage {
-                    card_id,
-                    from: caster_id.clone(),
-                    damage: dmg,
-                });
             }
         }
 

@@ -1,8 +1,8 @@
 use crate::{
     card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
-    game::{ActivatedAbility, Element, PlayerId, pick_card_with_preview, pick_zone_near},
-    state::{CardMatcher, State},
+    game::{ActivatedAbility, Element, PlayerId, pick_zone_near},
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -20,20 +20,19 @@ impl ActivatedAbility for AdeptIllusionistAction {
         player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
-        let card_ids = CardMatcher::new()
-            .with_controller_id(&player_id.clone())
-            .with_names(vec![AdeptIllusionist::NAME.to_string()])
-            .include_not_in_play(true)
-            .with_id_not_in(vec![card_id.clone()])
-            .resolve_ids(state);
+        let picked_card_id = CardQuery::new()
+            .controlled_by(&player_id.clone())
+            .cards_named(AdeptIllusionist::NAME)
+            .including_not_in_play()
+            .id_not_in(vec![card_id.clone()])
+            .pick(player_id, state, true)
+            .await?;
 
-        if card_ids.is_empty() {
+        if picked_card_id.is_none() {
             return Ok(vec![]);
         }
 
-        let picked_card_id =
-            pick_card_with_preview(player_id, &card_ids, state, "Pick an Adept Illusionist to summon").await?;
-        let picked_card = state.get_card(&picked_card_id);
+        let picked_card = state.get_card(&picked_card_id.expect("picked_card_id to not be None"));
         let zone = pick_zone_near(
             player_id,
             picked_card.get_zone(),

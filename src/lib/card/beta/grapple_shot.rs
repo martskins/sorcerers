@@ -1,8 +1,8 @@
 use crate::{
-    card::{Card, CardBase, CardType, Cost, Costs, Edition, Rarity, Region, Zone},
+    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
-    game::{CARDINAL_DIRECTIONS, PlayerId, pick_card, pick_direction, yes_or_no},
-    state::{CardMatcher, State},
+    game::{CARDINAL_DIRECTIONS, PlayerId, pick_direction, yes_or_no},
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -53,17 +53,16 @@ impl Card for GrappleShot {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        let ally_ids = CardMatcher::new()
-            .with_card_types(vec![CardType::Minion, CardType::Avatar])
-            .with_controller_id(&controller_id)
-            .resolve_ids(state);
-        let ally_id = pick_card(
-            &controller_id,
-            &ally_ids,
-            state,
-            "Grapple Shot: Pick an ally to shoot the projectile",
-        )
-        .await?;
+        let picked_card_id = CardQuery::new()
+            .units()
+            .controlled_by(&controller_id)
+            .with_prompt("Grapple Shot: Pick an ally to shoot the projectile")
+            .pick(&controller_id, state, false)
+            .await?;
+        if picked_card_id.is_none() {
+            return Ok(vec![]);
+        }
+        let ally_id = picked_card_id.expect("value not to be None");
 
         let ally_card = state.get_card(&ally_id);
         let ally_zone = ally_card.get_zone();

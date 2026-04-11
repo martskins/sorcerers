@@ -1,8 +1,8 @@
 use crate::{
-    card::{Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardType, Costs, Edition, Rarity, Region, Zone},
+    card::{Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::PlayerId,
-    state::{CardMatcher, ContinuousEffect, State},
+    state::{CardQuery, ContinuousEffect, State},
 };
 
 #[derive(Debug, Clone)]
@@ -72,9 +72,7 @@ impl Card for BlackObelisk {
 
         Ok(vec![ContinuousEffect::ModifyProvidedMana {
             mana_diff: 2,
-            affected_cards: CardMatcher::new()
-                .with_zone(self.get_zone())
-                .with_card_type(CardType::Site),
+            affected_cards: CardQuery::new().in_zone(self.get_zone()).sites(),
         }])
     }
 

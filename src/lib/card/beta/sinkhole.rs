@@ -1,8 +1,8 @@
 use crate::{
     card::{Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
     effect::Effect,
-    game::{ActivatedAbility, PlayerId, Thresholds, pick_card},
-    state::{CardMatcher, State},
+    game::{ActivatedAbility, PlayerId, Thresholds},
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -17,12 +17,21 @@ impl ActivatedAbility for DestroyNearbySite {
     async fn on_select(
         &self,
         card_id: &uuid::Uuid,
-        player_id: &PlayerId,
+        _player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
         let card = state.get_card(card_id);
-        let nearby_sites = CardMatcher::sites_near(card.get_zone()).resolve_ids(state);
-        let picked_card_id = pick_card(player_id, &nearby_sites, state, "Select a site to destroy").await?;
+        let controller_id = card.get_controller_id(state);
+        let picked_card_id = CardQuery::new()
+            .sites()
+            .near_to(card.get_zone())
+            .with_prompt("Sinkhole: Pick a site to destroy")
+            .pick(&controller_id, state, false)
+            .await?;
+        if picked_card_id.is_none() {
+            return Ok(vec![]);
+        }
+        let picked_card_id = picked_card_id.expect("value not to be None");
         Ok(vec![
             Effect::BuryCard {
                 card_id: card_id.clone(),

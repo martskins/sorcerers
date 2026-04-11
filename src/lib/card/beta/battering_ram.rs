@@ -1,11 +1,11 @@
 use crate::{
     card::{
-        AdditionalCost, AreaModifiers, Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardType, Cost, Costs,
+        AdditionalCost, AreaModifiers, Artifact, ArtifactBase, ArtifactType, Card, CardBase, Cost, Costs,
         Edition, Rarity, Region, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_card},
-    state::{CardMatcher, State},
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -14,16 +14,16 @@ struct RamStrike;
 impl RamStrike {
     fn valid_targets(&self, card_id: &uuid::Uuid, state: &State) -> Vec<uuid::Uuid> {
         let card = state.get_card(card_id);
-        let walls = CardMatcher::new()
-            .with_card_type(CardType::Aura)
-            .with_zone_adjacent_to(card.get_zone())
-            .with_name("Wall ")
-            .resolve_ids(state);
-        let monuments = CardMatcher::new()
-            .with_card_type(CardType::Artifact)
-            .with_zone_adjacent_to(card.get_zone())
-            .with_artifact_type(ArtifactType::Monument)
-            .resolve_ids(state);
+        let walls = CardQuery::new()
+            .auras()
+            .adjacent_to(card.get_zone())
+            .cards_named("Wall ")
+            .all(state);
+        let monuments = CardQuery::new()
+            .artifacts()
+            .adjacent_to(card.get_zone())
+            .artifact_type(ArtifactType::Monument)
+            .all(state);
 
         let mut targets = vec![];
         targets.extend(walls);
@@ -66,7 +66,7 @@ impl ActivatedAbility for RamStrike {
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
         Ok(Cost::additional_only(AdditionalCost::tap(
-            CardMatcher::from_id(card_id.clone()).with_tapped(false),
+            CardQuery::from_id(card_id.clone()).tapped(false),
         )))
     }
 }

@@ -1,8 +1,8 @@
 use crate::{
     card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
-    game::{BaseOption, PlayerId, pick_card, pick_option, pick_zone},
-    state::{CardMatcher, State},
+    game::{BaseOption, PlayerId, pick_option, pick_zone},
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -86,17 +86,21 @@ impl Card for SkirmishersOfMu {
         )
         .await?;
 
-        let units = CardMatcher::units_near(&picked_zone).resolve_ids(state);
-        let target_unit = pick_card(
-            self.get_controller_id(state),
-            &units,
-            state,
-            "Pick a target for Ranged Strike:",
-        )
-        .await?;
+        let controller_id = self.get_controller_id(state);
+        let picked_unit_id = CardQuery::new()
+            .units()
+            .near_to(&picked_zone)
+            .with_prompt("Skirmishers of Mu: Pick a target for Ranged Strike")
+            .pick(&controller_id, state, false)
+            .await?;
+        if picked_unit_id.is_none() {
+            return Ok(vec![]);
+        }
+        let picked_unit_id = picked_unit_id.expect("value to not be None");
+
         Ok(vec![Effect::RangedStrike {
             attacker_id: self.get_id().clone(),
-            defender_id: target_unit,
+            defender_id: picked_unit_id,
         }])
     }
 }

@@ -5,8 +5,8 @@ use crate::{
         ActivatedAbility, AvatarAction, Direction, Element, PlayerId, Thresholds, UnitAction, are_adjacent, are_nearby,
         get_adjacent_zones, get_nearby_zones, pick_amount, pick_card, pick_option, pick_zone,
     },
-    query::{CardQuery, ZoneQuery},
-    state::{CardMatcher, ContinuousEffect, State, TemporaryEffect},
+    query::ZoneQuery,
+    state::{CardQuery, ContinuousEffect, State, TemporaryEffect},
 };
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Debug};
@@ -366,33 +366,33 @@ pub enum CostAction {
 
 #[derive(Debug, Clone)]
 pub struct AdditionalCost {
-    pub card: CardMatcher,
+    pub card: CardQuery,
     pub action: CostAction,
 }
 
 impl AdditionalCost {
-    pub fn tap(card: CardMatcher) -> Self {
+    pub fn tap(card: CardQuery) -> Self {
         Self {
             card,
             action: CostAction::Tap,
         }
     }
 
-    pub fn discard(card: CardMatcher) -> Self {
+    pub fn discard(card: CardQuery) -> Self {
         Self {
             card,
             action: CostAction::Discard,
         }
     }
 
-    pub fn sacrifice(card: CardMatcher) -> Self {
+    pub fn sacrifice(card: CardQuery) -> Self {
         Self {
             card,
             action: CostAction::Sacrifice,
         }
     }
 
-    pub fn surface(card: CardMatcher) -> Self {
+    pub fn surface(card: CardQuery) -> Self {
         Self {
             card,
             action: CostAction::Surface,
@@ -443,15 +443,13 @@ impl CostType {
                     let ac = ac.clone();
                     let mut query = ac.card;
                     match ac.action {
-                        CostAction::Tap => query = query.with_tapped(false),
-                        CostAction::Discard => query = query.with_zone(&Zone::Hand),
+                        CostAction::Tap => query = query.tapped(false),
+                        CostAction::Discard => query = query.in_zone(&Zone::Hand),
                         CostAction::Sacrifice => {} // TODO: add guard for sacrifice case
-                        CostAction::Surface => {
-                            query = query.with_region_in(vec![Region::Underwater, Region::Underground])
-                        }
+                        CostAction::Surface => query = query.in_regions(vec![Region::Underwater, Region::Underground]),
                     }
 
-                    let options = query.resolve_ids(state);
+                    let options = query.all(state);
                     let effect = match options.len() {
                         0 => unreachable!(),
                         1 => {
@@ -525,15 +523,13 @@ impl CostType {
                     let ac = ac.clone();
                     let mut query = ac.card;
                     match ac.action {
-                        CostAction::Tap => query = query.with_tapped(false),
-                        CostAction::Discard => query = query.with_zone(&Zone::Hand),
+                        CostAction::Tap => query = query.tapped(false),
+                        CostAction::Discard => query = query.in_zone(&Zone::Hand),
                         CostAction::Sacrifice => {} // TODO: add guard for sacrifice case
-                        CostAction::Surface => {
-                            query = query.with_region_in(vec![Region::Underwater, Region::Underground])
-                        }
+                        CostAction::Surface => query = query.in_regions(vec![Region::Underwater, Region::Underground]),
                     }
 
-                    let options = query.resolve_ids(&snapshot);
+                    let options = query.all(&snapshot);
                     if options.is_empty() {
                         return Ok(false);
                     }
@@ -805,7 +801,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     // When resolving a CardQuery, this method allows the card to override the query. A useful
     // usecase for this method is for example overriding the valid targets of a spell when there's
     // a card in play that affects targeting.
-    fn card_query_override(&self, _state: &State, _query: &CardQuery) -> anyhow::Result<Option<CardQuery>> {
+    async fn card_query_override(&self, _state: &State, _query: &CardQuery) -> anyhow::Result<Option<CardQuery>> {
         Ok(None)
     }
 
@@ -1339,7 +1335,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     ContinuousEffect::SetAttackable {
                         attackable,
                         affected_cards,
-                    } if affected_cards.resolve_ids(state).contains(c.get_id()) => can_be_attacked = *attackable,
+                    } if affected_cards.all(state).contains(c.get_id()) => can_be_attacked = *attackable,
                     _ => {}
                 });
 
@@ -1841,10 +1837,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             }
         }
 
-        let unborne_artifacts: Vec<(uuid::Uuid, String)> = CardMatcher::new()
-            .with_card_type(CardType::Artifact)
-            .with_zone(self.get_zone())
-            .with_region(self.get_region(state))
+        let unborne_artifacts: Vec<(uuid::Uuid, String)> = CardQuery::new()
+            .artifacts()
+            .in_zone(self.get_zone())
+            .in_region(self.get_region(state))
             .iter(state)
             .filter_map(|c| c.get_artifact())
             .filter(|c| c.get_bearer().unwrap_or_default().is_none())
@@ -2102,7 +2098,7 @@ impl std::fmt::Display for Rarity {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum ArtifactType {
     Relic,
     Weapon,
@@ -2205,8 +2201,8 @@ pub fn from_name_and_zone(name: &str, player_id: &PlayerId, zone: Zone) -> Box<d
 #[cfg(test)]
 mod tests {
     use crate::{
-        card::{Ability, AdditionalCost, ApprenticeWizard, Card, CardType, Cost, RimlandNomads, Zone},
-        state::{CardMatcher, State},
+        card::{Ability, AdditionalCost, ApprenticeWizard, Card, Cost, RimlandNomads, Zone},
+        state::{CardQuery, State},
     };
 
     #[test]
@@ -2214,11 +2210,11 @@ mod tests {
         let mut state = State::new_mock_state(Zone::all_realm());
         let player_id = state.players[0].id.clone();
         let cost = Cost::additional_only(AdditionalCost::tap(
-            CardMatcher::new()
-                .with_tapped(false)
-                .with_card_types(vec![CardType::Minion, CardType::Avatar])
-                .with_zone(&Zone::Realm(10))
-                .with_tapped(false),
+            CardQuery::new()
+                .tapped(false)
+                .units()
+                .in_zone(&Zone::Realm(10))
+                .tapped(false),
         ));
         let can_afford = cost.can_afford(&state, &player_id).expect("should not error");
         assert!(!can_afford, "no units in the zone");
@@ -2242,18 +2238,18 @@ mod tests {
         let player_id = state.players[0].id.clone();
         let cost = Cost::ZERO
             .with_additional(AdditionalCost::tap(
-                CardMatcher::new()
-                    .with_tapped(false)
-                    .with_card_types(vec![CardType::Minion, CardType::Avatar])
-                    .with_zone(&Zone::Realm(10))
-                    .with_tapped(false),
+                CardQuery::new()
+                    .tapped(false)
+                    .units()
+                    .in_zone(&Zone::Realm(10))
+                    .tapped(false),
             ))
             .with_additional(AdditionalCost::tap(
-                CardMatcher::new()
-                    .with_tapped(false)
-                    .with_card_types(vec![CardType::Minion, CardType::Avatar])
-                    .with_zone(&Zone::Realm(10))
-                    .with_tapped(false),
+                CardQuery::new()
+                    .tapped(false)
+                    .units()
+                    .in_zone(&Zone::Realm(10))
+                    .tapped(false),
             ));
         let can_afford = cost.can_afford(&state, &player_id).expect("should not error");
         assert!(!can_afford, "no units in the zone");

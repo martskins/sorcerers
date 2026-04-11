@@ -2,8 +2,7 @@ use crate::{
     card::{Card, CardBase, Cost, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::{PlayerId, pick_zone},
-    query::CardQuery,
-    state::State,
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -64,10 +63,7 @@ impl Card for LightningBolt {
         .await?;
         Ok(vec![Effect::DealDamageToTarget {
             player_id: self.get_owner_id().clone(),
-            query: CardQuery::RandomUnitInZone {
-                id: uuid::Uuid::new_v4(),
-                zone: picked_zone,
-            },
+            query: CardQuery::new().units().in_zone(&picked_zone).randomised().count(1),
             from: caster_id.clone(),
             damage: 3,
         }])

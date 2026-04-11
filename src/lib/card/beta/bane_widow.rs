@@ -1,8 +1,8 @@
 use crate::{
-    card::{Card, CardBase, CardType, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
-    game::{PlayerId, pick_card},
-    state::{CardMatcher, State},
+    game::PlayerId,
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -63,18 +63,18 @@ impl Card for BaneWidow {
 
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        let targets = CardMatcher::new()
-            .with_card_type(CardType::Minion)
-            .with_zone(self.get_zone())
-            .with_id_not_in(vec![self.get_id().clone()])
-            .resolve_ids(state);
-        if targets.is_empty() {
+        let minion_id = CardQuery::new()
+            .minions()
+            .in_zone(self.get_zone())
+            .id_not_in(vec![self.get_id().clone()])
+            .with_prompt("Bane Widow: Pick a minion to kill")
+            .pick(&controller_id, state, false)
+            .await?;
+        if minion_id.is_none() {
             return Ok(vec![]);
         }
-
-        let picked = pick_card(&controller_id, &targets, state, "Bane Widow: Pick a minion to kill").await?;
-
-        Ok(vec![Effect::BuryCard { card_id: picked }])
+        let minion_id = minion_id.expect("value to not be None");
+        Ok(vec![Effect::BuryCard { card_id: minion_id }])
     }
 }
 

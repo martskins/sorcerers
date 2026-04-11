@@ -3,8 +3,8 @@ use rand::seq::IndexedRandom;
 use crate::{
     card::{Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
     game::PlayerId,
-    query::{CardQuery, ZoneQuery},
-    state::State,
+    query::ZoneQuery,
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -90,60 +90,16 @@ impl Card for LuckyCharm {
         }
     }
 
-    fn card_query_override(&self, state: &State, query: &CardQuery) -> anyhow::Result<Option<CardQuery>> {
-        match query {
-            CardQuery::RandomTarget { possible_targets, .. } => {
-                let possible_targets = possible_targets.resolve_ids(state);
-                if possible_targets.is_empty() {
-                    return Ok(None);
-                }
-
-                let targets = vec![
-                    possible_targets
-                        .choose(&mut rand::rng())
-                        .ok_or(anyhow::anyhow!("failed to pick random card"))?
-                        .clone(),
-                    possible_targets
-                        .choose(&mut rand::rng())
-                        .ok_or(anyhow::anyhow!("failed to pick random card"))?
-                        .clone(),
-                ];
-                Ok(Some(CardQuery::FromOptions {
-                    id: uuid::Uuid::new_v4(),
-                    options: targets,
-                    prompt: Some("Lucky Charm: Choose a target".to_string()),
-                    preview: true,
-                }))
-            }
-            CardQuery::RandomUnitInZone { zone, .. } => {
-                let options = zone
-                    .get_units(state, None)
-                    .iter()
-                    .map(|c| c.get_id().clone())
-                    .collect::<Vec<_>>();
-                if options.is_empty() {
-                    return Ok(None);
-                }
-
-                let zones = vec![
-                    options
-                        .choose(&mut rand::rng())
-                        .ok_or(anyhow::anyhow!("failed to pick random card"))?
-                        .clone(),
-                    options
-                        .choose(&mut rand::rng())
-                        .ok_or(anyhow::anyhow!("failed to pick random card"))?
-                        .clone(),
-                ];
-                Ok(Some(CardQuery::FromOptions {
-                    id: uuid::Uuid::new_v4(),
-                    options: zones,
-                    prompt: Some("Lucky Charm: Choose a unit".to_string()),
-                    preview: true,
-                }))
-            }
-            _ => Ok(None),
+    async fn card_query_override(&self, state: &State, query: &CardQuery) -> anyhow::Result<Option<CardQuery>> {
+        if !query.is_randomised() {
+            return Ok(None);
         }
+
+        let query = query.clone();
+        let options = query.all(state).choose_multiple(&mut rand::rng(), 2).cloned().collect();
+        Ok(Some(
+            CardQuery::from_ids(options).with_prompt("Lucky Charm: Choose a card to override random decision"),
+        ))
     }
 }
 

@@ -2,7 +2,7 @@ use crate::{
     card::{Card, CardBase, CardType, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds},
-    state::{CardMatcher, State},
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -68,11 +68,10 @@ impl Card for HolyGround {
     }
 
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        let nearby_avatars = CardMatcher::new()
-            .with_zone_near_to(self.get_zone())
-            .with_card_types(vec![CardType::Avatar])
-            .resolve_ids(state);
-        let effects = nearby_avatars
+        let effects = CardQuery::new()
+            .near_to(self.get_zone())
+            .card_types(vec![CardType::Avatar])
+            .all(state)
             .iter()
             .map(|a| Effect::Heal {
                 card_id: a.clone(),

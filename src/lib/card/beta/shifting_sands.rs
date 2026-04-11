@@ -2,7 +2,7 @@ use crate::{
     card::{Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, SiteType, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds},
-    state::{CardMatcher, State},
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -57,9 +57,11 @@ impl Card for ShiftingSands {
 
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let mut effects = vec![];
-        for site in CardMatcher::sites_near(self.get_zone())
-            .with_controller_id(&self.get_controller_id(state))
-            .with_site_types(vec![SiteType::Desert])
+        for site in CardQuery::new()
+            .sites()
+            .near_to(self.get_zone())
+            .controlled_by(&self.get_controller_id(state))
+            .site_types(vec![SiteType::Desert])
             .iter(state)
         {
             effects.extend(site.genesis(state).await?);

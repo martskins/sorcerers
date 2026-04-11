@@ -3,7 +3,7 @@ use crate::{
     effect::Effect,
     game::{PlayerId, pick_zone_group},
     query::EffectQuery,
-    state::{CardMatcher, State, TemporaryEffect},
+    state::{CardQuery, State, TemporaryEffect},
 };
 
 #[derive(Debug, Clone)]
@@ -57,18 +57,18 @@ impl Card for WrathOfTheSea {
         let prompt = "Wrath of the Sea: Pick a body of water";
         let bodies_of_water = state.get_bodies_of_water();
         let picked_body = pick_zone_group(controller_id, &bodies_of_water, state, false, prompt).await?;
-        let sites = CardMatcher::new().adjacent_to_zones(&picked_body);
-        let other_water_sites = CardMatcher::new().with_card_type(CardType::Site).resolve_ids(state);
+        let sites = CardQuery::new().adjacent_to_zones(&picked_body);
+        let other_water_sites = CardQuery::new().sites().all(state);
         let zones: Vec<Zone> = sites
-            .resolve_ids(state)
+            .all(state)
             .iter()
             .chain(&other_water_sites)
             .map(|site| state.get_card(site).get_zone().clone())
             .collect();
-        let minions_and_artifacts = CardMatcher::new()
-            .with_card_types(vec![CardType::Minion, CardType::Artifact])
+        let minions_and_artifacts = CardQuery::new()
+            .card_types(vec![CardType::Minion, CardType::Artifact])
             .in_zones(&zones)
-            .resolve_ids(state);
+            .all(state);
         let mut effects = minions_and_artifacts
             .into_iter()
             .map(|card_id| Effect::SetCardRegion {

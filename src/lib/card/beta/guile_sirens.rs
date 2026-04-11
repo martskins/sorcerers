@@ -1,12 +1,11 @@
-use std::collections::HashMap;
-
 use crate::{
-    card::{Ability, Card, CardBase, CardType, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
-    game::{PlayerId, pick_card, pick_zone},
+    game::{PlayerId, pick_zone},
     query::ZoneQuery,
-    state::{CardMatcher, State},
+    state::{CardQuery, State},
 };
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct GuileSirens {
@@ -72,26 +71,18 @@ impl Card for GuileSirens {
 
         let controller_id = self.get_controller_id(state);
         let opponent_id = state.get_opponent_id(&controller_id)?;
-        let minions = CardMatcher {
-            controller_id: Some(opponent_id.clone()),
-            card_types: Some(vec![CardType::Minion]),
-            in_zones: Some(self.get_zone().get_adjacent()),
-            ..Default::default()
-        }
-        .resolve_ids(state);
-        if minions.is_empty() {
+        let picked_card_id = CardQuery::new()
+            .controlled_by(&opponent_id)
+            .minions()
+            .adjacent_to(self.get_zone())
+            .with_prompt("Guile Sirens: Pick a minion to lure in")
+            .pick(&controller_id, state, false)
+            .await?;
+        if picked_card_id.is_none() {
             return Ok(vec![]);
         }
-
-        let picked_card_id = pick_card(
-            &controller_id,
-            &minions,
-            state,
-            "Guile Sirens: Pick a minion to lure in",
-        )
-        .await?;
+        let picked_card_id = picked_card_id.expect("value to not be None");
         let picked_card = state.get_card(&picked_card_id);
-
         let zones = picked_card
             .get_zone()
             .get_adjacent()

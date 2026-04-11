@@ -1,8 +1,8 @@
 use crate::{
     card::{ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
     effect::Effect,
-    game::{PlayerId, Thresholds, pick_card},
-    state::{CardMatcher, State},
+    game::{PlayerId, Thresholds},
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -72,17 +72,16 @@ impl Card for Battlefield {
 
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        let weapons_and_armor = CardMatcher::new()
-            .with_zone(&Zone::Cemetery)
-            .with_artifact_types(vec![ArtifactType::Weapon, ArtifactType::Armor])
-            .resolve_ids(state);
-        let picked_card_id = pick_card(
-            controller_id,
-            &weapons_and_armor,
-            state,
-            "Battlefield: Pick a weapon or armor to conjure",
-        )
-        .await?;
+        let picked_card_id = CardQuery::new()
+            .in_zone(&Zone::Cemetery)
+            .artifact_types(vec![ArtifactType::Weapon, ArtifactType::Armor])
+            .with_prompt("Battlefield: Pick a weapon or armor to conjure")
+            .pick(&controller_id, state, true)
+            .await?;
+        if picked_card_id.is_none() {
+            return Ok(vec![]);
+        }
+        let picked_card_id = picked_card_id.expect("value to not be None");
 
         Ok(vec![Effect::SummonCard {
             player_id: controller_id,

@@ -3,7 +3,7 @@ use crate::{
     effect::Effect,
     game::{ActivatedAbility, BaseOption, CARDINAL_DIRECTIONS, PlayerId, pick_direction, pick_option},
     query::ZoneQuery,
-    state::{CardMatcher, State},
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -97,7 +97,7 @@ impl ActivatedAbility for ShootProjectile {
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
         Ok(Cost::additional_only(AdditionalCost::tap(
-            CardMatcher::from_id(card_id.clone()).with_tapped(false),
+            CardQuery::from_id(card_id.clone()).tapped(false),
         )))
     }
 }

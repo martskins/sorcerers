@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
 use crate::{
-    card::{Ability, Card, CardBase, CardType, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::PlayerId,
     query::{EffectQuery, ZoneQuery},
-    state::{CardMatcher, DeferredEffect, State},
+    state::{CardQuery, DeferredEffect, State},
 };
 
 #[derive(Debug, Clone)]
@@ -50,10 +50,10 @@ impl AwakenedMummies {
 
         Ok(DeferredEffect {
             trigger_on_effect: EffectQuery::EnterZone {
-                card: CardMatcher::new()
-                    .with_card_types(vec![CardType::Minion, CardType::Avatar])
-                    .with_region(&Region::Surface)
-                    .with_controller_id(&opponent_id),
+                card: CardQuery::new()
+                    .units()
+                    .in_region(&Region::Surface)
+                    .controlled_by(&opponent_id),
                 zone: ZoneQuery::Specific {
                     id: uuid::Uuid::new_v4(),
                     zone,

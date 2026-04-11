@@ -3,7 +3,7 @@ use crate::{
     effect::{AbilityCounter, Effect},
     game::PlayerId,
     query::EffectQuery,
-    state::{CardMatcher, State},
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -71,7 +71,7 @@ impl Card for SlumberingGiantess {
                 ability: Ability::Disabled,
                 expires_on_effect: Some(EffectQuery::DamageDealt {
                     source: None,
-                    target: Some(CardMatcher::from_id(self.get_id().clone())),
+                    target: Some(CardQuery::from_id(self.get_id().clone())),
                 }),
             },
         }])

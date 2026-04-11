@@ -1,8 +1,8 @@
 use crate::{
-    card::{CardType, Region, Zone},
+    card::Zone,
     effect::Effect,
-    game::{PlayerId, pick_card, pick_card_with_preview, pick_zone},
-    state::{CardMatcher, State},
+    game::{PlayerId, pick_zone},
+    state::{CardQuery, State},
 };
 use rand::seq::IndexedRandom;
 use std::{collections::HashMap, sync::OnceLock};
@@ -59,91 +59,6 @@ impl QueryCache {
     pub async fn effect_targets(effect_id: &uuid::Uuid) -> Option<Vec<uuid::Uuid>> {
         let cache = QUERY_CACHE.get().expect("to get lock").read().await;
         cache.effect_targets.get(effect_id).cloned()
-    }
-
-    pub async fn resolve_card(qry: &CardQuery, player_id: &PlayerId, state: &State) -> anyhow::Result<uuid::Uuid> {
-        if let Some(cached) = QUERY_CACHE
-            .get()
-            .expect("to get lock")
-            .read()
-            .await
-            .card_queries
-            .get(&qry.get_id())
-        {
-            return Ok(cached.clone());
-        }
-
-        let options = qry.options(state);
-        let card_id = match qry {
-            CardQuery::Specific { card_id, .. } => card_id.clone(),
-            CardQuery::InZone { prompt, .. } => {
-                pick_card(player_id, &options, state, prompt.as_ref().map_or("Pick a card", |v| v)).await?
-            }
-            CardQuery::NearZone { prompt, .. } => {
-                pick_card(player_id, &options, state, prompt.as_ref().map_or("Pick a card", |v| v)).await?
-            }
-            CardQuery::OwnedBy { prompt, .. } => {
-                pick_card(player_id, &options, state, prompt.as_ref().map_or("Pick a card", |v| v)).await?
-            }
-            CardQuery::RandomTarget { possible_targets, .. } => {
-                for card in &state.cards {
-                    if let Some(query) = card.card_query_override(state, qry)? {
-                        return Ok(Box::pin(query.resolve(player_id, state)).await?);
-                    }
-                }
-
-                possible_targets
-                    .resolve_ids(state)
-                    .choose(&mut rand::rng())
-                    .ok_or(anyhow::anyhow!("failed to get random card"))?
-                    .clone()
-            }
-            CardQuery::RandomUnitInZone { zone, .. } => {
-                for card in &state.cards {
-                    if let Some(query) = card.card_query_override(state, qry)? {
-                        return Ok(Box::pin(query.resolve(player_id, state)).await?);
-                    }
-                }
-
-                let cards: Vec<uuid::Uuid> = state
-                    .get_units_in_zone(&zone)
-                    .iter()
-                    .map(|c| c.get_id().clone())
-                    .collect();
-                cards
-                    .choose(&mut rand::rng())
-                    .ok_or(anyhow::anyhow!("failed to get random card"))?
-                    .clone()
-            }
-            CardQuery::FromOptions {
-                options,
-                prompt,
-                preview,
-                ..
-            } => {
-                if *preview {
-                    return pick_card_with_preview(
-                        player_id,
-                        options,
-                        state,
-                        prompt.as_ref().unwrap_or(&String::new()),
-                    )
-                    .await;
-                }
-
-                pick_card(player_id, &options, state, prompt.as_ref().unwrap_or(&String::new())).await?
-            }
-        };
-
-        let mut cache = QUERY_CACHE.get().expect("lock to be obtained").write().await;
-        cache.card_queries.insert(qry.get_id().clone(), card_id.clone());
-        cache
-            .game_queries
-            .entry(state.game_id)
-            .or_insert(Vec::new())
-            .push(qry.get_id().clone());
-
-        Ok(card_id)
     }
 
     pub async fn resolve_zone(qry: &ZoneQuery, player_id: &PlayerId, state: &State) -> anyhow::Result<Zone> {
@@ -361,127 +276,14 @@ impl ZoneQuery {
 }
 
 #[derive(Debug, Clone)]
-pub enum CardQuery {
-    Specific {
-        id: uuid::Uuid,
-        card_id: uuid::Uuid,
-    },
-    InZone {
-        id: uuid::Uuid,
-        zone: Zone,
-        card_types: Option<Vec<CardType>>,
-        regions: Option<Vec<Region>>,
-        owner: Option<PlayerId>,
-        prompt: Option<String>,
-        tapped: Option<bool>,
-    },
-    NearZone {
-        id: uuid::Uuid,
-        zone: Zone,
-        owner: Option<PlayerId>,
-        prompt: Option<String>,
-    },
-    OwnedBy {
-        id: uuid::Uuid,
-        owner: uuid::Uuid,
-        prompt: Option<String>,
-    },
-    RandomUnitInZone {
-        id: uuid::Uuid,
-        zone: Zone,
-    },
-    RandomTarget {
-        id: uuid::Uuid,
-        possible_targets: CardMatcher,
-    },
-    FromOptions {
-        id: uuid::Uuid,
-        options: Vec<uuid::Uuid>,
-        prompt: Option<String>,
-        preview: bool,
-    },
-}
-
-impl CardQuery {
-    pub fn from_id(card_id: uuid::Uuid) -> Self {
-        CardQuery::Specific {
-            id: uuid::Uuid::new_v4(),
-            card_id,
-        }
-    }
-
-    pub fn get_id(&self) -> &uuid::Uuid {
-        match self {
-            CardQuery::Specific { id, .. } => id,
-            CardQuery::InZone { id, .. } => id,
-            CardQuery::NearZone { id, .. } => id,
-            CardQuery::OwnedBy { id, .. } => id,
-            CardQuery::RandomUnitInZone { id, .. } => id,
-            CardQuery::RandomTarget { id, .. } => id,
-            CardQuery::FromOptions { id, .. } => id,
-        }
-    }
-
-    pub fn options(&self, state: &State) -> Vec<uuid::Uuid> {
-        match self {
-            CardQuery::Specific { card_id, .. } => vec![card_id.clone()],
-            CardQuery::InZone {
-                zone,
-                owner,
-                regions: planes,
-                card_types,
-                tapped,
-                ..
-            } => state
-                .cards
-                .iter()
-                .filter(|c| c.get_zone() == zone)
-                .filter(|c| match tapped {
-                    Some(tapped) => c.is_tapped() == *tapped,
-                    None => true,
-                })
-                .filter(|c| match owner {
-                    Some(owner) => c.get_owner_id() == owner,
-                    None => true,
-                })
-                .filter(|c| match card_types {
-                    Some(card_types) => card_types.contains(&c.get_card_type()),
-                    None => true,
-                })
-                .filter(|c| match planes {
-                    Some(planes) => planes.contains(c.get_region(state)),
-                    None => true,
-                })
-                .map(|c| c.get_id().clone())
-                .collect(),
-            CardQuery::NearZone { zone, owner, .. } => {
-                let mut matcher = CardMatcher::units_near(zone);
-                if let Some(owner) = owner {
-                    matcher = matcher.with_controller_id(owner);
-                }
-                matcher.resolve_ids(state)
-            }
-            CardQuery::OwnedBy { owner, .. } => CardMatcher::new().with_controller_id(owner).resolve_ids(state),
-            CardQuery::FromOptions { options, .. } => options.clone(),
-            CardQuery::RandomTarget { possible_targets, .. } => possible_targets.resolve_ids(state),
-            CardQuery::RandomUnitInZone { .. } => unreachable!(),
-        }
-    }
-
-    pub async fn resolve(&self, player_id: &PlayerId, state: &State) -> anyhow::Result<uuid::Uuid> {
-        QueryCache::resolve_card(self, player_id, state).await
-    }
-}
-
-#[derive(Debug, Clone)]
 pub enum EffectQuery {
     EnterZone {
-        card: CardMatcher,
+        card: CardQuery,
         zone: ZoneQuery,
     },
     DamageDealt {
-        source: Option<CardMatcher>,
-        target: Option<CardMatcher>,
+        source: Option<CardQuery>,
+        target: Option<CardQuery>,
     },
     TurnEnd {
         player_id: Option<PlayerId>,
@@ -490,13 +292,13 @@ pub enum EffectQuery {
         player_id: Option<PlayerId>,
     },
     MoveCard {
-        card: CardMatcher,
+        card: CardQuery,
     },
     PlayCard {
-        card: CardMatcher,
+        card: CardQuery,
     },
     SummonCard {
-        card: CardMatcher,
+        card: CardQuery,
     },
 }
 

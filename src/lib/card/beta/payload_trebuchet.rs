@@ -1,11 +1,11 @@
 use crate::{
     card::{
-        AdditionalCost, Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardType, Cost, Costs, Edition, Rarity,
+        AdditionalCost, Artifact, ArtifactBase, ArtifactType, Card, CardBase, Cost, Costs, Edition, Rarity,
         Region, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_zone},
-    state::{CardMatcher, State},
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -43,20 +43,18 @@ impl ActivatedAbility for ShootPayload {
             Some(bearer_id) => {
                 let bearer = state.get_card(&bearer_id);
                 Ok(Cost::ZERO
+                    .with_additional(AdditionalCost::tap(CardQuery::from_id(bearer_id.clone()).tapped(false)))
                     .with_additional(AdditionalCost::tap(
-                        CardMatcher::from_id(bearer_id.clone()).with_tapped(false),
-                    ))
-                    .with_additional(AdditionalCost::tap(
-                        CardMatcher::new()
-                            .with_tapped(false)
-                            .with_zone(bearer.get_zone())
-                            .with_card_types(vec![CardType::Minion, CardType::Avatar])
-                            .with_controller_id(&bearer.get_controller_id(state)),
+                        CardQuery::new()
+                            .tapped(false)
+                            .in_zone(bearer.get_zone())
+                            .units()
+                            .controlled_by(&bearer.get_controller_id(state)),
                     ))
                     .with_additional(AdditionalCost::discard(
-                        CardMatcher::new()
-                            .with_zone(&Zone::Hand)
-                            .with_controller_id(&bearer.get_controller_id(state)),
+                        CardQuery::new()
+                            .in_zone(&Zone::Hand)
+                            .controlled_by(&bearer.get_controller_id(state)),
                     )))
             }
             None => Ok(Cost::ZERO),

@@ -1,9 +1,8 @@
 use crate::{
-    card::{Ability, Card, CardBase, CardType, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{ActivatedAbility, PlayerId},
-    query::CardQuery,
-    state::{CardMatcher, State},
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -22,22 +21,18 @@ impl ActivatedAbility for DealDamage {
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
         let card = state.get_card(card_id);
-        let possible_targets = CardMatcher::new()
-            .with_zone(card.get_zone())
-            .with_id_not_in(vec![card_id.clone()])
-            .with_card_types(vec![CardType::Minion, CardType::Avatar]);
-        if possible_targets.resolve_ids(state).len() == 0 {
-            return Ok(vec![]);
-        }
+        let possible_targets = CardQuery::new()
+            .randomised()
+            .count(1)
+            .in_zone(card.get_zone())
+            .id_not_in(vec![card_id.clone()])
+            .units();
 
         Ok(vec![Effect::DealDamageToTarget {
             from: card_id.clone(),
             damage: 3,
             player_id: card.get_controller_id(state).clone(),
-            query: CardQuery::RandomTarget {
-                id: uuid::Uuid::new_v4(),
-                possible_targets,
-            },
+            query: possible_targets,
         }])
     }
 }

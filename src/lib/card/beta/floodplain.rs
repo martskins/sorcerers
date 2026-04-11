@@ -1,9 +1,9 @@
 use crate::{
-    card::{Card, CardBase, CardType, Cost, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
+    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
     effect::Effect,
-    game::{ActivatedAbility, PlayerId, Thresholds, pick_card},
+    game::{ActivatedAbility, PlayerId, Thresholds},
     query::EffectQuery,
-    state::{CardMatcher, State, TemporaryEffect},
+    state::{CardQuery, State, TemporaryEffect},
 };
 
 #[derive(Debug, Clone)]
@@ -18,21 +18,17 @@ impl ActivatedAbility for FloodAdjacentSite {
     async fn on_select(
         &self,
         card_id: &uuid::Uuid,
-        player_id: &PlayerId,
+        _player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
         let card = state.get_card(card_id);
-        let adjacent_site_ids = CardMatcher::new()
-            .with_card_type(CardType::Site)
-            .with_zone_adjacent_to(card.get_zone())
-            .resolve_ids(state);
-        let prompt = "Select an adjacent site to flood".to_string();
-        let site_id = pick_card(player_id, &adjacent_site_ids, state, &prompt).await?;
-
         Ok(vec![
             Effect::AddTemporaryEffect {
                 effect: TemporaryEffect::FloodSites {
-                    affected_sites: CardMatcher::from_id(site_id),
+                    affected_sites: CardQuery::new()
+                        .sites()
+                        .adjacent_to(card.get_zone())
+                        .with_prompt("Floodplain: Pick an adjacent site to flood"),
                     expires_on_effect: EffectQuery::TurnEnd { player_id: None },
                 },
             },

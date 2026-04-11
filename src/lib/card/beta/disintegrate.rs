@@ -1,8 +1,8 @@
 use crate::{
     card::{Card, CardBase, Cost, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
-    game::{PlayerId, pick_card},
-    state::{CardMatcher, State},
+    game::PlayerId,
+    state::{CardQuery, State},
 };
 
 /// **Disintegrate** — Elite Fire Magic (3 cost, FF threshold)
@@ -57,22 +57,16 @@ impl Card for Disintegrate {
     ) -> anyhow::Result<Vec<Effect>> {
         let caster_zone = state.get_card(caster_id).get_zone().clone();
         let controller_id = self.get_controller_id(state);
-
-        // Collect all minions in or near the caster's zone.
-        let valid_targets: Vec<uuid::Uuid> = CardMatcher::minions_near(&caster_zone).resolve_ids(state);
-
-        if valid_targets.is_empty() {
+        let target_id = CardQuery::new()
+            .minions()
+            .near_to(&caster_zone)
+            .with_prompt("Disintegrate: Choose a minion to banish")
+            .pick(&controller_id, state, false)
+            .await?;
+        if target_id.is_none() {
             return Ok(vec![]);
         }
-
-        let target_id = pick_card(
-            &controller_id,
-            &valid_targets,
-            state,
-            "Disintegrate: Choose a minion to banish",
-        )
-        .await?;
-
+        let target_id = target_id.expect("value to not be None");
         let target = state.get_card(&target_id);
         let target_zone = target.get_zone().clone();
 

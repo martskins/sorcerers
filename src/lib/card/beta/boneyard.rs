@@ -2,7 +2,7 @@ use crate::{
     card::{Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds, pick_card_with_options},
-    state::{CardMatcher, State},
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -77,14 +77,19 @@ impl Card for Boneyard {
             let state = state.snapshot();
             let zone = self.get_zone().clone();
 
-            let minions = &CardMatcher::new()
-                .with_zone(&Zone::Cemetery)
-                .with_controller_id(&player_id)
-                .resolve_ids(&state);
+            let all_cards = &CardQuery::new()
+                .in_zone(&Zone::Cemetery)
+                .controlled_by(&player_id)
+                .all(&state);
+            let minions = &CardQuery::new()
+                .in_zone(&Zone::Cemetery)
+                .minions()
+                .controlled_by(&player_id)
+                .all(&state);
             let picked_minion_id = pick_card_with_options(
                 &player_id,
                 &minions,
-                &minions,
+                &all_cards,
                 true,
                 &state,
                 "Pick a minion in your cemetery to summon to Boneyard",

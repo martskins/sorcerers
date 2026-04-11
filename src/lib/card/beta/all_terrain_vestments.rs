@@ -1,7 +1,7 @@
 use crate::{
     card::{Ability, Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
     game::PlayerId,
-    state::{CardMatcher, ContinuousEffect, State},
+    state::{CardQuery, ContinuousEffect, State},
 };
 
 #[derive(Debug, Clone)]
@@ -80,15 +80,15 @@ impl Card for AllTerrainVestments {
                 Ok(vec![
                     ContinuousEffect::GrantAbility {
                         ability: Ability::Burrowing,
-                        affected_cards: CardMatcher::from_id(bearer_id),
+                        affected_cards: CardQuery::from_id(bearer_id),
                     },
                     ContinuousEffect::GrantAbility {
                         ability: Ability::Submerge,
-                        affected_cards: CardMatcher::from_id(bearer_id),
+                        affected_cards: CardQuery::from_id(bearer_id),
                     },
                     ContinuousEffect::GrantAbility {
                         ability: Ability::Voidwalk,
-                        affected_cards: CardMatcher::from_id(bearer_id),
+                        affected_cards: CardQuery::from_id(bearer_id),
                     },
                 ])
             }

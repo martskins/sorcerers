@@ -3,7 +3,7 @@ use crate::{
     effect::Effect,
     game::{ActivatedAbility, PlayerId},
     query::ZoneQuery,
-    state::{CardMatcher, State},
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -22,17 +22,18 @@ impl ActivatedAbility for TapToStrikeNearbyMinions {
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
         let kraken = state.get_card(card_id);
-        let units_nearby = CardMatcher::units_near(kraken.get_zone())
-            .with_id_not_in(vec![kraken.get_id().clone()])
-            .resolve_ids(state);
-        let mut effects: Vec<Effect> = units_nearby
+        let mut effects = CardQuery::new()
+            .units()
+            .near_to(kraken.get_zone())
+            .id_not_in(vec![kraken.get_id().clone()])
+            .all(state)
             .into_iter()
             .map(|unit_id| Effect::TakeDamage {
                 card_id: unit_id.clone(),
                 from: kraken.get_id().clone(),
                 damage: kraken.get_power(state).unwrap().unwrap(),
             })
-            .collect();
+            .collect::<Vec<Effect>>();
 
         effects.push(Effect::MoveCard {
             player_id: player_id.clone(),
@@ -48,7 +49,7 @@ impl ActivatedAbility for TapToStrikeNearbyMinions {
     }
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
-        Ok(Cost::additional_only(AdditionalCost::surface(CardMatcher::from_id(
+        Ok(Cost::additional_only(AdditionalCost::surface(CardQuery::from_id(
             card_id.clone(),
         ))))
     }

@@ -1,9 +1,9 @@
 use crate::{
-    card::{Card, CardBase, CardType, Cost, Costs, Edition, Rarity, Region, Zone},
+    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
-    game::{Element, PlayerId, pick_card},
+    game::{Element, PlayerId},
     query::ZoneQuery,
-    state::{CardMatcher, State},
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -53,26 +53,34 @@ impl Card for Riptide {
         _caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
-        let water_sites = CardMatcher::new()
+        let controller_id = self.get_controller_id(state);
+        let picked_site_id = CardQuery::new()
             .with_affinity(Element::Water)
-            .with_card_type(CardType::Site)
-            .resolve_ids(state);
-        let prompt = "Riptide: Pick a water site to pull a unit into";
-        let site_id = pick_card(self.get_controller_id(state), &water_sites, state, prompt).await?;
-        let site = state.get_card(&site_id);
-        let units = CardMatcher::units_adjacent(site.get_zone())
-            .with_region_in(vec![Region::Surface])
-            .resolve_ids(state);
-        if units.is_empty() {
+            .with_prompt("Riptide: Pick a water site to pull a unit into")
+            .sites()
+            .pick(&controller_id, state, false)
+            .await?;
+        if picked_site_id.is_none() {
             return Ok(vec![]);
         }
-
-        let unit_id = pick_card(self.get_controller_id(state), &units, state, "Pick a unit to pull").await?;
-        let unit = state.get_card(&unit_id);
+        let picked_site_id = picked_site_id.expect("value not to be None");
+        let site = state.get_card(&picked_site_id);
+        let picked_unit_id = CardQuery::new()
+            .minions()
+            .adjacent_to(site.get_zone())
+            .in_regions(vec![Region::Surface])
+            .with_prompt("Riptide: Pick a unit to pull")
+            .pick(&controller_id, state, false)
+            .await?;
+        if picked_unit_id.is_none() {
+            return Ok(vec![]);
+        }
+        let picked_unit_id = picked_unit_id.expect("value not to be None");
+        let unit = state.get_card(&picked_unit_id);
         Ok(vec![
             Effect::MoveCard {
                 player_id: self.get_controller_id(state),
-                card_id: unit_id,
+                card_id: picked_unit_id,
                 from: unit.get_zone().clone(),
                 to: ZoneQuery::from_zone(site.get_zone().clone()),
                 tap: false,

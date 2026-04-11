@@ -1,9 +1,9 @@
 use crate::{
-    card::{Aura, AuraBase, Card, CardBase, CardType, Costs, Edition, Rarity, Region, Zone},
+    card::{Aura, AuraBase, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::PlayerId,
-    query::{CardQuery, ZoneQuery},
-    state::{CardMatcher, State},
+    query::ZoneQuery,
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -96,12 +96,12 @@ impl Card for Thunderstorm {
             },
             Effect::DealDamageToTarget {
                 player_id: self.get_controller_id(state).clone(),
-                query: CardQuery::RandomTarget {
-                    id: uuid::Uuid::new_v4(),
-                    possible_targets: CardMatcher::new()
-                        .with_card_types(vec![CardType::Minion, CardType::Avatar])
-                        .in_zones(&affected_zones),
-                },
+                query: CardQuery::new()
+                    .randomised()
+                    .count(1)
+                    .units()
+                    .in_zones(&affected_zones)
+                    .id_not_in(vec![self.get_id().clone()]),
                 from: self.get_id().clone(),
                 damage: 3,
             },

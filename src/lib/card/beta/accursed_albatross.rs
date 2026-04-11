@@ -2,7 +2,7 @@ use crate::{
     card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::PlayerId,
-    state::{CardMatcher, State},
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -75,10 +75,10 @@ impl Card for AccursedAlbatross {
         let mut effects = vec![];
         if was_killed {
             let killer = state.get_card(from);
-            let allies = CardMatcher::new()
-                .with_controller_id(&killer.get_controller_id(state))
-                .with_zone_near_to(killer.get_zone())
-                .resolve_ids(state);
+            let allies = CardQuery::new()
+                .controlled_by(&killer.get_controller_id(state))
+                .near_to(killer.get_zone())
+                .all(state);
             for ally in allies {
                 if &ally == self.get_id() {
                     continue;

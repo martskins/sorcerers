@@ -1,8 +1,8 @@
 use crate::{
-    card::{Card, CardBase, CardType, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
+    card::{Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds, pick_zone},
-    state::{CardMatcher, State},
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -70,10 +70,7 @@ impl Card for Maelström {
     async fn on_turn_start(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
         let body_of_water = state.get_body_of_water_at(self.get_zone()).unwrap_or_default();
-        let minion_ids = CardMatcher::new()
-            .with_card_type(CardType::Minion)
-            .in_zones(&body_of_water)
-            .resolve_ids(state);
+        let minion_ids = CardQuery::new().minions().in_zones(&body_of_water).all(state);
 
         let mut effects = vec![];
         for minion_id in minion_ids {

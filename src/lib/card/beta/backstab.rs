@@ -1,8 +1,8 @@
 use crate::{
     card::{Card, CardBase, CardType, Cost, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
-    game::{PlayerId, pick_card},
-    state::{CardMatcher, State},
+    game::PlayerId,
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -54,40 +54,31 @@ impl Card for Backstab {
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
         let caster_region = state.get_card(caster_id).get_region(state).clone();
-        let mover_candidates = CardMatcher::new()
-            .with_card_types(vec![CardType::Minion])
-            .with_region(&caster_region)
-            .resolve_ids(state);
-        if mover_candidates.is_empty() {
+        let mover_id = CardQuery::new()
+            .card_types(vec![CardType::Minion])
+            .in_region(&caster_region)
+            .with_prompt("Backstab: Pick a minion to move")
+            .pick(&controller_id, state, false)
+            .await?;
+        if mover_id.is_none() {
             return Ok(vec![]);
         }
+        let mover_id = mover_id.expect("mover_id to not be None");
 
-        let mover_id = pick_card(
-            &controller_id,
-            &mover_candidates,
-            state,
-            "Backstab: Pick a minion to move",
-        )
-        .await?;
         let mover = state.get_card(&mover_id);
-        let target_ids = CardMatcher::new()
-            .with_card_types(vec![CardType::Minion])
-            .with_region(&caster_region)
-            .with_tapped(true)
+        let target_id = CardQuery::new()
+            .card_types(vec![CardType::Minion])
+            .in_region(&caster_region)
+            .tapped(true)
             .in_zones(&mover.get_zone().get_adjacent())
-            .with_id_not_in(vec![mover_id.clone()])
-            .resolve_ids(state);
-        if target_ids.is_empty() {
+            .id_not_in(vec![mover_id.clone()])
+            .with_prompt("Backstab: Pick a tapped minion to strike")
+            .pick(&controller_id, state, false)
+            .await?;
+        if target_id.is_none() {
             return Ok(vec![]);
         }
-
-        let target_id = pick_card(
-            &controller_id,
-            &target_ids,
-            state,
-            "Backstab: Pick a tapped minion to strike",
-        )
-        .await?;
+        let target_id = target_id.expect("target_id to not be None");
 
         Ok(vec![Effect::Strike {
             attacker_id: mover_id,

@@ -6,7 +6,7 @@ use crate::{
     effect::Effect,
     game::{ActivatedAbility, CARDINAL_DIRECTIONS, PlayerId, pick_direction},
     query::ZoneQuery,
-    state::{CardMatcher, State},
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -20,7 +20,7 @@ impl ActivatedAbility for RollBoulder {
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
         Ok(Cost::additional_only(AdditionalCost::tap(
-            CardMatcher::from_id(card_id.clone()).with_tapped(false),
+            CardQuery::from_id(card_id.clone()).tapped(false),
         )))
     }
 

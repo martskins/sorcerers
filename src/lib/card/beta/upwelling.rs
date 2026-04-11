@@ -1,8 +1,8 @@
 use crate::{
     card::{Card, CardBase, CardType, Cost, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
-    game::{PlayerId, pick_card},
-    state::{CardMatcher, State},
+    game::PlayerId,
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -54,21 +54,28 @@ impl Card for Upwelling {
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
         let caster = state.get_card(caster_id);
-        let nearby_sites = CardMatcher::sites_near(caster.get_zone()).resolve_ids(state);
-        let prompt = "Upwelling: Pick a site";
-        let site_id = pick_card(controller_id, &nearby_sites, state, prompt).await?;
+        let site_id = CardQuery::new()
+            .sites()
+            .near_to(caster.get_zone())
+            .with_prompt("Upwelling: Pick a site")
+            .pick(&controller_id, state, false)
+            .await?;
+        if site_id.is_none() {
+            return Ok(vec![]);
+        }
+        let site_id = site_id.expect("value not to be None");
         let site = state.get_card(&site_id);
-        let cards = CardMatcher::new()
-            .with_zone(site.get_zone())
-            .with_card_types(vec![CardType::Minion, CardType::Artifact])
-            .resolve_ids(state);
-        Ok(cards
+        let effects = CardQuery::new()
+            .in_zone(site.get_zone())
+            .card_types(vec![CardType::Minion, CardType::Artifact])
+            .all(state)
             .into_iter()
             .map(|card_id| Effect::SetCardZone {
                 card_id,
                 zone: Zone::Hand,
             })
-            .collect())
+            .collect();
+        Ok(effects)
     }
 }
 
