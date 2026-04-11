@@ -127,6 +127,17 @@ impl CardQuery {
             return Ok(None);
         }
 
+        // Apply must-target restrictions from cards in play (e.g. Blasted Oak)
+        for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
+            if let Some(restricted) = card.restrict_card_query_targets(state, self, &card_ids) {
+                card_ids = restricted;
+                break;
+            }
+        }
+        if card_ids.is_empty() {
+            return Ok(None);
+        }
+
         let output = if let Some(true) = self.randomise {
             for card in &state.cards {
                 if &card.get_controller_id(state) != player_id {

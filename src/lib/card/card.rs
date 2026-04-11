@@ -815,6 +815,14 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(None)
     }
 
+    // Allows any in-play card to restrict the valid targets of a CardQuery being resolved.
+    // This is called for all in-play cards before any pick is made (for both randomised and
+    // player-chosen targeting). If a card's presence mandates that certain targets must be
+    // chosen over others, return Some with the filtered list. Return None to leave unchanged.
+    fn restrict_card_query_targets(&self, _state: &State, _query: &CardQuery, _targets: &[uuid::Uuid]) -> Option<Vec<uuid::Uuid>> {
+        None
+    }
+
     // When resolving an effect, this methods allows a card in play to replace that event with a
     // different set of effects.
     async fn replace_effect(&self, _state: &State, _effect: &Effect) -> anyhow::Result<Option<Vec<Effect>>> {

@@ -1,6 +1,5 @@
 use crate::{
     card::{Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
-    effect::Effect,
     game::PlayerId,
     state::{CardQuery, State},
 };
@@ -40,8 +39,6 @@ impl BlastedOak {
 
 impl Artifact for BlastedOak {}
 
-// TODO: This implementation is incomplete.
-
 #[async_trait::async_trait]
 impl Card for BlastedOak {
     fn get_name(&self) -> &str {
@@ -70,6 +67,46 @@ impl Card for BlastedOak {
 
     fn get_artifact(&self) -> Option<&dyn Artifact> {
         Some(self)
+    }
+
+    // If a spell or non-basic ability can target—in order of precedence—Blasted Oak,
+    // its site or location, or anything else at its site or location, it must.
+    fn restrict_card_query_targets(&self, state: &State, _query: &CardQuery, targets: &[uuid::Uuid]) -> Option<Vec<uuid::Uuid>> {
+        let oak_id = self.get_id();
+        let oak_zone = self.get_zone();
+
+        // Precedence 1: Blasted Oak itself
+        if targets.contains(oak_id) {
+            return Some(vec![oak_id.clone()]);
+        }
+
+        // Precedence 2: The site card at Blasted Oak's location
+        let site_targets: Vec<uuid::Uuid> = targets
+            .iter()
+            .filter(|id| {
+                state.cards.iter().any(|c| c.get_id() == *id && c.is_site() && c.get_zone() == oak_zone)
+            })
+            .cloned()
+            .collect();
+
+        if !site_targets.is_empty() {
+            return Some(site_targets);
+        }
+
+        // Precedence 3: Anything else at Blasted Oak's location
+        let at_zone_targets: Vec<uuid::Uuid> = targets
+            .iter()
+            .filter(|id| {
+                *id != oak_id && state.cards.iter().any(|c| c.get_id() == *id && c.get_zone() == oak_zone)
+            })
+            .cloned()
+            .collect();
+
+        if !at_zone_targets.is_empty() {
+            return Some(at_zone_targets);
+        }
+
+        None
     }
 }
 
