@@ -7,7 +7,7 @@ use crate::{
         message::{ClientMessage, ServerMessage},
     },
     query::{QueryCache, ZoneQuery},
-    state::{CardQuery, ContinuousEffect, Phase, PlayerWithDeck, State},
+    state::{CardQuery, ContinuousEffect, LoggedEffect, Phase, PlayerWithDeck, State},
 };
 use async_channel::{Receiver, Sender};
 use chrono::Utc;
@@ -1759,7 +1759,9 @@ impl Game {
 
                 // Move the effect to the effect log so we can keep track of what has happened in
                 // the game.
-                self.state.effect_log.push(effect);
+                self.state
+                    .effect_log
+                    .push(LoggedEffect::new(effect.clone(), self.state.turns));
                 self.state.compute_world_effects().await?;
 
                 Self::dispell_auras(&mut self.state).await?;

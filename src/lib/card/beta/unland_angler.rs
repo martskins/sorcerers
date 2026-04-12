@@ -69,7 +69,8 @@ impl Card for UnlandAngler {
     }
 
     async fn on_turn_start(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        if state.current_player != self.get_controller_id(state) {
+        let controller_id = self.get_controller_id(state);
+        if state.current_player != controller_id {
             return Ok(vec![]);
         }
 
@@ -77,9 +78,10 @@ impl Card for UnlandAngler {
             return Ok(vec![]);
         }
 
-        let controller_id = self.get_controller_id(state);
+        let opponent_id = state.get_opponent_id(&controller_id)?;
         let effects = CardQuery::new()
             .minions()
+            .controlled_by(&opponent_id)
             .adjacent_to(self.get_zone())
             .all(state)
             .into_iter()

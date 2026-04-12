@@ -6,10 +6,10 @@ use crate::{
         get_adjacent_zones, get_nearby_zones, pick_amount, pick_card, pick_option, pick_zone,
     },
     query::ZoneQuery,
-    state::{CardQuery, ContinuousEffect, State, TemporaryEffect},
+    state::{CardQuery, ContinuousEffect, LoggedEffect, State, TemporaryEffect},
 };
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fmt::Debug};
+use std::{collections::HashMap, fmt::Debug, sync::Arc};
 use strum_macros::EnumIter;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -497,7 +497,7 @@ impl CostType {
                     };
 
                     effect.apply(state).await?;
-                    state.effect_log.push(effect.into());
+                    state.effect_log.push(LoggedEffect::new(Arc::new(effect), state.turns));
                     crate::game::force_sync(player_id, state).await?;
                 }
 
@@ -819,7 +819,12 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     // This is called for all in-play cards before any pick is made (for both randomised and
     // player-chosen targeting). If a card's presence mandates that certain targets must be
     // chosen over others, return Some with the filtered list. Return None to leave unchanged.
-    fn restrict_card_query_targets(&self, _state: &State, _query: &CardQuery, _targets: &[uuid::Uuid]) -> Option<Vec<uuid::Uuid>> {
+    fn restrict_card_query_targets(
+        &self,
+        _state: &State,
+        _query: &CardQuery,
+        _targets: &[uuid::Uuid],
+    ) -> Option<Vec<uuid::Uuid>> {
         None
     }
 

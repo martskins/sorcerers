@@ -42,11 +42,11 @@ impl Aura for Thunderstorm {
         let turns_in_play = state
             .effect_log
             .iter()
-            .skip_while(|e| match ***e {
+            .skip_while(|e| match *e.effect {
                 Effect::PlayCard { ref card_id, .. } if card_id == self.get_id() => false,
                 _ => true,
             })
-            .filter(|e| match ***e {
+            .filter(|e| match *e.effect {
                 Effect::EndTurn { ref player_id, .. } if player_id == &controller_id => true,
                 _ => false,
             })
@@ -85,6 +85,8 @@ impl Card for Thunderstorm {
 
         let zones = self.get_valid_move_zones(state)?;
         let affected_zones = self.get_affected_zones(state);
+        // Add DealDamageToTarget after MoveCard, so that the damage effect is processed before the
+        // move effect.
         let effects = vec![
             Effect::MoveCard {
                 player_id: self.get_controller_id(state).clone(),

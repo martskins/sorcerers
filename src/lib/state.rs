@@ -657,6 +657,18 @@ pub enum ContinuousEffect {
     },
 }
 
+#[derive(Debug, Clone)]
+pub struct LoggedEffect {
+    pub effect: Arc<Effect>,
+    pub turn: usize,
+}
+
+impl LoggedEffect {
+    pub fn new(effect: Arc<Effect>, turn: usize) -> Self {
+        Self { effect, turn }
+    }
+}
+
 #[derive(Debug)]
 pub struct State {
     pub game_id: uuid::Uuid,
@@ -669,7 +681,7 @@ pub struct State {
     pub waiting_for_input: bool,
     pub current_player: PlayerId,
     pub effects: VecDeque<Arc<Effect>>,
-    pub effect_log: Vec<Arc<Effect>>,
+    pub effect_log: Vec<LoggedEffect>,
     pub player_one: PlayerId,
     pub server_tx: Sender<ServerMessage>,
     pub client_rx: Receiver<ClientMessage>,

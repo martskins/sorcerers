@@ -26,12 +26,31 @@ impl ActivatedAbility for ShootPayload {
         let zones = state.get_card(card_id).get_zones_within_steps(state, 3);
         let picked_zone = pick_zone(player_id, &zones, state, false, "Pick a zone to shoot the payload at").await?;
         let units = picked_zone.get_units(state, None);
+        let mana_cost = state
+            .effect_log
+            .iter()
+            .find_map(|e| {
+                if e.turn != state.turns {
+                    return None;
+                }
 
+                match *e.effect {
+                    Effect::DiscardCard {
+                        player_id: pid,
+                        card_id: cid,
+                    } if &pid == player_id => {
+                        let card = state.get_card(&cid);
+                        Some(card.get_costs(state).cloned().unwrap_or_default().mana_cost())
+                    }
+                    _ => None,
+                }
+            })
+            .unwrap_or_default();
         Ok(units
             .iter()
             .map(|unit| Effect::TakeDamage {
                 card_id: unit.get_id().clone(),
-                damage: 3,
+                damage: mana_cost.into(),
                 from: card_id.clone(),
             })
             .collect())

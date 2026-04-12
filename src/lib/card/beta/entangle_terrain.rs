@@ -42,11 +42,11 @@ impl Aura for EntangleTerrain {
         let turns_in_play = state
             .effect_log
             .iter()
-            .skip_while(|e| match ***e {
+            .skip_while(|e| match *e.effect {
                 Effect::PlayCard { ref card_id, .. } if card_id == self.get_id() => false,
                 _ => true,
             })
-            .filter(|e| match ***e {
+            .filter(|e| match *e.effect {
                 Effect::EndTurn { ref player_id, .. } if player_id == &controller_id => true,
                 _ => false,
             })

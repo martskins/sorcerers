@@ -17,7 +17,7 @@ impl RamStrike {
         let walls = CardQuery::new()
             .auras()
             .adjacent_to(card.get_zone())
-            .cards_named("Wall ")
+            .card_name_contains("Wall ")
             .all(state);
         let monuments = CardQuery::new()
             .artifacts()

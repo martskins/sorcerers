@@ -59,10 +59,11 @@ impl Card for FrostNova {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
+        let opponent_id = state.get_opponent_id(&controller_id)?;
         let nearby_enemies = CardQuery::new()
             .minions()
             .near_to(self.get_zone())
-            .controlled_by(&controller_id)
+            .controlled_by(&opponent_id)
             .all(state);
         Ok(nearby_enemies
             .into_iter()

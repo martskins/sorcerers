@@ -31,11 +31,12 @@ impl ActivatedAbility for AdeptIllusionistAction {
         if picked_card_id.is_none() {
             return Ok(vec![]);
         }
+        let picked_card_id = picked_card_id.expect("value not to be None");
 
-        let picked_card = state.get_card(&picked_card_id.expect("picked_card_id to not be None"));
+        let card = state.get_card(card_id);
         let zone = pick_zone_near(
             player_id,
-            picked_card.get_zone(),
+            card.get_zone(),
             state,
             false,
             "Pick a zone to summon the Adept Illusionist",
@@ -45,7 +46,7 @@ impl ActivatedAbility for AdeptIllusionistAction {
         Ok(vec![
             Effect::SummonCard {
                 player_id: player_id.clone(),
-                card_id: card_id.clone(),
+                card_id: picked_card_id.clone(),
                 zone: zone.clone(),
             },
             Effect::ShuffleDeck {

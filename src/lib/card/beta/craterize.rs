@@ -22,15 +22,9 @@ impl Craterize {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::single(
-                    Cost::new(8, "EE")
-                        .with_additional(AdditionalCost::discard(
-                            CardQuery::new().in_zone(&Zone::Hand).sites().controlled_by(&owner_id),
-                        ))
-                        .with_additional(AdditionalCost::discard(
-                            CardQuery::new().in_zone(&Zone::Hand).sites().controlled_by(&owner_id),
-                        )),
-                ),
+                costs: Costs::single(Cost::new(8, "EE").with_additional(AdditionalCost::discard(
+                    CardQuery::new().in_zone(&Zone::Hand).sites().controlled_by(&owner_id),
+                ))),
                 region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,

@@ -3,7 +3,7 @@ use crate::{
     effect::{Effect, TokenType},
     game::{ActivatedAbility, AvatarAction, Element, PlayerId, pick_card, pick_zone},
     query::ZoneQuery,
-    state::State,
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -20,6 +20,22 @@ impl ActivatedAbility for GeomancerAbility {
             GeomancerAbility::PlaySite => "Play Site".to_string(),
             GeomancerAbility::DrawSite => "Draw Site".to_string(),
             GeomancerAbility::ReplaceRubble => "Replace Rubble".to_string(),
+        }
+    }
+
+    fn can_activate(&self, card_id: &uuid::Uuid, _player_id: &PlayerId, state: &State) -> anyhow::Result<bool> {
+        match self {
+            GeomancerAbility::PlaySite => Ok(true),
+            GeomancerAbility::DrawSite => Ok(true),
+            GeomancerAbility::ReplaceRubble => {
+                let geomancer = state.get_card(card_id);
+                Ok(!CardQuery::new()
+                    .sites()
+                    .cards_named(Rubble::NAME)
+                    .adjacent_to(geomancer.get_zone())
+                    .all(state)
+                    .is_empty())
+            }
         }
     }
 
@@ -212,6 +228,14 @@ impl Card for Geomancer {
 
     fn get_additional_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         Ok(vec![Box::new(GeomancerAbility::ReplaceRubble)])
+    }
+
+    fn base_avatar_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+        Ok(vec![
+            Box::new(GeomancerAbility::PlaySite),
+            Box::new(GeomancerAbility::DrawSite),
+            Box::new(GeomancerAbility::ReplaceRubble),
+        ])
     }
 }
 
