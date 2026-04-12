@@ -1364,9 +1364,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 // Oversized units may only move to intersection zones where all 4 sub-zones have sites.
                 if self.is_oversized() {
                     return match z {
-                        Zone::Intersection(sqs) => {
-                            sqs.iter().all(|sq| Zone::Realm(*sq).get_site(state).is_some())
-                        }
+                        Zone::Intersection(sqs) => sqs.iter().all(|sq| Zone::Realm(*sq).get_site(state).is_some()),
                         _ => false,
                     };
                 }

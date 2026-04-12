@@ -1,7 +1,7 @@
 use crate::{
     card::{Card, CardBase, Cost, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
-    game::{PlayerId, pick_card_with_options, pick_card_with_preview},
+    game::{PlayerId, pick_card_with_options},
     state::State,
 };
 

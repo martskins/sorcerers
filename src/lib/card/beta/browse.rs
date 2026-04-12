@@ -12,8 +12,7 @@ pub struct Browse {
 
 impl Browse {
     pub const NAME: &'static str = "Browse";
-    pub const DESCRIPTION: &'static str =
-        "Look at your next seven spells. Put one in your hand and the rest on the bottom of your spellbook in any order.";
+    pub const DESCRIPTION: &'static str = "Look at your next seven spells. Put one in your hand and the rest on the bottom of your spellbook in any order.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -83,11 +82,7 @@ impl Card for Browse {
         )
         .await?;
 
-        let mut bottom_spells: Vec<uuid::Uuid> = looked_at
-            .iter()
-            .filter(|id| **id != chosen_id)
-            .cloned()
-            .collect();
+        let mut bottom_spells: Vec<uuid::Uuid> = looked_at.iter().filter(|id| **id != chosen_id).cloned().collect();
 
         // Player orders the remaining spells for the bottom of the deck (position 0).
         // Ask player to arrange them one by one from bottom to top.
