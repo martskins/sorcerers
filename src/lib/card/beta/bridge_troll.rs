@@ -1,8 +1,11 @@
+use std::sync::Arc;
+
 use crate::{
     card::{Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::PlayerId,
-    state::State,
+    query::EffectQuery,
+    state::{DeferredEffect, State},
 };
 
 #[derive(Debug, Clone)]
@@ -78,10 +81,22 @@ impl Card for BridgeTroll {
                 player_id: attacker_controller,
                 mana: enemy_mana,
             },
-            // TODO: Add deferred effect to give mana on next turn instead of immediately.
-            Effect::AddMana {
-                player_id: my_controller,
-                mana: enemy_mana,
+            Effect::AddDeferredEffect {
+                effect: DeferredEffect {
+                    trigger_on_effect: EffectQuery::TurnStart {
+                        player_id: Some(my_controller.clone()),
+                    },
+                    expires_on_effect: None,
+                    on_effect: Arc::new(move |_: &State, _: &uuid::Uuid, _: &Effect| {
+                        Box::pin(async move {
+                            Ok(vec![Effect::AddMana {
+                                player_id: my_controller.clone(),
+                                mana: enemy_mana,
+                            }])
+                        })
+                    }),
+                    multitrigger: false,
+                },
             },
         ];
 
