@@ -11,6 +11,7 @@ pub struct PlumedPegasus {
 
 impl PlumedPegasus {
     pub const NAME: &'static str = "Plumed Pegasus";
+    pub const DESCRIPTION: &'static str = "Airborne";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -42,6 +43,10 @@ impl PlumedPegasus {
 impl Card for PlumedPegasus {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

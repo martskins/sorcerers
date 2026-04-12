@@ -12,6 +12,7 @@ pub struct AstralAlcazar {
 
 impl AstralAlcazar {
     pub const NAME: &'static str = "Astral Alcazar";
+    pub const DESCRIPTION: &'static str = "Units can move between this site and any void as if they were adjacent.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -44,6 +45,10 @@ impl Site for AstralAlcazar {}
 impl Card for AstralAlcazar {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

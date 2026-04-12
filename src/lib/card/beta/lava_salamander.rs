@@ -11,6 +11,7 @@ pub struct LavaSalamander {
 
 impl LavaSalamander {
     pub const NAME: &'static str = "Lava Salamander";
+    pub const DESCRIPTION: &'static str = "Fire Spellcaster\r \r Takes no damage from fire spells.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -44,6 +45,10 @@ impl LavaSalamander {
 impl Card for LavaSalamander {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

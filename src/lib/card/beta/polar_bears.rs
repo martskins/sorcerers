@@ -12,6 +12,7 @@ pub struct PolarBears {
 
 impl PolarBears {
     pub const NAME: &'static str = "Polar Bears";
+    pub const DESCRIPTION: &'static str = "Can move as if the top and bottom edges of the realm were connected.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -52,6 +53,10 @@ impl PolarBears {
 impl Card for PolarBears {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

@@ -13,6 +13,7 @@ pub struct Overpower {
 
 impl Overpower {
     pub const NAME: &'static str = "Overpower";
+    pub const DESCRIPTION: &'static str = "Give an ally +2 power this turn.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -37,6 +38,10 @@ impl Overpower {
 impl Card for Overpower {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

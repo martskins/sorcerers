@@ -13,6 +13,7 @@ pub struct EscyllionCyclops {
 
 impl EscyllionCyclops {
     pub const NAME: &'static str = "Escyllion Cyclops";
+    pub const DESCRIPTION: &'static str = "Doesn’t strike back while defending.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -43,6 +44,10 @@ impl EscyllionCyclops {
 impl Card for EscyllionCyclops {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

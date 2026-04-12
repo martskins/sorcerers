@@ -12,6 +12,7 @@ pub struct SedgeCrabs {
 
 impl SedgeCrabs {
     pub const NAME: &'static str = "Sedge Crabs";
+    pub const DESCRIPTION: &'static str = "Can only move themselves sideways.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -43,6 +44,10 @@ impl SedgeCrabs {
 impl Card for SedgeCrabs {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

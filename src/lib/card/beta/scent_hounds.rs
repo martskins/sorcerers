@@ -13,6 +13,7 @@ pub struct ScentHounds {
 
 impl ScentHounds {
     pub const NAME: &'static str = "Scent Hounds";
+    pub const DESCRIPTION: &'static str = "Nearby enemies permanently lose Stealth.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -44,6 +45,10 @@ impl ScentHounds {
 impl Card for ScentHounds {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

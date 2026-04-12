@@ -14,6 +14,7 @@ pub struct MuckLampreys {
 
 impl MuckLampreys {
     pub const NAME: &'static str = "Muck Lampreys";
+    pub const DESCRIPTION: &'static str = "Burrowing, Submerge";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -45,6 +46,10 @@ impl MuckLampreys {
 impl Card for MuckLampreys {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

@@ -11,6 +11,7 @@ pub struct MountainGiant {
 
 impl MountainGiant {
     pub const NAME: &'static str = "Mountain Giant";
+    pub const DESCRIPTION: &'static str = "Occupies four locations.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -43,6 +44,10 @@ impl MountainGiant {
 impl Card for MountainGiant {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

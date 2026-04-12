@@ -12,6 +12,7 @@ pub struct DodgeRoll {
 
 impl DodgeRoll {
     pub const NAME: &'static str = "Dodge Roll";
+    pub const DESCRIPTION: &'static str = "May be cast when an ally is attacked.\r \r An attacked ally may move to another adjacent location to evade the attack.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -36,6 +37,10 @@ impl DodgeRoll {
 impl Card for DodgeRoll {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

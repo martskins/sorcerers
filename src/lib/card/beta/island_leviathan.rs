@@ -62,6 +62,8 @@ pub struct IslandLeviathan {
 
 impl IslandLeviathan {
     pub const NAME: &'static str = "Island Leviathan";
+    pub const DESCRIPTION: &'static str =
+        "(W)(W)(W)(W)(W)(W)(W)(W) — May transform into a Monster. Place flooded Rubble underneath.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -95,6 +97,10 @@ impl Site for IslandLeviathan {}
 impl Card for IslandLeviathan {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

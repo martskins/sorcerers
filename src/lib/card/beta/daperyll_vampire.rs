@@ -15,6 +15,7 @@ pub struct DaperyllVampire {
 
 impl DaperyllVampire {
     pub const NAME: &'static str = "Daperyll Vampire";
+    pub const DESCRIPTION: &'static str = "Airborne\r \r Daperyll Vampire's strike damage against units heals you.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -46,6 +47,10 @@ impl DaperyllVampire {
 impl Card for DaperyllVampire {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

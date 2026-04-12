@@ -13,6 +13,7 @@ pub struct RedDesert {
 
 impl RedDesert {
     pub const NAME: &'static str = "Red Desert";
+    pub const DESCRIPTION: &'static str = "Genesis → Deal 1 damage to each minion atop target nearby site.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -45,6 +46,10 @@ impl Site for RedDesert {}
 impl Card for RedDesert {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

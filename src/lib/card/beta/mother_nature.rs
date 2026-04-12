@@ -13,6 +13,8 @@ pub struct MotherNature {
 
 impl MotherNature {
     pub const NAME: &'static str = "Mother Nature";
+    pub const DESCRIPTION: &'static str =
+        "At the start of your turn, reveal your topmost spell. If it's a minion, you may summon it here.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -44,6 +46,10 @@ impl MotherNature {
 impl Card for MotherNature {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

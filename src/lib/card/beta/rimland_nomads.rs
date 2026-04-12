@@ -13,6 +13,7 @@ pub struct RimlandNomads {
 
 impl RimlandNomads {
     pub const NAME: &'static str = "Rimland Nomads";
+    pub const DESCRIPTION: &'static str = "Movement +1\r \r Takes no damage from Deserts.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -43,6 +44,10 @@ impl RimlandNomads {
 impl Card for RimlandNomads {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

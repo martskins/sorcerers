@@ -14,6 +14,7 @@ pub struct RubyCore {
 
 impl RubyCore {
     pub const NAME: &'static str = "Ruby Core";
+    pub const DESCRIPTION: &'static str = "Provides (F) and ① to its controller.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -54,6 +55,10 @@ impl Artifact for RubyCore {}
 impl Card for RubyCore {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

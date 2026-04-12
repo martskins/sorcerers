@@ -13,6 +13,8 @@ pub struct EntangleTerrain {
 
 impl EntangleTerrain {
     pub const NAME: &'static str = "Entangle Terrain";
+    pub const DESCRIPTION: &'static str =
+        "Minions occupying affected sites lose Airborne and are Immobile. Lasts 3 of your turns.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -58,6 +60,10 @@ impl Aura for EntangleTerrain {
 impl Card for EntangleTerrain {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

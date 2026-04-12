@@ -13,6 +13,8 @@ pub struct Riptide {
 
 impl Riptide {
     pub const NAME: &'static str = "Riptide";
+    pub const DESCRIPTION: &'static str =
+        "Target water site pulls in an aboveground unit it's adjacent to. Draw a card.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -37,6 +39,10 @@ impl Riptide {
 impl Card for Riptide {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

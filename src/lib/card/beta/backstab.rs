@@ -12,6 +12,8 @@ pub struct Backstab {
 
 impl Backstab {
     pub const NAME: &'static str = "Backstab";
+    pub const DESCRIPTION: &'static str =
+        "Target minion moves to an adjacent location, if needed, to strike another target tapped minion there.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -36,6 +38,10 @@ impl Backstab {
 impl Card for Backstab {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

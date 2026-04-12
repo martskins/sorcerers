@@ -15,6 +15,7 @@ pub struct Wildfire {
 
 impl Wildfire {
     pub const NAME: &'static str = "Wildfire";
+    pub const DESCRIPTION: &'static str = "Conjure Wildfire atop a single site nearby.\r \r At the end of each turn, each unit here takes 3 damage, then move Wildfire to an adjacent location it hasn't visited before. If none remain, dispel Wildfire.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -43,6 +44,10 @@ impl Aura for Wildfire {}
 impl Card for Wildfire {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

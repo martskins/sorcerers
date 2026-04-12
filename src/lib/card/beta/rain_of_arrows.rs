@@ -12,6 +12,7 @@ pub struct RainOfArrows {
 
 impl RainOfArrows {
     pub const NAME: &'static str = "Rain of Arrows";
+    pub const DESCRIPTION: &'static str = "Deal 1 damage to each aboveground minion.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -36,6 +37,10 @@ impl RainOfArrows {
 impl Card for RainOfArrows {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

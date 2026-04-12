@@ -11,6 +11,7 @@ pub struct Megamoeba {
 
 impl Megamoeba {
     pub const NAME: &'static str = "Megamoeba";
+    pub const DESCRIPTION: &'static str = "Megamoeba moves by extending a single pseudopod from any part of itself. It occupies all locations it has ever occupied, and has +1 power for each.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -42,6 +43,10 @@ impl Megamoeba {
 impl Card for Megamoeba {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

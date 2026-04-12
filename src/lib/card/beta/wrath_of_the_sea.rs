@@ -13,6 +13,8 @@ pub struct WrathOfTheSea {
 
 impl WrathOfTheSea {
     pub const NAME: &'static str = "Wrath of the Sea";
+    pub const DESCRIPTION: &'static str =
+        "Flood all sites adjacent to a body of water this turn. Then submerge all minions and artifacts on water.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -37,6 +39,10 @@ impl WrathOfTheSea {
 impl Card for WrathOfTheSea {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

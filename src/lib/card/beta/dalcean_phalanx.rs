@@ -12,6 +12,7 @@ pub struct DalceanPhalanx {
 
 impl DalceanPhalanx {
     pub const NAME: &'static str = "Dalcean Phalanx";
+    pub const DESCRIPTION: &'static str = "Can only move themselves forward.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -43,6 +44,10 @@ impl DalceanPhalanx {
 impl Card for DalceanPhalanx {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

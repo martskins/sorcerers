@@ -12,6 +12,7 @@ pub struct HeatRay {
 
 impl HeatRay {
     pub const NAME: &'static str = "Heat Ray";
+    pub const DESCRIPTION: &'static str = "Shoot a piercing projectile. Deal 2 damage to each hit unit.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -36,6 +37,10 @@ impl HeatRay {
 impl Card for HeatRay {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

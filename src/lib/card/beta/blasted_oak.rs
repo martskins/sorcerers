@@ -71,7 +71,12 @@ impl Card for BlastedOak {
 
     // If a spell or non-basic ability can target—in order of precedence—Blasted Oak,
     // its site or location, or anything else at its site or location, it must.
-    fn restrict_card_query_targets(&self, state: &State, _query: &CardQuery, targets: &[uuid::Uuid]) -> Option<Vec<uuid::Uuid>> {
+    fn restrict_card_query_targets(
+        &self,
+        state: &State,
+        _query: &CardQuery,
+        targets: &[uuid::Uuid],
+    ) -> Option<Vec<uuid::Uuid>> {
         let oak_id = self.get_id();
         let oak_zone = self.get_zone();
 
@@ -84,7 +89,10 @@ impl Card for BlastedOak {
         let site_targets: Vec<uuid::Uuid> = targets
             .iter()
             .filter(|id| {
-                state.cards.iter().any(|c| c.get_id() == *id && c.is_site() && c.get_zone() == oak_zone)
+                state
+                    .cards
+                    .iter()
+                    .any(|c| c.get_id() == *id && c.is_site() && c.get_zone() == oak_zone)
             })
             .cloned()
             .collect();
@@ -97,7 +105,11 @@ impl Card for BlastedOak {
         let at_zone_targets: Vec<uuid::Uuid> = targets
             .iter()
             .filter(|id| {
-                *id != oak_id && state.cards.iter().any(|c| c.get_id() == *id && c.get_zone() == oak_zone)
+                *id != oak_id
+                    && state
+                        .cards
+                        .iter()
+                        .any(|c| c.get_id() == *id && c.get_zone() == oak_zone)
             })
             .cloned()
             .collect();

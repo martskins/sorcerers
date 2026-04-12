@@ -13,6 +13,8 @@ pub struct ColickyDragonettes {
 
 impl ColickyDragonettes {
     pub const NAME: &'static str = "Colicky Dragonettes";
+    pub const DESCRIPTION: &'static str =
+        "At the end of your turn, Colicky Dragonettes shoot a projectile. It deals 1 damage.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -44,6 +46,10 @@ impl ColickyDragonettes {
 impl Card for ColickyDragonettes {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

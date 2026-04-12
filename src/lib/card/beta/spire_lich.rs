@@ -12,6 +12,7 @@ pub struct SpireLich {
 
 impl SpireLich {
     pub const NAME: &'static str = "Spire Lich";
+    pub const DESCRIPTION: &'static str = "If Spire Lich is atop a Tower, it has +2 power, Ranged, and Spellcaster.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -63,6 +64,10 @@ impl SpireLich {
 impl Card for SpireLich {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

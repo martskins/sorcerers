@@ -13,6 +13,7 @@ pub struct BaneWidow {
 
 impl BaneWidow {
     pub const NAME: &'static str = "Bane Widow";
+    pub const DESCRIPTION: &'static str = "Genesis → May kill target minion here.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -43,6 +44,10 @@ impl BaneWidow {
 impl Card for BaneWidow {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

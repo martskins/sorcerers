@@ -16,6 +16,7 @@ pub struct AwakenedMummies {
 
 impl AwakenedMummies {
     pub const NAME: &'static str = "Awakened Mummies";
+    pub const DESCRIPTION: &'static str = "Summon Awakened Mummies burrowed safely. When an enemy unit moves onto the ground above them, they unburrow and fight.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -86,6 +87,10 @@ impl AwakenedMummies {
 impl Card for AwakenedMummies {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

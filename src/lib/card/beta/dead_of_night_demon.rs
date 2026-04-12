@@ -11,6 +11,7 @@ pub struct DeadOfNightDemon {
 
 impl DeadOfNightDemon {
     pub const NAME: &'static str = "Dead of Night Demon";
+    pub const DESCRIPTION: &'static str = "Stealth";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -42,6 +43,10 @@ impl DeadOfNightDemon {
 impl Card for DeadOfNightDemon {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

@@ -13,6 +13,7 @@ pub struct Blink {
 
 impl Blink {
     pub const NAME: &'static str = "Blink";
+    pub const DESCRIPTION: &'static str = "An ally teleports to a location it’s nearby. Draw a card.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -37,6 +38,10 @@ impl Blink {
 impl Card for Blink {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

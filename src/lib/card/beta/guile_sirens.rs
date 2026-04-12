@@ -15,6 +15,8 @@ pub struct GuileSirens {
 
 impl GuileSirens {
     pub const NAME: &'static str = "Guile Sirens";
+    pub const DESCRIPTION: &'static str =
+        "Submerge\r \r At the start of your turn, force target nearby enemy minion to take a step toward Guile Sirens.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -46,6 +48,10 @@ impl GuileSirens {
 impl Card for GuileSirens {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

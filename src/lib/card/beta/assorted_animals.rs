@@ -14,6 +14,7 @@ pub struct AssortedAnimals {
 
 impl AssortedAnimals {
     pub const NAME: &'static str = "Assorted Animals";
+    pub const DESCRIPTION: &'static str = "Search your spellbook for different Beasts with a combined mana cost of X or less, reveal them, and put them in your hand. Shuffle your spellbook.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -38,6 +39,10 @@ impl AssortedAnimals {
 impl Card for AssortedAnimals {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

@@ -13,6 +13,7 @@ pub struct AzuridgeCaravan {
 
 impl AzuridgeCaravan {
     pub const NAME: &'static str = "Azuridge Caravan";
+    pub const DESCRIPTION: &'static str = "Has all elements and minion types.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -44,6 +45,10 @@ impl AzuridgeCaravan {
 impl Card for AzuridgeCaravan {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

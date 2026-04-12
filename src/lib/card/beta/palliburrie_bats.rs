@@ -14,6 +14,7 @@ pub struct PalliburrieBats {
 
 impl PalliburrieBats {
     pub const NAME: &'static str = "Palliburrie Bats";
+    pub const DESCRIPTION: &'static str = "Airborne, Burrowing";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -45,6 +46,10 @@ impl PalliburrieBats {
 impl Card for PalliburrieBats {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

@@ -11,6 +11,7 @@ pub struct SeaSerpent {
 
 impl SeaSerpent {
     pub const NAME: &'static str = "Sea Serpent";
+    pub const DESCRIPTION: &'static str = "Submerge, Waterbound";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -42,6 +43,10 @@ impl SeaSerpent {
 impl Card for SeaSerpent {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

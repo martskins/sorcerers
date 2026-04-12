@@ -12,6 +12,7 @@ pub struct RaiseDead {
 
 impl RaiseDead {
     pub const NAME: &'static str = "Raise Dead";
+    pub const DESCRIPTION: &'static str = "Summon a random dead minion.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -36,6 +37,10 @@ impl RaiseDead {
 impl Card for RaiseDead {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

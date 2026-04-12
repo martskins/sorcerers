@@ -11,6 +11,7 @@ pub struct CoralReefKelpie {
 
 impl CoralReefKelpie {
     pub const NAME: &'static str = "Coral-Reef Kelpie";
+    pub const DESCRIPTION: &'static str = "Submerge";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -42,6 +43,10 @@ impl CoralReefKelpie {
 impl Card for CoralReefKelpie {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

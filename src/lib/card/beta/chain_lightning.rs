@@ -12,6 +12,7 @@ pub struct ChainLightning {
 
 impl ChainLightning {
     pub const NAME: &'static str = "Chain Lightning";
+    pub const DESCRIPTION: &'static str = "Deal 2 damage to target unit nearby. Any number of times, you may spend ② to additionally target a new unit nearby the previous one.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -36,6 +37,10 @@ impl ChainLightning {
 impl Card for ChainLightning {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

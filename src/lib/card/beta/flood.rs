@@ -12,6 +12,7 @@ pub struct Flood {
 
 impl Flood {
     pub const NAME: &'static str = "Flood";
+    pub const DESCRIPTION: &'static str = "Affected sites are flooded. They're water sites.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -39,6 +40,10 @@ impl Aura for Flood {}
 impl Card for Flood {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

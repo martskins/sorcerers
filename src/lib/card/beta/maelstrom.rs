@@ -13,6 +13,8 @@ pub struct Maelström {
 
 impl Maelström {
     pub const NAME: &'static str = "Maelström";
+    pub const DESCRIPTION: &'static str =
+        "At the start of your turn, you may pull in each minion in this body of water one step.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -45,6 +47,10 @@ impl Site for Maelström {}
 impl Card for Maelström {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

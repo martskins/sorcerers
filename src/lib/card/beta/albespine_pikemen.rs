@@ -11,6 +11,7 @@ pub struct AlbespinePikemen {
 
 impl AlbespinePikemen {
     pub const NAME: &'static str = "Albespine Pikemen";
+    pub const DESCRIPTION: &'static str = "Strikes first while attacking.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -42,6 +43,10 @@ impl AlbespinePikemen {
 impl Card for AlbespinePikemen {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

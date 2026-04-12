@@ -14,6 +14,7 @@ pub struct AmethystCore {
 
 impl AmethystCore {
     pub const NAME: &'static str = "Amethyst Core";
+    pub const DESCRIPTION: &'static str = "Provides (A) and ① to its controller.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -54,6 +55,10 @@ impl Artifact for AmethystCore {}
 impl Card for AmethystCore {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

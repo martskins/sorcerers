@@ -12,6 +12,7 @@ pub struct AnuiUndine {
 
 impl AnuiUndine {
     pub const NAME: &'static str = "Anui Undine";
+    pub const DESCRIPTION: &'static str = "Submerge\r \r Anui Undine has +1 power for each site in her body of water.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -43,6 +44,10 @@ impl AnuiUndine {
 impl Card for AnuiUndine {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

@@ -57,6 +57,7 @@ pub struct Floodplain {
 
 impl Floodplain {
     pub const NAME: &'static str = "Floodplain";
+    pub const DESCRIPTION: &'static str = "Once on your turn, you may flood an adjacent site this turn.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -90,6 +91,10 @@ impl Site for Floodplain {}
 impl Card for Floodplain {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

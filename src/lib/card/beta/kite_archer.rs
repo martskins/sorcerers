@@ -14,6 +14,8 @@ pub struct KiteArcher {
 
 impl KiteArcher {
     pub const NAME: &'static str = "Kite Archer";
+    pub const DESCRIPTION: &'static str =
+        "Ranged\r \r Immediately after performing a ranged strike, Kite Archer may take a step.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -45,6 +47,10 @@ impl KiteArcher {
 impl Card for KiteArcher {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

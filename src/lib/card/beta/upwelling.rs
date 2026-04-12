@@ -12,6 +12,8 @@ pub struct Upwelling {
 
 impl Upwelling {
     pub const NAME: &'static str = "Upwelling";
+    pub const DESCRIPTION: &'static str =
+        "Target a nearby site. Return each artifact and minion there to its owner's hand.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -36,6 +38,10 @@ impl Upwelling {
 impl Card for Upwelling {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

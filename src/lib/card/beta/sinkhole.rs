@@ -51,6 +51,7 @@ pub struct Sinkhole {
 
 impl Sinkhole {
     pub const NAME: &'static str = "Sinkhole";
+    pub const DESCRIPTION: &'static str = "Sacrifice Sinkhole → Destroy a nearby site.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -83,6 +84,10 @@ impl Site for Sinkhole {}
 impl Card for Sinkhole {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

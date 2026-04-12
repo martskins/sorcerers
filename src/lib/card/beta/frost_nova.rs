@@ -13,6 +13,7 @@ pub struct FrostNova {
 
 impl FrostNova {
     pub const NAME: &'static str = "Frost Nova";
+    pub const DESCRIPTION: &'static str = "Freeze nearby enemy minions. They're disabled until your next turn.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -37,6 +38,10 @@ impl FrostNova {
 impl Card for FrostNova {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

@@ -12,6 +12,8 @@ pub struct Battlemage {
 
 impl Battlemage {
     pub const NAME: &'static str = "Battlemage";
+    pub const DESCRIPTION: &'static str =
+        "Tap → Play or draw a site.\r \r Whenever Battlemage attacks and kills an enemy, you may draw a spell.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -41,6 +43,10 @@ impl Battlemage {
 impl Card for Battlemage {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

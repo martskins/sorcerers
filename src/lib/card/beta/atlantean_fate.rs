@@ -13,6 +13,7 @@ pub struct AtlanteanFate {
 
 impl AtlanteanFate {
     pub const NAME: &'static str = "Atlantean Fate";
+    pub const DESCRIPTION: &'static str = "Affected non-Ordinary sites are flooded. They are water sites, only provide Water threshold, and lose all other abilities.\r \r Genesis → Submerge all minions and artifacts atop affected sites.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -53,6 +54,10 @@ impl Aura for AtlanteanFate {}
 impl Card for AtlanteanFate {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

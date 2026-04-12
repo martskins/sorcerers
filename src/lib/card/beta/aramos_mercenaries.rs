@@ -12,6 +12,7 @@ pub struct AramosMercenaries {
 
 impl AramosMercenaries {
     pub const NAME: &'static str = "Aramos Mercenaries";
+    pub const DESCRIPTION: &'static str = "You may discard a random card rather than pay this spell's mana cost.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -49,6 +50,10 @@ impl AramosMercenaries {
 impl Card for AramosMercenaries {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

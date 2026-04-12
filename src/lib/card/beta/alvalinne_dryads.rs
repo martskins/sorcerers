@@ -12,6 +12,7 @@ pub struct AlvalinneDryads {
 
 impl AlvalinneDryads {
     pub const NAME: &'static str = "Älvalinne Dryads";
+    pub const DESCRIPTION: &'static str = "Älvalinne Dryads provide ①.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -53,6 +54,10 @@ impl ResourceProvider for AlvalinneDryads {
 impl Card for AlvalinneDryads {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

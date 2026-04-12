@@ -11,6 +11,7 @@ pub struct CaveTrolls {
 
 impl CaveTrolls {
     pub const NAME: &'static str = "Cave Trolls";
+    pub const DESCRIPTION: &'static str = "Burrowing";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -42,6 +43,10 @@ impl CaveTrolls {
 impl Card for CaveTrolls {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

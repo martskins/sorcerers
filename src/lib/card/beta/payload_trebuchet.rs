@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        AdditionalCost, Artifact, ArtifactBase, ArtifactType, Card, CardBase, Cost, Costs, Edition, Rarity,
-        Region, Zone,
+        AdditionalCost, Artifact, ArtifactBase, ArtifactType, Card, CardBase, Cost, Costs, Edition, Rarity, Region,
+        Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_zone},
@@ -70,6 +70,7 @@ pub struct PayloadTrebuchet {
 
 impl PayloadTrebuchet {
     pub const NAME: &'static str = "Payload Trebuchet";
+    pub const DESCRIPTION: &'static str = "Tap bearer and another ally here, Discard a card → Deal damage equal to the discarded card's mana cost to each unit at target location up to three steps away.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -100,6 +101,10 @@ impl Artifact for PayloadTrebuchet {}
 impl Card for PayloadTrebuchet {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

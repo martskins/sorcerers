@@ -14,6 +14,7 @@ pub struct SlumberingGiantess {
 
 impl SlumberingGiantess {
     pub const NAME: &'static str = "Slumbering Giantess";
+    pub const DESCRIPTION: &'static str = "Genesis → Fall asleep. Slumbering Giantess is disabled until hurt.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -45,6 +46,10 @@ impl SlumberingGiantess {
 impl Card for SlumberingGiantess {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

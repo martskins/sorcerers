@@ -13,6 +13,7 @@ pub struct SkirmishersOfMu {
 
 impl SkirmishersOfMu {
     pub const NAME: &'static str = "Skirmishers of Mu";
+    pub const DESCRIPTION: &'static str = "Ranged\r \r During basic movement, Skirmishers of Mu may perform a ranged strike from any location along their path.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -44,6 +45,10 @@ impl SkirmishersOfMu {
 impl Card for SkirmishersOfMu {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

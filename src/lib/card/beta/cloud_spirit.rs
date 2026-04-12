@@ -11,6 +11,7 @@ pub struct CloudSpirit {
 
 impl CloudSpirit {
     pub const NAME: &'static str = "Cloud Spirit";
+    pub const DESCRIPTION: &'static str = "Airborne, Movement +2";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -42,6 +43,10 @@ impl CloudSpirit {
 impl Card for CloudSpirit {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

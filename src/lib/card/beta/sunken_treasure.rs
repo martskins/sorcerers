@@ -13,6 +13,7 @@ pub struct SunkenTreasure {
 
 impl SunkenTreasure {
     pub const NAME: &'static str = "Sunken Treasure";
+    pub const DESCRIPTION: &'static str = "If cast, conjure this under an allied water site of an opponent's choice.\r \r When Sunken Treasure is carried to the surface, its controller sacrifices it and draws two cards.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -43,6 +44,10 @@ impl Artifact for SunkenTreasure {}
 impl Card for SunkenTreasure {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

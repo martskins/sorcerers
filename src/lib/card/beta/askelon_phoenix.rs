@@ -14,6 +14,8 @@ pub struct AskelonPhoenix {
 
 impl AskelonPhoenix {
     pub const NAME: &'static str = "Askelon Phoenix";
+    pub const DESCRIPTION: &'static str =
+        "Airborne\r \r If Askelon Phoenix would take fire damage, it gains +1 power this turn instead.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -44,6 +46,10 @@ impl AskelonPhoenix {
 impl Card for AskelonPhoenix {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

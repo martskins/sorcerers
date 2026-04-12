@@ -1,7 +1,5 @@
 use crate::{
-    card::{
-        AdditionalCost, AvatarBase, Card, CardBase, Cost, Costs, Edition, Rarity, Region, UnitBase, Zone,
-    },
+    card::{AdditionalCost, AvatarBase, Card, CardBase, Cost, Costs, Edition, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{ActivatedAbility, PlayerId, yes_or_no},
     state::{CardQuery, ContinuousEffect, State},

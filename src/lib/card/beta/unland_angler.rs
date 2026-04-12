@@ -14,6 +14,7 @@ pub struct UnlandAngler {
 
 impl UnlandAngler {
     pub const NAME: &'static str = "Unland Angler";
+    pub const DESCRIPTION: &'static str = "Submerge\r \r At the start of your turn, if Unland Angler is submerged, force each enemy minion atop adjacent sites to take a step toward this one.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -45,6 +46,10 @@ impl UnlandAngler {
 impl Card for UnlandAngler {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

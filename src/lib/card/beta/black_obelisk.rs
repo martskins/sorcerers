@@ -13,6 +13,8 @@ pub struct BlackObelisk {
 
 impl BlackObelisk {
     pub const NAME: &'static str = "Black Obelisk";
+    pub const DESCRIPTION: &'static str =
+        "Black Obelisk's site has “At the start of your turn, lose 2 life and gain ② this turn.”";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -43,6 +45,10 @@ impl Artifact for BlackObelisk {}
 impl Card for BlackObelisk {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

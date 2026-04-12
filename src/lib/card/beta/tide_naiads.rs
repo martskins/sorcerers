@@ -12,6 +12,7 @@ pub struct TideNaiads {
 
 impl TideNaiads {
     pub const NAME: &'static str = "Tide Naiads";
+    pub const DESCRIPTION: &'static str = "Submerge\r \r This site is flooded. It is a water site.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -43,6 +44,10 @@ impl TideNaiads {
 impl Card for TideNaiads {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

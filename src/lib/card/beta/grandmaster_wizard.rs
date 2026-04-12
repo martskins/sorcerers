@@ -13,6 +13,7 @@ pub struct GrandmasterWizard {
 
 impl GrandmasterWizard {
     pub const NAME: &'static str = "Grandmaster Wizard";
+    pub const DESCRIPTION: &'static str = "Spellcaster\r Genesis → Draw three spells.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -49,6 +50,10 @@ impl GrandmasterWizard {
 impl Card for GrandmasterWizard {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

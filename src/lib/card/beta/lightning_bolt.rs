@@ -12,6 +12,7 @@ pub struct LightningBolt {
 
 impl LightningBolt {
     pub const NAME: &'static str = "Lightning Bolt";
+    pub const DESCRIPTION: &'static str = "Deal 3 damage to a random unit at target location.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -36,6 +37,10 @@ impl LightningBolt {
 impl Card for LightningBolt {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

@@ -12,6 +12,8 @@ pub struct Fireball {
 
 impl Fireball {
     pub const NAME: &'static str = "Fireball";
+    pub const DESCRIPTION: &'static str =
+        "Shoot a projectile. It deals 4 damage on impact, and 2 damage to each other unit at that location.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -36,6 +38,10 @@ impl Fireball {
 impl Card for Fireball {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

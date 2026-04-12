@@ -13,6 +13,8 @@ pub struct QuarrelsomeKobolds {
 
 impl QuarrelsomeKobolds {
     pub const NAME: &'static str = "Quarrelsome Kobolds";
+    pub const DESCRIPTION: &'static str =
+        "At the end of your turn, Quarrelsome Kobolds strike themselves or another target adjacent unit.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -44,6 +46,10 @@ impl QuarrelsomeKobolds {
 impl Card for QuarrelsomeKobolds {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

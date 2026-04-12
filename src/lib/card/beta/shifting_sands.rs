@@ -13,6 +13,7 @@ pub struct ShiftingSands {
 
 impl ShiftingSands {
     pub const NAME: &'static str = "Shifting Sands";
+    pub const DESCRIPTION: &'static str = "Genesis → Reactivate the Genesis abilities of your nearby Deserts.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -45,6 +46,10 @@ impl Site for ShiftingSands {}
 impl Card for ShiftingSands {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

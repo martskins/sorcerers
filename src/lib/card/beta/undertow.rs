@@ -14,6 +14,7 @@ pub struct Undertow {
 
 impl Undertow {
     pub const NAME: &'static str = "Undertow";
+    pub const DESCRIPTION: &'static str = "Genesis → Staying within this body of water, move target unit one step.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -46,6 +47,10 @@ impl Site for Undertow {}
 impl Card for Undertow {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

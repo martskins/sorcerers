@@ -12,6 +12,7 @@ pub struct Drown {
 
 impl Drown {
     pub const NAME: &'static str = "Drown";
+    pub const DESCRIPTION: &'static str = "Submerge target minion or artifact, if able.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -36,6 +37,10 @@ impl Drown {
 impl Card for Drown {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

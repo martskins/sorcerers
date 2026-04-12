@@ -14,6 +14,7 @@ pub struct PlanarGate {
 
 impl PlanarGate {
     pub const NAME: &'static str = "Planar Gate";
+    pub const DESCRIPTION: &'static str = "Minions here can traverse the void, gaining Voidwalk until leaving it.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -65,6 +66,10 @@ impl Site for PlanarGate {
 impl Card for PlanarGate {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

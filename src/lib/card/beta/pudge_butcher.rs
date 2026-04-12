@@ -107,6 +107,7 @@ pub struct PudgeButcher {
 
 impl PudgeButcher {
     pub const NAME: &'static str = "Pudge Butcher";
+    pub const DESCRIPTION: &'static str = "Immobile\r \r Tap → Shoot a projectile. If it hits a unit, drag it to this location. Pudge may fight it when it arrives.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -138,6 +139,10 @@ impl PudgeButcher {
 impl Card for PudgeButcher {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

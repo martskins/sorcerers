@@ -13,6 +13,7 @@ pub struct BeastOfBurden {
 
 impl BeastOfBurden {
     pub const NAME: &'static str = "Beast of Burden";
+    pub const DESCRIPTION: &'static str = "May carry any number of allied minions.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -43,6 +44,10 @@ impl BeastOfBurden {
 impl Card for BeastOfBurden {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

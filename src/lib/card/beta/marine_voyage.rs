@@ -12,6 +12,8 @@ pub struct MarineVoyage {
 
 impl MarineVoyage {
     pub const NAME: &'static str = "Marine Voyage";
+    pub const DESCRIPTION: &'static str =
+        "This turn, your units can move between any sites in a chosen body of water as if they were adjacent.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -36,6 +38,10 @@ impl MarineVoyage {
 impl Card for MarineVoyage {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

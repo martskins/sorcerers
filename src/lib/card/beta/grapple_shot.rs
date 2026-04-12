@@ -12,6 +12,7 @@ pub struct GrappleShot {
 
 impl GrappleShot {
     pub const NAME: &'static str = "Grapple Shot";
+    pub const DESCRIPTION: &'static str = "An ally shoots a projectile. If it hits a unit, the ally is dragged to that location, and may strike the hit unit when it arrives.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -36,6 +37,10 @@ impl GrappleShot {
 impl Card for GrappleShot {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

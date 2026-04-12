@@ -1,8 +1,5 @@
 use crate::{
-    card::{
-        Ability, AdditionalCost, Card, CardBase, Cost, Costs, Edition, MinionType, Rarity, Region, UnitBase,
-        Zone,
-    },
+    card::{Ability, AdditionalCost, Card, CardBase, Cost, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_zone_near},
     state::{CardQuery, State},
@@ -60,6 +57,8 @@ pub struct AncientDragon {
 
 impl AncientDragon {
     pub const NAME: &'static str = "Ancient Dragon";
+    pub const DESCRIPTION: &'static str =
+        "Airborne\r \r Tap → Deal 4 damage to each other unit at target location nearby.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -91,6 +90,10 @@ impl AncientDragon {
 impl Card for AncientDragon {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

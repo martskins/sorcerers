@@ -15,6 +15,7 @@ pub struct Blaze {
 
 impl Blaze {
     pub const NAME: &'static str = "Blaze";
+    pub const DESCRIPTION: &'static str = "This turn, give an ally Movement +2, it can't be intercepted, and it leaves a trail of fire at departed locations. When it stops, each unit along the trail takes 2 damage.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -39,6 +40,10 @@ impl Blaze {
 impl Card for Blaze {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

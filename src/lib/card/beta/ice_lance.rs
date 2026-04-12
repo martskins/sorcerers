@@ -12,6 +12,7 @@ pub struct IceLance {
 
 impl IceLance {
     pub const NAME: &'static str = "Ice Lance";
+    pub const DESCRIPTION: &'static str = "Shoot a piercing projectile. Deal 3, then 2, then 1 damage to up to one hit unit at each of the first three locations along its path.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -36,6 +37,10 @@ impl IceLance {
 impl Card for IceLance {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

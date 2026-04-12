@@ -14,6 +14,8 @@ pub struct HillockBasilisk {
 
 impl HillockBasilisk {
     pub const NAME: &'static str = "Hillock Basilisk";
+    pub const DESCRIPTION: &'static str =
+        "Other minions at rest here or one step in front of Hillock Basilisk are disabled.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -44,6 +46,10 @@ impl HillockBasilisk {
 impl Card for HillockBasilisk {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

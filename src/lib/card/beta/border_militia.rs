@@ -12,6 +12,8 @@ pub struct BorderMilitia {
 
 impl BorderMilitia {
     pub const NAME: &'static str = "Border Militia";
+    pub const DESCRIPTION: &'static str =
+        "Summon a Foot Soldier token to each site you control that borders an enemy site.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -36,6 +38,10 @@ impl BorderMilitia {
 impl Card for BorderMilitia {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

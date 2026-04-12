@@ -12,6 +12,7 @@ pub struct Sparkmage {
 
 impl Sparkmage {
     pub const NAME: &'static str = "Sparkmage";
+    pub const DESCRIPTION: &'static str = "Tap → Play or draw a site.\r \r Tap → Target nearby location. Deal damage to another random unit there equal to the sum of (A) on spells you've cast this turn.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -41,6 +42,10 @@ impl Sparkmage {
 impl Card for Sparkmage {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

@@ -13,6 +13,7 @@ pub struct Blizzard {
 
 impl Blizzard {
     pub const NAME: &'static str = "Blizzard";
+    pub const DESCRIPTION: &'static str = "Affected sites and units atop them can't be attacked or intercepted.\r \r At the start of your turn, dispel Blizzard.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -58,6 +59,10 @@ impl Aura for Blizzard {
 impl Card for Blizzard {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

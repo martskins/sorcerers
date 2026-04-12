@@ -12,6 +12,8 @@ pub struct MajorExplosion {
 
 impl MajorExplosion {
     pub const NAME: &'static str = "Major Explosion";
+    pub const DESCRIPTION: &'static str =
+        "Target a location up to two steps away.\r \r Deal damage to each unit at locations in the area of effect:";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -36,6 +38,10 @@ impl MajorExplosion {
 impl Card for MajorExplosion {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

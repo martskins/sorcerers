@@ -14,6 +14,7 @@ pub struct DeepSeaMermaids {
 
 impl DeepSeaMermaids {
     pub const NAME: &'static str = "Deep-Sea Mermaids";
+    pub const DESCRIPTION: &'static str = "Submerge\r \r Genesis → Draw your bottommost spell.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -45,6 +46,10 @@ impl DeepSeaMermaids {
 impl Card for DeepSeaMermaids {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

@@ -13,6 +13,7 @@ pub struct Teleport {
 
 impl Teleport {
     pub const NAME: &'static str = "Teleport";
+    pub const DESCRIPTION: &'static str = "Teleport an ally to the surface of target site.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -37,6 +38,10 @@ impl Teleport {
 impl Card for Teleport {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

@@ -11,6 +11,7 @@ pub struct PitVipers {
 
 impl PitVipers {
     pub const NAME: &'static str = "Pit Vipers";
+    pub const DESCRIPTION: &'static str = "Burrowing, Lethal";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -41,6 +42,10 @@ impl PitVipers {
 impl Card for PitVipers {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

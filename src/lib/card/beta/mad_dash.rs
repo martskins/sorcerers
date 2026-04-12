@@ -13,6 +13,7 @@ pub struct MadDash {
 
 impl MadDash {
     pub const NAME: &'static str = "Mad Dash";
+    pub const DESCRIPTION: &'static str = "Draw a card, then give an ally Movement +1 this turn.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -37,6 +38,10 @@ impl MadDash {
 impl Card for MadDash {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

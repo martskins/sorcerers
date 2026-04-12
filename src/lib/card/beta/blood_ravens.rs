@@ -15,6 +15,7 @@ pub struct BloodRavens {
 
 impl BloodRavens {
     pub const NAME: &'static str = "Blood Ravens";
+    pub const DESCRIPTION: &'static str = "Airborne\r \r Blood Ravens' strike damage against units heals you.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -46,6 +47,10 @@ impl BloodRavens {
 impl Card for BloodRavens {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

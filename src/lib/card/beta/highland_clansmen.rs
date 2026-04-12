@@ -11,6 +11,7 @@ pub struct HighlandClansmen {
 
 impl HighlandClansmen {
     pub const NAME: &'static str = "Highland Clansmen";
+    pub const DESCRIPTION: &'static str = "Charge";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -42,6 +43,10 @@ impl HighlandClansmen {
 impl Card for HighlandClansmen {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

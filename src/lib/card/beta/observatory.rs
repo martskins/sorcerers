@@ -13,6 +13,7 @@ pub struct Observatory {
 
 impl Observatory {
     pub const NAME: &'static str = "Observatory";
+    pub const DESCRIPTION: &'static str = "Genesis → Look at your next three spells. Put them back in any order.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -45,6 +46,10 @@ impl Site for Observatory {}
 impl Card for Observatory {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

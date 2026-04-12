@@ -11,6 +11,7 @@ pub struct SandWorm {
 
 impl SandWorm {
     pub const NAME: &'static str = "Sand Worm";
+    pub const DESCRIPTION: &'static str = "Burrowing, Landbound";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -41,6 +42,10 @@ impl SandWorm {
 impl Card for SandWorm {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

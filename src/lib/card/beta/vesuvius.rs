@@ -48,6 +48,8 @@ pub struct Vesuvius {
 
 impl Vesuvius {
     pub const NAME: &'static str = "Vesuvius";
+    pub const DESCRIPTION: &'static str =
+        "(F)(F)(F) — Sacrifice Vesuvius → Each unit occupying nearby sites takes 3 damage.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -76,6 +78,10 @@ impl Vesuvius {
 impl Card for Vesuvius {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

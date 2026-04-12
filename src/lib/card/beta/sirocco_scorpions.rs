@@ -14,6 +14,7 @@ pub struct SiroccoScorpions {
 
 impl SiroccoScorpions {
     pub const NAME: &'static str = "Sirocco Scorpions";
+    pub const DESCRIPTION: &'static str = "Lethal";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -45,6 +46,10 @@ impl SiroccoScorpions {
 impl Card for SiroccoScorpions {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

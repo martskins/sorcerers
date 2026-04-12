@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        AdditionalCost, AreaModifiers, Artifact, ArtifactBase, ArtifactType, Card, CardBase, Cost, Costs,
-        Edition, Rarity, Region, Zone,
+        AdditionalCost, AreaModifiers, Artifact, ArtifactBase, ArtifactType, Card, CardBase, Cost, Costs, Edition,
+        Rarity, Region, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_card},
@@ -79,6 +79,7 @@ pub struct BatteringRam {
 
 impl BatteringRam {
     pub const NAME: &'static str = "Battering Ram";
+    pub const DESCRIPTION: &'static str = "Units here have “Tap → Destroy target adjacent Wall or Monument.”";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -109,6 +110,10 @@ impl Artifact for BatteringRam {}
 impl Card for BatteringRam {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

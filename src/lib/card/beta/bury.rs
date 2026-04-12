@@ -13,6 +13,7 @@ pub struct Bury {
 
 impl Bury {
     pub const NAME: &'static str = "Bury";
+    pub const DESCRIPTION: &'static str = "Burrow target minion or artifact, if able.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -37,6 +38,10 @@ impl Bury {
 impl Card for Bury {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

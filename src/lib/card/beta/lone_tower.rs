@@ -13,6 +13,7 @@ pub struct LoneTower {
 
 impl LoneTower {
     pub const NAME: &'static str = "Lone Tower";
+    pub const DESCRIPTION: &'static str = "Genesis → If this is the only Lone Tower you control, gain ① this turn.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -45,6 +46,10 @@ impl Site for LoneTower {}
 impl Card for LoneTower {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

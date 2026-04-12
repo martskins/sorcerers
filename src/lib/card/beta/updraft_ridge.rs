@@ -17,6 +17,7 @@ pub struct UpdraftRidge {
 
 impl UpdraftRidge {
     pub const NAME: &'static str = "Updraft Ridge";
+    pub const DESCRIPTION: &'static str = "Airborne minions atop Updraft Ridge move freely away.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -49,6 +50,10 @@ impl Site for UpdraftRidge {}
 impl Card for UpdraftRidge {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

@@ -13,6 +13,7 @@ pub struct Battlefield {
 
 impl Battlefield {
     pub const NAME: &'static str = "Battlefield";
+    pub const DESCRIPTION: &'static str = "Genesis → Conjure a broken Weapon or Armor here.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -44,6 +45,10 @@ impl Site for Battlefield {}
 impl Card for Battlefield {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

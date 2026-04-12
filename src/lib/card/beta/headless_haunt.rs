@@ -14,6 +14,8 @@ pub struct HeadlessHaunt {
 
 impl HeadlessHaunt {
     pub const NAME: &'static str = "Headless Haunt";
+    pub const DESCRIPTION: &'static str =
+        "Voidwalk\r \r At the start of your turn, Headless Haunt teleports to the top of a random site or void.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -45,6 +47,10 @@ impl HeadlessHaunt {
 impl Card for HeadlessHaunt {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

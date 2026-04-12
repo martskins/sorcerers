@@ -16,6 +16,8 @@ pub struct BoneRabble {
 
 impl BoneRabble {
     pub const NAME: &'static str = "Bone Rabble";
+    pub const DESCRIPTION: &'static str =
+        "Whenever you play an earth site, you may summon Bone Rabble from your cemetery to that site.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -47,6 +49,10 @@ impl BoneRabble {
 impl Card for BoneRabble {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

@@ -14,6 +14,7 @@ pub struct Thunderstorm {
 
 impl Thunderstorm {
     pub const NAME: &'static str = "Thunderstorm";
+    pub const DESCRIPTION: &'static str = "At the end of your turn, deal 3 damage to a random unit atop affected sites, then you may move Thunderstorm one step.\r \r Lasts 3 of your turns.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -59,6 +60,10 @@ impl Aura for Thunderstorm {
 impl Card for Thunderstorm {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

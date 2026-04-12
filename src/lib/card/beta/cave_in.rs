@@ -13,6 +13,7 @@ pub struct CaveIn {
 
 impl CaveIn {
     pub const NAME: &'static str = "Cave-In";
+    pub const DESCRIPTION: &'static str = "Burrow all minions and artifacts occupying target land site.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -37,6 +38,10 @@ impl CaveIn {
 impl Card for CaveIn {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

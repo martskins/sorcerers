@@ -12,6 +12,8 @@ pub struct Incinerate {
 
 impl Incinerate {
     pub const NAME: &'static str = "Incinerate";
+    pub const DESCRIPTION: &'static str =
+        "Deal 4 damage to each other unit at target location near the caster or an allied Dragon.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -36,6 +38,10 @@ impl Incinerate {
 impl Card for Incinerate {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

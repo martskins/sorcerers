@@ -12,6 +12,8 @@ pub struct MountainPass {
 
 impl MountainPass {
     pub const NAME: &'static str = "Mountain Pass";
+    pub const DESCRIPTION: &'static str =
+        "Minions can't enter this site on the ground if there's already a minion atop.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -57,6 +59,10 @@ impl Site for MountainPass {
 impl Card for MountainPass {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

@@ -11,6 +11,7 @@ pub struct Bedrock {
 
 impl Bedrock {
     pub const NAME: &'static str = "Bedrock";
+    pub const DESCRIPTION: &'static str = "Can't be moved, destroyed, or modified.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -43,6 +44,10 @@ impl Site for Bedrock {}
 impl Card for Bedrock {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

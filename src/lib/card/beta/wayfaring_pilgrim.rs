@@ -14,6 +14,8 @@ pub struct WayfaringPilgrim {
 
 impl WayfaringPilgrim {
     pub const NAME: &'static str = "Wayfaring Pilgrim";
+    pub const DESCRIPTION: &'static str =
+        "Whenever Wayfaring Pilgrim enters each corner of the realm for the first time, you may draw a card.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -46,6 +48,10 @@ impl WayfaringPilgrim {
 impl Card for WayfaringPilgrim {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

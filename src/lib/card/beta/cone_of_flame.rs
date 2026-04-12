@@ -12,6 +12,8 @@ pub struct ConeOfFlame {
 
 impl ConeOfFlame {
     pub const NAME: &'static str = "Cone of Flame";
+    pub const DESCRIPTION: &'static str =
+        "Choose a direction from the caster. Deal damage to each unit at a location in the area of effect:";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -36,6 +38,10 @@ impl ConeOfFlame {
 impl Card for ConeOfFlame {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

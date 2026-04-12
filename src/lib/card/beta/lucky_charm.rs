@@ -15,6 +15,7 @@ pub struct LuckyCharm {
 
 impl LuckyCharm {
     pub const NAME: &'static str = "Lucky Charm";
+    pub const DESCRIPTION: &'static str = "Bearer's controller has “Whenever you would determine an outcome at random, determine it an extra time and choose one.”";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -45,6 +46,10 @@ impl Artifact for LuckyCharm {}
 impl Card for LuckyCharm {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

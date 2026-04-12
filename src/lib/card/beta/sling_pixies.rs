@@ -13,6 +13,7 @@ pub struct SlingPixies {
 
 impl SlingPixies {
     pub const NAME: &'static str = "Sling Pixies";
+    pub const DESCRIPTION: &'static str = "Airborne, Ranged\r \r Takes no damage from units with 4 or more power.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -44,6 +45,10 @@ impl SlingPixies {
 impl Card for SlingPixies {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

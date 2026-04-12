@@ -13,6 +13,8 @@ pub struct SpringRiver {
 
 impl SpringRiver {
     pub const NAME: &'static str = "Spring River";
+    pub const DESCRIPTION: &'static str =
+        "Genesis → Look at your next spell. You may put it on the bottom of your spellbook.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -45,6 +47,10 @@ impl Site for SpringRiver {}
 impl Card for SpringRiver {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

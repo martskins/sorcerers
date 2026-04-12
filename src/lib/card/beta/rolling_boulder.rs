@@ -89,6 +89,7 @@ pub struct RollingBoulder {
 
 impl RollingBoulder {
     pub const NAME: &'static str = "Rolling Boulder";
+    pub const DESCRIPTION: &'static str = "Units here have “Tap → Give Rolling Boulder a push. It rolls as far as possible and deals 4 damage to each other unit along its path.”";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -119,6 +120,10 @@ impl Artifact for RollingBoulder {}
 impl Card for RollingBoulder {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

@@ -13,6 +13,7 @@ pub struct RusticVillage {
 
 impl RusticVillage {
     pub const NAME: &'static str = "Rustic Village";
+    pub const DESCRIPTION: &'static str = "Genesis → You may pay ① to summon a Foot Soldier token here.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -45,6 +46,10 @@ impl Site for RusticVillage {}
 impl Card for RusticVillage {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

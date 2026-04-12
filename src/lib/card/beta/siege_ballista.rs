@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        AdditionalCost, Artifact, ArtifactBase, ArtifactType, Card, CardBase, Cost, Costs, Edition, Rarity,
-        Region, Zone,
+        AdditionalCost, Artifact, ArtifactBase, ArtifactType, Card, CardBase, Cost, Costs, Edition, Rarity, Region,
+        Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_card},
@@ -83,6 +83,8 @@ pub struct SiegeBallista {
 
 impl SiegeBallista {
     pub const NAME: &'static str = "Siege Ballista";
+    pub const DESCRIPTION: &'static str =
+        "Tap bearer and another ally here → Deal 3 damage to target unit up to two steps away.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -113,6 +115,10 @@ impl Artifact for SiegeBallista {}
 impl Card for SiegeBallista {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {

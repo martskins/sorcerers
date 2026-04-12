@@ -14,6 +14,7 @@ pub struct OnyxCore {
 
 impl OnyxCore {
     pub const NAME: &'static str = "Onyx Core";
+    pub const DESCRIPTION: &'static str = "Provides (E) and ① to its controller.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -54,6 +55,10 @@ impl Artifact for OnyxCore {}
 impl Card for OnyxCore {
     fn get_name(&self) -> &str {
         Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
     }
 
     fn get_base_mut(&mut self) -> &mut CardBase {
