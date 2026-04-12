@@ -1074,17 +1074,33 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 })
                 .cloned()
                 .collect()),
-            CardType::Minion | CardType::Artifact => Ok(state
-                .cards
-                .iter()
-                .filter(|c| c.get_owner_id() == self.get_owner_id())
-                .filter(|c| c.is_site())
-                .filter_map(|c| match c.get_zone() {
-                    z @ Zone::Realm(_) => Some(z),
-                    _ => None,
-                })
-                .cloned()
-                .collect()),
+            CardType::Minion | CardType::Artifact => {
+                // Oversized units are placed at intersection zones (occupying all 4 sub-sites).
+                if self.is_oversized() {
+                    return Ok(Zone::all_intersections()
+                        .into_iter()
+                        .filter(|z| {
+                            if let Zone::Intersection(sqs) = z {
+                                sqs.iter().all(|sq| Zone::Realm(*sq).get_site(state).is_some())
+                            } else {
+                                false
+                            }
+                        })
+                        .collect());
+                }
+
+                Ok(state
+                    .cards
+                    .iter()
+                    .filter(|c| c.get_owner_id() == self.get_owner_id())
+                    .filter(|c| c.is_site())
+                    .filter_map(|c| match c.get_zone() {
+                        z @ Zone::Realm(_) => Some(z),
+                        _ => None,
+                    })
+                    .cloned()
+                    .collect())
+            }
             CardType::Site => {
                 let player_id = self.get_owner_id();
                 let has_played_site = state
@@ -1221,6 +1237,31 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             .is_some()
     }
 
+    /// Returns true if this is an oversized unit (occupies a 2×2 intersection).
+    fn is_oversized(&self) -> bool {
+        self.get_unit_base()
+            .map_or(false, |ub| ub.abilities.contains(&Ability::Oversized))
+    }
+
+    /// Returns true if this card physically occupies `zone`.
+    ///
+    /// For normal cards this is equivalent to `self.get_zone() == zone`.
+    /// For oversized units at a `Zone::Intersection`, the unit also occupies
+    /// each of the four constituent `Zone::Realm` sub-zones.
+    fn occupies_zone(&self, zone: &Zone) -> bool {
+        if self.get_zone() == zone {
+            return true;
+        }
+        if self.is_oversized() {
+            if let Zone::Intersection(sub_zones) = self.get_zone() {
+                if let Zone::Realm(sq) = zone {
+                    return sub_zones.contains(sq);
+                }
+            }
+        }
+        false
+    }
+
     // Returns the elements associated to this card.
     fn get_elements(&self, state: &State) -> anyhow::Result<Vec<Element>> {
         let thresholds = if self.is_site() {
@@ -1318,6 +1359,16 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
                 if self.has_ability(state, &Ability::Voidwalk) {
                     return true;
+                }
+
+                // Oversized units may only move to intersection zones where all 4 sub-zones have sites.
+                if self.is_oversized() {
+                    return match z {
+                        Zone::Intersection(sqs) => {
+                            sqs.iter().all(|sq| Zone::Realm(*sq).get_site(state).is_some())
+                        }
+                        _ => false,
+                    };
                 }
 
                 z.get_site(state).map_or(false, |c| {
@@ -2086,6 +2137,8 @@ pub enum Ability {
     FirstStrike,
     Unattackable,
     Uninterceptable,
+    /// Unit occupies all four realm locations of a 2×2 intersection simultaneously.
+    Oversized,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -2178,7 +2231,6 @@ pub struct CardBase {
     pub rarity: Rarity,
     pub edition: Edition,
     pub is_token: bool,
-    pub oversized: bool,
 }
 
 #[derive(Debug, Clone)]

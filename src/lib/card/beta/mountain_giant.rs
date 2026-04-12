@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     game::PlayerId,
 };
 
@@ -18,7 +18,7 @@ impl MountainGiant {
             unit_base: UnitBase {
                 power: 8,
                 toughness: 8,
-                abilities: vec![],
+                abilities: vec![Ability::Oversized],
                 types: vec![MinionType::Giant],
                 ..Default::default()
             },
@@ -33,7 +33,6 @@ impl MountainGiant {
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
                 is_token: false,
-                oversized: true,
                 ..Default::default()
             },
         }

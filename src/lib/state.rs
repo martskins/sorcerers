@@ -654,7 +654,7 @@ impl CardQuery {
         }
 
         if let Some(in_zones) = &self.in_zones {
-            if !in_zones.contains(&card.get_zone()) {
+            if !in_zones.iter().any(|z| card.occupies_zone(z)) {
                 return false;
             }
         }
@@ -1150,7 +1150,7 @@ impl State {
     pub fn get_minions_in_zone(&self, zone: &Zone) -> Vec<&Box<dyn Card>> {
         self.cards
             .iter()
-            .filter(|c| c.get_zone() == zone)
+            .filter(|c| c.occupies_zone(zone))
             .filter(|c| c.is_minion())
             .collect()
     }
@@ -1158,13 +1158,13 @@ impl State {
     pub fn get_units_in_zone(&self, zone: &Zone) -> Vec<&Box<dyn Card>> {
         self.cards
             .iter()
-            .filter(|c| c.get_zone() == zone)
+            .filter(|c| c.occupies_zone(zone))
             .filter(|c| c.is_unit())
             .collect()
     }
 
     pub fn get_cards_in_zone(&self, zone: &Zone) -> Vec<&Box<dyn Card>> {
-        self.cards.iter().filter(|c| c.get_zone() == zone).collect()
+        self.cards.iter().filter(|c| c.occupies_zone(zone)).collect()
     }
 
     pub fn get_player(&self, player_id: &PlayerId) -> anyhow::Result<&Player> {
