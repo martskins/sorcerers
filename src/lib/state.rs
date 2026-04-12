@@ -240,9 +240,16 @@ impl CardQuery {
         }
     }
 
-    pub fn tapped(self, tapped: bool) -> Self {
+    pub fn untapped(self) -> Self {
         Self {
-            tapped: Some(tapped),
+            tapped: Some(false),
+            ..self
+        }
+    }
+
+    pub fn tapped(self) -> Self {
+        Self {
+            tapped: Some(true),
             ..self
         }
     }
@@ -589,6 +596,7 @@ pub struct DeferredEffect {
     pub trigger_on_effect: EffectQuery,
     pub expires_on_effect: Option<EffectQuery>,
     pub on_effect: DeferredCallback,
+    pub multitrigger: bool,
 }
 
 impl std::fmt::Debug for DeferredEffect {

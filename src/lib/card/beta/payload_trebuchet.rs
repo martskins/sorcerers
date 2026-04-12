@@ -62,10 +62,10 @@ impl ActivatedAbility for ShootPayload {
             Some(bearer_id) => {
                 let bearer = state.get_card(&bearer_id);
                 Ok(Cost::ZERO
-                    .with_additional(AdditionalCost::tap(CardQuery::from_id(bearer_id.clone()).tapped(false)))
+                    .with_additional(AdditionalCost::tap(CardQuery::from_id(bearer_id.clone()).untapped()))
                     .with_additional(AdditionalCost::tap(
                         CardQuery::new()
-                            .tapped(false)
+                            .untapped()
                             .in_zone(bearer.get_zone())
                             .units()
                             .controlled_by(&bearer.get_controller_id(state)),

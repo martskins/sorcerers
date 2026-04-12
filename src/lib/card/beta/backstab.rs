@@ -75,7 +75,7 @@ impl Card for Backstab {
         let target_id = CardQuery::new()
             .card_types(vec![CardType::Minion])
             .in_region(&caster_region)
-            .tapped(true)
+            .tapped()
             .in_zones(&mover.get_zone().get_adjacent())
             .id_not_in(vec![mover_id.clone()])
             .with_prompt("Backstab: Pick a tapped minion to strike")

@@ -318,6 +318,9 @@ pub enum EffectQuery {
     SummonCard {
         card: CardQuery,
     },
+    BuryCard {
+        card: CardQuery,
+    },
 }
 
 fn optional_player_matches(query: &Option<PlayerId>, actual: &PlayerId) -> bool {

@@ -443,7 +443,7 @@ impl CostType {
                     let ac = ac.clone();
                     let mut query = ac.card;
                     match ac.action {
-                        CostAction::Tap => query = query.tapped(false),
+                        CostAction::Tap => query = query.untapped(),
                         CostAction::Discard => query = query.in_zone(&Zone::Hand),
                         CostAction::Sacrifice => {} // TODO: add guard for sacrifice case
                         CostAction::Surface => query = query.in_regions(vec![Region::Underwater, Region::Underground]),
@@ -523,7 +523,7 @@ impl CostType {
                     let ac = ac.clone();
                     let mut query = ac.card;
                     match ac.action {
-                        CostAction::Tap => query = query.tapped(false),
+                        CostAction::Tap => query = query.untapped(),
                         CostAction::Discard => query = query.in_zone(&Zone::Hand),
                         CostAction::Sacrifice => {} // TODO: add guard for sacrifice case
                         CostAction::Surface => query = query.in_regions(vec![Region::Underwater, Region::Underground]),
@@ -1941,6 +1941,7 @@ pub enum MinionType {
     Undead,
     Giant,
     Merfolk,
+    Troll,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -2231,11 +2232,7 @@ mod tests {
         let mut state = State::new_mock_state(Zone::all_realm());
         let player_id = state.players[0].id.clone();
         let cost = Cost::additional_only(AdditionalCost::tap(
-            CardQuery::new()
-                .tapped(false)
-                .units()
-                .in_zone(&Zone::Realm(10))
-                .tapped(false),
+            CardQuery::new().untapped().units().in_zone(&Zone::Realm(10)),
         ));
         let can_afford = cost.can_afford(&state, &player_id).expect("should not error");
         assert!(!can_afford, "no units in the zone");
@@ -2259,18 +2256,10 @@ mod tests {
         let player_id = state.players[0].id.clone();
         let cost = Cost::ZERO
             .with_additional(AdditionalCost::tap(
-                CardQuery::new()
-                    .tapped(false)
-                    .units()
-                    .in_zone(&Zone::Realm(10))
-                    .tapped(false),
+                CardQuery::new().untapped().units().in_zone(&Zone::Realm(10)),
             ))
             .with_additional(AdditionalCost::tap(
-                CardQuery::new()
-                    .tapped(false)
-                    .units()
-                    .in_zone(&Zone::Realm(10))
-                    .tapped(false),
+                CardQuery::new().untapped().units().in_zone(&Zone::Realm(10)),
             ));
         let can_afford = cost.can_afford(&state, &player_id).expect("should not error");
         assert!(!can_afford, "no units in the zone");

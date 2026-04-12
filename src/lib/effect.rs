@@ -479,7 +479,9 @@ impl Effect {
                     state.effects.extend(effects.into_iter().map(std::sync::Arc::new));
                 }
 
-                effects_to_remove.push(idx);
+                if !de.multitrigger {
+                    effects_to_remove.push(idx);
+                }
             } else {
                 // If the effect was not triggered, check whether it needs to expire.
                 if let Some(expires_on_effect) = &de.expires_on_effect {
@@ -607,7 +609,7 @@ impl Effect {
             Effect::PlayerLost { player_id } => {
                 state.loosers.insert(player_id.clone());
             }
-            Effect::AddDeferredEffect { effect } => {
+            Effect::AddDeferredEffect { effect, .. } => {
                 state.deferred_effects.push(effect.clone());
             }
             Effect::AddTemporaryEffect { effect } => {

@@ -112,6 +112,7 @@ impl Card for Blaze {
                             }
                         })
                     }),
+                    multitrigger: false,
                 },
             },
         ])

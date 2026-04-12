@@ -57,7 +57,9 @@ impl AwakenedMummies {
                     .controlled_by(&opponent_id),
                 zone: ZoneQuery::from_zone(zone),
             },
-            expires_on_effect: None,
+            expires_on_effect: Some(EffectQuery::BuryCard {
+                card: CardQuery::from_id(self.get_id().clone()),
+            }),
             on_effect: Arc::new(move |state: &State, card_id: &uuid::Uuid, _effect: &Effect| {
                 let mummy_id = mummy_id.clone();
                 Box::pin(async move {
@@ -79,6 +81,7 @@ impl AwakenedMummies {
                     ])
                 })
             }),
+            multitrigger: true,
         })
     }
 }

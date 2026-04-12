@@ -102,6 +102,7 @@ impl Card for BoneRabble {
                         }
                     }) as Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>>
                 }),
+                multitrigger: false,
             },
         }]
     }
