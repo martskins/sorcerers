@@ -321,6 +321,12 @@ pub enum EffectQuery {
     BuryCard {
         card: CardQuery,
     },
+    Attack {
+        attacker: CardQuery,
+    },
+    DrawCard {
+        player_id: Option<PlayerId>,
+    },
 }
 
 fn optional_player_matches(query: &Option<PlayerId>, actual: &PlayerId) -> bool {
@@ -379,6 +385,17 @@ impl EffectQuery {
                 Ok(cards.into_iter().any(|(_, card_id, _)| card.matches(card_id, state)))
             }
             (EffectQuery::PlayCard { card }, Effect::PlayCard { card_id, .. }) => Ok(card.matches(card_id, state)),
+            (EffectQuery::BuryCard { card }, Effect::BuryCard { card_id }) => Ok(card.matches(card_id, state)),
+            (EffectQuery::Attack { attacker }, Effect::Attack { attacker_id, .. }) => Ok(attacker.matches(attacker_id, state)),
+            (EffectQuery::DrawCard { player_id: query_pid }, Effect::DrawSpell { player_id, .. }) => {
+                Ok(optional_player_matches(query_pid, player_id))
+            }
+            (EffectQuery::DrawCard { player_id: query_pid }, Effect::DrawSite { player_id, .. }) => {
+                Ok(optional_player_matches(query_pid, player_id))
+            }
+            (EffectQuery::DrawCard { player_id: query_pid }, Effect::DrawCard { player_id, .. }) => {
+                Ok(optional_player_matches(query_pid, player_id))
+            }
             _ => Ok(false),
         }
     }

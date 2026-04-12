@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, ArtifactType, Card, CardData, CardType, DodgeRoll, MinionType, Region, SiteType, Zone},
+    card::{Ability, ArtifactType, Card, CardData, CardType, DodgeRoll, MinionType, Rarity, Region, SiteType, Zone},
     deck::Deck,
     effect::Effect,
     game::{Element, InputStatus, PlayerId, Resources, Thresholds, pick_card, pick_zone, yes_or_no},
@@ -48,9 +48,12 @@ pub struct CardQuery {
     card_types: Option<Vec<CardType>>,
     minion_types: Option<Vec<MinionType>>,
     artifact_types: Option<Vec<ArtifactType>>,
+    rarity: Option<Rarity>,
     mana_cost: Option<u8>,
     site_types: Option<Vec<SiteType>>,
+    site_is_water: Option<bool>,
     with_affinity: Option<Vec<Element>>,
+    with_affinity_in: Option<Vec<Element>>,
     in_zones: Option<Vec<Zone>>,
     in_regions: Option<Vec<Region>>,
     tapped: Option<bool>,
@@ -306,6 +309,13 @@ impl CardQuery {
         }
     }
 
+    pub fn with_affinity_in(self, elements: Vec<Element>) -> Self {
+        Self {
+            with_affinity_in: Some(elements),
+            ..self
+        }
+    }
+
     pub fn with_affinity(self, elements: Element) -> Self {
         Self {
             with_affinity: Some(vec![elements]),
@@ -334,6 +344,20 @@ impl CardQuery {
         }
     }
 
+    pub fn land_sites(self) -> Self {
+        Self {
+            site_is_water: Some(false),
+            ..self
+        }
+    }
+
+    pub fn water_sites(self) -> Self {
+        Self {
+            site_is_water: Some(true),
+            ..self
+        }
+    }
+
     pub fn site_types(self, site_types: Vec<SiteType>) -> Self {
         Self {
             site_types: Some(site_types),
@@ -358,6 +382,13 @@ impl CardQuery {
     pub fn sites(self) -> Self {
         Self {
             card_types: Some(vec![CardType::Site]),
+            ..self
+        }
+    }
+
+    pub fn avatars(self) -> Self {
+        Self {
+            card_types: Some(vec![CardType::Avatar]),
             ..self
         }
     }
@@ -404,9 +435,23 @@ impl CardQuery {
         }
     }
 
+    pub fn minion_type(self, minion_types: &MinionType) -> Self {
+        Self {
+            minion_types: Some(vec![minion_types.clone()]),
+            ..self
+        }
+    }
+
     pub fn minion_types(self, minion_types: Vec<MinionType>) -> Self {
         Self {
             minion_types: Some(minion_types),
+            ..self
+        }
+    }
+
+    pub fn rarity(self, rarity: &Rarity) -> Self {
+        Self {
+            rarity: Some(rarity.clone()),
             ..self
         }
     }
@@ -464,6 +509,20 @@ impl CardQuery {
             }
         }
 
+        if let Some(with_affinity_in) = &self.with_affinity_in {
+            let mut has_affinity = false;
+            for element in with_affinity_in {
+                if card.get_elements(state).unwrap_or_default().contains(element) {
+                    has_affinity = true;
+                    break;
+                }
+            }
+
+            if !has_affinity {
+                return false;
+            }
+        }
+
         if let Some(with_affinity) = &self.with_affinity {
             let mut has_affinity = false;
             for element in with_affinity {
@@ -514,6 +573,29 @@ impl CardQuery {
         if let Some(card_types) = &self.card_types {
             if !card_types.contains(&card.get_card_type()) {
                 return false;
+            }
+        }
+
+        if let Some(is_water) = &self.site_is_water {
+            match is_water {
+                true => {
+                    if let Some(site) = card.get_site() {
+                        if site.provided_affinity(state).unwrap_or_default().water == 0 {
+                            return false;
+                        }
+                    } else {
+                        return false;
+                    }
+                }
+                false => {
+                    if let Some(site) = card.get_site() {
+                        if site.provided_affinity(state).unwrap_or_default().water != 0 {
+                            return false;
+                        }
+                    } else {
+                        return false;
+                    }
+                }
             }
         }
 

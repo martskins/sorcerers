@@ -6,14 +6,14 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub struct SunkenTreasure {
+pub struct BuriedTreasure {
     pub artifact_base: ArtifactBase,
     pub card_base: CardBase,
 }
 
-impl SunkenTreasure {
-    pub const NAME: &'static str = "Sunken Treasure";
-    pub const DESCRIPTION: &'static str = "If cast, conjure this under an allied water site of an opponent's choice.\r \r When Sunken Treasure is carried to the surface, its controller sacrifices it and draws two cards.";
+impl BuriedTreasure {
+    pub const NAME: &'static str = "Buried Treasure";
+    pub const DESCRIPTION: &'static str = "If cast, conjure this under an allied land site of an opponent's choice.\r \r When Buried Treasure is carried to the surface, its controller sacrifices it and draws two cards.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -38,10 +38,10 @@ impl SunkenTreasure {
     }
 }
 
-impl Artifact for SunkenTreasure {}
+impl Artifact for BuriedTreasure {}
 
 #[async_trait::async_trait]
-impl Card for SunkenTreasure {
+impl Card for BuriedTreasure {
     fn get_name(&self) -> &str {
         Self::NAME
     }
@@ -77,8 +77,8 @@ impl Card for SunkenTreasure {
         let picked_card_id = CardQuery::new()
             .controlled_by(&controller_id)
             .sites()
-            .with_prompt("Sunken Treasure: Pick a water site to place the treasure under")
-            .water_sites()
+            .with_prompt("Buried Treasure: Pick a land site to place the treasure under")
+            .land_sites()
             .pick(&opponent_id, state, false)
             .await?;
         if picked_card_id.is_none() {
@@ -89,7 +89,7 @@ impl Card for SunkenTreasure {
         Ok(vec![
             Effect::SetCardRegion {
                 card_id: self.get_id().clone(),
-                region: Region::Underwater,
+                region: Region::Underground,
                 tap: false,
             },
             Effect::PlayCard {
@@ -122,6 +122,6 @@ impl Card for SunkenTreasure {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (SunkenTreasure::NAME, |owner_id: PlayerId| {
-    Box::new(SunkenTreasure::new(owner_id))
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (BuriedTreasure::NAME, |owner_id: PlayerId| {
+    Box::new(BuriedTreasure::new(owner_id))
 });

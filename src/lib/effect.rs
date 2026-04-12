@@ -211,6 +211,10 @@ pub enum Effect {
     ShuffleDeck {
         player_id: PlayerId,
     },
+    SetController {
+        card_id: uuid::Uuid,
+        player_id: PlayerId,
+    },
 }
 
 fn player_name<'a>(player_id: &PlayerId, state: &'a State) -> &'a str {
@@ -286,6 +290,7 @@ impl Effect {
             Effect::AddTemporaryEffect { .. } => None,
             Effect::SetBearer { card_id, .. } => Some(card_id),
             Effect::ShuffleDeck { .. } => None,
+            Effect::SetController { card_id, .. } => Some(card_id),
         }
     }
 
@@ -377,10 +382,18 @@ impl Effect {
             }
             Effect::DrawCard { .. } => None,
             Effect::DrawSite { player_id, count, .. } => {
+                if *count == 0 {
+                    return Ok(None);
+                }
+
                 let sites = if *count == 1 { "site" } else { "sites" };
                 Some(format!("{} draws {} {}", player_name(player_id, state), count, sites))
             }
             Effect::DrawSpell { player_id, count, .. } => {
+                if *count == 0 {
+                    return Ok(None);
+                }
+
                 let spells = if *count == 1 { "site" } else { "sites" };
                 Some(format!("{} draws {} {}", player_name(player_id, state), count, spells))
             }
@@ -465,6 +478,14 @@ impl Effect {
                 }
             }
             Effect::ShuffleDeck { player_id } => Some(format!("{} shuffles their deck", player_name(player_id, state))),
+            Effect::SetController { card_id, player_id } => {
+                let card_name = state.get_card(card_id).get_name();
+                Some(format!(
+                    "{} gains control of {}",
+                    player_name(player_id, state),
+                    card_name
+                ))
+            }
         };
 
         Ok(desc)
@@ -1378,6 +1399,10 @@ impl Effect {
                 }
 
                 card.set_zone(Zone::Cemetery);
+            }
+            Effect::SetController { card_id, player_id } => {
+                let card = state.get_card_mut(card_id);
+                card.get_base_mut().controller_id = player_id.clone();
             }
         }
 
