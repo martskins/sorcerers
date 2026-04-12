@@ -965,6 +965,18 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     fn base_take_damage(&mut self, state: &State, from: &uuid::Uuid, damage: u16) -> anyhow::Result<Vec<Effect>> {
         match self.get_card_type() {
             CardType::Minion => {
+                // Check LethalTarget before the mutable borrow of unit_base.
+                let has_lethal_target = self.get_unit_base().map_or(false, |ub| {
+                    ub.abilities.contains(&Ability::LethalTarget)
+                        || ub.modifier_counters.iter().any(|c| c.ability == Ability::LethalTarget)
+                }) || state.continuous_effects.iter().any(|ce| match ce {
+                    ContinuousEffect::GrantAbility {
+                        ability: Ability::LethalTarget,
+                        affected_cards,
+                    } => affected_cards.matches(self.get_id(), state),
+                    _ => false,
+                });
+
                 let ub = self
                     .get_unit_base_mut()
                     .ok_or(anyhow::anyhow!("unit card has no unit base"))?;
@@ -972,10 +984,13 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
                 let mut effects = vec![];
                 let attacker = state.get_card(from);
-                if ub.damage >= self.get_toughness(state).unwrap_or(0) || attacker.has_ability(state, &Ability::Lethal)
+                if ub.damage >= self.get_toughness(state).unwrap_or(0)
+                    || attacker.has_ability(state, &Ability::Lethal)
+                    || has_lethal_target
                 {
-                    effects.push(Effect::BuryCard {
+                    effects.push(Effect::KillMinion {
                         card_id: self.get_id().clone(),
+                        killer_id: from.clone(),
                     });
                 }
 
@@ -1219,7 +1234,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     // Returns whether the card has the given modifier.
-    fn has_ability(&self, _state: &State, modifier: &Ability) -> bool {
+    fn has_ability(&self, state: &State, modifier: &Ability) -> bool {
         if self
             .get_unit_base()
             .unwrap_or(&UnitBase::default())
@@ -1229,12 +1244,24 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             return true;
         }
 
-        self.get_unit_base()
+        if self
+            .get_unit_base()
             .unwrap_or(&UnitBase::default())
             .modifier_counters
             .iter()
-            .find(|c| &c.ability == modifier)
-            .is_some()
+            .any(|c| &c.ability == modifier)
+        {
+            return true;
+        }
+
+        // Also check abilities granted via continuous effects.
+        state.continuous_effects.iter().any(|ce| match ce {
+            ContinuousEffect::GrantAbility {
+                ability,
+                affected_cards,
+            } if ability == modifier => affected_cards.matches(self.get_id(), state),
+            _ => false,
+        })
     }
 
     /// Returns true if this is an oversized unit (occupies a 2×2 intersection).
@@ -1287,6 +1314,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             elements.push(Element::Air);
         }
         Ok(elements)
+    }
+
+    fn zones_in_range(&self, state: &State) -> Vec<Zone> {
+        self.get_zones_within_steps(state, self.get_steps_per_movement(state).unwrap_or(0))
     }
 
     // Returns all valid move paths from the card's current zone to the given zone. The paths
@@ -1390,22 +1421,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             .filter(|c| c.get_controller_id(state) != self.get_controller_id(state))
             .filter(|c| c.is_unit() || c.is_site())
             .filter(|c| c.can_be_targetted_by(state, &self.get_controller_id(state)))
-            .filter(|c| {
-                if c.has_ability(state, &Ability::Unattackable) {
-                    return false;
-                }
-
-                let mut can_be_attacked = false;
-                state.continuous_effects.iter().for_each(|ce| match ce {
-                    ContinuousEffect::SetAttackable {
-                        attackable,
-                        affected_cards,
-                    } if affected_cards.all(state).contains(c.get_id()) => can_be_attacked = *attackable,
-                    _ => {}
-                });
-
-                can_be_attacked
-            })
+            .filter(|c| !c.has_ability(state, &Ability::Unattackable))
             .filter(|c| {
                 let same_region = c.get_base().region == self.get_base().region;
                 let ranged_on_airborne =
@@ -1744,6 +1760,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     fn remove_modifier(&mut self, modifier: &Ability) {
         if let Some(ub) = self.get_unit_base_mut() {
             ub.abilities.retain(|a| a != modifier);
+            // Also remove any ability counters with this ability type.
+            ub.modifier_counters.retain(|c| &c.ability != modifier);
         }
     }
 
@@ -1991,6 +2009,8 @@ pub enum MinionType {
     Giant,
     Merfolk,
     Troll,
+    Dwarf,
+    Automaton,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -2056,6 +2076,9 @@ pub trait ResourceProvider: Card {
                     thresholds.earth = 0;
                     thresholds.water = std::cmp::max(1, thresholds.water);
                 }
+                if site.is_droughted(state)? {
+                    thresholds.water = 0;
+                }
 
                 Ok(thresholds)
             }
@@ -2111,6 +2134,13 @@ pub trait Site: Card + ResourceProvider {
             })
             .is_some())
     }
+
+    fn is_droughted(&self, state: &State) -> anyhow::Result<bool> {
+        Ok(state.continuous_effects.iter().any(|ce| match ce {
+            ContinuousEffect::DroughtSites { affected_sites } => affected_sites.matches(self.get_id(), state),
+            _ => false,
+        }))
+    }
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
@@ -2137,6 +2167,8 @@ pub enum Ability {
     Uninterceptable,
     /// Unit occupies all four realm locations of a 2×2 intersection simultaneously.
     Oversized,
+    /// Any damage dealt to this unit is lethal (kills regardless of amount).
+    LethalTarget,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -2179,6 +2211,7 @@ pub enum ArtifactType {
     Device,
     Automaton,
     Monument,
+    Instrument,
 }
 
 #[derive(Debug, Clone)]

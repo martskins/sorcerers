@@ -1,29 +1,26 @@
 use crate::{
     card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
-    effect::Effect,
     game::PlayerId,
-    query::ZoneQuery,
-    state::State,
+    state::{CardQuery, ContinuousEffect, State},
 };
 
 #[derive(Debug, Clone)]
-pub struct HeadlessHaunt {
+pub struct DwarvenDiggingTeam {
     pub unit_base: UnitBase,
     pub card_base: CardBase,
 }
 
-impl HeadlessHaunt {
-    pub const NAME: &'static str = "Headless Haunt";
-    pub const DESCRIPTION: &'static str =
-        "Voidwalk\r \r At the start of your turn, Headless Haunt teleports to the top of a random site or void.";
+impl DwarvenDiggingTeam {
+    pub const NAME: &'static str = "Dwarven Digging Team";
+    pub const DESCRIPTION: &'static str = "Burrowing\r Allied minions occupying nearby sites have Burrowing.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
             unit_base: UnitBase {
-                power: 4,
-                toughness: 4,
-                abilities: vec![Ability::Voidwalk],
-                types: vec![MinionType::Spirit],
+                power: 2,
+                toughness: 2,
+                abilities: vec![Ability::Burrowing],
+                types: vec![MinionType::Dwarf],
                 ..Default::default()
             },
             card_base: CardBase {
@@ -31,7 +28,7 @@ impl HeadlessHaunt {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::basic(3, "AA"),
+                costs: Costs::basic(2, "EE"),
                 region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
@@ -44,7 +41,7 @@ impl HeadlessHaunt {
 }
 
 #[async_trait::async_trait]
-impl Card for HeadlessHaunt {
+impl Card for DwarvenDiggingTeam {
     fn get_name(&self) -> &str {
         Self::NAME
     }
@@ -69,29 +66,25 @@ impl Card for HeadlessHaunt {
         Some(&mut self.unit_base)
     }
 
-    async fn on_turn_start(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
+    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
         if !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }
 
-        // Only fires on the owner's turn.
-        if _state.current_player != *self.get_owner_id() {
-            return Ok(vec![]);
-        }
+        let controller_id = self.get_controller_id(state);
 
-        Ok(vec![Effect::MoveCard {
-            player_id: self.get_owner_id().clone(),
-            card_id: self.get_id().clone(),
-            from: self.get_zone().clone(),
-            to: ZoneQuery::random(Zone::all_realm()),
-            tap: false,
-            region: Region::Surface,
-            through_path: None,
+        Ok(vec![ContinuousEffect::GrantAbility {
+            ability: Ability::Burrowing,
+            affected_cards: CardQuery::new()
+                .minions()
+                .near_to(self.get_zone())
+                .controlled_by(&controller_id)
+                .id_not_in(vec![self.get_id().clone()]),
         }])
     }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (HeadlessHaunt::NAME, |owner_id: PlayerId| {
-    Box::new(HeadlessHaunt::new(owner_id))
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (DwarvenDiggingTeam::NAME, |owner_id: PlayerId| {
+    Box::new(DwarvenDiggingTeam::new(owner_id))
 });

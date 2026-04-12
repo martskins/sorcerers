@@ -5,20 +5,20 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub struct KingOfTheRealm {
+pub struct DoomsdayProphet {
     pub unit_base: UnitBase,
     pub card_base: CardBase,
 }
 
-impl KingOfTheRealm {
-    pub const NAME: &'static str = "King of the Realm";
-    pub const DESCRIPTION: &'static str = "Other Mortals have +1 power.\r \r You control all Mortals.";
+impl DoomsdayProphet {
+    pub const NAME: &'static str = "Doomsday Prophet";
+    pub const DESCRIPTION: &'static str = "Nearby units take double damage, except from strikes.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
             unit_base: UnitBase {
-                power: 3,
-                toughness: 3,
+                power: 1,
+                toughness: 1,
                 abilities: vec![],
                 types: vec![MinionType::Mortal],
                 ..Default::default()
@@ -28,7 +28,7 @@ impl KingOfTheRealm {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::basic(7, "EEE"),
+                costs: Costs::basic(5, "FF"),
                 region: Region::Surface,
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
@@ -41,7 +41,7 @@ impl KingOfTheRealm {
 }
 
 #[async_trait::async_trait]
-impl Card for KingOfTheRealm {
+impl Card for DoomsdayProphet {
     fn get_name(&self) -> &str {
         Self::NAME
     }
@@ -66,24 +66,25 @@ impl Card for KingOfTheRealm {
         Some(&mut self.unit_base)
     }
 
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
-        Ok(vec![
-            ContinuousEffect::ModifyPower {
-                power_diff: 1,
-                affected_cards: CardQuery::new()
-                    .minion_types(vec![MinionType::Mortal])
-                    .in_play()
-                    .id_not_in(vec![self.get_id().clone()]),
-            },
-            ContinuousEffect::ControllerOverride {
-                controller_id: self.get_controller_id(state),
-                affected_cards: CardQuery::new().minion_types(vec![MinionType::Mortal]).in_play(),
-            },
-        ])
+    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+        if !self.get_zone().is_in_play() {
+            return Ok(vec![]);
+        }
+
+        // TODO: This card should not make cards take double damage if the damage is from a strike
+        // (i.e: ranged strike, or damage that is dealt for example by Bull Demons of Adum's
+        // ability. This implementation does not currently check for this and will apply the double
+        // damage effect to all damage taken by affected cards, which is not correct.
+        Ok(vec![ContinuousEffect::DoubleDamageTaken {
+            affected_cards: CardQuery::new()
+                .near_to(self.get_zone())
+                .units()
+                .id_not_in(vec![self.get_id().clone()]),
+        }])
     }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (KingOfTheRealm::NAME, |owner_id: PlayerId| {
-    Box::new(KingOfTheRealm::new(owner_id))
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (DoomsdayProphet::NAME, |owner_id: PlayerId| {
+    Box::new(DoomsdayProphet::new(owner_id))
 });

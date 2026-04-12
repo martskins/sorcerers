@@ -75,6 +75,9 @@ impl Card for Maelström {
 
     async fn on_turn_start(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
+        if state.current_player != controller_id {
+            return Ok(vec![]);
+        }
         let body_of_water = state.get_body_of_water_at(self.get_zone()).unwrap_or_default();
         let minion_ids = CardQuery::new().minions().in_zones(&body_of_water).all(state);
 

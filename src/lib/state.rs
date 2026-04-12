@@ -55,6 +55,8 @@ pub struct CardQuery {
     with_affinity: Option<Vec<Element>>,
     with_affinity_in: Option<Vec<Element>>,
     in_zones: Option<Vec<Zone>>,
+    within_range_of: Option<uuid::Uuid>,
+    can_be_attacked_by: Option<uuid::Uuid>,
     in_regions: Option<Vec<Region>>,
     tapped: Option<bool>,
     include_not_in_play: Option<bool>,
@@ -172,7 +174,7 @@ impl CardQuery {
         Ok(Some(output))
     }
 
-    pub fn iter<'a>(&'a self, state: &'a State) -> impl Iterator<Item = &'a Box<dyn Card>> {
+    pub fn iter<'b>(&'b self, state: &'b State) -> impl Iterator<Item = &'b Box<dyn Card>> {
         state.cards.iter().filter(|c| self.matches(c.get_id(), state))
     }
 
@@ -220,6 +222,14 @@ impl CardQuery {
         }
     }
 
+    pub fn in_play(self) -> Self {
+        Self {
+            in_zones: Some(Zone::all_realm()),
+            include_not_in_play: Some(false),
+            ..self
+        }
+    }
+
     pub fn in_zones(self, zones: &[Zone]) -> Self {
         Self {
             in_zones: Some(zones.to_vec()),
@@ -261,6 +271,20 @@ impl CardQuery {
         let zones = zones.into_iter().flat_map(|z| z.get_adjacent()).collect();
         Self {
             in_zones: Some(zones),
+            ..self
+        }
+    }
+
+    pub fn can_be_attacked_by(self, attacker_id: &uuid::Uuid) -> Self {
+        Self {
+            can_be_attacked_by: Some(attacker_id.clone()),
+            ..self
+        }
+    }
+
+    pub fn within_range_of(self, card_id: &uuid::Uuid) -> Self {
+        Self {
+            within_range_of: Some(card_id.clone()),
             ..self
         }
     }
@@ -460,6 +484,25 @@ impl CardQuery {
         let card = state.get_card(card_id);
         if let Some(ids) = &self.ids {
             if !ids.contains(card_id) {
+                return false;
+            }
+        }
+
+        if let Some(rarity) = &self.rarity {
+            if &card.get_base().rarity != rarity {
+                return false;
+            }
+        }
+
+        if let Some(can_be_attacked_by) = &self.can_be_attacked_by {
+            // TODO: this needs to check for flying, etc
+            // let attacker = state.get_card(can_be_attacked_by);
+        }
+
+        if let Some(within_range_of) = &self.within_range_of {
+            let other_card = state.get_card(within_range_of);
+            let other_zones = other_card.zones_in_range(state);
+            if !other_zones.contains(&card.get_zone()) {
                 return false;
             }
         }
@@ -725,6 +768,12 @@ pub enum ContinuousEffect {
     FloodSites {
         affected_sites: CardQuery,
     },
+    DroughtSites {
+        affected_sites: CardQuery,
+    },
+    DoubleDamageTaken {
+        affected_cards: CardQuery,
+    },
     ChangeSiteType {
         site_type: SiteType,
         affected_sites: CardQuery,
@@ -735,14 +784,6 @@ pub enum ContinuousEffect {
     },
     ModifyProvidedMana {
         mana_diff: i8,
-        affected_cards: CardQuery,
-    },
-    SetInterceptable {
-        interceptable: bool,
-        affected_cards: CardQuery,
-    },
-    SetAttackable {
-        attackable: bool,
         affected_cards: CardQuery,
     },
 }

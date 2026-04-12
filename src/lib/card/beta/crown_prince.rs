@@ -1,18 +1,20 @@
 use crate::{
     card::{Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    effect::Effect,
     game::PlayerId,
-    state::{CardQuery, ContinuousEffect, State},
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
-pub struct KingOfTheRealm {
+pub struct CrownPrince {
     pub unit_base: UnitBase,
     pub card_base: CardBase,
 }
 
-impl KingOfTheRealm {
-    pub const NAME: &'static str = "King of the Realm";
-    pub const DESCRIPTION: &'static str = "Other Mortals have +1 power.\r \r You control all Mortals.";
+impl CrownPrince {
+    pub const NAME: &'static str = "Crown Prince";
+    pub const DESCRIPTION: &'static str =
+        "Deathrite → If you control another Mortal, return Crown Prince to its owner's hand.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -28,7 +30,7 @@ impl KingOfTheRealm {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::basic(7, "EEE"),
+                costs: Costs::basic(3, "EE"),
                 region: Region::Surface,
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
@@ -41,7 +43,7 @@ impl KingOfTheRealm {
 }
 
 #[async_trait::async_trait]
-impl Card for KingOfTheRealm {
+impl Card for CrownPrince {
     fn get_name(&self) -> &str {
         Self::NAME
     }
@@ -66,24 +68,36 @@ impl Card for KingOfTheRealm {
         Some(&mut self.unit_base)
     }
 
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
-        Ok(vec![
-            ContinuousEffect::ModifyPower {
-                power_diff: 1,
-                affected_cards: CardQuery::new()
-                    .minion_types(vec![MinionType::Mortal])
-                    .in_play()
-                    .id_not_in(vec![self.get_id().clone()]),
-            },
-            ContinuousEffect::ControllerOverride {
-                controller_id: self.get_controller_id(state),
-                affected_cards: CardQuery::new().minion_types(vec![MinionType::Mortal]).in_play(),
-            },
-        ])
+    fn deathrite(&self, state: &State, _from: &Zone) -> Vec<Effect> {
+        let controller_id = self.get_controller_id(state);
+        let self_id = self.get_id().clone();
+
+        let other_mortal_exists = CardQuery::new()
+            .controlled_by(&controller_id)
+            .minions()
+            .in_play()
+            .id_not_in(vec![self_id.clone()])
+            .all(state)
+            .into_iter()
+            .any(|id| {
+                state
+                    .get_card(&id)
+                    .get_unit_base()
+                    .map_or(false, |ub| ub.types.contains(&MinionType::Mortal))
+            });
+
+        if other_mortal_exists {
+            vec![Effect::SetCardZone {
+                card_id: self_id,
+                zone: Zone::Hand,
+            }]
+        } else {
+            vec![]
+        }
     }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (KingOfTheRealm::NAME, |owner_id: PlayerId| {
-    Box::new(KingOfTheRealm::new(owner_id))
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (CrownPrince::NAME, |owner_id: PlayerId| {
+    Box::new(CrownPrince::new(owner_id))
 });

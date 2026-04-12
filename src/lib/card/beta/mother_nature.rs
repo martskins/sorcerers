@@ -70,6 +70,9 @@ impl Card for MotherNature {
 
     async fn on_turn_start(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
+        if state.current_player != controller_id {
+            return Ok(vec![]);
+        }
         let deck = state.get_player_deck(&controller_id)?;
         if let Some(top_card_id) = deck.peek_spell() {
             let player = state.get_player(&controller_id)?;

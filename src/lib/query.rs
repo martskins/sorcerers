@@ -364,9 +364,9 @@ impl EffectQuery {
                     ..
                 },
             ) => Ok(optional_player_matches(query_player_id, effect_player_id)),
-            (EffectQuery::DamageDealt { source, target }, Effect::TakeDamage { card_id, .. }) => {
+            (EffectQuery::DamageDealt { source, target }, Effect::TakeDamage { card_id, from, .. }) => {
                 if let Some(source) = source {
-                    if !source.matches(card_id, state) {
+                    if !source.matches(from, state) {
                         return Ok(false);
                     }
                 }

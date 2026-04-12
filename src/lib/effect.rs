@@ -3,7 +3,7 @@ use crate::{
     game::{BaseAction, Direction, PlayerAction, PlayerId, SoundEffect, pick_card, pick_option},
     networking::message::ServerMessage,
     query::{EffectQuery, QueryCache, ZoneQuery},
-    state::{CardQuery, DeferredEffect, Phase, State, TemporaryEffect},
+    state::{CardQuery, ContinuousEffect, DeferredEffect, Phase, State, TemporaryEffect},
 };
 use std::fmt::Debug;
 
@@ -170,6 +170,10 @@ pub enum Effect {
         card_id: uuid::Uuid,
         from: Zone,
     },
+    KillMinion {
+        card_id: uuid::Uuid,
+        killer_id: uuid::Uuid,
+    },
     BuryCard {
         card_id: uuid::Uuid,
     },
@@ -280,6 +284,7 @@ impl Effect {
             Effect::Attack { attacker_id, .. } => Some(attacker_id),
             Effect::TakeDamage { card_id, .. } => Some(card_id),
             Effect::BanishCard { card_id, .. } => Some(card_id),
+            Effect::KillMinion { card_id, .. } => Some(card_id),
             Effect::BuryCard { card_id } => Some(card_id),
             Effect::SetCardData { card_id, .. } => Some(card_id),
             Effect::TeleportCard { player_id, .. } => Some(player_id),
@@ -450,6 +455,11 @@ impl Effect {
                 let attacker = state.get_card(from).get_name();
                 let defender = state.get_card(card_id).get_name();
                 Some(format!("{} takes {} damage from {}", defender, damage, attacker))
+            }
+            Effect::KillMinion { card_id, killer_id } => {
+                let card = state.get_card(card_id);
+                let killer = state.get_card(killer_id);
+                Some(format!("{} kills {}", card.get_name(), killer.get_name()))
             }
             Effect::BuryCard { card_id, .. } => {
                 let card = state.get_card(card_id);
@@ -1011,11 +1021,7 @@ impl Effect {
                 *player_mana = available_mana;
 
                 let mut all_effects: Vec<Effect> = vec![];
-                for card in state.cards.iter().filter(|c| c.get_owner_id() == &state.current_player) {
-                    if !card.get_zone().is_in_play() {
-                        continue;
-                    }
-
+                for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
                     let effects = card.on_turn_start(state).await?;
                     all_effects.extend(effects);
                 }
@@ -1200,8 +1206,14 @@ impl Effect {
                 card_id, damage, from, ..
             } => {
                 let snapshot = state.snapshot();
+                // Check if this card has DoubleDamageTaken applied to it.
+                let takes_double_damage = snapshot.continuous_effects.iter().any(|ce| {
+                    matches!(ce, ContinuousEffect::DoubleDamageTaken { affected_cards }
+                        if affected_cards.matches(card_id, &snapshot))
+                });
+                let multiplier: u16 = if takes_double_damage { 2 } else { 1 };
                 let card = state.get_card_mut(card_id);
-                let effects = card.on_take_damage(&snapshot, from, *damage)?;
+                let effects = card.on_take_damage(&snapshot, from, *damage * multiplier)?;
                 state.queue(effects);
             }
             Effect::BanishCard { card_id, .. } => {
@@ -1224,6 +1236,11 @@ impl Effect {
                 for borne_card_id in borne_cards {
                     state.get_card_mut(&borne_card_id).set_bearer_id(None);
                 }
+            }
+            Effect::KillMinion { card_id, .. } => {
+                state.queue_one(Effect::BuryCard {
+                    card_id: card_id.clone(),
+                });
             }
             Effect::BuryCard { card_id, .. } => {
                 let card = state.get_card_mut(card_id);

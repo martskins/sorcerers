@@ -1,24 +1,25 @@
 use crate::{
     card::{Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    effect::Effect,
     game::PlayerId,
-    state::{CardQuery, ContinuousEffect, State},
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
-pub struct KingOfTheRealm {
+pub struct DeathDealer {
     pub unit_base: UnitBase,
     pub card_base: CardBase,
 }
 
-impl KingOfTheRealm {
-    pub const NAME: &'static str = "King of the Realm";
-    pub const DESCRIPTION: &'static str = "Other Mortals have +1 power.\r \r You control all Mortals.";
+impl DeathDealer {
+    pub const NAME: &'static str = "Death Dealer";
+    pub const DESCRIPTION: &'static str = "Genesis → Kill all other minions.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
             unit_base: UnitBase {
-                power: 3,
-                toughness: 3,
+                power: 4,
+                toughness: 2,
                 abilities: vec![],
                 types: vec![MinionType::Mortal],
                 ..Default::default()
@@ -28,7 +29,7 @@ impl KingOfTheRealm {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::basic(7, "EEE"),
+                costs: Costs::basic(7, "FF"),
                 region: Region::Surface,
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
@@ -41,7 +42,7 @@ impl KingOfTheRealm {
 }
 
 #[async_trait::async_trait]
-impl Card for KingOfTheRealm {
+impl Card for DeathDealer {
     fn get_name(&self) -> &str {
         Self::NAME
     }
@@ -66,24 +67,24 @@ impl Card for KingOfTheRealm {
         Some(&mut self.unit_base)
     }
 
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
-        Ok(vec![
-            ContinuousEffect::ModifyPower {
-                power_diff: 1,
-                affected_cards: CardQuery::new()
-                    .minion_types(vec![MinionType::Mortal])
-                    .in_play()
-                    .id_not_in(vec![self.get_id().clone()]),
-            },
-            ContinuousEffect::ControllerOverride {
-                controller_id: self.get_controller_id(state),
-                affected_cards: CardQuery::new().minion_types(vec![MinionType::Mortal]).in_play(),
-            },
-        ])
+    async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+        let self_id = self.get_id().clone();
+
+        Ok(CardQuery::new()
+            .minions()
+            .in_play()
+            .id_not_in(vec![self_id])
+            .all(state)
+            .into_iter()
+            .map(|id| Effect::KillMinion {
+                card_id: id,
+                killer_id: self.get_id().clone(),
+            })
+            .collect())
     }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (KingOfTheRealm::NAME, |owner_id: PlayerId| {
-    Box::new(KingOfTheRealm::new(owner_id))
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (DeathDealer::NAME, |owner_id: PlayerId| {
+    Box::new(DeathDealer::new(owner_id))
 });
