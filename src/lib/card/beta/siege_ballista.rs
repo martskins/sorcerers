@@ -68,6 +68,7 @@ impl ActivatedAbility for TapToDealDamage {
                 card_id: picked_unit_id,
                 from: bearer_id,
                 damage: 3,
+                is_strike: false,
             }]);
         }
 

@@ -104,8 +104,8 @@ impl Card for SkirmishersOfMu {
         let picked_unit_id = picked_unit_id.expect("value to not be None");
 
         Ok(vec![Effect::RangedStrike {
-            attacker_id: self.get_id().clone(),
-            defender_id: picked_unit_id,
+            striker_id: self.get_id().clone(),
+            target_id: picked_unit_id,
         }])
     }
 }

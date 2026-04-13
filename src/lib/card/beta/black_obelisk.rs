@@ -102,6 +102,7 @@ impl Card for BlackObelisk {
             card_id: avatar_id,
             from: site.get_id().clone(),
             damage: 2,
+            is_strike: false,
         }])
     }
 }

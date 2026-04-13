@@ -73,11 +73,18 @@ impl Card for CriticalStrike {
                 }),
                 on_effect: Arc::new(move |_state: &State, _card_id: &uuid::Uuid, effect: &Effect| {
                     Box::pin(async move {
-                        if let Effect::TakeDamage { card_id, from, damage } = effect {
+                        if let Effect::TakeDamage {
+                            card_id,
+                            from,
+                            damage,
+                            is_strike,
+                        } = effect
+                        {
                             Ok(vec![Effect::TakeDamage {
                                 card_id: card_id.clone(),
                                 from: from.clone(),
                                 damage: *damage,
+                                is_strike: *is_strike,
                             }])
                         } else {
                             Ok(vec![])

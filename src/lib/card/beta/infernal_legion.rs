@@ -81,6 +81,7 @@ impl Card for InfernalLegion {
                 card_id: unit,
                 from: self.get_id().clone(),
                 damage: 3,
+                is_strike: false,
             });
         }
         Ok(effects)

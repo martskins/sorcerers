@@ -75,10 +75,9 @@ impl Card for WraetannisTitan {
             .iter()
             .map(|c| c.get_id())
             .cloned()
-            .map(|id| Effect::TakeDamage {
-                card_id: id.clone(),
-                from: self.get_id().clone(),
-                damage: self.get_power(state).unwrap_or_default().unwrap_or_default(),
+            .map(|id| Effect::Strike {
+                striker_id: id.clone(),
+                target_id: self.get_id().clone(),
             })
             .collect();
         Ok(effects)

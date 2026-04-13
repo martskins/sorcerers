@@ -87,8 +87,8 @@ impl Card for Backstab {
         let target_id = target_id.expect("target_id to not be None");
 
         Ok(vec![Effect::Strike {
-            attacker_id: mover_id,
-            defender_id: target_id,
+            striker_id: mover_id,
+            target_id: target_id,
         }])
     }
 }

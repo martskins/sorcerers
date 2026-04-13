@@ -83,6 +83,7 @@ impl Card for IceLance {
                         card_id,
                         from: caster_id.clone(),
                         damage: dmg,
+                        is_strike: false,
                     });
                 }
             }

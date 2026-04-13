@@ -52,6 +52,7 @@ impl ActivatedAbility for ShootPayload {
                 card_id: unit.get_id().clone(),
                 damage: mana_cost.into(),
                 from: card_id.clone(),
+                is_strike: false,
             })
             .collect())
     }

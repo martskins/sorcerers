@@ -50,6 +50,7 @@ impl ActivatedAbility for RollBoulder {
                 card_id: unit.get_id().clone(),
                 from: boulder.get_id().clone(),
                 damage: 4,
+                is_strike: false,
             });
         }
 
@@ -69,6 +70,7 @@ impl ActivatedAbility for RollBoulder {
                     card_id: unit.get_id().clone(),
                     from: boulder.get_id().clone(),
                     damage: 4,
+                    is_strike: false,
                 });
             }
 

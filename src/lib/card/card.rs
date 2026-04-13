@@ -903,6 +903,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 card_id: attacker_id.clone(),
                 from: self.get_id().clone(),
                 damage: power,
+                is_strike: false,
             }]);
         }
 
@@ -1062,6 +1063,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     card_id: avatar_id,
                     from: from.clone(),
                     damage,
+                    is_strike: false,
                 }])
             }
             _ => Ok(vec![]),

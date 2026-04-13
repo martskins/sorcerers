@@ -71,15 +71,12 @@ impl Card for DoomsdayProphet {
             return Ok(vec![]);
         }
 
-        // TODO: This card should not make cards take double damage if the damage is from a strike
-        // (i.e: ranged strike, or damage that is dealt for example by Bull Demons of Adum's
-        // ability. This implementation does not currently check for this and will apply the double
-        // damage effect to all damage taken by affected cards, which is not correct.
         Ok(vec![ContinuousEffect::DoubleDamageTaken {
             affected_cards: CardQuery::new()
                 .near_to(self.get_zone())
                 .units()
                 .id_not_in(vec![self.get_id().clone()]),
+            except_strikes: true,
         }])
     }
 }

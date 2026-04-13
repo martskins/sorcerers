@@ -1059,8 +1059,8 @@ impl ActivatedAbility for UnitAction {
                 let prompt = "Pick a unit to attack";
                 let picked_card_id = pick_card(player_id, &cards, state, prompt).await?;
                 Ok(vec![Effect::RangedStrike {
-                    attacker_id: card_id.clone(),
-                    defender_id: picked_card_id,
+                    striker_id: card_id.clone(),
+                    target_id: picked_card_id,
                 }])
             }
             UnitAction::Attack => {
@@ -1162,6 +1162,7 @@ impl ActivatedAbility for UnitAction {
                                         card_id: defender_id.clone(),
                                         from: card_id.clone(),
                                         damage,
+                                        is_strike: false,
                                     });
 
                                     let defender = state.get_card(&defender_id);

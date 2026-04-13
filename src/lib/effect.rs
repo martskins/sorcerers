@@ -150,12 +150,12 @@ pub enum Effect {
         mana: u8,
     },
     RangedStrike {
-        attacker_id: uuid::Uuid,
-        defender_id: uuid::Uuid,
+        striker_id: uuid::Uuid,
+        target_id: uuid::Uuid,
     },
     Strike {
-        attacker_id: uuid::Uuid,
-        defender_id: uuid::Uuid,
+        striker_id: uuid::Uuid,
+        target_id: uuid::Uuid,
     },
     Attack {
         attacker_id: uuid::Uuid,
@@ -165,6 +165,7 @@ pub enum Effect {
         card_id: uuid::Uuid,
         from: uuid::Uuid,
         damage: u16,
+        is_strike: bool,
     },
     BanishCard {
         card_id: uuid::Uuid,
@@ -241,6 +242,16 @@ impl Effect {
             card_id: card_id.clone(),
             from: from.clone(),
             damage,
+            is_strike: false,
+        }
+    }
+
+    pub fn strike_damage(card_id: &uuid::Uuid, from: &uuid::Uuid, damage: u16) -> Self {
+        Effect::TakeDamage {
+            card_id: card_id.clone(),
+            from: from.clone(),
+            damage,
+            is_strike: true,
         }
     }
 
@@ -279,8 +290,8 @@ impl Effect {
             Effect::StartTurn { player_id } => Some(player_id),
             Effect::ConsumeMana { player_id, .. } => Some(player_id),
             Effect::AddMana { player_id, .. } => Some(player_id),
-            Effect::Strike { attacker_id, .. } => Some(attacker_id),
-            Effect::RangedStrike { attacker_id, .. } => Some(attacker_id),
+            Effect::Strike { striker_id, .. } => Some(striker_id),
+            Effect::RangedStrike { striker_id, .. } => Some(striker_id),
             Effect::Attack { attacker_id, .. } => Some(attacker_id),
             Effect::TakeDamage { card_id, .. } => Some(card_id),
             Effect::BanishCard { card_id, .. } => Some(card_id),
@@ -425,14 +436,11 @@ impl Effect {
             Effect::StartTurn { .. } => None,
             Effect::ConsumeMana { .. } => None,
             Effect::AddMana { .. } => None,
-            Effect::Strike {
-                attacker_id,
-                defender_id,
-            } => Some(format!(
+            Effect::Strike { striker_id, target_id } => Some(format!(
                 "{} strikes {} with {}",
-                player_name(&state.get_card(attacker_id).get_controller_id(state), state),
-                state.get_card(defender_id).get_name(),
-                state.get_card(attacker_id).get_name(),
+                player_name(&state.get_card(striker_id).get_controller_id(state), state),
+                state.get_card(target_id).get_name(),
+                state.get_card(striker_id).get_name(),
             )),
             Effect::Attack {
                 attacker_id,
@@ -716,13 +724,23 @@ impl Effect {
                     };
 
                     if let Some(picked_unit_id) = picked_unit_id {
-                        effects.push(Effect::take_damage(&picked_unit_id, shooter, *damage));
+                        effects.push(Effect::TakeDamage {
+                            card_id: picked_unit_id.clone(),
+                            from: shooter.clone(),
+                            damage: *damage,
+                            is_strike: false,
+                        });
                         if let Some(splash_damage) = splash_damage {
                             let splash_effects = state
                                 .get_units_in_zone(&zone)
                                 .iter()
                                 .filter(|c| c.get_id() != &picked_unit_id)
-                                .map(|c| Effect::take_damage(c.get_id(), shooter, *splash_damage))
+                                .map(|c| Effect::TakeDamage {
+                                    card_id: c.get_id().clone(),
+                                    from: shooter.clone(),
+                                    damage: *splash_damage,
+                                    is_strike: false,
+                                })
                                 .collect::<Vec<_>>();
                             effects.extend(splash_effects);
                         }
@@ -1092,22 +1110,20 @@ impl Effect {
                 let player_mana = state.get_player_mana_mut(player_id);
                 *player_mana += mana;
             }
-            Effect::Strike {
-                attacker_id,
-                defender_id,
-            } => {
+            Effect::Strike { striker_id, target_id } => {
                 let snapshot = state.snapshot();
-                let attacker = state.get_card(attacker_id);
-                let defender = state.get_card(defender_id);
+                let attacker = state.get_card(striker_id);
+                let defender = state.get_card(target_id);
                 let mut effects = vec![Effect::TakeDamage {
-                    card_id: defender_id.clone(),
-                    from: attacker_id.clone(),
+                    card_id: target_id.clone(),
+                    from: striker_id.clone(),
                     damage: attacker
                         .get_power(&snapshot)?
                         .ok_or(anyhow::anyhow!("attacker has no power"))?,
+                    is_strike: true,
                 }];
 
-                effects.extend(defender.on_defend(state, attacker_id)?.into_iter().map(|e| e.into()));
+                effects.extend(defender.on_defend(state, striker_id)?.into_iter().map(|e| e.into()));
                 effects.reverse();
                 state.queue(effects);
             }
@@ -1146,6 +1162,7 @@ impl Effect {
                     damage: first_striker
                         .get_power(&snapshot)?
                         .ok_or(anyhow::anyhow!("attacker has no power"))?,
+                    is_strike: false,
                 });
 
                 let mut snapshot = state.snapshot();
@@ -1184,6 +1201,7 @@ impl Effect {
                         card_id: unit_id,
                         from: from.clone(),
                         damage: *damage,
+                        is_strike: false,
                     });
                 }
             }
@@ -1199,17 +1217,21 @@ impl Effect {
                         card_id: target,
                         from: from.clone(),
                         damage: *damage,
+                        is_strike: false,
                     });
                 }
             }
             Effect::TakeDamage {
-                card_id, damage, from, ..
+                card_id,
+                damage,
+                from,
+                is_strike,
             } => {
                 let snapshot = state.snapshot();
                 // Check if this card has DoubleDamageTaken applied to it.
                 let takes_double_damage = snapshot.continuous_effects.iter().any(|ce| {
-                    matches!(ce, ContinuousEffect::DoubleDamageTaken { affected_cards }
-                        if affected_cards.matches(card_id, &snapshot))
+                    matches!(ce, ContinuousEffect::DoubleDamageTaken { affected_cards, except_strikes }
+                        if affected_cards.matches(card_id, &snapshot) && !(*except_strikes && *is_strike))
                 });
                 let multiplier: u16 = if takes_double_damage { 2 } else { 1 };
                 let card = state.get_card_mut(card_id);
@@ -1292,22 +1314,21 @@ impl Effect {
                 card.set_data(data)?;
             }
             Effect::RangedStrike {
-                attacker_id,
-                defender_id,
-                ..
+                striker_id, target_id, ..
             } => {
                 let snapshot = state.snapshot();
-                let attacker = state.get_card(attacker_id);
-                let defender = state.get_card(defender_id);
+                let attacker = state.get_card(striker_id);
+                let defender = state.get_card(target_id);
                 let mut effects = vec![Effect::TakeDamage {
-                    card_id: defender_id.clone(),
-                    from: attacker_id.clone(),
+                    card_id: target_id.clone(),
+                    from: striker_id.clone(),
                     damage: attacker
                         .get_power(&snapshot)?
                         .ok_or(anyhow::anyhow!("attacker has no power"))?,
+                    is_strike: true,
                 }];
                 effects.extend(attacker.after_ranged_attack(state).await?);
-                effects.extend(defender.on_defend(state, attacker_id)?.into_iter().map(|e| e.into()));
+                effects.extend(defender.on_defend(state, striker_id)?.into_iter().map(|e| e.into()));
                 state.queue(effects);
             }
             Effect::TeleportCard {

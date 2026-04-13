@@ -112,6 +112,7 @@ impl Card for DoomsdayDevice {
                     card_id: id,
                     from: self_id.clone(),
                     damage: 6,
+                    is_strike: false,
                 })
                 .collect();
 

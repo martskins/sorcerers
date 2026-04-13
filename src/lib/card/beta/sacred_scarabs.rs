@@ -81,6 +81,7 @@ impl Card for SacredScarabs {
                 card_id: unit,
                 from: self.get_id().clone(),
                 damage: 3,
+                is_strike: false,
             });
         }
         effects

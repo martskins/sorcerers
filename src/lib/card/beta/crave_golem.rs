@@ -87,10 +87,9 @@ impl Card for CraveGolem {
             .await?;
         match target_id {
             Some(card_id) => {
-                return Ok(vec![Effect::TakeDamage {
-                    card_id: card_id,
-                    from: self.get_id().clone(),
-                    damage: self.get_power(state)?.unwrap_or(0),
+                return Ok(vec![Effect::Attack {
+                    attacker_id: self.get_id().clone(),
+                    defender_id: card_id,
                 }]);
             }
             None => {

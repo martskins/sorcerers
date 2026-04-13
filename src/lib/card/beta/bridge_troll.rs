@@ -106,6 +106,7 @@ impl Card for BridgeTroll {
                 card_id: attacker_id.clone(),
                 from: self.get_id().clone(),
                 damage: power,
+                is_strike: false,
             });
         }
 

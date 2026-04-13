@@ -28,10 +28,9 @@ impl ActivatedAbility for TapToStrikeNearbyMinions {
             .id_not_in(vec![kraken.get_id().clone()])
             .all(state)
             .into_iter()
-            .map(|unit_id| Effect::TakeDamage {
-                card_id: unit_id.clone(),
-                from: kraken.get_id().clone(),
-                damage: kraken.get_power(state).unwrap().unwrap(),
+            .map(|unit_id| Effect::Strike {
+                striker_id: unit_id.clone(),
+                target_id: kraken.get_id().clone(),
             })
             .collect::<Vec<Effect>>();
 

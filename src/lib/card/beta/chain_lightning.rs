@@ -79,6 +79,7 @@ impl Card for ChainLightning {
                 card_id: picked_card_id.clone(),
                 from: self.get_id().clone(),
                 damage: 2,
+                is_strike: false,
             };
 
             // apply the effect the the local_state to keep track of the updated zones

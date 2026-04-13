@@ -50,12 +50,9 @@ impl ActivatedAbility for TapMoveAndStrike {
                         .all(state);
 
                     for target_id in targets {
-                        effects.push(Effect::TakeDamage {
-                            card_id: target_id,
-                            from: card_id.clone(),
-                            damage: bull_demons
-                                .get_power(state)?
-                                .ok_or_else(|| anyhow::anyhow!("Bull Demons has no power"))?,
+                        effects.push(Effect::Strike {
+                            striker_id: card_id.clone(),
+                            target_id: target_id,
                         });
                     }
 
@@ -162,8 +159,8 @@ impl Card for BullDemonsOfAdum {
             .all(state)
             .into_iter()
             .map(|target_id| Effect::RangedStrike {
-                attacker_id: self.get_id().clone(),
-                defender_id: target_id.clone(),
+                striker_id: self.get_id().clone(),
+                target_id: target_id.clone(),
             })
             .collect())
     }

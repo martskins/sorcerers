@@ -773,6 +773,7 @@ pub enum ContinuousEffect {
     },
     DoubleDamageTaken {
         affected_cards: CardQuery,
+        except_strikes: bool,
     },
     ChangeSiteType {
         site_type: SiteType,

@@ -87,6 +87,7 @@ impl Card for DevilSEgg {
             card_id: avatar_id,
             from: self.get_id().clone(),
             damage: 1,
+            is_strike: false,
         }])
     }
 }
