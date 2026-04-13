@@ -60,16 +60,15 @@ impl Card for Upwelling {
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
         let caster = state.get_card(caster_id);
-        let site_id = CardQuery::new()
+        let Some(site_id) = CardQuery::new()
             .sites()
             .near_to(caster.get_zone())
             .with_prompt("Upwelling: Pick a site")
             .pick(&controller_id, state, false)
-            .await?;
-        if site_id.is_none() {
+            .await?
+        else {
             return Ok(vec![]);
-        }
-        let site_id = site_id.expect("value not to be None");
+        };
         let site = state.get_card(&site_id);
         let effects = CardQuery::new()
             .in_zone(site.get_zone())

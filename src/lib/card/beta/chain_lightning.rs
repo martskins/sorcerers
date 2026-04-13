@@ -64,16 +64,15 @@ impl Card for ChainLightning {
         let mut local_state = state.snapshot();
         let controller_id = self.get_controller_id(state);
         loop {
-            let picked_card_id = CardQuery::new()
+            let Some(picked_card_id) = CardQuery::new()
                 .units()
                 .near_to(&last_hit_zone)
                 .with_prompt("Chain Lightning: Pick a unit to deal 2 damage to")
                 .pick(&controller_id, &local_state, false)
-                .await?;
-            if picked_card_id.is_none() {
+                .await?
+            else {
                 break;
-            }
-            let picked_card_id = picked_card_id.expect("value to not be None");
+            };
 
             let effect = Effect::TakeDamage {
                 card_id: picked_card_id.clone(),

@@ -69,17 +69,17 @@ impl Card for AridDesert {
 
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        let picked_site_id = CardQuery::new()
+        let Some(picked_site_id) = CardQuery::new()
             .sites()
             .near_to(self.get_zone())
             .with_prompt("Red Desert: Pick a site to deal 1 damage to all atop units")
             .pick(&controller_id, state, false)
-            .await?;
-        if picked_site_id.is_none() {
+            .await?
+        else {
             return Ok(vec![]);
-        }
+        };
 
-        let site = state.get_card(&picked_site_id.expect("picked_site_id to not be None"));
+        let site = state.get_card(&picked_site_id);
         let units = state.get_minions_in_zone(site.get_zone());
         let units = units.iter().filter(|c| c.get_base().region == Region::Surface);
         let mut effects = vec![];

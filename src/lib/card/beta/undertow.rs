@@ -79,16 +79,15 @@ impl Card for Undertow {
             .get_body_of_water_at(self.get_zone())
             .ok_or(anyhow::anyhow!("Undertow must be in a body of water"))?;
         let controller_id = self.get_controller_id(state);
-        let unit_id = CardQuery::new()
+        let Some(unit_id) = CardQuery::new()
             .units()
             .with_prompt("Undertow: Choose a unit in the same body of water to move")
             .in_zones(&body_of_water)
             .pick(&controller_id, state, false)
-            .await?;
-        if unit_id.is_none() {
+            .await?
+        else {
             return Ok(vec![]);
-        }
-        let unit_id = unit_id.expect("value to not be None");
+        };
         let unit = state.get_card(&unit_id);
         let zones = unit.get_zones_within_steps(state, 1);
         let picked_zone = pick_zone(

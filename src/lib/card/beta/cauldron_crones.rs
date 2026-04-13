@@ -81,18 +81,17 @@ impl Card for CauldronCrones {
             return Ok(vec![]);
         }
 
-        let picked = CardQuery::new()
+        let Some(picked) = CardQuery::new()
             .minions()
             .controlled_by(&controller_id)
             .in_zone(self.get_zone())
             .id_not_in(vec![self.get_id().clone()])
             .with_prompt("Cauldron Crones: Choose a minion to sacrifice")
             .pick(&controller_id, state, false)
-            .await?;
-        if picked.is_none() {
+            .await?
+        else {
             return Ok(vec![]);
-        }
-        let picked = picked.expect("value not to be None");
+        };
         Ok(vec![
             Effect::BuryCard { card_id: picked },
             Effect::DrawSpell {

@@ -66,17 +66,17 @@ impl Card for AtlasWanderers {
 
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        let picked_site_id = CardQuery::new()
+        let Some(picked_site_id) = CardQuery::new()
             .sites()
             .adjacent_to(self.get_zone())
             .with_prompt("Atlas Wanderers: Pick an adjacent site to swap with")
             .pick(&controller_id, state, false)
-            .await?;
-        if picked_site_id.is_none() {
+            .await?
+        else {
             return Ok(vec![]);
-        }
+        };
 
-        let picked_site = state.get_card(&picked_site_id.expect("picked_site_id to not be None"));
+        let picked_site = state.get_card(&picked_site_id);
         let from_zone = self.get_zone().clone();
         let to_zone = picked_site.get_zone().clone();
 

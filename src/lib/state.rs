@@ -480,7 +480,7 @@ impl CardQuery {
         }
     }
 
-    pub fn matches(&self, card_id: &uuid::Uuid, state: &State) -> bool {
+    pub(crate) fn matches(&self, card_id: &uuid::Uuid, state: &State) -> bool {
         let card = state.get_card(card_id);
         if let Some(ids) = &self.ids {
             if !ids.contains(card_id) {

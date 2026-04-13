@@ -62,16 +62,15 @@ impl Card for Disintegrate {
     ) -> anyhow::Result<Vec<Effect>> {
         let caster_zone = state.get_card(caster_id).get_zone().clone();
         let controller_id = self.get_controller_id(state);
-        let target_id = CardQuery::new()
+        let Some(target_id) = CardQuery::new()
             .minions()
             .near_to(&caster_zone)
             .with_prompt("Disintegrate: Choose a minion to banish")
             .pick(&controller_id, state, false)
-            .await?;
-        if target_id.is_none() {
+            .await?
+        else {
             return Ok(vec![]);
-        }
-        let target_id = target_id.expect("value to not be None");
+        };
         let target = state.get_card(&target_id);
         let target_zone = target.get_zone().clone();
 

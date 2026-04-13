@@ -20,18 +20,16 @@ impl ActivatedAbility for AdeptIllusionistAction {
         player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
-        let picked_card_id = CardQuery::new()
+        let Some(picked_card_id) = CardQuery::new()
             .controlled_by(&player_id.clone())
             .cards_named(AdeptIllusionist::NAME)
             .including_not_in_play()
             .id_not_in(vec![card_id.clone()])
             .pick(player_id, state, true)
-            .await?;
-
-        if picked_card_id.is_none() {
+            .await?
+        else {
             return Ok(vec![]);
-        }
-        let picked_card_id = picked_card_id.expect("value not to be None");
+        };
 
         let card = state.get_card(card_id);
         let zone = pick_zone_near(

@@ -60,19 +60,18 @@ impl Card for Backstab {
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
         let caster_region = state.get_card(caster_id).get_region(state).clone();
-        let mover_id = CardQuery::new()
+        let Some(mover_id) = CardQuery::new()
             .card_types(vec![CardType::Minion])
             .in_region(&caster_region)
             .with_prompt("Backstab: Pick a minion to move")
             .pick(&controller_id, state, false)
-            .await?;
-        if mover_id.is_none() {
+            .await?
+        else {
             return Ok(vec![]);
-        }
-        let mover_id = mover_id.expect("mover_id to not be None");
+        };
 
         let mover = state.get_card(&mover_id);
-        let target_id = CardQuery::new()
+        let Some(target_id) = CardQuery::new()
             .card_types(vec![CardType::Minion])
             .in_region(&caster_region)
             .tapped()
@@ -80,11 +79,10 @@ impl Card for Backstab {
             .id_not_in(vec![mover_id.clone()])
             .with_prompt("Backstab: Pick a tapped minion to strike")
             .pick(&controller_id, state, false)
-            .await?;
-        if target_id.is_none() {
+            .await?
+        else {
             return Ok(vec![]);
-        }
-        let target_id = target_id.expect("target_id to not be None");
+        };
 
         Ok(vec![Effect::Strike {
             striker_id: mover_id,

@@ -92,16 +92,15 @@ impl Card for SkirmishersOfMu {
         .await?;
 
         let controller_id = self.get_controller_id(state);
-        let picked_unit_id = CardQuery::new()
+        let Some(picked_unit_id) = CardQuery::new()
             .units()
             .near_to(&picked_zone)
             .with_prompt("Skirmishers of Mu: Pick a target for Ranged Strike")
             .pick(&controller_id, state, false)
-            .await?;
-        if picked_unit_id.is_none() {
+            .await?
+        else {
             return Ok(vec![]);
-        }
-        let picked_unit_id = picked_unit_id.expect("value to not be None");
+        };
 
         Ok(vec![Effect::RangedStrike {
             striker_id: self.get_id().clone(),

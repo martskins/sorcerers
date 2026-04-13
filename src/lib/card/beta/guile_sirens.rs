@@ -77,17 +77,16 @@ impl Card for GuileSirens {
 
         let controller_id = self.get_controller_id(state);
         let opponent_id = state.get_opponent_id(&controller_id)?;
-        let picked_card_id = CardQuery::new()
+        let Some(picked_card_id) = CardQuery::new()
             .controlled_by(&opponent_id)
             .minions()
             .adjacent_to(self.get_zone())
             .with_prompt("Guile Sirens: Pick a minion to lure in")
             .pick(&controller_id, state, false)
-            .await?;
-        if picked_card_id.is_none() {
+            .await?
+        else {
             return Ok(vec![]);
-        }
-        let picked_card_id = picked_card_id.expect("value to not be None");
+        };
         let picked_card = state.get_card(&picked_card_id);
         let zones = picked_card
             .get_zone()

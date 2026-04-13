@@ -58,16 +58,15 @@ impl Card for GrappleShot {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        let picked_card_id = CardQuery::new()
+        let Some(ally_id) = CardQuery::new()
             .units()
             .controlled_by(&controller_id)
             .with_prompt("Grapple Shot: Pick an ally to shoot the projectile")
             .pick(&controller_id, state, false)
-            .await?;
-        if picked_card_id.is_none() {
+            .await?
+        else {
             return Ok(vec![]);
-        }
-        let ally_id = picked_card_id.expect("value not to be None");
+        };
 
         let ally_card = state.get_card(&ally_id);
         let ally_zone = ally_card.get_zone();

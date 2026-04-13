@@ -58,16 +58,15 @@ impl Card for Drown {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        let picked_card_id = CardQuery::new()
+        let Some(picked_card_id) = CardQuery::new()
             .card_types(vec![CardType::Minion, CardType::Artifact])
             .in_regions(vec![Region::Surface])
             .with_prompt("Drown: Pick a minion or artifact to submerge")
             .pick(&controller_id, state, false)
-            .await?;
-        if picked_card_id.is_none() {
+            .await?
+        else {
             return Ok(vec![]);
-        }
-        let picked_card_id = picked_card_id.expect("value to not be None");
+        };
 
         Ok(vec![Effect::SetCardRegion {
             card_id: picked_card_id,

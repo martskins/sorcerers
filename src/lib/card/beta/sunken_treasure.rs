@@ -74,17 +74,16 @@ impl Card for SunkenTreasure {
         let controller_id = self.get_controller_id(state);
         let opponent_id = state.get_opponent_id(&controller_id)?;
 
-        let picked_card_id = CardQuery::new()
+        let Some(picked_card_id) = CardQuery::new()
             .controlled_by(&controller_id)
             .sites()
             .with_prompt("Sunken Treasure: Pick a water site to place the treasure under")
             .water_sites()
             .pick(&opponent_id, state, false)
-            .await?;
-        if picked_card_id.is_none() {
+            .await?
+        else {
             return Ok(vec![]);
-        }
-        let picked_card_id = picked_card_id.expect("value not to be None");
+        };
         let picked_zone = state.get_card(&picked_card_id).get_zone();
         Ok(vec![
             Effect::SetCardRegion {

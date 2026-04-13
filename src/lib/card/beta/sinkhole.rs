@@ -22,16 +22,15 @@ impl ActivatedAbility for DestroyNearbySite {
     ) -> anyhow::Result<Vec<Effect>> {
         let card = state.get_card(card_id);
         let controller_id = card.get_controller_id(state);
-        let picked_card_id = CardQuery::new()
+        let Some(picked_card_id) = CardQuery::new()
             .sites()
             .near_to(card.get_zone())
             .with_prompt("Sinkhole: Pick a site to destroy")
             .pick(&controller_id, state, false)
-            .await?;
-        if picked_card_id.is_none() {
+            .await?
+        else {
             return Ok(vec![]);
-        }
-        let picked_card_id = picked_card_id.expect("value not to be None");
+        };
         Ok(vec![
             Effect::BuryCard {
                 card_id: card_id.clone(),

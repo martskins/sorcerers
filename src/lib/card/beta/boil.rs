@@ -60,16 +60,15 @@ impl Card for Boil {
         let controller_id = self.get_controller_id(state);
         let card = state.get_card(caster_id);
         let zones = card.get_zones_within_steps(state, 2);
-        let picked_site_id = CardQuery::new()
+        let Some(picked_site_id) = CardQuery::new()
             .with_element(Element::Water)
             .in_zones(&zones)
             .sites()
             .pick(&controller_id, state, false)
-            .await?;
-        if picked_site_id.is_none() {
+            .await?
+        else {
             return Ok(vec![]);
-        }
-        let picked_site_id = picked_site_id.expect("value to not be None");
+        };
         let site = state.get_card(&picked_site_id);
         Ok(CardQuery::new()
             .in_zone(site.get_zone())

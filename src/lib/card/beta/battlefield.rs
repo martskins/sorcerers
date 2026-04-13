@@ -77,16 +77,15 @@ impl Card for Battlefield {
 
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        let picked_card_id = CardQuery::new()
+        let Some(picked_card_id) = CardQuery::new()
             .in_zone(&Zone::Cemetery)
             .artifact_types(vec![ArtifactType::Weapon, ArtifactType::Armor])
             .with_prompt("Battlefield: Pick a weapon or armor to conjure")
             .pick(&controller_id, state, true)
-            .await?;
-        if picked_card_id.is_none() {
+            .await?
+        else {
             return Ok(vec![]);
-        }
-        let picked_card_id = picked_card_id.expect("value to not be None");
+        };
 
         Ok(vec![Effect::SummonCard {
             player_id: controller_id,

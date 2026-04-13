@@ -60,28 +60,26 @@ impl Card for Riptide {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        let picked_site_id = CardQuery::new()
+        let Some(picked_site_id) = CardQuery::new()
             .with_affinity(Element::Water)
             .with_prompt("Riptide: Pick a water site to pull a unit into")
             .sites()
             .pick(&controller_id, state, false)
-            .await?;
-        if picked_site_id.is_none() {
+            .await?
+        else {
             return Ok(vec![]);
-        }
-        let picked_site_id = picked_site_id.expect("value not to be None");
+        };
         let site = state.get_card(&picked_site_id);
-        let picked_unit_id = CardQuery::new()
+        let Some(picked_unit_id) = CardQuery::new()
             .minions()
             .adjacent_to(site.get_zone())
             .in_regions(vec![Region::Surface])
             .with_prompt("Riptide: Pick a unit to pull")
             .pick(&controller_id, state, false)
-            .await?;
-        if picked_unit_id.is_none() {
+            .await?
+        else {
             return Ok(vec![]);
-        }
-        let picked_unit_id = picked_unit_id.expect("value not to be None");
+        };
         let unit = state.get_card(&picked_unit_id);
         Ok(vec![
             Effect::MoveCard {
