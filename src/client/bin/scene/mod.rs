@@ -2,6 +2,7 @@ use egui::{Context, Ui};
 use sorcerers::networking::message::ServerMessage;
 
 pub mod action_overlay;
+pub mod card_toast;
 pub mod combat_resolution_overlay;
 pub mod deck_builder;
 pub mod game;

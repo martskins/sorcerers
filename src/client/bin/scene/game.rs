@@ -8,8 +8,8 @@ use crate::{
     input::Mouse,
     render::{self, popup_action_menu},
     scene::{
-        Scene, action_overlay::ActionOverlay, combat_resolution_overlay::CombatResolutionOverlay, menu::Menu,
-        selection_overlay::SelectionOverlay,
+        Scene, action_overlay::ActionOverlay, card_toast::CardToast,
+        combat_resolution_overlay::CombatResolutionOverlay, menu::Menu, selection_overlay::SelectionOverlay,
     },
 };
 use egui::{Color32, Context, FontId, Painter, Rect, RichText, Ui, pos2, vec2};
@@ -169,6 +169,7 @@ pub struct Game {
     data: GameData,
     audio_manager: AudioManager<DefaultBackend>,
     selected_value: Option<Box<dyn std::any::Any>>,
+    card_toast: Option<CardToast>,
 }
 
 impl Game {
@@ -207,6 +208,7 @@ impl Game {
             data: GameData::new(&player_id, cards),
             audio_manager,
             selected_value: None,
+            card_toast: None,
         }
     }
 
@@ -310,6 +312,13 @@ impl Game {
         }
 
         let new_scene = self.render_gui(ui, ctx, &painter);
+
+        // Card-played toast — drawn above the board but below any blocking overlay.
+        if let Some(ref mut toast) = self.card_toast {
+            if !toast.render(ctx, &painter) {
+                self.card_toast = None;
+            }
+        }
 
         if let Some(overlay) = &mut self.overlay {
             if let Err(e) = overlay.render(&mut self.data, ui, &painter) {
@@ -650,6 +659,12 @@ impl Game {
                     prompt.to_string(),
                     action.clone(),
                 )));
+                None
+            }
+            ServerMessage::CardPlayed { card_id, description } => {
+                if let Some(card) = self.data.cards.iter().find(|c| c.id == *card_id).cloned() {
+                    self.card_toast = Some(CardToast::new(card, description.clone()));
+                }
                 None
             }
             ServerMessage::PickCards {

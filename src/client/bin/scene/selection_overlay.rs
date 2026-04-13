@@ -85,7 +85,7 @@ impl SelectionOverlay {
         for (idx, card) in cards.iter().enumerate() {
             let mut size = vec2(cw, ch);
             if card.is_site() {
-                size = vec2(ch, cw);
+                std::mem::swap(&mut size.x, &mut size.y);
             }
             let x = cards_start_x + idx as f32 * (size.x + card_spacing);
             rects.push(CardRect {
@@ -185,7 +185,8 @@ impl SelectionOverlay {
     }
 
     fn render_hover_preview(&self, hovered: &CardRect, ui: &Ui, painter: &Painter) {
-        let screen = screen_rect().unwrap_or(Rect::from_min_size(pos2(0.0, 0.0), vec2(1280.0, 720.0)));
+        let screen =
+            screen_rect().unwrap_or(Rect::from_min_size(pos2(0.0, 0.0), vec2(1280.0, 720.0)));
         let mouse = Mouse::position(ui.ctx()).unwrap_or(hovered.rect.center());
         let preview_scale = 2.0;
         let preview_size = vec2(
@@ -235,7 +236,11 @@ impl Component for SelectionOverlay {
         Ok(())
     }
 
-    fn process_command(&mut self, _command: &ComponentCommand, _data: &mut GameData) -> anyhow::Result<()> {
+    fn process_command(
+        &mut self,
+        _command: &ComponentCommand,
+        _data: &mut GameData,
+    ) -> anyhow::Result<()> {
         Ok(())
     }
 
@@ -297,7 +302,12 @@ impl Component for SelectionOverlay {
         Ok(None)
     }
 
-    fn render(&mut self, _data: &mut GameData, ui: &mut Ui, painter: &Painter) -> anyhow::Result<()> {
+    fn render(
+        &mut self,
+        _data: &mut GameData,
+        ui: &mut Ui,
+        painter: &Painter,
+    ) -> anyhow::Result<()> {
         let sw = screen_rect().map(|r| r.width()).unwrap_or(1280.0);
         let sh = screen_rect().map(|r| r.height()).unwrap_or(720.0);
         let title = ui.fonts(|f| {
@@ -313,7 +323,11 @@ impl Component for SelectionOverlay {
             0.0,
             Color32::from_rgba_unmultiplied(0, 0, 0, 204),
         );
-        painter.galley(pos2(sw / 2.0 - title.size().x / 2.0, 30.0), title, Color32::WHITE);
+        painter.galley(
+            pos2(sw / 2.0 - title.size().x / 2.0, 30.0),
+            title,
+            Color32::WHITE,
+        );
 
         for card_rect in &self.card_rects {
             render::draw_card(
@@ -322,8 +336,14 @@ impl Component for SelectionOverlay {
                 false,
                 painter,
             );
-            if self.behaviour == SelectionOverlayBehaviour::Pick && !self.is_pickable(&card_rect.card.id) {
-                painter.rect_filled(card_rect.rect, 4.0, Color32::from_rgba_unmultiplied(0, 0, 0, 110));
+            if self.behaviour == SelectionOverlayBehaviour::Pick
+                && !self.is_pickable(&card_rect.card.id)
+            {
+                painter.rect_filled(
+                    card_rect.rect,
+                    4.0,
+                    Color32::from_rgba_unmultiplied(0, 0, 0, 110),
+                );
             }
         }
 
@@ -338,8 +358,12 @@ impl Component for SelectionOverlay {
             egui::Area::new(egui::Id::new("selection_close_btn"))
                 .fixed_pos(close_button_pos)
                 .show(ui.ctx(), |ui| {
-                    let close = egui::Button::new(egui::RichText::new("Close").size(22.0).color(Color32::WHITE))
-                        .min_size(vec2(120.0, 44.0));
+                    let close = egui::Button::new(
+                        egui::RichText::new("Close")
+                            .size(22.0)
+                            .color(Color32::WHITE),
+                    )
+                    .min_size(vec2(120.0, 44.0));
                     if ui.add(close).clicked() {
                         self.close = true;
                     }

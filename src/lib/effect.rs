@@ -310,6 +310,16 @@ impl Effect {
         }
     }
 
+    /// Returns the card ID if this effect represents a card being played from hand
+    /// (PlayCard or PlayMagic), so clients can display the card face to all players.
+    pub fn played_card_id(&self) -> Option<uuid::Uuid> {
+        match self {
+            Effect::PlayCard { card_id, .. } => Some(*card_id),
+            Effect::PlayMagic { card_id, .. } => Some(*card_id),
+            _ => None,
+        }
+    }
+
     pub async fn description(&self, state: &State) -> anyhow::Result<Option<String>> {
         let desc = match self {
             Effect::PlayerLost { player_id } => Some(format!("{} has lost the game", player_name(player_id, state))),
@@ -358,7 +368,11 @@ impl Effect {
                 ))
             }
             Effect::AddAbilityCounter { .. } => None,
-            Effect::AddCounter { .. } => None,
+            Effect::AddCounter { card_id, counter } => {
+                let card = state.get_card(card_id).get_name();
+                let fmt = |v: i16| if v >= 0 { format!("+{}", v) } else { format!("{}", v) };
+                Some(format!("{} gets a {}/{} counter", card, fmt(counter.power), fmt(counter.toughness)))
+            }
             Effect::SetCardZone { .. } => None,
             Effect::DiscardCard { card_id, player_id } => {
                 let card = state.get_card(card_id).get_name();
@@ -372,31 +386,35 @@ impl Effect {
                 from,
                 ..
             } => {
-                // Calling resolve here should result in us getting the result from the cache,
-                // as the effect should have been applied already.
                 let card = state.get_card(card_id);
-                if card.get_zone() != from {
+                // If the card is still at `from`, the move was a no-op — don't log it
+                if card.get_zone() == from {
                     return Ok(None);
                 }
 
                 let card_name = card.get_name();
                 match through_path {
                     Some(path) => Some(format!(
-                        "{} moves {} to {} through path {}",
-                        player_name(&player_id, state),
+                        "{} moves {} through {}",
+                        player_name(player_id, state),
                         card_name,
-                        to.resolve(player_id, state).await?,
-                        path.iter().map(|c| format!("{}", c)).collect::<Vec<_>>().join(" -> "),
+                        path.iter().map(|c| format!("{}", c)).collect::<Vec<_>>().join(" → "),
                     )),
                     None => Some(format!(
                         "{} moves {} to {}",
-                        player_name(&player_id, state),
+                        player_name(player_id, state),
                         card_name,
                         to.resolve(player_id, state).await?,
                     )),
                 }
             }
-            Effect::DrawCard { .. } => None,
+            Effect::DrawCard { player_id, count } => {
+                if *count == 0 {
+                    return Ok(None);
+                }
+                let cards = if *count == 1 { "card" } else { "cards" };
+                Some(format!("{} draws {} {}", player_name(player_id, state), count, cards))
+            }
             Effect::DrawSite { player_id, count, .. } => {
                 if *count == 0 {
                     return Ok(None);
@@ -410,10 +428,13 @@ impl Effect {
                     return Ok(None);
                 }
 
-                let spells = if *count == 1 { "site" } else { "sites" };
+                let spells = if *count == 1 { "spell" } else { "spells" };
                 Some(format!("{} draws {} {}", player_name(player_id, state), count, spells))
             }
-            Effect::PlayMagic { .. } => None,
+            Effect::PlayMagic { player_id, card_id, .. } => {
+                let card = state.get_card(card_id).get_name();
+                Some(format!("{} casts {}", player_name(player_id, state), card))
+            }
             Effect::PlayCard {
                 player_id,
                 card_id,
@@ -428,12 +449,34 @@ impl Effect {
                     zone.resolve(player_id, state).await?,
                 ))
             }
-            Effect::SummonCards { .. } => None,
-            Effect::SummonCard { .. } => None,
+            Effect::SummonCards { cards } => {
+                if cards.is_empty() {
+                    None
+                } else {
+                    let parts: Vec<String> = cards
+                        .iter()
+                        .map(|(player_id, card_id, zone)| {
+                            format!(
+                                "{} summons {} in {}",
+                                player_name(player_id, state),
+                                state.get_card(card_id).get_name(),
+                                zone
+                            )
+                        })
+                        .collect();
+                    Some(parts.join("; "))
+                }
+            }
+            Effect::SummonCard { player_id, card_id, zone } => {
+                let card = state.get_card(card_id).get_name();
+                Some(format!("{} summons {} in {}", player_name(player_id, state), card, zone))
+            }
             Effect::TapCard { .. } => None,
             Effect::UntapCard { .. } => None,
             Effect::EndTurn { player_id, .. } => Some(format!("{} passes the turn", player_name(player_id, state))),
-            Effect::StartTurn { .. } => None,
+            Effect::StartTurn { player_id } => {
+                Some(format!("--- {}'s turn begins ---", player_name(player_id, state)))
+            }
             Effect::ConsumeMana { .. } => None,
             Effect::AddMana { .. } => None,
             Effect::Strike { striker_id, target_id } => Some(format!(
@@ -480,10 +523,22 @@ impl Effect {
                 Some(format!("{} banishes {}", player_name(&player, state), card.get_name()))
             }
             Effect::SetCardData { .. } => None,
-            Effect::RangedStrike { .. } => None,
+            Effect::RangedStrike { striker_id, target_id } => Some(format!(
+                "{} ranged strikes {} with {}",
+                player_name(&state.get_card(striker_id).get_controller_id(state), state),
+                state.get_card(target_id).get_name(),
+                state.get_card(striker_id).get_name(),
+            )),
             Effect::DealDamageToTarget { .. } => None,
-            Effect::DealDamageAllUnitsInZone { .. } => None,
-            Effect::TeleportCard { .. } => None,
+            Effect::DealDamageAllUnitsInZone { player_id, zone, from, damage } => {
+                let source = state.get_card(from).get_name();
+                let zone_name = zone.resolve(player_id, state).await?;
+                Some(format!("{} deals {} damage to all units in {}", source, damage, zone_name))
+            }
+            Effect::TeleportCard { player_id, card_id, to_zone } => {
+                let card = state.get_card(card_id).get_name();
+                Some(format!("{} teleports {} to {}", player_name(player_id, state), card, to_zone))
+            }
             Effect::RearrangeDeck { .. } => None,
             Effect::SetBearer { card_id, bearer_id } => {
                 let card = state.get_card(card_id);

@@ -100,6 +100,10 @@ pub enum ServerMessage {
         description: String,
         datetime: chrono::DateTime<chrono::Utc>,
     },
+    CardPlayed {
+        card_id: uuid::Uuid,
+        description: String,
+    },
     ConnectResponse {
         player_id: PlayerId,
         available_decks: Vec<PreconDeck>,
@@ -176,6 +180,7 @@ impl ServerMessage {
         match self {
             ServerMessage::MulligansEnded => uuid::Uuid::nil(),
             ServerMessage::LogEvent { .. } => uuid::Uuid::nil(),
+            ServerMessage::CardPlayed { .. } => uuid::Uuid::nil(),
             ServerMessage::PlaySoundEffect { player_id, .. } => player_id.unwrap_or_default(),
             ServerMessage::Resume { player_id, .. } => player_id.clone(),
             ServerMessage::Wait { player_id, .. } => player_id.clone(),

@@ -1731,10 +1731,21 @@ impl Game {
                     }
                 }
 
-                if let Ok(Some(description)) = effect.description(&self.state).await {
+                let description = effect.description(&self.state).await.ok().flatten();
+
+                // Show the card face to all players when a card is played from hand
+                if let Some(card_id) = effect.played_card_id() {
+                    self.broadcast(&ServerMessage::CardPlayed {
+                        card_id,
+                        description: description.clone().unwrap_or_default(),
+                    })
+                    .await?;
+                }
+
+                if let Some(desc) = description {
                     self.broadcast(&ServerMessage::LogEvent {
                         id: uuid::Uuid::new_v4(),
-                        description,
+                        description: desc,
                         datetime: Utc::now(),
                     })
                     .await?;
