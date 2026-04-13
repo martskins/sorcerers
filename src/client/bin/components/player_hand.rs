@@ -186,13 +186,6 @@ impl PlayerHandComponent {
         self.sites_in_hand = sites.iter().map(|c| c.id).collect();
         Ok(())
     }
-
-    fn render_card_preview(&self, data: &mut GameData, painter: &Painter) -> anyhow::Result<()> {
-        if let Some(card) = self.card_rects.iter().find(|card| card.is_hovered) {
-            render::render_card_preview(card, data, painter)?;
-        }
-        Ok(())
-    }
 }
 
 impl Component for PlayerHandComponent {
@@ -217,7 +210,11 @@ impl Component for PlayerHandComponent {
             render::draw_card(card_rect, true, false, painter);
         }
 
-        self.render_card_preview(data, painter)?;
+        if !matches!(data.status, Status::SelectingCard { preview: true, .. }) {
+            if let Some(card) = self.card_rects.iter().find(|c| c.is_hovered) {
+                render::draw_sidebar_card_preview(card.image.as_ref(), painter)?;
+            }
+        }
         Ok(())
     }
 

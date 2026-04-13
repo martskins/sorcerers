@@ -842,13 +842,6 @@ impl RealmComponent {
         Ok(())
     }
 
-    fn render_card_preview(&self, data: &mut GameData, painter: &Painter) -> anyhow::Result<()> {
-        if let Some(card) = self.card_rects.iter().find(|card| card.is_hovered) {
-            render::render_card_preview(card, data, painter)?;
-        }
-        Ok(())
-    }
-
     fn render_prompt(&self, data: &GameData, painter: &Painter) -> anyhow::Result<()> {
         let prompt = match &data.status {
             Status::SelectingZone { prompt, .. } => Some(prompt.as_str()),
@@ -1067,7 +1060,11 @@ impl Component for RealmComponent {
             progress < 1.0
         });
 
-        self.render_card_preview(data, painter)?;
+        if !matches!(data.status, Status::SelectingCard { preview: true, .. }) {
+            if let Some(card) = self.card_rects.iter().find(|c| c.is_hovered) {
+                render::draw_sidebar_card_preview(card.image.as_ref(), painter)?;
+            }
+        }
         self.render_paths(data, painter);
         self.render_prompt(data, painter)?;
 

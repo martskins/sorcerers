@@ -1808,7 +1808,10 @@ impl Game {
 
                 let description = effect.description(&self.state).await.ok().flatten();
 
-                // Show the card face to all players when a card is played from hand
+                // Show the card face to all players when a card is played from hand.
+                // When CardPlayed is sent, skip the LogEvent to avoid showing the
+                // same description twice on the client.
+                let is_card_played = effect.played_card_id().is_some();
                 if let Some(card_id) = effect.played_card_id() {
                     self.broadcast(&ServerMessage::CardPlayed {
                         card_id,
@@ -1817,13 +1820,15 @@ impl Game {
                     .await?;
                 }
 
-                if let Some(desc) = description {
-                    self.broadcast(&ServerMessage::LogEvent {
-                        id: uuid::Uuid::new_v4(),
-                        description: desc,
-                        datetime: Utc::now(),
-                    })
-                    .await?;
+                if !is_card_played {
+                    if let Some(desc) = description {
+                        self.broadcast(&ServerMessage::LogEvent {
+                            id: uuid::Uuid::new_v4(),
+                            description: desc,
+                            datetime: Utc::now(),
+                        })
+                        .await?;
+                    }
                 }
 
                 if let Ok(Some(sound_effect)) = effect.sound_effect().await {

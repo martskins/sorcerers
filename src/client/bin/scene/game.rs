@@ -9,7 +9,8 @@ use crate::{
     input::Mouse,
     render::{self, popup_action_menu},
     scene::{
-        Scene, action_overlay::ActionOverlay, card_toast::CardToast,
+        Scene, action_overlay::ActionOverlay,
+        card_toast::{CardToast, TOAST_MARGIN},
         combat_resolution_overlay::CombatResolutionOverlay, menu::Menu,
         selection_overlay::SelectionOverlay,
     },
@@ -174,7 +175,7 @@ pub struct Game {
     data: GameData,
     audio_manager: AudioManager<DefaultBackend>,
     selected_value: Option<Box<dyn std::any::Any>>,
-    card_toast: Option<CardToast>,
+    card_toast: Vec<CardToast>,
 }
 
 impl Game {
@@ -226,8 +227,17 @@ impl Game {
             data: GameData::new(&player_id, cards),
             audio_manager,
             selected_value: None,
-            card_toast: None,
+            card_toast: Vec::new(),
         }
+    }
+
+    /// Push a toast to the queue, dropping the oldest if the cap is exceeded.
+    fn push_toast(&mut self, toast: CardToast) {
+        const MAX_TOASTS: usize = 8;
+        if self.card_toast.len() >= MAX_TOASTS {
+            self.card_toast.remove(0);
+        }
+        self.card_toast.push(toast);
     }
 
     pub fn update(&mut self, ctx: &Context) {
@@ -342,10 +352,22 @@ impl Game {
 
         let new_scene = self.render_gui(ui, ctx, &painter);
 
-        // Card-played toast — drawn above the board but below any blocking overlay.
-        if let Some(ref mut toast) = self.card_toast {
-            if !toast.render(ctx, &painter) {
-                self.card_toast = None;
+        // Toasts — drawn above the board but below any blocking overlay.
+        // Stack from the bottom of the realm area upward (oldest at bottom).
+        {
+            const TOAST_GAP: f32 = 4.0;
+            let realm_bottom = realm_rect().unwrap_or(Rect::ZERO).max.y;
+            let mut bottom_y = realm_bottom - TOAST_MARGIN;
+            let mut expired: Vec<usize> = Vec::new();
+            for (i, toast) in self.card_toast.iter_mut().enumerate() {
+                bottom_y -= toast.height(ctx);
+                if !toast.render(ctx, &painter, bottom_y) {
+                    expired.push(i);
+                }
+                bottom_y -= TOAST_GAP;
+            }
+            for i in expired.into_iter().rev() {
+                self.card_toast.remove(i);
             }
         }
 
@@ -674,6 +696,7 @@ impl Game {
                     description: description.clone(),
                     datetime: *datetime,
                 });
+                self.push_toast(CardToast::new_event(description.clone()));
                 None
             }
             ServerMessage::PickZoneGroup {
@@ -741,7 +764,7 @@ impl Game {
                 description,
             } => {
                 if let Some(card) = self.data.cards.iter().find(|c| c.id == *card_id).cloned() {
-                    self.card_toast = Some(CardToast::new(card, description.clone()));
+                    self.push_toast(CardToast::new_card(card, description.clone()));
                 }
                 None
             }

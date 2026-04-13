@@ -1,7 +1,4 @@
-use crate::{
-    config::{realm_rect, screen_rect},
-    scene::game::{GameData, Status},
-};
+use crate::config::{CARD_ASPECT_RATIO, realm_rect, screen_rect};
 use egui::{
     Color32, FontId, Painter, Pos2, Rect, Stroke, TextureHandle, Vec2,
     epaint::{Mesh, Shape, Vertex},
@@ -295,27 +292,24 @@ pub fn draw_card_with_rotation(
     draw_card_internal(card_rect, is_ally, draw_accessories, painter, rotation);
 }
 
-pub fn render_card_preview(
-    card: &CardRect,
-    data: &mut GameData,
+/// Draws a card image scaled to fill the left sidebar, vertically centred on screen.
+pub fn draw_sidebar_card_preview(
+    tex: Option<&TextureHandle>,
     painter: &Painter,
 ) -> anyhow::Result<()> {
-    if let Status::SelectingCard { preview: true, .. } = &data.status {
-        return Ok(());
+    const MARGIN: f32 = 4.0;
+    let available_w = realm_rect()?.min.x - MARGIN * 2.0;
+    let mut preview_size = vec2(available_w, available_w / CARD_ASPECT_RATIO);
+    if let Some(tex) = tex {
+        // If the texture is wider than it is tall, it's a site.
+        if tex.aspect_ratio() > 1.0 {
+            std::mem::swap(&mut preview_size.x, &mut preview_size.y);
+        }
     }
+    let preview_y = screen_rect()?.height() / 2.0 - preview_size.y / 2.0;
+    let dest_rect = Rect::from_min_size(pos2(MARGIN, preview_y), preview_size);
 
-    let screen_rect = crate::config::screen_rect()?;
-    let mut rect = card.rect;
-    let mut preview_scale: f32 = realm_rect()?.min.x / card.rect.width();
-    if rect.width() > rect.height() {
-        preview_scale = realm_rect()?.min.x / card.rect.height();
-    }
-
-    rect = Rect::from_min_size(rect.min, rect.size() * preview_scale);
-    let preview_y = screen_rect.height() / 2.0 - rect.height() / 2.0;
-    let dest_rect = Rect::from_min_size(pos2(0.0, preview_y), rect.size());
-
-    if let Some(ref tex) = card.image {
+    if let Some(tex) = tex {
         painter.image(
             tex.id(),
             dest_rect,

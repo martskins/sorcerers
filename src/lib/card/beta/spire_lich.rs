@@ -3,7 +3,7 @@ use crate::{
         Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, SiteType, UnitBase,
         Zone,
     },
-    game::{Element, PlayerId},
+    game::PlayerId,
     state::State,
 };
 
