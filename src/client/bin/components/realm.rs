@@ -417,7 +417,7 @@ impl RealmComponent {
             })
             .collect();
 
-        for cell in &self.cell_rects {
+        for (idx, cell) in self.cell_rects.iter().enumerate() {
             let rect = cell.rect;
             let bg_color = if occupied_zones.contains(&cell.id) {
                 occupied_bg_color()
@@ -431,6 +431,15 @@ impl RealmComponent {
                 0.0,
                 Stroke::new(grid_thickness, grid_color),
                 egui::StrokeKind::Outside,
+            );
+
+            // Draw grid number
+            painter.text(
+                rect.min + vec2(10.0, 5.0),
+                egui::Align2::CENTER_TOP,
+                (idx + 1).to_string(),
+                egui::FontId::proportional(10.0),
+                Color32::WHITE,
             );
 
             match &data.status {
