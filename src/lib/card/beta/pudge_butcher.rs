@@ -1,7 +1,12 @@
 use crate::{
-    card::{Ability, AdditionalCost, Card, CardBase, Cost, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{
+        Ability, AdditionalCost, Card, CardBase, Cost, Costs, Edition, MinionType, Rarity, Region,
+        UnitBase, Zone,
+    },
     effect::Effect,
-    game::{ActivatedAbility, BaseOption, CARDINAL_DIRECTIONS, PlayerId, pick_direction, pick_option},
+    game::{
+        ActivatedAbility, BaseOption, CARDINAL_DIRECTIONS, PlayerId, pick_direction, pick_option,
+    },
     query::ZoneQuery,
     state::{CardQuery, State},
 };
@@ -161,12 +166,16 @@ impl Card for PudgeButcher {
         Some(&mut self.unit_base)
     }
 
-    fn get_additional_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+    fn get_additional_activated_abilities(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         Ok(vec![Box::new(ShootProjectile)])
     }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (PudgeButcher::NAME, |owner_id: PlayerId| {
-    Box::new(PudgeButcher::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (PudgeButcher::NAME, |owner_id: PlayerId| {
+        Box::new(PudgeButcher::new(owner_id))
+    });

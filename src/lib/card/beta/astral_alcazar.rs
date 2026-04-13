@@ -1,5 +1,8 @@
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
+    card::{
+        Ability, Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase,
+        Zone,
+    },
     game::{PlayerId, Thresholds},
     state::State,
 };
@@ -12,7 +15,8 @@ pub struct AstralAlcazar {
 
 impl AstralAlcazar {
     pub const NAME: &'static str = "Astral Alcazar";
-    pub const DESCRIPTION: &'static str = "Units can move between this site and any void as if they were adjacent.";
+    pub const DESCRIPTION: &'static str =
+        "Units can move between this site and any void as if they were adjacent.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -93,6 +97,7 @@ impl Card for AstralAlcazar {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (AstralAlcazar::NAME, |owner_id: PlayerId| {
-    Box::new(AstralAlcazar::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (AstralAlcazar::NAME, |owner_id: PlayerId| {
+        Box::new(AstralAlcazar::new(owner_id))
+    });

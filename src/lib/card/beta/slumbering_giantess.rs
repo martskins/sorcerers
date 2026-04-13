@@ -14,7 +14,8 @@ pub struct SlumberingGiantess {
 
 impl SlumberingGiantess {
     pub const NAME: &'static str = "Slumbering Giantess";
-    pub const DESCRIPTION: &'static str = "Genesis → Fall asleep. Slumbering Giantess is disabled until hurt.";
+    pub const DESCRIPTION: &'static str =
+        "Genesis → Fall asleep. Slumbering Giantess is disabled until hurt.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -84,6 +85,7 @@ impl Card for SlumberingGiantess {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (SlumberingGiantess::NAME, |owner_id: PlayerId| {
-    Box::new(SlumberingGiantess::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (SlumberingGiantess::NAME, |owner_id: PlayerId| {
+        Box::new(SlumberingGiantess::new(owner_id))
+    });

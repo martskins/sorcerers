@@ -115,6 +115,7 @@ impl Card for BridgeTroll {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (BridgeTroll::NAME, |owner_id: PlayerId| {
-    Box::new(BridgeTroll::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (BridgeTroll::NAME, |owner_id: PlayerId| {
+        Box::new(BridgeTroll::new(owner_id))
+    });

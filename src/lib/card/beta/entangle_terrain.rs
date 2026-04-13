@@ -1,5 +1,8 @@
 use crate::{
-    card::{Ability, AreaModifiers, Aura, AuraBase, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
+    card::{
+        Ability, AreaModifiers, Aura, AuraBase, Card, CardBase, Costs, Edition, Rarity, Region,
+        Zone,
+    },
     effect::Effect,
     game::PlayerId,
     state::State,
@@ -91,14 +94,21 @@ impl Card for EntangleTerrain {
             .map(|minion| minion.get_id().clone())
             .collect();
         AreaModifiers {
-            grants_abilities: minions.iter().map(|id| (id.clone(), vec![Ability::Immobile])).collect(),
-            removes_abilities: minions.iter().map(|id| (id.clone(), vec![Ability::Airborne])).collect(),
+            grants_abilities: minions
+                .iter()
+                .map(|id| (id.clone(), vec![Ability::Immobile]))
+                .collect(),
+            removes_abilities: minions
+                .iter()
+                .map(|id| (id.clone(), vec![Ability::Airborne]))
+                .collect(),
             ..Default::default()
         }
     }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (EntangleTerrain::NAME, |owner_id: PlayerId| {
-    Box::new(EntangleTerrain::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (EntangleTerrain::NAME, |owner_id: PlayerId| {
+        Box::new(EntangleTerrain::new(owner_id))
+    });

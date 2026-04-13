@@ -60,27 +60,29 @@ impl AwakenedMummies {
             expires_on_effect: Some(EffectQuery::BuryCard {
                 card: CardQuery::from_id(self.get_id().clone()),
             }),
-            on_effect: Arc::new(move |state: &State, card_id: &uuid::Uuid, _effect: &Effect| {
-                let mummy_id = mummy_id.clone();
-                Box::pin(async move {
-                    let mummy = state.get_card(&mummy_id);
-                    if mummy.get_region(state) != &Region::Underground {
-                        return Ok(vec![]);
-                    }
+            on_effect: Arc::new(
+                move |state: &State, card_id: &uuid::Uuid, _effect: &Effect| {
+                    let mummy_id = mummy_id.clone();
+                    Box::pin(async move {
+                        let mummy = state.get_card(&mummy_id);
+                        if mummy.get_region(state) != &Region::Underground {
+                            return Ok(vec![]);
+                        }
 
-                    Ok(vec![
-                        Effect::SetCardRegion {
-                            card_id: mummy_id.clone(),
-                            region: Region::Surface,
-                            tap: false,
-                        },
-                        Effect::Attack {
-                            attacker_id: mummy_id.clone(),
-                            defender_id: card_id.clone(),
-                        },
-                    ])
-                })
-            }),
+                        Ok(vec![
+                            Effect::SetCardRegion {
+                                card_id: mummy_id.clone(),
+                                region: Region::Surface,
+                                tap: false,
+                            },
+                            Effect::Attack {
+                                attacker_id: mummy_id.clone(),
+                                defender_id: card_id.clone(),
+                            },
+                        ])
+                    })
+                },
+            ),
             multitrigger: true,
         })
     }
@@ -127,6 +129,7 @@ impl Card for AwakenedMummies {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (AwakenedMummies::NAME, |owner_id: PlayerId| {
-    Box::new(AwakenedMummies::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (AwakenedMummies::NAME, |owner_id: PlayerId| {
+        Box::new(AwakenedMummies::new(owner_id))
+    });

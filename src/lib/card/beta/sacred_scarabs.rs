@@ -13,7 +13,8 @@ pub struct SacredScarabs {
 
 impl SacredScarabs {
     pub const NAME: &'static str = "Sacred Scarabs";
-    pub const DESCRIPTION: &'static str = "Airborne\r \r Deathrite → Deal 3 damage to each unit here.";
+    pub const DESCRIPTION: &'static str =
+        "Airborne\r \r Deathrite → Deal 3 damage to each unit here.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -89,6 +90,7 @@ impl Card for SacredScarabs {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (SacredScarabs::NAME, |owner_id: PlayerId| {
-    Box::new(SacredScarabs::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (SacredScarabs::NAME, |owner_id: PlayerId| {
+        Box::new(SacredScarabs::new(owner_id))
+    });

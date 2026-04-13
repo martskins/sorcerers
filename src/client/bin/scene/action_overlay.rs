@@ -52,7 +52,13 @@ impl ActionOverlay {
         let preview_y = (sh / 3.0) - (portrait.y / 2.0);
         let defenders_area_width = card_previews
             .iter()
-            .map(|card| if card.is_site() { landscape.x } else { portrait.x })
+            .map(|card| {
+                if card.is_site() {
+                    landscape.x
+                } else {
+                    portrait.x
+                }
+            })
             .sum::<f32>()
             + (card_previews.len().saturating_sub(1) as f32 * card_spacing);
         let defenders_start_x = (sw - defenders_area_width) / 2.0;
@@ -96,7 +102,11 @@ impl Component for ActionOverlay {
         Ok(())
     }
 
-    fn process_command(&mut self, _command: &ComponentCommand, _data: &mut GameData) -> anyhow::Result<()> {
+    fn process_command(
+        &mut self,
+        _command: &ComponentCommand,
+        _data: &mut GameData,
+    ) -> anyhow::Result<()> {
         Ok(())
     }
 
@@ -119,7 +129,12 @@ impl Component for ActionOverlay {
         Ok(None)
     }
 
-    fn render(&mut self, _data: &mut GameData, ui: &mut Ui, painter: &Painter) -> anyhow::Result<()> {
+    fn render(
+        &mut self,
+        _data: &mut GameData,
+        ui: &mut Ui,
+        painter: &Painter,
+    ) -> anyhow::Result<()> {
         let sw = screen_rect().map(|r| r.width()).unwrap_or(1280.0);
         let sh = screen_rect().map(|r| r.height()).unwrap_or(720.0);
         painter.rect_filled(
@@ -155,7 +170,11 @@ impl Component for ActionOverlay {
             );
         }
 
-        let card_row_y = self.card_rects.iter().map(|r| r.rect.max.y).fold(0.0_f32, f32::max);
+        let card_row_y = self
+            .card_rects
+            .iter()
+            .map(|r| r.rect.max.y)
+            .fold(0.0_f32, f32::max);
         let button_width = 150.0;
         let button_height = 40.0;
         let button_y = card_row_y + 40.0;
@@ -172,8 +191,10 @@ impl Component for ActionOverlay {
                 .fixed_pos(pos2(button_x, button_y))
                 .show(ui.ctx(), |ui| {
                     ui.horizontal(|ui| {
-                        let yes = egui::Button::new(egui::RichText::new("Yes").size(22.0).color(Color32::WHITE))
-                            .min_size(vec2(button_width, button_height));
+                        let yes = egui::Button::new(
+                            egui::RichText::new("Yes").size(22.0).color(Color32::WHITE),
+                        )
+                        .min_size(vec2(button_width, button_height));
                         if ui.add(yes).clicked() {
                             client
                                 .send(ClientMessage::ResolveAction {
@@ -185,8 +206,10 @@ impl Component for ActionOverlay {
                             set_invisible = true;
                         }
                         ui.add_space(40.0);
-                        let no = egui::Button::new(egui::RichText::new("No").size(22.0).color(Color32::WHITE))
-                            .min_size(vec2(button_width, button_height));
+                        let no = egui::Button::new(
+                            egui::RichText::new("No").size(22.0).color(Color32::WHITE),
+                        )
+                        .min_size(vec2(button_width, button_height));
                         if ui.add(no).clicked() {
                             client
                                 .send(ClientMessage::ResolveAction {
@@ -208,8 +231,10 @@ impl Component for ActionOverlay {
             egui::Area::new(egui::Id::new("action_overlay_ok_btn"))
                 .fixed_pos(pos2(button_x, button_y))
                 .show(ui.ctx(), |ui| {
-                    let ok = egui::Button::new(egui::RichText::new("Ok").size(22.0).color(Color32::WHITE))
-                        .min_size(vec2(button_width, button_height));
+                    let ok = egui::Button::new(
+                        egui::RichText::new("Ok").size(22.0).color(Color32::WHITE),
+                    )
+                    .min_size(vec2(button_width, button_height));
                     if ui.add(ok).clicked() {
                         set_invisible = true;
                     }

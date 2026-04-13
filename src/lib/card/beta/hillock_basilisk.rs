@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 
 use crate::{
-    card::{Ability, AreaModifiers, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{
+        Ability, AreaModifiers, Card, CardBase, Costs, Edition, MinionType, Rarity, Region,
+        UnitBase, Zone,
+    },
     game::{Direction, PlayerId},
     state::State,
 };
@@ -94,6 +97,7 @@ impl Card for HillockBasilisk {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (HillockBasilisk::NAME, |owner_id: PlayerId| {
-    Box::new(HillockBasilisk::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (HillockBasilisk::NAME, |owner_id: PlayerId| {
+        Box::new(HillockBasilisk::new(owner_id))
+    });

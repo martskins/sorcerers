@@ -1,12 +1,20 @@
 use crate::{
-    card::{AdditionalCost, Card, CardBase, Cost, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{
+        AdditionalCost, Card, CardBase, Cost, Costs, Edition, MinionType, Rarity, Region, UnitBase,
+        Zone,
+    },
     effect::Effect,
     game::{ActivatedAbility, Direction, PlayerId, pick_direction},
     query::ZoneQuery,
     state::{CardQuery, State},
 };
 
-const CARDINAL_DIRECTIONS: &[Direction] = &[Direction::Up, Direction::Down, Direction::Left, Direction::Right];
+const CARDINAL_DIRECTIONS: &[Direction] = &[
+    Direction::Up,
+    Direction::Down,
+    Direction::Left,
+    Direction::Right,
+];
 
 #[derive(Debug, Clone)]
 struct TapMoveAndStrike;
@@ -147,7 +155,10 @@ impl Card for BullDemonsOfAdum {
         Some(&mut self.unit_base)
     }
 
-    fn get_additional_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+    fn get_additional_activated_abilities(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         Ok(vec![Box::new(TapMoveAndStrike)])
     }
 
@@ -167,6 +178,7 @@ impl Card for BullDemonsOfAdum {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (BullDemonsOfAdum::NAME, |owner_id: PlayerId| {
-    Box::new(BullDemonsOfAdum::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (BullDemonsOfAdum::NAME, |owner_id: PlayerId| {
+        Box::new(BullDemonsOfAdum::new(owner_id))
+    });

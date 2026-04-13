@@ -12,8 +12,7 @@ pub struct CommonSense {
 
 impl CommonSense {
     pub const NAME: &'static str = "Common Sense";
-    pub const DESCRIPTION: &'static str =
-        "Search your spellbook for an Ordinary card, reveal it, and put it into your hand. Shuffle your spellbook.";
+    pub const DESCRIPTION: &'static str = "Search your spellbook for an Ordinary card, reveal it, and put it into your hand. Shuffle your spellbook.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -97,6 +96,7 @@ impl Card for CommonSense {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (CommonSense::NAME, |owner_id: PlayerId| {
-    Box::new(CommonSense::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (CommonSense::NAME, |owner_id: PlayerId| {
+        Box::new(CommonSense::new(owner_id))
+    });

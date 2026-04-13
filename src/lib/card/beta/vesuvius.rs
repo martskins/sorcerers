@@ -1,6 +1,7 @@
 use crate::{
     card::{
-        AdditionalCost, Card, CardBase, Cost, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone,
+        AdditionalCost, Card, CardBase, Cost, Costs, Edition, Rarity, Region, ResourceProvider,
+        Site, SiteBase, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, Thresholds},
@@ -18,12 +19,18 @@ impl ActivatedAbility for UseAbility {
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
         Ok(
-            Cost::thresholds_only("FFF")
-                .with_additional(AdditionalCost::sacrifice(CardQuery::from_id(card_id.clone()))),
+            Cost::thresholds_only("FFF").with_additional(AdditionalCost::sacrifice(
+                CardQuery::from_id(card_id.clone()),
+            )),
         )
     }
 
-    async fn on_select(&self, card_id: &uuid::Uuid, _: &PlayerId, state: &State) -> anyhow::Result<Vec<Effect>> {
+    async fn on_select(
+        &self,
+        card_id: &uuid::Uuid,
+        _: &PlayerId,
+        state: &State,
+    ) -> anyhow::Result<Vec<Effect>> {
         let card = state.get_card(card_id);
         let site_ids = CardQuery::new().sites().near_to(card.get_zone()).all(state);
         let mut effects = vec![];
@@ -100,7 +107,10 @@ impl Card for Vesuvius {
         Some(&mut self.site_base)
     }
 
-    fn get_additional_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+    fn get_additional_activated_abilities(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         Ok(vec![Box::new(UseAbility)])
     }
 
@@ -115,4 +125,6 @@ impl Card for Vesuvius {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Vesuvius::NAME, |owner_id: PlayerId| Box::new(Vesuvius::new(owner_id)));
+    (Vesuvius::NAME, |owner_id: PlayerId| {
+        Box::new(Vesuvius::new(owner_id))
+    });

@@ -68,4 +68,6 @@ impl Card for Megamoeba {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Megamoeba::NAME, |owner_id: PlayerId| Box::new(Megamoeba::new(owner_id)));
+    (Megamoeba::NAME, |owner_id: PlayerId| {
+        Box::new(Megamoeba::new(owner_id))
+    });

@@ -1,5 +1,7 @@
 use crate::{
-    card::{Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
+    card::{
+        Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, Zone,
+    },
     effect::Effect,
     game::PlayerId,
     state::{CardQuery, ContinuousEffect, State},
@@ -97,6 +99,7 @@ impl Card for CrownOfTheVictor {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (CrownOfTheVictor::NAME, |owner_id: PlayerId| {
-    Box::new(CrownOfTheVictor::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (CrownOfTheVictor::NAME, |owner_id: PlayerId| {
+        Box::new(CrownOfTheVictor::new(owner_id))
+    });

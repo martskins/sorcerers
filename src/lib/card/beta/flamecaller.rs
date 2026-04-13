@@ -1,5 +1,8 @@
 use crate::{
-    card::{AdditionalCost, AvatarBase, Card, CardBase, Cost, Costs, Edition, Rarity, Region, UnitBase, Zone},
+    card::{
+        AdditionalCost, AvatarBase, Card, CardBase, Cost, Costs, Edition, Rarity, Region, UnitBase,
+        Zone,
+    },
     effect::Effect,
     game::{ActivatedAbility, CARDINAL_DIRECTIONS, Element, PlayerId, Thresholds, pick_direction},
     state::{CardQuery, State},
@@ -15,9 +18,9 @@ impl ActivatedAbility for ShootProjectile {
     }
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
-        Ok(Cost::additional_only(AdditionalCost::tap(CardQuery::from_id(
-            card_id.clone(),
-        ))))
+        Ok(Cost::additional_only(AdditionalCost::tap(
+            CardQuery::from_id(card_id.clone()),
+        )))
     }
 
     async fn on_select(
@@ -30,20 +33,29 @@ impl ActivatedAbility for ShootProjectile {
             .cards
             .iter()
             .filter(|c| c.get_zone() == &Zone::Cemetery)
-            .filter(|c| c.get_elements(state).unwrap_or_default().contains(&Element::Fire))
+            .filter(|c| {
+                c.get_elements(state)
+                    .unwrap_or_default()
+                    .contains(&Element::Fire)
+            })
             .map(|c| c.get_id().clone())
             .collect::<Vec<_>>();
         let damage = state
             .cards
             .iter()
             .filter(|c| c.get_zone() == &Zone::Cemetery)
-            .filter(|c| c.get_elements(state).unwrap_or_default().contains(&Element::Fire))
+            .filter(|c| {
+                c.get_elements(state)
+                    .unwrap_or_default()
+                    .contains(&Element::Fire)
+            })
             .map(|c| c.get_costs(state).unwrap().thresholds_cost().clone())
             .sum::<Thresholds>()
             .fire as u16;
         let avatar = state.get_card(card_id);
         let prompt = "Flamecaller: Pick a direction to shoot the projectile:";
-        let direction = pick_direction(avatar.get_owner_id(), &CARDINAL_DIRECTIONS, state, prompt).await?;
+        let direction =
+            pick_direction(avatar.get_owner_id(), &CARDINAL_DIRECTIONS, state, prompt).await?;
         let mut effects = vec![Effect::ShootProjectile {
             id: uuid::Uuid::new_v4(),
             player_id: avatar.get_owner_id().clone(),
@@ -96,7 +108,9 @@ impl Flamecaller {
                 is_token: false,
                 ..Default::default()
             },
-            avatar_base: AvatarBase { ..Default::default() },
+            avatar_base: AvatarBase {
+                ..Default::default()
+            },
         }
     }
 }
@@ -134,12 +148,16 @@ impl Card for Flamecaller {
         Some(&mut self.avatar_base)
     }
 
-    fn get_additional_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+    fn get_additional_activated_abilities(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         Ok(vec![Box::new(ShootProjectile)])
     }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (Flamecaller::NAME, |owner_id: PlayerId| {
-    Box::new(Flamecaller::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (Flamecaller::NAME, |owner_id: PlayerId| {
+        Box::new(Flamecaller::new(owner_id))
+    });

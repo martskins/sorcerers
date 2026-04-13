@@ -1,5 +1,8 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, SiteType, Zone},
+    card::{
+        Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, SiteType,
+        Zone,
+    },
     effect::{Effect, TokenType},
     game::{BaseOption, PlayerId, Thresholds, pick_option},
     state::State,
@@ -13,7 +16,8 @@ pub struct RusticVillage {
 
 impl RusticVillage {
     pub const NAME: &'static str = "Rustic Village";
-    pub const DESCRIPTION: &'static str = "Genesis → You may pay ① to summon a Foot Soldier token here.";
+    pub const DESCRIPTION: &'static str =
+        "Genesis → You may pay ① to summon a Foot Soldier token here.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -106,6 +110,7 @@ impl Card for RusticVillage {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (RusticVillage::NAME, |owner_id: PlayerId| {
-    Box::new(RusticVillage::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (RusticVillage::NAME, |owner_id: PlayerId| {
+        Box::new(RusticVillage::new(owner_id))
+    });

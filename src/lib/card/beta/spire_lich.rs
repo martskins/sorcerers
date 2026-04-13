@@ -1,5 +1,8 @@
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, SiteType, UnitBase, Zone},
+    card::{
+        Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, SiteType, UnitBase,
+        Zone,
+    },
     game::{Element, PlayerId},
     state::State,
 };
@@ -12,7 +15,8 @@ pub struct SpireLich {
 
 impl SpireLich {
     pub const NAME: &'static str = "Spire Lich";
-    pub const DESCRIPTION: &'static str = "If Spire Lich is atop a Tower, it has +2 power, Ranged, and Spellcaster.";
+    pub const DESCRIPTION: &'static str =
+        "If Spire Lich is atop a Tower, it has +2 power, Ranged, and Spellcaster.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -52,7 +56,10 @@ impl SpireLich {
         match site {
             Some(site) => Ok(site
                 .get_site_base()
-                .ok_or(anyhow::anyhow!("{} does not have site base", site.get_name()))?
+                .ok_or(anyhow::anyhow!(
+                    "{} does not have site base",
+                    site.get_name()
+                ))?
                 .types
                 .contains(&SiteType::Tower)),
             None => Ok(false),
@@ -107,4 +114,6 @@ impl Card for SpireLich {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (SpireLich::NAME, |owner_id: PlayerId| Box::new(SpireLich::new(owner_id)));
+    (SpireLich::NAME, |owner_id: PlayerId| {
+        Box::new(SpireLich::new(owner_id))
+    });

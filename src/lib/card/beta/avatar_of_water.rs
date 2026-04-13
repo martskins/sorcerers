@@ -1,5 +1,8 @@
 use crate::{
-    card::{AdditionalCost, AvatarBase, Card, CardBase, Cost, Costs, Edition, Rarity, Region, UnitBase, Zone},
+    card::{
+        AdditionalCost, AvatarBase, Card, CardBase, Cost, Costs, Edition, Rarity, Region, UnitBase,
+        Zone,
+    },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, yes_or_no},
     state::{CardQuery, ContinuousEffect, State},
@@ -37,7 +40,12 @@ impl ActivatedAbility for FloodSite {
                         affected_sites: CardQuery::from_id(picked_site_id),
                     }),
                 }];
-                let teleport = yes_or_no(player_id, state, "Avatar of Water: Teleport to the flooded site?").await?;
+                let teleport = yes_or_no(
+                    player_id,
+                    state,
+                    "Avatar of Water: Teleport to the flooded site?",
+                )
+                .await?;
                 if teleport {
                     let picked_site = state.get_card(&picked_site_id);
                     effects.push(Effect::SetCardZone {
@@ -90,7 +98,9 @@ impl AvatarOfWater {
                 is_token: false,
                 ..Default::default()
             },
-            avatar_base: AvatarBase { ..Default::default() },
+            avatar_base: AvatarBase {
+                ..Default::default()
+            },
             flood_effect: None,
         }
     }
@@ -137,7 +147,10 @@ impl Card for AvatarOfWater {
         Ok(vec![Box::new(FloodSite)])
     }
 
-    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<ContinuousEffect>> {
         match &self.flood_effect {
             Some(effect) => Ok(vec![effect.clone()]),
             None => Ok(vec![]),
@@ -154,6 +167,7 @@ impl Card for AvatarOfWater {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (AvatarOfWater::NAME, |owner_id: PlayerId| {
-    Box::new(AvatarOfWater::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (AvatarOfWater::NAME, |owner_id: PlayerId| {
+        Box::new(AvatarOfWater::new(owner_id))
+    });

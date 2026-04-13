@@ -1,5 +1,8 @@
 use crate::{
-    card::{Ability, Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
+    card::{
+        Ability, Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity,
+        Region, Zone,
+    },
     effect::Effect,
     game::PlayerId,
     state::{CardQuery, ContinuousEffect, State},
@@ -71,7 +74,10 @@ impl Card for BlackObelisk {
         Some(self)
     }
 
-    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<ContinuousEffect>> {
         if !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }
@@ -108,6 +114,7 @@ impl Card for BlackObelisk {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (BlackObelisk::NAME, |owner_id: PlayerId| {
-    Box::new(BlackObelisk::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (BlackObelisk::NAME, |owner_id: PlayerId| {
+        Box::new(BlackObelisk::new(owner_id))
+    });

@@ -70,7 +70,8 @@ impl Card for MadDash {
             .map(|c| c.get_id().clone())
             .collect::<Vec<uuid::Uuid>>();
         let prompt = "Mad Dash: Pick a unit to gain Movement +1";
-        let picked_card_id = pick_card(self.get_controller_id(state), &cards, state, prompt).await?;
+        let picked_card_id =
+            pick_card(self.get_controller_id(state), &cards, state, prompt).await?;
         effects.push(Effect::AddAbilityCounter {
             card_id: picked_card_id.clone(),
             counter: AbilityCounter {
@@ -86,4 +87,6 @@ impl Card for MadDash {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (MadDash::NAME, |owner_id: PlayerId| Box::new(MadDash::new(owner_id)));
+    (MadDash::NAME, |owner_id: PlayerId| {
+        Box::new(MadDash::new(owner_id))
+    });

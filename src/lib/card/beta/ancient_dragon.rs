@@ -1,5 +1,8 @@
 use crate::{
-    card::{Ability, AdditionalCost, Card, CardBase, Cost, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{
+        Ability, AdditionalCost, Card, CardBase, Cost, Costs, Edition, MinionType, Rarity, Region,
+        UnitBase, Zone,
+    },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_zone_near},
     state::{CardQuery, State},
@@ -15,9 +18,9 @@ impl ActivatedAbility for AncientDragonAbility {
     }
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
-        Ok(Cost::additional_only(AdditionalCost::tap(CardQuery::from_id(
-            card_id.clone(),
-        ))))
+        Ok(Cost::additional_only(AdditionalCost::tap(
+            CardQuery::from_id(card_id.clone()),
+        )))
     }
 
     async fn on_select(
@@ -112,12 +115,16 @@ impl Card for AncientDragon {
         Some(&mut self.unit_base)
     }
 
-    fn get_additional_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+    fn get_additional_activated_abilities(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         Ok(vec![Box::new(AncientDragonAbility)])
     }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (AncientDragon::NAME, |owner_id: PlayerId| {
-    Box::new(AncientDragon::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (AncientDragon::NAME, |owner_id: PlayerId| {
+        Box::new(AncientDragon::new(owner_id))
+    });

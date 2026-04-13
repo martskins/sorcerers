@@ -1,5 +1,8 @@
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
+    card::{
+        Ability, Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase,
+        Zone,
+    },
     game::{PlayerId, Thresholds},
     state::{CardQuery, ContinuousEffect, State},
 };
@@ -74,7 +77,10 @@ impl Card for DomeOfOsiros {
         Some(self)
     }
 
-    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<ContinuousEffect>> {
         if !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }
@@ -96,4 +102,6 @@ impl Card for DomeOfOsiros {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (DomeOfOsiros::NAME, |owner_id: PlayerId| Box::new(DomeOfOsiros::new(owner_id)));
+    (DomeOfOsiros::NAME, |owner_id: PlayerId| {
+        Box::new(DomeOfOsiros::new(owner_id))
+    });

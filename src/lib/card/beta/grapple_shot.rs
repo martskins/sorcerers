@@ -126,6 +126,7 @@ impl Card for GrappleShot {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (GrappleShot::NAME, |owner_id: PlayerId| {
-    Box::new(GrappleShot::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (GrappleShot::NAME, |owner_id: PlayerId| {
+        Box::new(GrappleShot::new(owner_id))
+    });

@@ -89,4 +89,6 @@ impl Card for Overpower {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Overpower::NAME, |owner_id: PlayerId| Box::new(Overpower::new(owner_id)));
+    (Overpower::NAME, |owner_id: PlayerId| {
+        Box::new(Overpower::new(owner_id))
+    });

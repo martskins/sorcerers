@@ -48,15 +48,24 @@ impl PlayerStatusComponent {
 }
 
 /// Icon + number stat cell, laid out horizontally.
-fn stat_cell(ui: &mut Ui, icon_path: &str, value: impl std::fmt::Display, color: Color32, ctx: &Context) {
+fn stat_cell(
+    ui: &mut Ui,
+    icon_path: &str,
+    value: impl std::fmt::Display,
+    color: Color32,
+    ctx: &Context,
+) {
     let icon_sz = vec2(ICON_SZ, ICON_SZ);
     if let Some(tex) = TextureCache::get_texture_blocking(icon_path, ctx) {
-        let img =
-            egui::Image::new(egui::ImageSource::Texture(egui::load::SizedTexture::from_handle(&tex))).max_size(icon_sz);
+        let img = egui::Image::new(egui::ImageSource::Texture(
+            egui::load::SizedTexture::from_handle(&tex),
+        ))
+        .max_size(icon_sz);
         ui.add(img);
     } else {
         let (r, _) = ui.allocate_exact_size(icon_sz, egui::Sense::hover());
-        ui.painter().rect_filled(r, 3.0, Color32::from_rgb(50, 50, 60));
+        ui.painter()
+            .rect_filled(r, 3.0, Color32::from_rgb(50, 50, 60));
     }
     ui.add_space(2.0);
     ui.label(
@@ -82,12 +91,19 @@ impl Component for PlayerStatusComponent {
         Ok(())
     }
 
-    fn render(&mut self, data: &mut GameData, ui: &mut Ui, _painter: &Painter) -> anyhow::Result<()> {
+    fn render(
+        &mut self,
+        data: &mut GameData,
+        ui: &mut Ui,
+        _painter: &Painter,
+    ) -> anyhow::Result<()> {
         if !self.visible {
             return Ok(());
         }
 
-        let sidebar_w = crate::config::realm_rect().map(|r| r.min.x).unwrap_or(220.0);
+        let sidebar_w = crate::config::realm_rect()
+            .map(|r| r.min.x)
+            .unwrap_or(220.0);
         let sr = crate::config::screen_rect()?;
         let ctx = ui.ctx().clone();
 
@@ -100,11 +116,19 @@ impl Component for PlayerStatusComponent {
         let panel_w = sidebar_w - 18.0;
 
         // Gather data
-        let resources = data.resources.get(&self.player_id).cloned().unwrap_or(Resources {
-            mana: 0,
-            thresholds: Thresholds::ZERO,
-        });
-        let health = data.avatar_health.get(&self.player_id).copied().unwrap_or(0);
+        let resources = data
+            .resources
+            .get(&self.player_id)
+            .cloned()
+            .unwrap_or(Resources {
+                mana: 0,
+                thresholds: Thresholds::ZERO,
+            });
+        let health = data
+            .avatar_health
+            .get(&self.player_id)
+            .copied()
+            .unwrap_or(0);
         let hand_count = data
             .cards
             .iter()
@@ -144,18 +168,27 @@ impl Component for PlayerStatusComponent {
                                     .strong(),
                             );
                             if is_self {
-                                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                                    let (label, col) = if unseen > 0 {
-                                        // ✉ = envelope (U+2709, Dingbats)
-                                        (format!("✉ {unseen}"), Color32::from_rgb(100, 200, 255))
-                                    } else {
-                                        // ☰ = trigram / log icon (U+2630, Misc Symbols)
-                                        ("☰ log".into(), Color32::from_rgb(100, 100, 130))
-                                    };
-                                    if ui.link(egui::RichText::new(label).color(col).size(12.0)).clicked() {
-                                        open_log = true;
-                                    }
-                                });
+                                ui.with_layout(
+                                    egui::Layout::right_to_left(egui::Align::Center),
+                                    |ui| {
+                                        let (label, col) = if unseen > 0 {
+                                            // ✉ = envelope (U+2709, Dingbats)
+                                            (
+                                                format!("✉ {unseen}"),
+                                                Color32::from_rgb(100, 200, 255),
+                                            )
+                                        } else {
+                                            // ☰ = trigram / log icon (U+2630, Misc Symbols)
+                                            ("☰ log".into(), Color32::from_rgb(100, 100, 130))
+                                        };
+                                        if ui
+                                            .link(egui::RichText::new(label).color(col).size(12.0))
+                                            .clicked()
+                                        {
+                                            open_log = true;
+                                        }
+                                    },
+                                );
                             }
                         });
 
@@ -247,7 +280,11 @@ impl Component for PlayerStatusComponent {
         self.visible
     }
 
-    fn process_command(&mut self, command: &ComponentCommand, _data: &mut GameData) -> anyhow::Result<()> {
+    fn process_command(
+        &mut self,
+        command: &ComponentCommand,
+        _data: &mut GameData,
+    ) -> anyhow::Result<()> {
         if let ComponentCommand::SetRect {
             component_type: ComponentType::PlayerStatus,
             rect,

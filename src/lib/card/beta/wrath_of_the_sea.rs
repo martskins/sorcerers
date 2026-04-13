@@ -13,8 +13,7 @@ pub struct WrathOfTheSea {
 
 impl WrathOfTheSea {
     pub const NAME: &'static str = "Wrath of the Sea";
-    pub const DESCRIPTION: &'static str =
-        "Flood all sites adjacent to a body of water this turn. Then submerge all minions and artifacts on water.";
+    pub const DESCRIPTION: &'static str = "Flood all sites adjacent to a body of water this turn. Then submerge all minions and artifacts on water.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -62,7 +61,8 @@ impl Card for WrathOfTheSea {
         let controller_id = self.get_controller_id(state);
         let prompt = "Wrath of the Sea: Pick a body of water";
         let bodies_of_water = state.get_bodies_of_water();
-        let picked_body = pick_zone_group(controller_id, &bodies_of_water, state, false, prompt).await?;
+        let picked_body =
+            pick_zone_group(controller_id, &bodies_of_water, state, false, prompt).await?;
         let sites = CardQuery::new().adjacent_to_zones(&picked_body);
         let other_water_sites = CardQuery::new().sites().all(state);
         let zones: Vec<Zone> = sites
@@ -94,6 +94,7 @@ impl Card for WrathOfTheSea {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (WrathOfTheSea::NAME, |owner_id: PlayerId| {
-    Box::new(WrathOfTheSea::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (WrathOfTheSea::NAME, |owner_id: PlayerId| {
+        Box::new(WrathOfTheSea::new(owner_id))
+    });

@@ -146,10 +146,18 @@ impl SorcerersApp {
         style.spacing.item_spacing = egui::vec2(8.0, 8.0);
         style.spacing.text_edit_width = 300.0;
 
-        style.text_styles.insert(TextStyle::Body, FontId::proportional(18.0));
-        style.text_styles.insert(TextStyle::Button, FontId::proportional(22.0));
-        style.text_styles.insert(TextStyle::Heading, FontId::proportional(24.0));
-        style.text_styles.insert(TextStyle::Small, FontId::proportional(14.0));
+        style
+            .text_styles
+            .insert(TextStyle::Body, FontId::proportional(18.0));
+        style
+            .text_styles
+            .insert(TextStyle::Button, FontId::proportional(22.0));
+        style
+            .text_styles
+            .insert(TextStyle::Heading, FontId::proportional(24.0));
+        style
+            .text_styles
+            .insert(TextStyle::Small, FontId::proportional(14.0));
 
         ctx.set_style(style);
     }

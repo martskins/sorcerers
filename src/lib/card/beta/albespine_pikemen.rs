@@ -67,6 +67,7 @@ impl Card for AlbespinePikemen {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (AlbespinePikemen::NAME, |owner_id: PlayerId| {
-    Box::new(AlbespinePikemen::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (AlbespinePikemen::NAME, |owner_id: PlayerId| {
+        Box::new(AlbespinePikemen::new(owner_id))
+    });

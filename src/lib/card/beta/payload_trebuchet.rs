@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        AdditionalCost, Artifact, ArtifactBase, ArtifactType, Card, CardBase, Cost, Costs, Edition, Rarity, Region,
-        Zone,
+        AdditionalCost, Artifact, ArtifactBase, ArtifactType, Card, CardBase, Cost, Costs, Edition,
+        Rarity, Region, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_zone},
@@ -24,7 +24,14 @@ impl ActivatedAbility for ShootPayload {
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
         let zones = state.get_card(card_id).get_zones_within_steps(state, 3);
-        let picked_zone = pick_zone(player_id, &zones, state, false, "Pick a zone to shoot the payload at").await?;
+        let picked_zone = pick_zone(
+            player_id,
+            &zones,
+            state,
+            false,
+            "Pick a zone to shoot the payload at",
+        )
+        .await?;
         let units = picked_zone.get_units(state, None);
         let mana_cost = state
             .effect_log
@@ -40,7 +47,12 @@ impl ActivatedAbility for ShootPayload {
                         card_id: cid,
                     } if &pid == player_id => {
                         let card = state.get_card(&cid);
-                        Some(card.get_costs(state).cloned().unwrap_or_default().mana_cost())
+                        Some(
+                            card.get_costs(state)
+                                .cloned()
+                                .unwrap_or_default()
+                                .mana_cost(),
+                        )
                     }
                     _ => None,
                 }
@@ -63,7 +75,9 @@ impl ActivatedAbility for ShootPayload {
             Some(bearer_id) => {
                 let bearer = state.get_card(&bearer_id);
                 Ok(Cost::ZERO
-                    .with_additional(AdditionalCost::tap(CardQuery::from_id(bearer_id.clone()).untapped()))
+                    .with_additional(AdditionalCost::tap(
+                        CardQuery::from_id(bearer_id.clone()).untapped(),
+                    ))
                     .with_additional(AdditionalCost::tap(
                         CardQuery::new()
                             .untapped()
@@ -147,12 +161,16 @@ impl Card for PayloadTrebuchet {
         Some(self)
     }
 
-    fn get_additional_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+    fn get_additional_activated_abilities(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         Ok(vec![Box::new(ShootPayload)])
     }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (PayloadTrebuchet::NAME, |owner_id: PlayerId| {
-    Box::new(PayloadTrebuchet::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (PayloadTrebuchet::NAME, |owner_id: PlayerId| {
+        Box::new(PayloadTrebuchet::new(owner_id))
+    });

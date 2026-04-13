@@ -69,6 +69,7 @@ impl Card for LavaSalamander {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (LavaSalamander::NAME, |owner_id: PlayerId| {
-    Box::new(LavaSalamander::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (LavaSalamander::NAME, |owner_id: PlayerId| {
+        Box::new(LavaSalamander::new(owner_id))
+    });

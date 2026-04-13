@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        AdditionalCost, AreaModifiers, Artifact, ArtifactBase, ArtifactType, Card, CardBase, Cost, Costs, Edition,
-        Rarity, Region, Zone,
+        AdditionalCost, AreaModifiers, Artifact, ArtifactBase, ArtifactType, Card, CardBase, Cost,
+        Costs, Edition, Rarity, Region, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, CARDINAL_DIRECTIONS, PlayerId, pick_direction},
@@ -168,6 +168,7 @@ impl Card for RollingBoulder {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (RollingBoulder::NAME, |owner_id: PlayerId| {
-    Box::new(RollingBoulder::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (RollingBoulder::NAME, |owner_id: PlayerId| {
+        Box::new(RollingBoulder::new(owner_id))
+    });

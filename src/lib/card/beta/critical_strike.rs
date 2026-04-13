@@ -15,7 +15,8 @@ pub struct CriticalStrike {
 
 impl CriticalStrike {
     pub const NAME: &'static str = "Critical Strike";
-    pub const DESCRIPTION: &'static str = "The next time an ally strikes a unit this turn, it deals double damage.";
+    pub const DESCRIPTION: &'static str =
+        "The next time an ally strikes a unit this turn, it deals double damage.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -71,26 +72,31 @@ impl Card for CriticalStrike {
                 expires_on_effect: Some(EffectQuery::TurnEnd {
                     player_id: Some(controller_id.clone()),
                 }),
-                on_effect: Arc::new(move |_state: &State, _card_id: &uuid::Uuid, effect: &Effect| {
-                    Box::pin(async move {
-                        if let Effect::TakeDamage {
-                            card_id,
-                            from,
-                            damage,
-                            is_strike,
-                        } = effect
-                        {
-                            Ok(vec![Effect::TakeDamage {
-                                card_id: card_id.clone(),
-                                from: from.clone(),
-                                damage: *damage,
-                                is_strike: *is_strike,
-                            }])
-                        } else {
-                            Ok(vec![])
-                        }
-                    }) as Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>>
-                }),
+                on_effect: Arc::new(
+                    move |_state: &State, _card_id: &uuid::Uuid, effect: &Effect| {
+                        Box::pin(async move {
+                            if let Effect::TakeDamage {
+                                card_id,
+                                from,
+                                damage,
+                                is_strike,
+                            } = effect
+                            {
+                                Ok(vec![Effect::TakeDamage {
+                                    card_id: card_id.clone(),
+                                    from: from.clone(),
+                                    damage: *damage,
+                                    is_strike: *is_strike,
+                                }])
+                            } else {
+                                Ok(vec![])
+                            }
+                        })
+                            as Pin<
+                                Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>,
+                            >
+                    },
+                ),
                 multitrigger: false,
             },
         }])
@@ -98,6 +104,7 @@ impl Card for CriticalStrike {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (CriticalStrike::NAME, |owner_id: PlayerId| {
-    Box::new(CriticalStrike::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (CriticalStrike::NAME, |owner_id: PlayerId| {
+        Box::new(CriticalStrike::new(owner_id))
+    });

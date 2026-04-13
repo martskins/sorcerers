@@ -23,7 +23,12 @@ impl ActivatedAbility for GeomancerAbility {
         }
     }
 
-    fn can_activate(&self, card_id: &uuid::Uuid, _player_id: &PlayerId, state: &State) -> anyhow::Result<bool> {
+    fn can_activate(
+        &self,
+        card_id: &uuid::Uuid,
+        _player_id: &PlayerId,
+        state: &State,
+    ) -> anyhow::Result<bool> {
         match self {
             GeomancerAbility::PlaySite => Ok(true),
             GeomancerAbility::DrawSite => Ok(true),
@@ -108,7 +113,9 @@ impl ActivatedAbility for GeomancerAbility {
 
                 Ok(effects)
             }
-            GeomancerAbility::DrawSite => Ok(AvatarAction::DrawSite.on_select(card_id, player_id, state).await?),
+            GeomancerAbility::DrawSite => Ok(AvatarAction::DrawSite
+                .on_select(card_id, player_id, state)
+                .await?),
             GeomancerAbility::ReplaceRubble => {
                 let card = state.get_card(card_id);
                 let adjacent_zones = card.get_zone().get_adjacent();
@@ -188,7 +195,9 @@ impl Geomancer {
                 is_token: false,
                 ..Default::default()
             },
-            avatar_base: AvatarBase { ..Default::default() },
+            avatar_base: AvatarBase {
+                ..Default::default()
+            },
         }
     }
 }
@@ -226,11 +235,17 @@ impl Card for Geomancer {
         Some(&mut self.avatar_base)
     }
 
-    fn get_additional_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+    fn get_additional_activated_abilities(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         Ok(vec![Box::new(GeomancerAbility::ReplaceRubble)])
     }
 
-    fn base_avatar_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+    fn base_avatar_activated_abilities(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         Ok(vec![
             Box::new(GeomancerAbility::PlaySite),
             Box::new(GeomancerAbility::DrawSite),
@@ -241,4 +256,6 @@ impl Card for Geomancer {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Geomancer::NAME, |owner_id: PlayerId| Box::new(Geomancer::new(owner_id)));
+    (Geomancer::NAME, |owner_id: PlayerId| {
+        Box::new(Geomancer::new(owner_id))
+    });

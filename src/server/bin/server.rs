@@ -42,7 +42,10 @@ impl Server {
                 Client::send_to_stream(
                     &ServerMessage::ConnectResponse {
                         player_id,
-                        available_decks: ALL_PRECONS.iter().map(|(deck, _)| (*deck).clone()).collect(),
+                        available_decks: ALL_PRECONS
+                            .iter()
+                            .map(|(deck, _)| (*deck).clone())
+                            .collect(),
                     },
                     Arc::clone(&stream),
                 )
@@ -59,18 +62,24 @@ impl Server {
                     id: player_id.clone(),
                     name: player_name.clone(),
                 };
-                self.looking_for_match.push((player_id.clone(), (player, deck.clone())));
+                self.looking_for_match
+                    .push((player_id.clone(), (player, deck.clone())));
                 self.streams.insert(player_id.clone(), stream);
 
                 match self.find_match() {
                     Some((player1, player2)) => {
-                        self.create_game(&player1.0, player1.1, &player2.0, player2.1).await?;
+                        self.create_game(&player1.0, player1.1, &player2.0, player2.1)
+                            .await?;
                     }
                     None => {}
                 }
             }
             Message::ClientMessage(ClientMessage::Disconnect) => {
-                let player_id = self.addr_to_player.get(addr).cloned().unwrap_or(uuid::Uuid::nil());
+                let player_id = self
+                    .addr_to_player
+                    .get(addr)
+                    .cloned()
+                    .unwrap_or(uuid::Uuid::nil());
                 self.looking_for_match.retain(|(id, _)| id != &player_id);
                 self.streams.retain(|_, s| !Arc::ptr_eq(s, &stream));
 

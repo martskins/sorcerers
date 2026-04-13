@@ -1,5 +1,8 @@
 use crate::{
-    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
+    card::{
+        Card, CardBase, Cost, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase,
+        Zone,
+    },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, Thresholds},
     query::EffectQuery,
@@ -43,7 +46,12 @@ impl ActivatedAbility for FloodAdjacentSite {
         Ok(Cost::ZERO)
     }
 
-    fn can_activate(&self, _card_id: &uuid::Uuid, _player_id: &PlayerId, _state: &State) -> anyhow::Result<bool> {
+    fn can_activate(
+        &self,
+        _card_id: &uuid::Uuid,
+        _player_id: &PlayerId,
+        _state: &State,
+    ) -> anyhow::Result<bool> {
         Ok(true)
     }
 }
@@ -57,7 +65,8 @@ pub struct Floodplain {
 
 impl Floodplain {
     pub const NAME: &'static str = "Floodplain";
-    pub const DESCRIPTION: &'static str = "Once on your turn, you may flood an adjacent site this turn.";
+    pub const DESCRIPTION: &'static str =
+        "Once on your turn, you may flood an adjacent site this turn.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -117,7 +126,10 @@ impl Card for Floodplain {
         Some(self)
     }
 
-    fn get_additional_activated_abilities(&self, state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+    fn get_additional_activated_abilities(
+        &self,
+        state: &State,
+    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         if let Some(last_activation) = self.last_activation_on_turn {
             if last_activation == state.turns {
                 return Ok(vec![]);
@@ -145,6 +157,7 @@ impl Card for Floodplain {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (Floodplain::NAME, |owner_id: PlayerId| {
-    Box::new(Floodplain::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (Floodplain::NAME, |owner_id: PlayerId| {
+        Box::new(Floodplain::new(owner_id))
+    });

@@ -79,7 +79,11 @@ pub fn site_dimensions(cell_rect: &Rect) -> Vec2 {
 }
 
 fn card_rotation(card: &CardData) -> f32 {
-    if card.tapped { std::f32::consts::FRAC_PI_2 } else { 0.0 }
+    if card.tapped {
+        std::f32::consts::FRAC_PI_2
+    } else {
+        0.0
+    }
 }
 
 const CARD_FLIGHT_DURATION: f64 = 0.28;
@@ -146,10 +150,12 @@ impl RealmComponent {
         let intersection_rects = Zone::all_intersections()
             .into_iter()
             .filter_map(|z| match z {
-                Zone::Intersection(locs) => intersection_rect(&rect, &locs, mirrored).map(|r| IntersectionRect {
-                    locations: locs,
-                    rect: r,
-                }),
+                Zone::Intersection(locs) => {
+                    intersection_rect(&rect, &locs, mirrored).map(|r| IntersectionRect {
+                        locations: locs,
+                        rect: r,
+                    })
+                }
                 _ => None,
             })
             .collect();
@@ -179,7 +185,11 @@ impl RealmComponent {
         to_rotation: f32,
         ctx: &Context,
     ) {
-        if self.card_flights.iter().any(|flight| flight.card_id == card.id) {
+        if self
+            .card_flights
+            .iter()
+            .any(|flight| flight.card_id == card.id)
+        {
             return;
         }
 
@@ -199,7 +209,14 @@ impl RealmComponent {
         use rand::Rng;
 
         let mut new_cards = Vec::new();
-        let mut pending_flights: Vec<(CardData, Option<egui::TextureHandle>, Rect, Rect, f32, f32)> = Vec::new();
+        let mut pending_flights: Vec<(
+            CardData,
+            Option<egui::TextureHandle>,
+            Rect,
+            Rect,
+            f32,
+            f32,
+        )> = Vec::new();
         let mut rng = rand::rngs::SmallRng::seed_from_u64(1);
         for card in cards {
             let existing = self.card_rects.iter().find(|c| c.card.id == card.id);
@@ -256,7 +273,8 @@ impl RealmComponent {
                             pos_y += jitter_y;
                         }
 
-                        let (hovered, selected) = existing.map_or((false, false), |c| (c.is_hovered, c.is_selected));
+                        let (hovered, selected) =
+                            existing.map_or((false, false), |c| (c.is_hovered, c.is_selected));
                         let image = existing
                             .and_then(|c| c.image.clone())
                             .or_else(|| TextureCache::get_card_texture_blocking(card, ctx));
@@ -282,7 +300,11 @@ impl RealmComponent {
                     }
                 }
                 Zone::Intersection(locs) => {
-                    if let Some(intersection) = self.intersection_rects.iter().find(|c| &c.locations == locs) {
+                    if let Some(intersection) = self
+                        .intersection_rects
+                        .iter()
+                        .find(|c| &c.locations == locs)
+                    {
                         let existing = self.card_rects.iter().find(|c| c.card.id == card.id);
                         let rect = intersection.rect;
                         let mut dimensions = spell_dimensions(&self.cell_rects[0].rect);
@@ -292,10 +314,13 @@ impl RealmComponent {
 
                         let jitter_x: f32 = rng.random_range(-2.0..2.0);
                         let jitter_y: f32 = rng.random_range(-2.0..2.0);
-                        let card_rect =
-                            Rect::from_min_size(pos2(rect.min.x + jitter_x, rect.min.y + jitter_y), dimensions);
+                        let card_rect = Rect::from_min_size(
+                            pos2(rect.min.x + jitter_x, rect.min.y + jitter_y),
+                            dimensions,
+                        );
 
-                        let (hovered, selected) = existing.map_or((false, false), |c| (c.is_hovered, c.is_selected));
+                        let (hovered, selected) =
+                            existing.map_or((false, false), |c| (c.is_hovered, c.is_selected));
                         let image = existing
                             .and_then(|c| c.image.clone())
                             .or_else(|| TextureCache::get_card_texture_blocking(card, ctx));
@@ -326,7 +351,15 @@ impl RealmComponent {
 
         self.card_rects = new_cards;
         for (card, image, from_rect, to_rect, from_rotation, to_rotation) in pending_flights {
-            self.start_card_flight(card, image, from_rect, to_rect, from_rotation, to_rotation, ctx);
+            self.start_card_flight(
+                card,
+                image,
+                from_rect,
+                to_rect,
+                from_rotation,
+                to_rotation,
+                ctx,
+            );
         }
         Ok(())
     }
@@ -395,7 +428,11 @@ impl RealmComponent {
                         let arrow_width = 6.0;
                         let left = tip - dir * arrow_len + perp * arrow_width;
                         let right = tip - dir * arrow_len - perp * arrow_width;
-                        painter.add(Shape::convex_polygon(vec![tip, left, right], color, Stroke::NONE));
+                        painter.add(Shape::convex_polygon(
+                            vec![tip, left, right],
+                            color,
+                            Stroke::NONE,
+                        ));
                     }
                 }
             }
@@ -445,7 +482,12 @@ impl RealmComponent {
             match &data.status {
                 Status::SelectingZone { zones, .. } => {
                     if zones.iter().any(|i| i == &Zone::Realm(cell.id)) {
-                        painter.rect_stroke(rect, 0.0, Stroke::new(5.0, Color32::GREEN), egui::StrokeKind::Outside);
+                        painter.rect_stroke(
+                            rect,
+                            0.0,
+                            Stroke::new(5.0, Color32::GREEN),
+                            egui::StrokeKind::Outside,
+                        );
                     }
                 }
                 Status::DistributingDamage { .. }
@@ -501,7 +543,12 @@ impl RealmComponent {
                         _ => false,
                     });
                     if can_pick {
-                        painter.rect_stroke(rect, 0.0, Stroke::new(5.0, Color32::GREEN), egui::StrokeKind::Outside);
+                        painter.rect_stroke(
+                            rect,
+                            0.0,
+                            Stroke::new(5.0, Color32::GREEN),
+                            egui::StrokeKind::Outside,
+                        );
                     }
                 }
                 Status::SelectingCard { preview: true, .. }
@@ -528,7 +575,12 @@ impl RealmComponent {
         status: &mut Status,
         ctx: &Context,
     ) -> anyhow::Result<()> {
-        if !in_turn && !matches!(status, Status::SelectingZone { .. } | Status::SelectingZoneGroup { .. }) {
+        if !in_turn
+            && !matches!(
+                status,
+                Status::SelectingZone { .. } | Status::SelectingZoneGroup { .. }
+            )
+        {
             return Ok(());
         }
 
@@ -657,10 +709,16 @@ impl RealmComponent {
                 }
             }
             Status::SelectingCard {
-                cards, preview: true, ..
+                cards,
+                preview: true,
+                ..
             } => {
                 let mut selected_id = None;
-                for card in self.card_rects.iter().filter(|c| cards.contains(&c.card.id)) {
+                for card in self
+                    .card_rects
+                    .iter()
+                    .filter(|c| cards.contains(&c.card.id))
+                {
                     if card.rect.contains(mouse_position) && clicked {
                         selected_id = Some(card.card.id);
                     }
@@ -681,7 +739,11 @@ impl RealmComponent {
                 ..
             } => {
                 let mut selected_id = None;
-                for card in self.card_rects.iter().filter(|c| cards.contains(&c.card.id)) {
+                for card in self
+                    .card_rects
+                    .iter()
+                    .filter(|c| cards.contains(&c.card.id))
+                {
                     if card.rect.contains(mouse_position) && clicked {
                         selected_id = Some(card.card.id);
                     }
@@ -702,7 +764,11 @@ impl RealmComponent {
                 ..
             } => {
                 let mut selected_id = None;
-                for card in self.card_rects.iter().filter(|c| cards.contains(&c.card.id)) {
+                for card in self
+                    .card_rects
+                    .iter()
+                    .filter(|c| cards.contains(&c.card.id))
+                {
                     if card.rect.contains(mouse_position) && clicked {
                         selected_id = Some(card.card.id);
                     }
@@ -788,7 +854,9 @@ impl RealmComponent {
             Status::SelectingZone { prompt, .. } => Some(prompt.as_str()),
             Status::SelectingZoneGroup { prompt, .. } => Some(prompt.as_str()),
             Status::SelectingCard {
-                prompt, preview: false, ..
+                prompt,
+                preview: false,
+                ..
             } => Some(prompt.as_str()),
             Status::SelectingPath { prompt, .. } => Some(prompt.as_str()),
             _ => None,
@@ -844,7 +912,13 @@ impl Component for RealmComponent {
                 .card_rects
                 .iter()
                 .find(|c| c.card.id == card_id && c.card.zone.is_in_play())
-                .map(|card_rect| (card_rect.card.clone(), card_rect.rect, card_rect.image.clone()))
+                .map(|card_rect| {
+                    (
+                        card_rect.card.clone(),
+                        card_rect.rect,
+                        card_rect.image.clone(),
+                    )
+                })
             {
                 let source_center = data.last_clicked_card_pos.unwrap_or(rect.center());
                 let to_rotation = card_rotation(&card);
@@ -890,7 +964,11 @@ impl Component for RealmComponent {
                             .map(|c| c.card.id)
                             .collect();
                         for attached_id in attached_cards {
-                            if let Some(ac) = self.card_rects.iter_mut().find(|c| c.card.id == attached_id) {
+                            if let Some(ac) = self
+                                .card_rects
+                                .iter_mut()
+                                .find(|c| c.card.id == attached_id)
+                            {
                                 ac.rect = ac.rect.translate(vec2(delta_x, delta_y));
                             }
                         }
@@ -903,7 +981,12 @@ impl Component for RealmComponent {
         Ok(())
     }
 
-    fn render(&mut self, data: &mut GameData, ui: &mut Ui, painter: &Painter) -> anyhow::Result<()> {
+    fn render(
+        &mut self,
+        data: &mut GameData,
+        ui: &mut Ui,
+        painter: &Painter,
+    ) -> anyhow::Result<()> {
         let now = ui.ctx().input(|i| i.time);
         self.render_grid(data, painter);
 
@@ -920,10 +1003,17 @@ impl Component for RealmComponent {
                 continue;
             }
 
-            render::draw_card(card_rect, card_rect.card.controller_id == self.player_id, true, painter);
+            render::draw_card(
+                card_rect,
+                card_rect.card.controller_id == self.player_id,
+                true,
+                painter,
+            );
 
             if let Status::SelectingCard {
-                cards, preview: false, ..
+                cards,
+                preview: false,
+                ..
             } = &data.status
             {
                 if !Mouse::enabled() {
@@ -931,7 +1021,11 @@ impl Component for RealmComponent {
                 }
                 if !cards.contains(&card_rect.card.id) {
                     // Draw greying overlay
-                    painter.rect_filled(card_rect.rect, 0.0, Color32::from_rgba_unmultiplied(100, 100, 100, 153));
+                    painter.rect_filled(
+                        card_rect.rect,
+                        0.0,
+                        Color32::from_rgba_unmultiplied(100, 100, 100, 153),
+                    );
                 }
             }
         }
@@ -953,7 +1047,8 @@ impl Component for RealmComponent {
                 from.width() + (to.width() - from.width()) * eased,
                 from.height() + (to.height() - from.height()) * eased,
             );
-            let rotation = flight.from_rotation + (flight.to_rotation - flight.from_rotation) * eased;
+            let rotation =
+                flight.from_rotation + (flight.to_rotation - flight.from_rotation) * eased;
             let rect = Rect::from_min_size(min, size);
             let card_rect = CardRect {
                 rect,
@@ -1005,9 +1100,15 @@ impl Component for RealmComponent {
         self.visible
     }
 
-    fn process_command(&mut self, command: &ComponentCommand, data: &mut GameData) -> anyhow::Result<()> {
+    fn process_command(
+        &mut self,
+        command: &ComponentCommand,
+        data: &mut GameData,
+    ) -> anyhow::Result<()> {
         match command {
-            ComponentCommand::DonePicking if matches!(data.status, Status::SelectingCard { .. }) => {
+            ComponentCommand::DonePicking
+                if matches!(data.status, Status::SelectingCard { .. }) =>
+            {
                 self.client.send(ClientMessage::PickCards {
                     game_id: self.game_id,
                     player_id: self.player_id,
@@ -1019,7 +1120,9 @@ impl Component for RealmComponent {
                         .collect(),
                 })?;
                 data.status = Status::Idle;
-                self.card_rects.iter_mut().for_each(|c| c.is_selected = false);
+                self.card_rects
+                    .iter_mut()
+                    .for_each(|c| c.is_selected = false);
             }
             ComponentCommand::SetRect {
                 component_type: ComponentType::Realm,

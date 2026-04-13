@@ -82,7 +82,11 @@ impl Card for Browse {
         )
         .await?;
 
-        let mut bottom_spells: Vec<uuid::Uuid> = looked_at.iter().filter(|id| **id != chosen_id).cloned().collect();
+        let mut bottom_spells: Vec<uuid::Uuid> = looked_at
+            .iter()
+            .filter(|id| **id != chosen_id)
+            .cloned()
+            .collect();
 
         // Player orders the remaining spells for the bottom of the deck (position 0).
         // Ask player to arrange them one by one from bottom to top.
@@ -126,4 +130,6 @@ impl Card for Browse {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Browse::NAME, |owner_id: PlayerId| Box::new(Browse::new(owner_id)));
+    (Browse::NAME, |owner_id: PlayerId| {
+        Box::new(Browse::new(owner_id))
+    });

@@ -1,5 +1,7 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
+    card::{
+        Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone,
+    },
     effect::Effect,
     game::{PlayerId, Thresholds, pick_zone},
     state::{CardQuery, State},
@@ -78,13 +80,21 @@ impl Card for Maelström {
         if state.current_player != controller_id {
             return Ok(vec![]);
         }
-        let body_of_water = state.get_body_of_water_at(self.get_zone()).unwrap_or_default();
-        let minion_ids = CardQuery::new().minions().in_zones(&body_of_water).all(state);
+        let body_of_water = state
+            .get_body_of_water_at(self.get_zone())
+            .unwrap_or_default();
+        let minion_ids = CardQuery::new()
+            .minions()
+            .in_zones(&body_of_water)
+            .all(state);
 
         let mut effects = vec![];
         for minion_id in minion_ids {
             let minion = state.get_card(&minion_id);
-            let steps = minion.get_zone().steps_to_zone(self.get_zone()).unwrap_or_default();
+            let steps = minion
+                .get_zone()
+                .steps_to_zone(self.get_zone())
+                .unwrap_or_default();
             let mut zones = minion.get_zones_within_steps(state, steps);
             zones.retain(|zone| body_of_water.contains(zone));
             zones.retain(|zone| zone.steps_to_zone(self.get_zone()).unwrap_or_default() <= steps);
@@ -117,6 +127,7 @@ impl Card for Maelström {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (Maelström::NAME, |owner_id: PlayerId| {
-    Box::new(Maelström::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (Maelström::NAME, |owner_id: PlayerId| {
+        Box::new(Maelström::new(owner_id))
+    });

@@ -1,5 +1,7 @@
 use crate::{
-    card::{Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
+    card::{
+        Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, Zone,
+    },
     effect::Effect,
     game::PlayerId,
     state::{CardQuery, State},
@@ -80,7 +82,9 @@ impl Card for Belfry {
             .near_to(self.get_zone())
             .all(state)
             .into_iter()
-            .filter(|card_id| state.get_card(card_id).get_controller_id(state) == self.get_controller_id(state))
+            .filter(|card_id| {
+                state.get_card(card_id).get_controller_id(state) == self.get_controller_id(state)
+            })
             .map(|card_id| Effect::UntapCard { card_id })
             .collect())
     }
@@ -88,4 +92,6 @@ impl Card for Belfry {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Belfry::NAME, |owner_id: PlayerId| Box::new(Belfry::new(owner_id)));
+    (Belfry::NAME, |owner_id: PlayerId| {
+        Box::new(Belfry::new(owner_id))
+    });

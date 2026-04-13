@@ -95,4 +95,6 @@ impl Card for IceLance {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (IceLance::NAME, |owner_id: PlayerId| Box::new(IceLance::new(owner_id)));
+    (IceLance::NAME, |owner_id: PlayerId| {
+        Box::new(IceLance::new(owner_id))
+    });

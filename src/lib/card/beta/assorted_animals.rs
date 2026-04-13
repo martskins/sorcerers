@@ -112,7 +112,13 @@ impl Card for AssortedAnimals {
             }
 
             if !chosen.is_empty() {
-                if !yes_or_no(&controller_id, state, "Assorted Animals: Search for another Beast?").await? {
+                if !yes_or_no(
+                    &controller_id,
+                    state,
+                    "Assorted Animals: Search for another Beast?",
+                )
+                .await?
+                {
                     break;
                 }
             }
@@ -120,7 +126,10 @@ impl Card for AssortedAnimals {
             let picked_id = pick_card_with_options(
                 &controller_id,
                 &display_card_ids,
-                &affordable.iter().map(|(_, id, _)| id.clone()).collect::<Vec<_>>(),
+                &affordable
+                    .iter()
+                    .map(|(_, id, _)| id.clone())
+                    .collect::<Vec<_>>(),
                 false,
                 state,
                 "Assorted Animals: Pick a Beast to put into your hand",
@@ -140,7 +149,13 @@ impl Card for AssortedAnimals {
 
         let chosen_ids: Vec<uuid::Uuid> = chosen.iter().map(|(_, id, _)| id.clone()).collect();
         if !chosen_ids.is_empty() {
-            reveal_cards(&controller_id, &chosen_ids, state, "Assorted Animals: Revealed Beasts").await?;
+            reveal_cards(
+                &controller_id,
+                &chosen_ids,
+                state,
+                "Assorted Animals: Revealed Beasts",
+            )
+            .await?;
         }
 
         let mut spells = deck.spells.clone();
@@ -162,6 +177,7 @@ impl Card for AssortedAnimals {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (AssortedAnimals::NAME, |owner_id: PlayerId| {
-    Box::new(AssortedAnimals::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (AssortedAnimals::NAME, |owner_id: PlayerId| {
+        Box::new(AssortedAnimals::new(owner_id))
+    });

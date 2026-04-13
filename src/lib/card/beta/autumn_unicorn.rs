@@ -62,6 +62,7 @@ impl Card for AutumnUnicorn {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (AutumnUnicorn::NAME, |owner_id: PlayerId| {
-    Box::new(AutumnUnicorn::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (AutumnUnicorn::NAME, |owner_id: PlayerId| {
+        Box::new(AutumnUnicorn::new(owner_id))
+    });

@@ -1,5 +1,7 @@
 use crate::{
-    card::{Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
+    card::{
+        Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, Zone,
+    },
     effect::Effect,
     game::PlayerId,
     state::State,
@@ -13,7 +15,8 @@ pub struct DevilSEgg {
 
 impl DevilSEgg {
     pub const NAME: &'static str = "Devil's Egg";
-    pub const DESCRIPTION: &'static str = "At the end of each turn, the controller of Devil's Egg's site loses 1 life.";
+    pub const DESCRIPTION: &'static str =
+        "At the end of each turn, the controller of Devil's Egg's site loses 1 life.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -94,4 +97,6 @@ impl Card for DevilSEgg {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (DevilSEgg::NAME, |owner_id: PlayerId| Box::new(DevilSEgg::new(owner_id)));
+    (DevilSEgg::NAME, |owner_id: PlayerId| {
+        Box::new(DevilSEgg::new(owner_id))
+    });

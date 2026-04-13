@@ -1,5 +1,7 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
+    card::{
+        Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone,
+    },
     effect::Effect,
     game::{PlayerId, Thresholds, pick_zone},
     query::ZoneQuery,
@@ -14,7 +16,8 @@ pub struct Undertow {
 
 impl Undertow {
     pub const NAME: &'static str = "Undertow";
-    pub const DESCRIPTION: &'static str = "Genesis → Staying within this body of water, move target unit one step.";
+    pub const DESCRIPTION: &'static str =
+        "Genesis → Staying within this body of water, move target unit one step.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -116,4 +119,6 @@ impl Card for Undertow {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Undertow::NAME, |owner_id: PlayerId| Box::new(Undertow::new(owner_id)));
+    (Undertow::NAME, |owner_id: PlayerId| {
+        Box::new(Undertow::new(owner_id))
+    });

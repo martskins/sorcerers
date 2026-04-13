@@ -66,7 +66,10 @@ impl Card for DoomsdayProphet {
         Some(&mut self.unit_base)
     }
 
-    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<ContinuousEffect>> {
         if !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }
@@ -82,6 +85,7 @@ impl Card for DoomsdayProphet {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (DoomsdayProphet::NAME, |owner_id: PlayerId| {
-    Box::new(DoomsdayProphet::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (DoomsdayProphet::NAME, |owner_id: PlayerId| {
+        Box::new(DoomsdayProphet::new(owner_id))
+    });

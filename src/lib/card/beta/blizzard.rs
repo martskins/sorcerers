@@ -1,5 +1,8 @@
 use crate::{
-    card::{Ability, AreaModifiers, Aura, AuraBase, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
+    card::{
+        Ability, AreaModifiers, Aura, AuraBase, Card, CardBase, Costs, Edition, Rarity, Region,
+        Zone,
+    },
     effect::Effect,
     game::PlayerId,
     state::State,
@@ -92,7 +95,12 @@ impl Card for Blizzard {
         AreaModifiers {
             grants_abilities: minions
                 .iter()
-                .map(|id| (id.clone(), vec![Ability::Unattackable, Ability::Uninterceptable]))
+                .map(|id| {
+                    (
+                        id.clone(),
+                        vec![Ability::Unattackable, Ability::Uninterceptable],
+                    )
+                })
                 .collect(),
             ..Default::default()
         }
@@ -101,4 +109,6 @@ impl Card for Blizzard {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Blizzard::NAME, |owner_id: PlayerId| Box::new(Blizzard::new(owner_id)));
+    (Blizzard::NAME, |owner_id: PlayerId| {
+        Box::new(Blizzard::new(owner_id))
+    });

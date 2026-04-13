@@ -96,7 +96,8 @@ impl Card for CraveGolem {
                 // BFS to find the closest zone with a minion, then move one step toward it.
                 let self_zone = self.get_zone().clone();
                 let mut visited: Vec<Zone> = vec![];
-                let mut queue: std::collections::VecDeque<(Zone, Zone)> = std::collections::VecDeque::new();
+                let mut queue: std::collections::VecDeque<(Zone, Zone)> =
+                    std::collections::VecDeque::new();
 
                 for adj in self_zone.get_adjacent() {
                     if adj.is_in_play() {
@@ -151,6 +152,7 @@ impl Card for CraveGolem {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (CraveGolem::NAME, |owner_id: PlayerId| {
-    Box::new(CraveGolem::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (CraveGolem::NAME, |owner_id: PlayerId| {
+        Box::new(CraveGolem::new(owner_id))
+    });

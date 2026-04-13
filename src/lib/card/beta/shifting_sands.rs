@@ -1,5 +1,8 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, SiteType, Zone},
+    card::{
+        Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, SiteType,
+        Zone,
+    },
     effect::Effect,
     game::{PlayerId, Thresholds},
     state::{CardQuery, State},
@@ -13,7 +16,8 @@ pub struct ShiftingSands {
 
 impl ShiftingSands {
     pub const NAME: &'static str = "Shifting Sands";
-    pub const DESCRIPTION: &'static str = "Genesis → Reactivate the Genesis abilities of your nearby Deserts.";
+    pub const DESCRIPTION: &'static str =
+        "Genesis → Reactivate the Genesis abilities of your nearby Deserts.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -92,6 +96,7 @@ impl Card for ShiftingSands {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (ShiftingSands::NAME, |owner_id: PlayerId| {
-    Box::new(ShiftingSands::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (ShiftingSands::NAME, |owner_id: PlayerId| {
+        Box::new(ShiftingSands::new(owner_id))
+    });

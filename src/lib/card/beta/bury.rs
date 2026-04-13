@@ -89,4 +89,6 @@ impl Card for Bury {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Bury::NAME, |owner_id: PlayerId| Box::new(Bury::new(owner_id)));
+    (Bury::NAME, |owner_id: PlayerId| {
+        Box::new(Bury::new(owner_id))
+    });

@@ -1,7 +1,9 @@
 use rand::seq::IndexedRandom;
 
 use crate::{
-    card::{Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
+    card::{
+        Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, Zone,
+    },
     game::PlayerId,
     query::ZoneQuery,
     state::{CardQuery, State},
@@ -72,7 +74,11 @@ impl Card for LuckyCharm {
         Some(self)
     }
 
-    fn zone_query_override(&self, state: &State, query: &ZoneQuery) -> anyhow::Result<Option<ZoneQuery>> {
+    fn zone_query_override(
+        &self,
+        state: &State,
+        query: &ZoneQuery,
+    ) -> anyhow::Result<Option<ZoneQuery>> {
         if query.is_randomised() {
             let options = query.options(state);
             let zones = vec![
@@ -94,20 +100,29 @@ impl Card for LuckyCharm {
         }
     }
 
-    async fn card_query_override(&self, state: &State, query: &CardQuery) -> anyhow::Result<Option<CardQuery>> {
+    async fn card_query_override(
+        &self,
+        state: &State,
+        query: &CardQuery,
+    ) -> anyhow::Result<Option<CardQuery>> {
         if !query.is_randomised() {
             return Ok(None);
         }
 
         let query = query.clone();
-        let options = query.all(state).choose_multiple(&mut rand::rng(), 2).cloned().collect();
-        Ok(Some(
-            CardQuery::from_ids(options).with_prompt("Lucky Charm: Choose a card to override random decision"),
-        ))
+        let options = query
+            .all(state)
+            .choose_multiple(&mut rand::rng(), 2)
+            .cloned()
+            .collect();
+        Ok(Some(CardQuery::from_ids(options).with_prompt(
+            "Lucky Charm: Choose a card to override random decision",
+        )))
     }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (LuckyCharm::NAME, |owner_id: PlayerId| {
-    Box::new(LuckyCharm::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (LuckyCharm::NAME, |owner_id: PlayerId| {
+        Box::new(LuckyCharm::new(owner_id))
+    });

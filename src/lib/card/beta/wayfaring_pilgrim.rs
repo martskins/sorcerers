@@ -14,8 +14,7 @@ pub struct WayfaringPilgrim {
 
 impl WayfaringPilgrim {
     pub const NAME: &'static str = "Wayfaring Pilgrim";
-    pub const DESCRIPTION: &'static str =
-        "Whenever Wayfaring Pilgrim enters each corner of the realm for the first time, you may draw a card.";
+    pub const DESCRIPTION: &'static str = "Whenever Wayfaring Pilgrim enters each corner of the realm for the first time, you may draw a card.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -97,8 +96,14 @@ impl Card for WayfaringPilgrim {
         let options: Vec<BaseAction> = vec![BaseAction::DrawSite, BaseAction::DrawSpell];
         let option_labels: Vec<String> = options.iter().map(|a| a.get_name().to_string()).collect();
         let prompt = "Wayfaring Pilgrim: Draw a card";
-        let picked_option_idx =
-            pick_option(self.get_controller_id(state), &option_labels, state, prompt, false).await?;
+        let picked_option_idx = pick_option(
+            self.get_controller_id(state),
+            &option_labels,
+            state,
+            prompt,
+            false,
+        )
+        .await?;
         let mut effects = options[picked_option_idx]
             .on_select(&self.get_controller_id(state), state)
             .await?;
@@ -112,6 +117,7 @@ impl Card for WayfaringPilgrim {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (WayfaringPilgrim::NAME, |owner_id: PlayerId| {
-    Box::new(WayfaringPilgrim::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (WayfaringPilgrim::NAME, |owner_id: PlayerId| {
+        Box::new(WayfaringPilgrim::new(owner_id))
+    });

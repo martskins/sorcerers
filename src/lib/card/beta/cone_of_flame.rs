@@ -12,8 +12,7 @@ pub struct ConeOfFlame {
 
 impl ConeOfFlame {
     pub const NAME: &'static str = "Cone of Flame";
-    pub const DESCRIPTION: &'static str =
-        "Choose a direction from the caster. Deal damage to each unit at a location in the area of effect:";
+    pub const DESCRIPTION: &'static str = "Choose a direction from the caster. Deal damage to each unit at a location in the area of effect:";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -86,6 +85,7 @@ impl Card for ConeOfFlame {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (ConeOfFlame::NAME, |owner_id: PlayerId| {
-    Box::new(ConeOfFlame::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (ConeOfFlame::NAME, |owner_id: PlayerId| {
+        Box::new(ConeOfFlame::new(owner_id))
+    });

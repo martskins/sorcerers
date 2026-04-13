@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        AdditionalCost, Artifact, ArtifactBase, ArtifactType, Card, CardBase, Cost, Costs, Edition, Rarity, Region,
-        Zone,
+        AdditionalCost, Artifact, ArtifactBase, ArtifactType, Card, CardBase, Cost, Costs, Edition,
+        Rarity, Region, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_card},
@@ -25,7 +25,9 @@ impl ActivatedAbility for TapToDealDamage {
             .get_bearer()?
             .ok_or(anyhow::anyhow!("Artifact has no bearer"))?;
         Ok(Cost::ZERO
-            .with_additional(AdditionalCost::tap(CardQuery::from_id(bearer.clone()).untapped()))
+            .with_additional(AdditionalCost::tap(
+                CardQuery::from_id(bearer.clone()).untapped(),
+            ))
             .with_additional(AdditionalCost::tap(
                 CardQuery::new()
                     .in_zone(card.get_zone())
@@ -142,12 +144,16 @@ impl Card for SiegeBallista {
         Some(self)
     }
 
-    fn get_additional_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+    fn get_additional_activated_abilities(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         Ok(vec![Box::new(TapToDealDamage)])
     }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (SiegeBallista::NAME, |owner_id: PlayerId| {
-    Box::new(SiegeBallista::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (SiegeBallista::NAME, |owner_id: PlayerId| {
+        Box::new(SiegeBallista::new(owner_id))
+    });

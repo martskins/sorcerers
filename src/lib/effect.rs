@@ -322,8 +322,13 @@ impl Effect {
 
     pub async fn description(&self, state: &State) -> anyhow::Result<Option<String>> {
         let desc = match self {
-            Effect::PlayerLost { player_id } => Some(format!("{} has lost the game", player_name(player_id, state))),
-            Effect::SetCardRegion { card_id, region, .. } => {
+            Effect::PlayerLost { player_id } => Some(format!(
+                "{} has lost the game",
+                player_name(player_id, state)
+            )),
+            Effect::SetCardRegion {
+                card_id, region, ..
+            } => {
                 let card = state.get_card(card_id).get_name();
                 Some(format!("{} changes region to {}", card, region))
             }
@@ -370,13 +375,28 @@ impl Effect {
             Effect::AddAbilityCounter { .. } => None,
             Effect::AddCounter { card_id, counter } => {
                 let card = state.get_card(card_id).get_name();
-                let fmt = |v: i16| if v >= 0 { format!("+{}", v) } else { format!("{}", v) };
-                Some(format!("{} gets a {}/{} counter", card, fmt(counter.power), fmt(counter.toughness)))
+                let fmt = |v: i16| {
+                    if v >= 0 {
+                        format!("+{}", v)
+                    } else {
+                        format!("{}", v)
+                    }
+                };
+                Some(format!(
+                    "{} gets a {}/{} counter",
+                    card,
+                    fmt(counter.power),
+                    fmt(counter.toughness)
+                ))
             }
             Effect::SetCardZone { .. } => None,
             Effect::DiscardCard { card_id, player_id } => {
                 let card = state.get_card(card_id).get_name();
-                Some(format!("{} discards {}", player_name(player_id, state), card))
+                Some(format!(
+                    "{} discards {}",
+                    player_name(player_id, state),
+                    card
+                ))
             }
             Effect::MoveCard {
                 player_id,
@@ -398,7 +418,10 @@ impl Effect {
                         "{} moves {} through {}",
                         player_name(player_id, state),
                         card_name,
-                        path.iter().map(|c| format!("{}", c)).collect::<Vec<_>>().join(" → "),
+                        path.iter()
+                            .map(|c| format!("{}", c))
+                            .collect::<Vec<_>>()
+                            .join(" → "),
                     )),
                     None => Some(format!(
                         "{} moves {} to {}",
@@ -413,25 +436,46 @@ impl Effect {
                     return Ok(None);
                 }
                 let cards = if *count == 1 { "card" } else { "cards" };
-                Some(format!("{} draws {} {}", player_name(player_id, state), count, cards))
+                Some(format!(
+                    "{} draws {} {}",
+                    player_name(player_id, state),
+                    count,
+                    cards
+                ))
             }
-            Effect::DrawSite { player_id, count, .. } => {
+            Effect::DrawSite {
+                player_id, count, ..
+            } => {
                 if *count == 0 {
                     return Ok(None);
                 }
 
                 let sites = if *count == 1 { "site" } else { "sites" };
-                Some(format!("{} draws {} {}", player_name(player_id, state), count, sites))
+                Some(format!(
+                    "{} draws {} {}",
+                    player_name(player_id, state),
+                    count,
+                    sites
+                ))
             }
-            Effect::DrawSpell { player_id, count, .. } => {
+            Effect::DrawSpell {
+                player_id, count, ..
+            } => {
                 if *count == 0 {
                     return Ok(None);
                 }
 
                 let spells = if *count == 1 { "spell" } else { "spells" };
-                Some(format!("{} draws {} {}", player_name(player_id, state), count, spells))
+                Some(format!(
+                    "{} draws {} {}",
+                    player_name(player_id, state),
+                    count,
+                    spells
+                ))
             }
-            Effect::PlayMagic { player_id, card_id, .. } => {
+            Effect::PlayMagic {
+                player_id, card_id, ..
+            } => {
                 let card = state.get_card(card_id).get_name();
                 Some(format!("{} casts {}", player_name(player_id, state), card))
             }
@@ -467,19 +511,34 @@ impl Effect {
                     Some(parts.join("; "))
                 }
             }
-            Effect::SummonCard { player_id, card_id, zone } => {
+            Effect::SummonCard {
+                player_id,
+                card_id,
+                zone,
+            } => {
                 let card = state.get_card(card_id).get_name();
-                Some(format!("{} summons {} in {}", player_name(player_id, state), card, zone))
+                Some(format!(
+                    "{} summons {} in {}",
+                    player_name(player_id, state),
+                    card,
+                    zone
+                ))
             }
             Effect::TapCard { .. } => None,
             Effect::UntapCard { .. } => None,
-            Effect::EndTurn { player_id, .. } => Some(format!("{} passes the turn", player_name(player_id, state))),
-            Effect::StartTurn { player_id } => {
-                Some(format!("--- {}'s turn begins ---", player_name(player_id, state)))
+            Effect::EndTurn { player_id, .. } => {
+                Some(format!("{} passes the turn", player_name(player_id, state)))
             }
+            Effect::StartTurn { player_id } => Some(format!(
+                "--- {}'s turn begins ---",
+                player_name(player_id, state)
+            )),
             Effect::ConsumeMana { .. } => None,
             Effect::AddMana { .. } => None,
-            Effect::Strike { striker_id, target_id } => Some(format!(
+            Effect::Strike {
+                striker_id,
+                target_id,
+            } => Some(format!(
                 "{} strikes {} with {}",
                 player_name(&state.get_card(striker_id).get_controller_id(state), state),
                 state.get_card(target_id).get_name(),
@@ -501,11 +560,17 @@ impl Effect {
                 ))
             }
             Effect::TakeDamage {
-                card_id, from, damage, ..
+                card_id,
+                from,
+                damage,
+                ..
             } => {
                 let attacker = state.get_card(from).get_name();
                 let defender = state.get_card(card_id).get_name();
-                Some(format!("{} takes {} damage from {}", defender, damage, attacker))
+                Some(format!(
+                    "{} takes {} damage from {}",
+                    defender, damage, attacker
+                ))
             }
             Effect::KillMinion { card_id, killer_id } => {
                 let card = state.get_card(card_id);
@@ -515,29 +580,57 @@ impl Effect {
             Effect::BuryCard { card_id, .. } => {
                 let card = state.get_card(card_id);
                 let player = card.get_controller_id(state);
-                Some(format!("{} buries {}", player_name(&player, state), card.get_name()))
+                Some(format!(
+                    "{} buries {}",
+                    player_name(&player, state),
+                    card.get_name()
+                ))
             }
             Effect::BanishCard { card_id, .. } => {
                 let card = state.get_card(card_id);
                 let player = card.get_controller_id(state);
-                Some(format!("{} banishes {}", player_name(&player, state), card.get_name()))
+                Some(format!(
+                    "{} banishes {}",
+                    player_name(&player, state),
+                    card.get_name()
+                ))
             }
             Effect::SetCardData { .. } => None,
-            Effect::RangedStrike { striker_id, target_id } => Some(format!(
+            Effect::RangedStrike {
+                striker_id,
+                target_id,
+            } => Some(format!(
                 "{} ranged strikes {} with {}",
                 player_name(&state.get_card(striker_id).get_controller_id(state), state),
                 state.get_card(target_id).get_name(),
                 state.get_card(striker_id).get_name(),
             )),
             Effect::DealDamageToTarget { .. } => None,
-            Effect::DealDamageAllUnitsInZone { player_id, zone, from, damage } => {
+            Effect::DealDamageAllUnitsInZone {
+                player_id,
+                zone,
+                from,
+                damage,
+            } => {
                 let source = state.get_card(from).get_name();
                 let zone_name = zone.resolve(player_id, state).await?;
-                Some(format!("{} deals {} damage to all units in {}", source, damage, zone_name))
+                Some(format!(
+                    "{} deals {} damage to all units in {}",
+                    source, damage, zone_name
+                ))
             }
-            Effect::TeleportCard { player_id, card_id, to_zone } => {
+            Effect::TeleportCard {
+                player_id,
+                card_id,
+                to_zone,
+            } => {
                 let card = state.get_card(card_id).get_name();
-                Some(format!("{} teleports {} to {}", player_name(player_id, state), card, to_zone))
+                Some(format!(
+                    "{} teleports {} to {}",
+                    player_name(player_id, state),
+                    card,
+                    to_zone
+                ))
             }
             Effect::RearrangeDeck { .. } => None,
             Effect::SetBearer { card_id, bearer_id } => {
@@ -545,12 +638,19 @@ impl Effect {
                 match bearer_id {
                     Some(carrier_id) => {
                         let carrier = state.get_card(carrier_id);
-                        Some(format!("{} is now carried by {}", card.get_name(), carrier.get_name()))
+                        Some(format!(
+                            "{} is now carried by {}",
+                            card.get_name(),
+                            carrier.get_name()
+                        ))
                     }
                     None => Some(format!("{} is no longer carried", card.get_name())),
                 }
             }
-            Effect::ShuffleDeck { player_id } => Some(format!("{} shuffles their deck", player_name(player_id, state))),
+            Effect::ShuffleDeck { player_id } => Some(format!(
+                "{} shuffles their deck",
+                player_name(player_id, state)
+            )),
             Effect::SetController { card_id, player_id } => {
                 let card_name = state.get_card(card_id).get_name();
                 Some(format!(
@@ -564,13 +664,19 @@ impl Effect {
         Ok(desc)
     }
 
-    async fn process_deferred_effects(&self, state: &mut State, effect: &Effect) -> anyhow::Result<()> {
+    async fn process_deferred_effects(
+        &self,
+        state: &mut State,
+        effect: &Effect,
+    ) -> anyhow::Result<()> {
         let mut effects_to_remove = vec![];
         for (idx, de) in state.deferred_effects.iter().enumerate() {
             if de.trigger_on_effect.matches(effect, state).await? {
                 if let Some(source_id) = effect.source_id() {
                     let effects = (de.on_effect)(state, source_id, effect).await?;
-                    state.effects.extend(effects.into_iter().map(std::sync::Arc::new));
+                    state
+                        .effects
+                        .extend(effects.into_iter().map(std::sync::Arc::new));
                 }
 
                 if !de.multitrigger {
@@ -597,7 +703,11 @@ impl Effect {
         Ok(())
     }
 
-    async fn expire_temporary_effects(&self, state: &mut State, effect: &Effect) -> anyhow::Result<()> {
+    async fn expire_temporary_effects(
+        &self,
+        state: &mut State,
+        effect: &Effect,
+    ) -> anyhow::Result<()> {
         let snapshot = state.snapshot();
         let mut retained_effects = vec![];
         for te in &state.temporary_effects {
@@ -631,7 +741,11 @@ impl Effect {
         let mut card_modifiers_to_remove: Vec<(uuid::Uuid, Vec<uuid::Uuid>)> = vec![];
         for card in modified_cards {
             let mut to_remove: Vec<uuid::Uuid> = vec![];
-            for counter in &card.get_unit_base().unwrap_or(&UnitBase::default()).modifier_counters {
+            for counter in &card
+                .get_unit_base()
+                .unwrap_or(&UnitBase::default())
+                .modifier_counters
+            {
                 if let Some(effect_query) = &counter.expires_on_effect {
                     if effect_query.matches(self, state).await? {
                         to_remove.push(counter.id);
@@ -655,12 +769,22 @@ impl Effect {
             .cards
             .iter()
             .filter(|c| c.is_unit())
-            .filter(|c| c.get_unit_base().unwrap_or(&UnitBase::default()).power_counters.len() > 0)
+            .filter(|c| {
+                c.get_unit_base()
+                    .unwrap_or(&UnitBase::default())
+                    .power_counters
+                    .len()
+                    > 0
+            })
             .collect();
         let mut card_counters_to_remove: Vec<(uuid::Uuid, Vec<uuid::Uuid>)> = vec![];
         for card in cards_with_counters {
             let mut to_remove: Vec<uuid::Uuid> = vec![];
-            for counter in &card.get_unit_base().unwrap_or(&UnitBase::default()).power_counters {
+            for counter in &card
+                .get_unit_base()
+                .unwrap_or(&UnitBase::default())
+                .power_counters
+            {
                 if let Some(effect_query) = &counter.expires_on_effect {
                     if effect_query.matches(self, state).await? {
                         to_remove.push(counter.id);
@@ -765,7 +889,8 @@ impl Effect {
                                 1 => Some(units[0].clone()),
                                 _ => {
                                     let prompt = "Pick a unit to shoot";
-                                    let picked_unit_id = pick_card(player_id, &units, state, prompt).await?;
+                                    let picked_unit_id =
+                                        pick_card(player_id, &units, state, prompt).await?;
                                     QueryCache::store_effect_targets(
                                         state.game_id.clone(),
                                         id.clone(),
@@ -831,7 +956,9 @@ impl Effect {
                     Some(path) => {
                         for zone in path {
                             let snapshot = state.snapshot();
-                            let zone = ZoneQuery::from_zone(zone.clone()).resolve(player_id, state).await?;
+                            let zone = ZoneQuery::from_zone(zone.clone())
+                                .resolve(player_id, state)
+                                .await?;
                             let card = state.get_card_mut(card_id);
                             card.set_zone(zone.clone());
                             if *tap {
@@ -887,7 +1014,9 @@ impl Effect {
                     }
                 }
             }
-            Effect::DrawSite { player_id, count, .. } => {
+            Effect::DrawSite {
+                player_id, count, ..
+            } => {
                 let deck = state
                     .decks
                     .get_mut(player_id)
@@ -903,7 +1032,9 @@ impl Effect {
                     }
                 }
             }
-            Effect::DrawSpell { player_id, count, .. } => {
+            Effect::DrawSpell {
+                player_id, count, ..
+            } => {
                 let deck = state
                     .decks
                     .get_mut(player_id)
@@ -919,12 +1050,21 @@ impl Effect {
                     }
                 }
             }
-            Effect::DrawCard { player_id, count, .. } => {
+            Effect::DrawCard {
+                player_id, count, ..
+            } => {
                 for _ in 0..*count {
-                    let options: Vec<BaseAction> = vec![BaseAction::DrawSite, BaseAction::DrawSpell];
-                    let option_labels = options.iter().map(|a| a.get_name().to_string()).collect::<Vec<_>>();
-                    let picked_option_idx = pick_option(player_id, &option_labels, state, "Draw a card", false).await?;
-                    let effects = options[picked_option_idx].on_select(player_id, state).await?;
+                    let options: Vec<BaseAction> =
+                        vec![BaseAction::DrawSite, BaseAction::DrawSpell];
+                    let option_labels = options
+                        .iter()
+                        .map(|a| a.get_name().to_string())
+                        .collect::<Vec<_>>();
+                    let picked_option_idx =
+                        pick_option(player_id, &option_labels, state, "Draw a card", false).await?;
+                    let effects = options[picked_option_idx]
+                        .on_select(player_id, state)
+                        .await?;
                     state.queue(effects);
                 }
             }
@@ -965,10 +1105,12 @@ impl Effect {
                 if card.is_site() {
                     if let Some(site) = zone.get_site(&snapshot) {
                         if site.get_name() == Rubble::NAME {
-                            state.effects.push_back(std::sync::Arc::new(Effect::BanishCard {
-                                card_id: site.get_id().clone(),
-                                from: zone.clone(),
-                            }));
+                            state
+                                .effects
+                                .push_back(std::sync::Arc::new(Effect::BanishCard {
+                                    card_id: site.get_id().clone(),
+                                    from: zone.clone(),
+                                }));
                         }
                     }
                 }
@@ -1101,10 +1243,14 @@ impl Effect {
                 state.queue(all_effects);
 
                 let options: Vec<BaseAction> = vec![BaseAction::DrawSite, BaseAction::DrawSpell];
-                let option_labels: Vec<String> = options.iter().map(|a| a.get_name().to_string()).collect();
+                let option_labels: Vec<String> =
+                    options.iter().map(|a| a.get_name().to_string()).collect();
                 let prompt = "Start Turn: Pick card to draw";
-                let picked_option_idx = pick_option(player_id, &option_labels, state, prompt, false).await?;
-                let effects = options[picked_option_idx].on_select(player_id, state).await?;
+                let picked_option_idx =
+                    pick_option(player_id, &option_labels, state, prompt, false).await?;
+                let effects = options[picked_option_idx]
+                    .on_select(player_id, state)
+                    .await?;
                 state.queue(effects);
 
                 state.turns += 1;
@@ -1115,7 +1261,9 @@ impl Effect {
                     })
                     .await?;
             }
-            Effect::ConsumeMana { player_id, mana, .. } => {
+            Effect::ConsumeMana {
+                player_id, mana, ..
+            } => {
                 let player_mana = state.get_player_mana_mut(player_id);
                 *player_mana = player_mana.saturating_sub(*mana);
             }
@@ -1161,11 +1309,16 @@ impl Effect {
                     player_id: next_player.id.clone(),
                 });
             }
-            Effect::AddMana { player_id, mana, .. } => {
+            Effect::AddMana {
+                player_id, mana, ..
+            } => {
                 let player_mana = state.get_player_mana_mut(player_id);
                 *player_mana += mana;
             }
-            Effect::Strike { striker_id, target_id } => {
+            Effect::Strike {
+                striker_id,
+                target_id,
+            } => {
                 let snapshot = state.snapshot();
                 let attacker = state.get_card(striker_id);
                 let defender = state.get_card(target_id);
@@ -1178,7 +1331,12 @@ impl Effect {
                     is_strike: true,
                 }];
 
-                effects.extend(defender.on_defend(state, striker_id)?.into_iter().map(|e| e.into()));
+                effects.extend(
+                    defender
+                        .on_defend(state, striker_id)?
+                        .into_iter()
+                        .map(|e| e.into()),
+                );
                 effects.reverse();
                 state.queue(effects);
             }
@@ -1223,7 +1381,8 @@ impl Effect {
                 let mut snapshot = state.snapshot();
                 Box::pin(snapshot.apply_effects_without_log()).await?;
 
-                let killed_defender = state.get_card(first_defender_id).get_zone() == &Zone::Cemetery;
+                let killed_defender =
+                    state.get_card(first_defender_id).get_zone() == &Zone::Cemetery;
                 if killed_defender
                     && first_striker.has_ability(state, &Ability::FirstStrike)
                     && !first_defender.has_ability(state, &Ability::FirstStrike)
@@ -1234,7 +1393,12 @@ impl Effect {
                     return Ok(());
                 }
 
-                effects.extend(defender.on_defend(state, attacker_id)?.into_iter().map(|e| e.into()));
+                effects.extend(
+                    defender
+                        .on_defend(state, attacker_id)?
+                        .into_iter()
+                        .map(|e| e.into()),
+                );
                 effects.reverse();
                 state.queue(effects);
             }
@@ -1346,7 +1510,9 @@ impl Effect {
                     state.get_card_mut(&borne_card_id).set_bearer_id(None);
                 }
             }
-            Effect::AddCounter { card_id, counter, .. } => {
+            Effect::AddCounter {
+                card_id, counter, ..
+            } => {
                 let card = state.get_card_mut(card_id);
                 if card.is_unit() {
                     let base = card
@@ -1355,7 +1521,9 @@ impl Effect {
                     base.power_counters.push(counter.clone());
                 }
             }
-            Effect::AddAbilityCounter { card_id, counter, .. } => {
+            Effect::AddAbilityCounter {
+                card_id, counter, ..
+            } => {
                 let card = state.get_card_mut(card_id);
                 if card.is_unit() {
                     let base = card
@@ -1369,7 +1537,9 @@ impl Effect {
                 card.set_data(data)?;
             }
             Effect::RangedStrike {
-                striker_id, target_id, ..
+                striker_id,
+                target_id,
+                ..
             } => {
                 let snapshot = state.snapshot();
                 let attacker = state.get_card(striker_id);
@@ -1383,7 +1553,12 @@ impl Effect {
                     is_strike: true,
                 }];
                 effects.extend(attacker.after_ranged_attack(state).await?);
-                effects.extend(defender.on_defend(state, striker_id)?.into_iter().map(|e| e.into()));
+                effects.extend(
+                    defender
+                        .on_defend(state, striker_id)?
+                        .into_iter()
+                        .map(|e| e.into()),
+                );
                 state.queue(effects);
             }
             Effect::TeleportCard {
@@ -1433,19 +1608,26 @@ impl Effect {
                 deck.spells = spells.clone();
                 deck.sites = sites.clone();
             }
-            Effect::SetCardRegion { card_id, region, tap } => {
+            Effect::SetCardRegion {
+                card_id,
+                region,
+                tap,
+            } => {
                 let card = state.get_card(card_id);
                 let from_region = card.get_region(&state);
                 // Compute change region effects before updating the card's region.
-                let mut change_region_effects = card.on_region_change(state, from_region, region)?;
+                let mut change_region_effects =
+                    card.on_region_change(state, from_region, region)?;
 
                 let borne_artifacts = CardQuery::new().carried_by(card_id).all(state);
                 // Append these to the change_region_effects so that the effects of changing
                 // region are applied after the region change itself.
-                change_region_effects.extend(borne_artifacts.into_iter().map(|artifact_id| Effect::SetCardRegion {
-                    card_id: artifact_id,
-                    region: region.clone(),
-                    tap: false,
+                change_region_effects.extend(borne_artifacts.into_iter().map(|artifact_id| {
+                    Effect::SetCardRegion {
+                        card_id: artifact_id,
+                        region: region.clone(),
+                        tap: false,
+                    }
                 }));
 
                 let card = state.get_card_mut(card_id);
@@ -1457,10 +1639,10 @@ impl Effect {
                 if card.is_minion() {
                     let card = state.get_card(card_id);
                     let snapshot = state.snapshot();
-                    let underground_without_burrowing =
-                        region == &Region::Underground && !card.has_ability(&snapshot, &Ability::Burrowing);
-                    let underwater_without_submerge =
-                        region == &Region::Underwater && !card.has_ability(&snapshot, &Ability::Submerge);
+                    let underground_without_burrowing = region == &Region::Underground
+                        && !card.has_ability(&snapshot, &Ability::Burrowing);
+                    let underwater_without_submerge = region == &Region::Underwater
+                        && !card.has_ability(&snapshot, &Ability::Submerge);
                     if underground_without_burrowing || underwater_without_submerge {
                         state.queue_one(Effect::BuryCard {
                             card_id: card_id.clone(),

@@ -15,7 +15,8 @@ pub struct BloodRavens {
 
 impl BloodRavens {
     pub const NAME: &'static str = "Blood Ravens";
-    pub const DESCRIPTION: &'static str = "Airborne\r \r Blood Ravens' strike damage against units heals you.";
+    pub const DESCRIPTION: &'static str =
+        "Airborne\r \r Blood Ravens' strike damage against units heals you.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -71,6 +72,7 @@ impl Card for BloodRavens {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (BloodRavens::NAME, |owner_id: PlayerId| {
-    Box::new(BloodRavens::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (BloodRavens::NAME, |owner_id: PlayerId| {
+        Box::new(BloodRavens::new(owner_id))
+    });

@@ -66,7 +66,11 @@ impl Card for BorderMilitia {
             .filter_map(|c| {
                 for zone in c.get_zone().get_adjacent() {
                     match zone.get_site(state) {
-                        Some(site) if site.get_controller_id(state) != self.get_controller_id(state) => return Some(c),
+                        Some(site)
+                            if site.get_controller_id(state) != self.get_controller_id(state) =>
+                        {
+                            return Some(c);
+                        }
                         _ => {}
                     }
                 }
@@ -88,6 +92,7 @@ impl Card for BorderMilitia {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (BorderMilitia::NAME, |owner_id: PlayerId| {
-    Box::new(BorderMilitia::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (BorderMilitia::NAME, |owner_id: PlayerId| {
+        Box::new(BorderMilitia::new(owner_id))
+    });

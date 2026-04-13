@@ -13,7 +13,8 @@ pub struct Blink {
 
 impl Blink {
     pub const NAME: &'static str = "Blink";
-    pub const DESCRIPTION: &'static str = "An ally teleports to a location it’s nearby. Draw a card.";
+    pub const DESCRIPTION: &'static str =
+        "An ally teleports to a location it’s nearby. Draw a card.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -91,4 +92,6 @@ impl Card for Blink {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Blink::NAME, |owner_id: PlayerId| Box::new(Blink::new(owner_id)));
+    (Blink::NAME, |owner_id: PlayerId| {
+        Box::new(Blink::new(owner_id))
+    });

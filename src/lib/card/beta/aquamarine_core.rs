@@ -1,6 +1,7 @@
 use crate::{
     card::{
-        Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Zone,
+        Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region,
+        ResourceProvider, Zone,
     },
     game::{PlayerId, Thresholds},
     state::State,
@@ -87,6 +88,7 @@ impl Card for AquamarineCore {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (AquamarineCore::NAME, |owner_id: PlayerId| {
-    Box::new(AquamarineCore::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (AquamarineCore::NAME, |owner_id: PlayerId| {
+        Box::new(AquamarineCore::new(owner_id))
+    });

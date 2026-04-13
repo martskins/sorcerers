@@ -14,8 +14,7 @@ pub struct AskelonPhoenix {
 
 impl AskelonPhoenix {
     pub const NAME: &'static str = "Askelon Phoenix";
-    pub const DESCRIPTION: &'static str =
-        "Airborne\r \r If Askelon Phoenix would take fire damage, it gains +1 power this turn instead.";
+    pub const DESCRIPTION: &'static str = "Airborne\r \r If Askelon Phoenix would take fire damage, it gains +1 power this turn instead.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -68,7 +67,12 @@ impl Card for AskelonPhoenix {
         Some(&mut self.unit_base)
     }
 
-    fn on_take_damage(&mut self, state: &State, from: &uuid::Uuid, damage: u16) -> anyhow::Result<Vec<Effect>> {
+    fn on_take_damage(
+        &mut self,
+        state: &State,
+        from: &uuid::Uuid,
+        damage: u16,
+    ) -> anyhow::Result<Vec<Effect>> {
         let attacker = state.get_card(from);
         if attacker.get_elements(state)?.contains(&Element::Fire) {
             return Ok(vec![Effect::AddCounter {
@@ -83,6 +87,7 @@ impl Card for AskelonPhoenix {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (AskelonPhoenix::NAME, |owner_id: PlayerId| {
-    Box::new(AskelonPhoenix::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (AskelonPhoenix::NAME, |owner_id: PlayerId| {
+        Box::new(AskelonPhoenix::new(owner_id))
+    });

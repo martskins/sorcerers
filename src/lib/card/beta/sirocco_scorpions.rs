@@ -70,6 +70,7 @@ impl Card for SiroccoScorpions {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (SiroccoScorpions::NAME, |owner_id: PlayerId| {
-    Box::new(SiroccoScorpions::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (SiroccoScorpions::NAME, |owner_id: PlayerId| {
+        Box::new(SiroccoScorpions::new(owner_id))
+    });

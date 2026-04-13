@@ -66,10 +66,17 @@ fn draw_vortex_icon(painter: &Painter, x: f32, y: f32, size: f32, color: Color32
     }
 }
 
-fn draw_rotated_image(painter: &Painter, tex_handle: &TextureHandle, rect: Rect, angle: f32, tint: Color32) {
+fn draw_rotated_image(
+    painter: &Painter,
+    tex_handle: &TextureHandle,
+    rect: Rect,
+    angle: f32,
+    tint: Color32,
+) {
     let cx = rect.center();
     let (sin, cos) = angle.sin_cos();
-    let rotate = |v: Vec2| -> Pos2 { pos2(cos * v.x - sin * v.y + cx.x, sin * v.x + cos * v.y + cx.y) };
+    let rotate =
+        |v: Vec2| -> Pos2 { pos2(cos * v.x - sin * v.y + cx.x, sin * v.x + cos * v.y + cx.y) };
     let half = rect.size() * 0.5;
     let corners = [
         rotate(vec2(-half.x, -half.y)),
@@ -77,7 +84,12 @@ fn draw_rotated_image(painter: &Painter, tex_handle: &TextureHandle, rect: Rect,
         rotate(vec2(half.x, half.y)),
         rotate(vec2(-half.x, half.y)),
     ];
-    let uvs = [pos2(0.0, 0.0), pos2(1.0, 0.0), pos2(1.0, 1.0), pos2(0.0, 1.0)];
+    let uvs = [
+        pos2(0.0, 0.0),
+        pos2(1.0, 0.0),
+        pos2(1.0, 1.0),
+        pos2(0.0, 1.0),
+    ];
     let mut mesh = Mesh::with_texture(tex_handle.id());
     for (c, uv) in corners.iter().zip(uvs.iter()) {
         mesh.vertices.push(Vertex {
@@ -90,7 +102,13 @@ fn draw_rotated_image(painter: &Painter, tex_handle: &TextureHandle, rect: Rect,
     painter.add(Shape::mesh(mesh));
 }
 
-fn draw_card_internal(card_rect: &CardRect, is_ally: bool, draw_accessories: bool, painter: &Painter, rotation: f32) {
+fn draw_card_internal(
+    card_rect: &CardRect,
+    is_ally: bool,
+    draw_accessories: bool,
+    painter: &Painter,
+    rotation: f32,
+) {
     let rect = card_rect.rect;
     let scale = if card_rect.is_hovered || card_rect.is_selected {
         1.1f32
@@ -140,13 +158,20 @@ fn draw_card_internal(card_rect: &CardRect, is_ally: bool, draw_accessories: boo
         let card_center_y = rect.min.y + card_h / 2.0;
         let (sin, cos) = rotation.sin_cos();
         let rotate = |vx: f32, vy: f32| -> Pos2 {
-            pos2(cos * vx - sin * vy + card_center_x, sin * vx + cos * vy + card_center_y)
+            pos2(
+                cos * vx - sin * vy + card_center_x,
+                sin * vx + cos * vy + card_center_y,
+            )
         };
         let left_cx = -card_w / 2.0;
         let tip = rotate(left_cx - triangle_w, 0.0);
         let top = rotate(left_cx, -triangle_h / 2.0);
         let bot = rotate(left_cx, triangle_h / 2.0);
-        painter.add(Shape::convex_polygon(vec![tip, top, bot], Color32::WHITE, Stroke::NONE));
+        painter.add(Shape::convex_polygon(
+            vec![tip, top, bot],
+            Color32::WHITE,
+            Stroke::NONE,
+        ));
         let right_cx = -card_w / 2.0 + 0.5;
         let rtip = rotate(right_cx + triangle_w, 0.0);
         let rtop = rotate(right_cx, -triangle_h / 2.0);
@@ -175,7 +200,11 @@ fn draw_card_internal(card_rect: &CardRect, is_ally: bool, draw_accessories: boo
         .collect();
     painter.add(Shape::closed_line(rotated, Stroke::new(2.0, sleeve_color)));
 
-    if card_rect.card.abilities.contains(&Ability::SummoningSickness) {
+    if card_rect
+        .card
+        .abilities
+        .contains(&Ability::SummoningSickness)
+    {
         let icon_size = 22.0;
         let x = card_rect.rect.min.x + card_rect.rect.width() * scale - icon_size - 4.0;
         let y = card_rect.rect.min.y + 4.0;
@@ -189,7 +218,10 @@ fn draw_card_internal(card_rect: &CardRect, is_ally: bool, draw_accessories: boo
         let center = pos2(x + icon_size / 2.0, y + icon_size / 2.0);
         painter.circle_stroke(center, icon_size / 2.0, Stroke::new(3.0, Color32::WHITE));
         painter.line_segment(
-            [pos2(x + 4.0, y + icon_size - 4.0), pos2(x + icon_size - 4.0, y + 4.0)],
+            [
+                pos2(x + 4.0, y + icon_size - 4.0),
+                pos2(x + icon_size - 4.0, y + 4.0),
+            ],
             Stroke::new(3.0, Color32::WHITE),
         );
     }
@@ -200,7 +232,10 @@ fn draw_card_internal(card_rect: &CardRect, is_ally: bool, draw_accessories: boo
             && card_rect.card.zone.is_in_play()
         {
             let circle_radius = 8.0;
-            let circle_pos = pos2(rect.min.x + circle_radius / 2.0, rect.min.y + circle_radius / 2.0);
+            let circle_pos = pos2(
+                rect.min.x + circle_radius / 2.0,
+                rect.min.y + circle_radius / 2.0,
+            );
             painter.circle_filled(circle_pos, circle_radius - 2.0, Color32::RED);
             let dmg_text = card_rect.card.damage_taken.to_string();
             painter.text(
@@ -214,7 +249,10 @@ fn draw_card_internal(card_rect: &CardRect, is_ally: bool, draw_accessories: boo
 
         if card_rect.card.card_type.is_unit() {
             let circle_radius = 8.0;
-            let circle_pos = pos2(rect.min.x + w - circle_radius / 2.0, rect.min.y + circle_radius / 2.0);
+            let circle_pos = pos2(
+                rect.min.x + w - circle_radius / 2.0,
+                rect.min.y + circle_radius / 2.0,
+            );
             painter.circle_filled(circle_pos, circle_radius - 2.0, Color32::BLUE);
             let power_text = card_rect.card.power.to_string();
             painter.text(
@@ -238,7 +276,13 @@ fn draw_card_internal(card_rect: &CardRect, is_ally: bool, draw_accessories: boo
 }
 
 pub fn draw_card(card_rect: &CardRect, is_ally: bool, draw_accessories: bool, painter: &Painter) {
-    draw_card_internal(card_rect, is_ally, draw_accessories, painter, card_rect.rotation());
+    draw_card_internal(
+        card_rect,
+        is_ally,
+        draw_accessories,
+        painter,
+        card_rect.rotation(),
+    );
 }
 
 pub fn draw_card_with_rotation(
@@ -251,7 +295,11 @@ pub fn draw_card_with_rotation(
     draw_card_internal(card_rect, is_ally, draw_accessories, painter, rotation);
 }
 
-pub fn render_card_preview(card: &CardRect, data: &mut GameData, painter: &Painter) -> anyhow::Result<()> {
+pub fn render_card_preview(
+    card: &CardRect,
+    data: &mut GameData,
+    painter: &Painter,
+) -> anyhow::Result<()> {
     if let Status::SelectingCard { preview: true, .. } = &data.status {
         return Ok(());
     }
@@ -316,7 +364,10 @@ pub fn popup_action_menu(
         y = y.clamp(screen.min.y + 8.0, screen.max.y - total_h - 8.0);
         pos2(x, y)
     } else {
-        pos2((screen.width() - MENU_W) / 2.0, (screen.height() - total_h) / 2.0)
+        pos2(
+            (screen.width() - MENU_W) / 2.0,
+            (screen.height() - total_h) / 2.0,
+        )
     };
 
     // ── Determine position ────────────────────────────────────────
@@ -399,7 +450,8 @@ pub fn popup_action_menu(
             // Action rows
             for (idx, _option) in options.iter().enumerate() {
                 let row_y = origin.y + HEADER_H + idx as f32 * ROW_H;
-                let row_rect = Rect::from_min_size(pos2(origin.x + 1.0, row_y), vec2(total_w - 2.0, ROW_H));
+                let row_rect =
+                    Rect::from_min_size(pos2(origin.x + 1.0, row_y), vec2(total_w - 2.0, ROW_H));
                 // Last row gets rounded bottom corners
                 let row_cr = if idx + 1 == options.len() {
                     egui::CornerRadius {
@@ -412,7 +464,11 @@ pub fn popup_action_menu(
                     egui::CornerRadius::ZERO
                 };
 
-                let resp = ui.interact(row_rect, egui::Id::new(("action_row", idx)), egui::Sense::click());
+                let resp = ui.interact(
+                    row_rect,
+                    egui::Id::new(("action_row", idx)),
+                    egui::Sense::click(),
+                );
                 if resp.hovered() {
                     p.rect_filled(row_rect, row_cr, BG_ROW_HOVER);
                 }

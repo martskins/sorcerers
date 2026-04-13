@@ -1,5 +1,8 @@
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
+    card::{
+        Ability, Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase,
+        Zone,
+    },
     effect::{AbilityCounter, Effect},
     game::{PlayerId, Thresholds},
     query::EffectQuery,
@@ -102,4 +105,6 @@ impl Card for Quagmire {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Quagmire::NAME, |owner_id: PlayerId| Box::new(Quagmire::new(owner_id)));
+    (Quagmire::NAME, |owner_id: PlayerId| {
+        Box::new(Quagmire::new(owner_id))
+    });

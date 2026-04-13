@@ -69,7 +69,12 @@ impl Card for AccursedAlbatross {
         Some(&mut self.unit_base)
     }
 
-    fn on_take_damage(&mut self, state: &State, from: &uuid::Uuid, damage: u16) -> anyhow::Result<Vec<Effect>> {
+    fn on_take_damage(
+        &mut self,
+        state: &State,
+        from: &uuid::Uuid,
+        damage: u16,
+    ) -> anyhow::Result<Vec<Effect>> {
         let damage_effects = self.base_take_damage(state, from, damage)?;
         let mut was_killed = false;
         for effect in damage_effects {
@@ -100,6 +105,7 @@ impl Card for AccursedAlbatross {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (AccursedAlbatross::NAME, |owner_id: PlayerId| {
-    Box::new(AccursedAlbatross::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (AccursedAlbatross::NAME, |owner_id: PlayerId| {
+        Box::new(AccursedAlbatross::new(owner_id))
+    });

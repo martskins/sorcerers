@@ -67,6 +67,7 @@ impl Card for BelmotteLongbowmen {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (BelmotteLongbowmen::NAME, |owner_id: PlayerId| {
-    Box::new(BelmotteLongbowmen::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (BelmotteLongbowmen::NAME, |owner_id: PlayerId| {
+        Box::new(BelmotteLongbowmen::new(owner_id))
+    });

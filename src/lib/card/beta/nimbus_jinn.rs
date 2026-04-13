@@ -45,7 +45,8 @@ pub struct NimbusJinn {
 
 impl NimbusJinn {
     pub const NAME: &'static str = "Nimbus Jinn";
-    pub const DESCRIPTION: &'static str = "Airborne\r \r Discard a spell → Deal 3 damage to another random unit here.";
+    pub const DESCRIPTION: &'static str =
+        "Airborne\r \r Discard a spell → Deal 3 damage to another random unit here.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -99,12 +100,16 @@ impl Card for NimbusJinn {
         Some(&mut self.unit_base)
     }
 
-    fn get_additional_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+    fn get_additional_activated_abilities(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         Ok(vec![Box::new(DealDamage)])
     }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (NimbusJinn::NAME, |owner_id: PlayerId| {
-    Box::new(NimbusJinn::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (NimbusJinn::NAME, |owner_id: PlayerId| {
+        Box::new(NimbusJinn::new(owner_id))
+    });

@@ -13,7 +13,8 @@ pub struct InfernalLegion {
 
 impl InfernalLegion {
     pub const NAME: &'static str = "Infernal Legion";
-    pub const DESCRIPTION: &'static str = "At the end of your turn, deal 3 damage to each other adjacent unit.";
+    pub const DESCRIPTION: &'static str =
+        "At the end of your turn, deal 3 damage to each other adjacent unit.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -89,6 +90,7 @@ impl Card for InfernalLegion {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (InfernalLegion::NAME, |owner_id: PlayerId| {
-    Box::new(InfernalLegion::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (InfernalLegion::NAME, |owner_id: PlayerId| {
+        Box::new(InfernalLegion::new(owner_id))
+    });

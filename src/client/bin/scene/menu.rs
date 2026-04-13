@@ -1,6 +1,8 @@
 use crate::scene::{Scene, game::Game};
 use egui::{Color32, Context, Margin, Ui, vec2};
-use kira::{AudioManager, AudioManagerSettings, DefaultBackend, sound::static_sound::StaticSoundData};
+use kira::{
+    AudioManager, AudioManagerSettings, DefaultBackend, sound::static_sound::StaticSoundData,
+};
 use sorcerers::deck::DeckList;
 use sorcerers::game::PlayerId;
 use sorcerers::networking::message::ServerMessage;
@@ -81,9 +83,14 @@ impl Menu {
                 cards,
             } => {
                 let player_id = self.player_id?;
-                let opponent_id = if player1 == &player_id { *player2 } else { *player1 };
+                let opponent_id = if player1 == &player_id {
+                    *player2
+                } else {
+                    *player1
+                };
 
-                let mut manager = AudioManager::<DefaultBackend>::new(AudioManagerSettings::default()).ok()?;
+                let mut manager =
+                    AudioManager::<DefaultBackend>::new(AudioManagerSettings::default()).ok()?;
                 if let Ok(sound_data) = StaticSoundData::from_file("assets/sounds/game_start.mp3") {
                     manager.play(sound_data).ok();
                 }

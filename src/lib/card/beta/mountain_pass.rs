@@ -1,5 +1,8 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, SiteType, Zone},
+    card::{
+        Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, SiteType,
+        Zone,
+    },
     game::{PlayerId, Thresholds},
     state::State,
 };
@@ -41,7 +44,13 @@ impl MountainPass {
 }
 
 impl Site for MountainPass {
-    fn can_be_entered_by(&self, card_id: &uuid::Uuid, _from: &Zone, region: &Region, state: &State) -> bool {
+    fn can_be_entered_by(
+        &self,
+        card_id: &uuid::Uuid,
+        _from: &Zone,
+        region: &Region,
+        state: &State,
+    ) -> bool {
         let minions_atop = self
             .get_zone()
             .get_minions(state, None)
@@ -50,7 +59,8 @@ impl Site for MountainPass {
             .count();
 
         let card = state.get_card(card_id);
-        let ground_movement = card.get_region(state) == &Region::Surface && region == &Region::Surface;
+        let ground_movement =
+            card.get_region(state) == &Region::Surface && region == &Region::Surface;
         !ground_movement || minions_atop == 0
     }
 }
@@ -91,6 +101,7 @@ impl Card for MountainPass {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (MountainPass::NAME, |owner_id: PlayerId| {
-    Box::new(MountainPass::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (MountainPass::NAME, |owner_id: PlayerId| {
+        Box::new(MountainPass::new(owner_id))
+    });

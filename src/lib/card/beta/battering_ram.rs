@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        AdditionalCost, AreaModifiers, Artifact, ArtifactBase, ArtifactType, Card, CardBase, Cost, Costs, Edition,
-        Rarity, Region, Zone,
+        AdditionalCost, AreaModifiers, Artifact, ArtifactBase, ArtifactType, Card, CardBase, Cost,
+        Costs, Edition, Rarity, Region, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_card},
@@ -38,7 +38,12 @@ impl ActivatedAbility for RamStrike {
         "Tap to destroy an adjacent site".to_string()
     }
 
-    fn can_activate(&self, card_id: &uuid::Uuid, _player_id: &PlayerId, state: &State) -> anyhow::Result<bool> {
+    fn can_activate(
+        &self,
+        card_id: &uuid::Uuid,
+        _player_id: &PlayerId,
+        state: &State,
+    ) -> anyhow::Result<bool> {
         let targets = self.valid_targets(card_id, state);
         Ok(!targets.is_empty())
     }
@@ -79,7 +84,8 @@ pub struct BatteringRam {
 
 impl BatteringRam {
     pub const NAME: &'static str = "Battering Ram";
-    pub const DESCRIPTION: &'static str = "Units here have “Tap → Destroy target adjacent Wall or Monument.”";
+    pub const DESCRIPTION: &'static str =
+        "Units here have “Tap → Destroy target adjacent Wall or Monument.”";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -157,6 +163,7 @@ impl Card for BatteringRam {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (BatteringRam::NAME, |owner_id: PlayerId| {
-    Box::new(BatteringRam::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (BatteringRam::NAME, |owner_id: PlayerId| {
+        Box::new(BatteringRam::new(owner_id))
+    });

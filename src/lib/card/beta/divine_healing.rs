@@ -66,6 +66,7 @@ impl Card for DivineHealing {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (DivineHealing::NAME, |owner_id: PlayerId| {
-    Box::new(DivineHealing::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (DivineHealing::NAME, |owner_id: PlayerId| {
+        Box::new(DivineHealing::new(owner_id))
+    });

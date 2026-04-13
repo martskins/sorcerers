@@ -12,7 +12,8 @@ pub struct HeatRay {
 
 impl HeatRay {
     pub const NAME: &'static str = "Heat Ray";
-    pub const DESCRIPTION: &'static str = "Shoot a piercing projectile. Deal 2 damage to each hit unit.";
+    pub const DESCRIPTION: &'static str =
+        "Shoot a piercing projectile. Deal 2 damage to each hit unit.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -59,7 +60,8 @@ impl Card for HeatRay {
     ) -> anyhow::Result<Vec<Effect>> {
         let caster = state.get_card(caster_id);
         let prompt = "Heat Ray: Pick a direction to cast the spell:";
-        let direction = pick_direction(self.get_owner_id(), &CARDINAL_DIRECTIONS, state, prompt).await?;
+        let direction =
+            pick_direction(self.get_owner_id(), &CARDINAL_DIRECTIONS, state, prompt).await?;
         Ok(vec![Effect::ShootProjectile {
             id: uuid::Uuid::new_v4(),
             player_id: self.get_owner_id().clone(),
@@ -75,4 +77,6 @@ impl Card for HeatRay {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (HeatRay::NAME, |owner_id: PlayerId| Box::new(HeatRay::new(owner_id)));
+    (HeatRay::NAME, |owner_id: PlayerId| {
+        Box::new(HeatRay::new(owner_id))
+    });

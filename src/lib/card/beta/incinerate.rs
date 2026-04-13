@@ -65,7 +65,12 @@ impl Card for Incinerate {
             .filter(|c| c.get_zone().is_in_play())
             .filter(|c| c.get_owner_id() == self.get_owner_id())
             .filter(|c| c.is_unit())
-            .filter(|c| c.get_unit_base().unwrap().types.contains(&MinionType::Dragon))
+            .filter(|c| {
+                c.get_unit_base()
+                    .unwrap()
+                    .types
+                    .contains(&MinionType::Dragon)
+            })
             .flat_map(|c| c.get_zone().get_nearby())
             .collect();
         zones.push(caster.get_zone().clone());
@@ -86,6 +91,7 @@ impl Card for Incinerate {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (Incinerate::NAME, |owner_id: PlayerId| {
-    Box::new(Incinerate::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (Incinerate::NAME, |owner_id: PlayerId| {
+        Box::new(Incinerate::new(owner_id))
+    });

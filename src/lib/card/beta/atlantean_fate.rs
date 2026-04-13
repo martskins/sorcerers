@@ -116,6 +116,7 @@ impl Card for AtlanteanFate {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (AtlanteanFate::NAME, |owner_id: PlayerId| {
-    Box::new(AtlanteanFate::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (AtlanteanFate::NAME, |owner_id: PlayerId| {
+        Box::new(AtlanteanFate::new(owner_id))
+    });

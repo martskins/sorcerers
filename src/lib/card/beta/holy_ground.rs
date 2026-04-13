@@ -1,5 +1,8 @@
 use crate::{
-    card::{Card, CardBase, CardType, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
+    card::{
+        Card, CardBase, CardType, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase,
+        Zone,
+    },
     effect::Effect,
     game::{PlayerId, Thresholds},
     state::{CardQuery, State},
@@ -93,6 +96,7 @@ impl Card for HolyGround {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (HolyGround::NAME, |owner_id: PlayerId| {
-    Box::new(HolyGround::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (HolyGround::NAME, |owner_id: PlayerId| {
+        Box::new(HolyGround::new(owner_id))
+    });

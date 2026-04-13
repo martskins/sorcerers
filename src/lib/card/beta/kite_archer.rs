@@ -72,14 +72,27 @@ impl Card for KiteArcher {
     async fn after_ranged_attack(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let options = vec![BaseOption::Yes, BaseOption::No];
         let option_labels = options.iter().map(|o| o.to_string()).collect::<Vec<_>>();
-        let picked_action =
-            pick_option(self.get_controller_id(state), &option_labels, state, "Take Step", false).await?;
+        let picked_action = pick_option(
+            self.get_controller_id(state),
+            &option_labels,
+            state,
+            "Take Step",
+            false,
+        )
+        .await?;
         if options[picked_action] == BaseOption::No {
             return Ok(vec![]);
         }
 
         let zones = self.get_zone().get_adjacent();
-        let picked_zone = pick_zone(self.get_owner_id(), &zones, state, false, "Choose to step to").await?;
+        let picked_zone = pick_zone(
+            self.get_owner_id(),
+            &zones,
+            state,
+            false,
+            "Choose to step to",
+        )
+        .await?;
         Ok(vec![Effect::MoveCard {
             player_id: self.get_owner_id().clone(),
             card_id: self.get_id().clone(),
@@ -93,6 +106,7 @@ impl Card for KiteArcher {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (KiteArcher::NAME, |owner_id: PlayerId| {
-    Box::new(KiteArcher::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (KiteArcher::NAME, |owner_id: PlayerId| {
+        Box::new(KiteArcher::new(owner_id))
+    });

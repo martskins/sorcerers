@@ -117,40 +117,52 @@ impl Card for DreamQuest {
                         player_id: Some(controller_id.clone()),
                     },
                     expires_on_effect: None,
-                    on_effect: Arc::new(move |state: &State, _card_id: &uuid::Uuid, _effect: &Effect| {
-                        let controller_id = controller_id.clone();
-                        let minion_id = minion_id.clone();
-                        Box::pin(async move {
-                            let minion = state.get_card(&minion_id);
-                            if !minion.has_ability(state, &Ability::Disabled) {
-                                // Minion is no longer asleep, do nothing.
-                                return Ok(vec![]);
-                            }
+                    on_effect: Arc::new(
+                        move |state: &State, _card_id: &uuid::Uuid, _effect: &Effect| {
+                            let controller_id = controller_id.clone();
+                            let minion_id = minion_id.clone();
+                            Box::pin(async move {
+                                let minion = state.get_card(&minion_id);
+                                if !minion.has_ability(state, &Ability::Disabled) {
+                                    // Minion is no longer asleep, do nothing.
+                                    return Ok(vec![]);
+                                }
 
-                            let wake_up =
-                                yes_or_no(&controller_id, state, "Dream-Quest: Wake up the dreaming minion?").await?;
-                            if !wake_up {
-                                return Ok(vec![]);
-                            }
+                                let wake_up = yes_or_no(
+                                    &controller_id,
+                                    state,
+                                    "Dream-Quest: Wake up the dreaming minion?",
+                                )
+                                .await?;
+                                if !wake_up {
+                                    return Ok(vec![]);
+                                }
 
-                            let mut effects = vec![Effect::RemoveAbility {
-                                card_id: minion_id,
-                                modifier: Ability::Disabled,
-                            }];
+                                let mut effects = vec![Effect::RemoveAbility {
+                                    card_id: minion_id,
+                                    modifier: Ability::Disabled,
+                                }];
 
-                            // Draw a spell from the deck.
-                            let deck = state.decks.get(&controller_id).unwrap();
-                            if let Some(spell_id) = deck.spells.last().cloned() {
-                                effects.push(Effect::SetCardZone {
-                                    card_id: spell_id,
-                                    zone: Zone::Hand,
-                                });
-                            }
+                                // Draw a spell from the deck.
+                                let deck = state.decks.get(&controller_id).unwrap();
+                                if let Some(spell_id) = deck.spells.last().cloned() {
+                                    effects.push(Effect::SetCardZone {
+                                        card_id: spell_id,
+                                        zone: Zone::Hand,
+                                    });
+                                }
 
-                            Ok(effects)
-                        })
-                            as Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>>
-                    }),
+                                Ok(effects)
+                            })
+                                as Pin<
+                                    Box<
+                                        dyn Future<Output = anyhow::Result<Vec<Effect>>>
+                                            + Send
+                                            + '_,
+                                    >,
+                                >
+                        },
+                    ),
                     multitrigger: false,
                 },
             },
@@ -159,6 +171,7 @@ impl Card for DreamQuest {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (DreamQuest::NAME, |owner_id: PlayerId| {
-    Box::new(DreamQuest::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (DreamQuest::NAME, |owner_id: PlayerId| {
+        Box::new(DreamQuest::new(owner_id))
+    });

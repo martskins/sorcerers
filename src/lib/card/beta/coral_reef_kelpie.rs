@@ -67,6 +67,7 @@ impl Card for CoralReefKelpie {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (CoralReefKelpie::NAME, |owner_id: PlayerId| {
-    Box::new(CoralReefKelpie::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (CoralReefKelpie::NAME, |owner_id: PlayerId| {
+        Box::new(CoralReefKelpie::new(owner_id))
+    });

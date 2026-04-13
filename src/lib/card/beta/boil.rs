@@ -12,7 +12,8 @@ pub struct Boil {
 
 impl Boil {
     pub const NAME: &'static str = "Boil";
-    pub const DESCRIPTION: &'static str = "Destroy all minions occupying target water site up to two steps away.";
+    pub const DESCRIPTION: &'static str =
+        "Destroy all minions occupying target water site up to two steps away.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -82,4 +83,6 @@ impl Card for Boil {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Boil::NAME, |owner_id: PlayerId| Box::new(Boil::new(owner_id)));
+    (Boil::NAME, |owner_id: PlayerId| {
+        Box::new(Boil::new(owner_id))
+    });

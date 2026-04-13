@@ -12,8 +12,7 @@ pub struct Battlemage {
 
 impl Battlemage {
     pub const NAME: &'static str = "Battlemage";
-    pub const DESCRIPTION: &'static str =
-        "Tap → Play or draw a site.\r \r Whenever Battlemage attacks and kills an enemy, you may draw a spell.";
+    pub const DESCRIPTION: &'static str = "Tap → Play or draw a site.\r \r Whenever Battlemage attacks and kills an enemy, you may draw a spell.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -35,7 +34,9 @@ impl Battlemage {
                 is_token: false,
                 ..Default::default()
             },
-            avatar_base: AvatarBase { ..Default::default() },
+            avatar_base: AvatarBase {
+                ..Default::default()
+            },
         }
     }
 }
@@ -75,6 +76,7 @@ impl Card for Battlemage {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (Battlemage::NAME, |owner_id: PlayerId| {
-    Box::new(Battlemage::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (Battlemage::NAME, |owner_id: PlayerId| {
+        Box::new(Battlemage::new(owner_id))
+    });

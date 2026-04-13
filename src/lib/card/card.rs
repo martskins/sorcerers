@@ -2,8 +2,9 @@ use crate::{
     card::{CARD_CONSTRUCTORS, Rubble},
     effect::{AbilityCounter, Counter, Effect, TokenType},
     game::{
-        ActivatedAbility, AvatarAction, Direction, Element, PlayerId, Thresholds, UnitAction, are_adjacent, are_nearby,
-        get_adjacent_zones, get_nearby_zones, pick_amount, pick_card, pick_option, pick_zone,
+        ActivatedAbility, AvatarAction, Direction, Element, PlayerId, Thresholds, UnitAction,
+        are_adjacent, are_nearby, get_adjacent_zones, get_nearby_zones, pick_amount, pick_card,
+        pick_option, pick_zone,
     },
     query::ZoneQuery,
     state::{CardQuery, ContinuousEffect, LoggedEffect, State, TemporaryEffect},
@@ -112,7 +113,10 @@ impl std::fmt::Display for Zone {
             Zone::Intersection(locs) => write!(
                 f,
                 "Intersection of ({})",
-                locs.iter().map(|c| c.to_string()).collect::<Vec<String>>().join(",")
+                locs.iter()
+                    .map(|c| c.to_string())
+                    .collect::<Vec<String>>()
+                    .join(",")
             ),
         }
     }
@@ -191,7 +195,11 @@ impl Zone {
         get_nearby_zones(self)
     }
 
-    pub fn get_minion_ids(&self, state: &State, controller_id: Option<&PlayerId>) -> Vec<uuid::Uuid> {
+    pub fn get_minion_ids(
+        &self,
+        state: &State,
+        controller_id: Option<&PlayerId>,
+    ) -> Vec<uuid::Uuid> {
         self.get_minions(state, controller_id)
             .iter()
             .map(|c| c.get_id())
@@ -199,7 +207,11 @@ impl Zone {
             .collect()
     }
 
-    pub fn get_minions<'a>(&self, state: &'a State, controller_id: Option<&PlayerId>) -> Vec<&'a Box<dyn Card>> {
+    pub fn get_minions<'a>(
+        &self,
+        state: &'a State,
+        controller_id: Option<&PlayerId>,
+    ) -> Vec<&'a Box<dyn Card>> {
         state
             .get_cards_in_zone(self)
             .iter()
@@ -215,7 +227,11 @@ impl Zone {
             .collect::<Vec<&Box<dyn Card>>>()
     }
 
-    pub fn get_units<'a>(&self, state: &'a State, controller_id: Option<&PlayerId>) -> Vec<&'a Box<dyn Card>> {
+    pub fn get_units<'a>(
+        &self,
+        state: &'a State,
+        controller_id: Option<&PlayerId>,
+    ) -> Vec<&'a Box<dyn Card>> {
         state
             .get_cards_in_zone(self)
             .iter()
@@ -428,7 +444,9 @@ impl CostType {
                 if max_mana == 0 {
                     anyhow::bail!("No mana available to pay variable mana cost");
                 }
-                let mana_to_pay = pick_amount(player_id, 1, max_mana, state, "Choose how much mana to pay").await?;
+                let mana_to_pay =
+                    pick_amount(player_id, 1, max_mana, state, "Choose how much mana to pay")
+                        .await?;
                 let mana = state.get_player_mana_mut(player_id);
                 *mana = mana.saturating_sub(mana_to_pay);
                 Ok(CostType::ManaCost(mana_to_pay))
@@ -446,14 +464,18 @@ impl CostType {
                         CostAction::Tap => query = query.untapped(),
                         CostAction::Discard => query = query.in_zone(&Zone::Hand),
                         CostAction::Sacrifice => query = query.in_zones(&Zone::all_realm()),
-                        CostAction::Surface => query = query.in_regions(vec![Region::Underwater, Region::Underground]),
+                        CostAction::Surface => {
+                            query = query.in_regions(vec![Region::Underwater, Region::Underground])
+                        }
                     }
 
                     let options = query.all(state);
                     let effect = match options.len() {
                         0 => unreachable!(),
                         1 => {
-                            let card_id = options.first().expect("options to have exactly one element");
+                            let card_id = options
+                                .first()
+                                .expect("options to have exactly one element");
                             match ac.action {
                                 CostAction::Tap => Effect::TapCard {
                                     card_id: card_id.clone(),
@@ -473,9 +495,13 @@ impl CostType {
                             }
                         }
                         _ => {
-                            let card_id =
-                                pick_card(player_id, &options, state, "Choose a card to tap for additional cost")
-                                    .await?;
+                            let card_id = pick_card(
+                                player_id,
+                                &options,
+                                state,
+                                "Choose a card to tap for additional cost",
+                            )
+                            .await?;
                             match ac.action {
                                 CostAction::Tap => Effect::TapCard {
                                     card_id: card_id.clone(),
@@ -497,7 +523,9 @@ impl CostType {
                     };
 
                     effect.apply(state).await?;
-                    state.effect_log.push(LoggedEffect::new(Arc::new(effect), state.turns));
+                    state
+                        .effect_log
+                        .push(LoggedEffect::new(Arc::new(effect), state.turns));
                     crate::game::force_sync(player_id, state).await?;
                 }
 
@@ -506,7 +534,11 @@ impl CostType {
         }
     }
 
-    pub fn can_afford(&self, state: &State, player_id: impl AsRef<PlayerId>) -> anyhow::Result<bool> {
+    pub fn can_afford(
+        &self,
+        state: &State,
+        player_id: impl AsRef<PlayerId>,
+    ) -> anyhow::Result<bool> {
         let resources = state.get_player_resources(player_id.as_ref())?;
         let thresholds = state.get_thresholds_for_player(player_id.as_ref());
 
@@ -526,7 +558,9 @@ impl CostType {
                         CostAction::Tap => query = query.untapped(),
                         CostAction::Discard => query = query.in_zone(&Zone::Hand),
                         CostAction::Sacrifice => query = query.in_zones(&Zone::all_realm()),
-                        CostAction::Surface => query = query.in_regions(vec![Region::Underwater, Region::Underground]),
+                        CostAction::Surface => {
+                            query = query.in_regions(vec![Region::Underwater, Region::Underground])
+                        }
                     }
 
                     let options = query.all(&snapshot);
@@ -534,12 +568,22 @@ impl CostType {
                         return Ok(false);
                     }
 
-                    let card_id = options.first().expect("options to have at least one element");
+                    let card_id = options
+                        .first()
+                        .expect("options to have at least one element");
                     match ac.action {
-                        CostAction::Tap => snapshot.get_card_mut(card_id).get_base_mut().tapped = true,
-                        CostAction::Discard => snapshot.get_card_mut(card_id).set_zone(Zone::Cemetery),
-                        CostAction::Sacrifice => snapshot.get_card_mut(card_id).set_zone(Zone::Cemetery),
-                        CostAction::Surface => snapshot.get_card_mut(card_id).get_base_mut().region = Region::Surface,
+                        CostAction::Tap => {
+                            snapshot.get_card_mut(card_id).get_base_mut().tapped = true
+                        }
+                        CostAction::Discard => {
+                            snapshot.get_card_mut(card_id).set_zone(Zone::Cemetery)
+                        }
+                        CostAction::Sacrifice => {
+                            snapshot.get_card_mut(card_id).set_zone(Zone::Cemetery)
+                        }
+                        CostAction::Surface => {
+                            snapshot.get_card_mut(card_id).get_base_mut().region = Region::Surface
+                        }
                     }
                 }
 
@@ -629,14 +673,23 @@ impl Costs {
                     .filter(|c| c.can_afford(state, player_id).unwrap_or(false))
                     .cloned()
                     .collect::<Vec<_>>();
-                let cost_labels = affordable_costs.iter().map(|c| c.get_label()).collect::<Vec<_>>();
-                let picked_cost_idx = pick_option(player_id, &cost_labels, state, "Pick a cost to pay", false).await?;
+                let cost_labels = affordable_costs
+                    .iter()
+                    .map(|c| c.get_label())
+                    .collect::<Vec<_>>();
+                let picked_cost_idx =
+                    pick_option(player_id, &cost_labels, state, "Pick a cost to pay", false)
+                        .await?;
                 Box::pin(affordable_costs[picked_cost_idx].pay(state, player_id)).await
             }
         }
     }
 
-    pub fn can_afford(&self, state: &State, player_id: impl AsRef<PlayerId>) -> anyhow::Result<bool> {
+    pub fn can_afford(
+        &self,
+        state: &State,
+        player_id: impl AsRef<PlayerId>,
+    ) -> anyhow::Result<bool> {
         for cost in &self.0 {
             if cost.can_afford(state, player_id.as_ref())? {
                 return Ok(true);
@@ -718,8 +771,12 @@ impl Cost {
                         match add.action {
                             CostAction::Tap { .. } => parts.push("Tap card".to_string()),
                             CostAction::Discard { .. } => parts.push("Discard card".to_string()),
-                            CostAction::Sacrifice { .. } => parts.push("Sacrifice card".to_string()),
-                            CostAction::Surface { .. } => parts.push("Put card on Surface".to_string()),
+                            CostAction::Sacrifice { .. } => {
+                                parts.push("Sacrifice card".to_string())
+                            }
+                            CostAction::Surface { .. } => {
+                                parts.push("Put card on Surface".to_string())
+                            }
                         }
                     }
                 }
@@ -739,7 +796,11 @@ impl Cost {
         Ok(paid_cost)
     }
 
-    pub fn can_afford(&self, state: &State, player_id: impl AsRef<PlayerId>) -> anyhow::Result<bool> {
+    pub fn can_afford(
+        &self,
+        state: &State,
+        player_id: impl AsRef<PlayerId>,
+    ) -> anyhow::Result<bool> {
         for cost_type in &self.0 {
             if !cost_type.can_afford(state, player_id.as_ref())? {
                 return Ok(false);
@@ -804,14 +865,22 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     // When resolving a CardQuery, this method allows the card to override the query. A useful
     // usecase for this method is for example overriding the valid targets of a spell when there's
     // a card in play that affects targeting.
-    async fn card_query_override(&self, _state: &State, _query: &CardQuery) -> anyhow::Result<Option<CardQuery>> {
+    async fn card_query_override(
+        &self,
+        _state: &State,
+        _query: &CardQuery,
+    ) -> anyhow::Result<Option<CardQuery>> {
         Ok(None)
     }
 
     // When resolving a ZoneQuery, this method allows the card to override the query. A useful
     // usecase for this method is for example overriding the zones that the player can pick from
     // when the there's a card in play that affects zone selection.
-    fn zone_query_override(&self, _state: &State, _query: &ZoneQuery) -> anyhow::Result<Option<ZoneQuery>> {
+    fn zone_query_override(
+        &self,
+        _state: &State,
+        _query: &ZoneQuery,
+    ) -> anyhow::Result<Option<ZoneQuery>> {
         Ok(None)
     }
 
@@ -830,7 +899,11 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     // When resolving an effect, this methods allows a card in play to replace that event with a
     // different set of effects.
-    async fn replace_effect(&self, _state: &State, _effect: &Effect) -> anyhow::Result<Option<Vec<Effect>>> {
+    async fn replace_effect(
+        &self,
+        _state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Option<Vec<Effect>>> {
         Ok(None)
     }
 
@@ -915,7 +988,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     // If a card needs to hold specific data, and you need to modify it, override this method with
     // a method that downcasts the data to the appropriate type and sets it on the card.
     fn set_data(&mut self, _data: &Box<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
-        Err(anyhow::anyhow!("set_data not implemented for {}", self.get_name()))
+        Err(anyhow::anyhow!(
+            "set_data not implemented for {}",
+            self.get_name()
+        ))
     }
 
     // Returns the zones that are within the given steps of the specified zone, using this card as
@@ -963,13 +1039,21 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     // Base take damage behaviour for cards. This method MUST NOT BE OVERRIDEN by specific card
     // types. Instead, specific card types should override `on_take_damage`, and can use
     // base_take_damage to get the default behaviour.
-    fn base_take_damage(&mut self, state: &State, from: &uuid::Uuid, damage: u16) -> anyhow::Result<Vec<Effect>> {
+    fn base_take_damage(
+        &mut self,
+        state: &State,
+        from: &uuid::Uuid,
+        damage: u16,
+    ) -> anyhow::Result<Vec<Effect>> {
         match self.get_card_type() {
             CardType::Minion => {
                 // Check LethalTarget before the mutable borrow of unit_base.
                 let has_lethal_target = self.get_unit_base().map_or(false, |ub| {
                     ub.abilities.contains(&Ability::LethalTarget)
-                        || ub.modifier_counters.iter().any(|c| c.ability == Ability::LethalTarget)
+                        || ub
+                            .modifier_counters
+                            .iter()
+                            .any(|c| c.ability == Ability::LethalTarget)
                 }) || state.continuous_effects.iter().any(|ce| match ce {
                     ContinuousEffect::GrantAbility {
                         ability: Ability::LethalTarget,
@@ -1074,7 +1158,9 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     // implementations. Instead, specific card types should override `on_summon`, and can use
     // base_site_on_summon to get the default behaviour.
     fn base_site_on_summon(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        let site_base = self.get_site().ok_or(anyhow::anyhow!("site card has no site base"))?;
+        let site_base = self
+            .get_site()
+            .ok_or(anyhow::anyhow!("site card has no site base"))?;
         Ok(vec![Effect::AddMana {
             player_id: self.get_owner_id().clone(),
             mana: site_base.provided_mana(state)?,
@@ -1086,7 +1172,9 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             CardType::Aura => Ok(Zone::all_intersections()
                 .iter()
                 .filter(|z| match z {
-                    Zone::Intersection(sqs) => sqs.iter().any(|_| state.cards.iter().any(|c| c.is_site())),
+                    Zone::Intersection(sqs) => {
+                        sqs.iter().any(|_| state.cards.iter().any(|c| c.is_site()))
+                    }
                     _ => false,
                 })
                 .cloned()
@@ -1098,7 +1186,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                         .into_iter()
                         .filter(|z| {
                             if let Zone::Intersection(sqs) = z {
-                                sqs.iter().all(|sq| Zone::Realm(*sq).get_site(state).is_some())
+                                sqs.iter()
+                                    .all(|sq| Zone::Realm(*sq).get_site(state).is_some())
                             } else {
                                 false
                             }
@@ -1120,10 +1209,11 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             }
             CardType::Site => {
                 let player_id = self.get_owner_id();
-                let has_played_site = state
-                    .cards
-                    .iter()
-                    .any(|c| c.get_owner_id() == player_id && c.is_site() && matches!(c.get_zone(), Zone::Realm(_)));
+                let has_played_site = state.cards.iter().any(|c| {
+                    c.get_owner_id() == player_id
+                        && c.is_site()
+                        && matches!(c.get_zone(), Zone::Realm(_))
+                });
                 if !has_played_site {
                     let avatar = state
                         .cards
@@ -1332,8 +1422,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         }
 
         let max_steps = self.get_steps_per_movement(state)?;
-        let is_traversable =
-            |current: &Zone, next: &Zone| self.get_zones_within_steps_of(state, 1, current).contains(next);
+        let is_traversable = |current: &Zone, next: &Zone| {
+            self.get_zones_within_steps_of(state, 1, current)
+                .contains(next)
+        };
 
         let mut paths = Vec::new();
         let mut queue: Vec<(Vec<Zone>, Zone)> = vec![(vec![from.clone()], from.clone())];
@@ -1397,13 +1489,20 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 // Oversized units may only move to intersection zones where all 4 sub-zones have sites.
                 if self.is_oversized() {
                     return match z {
-                        Zone::Intersection(sqs) => sqs.iter().all(|sq| Zone::Realm(*sq).get_site(state).is_some()),
+                        Zone::Intersection(sqs) => sqs
+                            .iter()
+                            .all(|sq| Zone::Realm(*sq).get_site(state).is_some()),
                         _ => false,
                     };
                 }
 
                 z.get_site(state).map_or(false, |c| {
-                    c.can_be_entered_by(self.get_id(), self.get_zone(), self.get_region(state), state)
+                    c.can_be_entered_by(
+                        self.get_id(),
+                        self.get_zone(),
+                        self.get_region(state),
+                        state,
+                    )
                 })
             })
             .cloned()
@@ -1416,7 +1515,12 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     // Returns the valid attack targets for this card.
-    fn get_valid_attack_targets_from_zone(&self, state: &State, ranged: bool, zone: &Zone) -> Vec<uuid::Uuid> {
+    fn get_valid_attack_targets_from_zone(
+        &self,
+        state: &State,
+        ranged: bool,
+        zone: &Zone,
+    ) -> Vec<uuid::Uuid> {
         state
             .cards
             .iter()
@@ -1426,10 +1530,11 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             .filter(|c| !c.has_ability(state, &Ability::Unattackable))
             .filter(|c| {
                 let same_region = c.get_base().region == self.get_base().region;
-                let ranged_on_airborne =
-                    ranged && self.get_base().region == Region::Surface && c.has_ability(state, &Ability::Airborne);
-                let airborne_on_surface =
-                    self.has_ability(state, &Ability::Airborne) && c.get_base().region == Region::Surface;
+                let ranged_on_airborne = ranged
+                    && self.get_base().region == Region::Surface
+                    && c.has_ability(state, &Ability::Airborne);
+                let airborne_on_surface = self.has_ability(state, &Ability::Airborne)
+                    && c.get_base().region == Region::Surface;
                 return same_region || ranged_on_airborne || airborne_on_surface;
             })
             .filter(|_| {
@@ -1530,7 +1635,9 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                         ContinuousEffect::GrantAbility {
                             ability,
                             affected_cards,
-                        } if affected_cards.matches(self.get_id(), state) => modifiers.push(ability.clone()),
+                        } if affected_cards.matches(self.get_id(), state) => {
+                            modifiers.push(ability.clone())
+                        }
                         _ => {}
                     }
                 }
@@ -1685,7 +1792,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     fn can_be_targetted_by(&self, state: &State, player_id: &PlayerId) -> bool {
-        if self.has_ability(state, &Ability::Stealth) && &self.get_controller_id(state) != player_id {
+        if self.has_ability(state, &Ability::Stealth) && &self.get_controller_id(state) != player_id
+        {
             return false;
         }
 
@@ -1751,7 +1859,12 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(vec![])
     }
 
-    fn on_take_damage(&mut self, state: &State, from: &uuid::Uuid, damage: u16) -> anyhow::Result<Vec<Effect>> {
+    fn on_take_damage(
+        &mut self,
+        state: &State,
+        from: &uuid::Uuid,
+        damage: u16,
+    ) -> anyhow::Result<Vec<Effect>> {
         self.base_take_damage(state, from, damage)
     }
 
@@ -1864,12 +1977,21 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         }
     }
 
-    fn on_region_change(&self, _state: &State, _from: &Region, _to: &Region) -> anyhow::Result<Vec<Effect>> {
+    fn on_region_change(
+        &self,
+        _state: &State,
+        _from: &Region,
+        _to: &Region,
+    ) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![])
     }
 
-    fn base_avatar_activated_abilities(&self, state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
-        let mut activated_abilities: Vec<Box<dyn ActivatedAbility>> = self.base_unit_activated_abilities(state)?;
+    fn base_avatar_activated_abilities(
+        &self,
+        state: &State,
+    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+        let mut activated_abilities: Vec<Box<dyn ActivatedAbility>> =
+            self.base_unit_activated_abilities(state)?;
         activated_abilities.push(Box::new(AvatarAction::DrawSite));
         if state
             .cards
@@ -1896,7 +2018,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(activated_abilities)
     }
 
-    fn base_unit_activated_abilities(&self, state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+    fn base_unit_activated_abilities(
+        &self,
+        state: &State,
+    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         let mut activated_abilities: Vec<Box<dyn ActivatedAbility>> =
             vec![Box::new(UnitAction::Attack), Box::new(UnitAction::Move)];
         if self.is_ranged(state)? {
@@ -1951,7 +2076,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     // Returns the available actions for this card, given the current game state.
-    fn get_activated_abilities(&self, state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+    fn get_activated_abilities(
+        &self,
+        state: &State,
+    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         if self.has_ability(state, &Ability::Disabled) {
             return Ok(vec![]);
         }
@@ -1974,7 +2102,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         }
     }
 
-    fn get_additional_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+    fn get_additional_activated_abilities(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         Ok(vec![])
     }
 
@@ -1987,7 +2118,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(vec![])
     }
 
-    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<ContinuousEffect>> {
         Ok(vec![])
     }
 }
@@ -2071,7 +2205,9 @@ pub trait ResourceProvider: Card {
 
         match self.get_card_type() {
             CardType::Site => {
-                let site_base = self.get_site_base().ok_or(anyhow::anyhow!("site card has no base"))?;
+                let site_base = self
+                    .get_site_base()
+                    .ok_or(anyhow::anyhow!("site card has no base"))?;
                 let site = self
                     .get_site()
                     .ok_or(anyhow::anyhow!("site card does not implement site"))?;
@@ -2116,7 +2252,13 @@ pub trait Site: Card + ResourceProvider {
         vec![]
     }
 
-    fn can_be_entered_by(&self, _card: &uuid::Uuid, _from: &Zone, _region: &Region, _state: &State) -> bool {
+    fn can_be_entered_by(
+        &self,
+        _card: &uuid::Uuid,
+        _from: &Zone,
+        _region: &Region,
+        _state: &State,
+    ) -> bool {
         true
     }
 
@@ -2135,7 +2277,9 @@ pub trait Site: Card + ResourceProvider {
             .continuous_effects
             .iter()
             .find(|ce| match ce {
-                ContinuousEffect::FloodSites { affected_sites } => affected_sites.matches(self.get_id(), state),
+                ContinuousEffect::FloodSites { affected_sites } => {
+                    affected_sites.matches(self.get_id(), state)
+                }
                 _ => false,
             })
             .is_some())
@@ -2143,7 +2287,9 @@ pub trait Site: Card + ResourceProvider {
 
     fn is_droughted(&self, state: &State) -> anyhow::Result<bool> {
         Ok(state.continuous_effects.iter().any(|ce| match ce {
-            ContinuousEffect::DroughtSites { affected_sites } => affected_sites.matches(self.get_id(), state),
+            ContinuousEffect::DroughtSites { affected_sites } => {
+                affected_sites.matches(self.get_id(), state)
+            }
             _ => false,
         }))
     }
@@ -2321,21 +2467,30 @@ mod tests {
         let mut state = State::new_mock_state(Zone::all_realm());
         let player_id = state.players[0].id.clone();
         let cost = Cost::additional_only(AdditionalCost::tap(
-            CardQuery::new().untapped().units().in_zone(&Zone::Realm(10)),
+            CardQuery::new()
+                .untapped()
+                .units()
+                .in_zone(&Zone::Realm(10)),
         ));
-        let can_afford = cost.can_afford(&state, &player_id).expect("should not error");
+        let can_afford = cost
+            .can_afford(&state, &player_id)
+            .expect("should not error");
         assert!(!can_afford, "no units in the zone");
 
         let mut unit = ApprenticeWizard::new(player_id.clone());
         let unit_id = unit.get_id().clone();
         unit.set_zone(Zone::Realm(10));
         state.cards.push(Box::new(unit));
-        let can_afford = cost.can_afford(&state, &player_id).expect("should not error");
+        let can_afford = cost
+            .can_afford(&state, &player_id)
+            .expect("should not error");
         assert!(can_afford, "an untapped unit is present in the zone");
 
         let unit = state.get_card_mut(&unit_id);
         unit.get_base_mut().tapped = true;
-        let can_afford = cost.can_afford(&state, &player_id).expect("should not error");
+        let can_afford = cost
+            .can_afford(&state, &player_id)
+            .expect("should not error");
         assert!(!can_afford, "only unit in zone is tapped");
     }
 
@@ -2345,30 +2500,44 @@ mod tests {
         let player_id = state.players[0].id.clone();
         let cost = Cost::ZERO
             .with_additional(AdditionalCost::tap(
-                CardQuery::new().untapped().units().in_zone(&Zone::Realm(10)),
+                CardQuery::new()
+                    .untapped()
+                    .units()
+                    .in_zone(&Zone::Realm(10)),
             ))
             .with_additional(AdditionalCost::tap(
-                CardQuery::new().untapped().units().in_zone(&Zone::Realm(10)),
+                CardQuery::new()
+                    .untapped()
+                    .units()
+                    .in_zone(&Zone::Realm(10)),
             ));
-        let can_afford = cost.can_afford(&state, &player_id).expect("should not error");
+        let can_afford = cost
+            .can_afford(&state, &player_id)
+            .expect("should not error");
         assert!(!can_afford, "no units in the zone");
 
         let mut unit = ApprenticeWizard::new(player_id.clone());
         let unit_id = unit.get_id().clone();
         unit.set_zone(Zone::Realm(10));
         state.cards.push(Box::new(unit));
-        let can_afford = cost.can_afford(&state, &player_id).expect("should not error");
+        let can_afford = cost
+            .can_afford(&state, &player_id)
+            .expect("should not error");
         assert!(!can_afford, "only one unit in the zone, two are required");
 
         let mut unit = ApprenticeWizard::new(player_id.clone());
         unit.set_zone(Zone::Realm(10));
         state.cards.push(Box::new(unit));
-        let can_afford = cost.can_afford(&state, &player_id).expect("should not error");
+        let can_afford = cost
+            .can_afford(&state, &player_id)
+            .expect("should not error");
         assert!(can_afford, "two untapped units the zone");
 
         let unit = state.get_card_mut(&unit_id);
         unit.get_base_mut().tapped = true;
-        let can_afford = cost.can_afford(&state, &player_id).expect("should not error");
+        let can_afford = cost
+            .can_afford(&state, &player_id)
+            .expect("should not error");
         assert!(!can_afford, "only one untapped unit in the zone");
     }
 
@@ -2419,9 +2588,24 @@ mod tests {
             .get_valid_move_paths(&state, &Zone::Realm(15))
             .expect("paths to be computed");
         assert_eq!(paths.len(), 3, "Expected 2 paths, got {:?}", paths);
-        assert!(paths.contains(&vec![Zone::Realm(8), Zone::Realm(9), Zone::Realm(10), Zone::Realm(15)]));
-        assert!(paths.contains(&vec![Zone::Realm(8), Zone::Realm(9), Zone::Realm(14), Zone::Realm(15)]));
-        assert!(paths.contains(&vec![Zone::Realm(8), Zone::Realm(13), Zone::Realm(14), Zone::Realm(15)]));
+        assert!(paths.contains(&vec![
+            Zone::Realm(8),
+            Zone::Realm(9),
+            Zone::Realm(10),
+            Zone::Realm(15)
+        ]));
+        assert!(paths.contains(&vec![
+            Zone::Realm(8),
+            Zone::Realm(9),
+            Zone::Realm(14),
+            Zone::Realm(15)
+        ]));
+        assert!(paths.contains(&vec![
+            Zone::Realm(8),
+            Zone::Realm(13),
+            Zone::Realm(14),
+            Zone::Realm(15)
+        ]));
     }
 
     #[test]
@@ -2432,7 +2616,9 @@ mod tests {
         card.set_zone(Zone::Realm(8));
         state.cards.push(Box::new(card.clone()));
 
-        let mut zones = card.get_valid_move_zones(&state).expect("zones to be computed");
+        let mut zones = card
+            .get_valid_move_zones(&state)
+            .expect("zones to be computed");
         zones.sort();
         let mut expected = vec![
             Zone::Realm(8),
@@ -2454,7 +2640,9 @@ mod tests {
         card.add_modifier(Ability::Movement(1));
         state.cards.push(Box::new(card.clone()));
 
-        let mut zones = card.get_valid_move_zones(&state).expect("zones to be computed");
+        let mut zones = card
+            .get_valid_move_zones(&state)
+            .expect("zones to be computed");
         zones.sort();
         let mut expected = vec![
             Zone::Realm(8),
@@ -2483,7 +2671,9 @@ mod tests {
         card.set_zone(Zone::Realm(8));
         state.cards.push(Box::new(card.clone()));
 
-        let mut zones = card.get_valid_move_zones(&state).expect("zones to be computed");
+        let mut zones = card
+            .get_valid_move_zones(&state)
+            .expect("zones to be computed");
         zones.sort();
         let mut expected = vec![Zone::Realm(8), Zone::Realm(9), Zone::Realm(3)];
         expected.sort();
@@ -2508,7 +2698,9 @@ mod tests {
         card.add_modifier(Ability::Movement(1));
         state.cards.push(Box::new(card.clone()));
 
-        let mut zones = card.get_valid_move_zones(&state).expect("zones to be computed");
+        let mut zones = card
+            .get_valid_move_zones(&state)
+            .expect("zones to be computed");
         zones.sort();
         let mut expected = vec![
             Zone::Realm(2),
@@ -2533,7 +2725,9 @@ mod tests {
         card.add_modifier(Ability::Voidwalk);
         state.cards.push(Box::new(card.clone()));
 
-        let mut zones = card.get_valid_move_zones(&state).expect("zones to be computed");
+        let mut zones = card
+            .get_valid_move_zones(&state)
+            .expect("zones to be computed");
         zones.sort();
         let mut expected = vec![
             Zone::Realm(8),
@@ -2555,7 +2749,9 @@ mod tests {
         card.add_modifier(Ability::Airborne);
         state.cards.push(Box::new(card.clone()));
 
-        let mut zones = card.get_valid_move_zones(&state).expect("zones to be computed");
+        let mut zones = card
+            .get_valid_move_zones(&state)
+            .expect("zones to be computed");
         zones.sort();
         let mut expected = vec![
             Zone::Realm(8),
@@ -2590,7 +2786,9 @@ mod tests {
         card.add_modifier(Ability::Airborne);
         state.cards.push(Box::new(card.clone()));
 
-        let mut zones = card.get_valid_move_zones(&state).expect("zones to be computed");
+        let mut zones = card
+            .get_valid_move_zones(&state)
+            .expect("zones to be computed");
         zones.sort();
 
         let mut expected = vec![
@@ -2627,7 +2825,9 @@ mod tests {
         card.add_modifier(Ability::Voidwalk);
         state.cards.push(Box::new(card.clone()));
 
-        let mut zones = card.get_valid_move_zones(&state).expect("zones to be computed");
+        let mut zones = card
+            .get_valid_move_zones(&state)
+            .expect("zones to be computed");
         zones.sort();
         let mut expected = vec![
             Zone::Realm(8),

@@ -1,5 +1,7 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
+    card::{
+        Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone,
+    },
     effect::Effect,
     game::{PlayerId, Thresholds, pick_card_with_preview},
     state::State,
@@ -101,7 +103,11 @@ impl Card for Crossroads {
         .await?;
 
         // The rest go to the bottom of the deck (front of sites vec).
-        let bottom: Vec<uuid::Uuid> = looked_at.iter().filter(|id| **id != chosen_id).cloned().collect();
+        let bottom: Vec<uuid::Uuid> = looked_at
+            .iter()
+            .filter(|id| **id != chosen_id)
+            .cloned()
+            .collect();
 
         // New order: bottom cards at front, then remaining_sites, then chosen on top (end).
         let mut new_sites = bottom;
@@ -116,6 +122,7 @@ impl Card for Crossroads {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (Crossroads::NAME, |owner_id: PlayerId| {
-    Box::new(Crossroads::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (Crossroads::NAME, |owner_id: PlayerId| {
+        Box::new(Crossroads::new(owner_id))
+    });

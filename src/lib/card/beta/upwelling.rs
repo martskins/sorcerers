@@ -86,4 +86,6 @@ impl Card for Upwelling {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Upwelling::NAME, |owner_id: PlayerId| Box::new(Upwelling::new(owner_id)));
+    (Upwelling::NAME, |owner_id: PlayerId| {
+        Box::new(Upwelling::new(owner_id))
+    });

@@ -70,6 +70,7 @@ impl Card for MuckLampreys {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (MuckLampreys::NAME, |owner_id: PlayerId| {
-    Box::new(MuckLampreys::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (MuckLampreys::NAME, |owner_id: PlayerId| {
+        Box::new(MuckLampreys::new(owner_id))
+    });

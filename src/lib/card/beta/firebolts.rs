@@ -60,7 +60,8 @@ impl Card for Firebolts {
     ) -> anyhow::Result<Vec<Effect>> {
         let caster = state.get_card(caster_id);
         let prompt = "Firebolts: Pick a direction to cast the spell:";
-        let direction = pick_direction(self.get_owner_id(), &CARDINAL_DIRECTIONS, state, prompt).await?;
+        let direction =
+            pick_direction(self.get_owner_id(), &CARDINAL_DIRECTIONS, state, prompt).await?;
         Ok(vec![
             Effect::ShootProjectile {
                 id: uuid::Uuid::new_v4(),
@@ -98,4 +99,6 @@ impl Card for Firebolts {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Firebolts::NAME, |owner_id: PlayerId| Box::new(Firebolts::new(owner_id)));
+    (Firebolts::NAME, |owner_id: PlayerId| {
+        Box::new(Firebolts::new(owner_id))
+    });

@@ -14,8 +14,7 @@ pub struct HeadlessHaunt {
 
 impl HeadlessHaunt {
     pub const NAME: &'static str = "Headless Haunt";
-    pub const DESCRIPTION: &'static str =
-        "Voidwalk\r \r At the start of your turn, Headless Haunt teleports to the top of a random site or void.";
+    pub const DESCRIPTION: &'static str = "Voidwalk\r \r At the start of your turn, Headless Haunt teleports to the top of a random site or void.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -92,6 +91,7 @@ impl Card for HeadlessHaunt {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (HeadlessHaunt::NAME, |owner_id: PlayerId| {
-    Box::new(HeadlessHaunt::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (HeadlessHaunt::NAME, |owner_id: PlayerId| {
+        Box::new(HeadlessHaunt::new(owner_id))
+    });

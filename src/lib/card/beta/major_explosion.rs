@@ -12,8 +12,7 @@ pub struct MajorExplosion {
 
 impl MajorExplosion {
     pub const NAME: &'static str = "Major Explosion";
-    pub const DESCRIPTION: &'static str =
-        "Target a location up to two steps away.\r \r Deal damage to each unit at locations in the area of effect:";
+    pub const DESCRIPTION: &'static str = "Target a location up to two steps away.\r \r Deal damage to each unit at locations in the area of effect:";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -87,6 +86,7 @@ impl Card for MajorExplosion {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (MajorExplosion::NAME, |owner_id: PlayerId| {
-    Box::new(MajorExplosion::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (MajorExplosion::NAME, |owner_id: PlayerId| {
+        Box::new(MajorExplosion::new(owner_id))
+    });

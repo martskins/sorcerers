@@ -12,7 +12,8 @@ pub struct KingOfTheRealm {
 
 impl KingOfTheRealm {
     pub const NAME: &'static str = "King of the Realm";
-    pub const DESCRIPTION: &'static str = "Other Mortals have +1 power.\r \r You control all Mortals.";
+    pub const DESCRIPTION: &'static str =
+        "Other Mortals have +1 power.\r \r You control all Mortals.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -77,13 +78,16 @@ impl Card for KingOfTheRealm {
             },
             ContinuousEffect::ControllerOverride {
                 controller_id: self.get_controller_id(state),
-                affected_cards: CardQuery::new().minion_types(vec![MinionType::Mortal]).in_play(),
+                affected_cards: CardQuery::new()
+                    .minion_types(vec![MinionType::Mortal])
+                    .in_play(),
             },
         ])
     }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (KingOfTheRealm::NAME, |owner_id: PlayerId| {
-    Box::new(KingOfTheRealm::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (KingOfTheRealm::NAME, |owner_id: PlayerId| {
+        Box::new(KingOfTheRealm::new(owner_id))
+    });

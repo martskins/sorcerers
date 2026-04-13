@@ -66,7 +66,10 @@ impl Card for BeastOfBurden {
         Some(&mut self.unit_base)
     }
 
-    fn get_additional_activated_abilities(&self, state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+    fn get_additional_activated_abilities(
+        &self,
+        state: &State,
+    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         let controller_id = self.get_controller_id(state);
         let can_pick_up = state
             .cards
@@ -112,7 +115,11 @@ impl Card for BeastOfBurden {
                     None
                 }
             })
-            .unwrap_or_else(|| path.first().cloned().unwrap_or_else(|| self.get_zone().clone()));
+            .unwrap_or_else(|| {
+                path.first()
+                    .cloned()
+                    .unwrap_or_else(|| self.get_zone().clone())
+            });
         let controller_id = self.get_controller_id(state);
 
         Ok(state
@@ -137,6 +144,7 @@ impl Card for BeastOfBurden {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (BeastOfBurden::NAME, |owner_id: PlayerId| {
-    Box::new(BeastOfBurden::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (BeastOfBurden::NAME, |owner_id: PlayerId| {
+        Box::new(BeastOfBurden::new(owner_id))
+    });

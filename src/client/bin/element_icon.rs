@@ -22,7 +22,13 @@ pub fn element_color(element: &Element) -> Color32 {
 
 /// Draw a single element triangle centred at `center` with the given `size`.
 /// The outline stroke width is `stroke_width`.
-pub fn draw_element_triangle(painter: &Painter, element: &Element, center: Pos2, size: f32, stroke_width: f32) {
+pub fn draw_element_triangle(
+    painter: &Painter,
+    element: &Element,
+    center: Pos2,
+    size: f32,
+    stroke_width: f32,
+) {
     let col = element_color(element);
     let hs = size / 2.0;
 
@@ -43,7 +49,10 @@ pub fn draw_element_triangle(painter: &Painter, element: &Element, center: Pos2,
         )
     };
 
-    painter.add(Shape::closed_line(vec![v1, v2, v3], Stroke::new(stroke_width, col)));
+    painter.add(Shape::closed_line(
+        vec![v1, v2, v3],
+        Stroke::new(stroke_width, col),
+    ));
 
     if has_midline {
         painter.line_segment(
@@ -89,7 +98,13 @@ pub fn draw_thresholds(
 /// Draw a single element symbol as an egui widget (allocates space in `ui`).
 /// Suitable for inline use inside `ui.horizontal`.
 /// Renders `count` as a label beside the triangle.
-pub fn element_symbol_widget(ui: &mut Ui, count: u8, element: &Element, size: f32, stroke_width: f32) {
+pub fn element_symbol_widget(
+    ui: &mut Ui,
+    count: u8,
+    element: &Element,
+    size: f32,
+    stroke_width: f32,
+) {
     let col = element_color(element);
     let (rect, _) = ui.allocate_exact_size(vec2(size, size), Sense::hover());
     let center = rect.center();
@@ -121,7 +136,11 @@ pub fn element_filter_button(
     let (resp, painter) = ui.allocate_painter(btn_size, Sense::click());
     let r = resp.rect;
 
-    painter.rect_filled(r, egui::CornerRadius::same(3), if active { active_bg } else { idle_bg });
+    painter.rect_filled(
+        r,
+        egui::CornerRadius::same(3),
+        if active { active_bg } else { idle_bg },
+    );
     if active {
         painter.rect_stroke(
             r,

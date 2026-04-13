@@ -101,6 +101,7 @@ impl Card for Disintegrate {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (Disintegrate::NAME, |owner_id: PlayerId| {
-    Box::new(Disintegrate::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (Disintegrate::NAME, |owner_id: PlayerId| {
+        Box::new(Disintegrate::new(owner_id))
+    });

@@ -1,7 +1,9 @@
 use std::sync::Arc;
 
 use crate::{
-    card::{Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
+    card::{
+        Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, Zone,
+    },
     effect::Effect,
     game::PlayerId,
     query::EffectQuery,
@@ -82,59 +84,61 @@ impl Card for ChainsOfPrometheus {
             expires_on_effect: Some(EffectQuery::BuryCard {
                 card: CardQuery::from_id(self.get_id().clone()),
             }),
-            on_effect: Arc::new(move |state: &State, _card_id: &uuid::Uuid, effect: &Effect| {
-                let _ = chains_id;
-                Box::pin(async move {
-                    // Extract the drawing player from the effect.
-                    let drawing_player = match effect {
-                        Effect::DrawSpell { player_id, .. } => player_id.clone(),
-                        Effect::DrawSite { player_id, .. } => player_id.clone(),
-                        Effect::DrawCard { player_id, .. } => player_id.clone(),
-                        _ => return Ok(vec![]),
-                    };
+            on_effect: Arc::new(
+                move |state: &State, _card_id: &uuid::Uuid, effect: &Effect| {
+                    let _ = chains_id;
+                    Box::pin(async move {
+                        // Extract the drawing player from the effect.
+                        let drawing_player = match effect {
+                            Effect::DrawSpell { player_id, .. } => player_id.clone(),
+                            Effect::DrawSite { player_id, .. } => player_id.clone(),
+                            Effect::DrawCard { player_id, .. } => player_id.clone(),
+                            _ => return Ok(vec![]),
+                        };
 
-                    // Find the drawing player's strongest untapped minion.
-                    let untapped_minions = CardQuery::new()
-                        .minions()
-                        .untapped()
-                        .controlled_by(&drawing_player)
-                        .all(state);
+                        // Find the drawing player's strongest untapped minion.
+                        let untapped_minions = CardQuery::new()
+                            .minions()
+                            .untapped()
+                            .controlled_by(&drawing_player)
+                            .all(state);
 
-                    if untapped_minions.is_empty() {
-                        return Ok(vec![]);
-                    }
+                        if untapped_minions.is_empty() {
+                            return Ok(vec![]);
+                        }
 
-                    // Find the minion with the highest power.
-                    let max_power = untapped_minions
-                        .iter()
-                        .filter_map(|id| {
-                            let card = state.get_card(&id);
-                            let power = card.get_power(state).ok()??;
-                            Some(power)
-                        })
-                        .max()
-                        .unwrap_or_default();
-                    let strongest = untapped_minions
-                        .into_iter()
-                        .filter(|id| {
-                            let card = state.get_card(id);
-                            match card.get_power(state) {
-                                Err(_) => false,
-                                Ok(power) => power.unwrap_or_default() == max_power,
-                            }
-                        })
-                        .collect::<Vec<uuid::Uuid>>();
+                        // Find the minion with the highest power.
+                        let max_power = untapped_minions
+                            .iter()
+                            .filter_map(|id| {
+                                let card = state.get_card(&id);
+                                let power = card.get_power(state).ok()??;
+                                Some(power)
+                            })
+                            .max()
+                            .unwrap_or_default();
+                        let strongest = untapped_minions
+                            .into_iter()
+                            .filter(|id| {
+                                let card = state.get_card(id);
+                                match card.get_power(state) {
+                                    Err(_) => false,
+                                    Ok(power) => power.unwrap_or_default() == max_power,
+                                }
+                            })
+                            .collect::<Vec<uuid::Uuid>>();
 
-                    let picked_card = CardQuery::from_ids(strongest)
-                        .count(1)
-                        .pick(&drawing_player, state, false)
-                        .await?;
-                    match picked_card {
-                        Some(id) => Ok(vec![Effect::TapCard { card_id: id }]),
-                        None => Ok(vec![]),
-                    }
-                })
-            }),
+                        let picked_card = CardQuery::from_ids(strongest)
+                            .count(1)
+                            .pick(&drawing_player, state, false)
+                            .await?;
+                        match picked_card {
+                            Some(id) => Ok(vec![Effect::TapCard { card_id: id }]),
+                            None => Ok(vec![]),
+                        }
+                    })
+                },
+            ),
             multitrigger: true,
         };
 
@@ -143,6 +147,7 @@ impl Card for ChainsOfPrometheus {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (ChainsOfPrometheus::NAME, |owner_id: PlayerId| {
-    Box::new(ChainsOfPrometheus::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (ChainsOfPrometheus::NAME, |owner_id: PlayerId| {
+        Box::new(ChainsOfPrometheus::new(owner_id))
+    });

@@ -1,5 +1,8 @@
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, SiteBase, SiteType, UnitBase, Zone},
+    card::{
+        Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, SiteBase, SiteType,
+        UnitBase, Zone,
+    },
     effect::Effect,
     game::PlayerId,
     state::State,
@@ -66,7 +69,12 @@ impl Card for RimlandNomads {
         Some(&mut self.unit_base)
     }
 
-    fn on_take_damage(&mut self, state: &State, from: &uuid::Uuid, damage: u16) -> anyhow::Result<Vec<Effect>> {
+    fn on_take_damage(
+        &mut self,
+        state: &State,
+        from: &uuid::Uuid,
+        damage: u16,
+    ) -> anyhow::Result<Vec<Effect>> {
         let dealer = state.get_card(from);
         let dealer_is_desert = dealer
             .get_site_base()
@@ -82,6 +90,7 @@ impl Card for RimlandNomads {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (RimlandNomads::NAME, |owner_id: PlayerId| {
-    Box::new(RimlandNomads::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (RimlandNomads::NAME, |owner_id: PlayerId| {
+        Box::new(RimlandNomads::new(owner_id))
+    });

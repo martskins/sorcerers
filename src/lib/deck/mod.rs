@@ -38,9 +38,9 @@ impl<'de> Deserialize<'de> for CardNameWithCount {
                 s
             )));
         }
-        let count = parts[0]
-            .parse::<u8>()
-            .map_err(|_| serde::de::Error::custom(format!("Invalid count in card format: \"{}\"", s)))?;
+        let count = parts[0].parse::<u8>().map_err(|_| {
+            serde::de::Error::custom(format!("Invalid count in card format: \"{}\"", s))
+        })?;
         let name = parts[1].to_string();
         Ok(CardNameWithCount { count, name })
     }
@@ -100,12 +100,18 @@ impl DeckList {
         // Spellbook size
         let spell_count = self.spells.iter().map(|c| c.count as usize).sum::<usize>();
         if spell_count < 60 {
-            return Err(format!("Spellbook needs at least 60 cards (you have {}).", spell_count));
+            return Err(format!(
+                "Spellbook needs at least 60 cards (you have {}).",
+                spell_count
+            ));
         }
         // Atlas size
         let site_count = self.sites.iter().map(|c| c.count as usize).sum::<usize>();
         if site_count < 30 {
-            return Err(format!("Atlas needs at least 30 sites (you have {}).", site_count));
+            return Err(format!(
+                "Atlas needs at least 30 sites (you have {}).",
+                site_count
+            ));
         }
 
         let dummy_id = uuid::Uuid::nil();
@@ -170,12 +176,16 @@ impl DeckList {
         let spell_cards: Vec<Box<dyn Card>> = self
             .spells
             .iter()
-            .flat_map(|c| std::iter::repeat_with(|| from_name(&c.name, player_id)).take(c.count as usize))
+            .flat_map(|c| {
+                std::iter::repeat_with(|| from_name(&c.name, player_id)).take(c.count as usize)
+            })
             .collect();
         let site_cards: Vec<Box<dyn Card>> = self
             .sites
             .iter()
-            .flat_map(|c| std::iter::repeat_with(|| from_name(&c.name, player_id)).take(c.count as usize))
+            .flat_map(|c| {
+                std::iter::repeat_with(|| from_name(&c.name, player_id)).take(c.count as usize)
+            })
             .collect();
         let mut deck = Deck::new(
             player_id,
@@ -266,7 +276,10 @@ impl Deck {
         }
     }
 
-    pub fn from_file(filepath: &str, player_id: &PlayerId) -> anyhow::Result<(Deck, Vec<Box<dyn Card>>)> {
+    pub fn from_file(
+        filepath: &str,
+        player_id: &PlayerId,
+    ) -> anyhow::Result<(Deck, Vec<Box<dyn Card>>)> {
         use crate::card::from_name;
 
         let file = std::fs::File::open(filepath)?;
@@ -275,12 +288,16 @@ impl Deck {
         let spell_cards: Vec<Box<dyn Card>> = decklist
             .spells
             .iter()
-            .flat_map(|c| std::iter::repeat_with(|| from_name(&c.name, player_id)).take(c.count as usize))
+            .flat_map(|c| {
+                std::iter::repeat_with(|| from_name(&c.name, player_id)).take(c.count as usize)
+            })
             .collect();
         let site_cards: Vec<Box<dyn Card>> = decklist
             .sites
             .iter()
-            .flat_map(|c| std::iter::repeat_with(|| from_name(&c.name, player_id)).take(c.count as usize))
+            .flat_map(|c| {
+                std::iter::repeat_with(|| from_name(&c.name, player_id)).take(c.count as usize)
+            })
             .collect();
 
         let mut deck = Deck {

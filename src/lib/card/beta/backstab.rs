@@ -12,8 +12,7 @@ pub struct Backstab {
 
 impl Backstab {
     pub const NAME: &'static str = "Backstab";
-    pub const DESCRIPTION: &'static str =
-        "Target minion moves to an adjacent location, if needed, to strike another target tapped minion there.";
+    pub const DESCRIPTION: &'static str = "Target minion moves to an adjacent location, if needed, to strike another target tapped minion there.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -93,4 +92,6 @@ impl Card for Backstab {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Backstab::NAME, |owner_id: PlayerId| Box::new(Backstab::new(owner_id)));
+    (Backstab::NAME, |owner_id: PlayerId| {
+        Box::new(Backstab::new(owner_id))
+    });

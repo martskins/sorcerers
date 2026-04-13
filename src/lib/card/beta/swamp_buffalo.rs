@@ -62,6 +62,7 @@ impl Card for SwampBuffalo {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (SwampBuffalo::NAME, |owner_id: PlayerId| {
-    Box::new(SwampBuffalo::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (SwampBuffalo::NAME, |owner_id: PlayerId| {
+        Box::new(SwampBuffalo::new(owner_id))
+    });

@@ -118,12 +118,16 @@ impl Card for AdeptIllusionist {
         Some(&mut self.unit_base)
     }
 
-    fn get_additional_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+    fn get_additional_activated_abilities(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         Ok(vec![Box::new(AdeptIllusionistAction)])
     }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (AdeptIllusionist::NAME, |owner_id: PlayerId| {
-    Box::new(AdeptIllusionist::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (AdeptIllusionist::NAME, |owner_id: PlayerId| {
+        Box::new(AdeptIllusionist::new(owner_id))
+    });

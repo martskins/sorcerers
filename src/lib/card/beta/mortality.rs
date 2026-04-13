@@ -12,7 +12,8 @@ pub struct Mortality {
 
 impl Mortality {
     pub const NAME: &'static str = "Mortality";
-    pub const DESCRIPTION: &'static str = "Kill all Mortal minions at target location up to two steps away.";
+    pub const DESCRIPTION: &'static str =
+        "Kill all Mortal minions at target location up to two steps away.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -84,4 +85,6 @@ impl Card for Mortality {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Mortality::NAME, |owner_id: PlayerId| Box::new(Mortality::new(owner_id)));
+    (Mortality::NAME, |owner_id: PlayerId| {
+        Box::new(Mortality::new(owner_id))
+    });

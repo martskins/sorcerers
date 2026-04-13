@@ -13,7 +13,8 @@ pub struct Disenchant {
 
 impl Disenchant {
     pub const NAME: &'static str = "Disenchant";
-    pub const DESCRIPTION: &'static str = "Destroy all auras and artifacts at target location up to two steps away.";
+    pub const DESCRIPTION: &'static str =
+        "Destroy all auras and artifacts at target location up to two steps away.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -82,6 +83,7 @@ impl Card for Disenchant {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (Disenchant::NAME, |owner_id: PlayerId| {
-    Box::new(Disenchant::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (Disenchant::NAME, |owner_id: PlayerId| {
+        Box::new(Disenchant::new(owner_id))
+    });

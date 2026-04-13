@@ -13,8 +13,7 @@ pub struct ConquerorWorm {
 
 impl ConquerorWorm {
     pub const NAME: &'static str = "Conqueror Worm";
-    pub const DESCRIPTION: &'static str =
-        "At the end of your turn, if no enemy units occupy this site, permanently gain control of it.";
+    pub const DESCRIPTION: &'static str = "At the end of your turn, if no enemy units occupy this site, permanently gain control of it.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -111,6 +110,7 @@ impl Card for ConquerorWorm {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (ConquerorWorm::NAME, |owner_id: PlayerId| {
-    Box::new(ConquerorWorm::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (ConquerorWorm::NAME, |owner_id: PlayerId| {
+        Box::new(ConquerorWorm::new(owner_id))
+    });

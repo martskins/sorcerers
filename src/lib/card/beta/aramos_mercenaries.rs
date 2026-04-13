@@ -1,5 +1,8 @@
 use crate::{
-    card::{AdditionalCost, Card, CardBase, Cost, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{
+        AdditionalCost, Card, CardBase, Cost, Costs, Edition, MinionType, Rarity, Region, UnitBase,
+        Zone,
+    },
     game::PlayerId,
     state::CardQuery,
 };
@@ -12,7 +15,8 @@ pub struct AramosMercenaries {
 
 impl AramosMercenaries {
     pub const NAME: &'static str = "Aramos Mercenaries";
-    pub const DESCRIPTION: &'static str = "You may discard a random card rather than pay this spell's mana cost.";
+    pub const DESCRIPTION: &'static str =
+        "You may discard a random card rather than pay this spell's mana cost.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -28,13 +32,15 @@ impl AramosMercenaries {
                 owner_id,
                 tapped: false,
                 zone: Zone::Spellbook,
-                costs: Costs::basic(3, "FF").with_alternative(Cost::additional_only(AdditionalCost::discard(
-                    CardQuery::new()
-                        .in_zone(&Zone::Hand)
-                        .controlled_by(&owner_id)
-                        .count(1)
-                        .randomised(),
-                ))),
+                costs: Costs::basic(3, "FF").with_alternative(Cost::additional_only(
+                    AdditionalCost::discard(
+                        CardQuery::new()
+                            .in_zone(&Zone::Hand)
+                            .controlled_by(&owner_id)
+                            .count(1)
+                            .randomised(),
+                    ),
+                )),
                 region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
@@ -74,6 +80,7 @@ impl Card for AramosMercenaries {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (AramosMercenaries::NAME, |owner_id: PlayerId| {
-    Box::new(AramosMercenaries::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (AramosMercenaries::NAME, |owner_id: PlayerId| {
+        Box::new(AramosMercenaries::new(owner_id))
+    });

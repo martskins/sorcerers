@@ -15,7 +15,8 @@ pub struct DaperyllVampire {
 
 impl DaperyllVampire {
     pub const NAME: &'static str = "Daperyll Vampire";
-    pub const DESCRIPTION: &'static str = "Airborne\r \r Daperyll Vampire's strike damage against units heals you.";
+    pub const DESCRIPTION: &'static str =
+        "Airborne\r \r Daperyll Vampire's strike damage against units heals you.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -71,6 +72,7 @@ impl Card for DaperyllVampire {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (DaperyllVampire::NAME, |owner_id: PlayerId| {
-    Box::new(DaperyllVampire::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (DaperyllVampire::NAME, |owner_id: PlayerId| {
+        Box::new(DaperyllVampire::new(owner_id))
+    });

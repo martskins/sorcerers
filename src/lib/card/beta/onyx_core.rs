@@ -1,6 +1,7 @@
 use crate::{
     card::{
-        Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Zone,
+        Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region,
+        ResourceProvider, Zone,
     },
     game::{PlayerId, Thresholds},
     state::State,
@@ -88,4 +89,6 @@ impl Card for OnyxCore {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (OnyxCore::NAME, |owner_id: PlayerId| Box::new(OnyxCore::new(owner_id)));
+    (OnyxCore::NAME, |owner_id: PlayerId| {
+        Box::new(OnyxCore::new(owner_id))
+    });

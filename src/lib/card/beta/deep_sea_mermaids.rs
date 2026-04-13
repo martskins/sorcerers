@@ -88,6 +88,7 @@ impl Card for DeepSeaMermaids {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (DeepSeaMermaids::NAME, |owner_id: PlayerId| {
-    Box::new(DeepSeaMermaids::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (DeepSeaMermaids::NAME, |owner_id: PlayerId| {
+        Box::new(DeepSeaMermaids::new(owner_id))
+    });

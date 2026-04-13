@@ -65,4 +65,6 @@ impl Card for DodgeRoll {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (DodgeRoll::NAME, |owner_id: PlayerId| Box::new(DodgeRoll::new(owner_id)));
+    (DodgeRoll::NAME, |owner_id: PlayerId| {
+        Box::new(DodgeRoll::new(owner_id))
+    });

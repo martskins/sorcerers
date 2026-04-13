@@ -1,15 +1,17 @@
 use super::selection_overlay::SelectionOverlayBehaviour;
 use crate::{
     components::{
-        Component, ComponentCommand, ComponentType, event_log::EventLogComponent, player_hand::PlayerHandComponent,
-        player_status::PlayerStatusComponent, realm::RealmComponent,
+        Component, ComponentCommand, ComponentType, event_log::EventLogComponent,
+        player_hand::PlayerHandComponent, player_status::PlayerStatusComponent,
+        realm::RealmComponent,
     },
     config::*,
     input::Mouse,
     render::{self, popup_action_menu},
     scene::{
         Scene, action_overlay::ActionOverlay, card_toast::CardToast,
-        combat_resolution_overlay::CombatResolutionOverlay, menu::Menu, selection_overlay::SelectionOverlay,
+        combat_resolution_overlay::CombatResolutionOverlay, menu::Menu,
+        selection_overlay::SelectionOverlay,
     },
 };
 use egui::{Color32, Context, FontId, Painter, Rect, RichText, Ui, pos2, vec2};
@@ -98,7 +100,10 @@ impl Event {
 fn component_rect(component_type: ComponentType) -> anyhow::Result<Rect> {
     match component_type {
         ComponentType::EventLog => Ok(event_log_rect()),
-        ComponentType::PlayerStatus => Ok(Rect::from_min_size(pos2(20.0, 25.0), vec2(realm_rect()?.min.x, 60.0))),
+        ComponentType::PlayerStatus => Ok(Rect::from_min_size(
+            pos2(20.0, 25.0),
+            vec2(realm_rect()?.min.x, 60.0),
+        )),
         ComponentType::PlayerHand => hand_rect(),
         ComponentType::Realm => realm_rect(),
         ComponentType::SelectionOverlay => screen_rect(),
@@ -193,8 +198,16 @@ impl Game {
             current_player: uuid::Uuid::nil(),
             overlay: None,
             components: vec![
-                Box::new(PlayerStatusComponent::new(player_status_rect, opponent_id, false)),
-                Box::new(PlayerStatusComponent::new(player_status_rect, player_id, true)),
+                Box::new(PlayerStatusComponent::new(
+                    player_status_rect,
+                    opponent_id,
+                    false,
+                )),
+                Box::new(PlayerStatusComponent::new(
+                    player_status_rect,
+                    player_id,
+                    true,
+                )),
                 Box::new(RealmComponent::new(
                     &game_id,
                     &player_id,
@@ -202,7 +215,12 @@ impl Game {
                     client.clone(),
                     realm_r,
                 )),
-                Box::new(PlayerHandComponent::new(&game_id, &player_id, client.clone(), hand_r)),
+                Box::new(PlayerHandComponent::new(
+                    &game_id,
+                    &player_id,
+                    client.clone(),
+                    hand_r,
+                )),
                 Box::new(EventLogComponent::new(log_rect)),
             ],
             data: GameData::new(&player_id, cards),
@@ -235,7 +253,12 @@ impl Game {
             prompt,
         } = &self.data.status.clone()
         {
-            let renderables = self.data.cards.iter().filter(|c| cards.contains(&c.id)).collect();
+            let renderables = self
+                .data
+                .cards
+                .iter()
+                .filter(|c| cards.contains(&c.id))
+                .collect();
             self.overlay = Some(Box::new(SelectionOverlay::new(
                 self.client.clone(),
                 &self.game_id,
@@ -261,7 +284,11 @@ impl Game {
         }
 
         if let Some(overlay) = &mut self.overlay {
-            if let Err(e) = overlay.process_input(self.current_player == self.data.player_id, &mut self.data, ctx) {
+            if let Err(e) = overlay.process_input(
+                self.current_player == self.data.player_id,
+                &mut self.data,
+                ctx,
+            ) {
                 eprintln!("Error processing overlay input: {}", e);
             }
             if !overlay.is_visible() {
@@ -273,9 +300,11 @@ impl Game {
 
         let mut component_actions = vec![];
         for component in &mut self.components {
-            if let Ok(Some(action)) =
-                component.process_input(self.current_player == self.data.player_id, &mut self.data, ctx)
-            {
+            if let Ok(Some(action)) = component.process_input(
+                self.current_player == self.data.player_id,
+                &mut self.data,
+                ctx,
+            ) {
                 component_actions.push(action);
             }
         }
@@ -355,7 +384,9 @@ impl Game {
             | Status::SelectingZoneGroup { prompt, .. }
             | Status::SelectingPath { prompt, .. }
             | Status::SelectingCard {
-                prompt, preview: false, ..
+                prompt,
+                preview: false,
+                ..
             } => Some(prompt.clone()),
             Status::Mulligan => Some("Select cards to\nmulligan".to_string()),
             _ => None,
@@ -388,22 +419,34 @@ impl Game {
             egui::Area::new(egui::Id::new("pass_turn_btn"))
                 .fixed_pos(btn_pos)
                 .show(ctx, |ui| {
-                    let btn = egui::Button::new(egui::RichText::new("Pass Turn").size(18.0).color(Color32::WHITE))
-                        .min_size(vec2(160.0, 48.0));
+                    let btn = egui::Button::new(
+                        egui::RichText::new("Pass Turn")
+                            .size(18.0)
+                            .color(Color32::WHITE),
+                    )
+                    .min_size(vec2(160.0, 48.0));
                     if ui.add(btn).clicked() {
                         Mouse::set_enabled(false);
-                        client.send(ClientMessage::EndTurn { player_id, game_id }).ok();
+                        client
+                            .send(ClientMessage::EndTurn { player_id, game_id })
+                            .ok();
                     }
                 });
-        } else if matches!(self.data.status, Status::SelectingCard { multiple: true, .. })
-            || self.data.status == Status::Mulligan
+        } else if matches!(
+            self.data.status,
+            Status::SelectingCard { multiple: true, .. }
+        ) || self.data.status == Status::Mulligan
         {
             let mut done = false;
             egui::Area::new(egui::Id::new("done_selecting_btn"))
                 .fixed_pos(btn_pos)
                 .show(ctx, |ui| {
-                    let btn = egui::Button::new(egui::RichText::new("Done Selecting").size(18.0).color(Color32::WHITE))
-                        .min_size(vec2(180.0, 48.0));
+                    let btn = egui::Button::new(
+                        egui::RichText::new("Done Selecting")
+                            .size(18.0)
+                            .color(Color32::WHITE),
+                    )
+                    .min_size(vec2(180.0, 48.0));
                     if ui.add(btn).clicked() {
                         Mouse::set_enabled(false);
                         done = true;
@@ -411,7 +454,8 @@ impl Game {
                 });
             if done {
                 for component in &mut self.components {
-                    let _ = component.process_command(&ComponentCommand::DonePicking, &mut self.data);
+                    let _ =
+                        component.process_command(&ComponentCommand::DonePicking, &mut self.data);
                 }
             }
         }
@@ -449,12 +493,21 @@ impl Game {
                     self.selected_value = Some(Box::new(*min_amount as i32));
                 }
 
-                let selected_amount = self.selected_value.as_mut().unwrap().downcast_mut::<i32>().unwrap();
+                let selected_amount = self
+                    .selected_value
+                    .as_mut()
+                    .unwrap()
+                    .downcast_mut::<i32>()
+                    .unwrap();
                 let mut submitted = false;
                 let menu_w = 260.0;
                 let menu_h = 170.0;
-                let screen = screen_rect().unwrap_or(Rect::from_min_size(pos2(0.0, 0.0), vec2(1280.0, 720.0)));
-                let origin = pos2((screen.width() - menu_w) / 2.0, (screen.height() - menu_h) / 2.0);
+                let screen = screen_rect()
+                    .unwrap_or(Rect::from_min_size(pos2(0.0, 0.0), vec2(1280.0, 720.0)));
+                let origin = pos2(
+                    (screen.width() - menu_w) / 2.0,
+                    (screen.height() - menu_h) / 2.0,
+                );
                 egui::Area::new(egui::Id::new("amount_picker_popup"))
                     .fixed_pos(origin)
                     .order(egui::Order::Foreground)
@@ -462,7 +515,11 @@ impl Game {
                         ui.vertical_centered(|ui| {
                             ui.horizontal(|ui| {
                                 ui.add_space(16.0);
-                                ui.label(RichText::new(prompt).size(16.0).color(Color32::from_rgb(180, 200, 240)));
+                                ui.label(
+                                    RichText::new(prompt)
+                                        .size(16.0)
+                                        .color(Color32::from_rgb(180, 200, 240)),
+                                );
                                 ui.add_space(18.0);
                                 if ui
                                     .add_enabled(
@@ -494,8 +551,12 @@ impl Game {
                                 ui.add_space(18.0);
                                 if ui
                                     .add(
-                                        egui::Button::new(RichText::new("Submit").size(18.0).color(Color32::WHITE))
-                                            .min_size(vec2(120.0, 36.0)),
+                                        egui::Button::new(
+                                            RichText::new("Submit")
+                                                .size(18.0)
+                                                .color(Color32::WHITE),
+                                        )
+                                        .min_size(vec2(120.0, 36.0)),
                                     )
                                     .clicked()
                                 {
@@ -555,8 +616,10 @@ impl Game {
                         }
                         if ui
                             .add(
-                                egui::Button::new(egui::RichText::new("Ok").size(18.0).color(Color32::WHITE))
-                                    .min_size(vec2(80.0, 24.0)),
+                                egui::Button::new(
+                                    egui::RichText::new("Ok").size(18.0).color(Color32::WHITE),
+                                )
+                                .min_size(vec2(80.0, 24.0)),
                             )
                             .clicked()
                         {
@@ -596,7 +659,9 @@ impl Game {
                 None
             }
             ServerMessage::Wait { prompt, .. } => {
-                self.data.status = Status::Waiting { prompt: prompt.clone() };
+                self.data.status = Status::Waiting {
+                    prompt: prompt.clone(),
+                };
                 None
             }
             ServerMessage::LogEvent {
@@ -612,7 +677,9 @@ impl Game {
                 None
             }
             ServerMessage::PickZoneGroup {
-                groups: zones, prompt, ..
+                groups: zones,
+                prompt,
+                ..
             } => {
                 self.data.status = Status::SelectingZoneGroup {
                     groups: zones.clone(),
@@ -648,9 +715,17 @@ impl Game {
                 None
             }
             ServerMessage::RevealCards {
-                cards, action, prompt, ..
+                cards,
+                action,
+                prompt,
+                ..
             } => {
-                let renderables = self.data.cards.iter().filter(|c| cards.contains(&c.id)).collect();
+                let renderables = self
+                    .data
+                    .cards
+                    .iter()
+                    .filter(|c| cards.contains(&c.id))
+                    .collect();
                 self.overlay = Some(Box::new(ActionOverlay::new(
                     self.client.clone(),
                     &self.game_id,
@@ -661,14 +736,20 @@ impl Game {
                 )));
                 None
             }
-            ServerMessage::CardPlayed { card_id, description } => {
+            ServerMessage::CardPlayed {
+                card_id,
+                description,
+            } => {
                 if let Some(card) = self.data.cards.iter().find(|c| c.id == *card_id).cloned() {
                     self.card_toast = Some(CardToast::new(card, description.clone()));
                 }
                 None
             }
             ServerMessage::PickCards {
-                cards, prompt, preview, ..
+                cards,
+                prompt,
+                preview,
+                ..
             } => {
                 self.data.status = Status::SelectingCard {
                     cards: cards.clone(),
@@ -677,7 +758,12 @@ impl Game {
                     multiple: true,
                 };
                 if *preview {
-                    let renderables = self.data.cards.iter().filter(|c| cards.contains(&c.id)).collect();
+                    let renderables = self
+                        .data
+                        .cards
+                        .iter()
+                        .filter(|c| cards.contains(&c.id))
+                        .collect();
                     self.overlay = Some(Box::new(SelectionOverlay::new(
                         self.client.clone(),
                         &self.game_id,
@@ -709,7 +795,9 @@ impl Game {
                     .filter(|c| defenders.contains(&c.id))
                     .cloned()
                     .collect();
-                if let Some(attacker_data) = self.data.cards.iter().find(|c| c.id == *attacker).cloned() {
+                if let Some(attacker_data) =
+                    self.data.cards.iter().find(|c| c.id == *attacker).cloned()
+                {
                     self.overlay = Some(Box::new(CombatResolutionOverlay::new(
                         self.client.clone(),
                         &self.game_id,
@@ -735,7 +823,12 @@ impl Game {
                     multiple: false,
                 };
                 if *preview {
-                    let renderables = self.data.cards.iter().filter(|c| cards.contains(&c.id)).collect();
+                    let renderables = self
+                        .data
+                        .cards
+                        .iter()
+                        .filter(|c| cards.contains(&c.id))
+                        .collect();
                     self.overlay = Some(Box::new(SelectionOverlay::new(
                         self.client.clone(),
                         &self.game_id,

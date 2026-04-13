@@ -10,7 +10,8 @@ mod texture_cache;
 use eframe::egui;
 
 fn main() -> eframe::Result {
-    let server_url = std::env::var("SORCERERS_SERVER_URL").unwrap_or_else(|_| "127.0.0.1:5000".to_string());
+    let server_url =
+        std::env::var("SORCERERS_SERVER_URL").unwrap_or_else(|_| "127.0.0.1:5000".to_string());
 
     let native_options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()

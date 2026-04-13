@@ -1,5 +1,8 @@
 use crate::{
-    card::{Card, CardBase, Cost, Costs, Edition, MinionType, Rarity, Region, Site, SiteBase, UnitBase, Zone},
+    card::{
+        Card, CardBase, Cost, Costs, Edition, MinionType, Rarity, Region, Site, SiteBase, UnitBase,
+        Zone,
+    },
     effect::{Effect, TokenType},
     game::{ActivatedAbility, PlayerId, Thresholds},
     state::State,
@@ -43,7 +46,12 @@ impl ActivatedAbility for TransformIntoAMonster {
         ])
     }
 
-    fn can_activate(&self, card_id: &uuid::Uuid, _player_id: &PlayerId, state: &State) -> anyhow::Result<bool> {
+    fn can_activate(
+        &self,
+        card_id: &uuid::Uuid,
+        _player_id: &PlayerId,
+        state: &State,
+    ) -> anyhow::Result<bool> {
         let card = state.get_card(card_id);
         Ok(card.get_site_base().is_some())
     }
@@ -128,10 +136,17 @@ impl Card for IslandLeviathan {
     }
 
     fn get_site(&self) -> Option<&dyn Site> {
-        if self.site_base.is_some() { Some(self) } else { None }
+        if self.site_base.is_some() {
+            Some(self)
+        } else {
+            None
+        }
     }
 
-    fn get_additional_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+    fn get_additional_activated_abilities(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         Ok(vec![Box::new(TransformIntoAMonster)])
     }
 
@@ -146,6 +161,7 @@ impl Card for IslandLeviathan {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (IslandLeviathan::NAME, |owner_id: PlayerId| {
-    Box::new(IslandLeviathan::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (IslandLeviathan::NAME, |owner_id: PlayerId| {
+        Box::new(IslandLeviathan::new(owner_id))
+    });

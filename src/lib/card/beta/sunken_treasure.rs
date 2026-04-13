@@ -1,5 +1,7 @@
 use crate::{
-    card::{Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
+    card::{
+        Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, Zone,
+    },
     effect::Effect,
     game::PlayerId,
     state::{CardQuery, State},
@@ -99,7 +101,12 @@ impl Card for SunkenTreasure {
         ])
     }
 
-    fn on_region_change(&self, state: &State, from: &Region, to: &Region) -> anyhow::Result<Vec<Effect>> {
+    fn on_region_change(
+        &self,
+        state: &State,
+        from: &Region,
+        to: &Region,
+    ) -> anyhow::Result<Vec<Effect>> {
         let subsurface = from == &Region::Underwater || from == &Region::Underground;
         let surfaced = to == &Region::Surface;
         let carried = self.get_bearer().unwrap_or_default().is_some();
@@ -121,6 +128,7 @@ impl Card for SunkenTreasure {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (SunkenTreasure::NAME, |owner_id: PlayerId| {
-    Box::new(SunkenTreasure::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (SunkenTreasure::NAME, |owner_id: PlayerId| {
+        Box::new(SunkenTreasure::new(owner_id))
+    });

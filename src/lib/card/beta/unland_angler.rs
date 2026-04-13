@@ -103,6 +103,7 @@ impl Card for UnlandAngler {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (UnlandAngler::NAME, |owner_id: PlayerId| {
-    Box::new(UnlandAngler::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (UnlandAngler::NAME, |owner_id: PlayerId| {
+        Box::new(UnlandAngler::new(owner_id))
+    });

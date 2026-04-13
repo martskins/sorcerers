@@ -15,8 +15,7 @@ pub struct GuileSirens {
 
 impl GuileSirens {
     pub const NAME: &'static str = "Guile Sirens";
-    pub const DESCRIPTION: &'static str =
-        "Submerge\r \r At the start of your turn, force target nearby enemy minion to take a step toward Guile Sirens.";
+    pub const DESCRIPTION: &'static str = "Submerge\r \r At the start of your turn, force target nearby enemy minion to take a step toward Guile Sirens.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -99,7 +98,10 @@ impl Card for GuileSirens {
         let mut steps_to_zone = HashMap::new();
         for (zone, steps) in zones {
             if let Some(steps) = steps {
-                steps_to_zone.entry(steps).or_insert(vec![]).push(zone.clone());
+                steps_to_zone
+                    .entry(steps)
+                    .or_insert(vec![])
+                    .push(zone.clone());
             }
         }
 
@@ -113,7 +115,10 @@ impl Card for GuileSirens {
                     &closest_zones,
                     state,
                     true,
-                    &format!("Guile Sirens: Pick a zone to move {} to", picked_card.get_name()),
+                    &format!(
+                        "Guile Sirens: Pick a zone to move {} to",
+                        picked_card.get_name()
+                    ),
                 )
                 .await?
             };
@@ -134,6 +139,7 @@ impl Card for GuileSirens {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (GuileSirens::NAME, |owner_id: PlayerId| {
-    Box::new(GuileSirens::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (GuileSirens::NAME, |owner_id: PlayerId| {
+        Box::new(GuileSirens::new(owner_id))
+    });

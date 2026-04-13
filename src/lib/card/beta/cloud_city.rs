@@ -1,5 +1,8 @@
 use crate::{
-    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
+    card::{
+        Card, CardBase, Cost, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase,
+        Zone,
+    },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, Thresholds, pick_zone},
     query::ZoneQuery,
@@ -88,7 +91,8 @@ pub struct CloudCity {
 
 impl CloudCity {
     pub const NAME: &'static str = "Cloud City";
-    pub const DESCRIPTION: &'static str = "(A)(A)(A) — Once on your turn, this site may fly to a nearby void.";
+    pub const DESCRIPTION: &'static str =
+        "(A)(A)(A) — Once on your turn, this site may fly to a nearby void.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -155,7 +159,10 @@ impl Card for CloudCity {
         Ok(vec![])
     }
 
-    fn get_additional_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+    fn get_additional_activated_abilities(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         Ok(vec![Box::new(FlyToVoid)])
     }
 
@@ -178,4 +185,6 @@ impl Card for CloudCity {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (CloudCity::NAME, |owner_id: PlayerId| Box::new(CloudCity::new(owner_id)));
+    (CloudCity::NAME, |owner_id: PlayerId| {
+        Box::new(CloudCity::new(owner_id))
+    });

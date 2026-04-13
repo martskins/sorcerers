@@ -12,7 +12,8 @@ pub struct DwarvenDiggingTeam {
 
 impl DwarvenDiggingTeam {
     pub const NAME: &'static str = "Dwarven Digging Team";
-    pub const DESCRIPTION: &'static str = "Burrowing\r Allied minions occupying nearby sites have Burrowing.";
+    pub const DESCRIPTION: &'static str =
+        "Burrowing\r Allied minions occupying nearby sites have Burrowing.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -85,6 +86,7 @@ impl Card for DwarvenDiggingTeam {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (DwarvenDiggingTeam::NAME, |owner_id: PlayerId| {
-    Box::new(DwarvenDiggingTeam::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (DwarvenDiggingTeam::NAME, |owner_id: PlayerId| {
+        Box::new(DwarvenDiggingTeam::new(owner_id))
+    });

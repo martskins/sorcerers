@@ -12,7 +12,8 @@ pub struct PolarBears {
 
 impl PolarBears {
     pub const NAME: &'static str = "Polar Bears";
-    pub const DESCRIPTION: &'static str = "Can move as if the top and bottom edges of the realm were connected.";
+    pub const DESCRIPTION: &'static str =
+        "Can move as if the top and bottom edges of the realm were connected.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -110,6 +111,7 @@ impl Card for PolarBears {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (PolarBears::NAME, |owner_id: PlayerId| {
-    Box::new(PolarBears::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (PolarBears::NAME, |owner_id: PlayerId| {
+        Box::new(PolarBears::new(owner_id))
+    });

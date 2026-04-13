@@ -61,6 +61,7 @@ impl Card for RaalDromedary {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (RaalDromedary::NAME, |owner_id: PlayerId| {
-    Box::new(RaalDromedary::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (RaalDromedary::NAME, |owner_id: PlayerId| {
+        Box::new(RaalDromedary::new(owner_id))
+    });

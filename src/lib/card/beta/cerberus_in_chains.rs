@@ -94,32 +94,35 @@ impl Card for CerberusInChains {
             expires_on_effect: Some(EffectQuery::BuryCard {
                 card: CardQuery::from_id(self.get_id().clone()),
             }),
-            on_effect: Arc::new(move |state: &State, avatar_card_id: &uuid::Uuid, _effect: &Effect| {
-                let cerberus_id = cerberus_id.clone();
-                let owner_id = controller_id.clone();
-                Box::pin(async move {
-                    let cerberus = state.get_card(&cerberus_id);
-                    let avatar = state.get_card(avatar_card_id);
-                    let new_zone = avatar.get_zone().clone();
+            on_effect: Arc::new(
+                move |state: &State, avatar_card_id: &uuid::Uuid, _effect: &Effect| {
+                    let cerberus_id = cerberus_id.clone();
+                    let owner_id = controller_id.clone();
+                    Box::pin(async move {
+                        let cerberus = state.get_card(&cerberus_id);
+                        let avatar = state.get_card(avatar_card_id);
+                        let new_zone = avatar.get_zone().clone();
 
-                    // Only follow if Cerberus is in play and not already at the same zone.
-                    if !cerberus.get_zone().is_in_play() || cerberus.get_zone() == &new_zone {
-                        return Ok(vec![]);
-                    }
+                        // Only follow if Cerberus is in play and not already at the same zone.
+                        if !cerberus.get_zone().is_in_play() || cerberus.get_zone() == &new_zone {
+                            return Ok(vec![]);
+                        }
 
-                    let from = cerberus.get_zone().clone();
-                    let region = cerberus.get_region(state).clone();
-                    Ok(vec![Effect::MoveCard {
-                        player_id: owner_id,
-                        card_id: cerberus_id,
-                        from,
-                        to: ZoneQuery::from_zone(new_zone),
-                        tap: false,
-                        region,
-                        through_path: None,
-                    }])
-                }) as Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>>
-            }),
+                        let from = cerberus.get_zone().clone();
+                        let region = cerberus.get_region(state).clone();
+                        Ok(vec![Effect::MoveCard {
+                            player_id: owner_id,
+                            card_id: cerberus_id,
+                            from,
+                            to: ZoneQuery::from_zone(new_zone),
+                            tap: false,
+                            region,
+                            through_path: None,
+                        }])
+                    })
+                        as Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>>
+                },
+            ),
             multitrigger: true,
         };
 
@@ -128,6 +131,7 @@ impl Card for CerberusInChains {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (CerberusInChains::NAME, |owner_id: PlayerId| {
-    Box::new(CerberusInChains::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (CerberusInChains::NAME, |owner_id: PlayerId| {
+        Box::new(CerberusInChains::new(owner_id))
+    });

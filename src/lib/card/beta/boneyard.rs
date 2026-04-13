@@ -1,5 +1,7 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
+    card::{
+        Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone,
+    },
     effect::Effect,
     game::{PlayerId, Thresholds, pick_card_with_options},
     state::{CardQuery, State},
@@ -13,7 +15,8 @@ pub struct Boneyard {
 
 impl Boneyard {
     pub const NAME: &'static str = "Boneyard";
-    pub const DESCRIPTION: &'static str = "Genesis → Each player may summon a minion from their cemetery here.";
+    pub const DESCRIPTION: &'static str =
+        "Genesis → Each player may summon a minion from their cemetery here.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -110,4 +113,6 @@ impl Card for Boneyard {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Boneyard::NAME, |owner_id: PlayerId| Box::new(Boneyard::new(owner_id)));
+    (Boneyard::NAME, |owner_id: PlayerId| {
+        Box::new(Boneyard::new(owner_id))
+    });

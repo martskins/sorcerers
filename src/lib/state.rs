@@ -1,8 +1,13 @@
 use crate::{
-    card::{Ability, ArtifactType, Card, CardData, CardType, DodgeRoll, MinionType, Rarity, Region, SiteType, Zone},
+    card::{
+        Ability, ArtifactType, Card, CardData, CardType, DodgeRoll, MinionType, Rarity, Region,
+        SiteType, Zone,
+    },
     deck::Deck,
     effect::Effect,
-    game::{Element, InputStatus, PlayerId, Resources, Thresholds, pick_card, pick_zone, yes_or_no},
+    game::{
+        Element, InputStatus, PlayerId, Resources, Thresholds, pick_card, pick_zone, yes_or_no,
+    },
     networking::message::{ClientMessage, ServerMessage},
     query::{EffectQuery, ZoneQuery},
 };
@@ -152,7 +157,12 @@ impl CardQuery {
                 if let Some(query) = card.card_query_override(state, self).await? {
                     let output = Box::pin(query.pick(player_id, state, use_preview)).await?;
 
-                    QueryCache::store_matcher_results(state.game_id, self.id, output.map_or(vec![], |o| vec![o])).await;
+                    QueryCache::store_matcher_results(
+                        state.game_id,
+                        self.id,
+                        output.map_or(vec![], |o| vec![o]),
+                    )
+                    .await;
                     return Ok(output);
                 }
             }
@@ -165,7 +175,10 @@ impl CardQuery {
                 .expect("Expected at least one card to be returned from resolve_ids")
                 .clone()
         } else {
-            let prompt = self.prompt.clone().unwrap_or_else(|| "Pick a card".to_string());
+            let prompt = self
+                .prompt
+                .clone()
+                .unwrap_or_else(|| "Pick a card".to_string());
             pick_card(player_id, &card_ids, state, &prompt).await?
         };
 
@@ -175,7 +188,10 @@ impl CardQuery {
     }
 
     pub fn iter<'b>(&'b self, state: &'b State) -> impl Iterator<Item = &'b Box<dyn Card>> {
-        state.cards.iter().filter(|c| self.matches(c.get_id(), state))
+        state
+            .cards
+            .iter()
+            .filter(|c| self.matches(c.get_id(), state))
     }
 
     pub fn all(&self, state: &State) -> Vec<uuid::Uuid> {
@@ -555,7 +571,11 @@ impl CardQuery {
         if let Some(with_affinity_in) = &self.with_affinity_in {
             let mut has_affinity = false;
             for element in with_affinity_in {
-                if card.get_elements(state).unwrap_or_default().contains(element) {
+                if card
+                    .get_elements(state)
+                    .unwrap_or_default()
+                    .contains(element)
+                {
                     has_affinity = true;
                     break;
                 }
@@ -569,7 +589,11 @@ impl CardQuery {
         if let Some(with_affinity) = &self.with_affinity {
             let mut has_affinity = false;
             for element in with_affinity {
-                if card.get_elements(state).unwrap_or_default().contains(element) {
+                if card
+                    .get_elements(state)
+                    .unwrap_or_default()
+                    .contains(element)
+                {
                     has_affinity = true;
                     break;
                 }
@@ -713,7 +737,8 @@ pub type DeferredCallback = Arc<
             &'a State,
             &'a uuid::Uuid,
             &'a Effect,
-        ) -> Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + 'a>>,
+        )
+            -> Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + 'a>>,
 >;
 
 #[derive(Clone)]
@@ -750,7 +775,9 @@ impl TemporaryEffect {
 
     pub fn expires_on_effect(&self) -> Option<&EffectQuery> {
         match self {
-            TemporaryEffect::FloodSites { expires_on_effect, .. } => Some(expires_on_effect),
+            TemporaryEffect::FloodSites {
+                expires_on_effect, ..
+            } => Some(expires_on_effect),
         }
     }
 }
@@ -834,8 +861,14 @@ impl State {
     ) -> Self {
         let mut cards: Vec<Box<dyn Card>> = Vec::new();
         let mut decks = HashMap::new();
-        let players = players_with_decks.iter().map(|p| p.player.clone()).collect();
-        let player_mana = players_with_decks.iter().map(|p| (p.player.id.clone(), 0)).collect();
+        let players = players_with_decks
+            .iter()
+            .map(|p| p.player.clone())
+            .collect();
+        let player_mana = players_with_decks
+            .iter()
+            .map(|p| (p.player.id.clone(), 0))
+            .collect();
         let player_one = players_with_decks[0].player.id.clone();
         for player in players_with_decks {
             cards.extend(player.cards);
@@ -887,7 +920,10 @@ impl State {
                     return Ok(None);
                 }
 
-                let prompt = format!("Use Dodge Roll to evade the attack on {}?", defender.get_name());
+                let prompt = format!(
+                    "Use Dodge Roll to evade the attack on {}?",
+                    defender.get_name()
+                );
                 let use_dodge_roll = yes_or_no(defender_controller, self, prompt).await?;
                 if !use_dodge_roll {
                     return Ok(None);
@@ -897,7 +933,8 @@ impl State {
                 let avatar = self.get_card(&avatar_id);
                 let adjacent_zones = defender.get_zone().get_adjacent();
                 let prompt = "Dodge Roll: Pick an adjacent site to move to";
-                let picked_site = pick_zone(defender_controller, &adjacent_zones, self, true, prompt).await?;
+                let picked_site =
+                    pick_zone(defender_controller, &adjacent_zones, self, true, prompt).await?;
 
                 let attacker = self.get_card(attacker_id);
                 let attacker_controller = attacker.get_controller_id(self);
@@ -987,7 +1024,11 @@ impl State {
             }
         }
 
-        for card in self.cards.iter().filter(|c| c.get_card_type() == CardType::Site) {
+        for card in self
+            .cards
+            .iter()
+            .filter(|c| c.get_card_type() == CardType::Site)
+        {
             let zone = card.get_zone();
             if !zone.is_in_play() {
                 continue;
@@ -1084,7 +1125,11 @@ impl State {
             .all(self)
     }
 
-    pub fn get_interceptors_for_move(&self, path: &[Zone], controller_id: &PlayerId) -> Vec<(uuid::Uuid, Zone)> {
+    pub fn get_interceptors_for_move(
+        &self,
+        path: &[Zone],
+        controller_id: &PlayerId,
+    ) -> Vec<(uuid::Uuid, Zone)> {
         self.cards
             .iter()
             .filter(|c| &c.get_controller_id(self) == controller_id)
@@ -1155,7 +1200,12 @@ impl State {
             resources: self
                 .players
                 .iter()
-                .map(|p| (p.id.clone(), self.get_player_resources(&p.id).unwrap().clone()))
+                .map(|p| {
+                    (
+                        p.id.clone(),
+                        self.get_player_resources(&p.id).unwrap().clone(),
+                    )
+                })
                 .collect(),
             current_player: self.current_player.clone(),
             health: health,
@@ -1201,7 +1251,10 @@ impl State {
     }
 
     pub fn get_cards_in_zone(&self, zone: &Zone) -> Vec<&Box<dyn Card>> {
-        self.cards.iter().filter(|c| c.occupies_zone(zone)).collect()
+        self.cards
+            .iter()
+            .filter(|c| c.occupies_zone(zone))
+            .collect()
     }
 
     pub fn get_player(&self, player_id: &PlayerId) -> anyhow::Result<&Player> {
@@ -1343,7 +1396,8 @@ mod tests {
 
     #[test]
     fn test_voidwalking_interceptor() {
-        let mut state = State::new_mock_state(vec![Zone::Realm(8), Zone::Realm(13), Zone::Realm(18)]);
+        let mut state =
+            State::new_mock_state(vec![Zone::Realm(8), Zone::Realm(13), Zone::Realm(18)]);
         let player_id = state.players[0].id.clone();
         let mut rimland_nomads = RimlandNomads::new(player_id.clone());
         rimland_nomads.set_zone(Zone::Realm(8));

@@ -1,5 +1,8 @@
 use crate::{element_icon, scene::Scene, texture_cache::TextureCache};
-use egui::{Color32, Context, CornerRadius, Frame, Rect, ScrollArea, Sense, Stroke, StrokeKind, Ui, pos2, vec2};
+use egui::{
+    Color32, Context, CornerRadius, Frame, Rect, ScrollArea, Sense, Stroke, StrokeKind, Ui, pos2,
+    vec2,
+};
 use sorcerers::deck::{CardNameWithCount, DeckList};
 use sorcerers::game::PlayerId;
 use sorcerers::{
@@ -157,7 +160,13 @@ impl DeckBuilder {
         prev_available_decks: Vec<PreconDeck>,
         deck: sorcerers::deck::DeckList,
     ) -> Self {
-        Self::build(client, player_id, player_name, prev_available_decks, Some(deck))
+        Self::build(
+            client,
+            player_id,
+            player_name,
+            prev_available_decks,
+            Some(deck),
+        )
     }
 
     fn build(
@@ -208,8 +217,13 @@ impl DeckBuilder {
 
         // Pre-populate from existing deck if editing
         let (deck_spells, deck_sites, selected_avatar, deck_name) = if let Some(ref dl) = existing {
-            let spells: HashMap<String, u8> = dl.spells.iter().map(|c| (c.name.clone(), c.count)).collect();
-            let sites: HashMap<String, u8> = dl.sites.iter().map(|c| (c.name.clone(), c.count)).collect();
+            let spells: HashMap<String, u8> = dl
+                .spells
+                .iter()
+                .map(|c| (c.name.clone(), c.count))
+                .collect();
+            let sites: HashMap<String, u8> =
+                dl.sites.iter().map(|c| (c.name.clone(), c.count)).collect();
             (spells, sites, Some(dl.avatar.clone()), dl.name.clone())
         } else {
             (HashMap::new(), HashMap::new(), None, String::new())
@@ -251,14 +265,16 @@ impl DeckBuilder {
                 );
 
                 // Back button
-                let back_rect = Rect::from_min_size(header_rect.min + vec2(12.0, 8.0), vec2(90.0, 32.0));
+                let back_rect =
+                    Rect::from_min_size(header_rect.min + vec2(12.0, 8.0), vec2(90.0, 32.0));
                 let back_resp = ui.allocate_rect(back_rect, Sense::click());
                 let back_col = if back_resp.hovered() {
                     Color32::from_rgb(80, 100, 160)
                 } else {
                     Color32::from_rgb(40, 50, 90)
                 };
-                ui.painter().rect_filled(back_rect, CornerRadius::same(4), back_col);
+                ui.painter()
+                    .rect_filled(back_rect, CornerRadius::same(4), back_col);
                 ui.painter().text(
                     back_rect.center(),
                     egui::Align2::CENTER_CENTER,
@@ -279,7 +295,10 @@ impl DeckBuilder {
                 );
 
                 // Save button — active only when avatar, name, and deck sizes meet requirements
-                let use_rect = Rect::from_min_size(header_rect.right_top() + vec2(-120.0, 8.0), vec2(108.0, 32.0));
+                let use_rect = Rect::from_min_size(
+                    header_rect.right_top() + vec2(-120.0, 8.0),
+                    vec2(108.0, 32.0),
+                );
                 let spell_count_total: u32 = self.deck_spells.values().map(|&c| c as u32).sum();
                 let site_count_total: u32 = self.deck_sites.values().map(|&c| c as u32).sum();
                 let can_use = self.selected_avatar.is_some()
@@ -294,7 +313,8 @@ impl DeckBuilder {
                 } else {
                     Color32::from_rgb(20, 90, 45)
                 };
-                ui.painter().rect_filled(use_rect, CornerRadius::same(4), use_bg);
+                ui.painter()
+                    .rect_filled(use_rect, CornerRadius::same(4), use_bg);
                 let use_col = if can_use {
                     Color32::WHITE
                 } else {
@@ -317,7 +337,9 @@ impl DeckBuilder {
                 // Show save error or requirement hint below the header
                 let hint = if let Some(ref err) = self.save_error.clone() {
                     Some((format!("⚠ {err}"), Color32::from_rgb(220, 80, 60)))
-                } else if !can_use && (self.selected_avatar.is_some() || !self.deck_name.trim().is_empty()) {
+                } else if !can_use
+                    && (self.selected_avatar.is_some() || !self.deck_name.trim().is_empty())
+                {
                     // Show which requirements are missing
                     let mut missing = Vec::new();
                     if self.selected_avatar.is_none() {
@@ -344,7 +366,10 @@ impl DeckBuilder {
                     if parts.is_empty() {
                         None
                     } else {
-                        Some((format!("Need: {}", parts.join(", ")), Color32::from_rgb(180, 160, 60)))
+                        Some((
+                            format!("Need: {}", parts.join(", ")),
+                            Color32::from_rgb(180, 160, 60),
+                        ))
                     }
                 } else {
                     None
@@ -366,7 +391,8 @@ impl DeckBuilder {
                 let left_w = body_rect.width() * LEFT_FRAC;
                 let right_w = body_rect.width() - left_w;
 
-                let left_rect = Rect::from_min_size(body_rect.min, vec2(left_w, body_rect.height()));
+                let left_rect =
+                    Rect::from_min_size(body_rect.min, vec2(left_w, body_rect.height()));
                 let right_rect = Rect::from_min_size(
                     pos2(body_rect.min.x + left_w, body_rect.min.y),
                     vec2(right_w, body_rect.height()),
@@ -402,7 +428,10 @@ impl DeckBuilder {
 
         // Filter row
         let filter_h = 40.0;
-        let filter_rect = Rect::from_min_size(rect.min + vec2(pad, pad), vec2(rect.width() - pad * 2.0, filter_h));
+        let filter_rect = Rect::from_min_size(
+            rect.min + vec2(pad, pad),
+            vec2(rect.width() - pad * 2.0, filter_h),
+        );
 
         let mut filter_ui = ui.new_child(egui::UiBuilder::new().max_rect(filter_rect));
         filter_ui.horizontal(|ui| {
@@ -425,9 +454,10 @@ impl DeckBuilder {
                 } else {
                     Color32::from_rgb(25, 30, 55)
                 };
-                let btn = egui::Button::new(egui::RichText::new("All").color(TEXT_BRIGHT).size(13.0))
-                    .fill(bg)
-                    .min_size(btn_sz);
+                let btn =
+                    egui::Button::new(egui::RichText::new("All").color(TEXT_BRIGHT).size(13.0))
+                        .fill(bg)
+                        .min_size(btn_sz);
                 if ui.add(btn).clicked() {
                     self.elem_filter = ElemFilter::All;
                 }
@@ -460,9 +490,10 @@ impl DeckBuilder {
                 } else {
                     Color32::from_rgb(25, 30, 55)
                 };
-                let btn = egui::Button::new(egui::RichText::new(label).color(TEXT_BRIGHT).size(13.0))
-                    .fill(bg)
-                    .min_size(vec2(46.0, 26.0));
+                let btn =
+                    egui::Button::new(egui::RichText::new(label).color(TEXT_BRIGHT).size(13.0))
+                        .fill(bg)
+                        .min_size(vec2(46.0, 26.0));
                 if ui.add(btn).clicked() {
                     self.type_filter = filter;
                 }
@@ -487,7 +518,9 @@ impl DeckBuilder {
             .all_cards
             .iter()
             .filter(|c| {
-                if !search_lower.is_empty() && !unidecode(&c.name).to_lowercase().contains(&search_lower) {
+                if !search_lower.is_empty()
+                    && !unidecode(&c.name).to_lowercase().contains(&search_lower)
+                {
                     return false;
                 }
                 match &elem_filter {
@@ -536,221 +569,255 @@ impl DeckBuilder {
             .cloned()
             .collect();
 
-        ScrollArea::vertical().id_salt("card_list").show(&mut list_ui, |ui| {
-            for entry in &filtered {
-                let is_site = matches!(entry.zone, Zone::Atlasbook);
-                let map = if is_site { &self.deck_sites } else { &self.deck_spells };
-                let current_count = map.get(&entry.name).copied().unwrap_or(0);
-                let max_copies = entry.max_copies();
+        ScrollArea::vertical()
+            .id_salt("card_list")
+            .show(&mut list_ui, |ui| {
+                for entry in &filtered {
+                    let is_site = matches!(entry.zone, Zone::Atlasbook);
+                    let map = if is_site {
+                        &self.deck_sites
+                    } else {
+                        &self.deck_spells
+                    };
+                    let current_count = map.get(&entry.name).copied().unwrap_or(0);
+                    let max_copies = entry.max_copies();
 
-                let row_resp = ui.allocate_response(vec2(ui.available_width(), ROW_H), Sense::hover());
-                let row_rect = row_resp.rect;
+                    let row_resp =
+                        ui.allocate_response(vec2(ui.available_width(), ROW_H), Sense::hover());
+                    let row_rect = row_resp.rect;
 
-                // Track hovered card for preview popup
-                if row_resp.hovered() {
-                    let mouse_pos = ctx.input(|i| i.pointer.latest_pos().unwrap_or_default());
-                    self.hovered_card = Some((entry.clone(), pos2(mouse_pos.x, mouse_pos.y)));
-                }
+                    // Track hovered card for preview popup
+                    if row_resp.hovered() {
+                        let mouse_pos = ctx.input(|i| i.pointer.latest_pos().unwrap_or_default());
+                        self.hovered_card = Some((entry.clone(), pos2(mouse_pos.x, mouse_pos.y)));
+                    }
 
-                // Row background — highlight on hover
-                let row_bg = if row_resp.hovered() {
-                    Color32::from_rgba_premultiplied(35, 45, 80, 220)
-                } else {
-                    Color32::from_rgba_premultiplied(20, 25, 45, 200)
-                };
-                ui.painter().rect_filled(row_rect, CornerRadius::same(3), row_bg);
+                    // Row background — highlight on hover
+                    let row_bg = if row_resp.hovered() {
+                        Color32::from_rgba_premultiplied(35, 45, 80, 220)
+                    } else {
+                        Color32::from_rgba_premultiplied(20, 25, 45, 200)
+                    };
+                    ui.painter()
+                        .rect_filled(row_rect, CornerRadius::same(3), row_bg);
 
-                // Thumbnail
-                let mut image_size = vec2(CARD_THUMB_W, CARD_THUMB_H);
-                let fake_card_data = entry.as_card_data();
-                if fake_card_data.is_site() {
-                    image_size = vec2(CARD_THUMB_H, CARD_THUMB_W);
-                }
-                let thumb_rect =
-                    Rect::from_min_size(row_rect.min + vec2(4.0, (ROW_H - CARD_THUMB_H) / 2.0), image_size);
+                    // Thumbnail
+                    let mut image_size = vec2(CARD_THUMB_W, CARD_THUMB_H);
+                    let fake_card_data = entry.as_card_data();
+                    if fake_card_data.is_site() {
+                        image_size = vec2(CARD_THUMB_H, CARD_THUMB_W);
+                    }
+                    let thumb_rect = Rect::from_min_size(
+                        row_rect.min + vec2(4.0, (ROW_H - CARD_THUMB_H) / 2.0),
+                        image_size,
+                    );
 
-                if let Some(tex) = TextureCache::get_card_texture_blocking(&fake_card_data, ctx) {
-                    egui::Image::new(egui::ImageSource::Texture(egui::load::SizedTexture::from_handle(&tex)))
+                    if let Some(tex) = TextureCache::get_card_texture_blocking(&fake_card_data, ctx)
+                    {
+                        egui::Image::new(egui::ImageSource::Texture(
+                            egui::load::SizedTexture::from_handle(&tex),
+                        ))
                         .max_size(image_size)
                         .paint_at(ui, thumb_rect);
-                } else {
-                    ui.painter()
-                        .rect_filled(thumb_rect, CornerRadius::same(2), Color32::from_rgb(30, 40, 60));
+                    } else {
+                        ui.painter().rect_filled(
+                            thumb_rect,
+                            CornerRadius::same(2),
+                            Color32::from_rgb(30, 40, 60),
+                        );
+                        ui.painter().text(
+                            thumb_rect.center(),
+                            egui::Align2::CENTER_CENTER,
+                            "?",
+                            egui::FontId::proportional(18.0),
+                            TEXT_DIM,
+                        );
+                    }
+
+                    // Card info
+                    let info_x = thumb_rect.min.x + CARD_THUMB_H + 8.0;
+                    let name_pos = pos2(info_x, row_rect.min.y + 10.0);
                     ui.painter().text(
-                        thumb_rect.center(),
-                        egui::Align2::CENTER_CENTER,
-                        "?",
-                        egui::FontId::proportional(18.0),
+                        name_pos,
+                        egui::Align2::LEFT_TOP,
+                        &entry.name,
+                        egui::FontId::proportional(14.0),
+                        TEXT_BRIGHT,
+                    );
+
+                    let rarity_color = match entry.rarity {
+                        Rarity::Ordinary => Color32::from_rgb(160, 160, 160),
+                        Rarity::Exceptional => Color32::from_rgb(80, 180, 255),
+                        Rarity::Elite => Color32::from_rgb(200, 160, 60),
+                        Rarity::Unique => Color32::from_rgb(200, 80, 200),
+                    };
+                    let sub_pos = pos2(info_x, row_rect.min.y + 28.0);
+                    ui.painter().text(
+                        sub_pos,
+                        egui::Align2::LEFT_TOP,
+                        format!("{}  {}", entry.card_type, entry.rarity),
+                        egui::FontId::proportional(12.0),
                         TEXT_DIM,
                     );
-                }
 
-                // Card info
-                let info_x = thumb_rect.min.x + CARD_THUMB_H + 8.0;
-                let name_pos = pos2(info_x, row_rect.min.y + 10.0);
-                ui.painter().text(
-                    name_pos,
-                    egui::Align2::LEFT_TOP,
-                    &entry.name,
-                    egui::FontId::proportional(14.0),
-                    TEXT_BRIGHT,
-                );
-
-                let rarity_color = match entry.rarity {
-                    Rarity::Ordinary => Color32::from_rgb(160, 160, 160),
-                    Rarity::Exceptional => Color32::from_rgb(80, 180, 255),
-                    Rarity::Elite => Color32::from_rgb(200, 160, 60),
-                    Rarity::Unique => Color32::from_rgb(200, 80, 200),
-                };
-                let sub_pos = pos2(info_x, row_rect.min.y + 28.0);
-                ui.painter().text(
-                    sub_pos,
-                    egui::Align2::LEFT_TOP,
-                    format!("{}  {}", entry.card_type, entry.rarity),
-                    egui::FontId::proportional(12.0),
-                    TEXT_DIM,
-                );
-
-                let rarity_x = sub_pos.x
-                    + ui.painter()
-                        .layout_no_wrap(
-                            format!("{}  ", entry.card_type),
-                            egui::FontId::proportional(12.0),
-                            TEXT_DIM,
-                        )
-                        .rect
-                        .width();
-                ui.painter().text(
-                    pos2(rarity_x, sub_pos.y),
-                    egui::Align2::LEFT_TOP,
-                    &entry.rarity,
-                    egui::FontId::proportional(12.0),
-                    rarity_color,
-                );
-
-                // Mana + thresholds
-                let cost_y = row_rect.min.y + 44.0;
-                let mut cx = info_x;
-                if entry.mana > 0 {
+                    let rarity_x = sub_pos.x
+                        + ui.painter()
+                            .layout_no_wrap(
+                                format!("{}  ", entry.card_type),
+                                egui::FontId::proportional(12.0),
+                                TEXT_DIM,
+                            )
+                            .rect
+                            .width();
                     ui.painter().text(
-                        pos2(cx, cost_y),
+                        pos2(rarity_x, sub_pos.y),
                         egui::Align2::LEFT_TOP,
-                        format!("{}", entry.mana),
-                        egui::FontId::proportional(13.0),
-                        Color32::from_rgb(180, 210, 255),
-                    );
-                    cx += 18.0;
-                }
-                cx = element_icon::draw_thresholds(ui.painter(), cx, cost_y + 1.0, &entry.thresholds, THRESH_SZ, 1.2);
-
-                // Power/toughness for minions
-                if let (Some(pow), Some(tough)) = (entry.power, entry.toughness) {
-                    ui.painter().text(
-                        pos2(cx + 8.0, cost_y),
-                        egui::Align2::LEFT_TOP,
-                        format!("{pow}/{tough}"),
+                        &entry.rarity,
                         egui::FontId::proportional(12.0),
-                        Color32::from_rgb(200, 200, 120),
+                        rarity_color,
                     );
-                }
 
-                // +/- buttons on the right
-                let btn_w = 26.0;
-                let btn_h = 26.0;
-                let minus_rect = Rect::from_min_size(
-                    pos2(row_rect.max.x - btn_w * 2.0 - 36.0, row_rect.center().y - btn_h / 2.0),
-                    vec2(btn_w, btn_h),
-                );
-                let count_rect = Rect::from_min_size(
-                    pos2(row_rect.max.x - btn_w - 32.0, row_rect.center().y - btn_h / 2.0),
-                    vec2(28.0, btn_h),
-                );
-                let plus_rect = Rect::from_min_size(
-                    pos2(row_rect.max.x - btn_w - 4.0, row_rect.center().y - btn_h / 2.0),
-                    vec2(btn_w, btn_h),
-                );
-
-                // Minus
-                let minus_resp = ui.allocate_rect(minus_rect, Sense::click());
-                let minus_bg = if current_count > 0 && minus_resp.hovered() {
-                    Color32::from_rgb(130, 40, 40)
-                } else {
-                    Color32::from_rgb(55, 25, 25)
-                };
-                ui.painter().rect_filled(minus_rect, CornerRadius::same(3), minus_bg);
-                ui.painter().text(
-                    minus_rect.center(),
-                    egui::Align2::CENTER_CENTER,
-                    "−",
-                    egui::FontId::proportional(16.0),
-                    Color32::WHITE,
-                );
-                if minus_resp.clicked() && current_count > 0 {
-                    let map = if is_site {
-                        &mut self.deck_sites
-                    } else {
-                        &mut self.deck_spells
-                    };
-                    let count = map.entry(entry.name.clone()).or_insert(0);
-                    if *count > 0 {
-                        *count -= 1;
+                    // Mana + thresholds
+                    let cost_y = row_rect.min.y + 44.0;
+                    let mut cx = info_x;
+                    if entry.mana > 0 {
+                        ui.painter().text(
+                            pos2(cx, cost_y),
+                            egui::Align2::LEFT_TOP,
+                            format!("{}", entry.mana),
+                            egui::FontId::proportional(13.0),
+                            Color32::from_rgb(180, 210, 255),
+                        );
+                        cx += 18.0;
                     }
-                    if *count == 0 {
-                        map.remove(&entry.name);
+                    cx = element_icon::draw_thresholds(
+                        ui.painter(),
+                        cx,
+                        cost_y + 1.0,
+                        &entry.thresholds,
+                        THRESH_SZ,
+                        1.2,
+                    );
+
+                    // Power/toughness for minions
+                    if let (Some(pow), Some(tough)) = (entry.power, entry.toughness) {
+                        ui.painter().text(
+                            pos2(cx + 8.0, cost_y),
+                            egui::Align2::LEFT_TOP,
+                            format!("{pow}/{tough}"),
+                            egui::FontId::proportional(12.0),
+                            Color32::from_rgb(200, 200, 120),
+                        );
                     }
-                }
 
-                // Count
-                ui.painter().text(
-                    count_rect.center(),
-                    egui::Align2::CENTER_CENTER,
-                    format!("{current_count}"),
-                    egui::FontId::proportional(15.0),
-                    TEXT_BRIGHT,
-                );
+                    // +/- buttons on the right
+                    let btn_w = 26.0;
+                    let btn_h = 26.0;
+                    let minus_rect = Rect::from_min_size(
+                        pos2(
+                            row_rect.max.x - btn_w * 2.0 - 36.0,
+                            row_rect.center().y - btn_h / 2.0,
+                        ),
+                        vec2(btn_w, btn_h),
+                    );
+                    let count_rect = Rect::from_min_size(
+                        pos2(
+                            row_rect.max.x - btn_w - 32.0,
+                            row_rect.center().y - btn_h / 2.0,
+                        ),
+                        vec2(28.0, btn_h),
+                    );
+                    let plus_rect = Rect::from_min_size(
+                        pos2(
+                            row_rect.max.x - btn_w - 4.0,
+                            row_rect.center().y - btn_h / 2.0,
+                        ),
+                        vec2(btn_w, btn_h),
+                    );
 
-                // Plus
-                let plus_resp = ui.allocate_rect(plus_rect, Sense::click());
-                let can_add = current_count < max_copies;
-                let plus_bg = if can_add && plus_resp.hovered() {
-                    Color32::from_rgb(30, 110, 50)
-                } else if can_add {
-                    Color32::from_rgb(20, 70, 35)
-                } else {
-                    Color32::from_rgb(25, 30, 25)
-                };
-                ui.painter().rect_filled(plus_rect, CornerRadius::same(3), plus_bg);
-                let plus_col = if can_add {
-                    Color32::WHITE
-                } else {
-                    Color32::from_rgb(70, 75, 70)
-                };
-                ui.painter().text(
-                    plus_rect.center(),
-                    egui::Align2::CENTER_CENTER,
-                    "+",
-                    egui::FontId::proportional(16.0),
-                    plus_col,
-                );
-                if plus_resp.clicked() && can_add {
-                    let map = if is_site {
-                        &mut self.deck_sites
+                    // Minus
+                    let minus_resp = ui.allocate_rect(minus_rect, Sense::click());
+                    let minus_bg = if current_count > 0 && minus_resp.hovered() {
+                        Color32::from_rgb(130, 40, 40)
                     } else {
-                        &mut self.deck_spells
+                        Color32::from_rgb(55, 25, 25)
                     };
-                    let count = map.entry(entry.name.clone()).or_insert(0);
-                    *count += 1;
+                    ui.painter()
+                        .rect_filled(minus_rect, CornerRadius::same(3), minus_bg);
+                    ui.painter().text(
+                        minus_rect.center(),
+                        egui::Align2::CENTER_CENTER,
+                        "−",
+                        egui::FontId::proportional(16.0),
+                        Color32::WHITE,
+                    );
+                    if minus_resp.clicked() && current_count > 0 {
+                        let map = if is_site {
+                            &mut self.deck_sites
+                        } else {
+                            &mut self.deck_spells
+                        };
+                        let count = map.entry(entry.name.clone()).or_insert(0);
+                        if *count > 0 {
+                            *count -= 1;
+                        }
+                        if *count == 0 {
+                            map.remove(&entry.name);
+                        }
+                    }
+
+                    // Count
+                    ui.painter().text(
+                        count_rect.center(),
+                        egui::Align2::CENTER_CENTER,
+                        format!("{current_count}"),
+                        egui::FontId::proportional(15.0),
+                        TEXT_BRIGHT,
+                    );
+
+                    // Plus
+                    let plus_resp = ui.allocate_rect(plus_rect, Sense::click());
+                    let can_add = current_count < max_copies;
+                    let plus_bg = if can_add && plus_resp.hovered() {
+                        Color32::from_rgb(30, 110, 50)
+                    } else if can_add {
+                        Color32::from_rgb(20, 70, 35)
+                    } else {
+                        Color32::from_rgb(25, 30, 25)
+                    };
+                    ui.painter()
+                        .rect_filled(plus_rect, CornerRadius::same(3), plus_bg);
+                    let plus_col = if can_add {
+                        Color32::WHITE
+                    } else {
+                        Color32::from_rgb(70, 75, 70)
+                    };
+                    ui.painter().text(
+                        plus_rect.center(),
+                        egui::Align2::CENTER_CENTER,
+                        "+",
+                        egui::FontId::proportional(16.0),
+                        plus_col,
+                    );
+                    if plus_resp.clicked() && can_add {
+                        let map = if is_site {
+                            &mut self.deck_sites
+                        } else {
+                            &mut self.deck_spells
+                        };
+                        let count = map.entry(entry.name.clone()).or_insert(0);
+                        *count += 1;
+                    }
+
+                    // Separator
+                    ui.painter().line_segment(
+                        [row_rect.left_bottom(), row_rect.right_bottom()],
+                        Stroke::new(0.5, Color32::from_rgb(30, 35, 60)),
+                    );
+
+                    ui.add_space(2.0);
                 }
-
-                // Separator
-                ui.painter().line_segment(
-                    [row_rect.left_bottom(), row_rect.right_bottom()],
-                    Stroke::new(0.5, Color32::from_rgb(30, 35, 60)),
-                );
-
-                ui.add_space(2.0);
-            }
-        });
+            });
     }
 
     fn render_right_panel(&mut self, ui: &mut Ui, ctx: &Context, rect: Rect) {
@@ -773,8 +840,11 @@ impl DeckBuilder {
         } else {
             Color32::from_rgb(60, 90, 140)
         };
-        ui.painter()
-            .rect_filled(name_rect, CornerRadius::same(3), Color32::from_rgb(18, 22, 40));
+        ui.painter().rect_filled(
+            name_rect,
+            CornerRadius::same(3),
+            Color32::from_rgb(18, 22, 40),
+        );
         ui.painter().rect_stroke(
             name_rect,
             CornerRadius::same(3),
@@ -831,12 +901,17 @@ impl DeckBuilder {
 
             let fake = av.as_card_data();
             if let Some(tex) = TextureCache::get_card_texture_blocking(&fake, ctx) {
-                egui::Image::new(egui::ImageSource::Texture(egui::load::SizedTexture::from_handle(&tex)))
-                    .max_size(avatar_sz)
-                    .paint_at(ui, av_rect);
+                egui::Image::new(egui::ImageSource::Texture(
+                    egui::load::SizedTexture::from_handle(&tex),
+                ))
+                .max_size(avatar_sz)
+                .paint_at(ui, av_rect);
             } else {
-                ui.painter()
-                    .rect_filled(av_rect, CornerRadius::same(3), Color32::from_rgb(30, 40, 60));
+                ui.painter().rect_filled(
+                    av_rect,
+                    CornerRadius::same(3),
+                    Color32::from_rgb(30, 40, 60),
+                );
                 ui.painter().text(
                     av_rect.center(),
                     egui::Align2::CENTER_CENTER,
@@ -866,93 +941,107 @@ impl DeckBuilder {
         y += rows_count as f32 * (avatar_sz.y + 28.0) + 12.0;
 
         // Separator
-        ui.painter()
-            .line_segment([pos2(inner.min.x, y), pos2(inner.max.x, y)], Stroke::new(1.0, BORDER));
+        ui.painter().line_segment(
+            [pos2(inner.min.x, y), pos2(inner.max.x, y)],
+            Stroke::new(1.0, BORDER),
+        );
         y += 8.0;
 
         // Deck list area
-        let deck_list_rect = Rect::from_min_max(pos2(inner.min.x, y), pos2(inner.max.x, rect.max.y - pad - 30.0));
+        let deck_list_rect = Rect::from_min_max(
+            pos2(inner.min.x, y),
+            pos2(inner.max.x, rect.max.y - pad - 30.0),
+        );
         let mut deck_ui = ui.new_child(egui::UiBuilder::new().max_rect(deck_list_rect));
 
         let site_count: u32 = self.deck_sites.values().map(|&c| c as u32).sum();
         let spell_count: u32 = self.deck_spells.values().map(|&c| c as u32).sum();
 
-        ScrollArea::vertical().id_salt("deck_list").show(&mut deck_ui, |ui| {
-            // Atlas section
-            ui.horizontal(|ui| {
-                ui.label(
-                    egui::RichText::new("Atlas")
-                        .color(Color32::from_rgb(100, 200, 100))
-                        .size(14.0)
-                        .strong(),
-                );
-                ui.label(
-                    egui::RichText::new(format!("({site_count})"))
-                        .color(TEXT_DIM)
-                        .size(13.0),
-                );
-            });
-            ui.add_space(4.0);
-
-            let mut sites_to_remove: Option<String> = None;
-            let mut sites_snapshot: Vec<(String, u8)> = self.deck_sites.iter().map(|(k, &v)| (k.clone(), v)).collect();
-            sites_snapshot.sort_by(|a, b| a.0.cmp(&b.0));
-
-            for (name, count) in &sites_snapshot {
+        ScrollArea::vertical()
+            .id_salt("deck_list")
+            .show(&mut deck_ui, |ui| {
+                // Atlas section
                 ui.horizontal(|ui| {
-                    if ui.small_button("×").clicked() {
-                        sites_to_remove = Some(name.clone());
-                    }
                     ui.label(
-                        egui::RichText::new(format!("{count}×  {name}"))
-                            .color(TEXT_BRIGHT)
+                        egui::RichText::new("Atlas")
+                            .color(Color32::from_rgb(100, 200, 100))
+                            .size(14.0)
+                            .strong(),
+                    );
+                    ui.label(
+                        egui::RichText::new(format!("({site_count})"))
+                            .color(TEXT_DIM)
                             .size(13.0),
                     );
                 });
-            }
-            if let Some(rm) = sites_to_remove {
-                self.deck_sites.remove(&rm);
-            }
+                ui.add_space(4.0);
 
-            ui.add_space(10.0);
+                let mut sites_to_remove: Option<String> = None;
+                let mut sites_snapshot: Vec<(String, u8)> = self
+                    .deck_sites
+                    .iter()
+                    .map(|(k, &v)| (k.clone(), v))
+                    .collect();
+                sites_snapshot.sort_by(|a, b| a.0.cmp(&b.0));
 
-            // Spellbook section
-            ui.horizontal(|ui| {
-                ui.label(
-                    egui::RichText::new("Spellbook")
-                        .color(Color32::from_rgb(120, 160, 255))
-                        .size(14.0)
-                        .strong(),
-                );
-                ui.label(
-                    egui::RichText::new(format!("({spell_count})"))
-                        .color(TEXT_DIM)
-                        .size(13.0),
-                );
-            });
-            ui.add_space(4.0);
+                for (name, count) in &sites_snapshot {
+                    ui.horizontal(|ui| {
+                        if ui.small_button("×").clicked() {
+                            sites_to_remove = Some(name.clone());
+                        }
+                        ui.label(
+                            egui::RichText::new(format!("{count}×  {name}"))
+                                .color(TEXT_BRIGHT)
+                                .size(13.0),
+                        );
+                    });
+                }
+                if let Some(rm) = sites_to_remove {
+                    self.deck_sites.remove(&rm);
+                }
 
-            let mut spells_to_remove: Option<String> = None;
-            let mut spells_snapshot: Vec<(String, u8)> =
-                self.deck_spells.iter().map(|(k, &v)| (k.clone(), v)).collect();
-            spells_snapshot.sort_by(|a, b| a.0.cmp(&b.0));
+                ui.add_space(10.0);
 
-            for (name, count) in &spells_snapshot {
+                // Spellbook section
                 ui.horizontal(|ui| {
-                    if ui.small_button("×").clicked() {
-                        spells_to_remove = Some(name.clone());
-                    }
                     ui.label(
-                        egui::RichText::new(format!("{count}×  {name}"))
-                            .color(TEXT_BRIGHT)
+                        egui::RichText::new("Spellbook")
+                            .color(Color32::from_rgb(120, 160, 255))
+                            .size(14.0)
+                            .strong(),
+                    );
+                    ui.label(
+                        egui::RichText::new(format!("({spell_count})"))
+                            .color(TEXT_DIM)
                             .size(13.0),
                     );
                 });
-            }
-            if let Some(rm) = spells_to_remove {
-                self.deck_spells.remove(&rm);
-            }
-        });
+                ui.add_space(4.0);
+
+                let mut spells_to_remove: Option<String> = None;
+                let mut spells_snapshot: Vec<(String, u8)> = self
+                    .deck_spells
+                    .iter()
+                    .map(|(k, &v)| (k.clone(), v))
+                    .collect();
+                spells_snapshot.sort_by(|a, b| a.0.cmp(&b.0));
+
+                for (name, count) in &spells_snapshot {
+                    ui.horizontal(|ui| {
+                        if ui.small_button("×").clicked() {
+                            spells_to_remove = Some(name.clone());
+                        }
+                        ui.label(
+                            egui::RichText::new(format!("{count}×  {name}"))
+                                .color(TEXT_BRIGHT)
+                                .size(13.0),
+                        );
+                    });
+                }
+                if let Some(rm) = spells_to_remove {
+                    self.deck_spells.remove(&rm);
+                }
+            });
     }
 
     fn back_to_menu(&self) -> Scene {
@@ -995,7 +1084,9 @@ impl DeckBuilder {
         deck_list.validate()?;
 
         // Save to disk
-        deck_list.save().map_err(|e| format!("Failed to save: {e}"))?;
+        deck_list
+            .save()
+            .map_err(|e| format!("Failed to save: {e}"))?;
 
         Ok(Scene::Menu(crate::scene::menu::Menu::restore(
             self.client.clone(),
@@ -1022,7 +1113,9 @@ impl DeckBuilder {
         } else {
             anchor.x
         };
-        let y = (anchor.y).min(screen.max.y - PREVIEW_H - PAD).max(screen.min.y + PAD);
+        let y = (anchor.y)
+            .min(screen.max.y - PREVIEW_H - PAD)
+            .max(screen.min.y + PAD);
 
         let mut size = vec2(PREVIEW_W, PREVIEW_H);
         if entry.card_type == CardType::Site {
@@ -1039,8 +1132,11 @@ impl DeckBuilder {
                 if let Some(tex) = TextureCache::get_card_texture_blocking(&fake, ctx) {
                     // Drop shadow
                     let shadow_rect = preview_rect.translate(vec2(4.0, 4.0));
-                    ui.painter()
-                        .rect_filled(shadow_rect, CornerRadius::same(6), Color32::from_black_alpha(120));
+                    ui.painter().rect_filled(
+                        shadow_rect,
+                        CornerRadius::same(6),
+                        Color32::from_black_alpha(120),
+                    );
                     // Card image
                     ui.painter().rect_stroke(
                         preview_rect,
@@ -1048,14 +1144,19 @@ impl DeckBuilder {
                         Stroke::new(1.5, BORDER),
                         StrokeKind::Outside,
                     );
-                    egui::Image::new(egui::ImageSource::Texture(egui::load::SizedTexture::from_handle(&tex)))
-                        .max_size(vec2(PREVIEW_W, PREVIEW_H))
-                        .corner_radius(CornerRadius::same(6))
-                        .paint_at(ui, preview_rect);
+                    egui::Image::new(egui::ImageSource::Texture(
+                        egui::load::SizedTexture::from_handle(&tex),
+                    ))
+                    .max_size(vec2(PREVIEW_W, PREVIEW_H))
+                    .corner_radius(CornerRadius::same(6))
+                    .paint_at(ui, preview_rect);
                 } else {
                     // Fallback: dark card with name
-                    ui.painter()
-                        .rect_filled(preview_rect, CornerRadius::same(6), Color32::from_rgb(18, 22, 38));
+                    ui.painter().rect_filled(
+                        preview_rect,
+                        CornerRadius::same(6),
+                        Color32::from_rgb(18, 22, 38),
+                    );
                     ui.painter().rect_stroke(
                         preview_rect,
                         CornerRadius::same(6),

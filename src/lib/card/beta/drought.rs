@@ -12,7 +12,8 @@ pub struct Drought {
 
 impl Drought {
     pub const NAME: &'static str = "Drought";
-    pub const DESCRIPTION: &'static str = "Affected sites aren't water sites, and provide no water threshold.";
+    pub const DESCRIPTION: &'static str =
+        "Affected sites aren't water sites, and provide no water threshold.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -72,4 +73,6 @@ impl Card for Drought {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Drought::NAME, |owner_id: PlayerId| Box::new(Drought::new(owner_id)));
+    (Drought::NAME, |owner_id: PlayerId| {
+        Box::new(Drought::new(owner_id))
+    });

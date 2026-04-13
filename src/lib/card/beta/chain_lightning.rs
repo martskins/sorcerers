@@ -128,6 +128,7 @@ impl Card for ChainLightning {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (ChainLightning::NAME, |owner_id: PlayerId| {
-    Box::new(ChainLightning::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (ChainLightning::NAME, |owner_id: PlayerId| {
+        Box::new(ChainLightning::new(owner_id))
+    });

@@ -13,8 +13,7 @@ pub struct AtlasWanderers {
 
 impl AtlasWanderers {
     pub const NAME: &'static str = "Atlas Wanderers";
-    pub const DESCRIPTION: &'static str =
-        "Genesis → This site and an adjacent site change places, carrying along everything of normal size.";
+    pub const DESCRIPTION: &'static str = "Genesis → This site and an adjacent site change places, carrying along everything of normal size.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -113,6 +112,7 @@ impl Card for AtlasWanderers {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (AtlasWanderers::NAME, |owner_id: PlayerId| {
-    Box::new(AtlasWanderers::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (AtlasWanderers::NAME, |owner_id: PlayerId| {
+        Box::new(AtlasWanderers::new(owner_id))
+    });

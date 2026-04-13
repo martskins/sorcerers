@@ -67,6 +67,7 @@ impl Card for GyreHippogriffs {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (GyreHippogriffs::NAME, |owner_id: PlayerId| {
-    Box::new(GyreHippogriffs::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (GyreHippogriffs::NAME, |owner_id: PlayerId| {
+        Box::new(GyreHippogriffs::new(owner_id))
+    });

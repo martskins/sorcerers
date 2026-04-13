@@ -13,8 +13,7 @@ pub struct QuarrelsomeKobolds {
 
 impl QuarrelsomeKobolds {
     pub const NAME: &'static str = "Quarrelsome Kobolds";
-    pub const DESCRIPTION: &'static str =
-        "At the end of your turn, Quarrelsome Kobolds strike themselves or another target adjacent unit.";
+    pub const DESCRIPTION: &'static str = "At the end of your turn, Quarrelsome Kobolds strike themselves or another target adjacent unit.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -97,6 +96,7 @@ impl Card for QuarrelsomeKobolds {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (QuarrelsomeKobolds::NAME, |owner_id: PlayerId| {
-    Box::new(QuarrelsomeKobolds::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (QuarrelsomeKobolds::NAME, |owner_id: PlayerId| {
+        Box::new(QuarrelsomeKobolds::new(owner_id))
+    });

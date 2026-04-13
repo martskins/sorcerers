@@ -84,4 +84,6 @@ impl Card for BaneWidow {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (BaneWidow::NAME, |owner_id: PlayerId| Box::new(BaneWidow::new(owner_id)));
+    (BaneWidow::NAME, |owner_id: PlayerId| {
+        Box::new(BaneWidow::new(owner_id))
+    });

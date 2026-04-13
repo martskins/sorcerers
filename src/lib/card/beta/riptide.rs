@@ -101,4 +101,6 @@ impl Card for Riptide {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Riptide::NAME, |owner_id: PlayerId| Box::new(Riptide::new(owner_id)));
+    (Riptide::NAME, |owner_id: PlayerId| {
+        Box::new(Riptide::new(owner_id))
+    });

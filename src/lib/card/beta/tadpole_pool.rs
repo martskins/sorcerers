@@ -1,5 +1,7 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
+    card::{
+        Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone,
+    },
     effect::{Effect, TokenType},
     game::{PlayerId, Thresholds},
     state::State,
@@ -13,7 +15,8 @@ pub struct TadpolePool {
 
 impl TadpolePool {
     pub const NAME: &'static str = "Tadpole Pool";
-    pub const DESCRIPTION: &'static str = "(W)(W)(W) — Genesis → Summon three submerged Frog tokens here.";
+    pub const DESCRIPTION: &'static str =
+        "(W)(W)(W) — Genesis → Summon three submerged Frog tokens here.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -104,6 +107,7 @@ impl Card for TadpolePool {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (TadpolePool::NAME, |owner_id: PlayerId| {
-    Box::new(TadpolePool::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (TadpolePool::NAME, |owner_id: PlayerId| {
+        Box::new(TadpolePool::new(owner_id))
+    });

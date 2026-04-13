@@ -36,7 +36,10 @@ impl Component for EventLogComponent {
         } else if let Some(last_event) = data.events.last()
             && last_event.id != self.last_message_seen
         {
-            let idx = data.events.iter().position(|e| e.id == self.last_message_seen);
+            let idx = data
+                .events
+                .iter()
+                .position(|e| e.id == self.last_message_seen);
             data.unseen_events = match idx {
                 Some(i) => data.events.len() - i - 1,
                 None => data.events.len(),
@@ -45,7 +48,12 @@ impl Component for EventLogComponent {
         Ok(())
     }
 
-    fn render(&mut self, data: &mut GameData, ui: &mut Ui, _painter: &Painter) -> anyhow::Result<()> {
+    fn render(
+        &mut self,
+        data: &mut GameData,
+        ui: &mut Ui,
+        _painter: &Painter,
+    ) -> anyhow::Result<()> {
         if !self.visible {
             return Ok(());
         }
@@ -57,14 +65,20 @@ impl Component for EventLogComponent {
             .default_pos(self.rect.min)
             .default_size(self.rect.size())
             .show(ui.ctx(), |ui| {
-                egui::ScrollArea::vertical().stick_to_bottom(true).show(ui, |ui| {
-                    for event in &data.events {
-                        let wrapped = render::wrap_text(event.formatted(), self.rect.width() - 10.0, FONT_SIZE as u16);
-                        for line in wrapped.lines() {
-                            ui.label(line);
+                egui::ScrollArea::vertical()
+                    .stick_to_bottom(true)
+                    .show(ui, |ui| {
+                        for event in &data.events {
+                            let wrapped = render::wrap_text(
+                                event.formatted(),
+                                self.rect.width() - 10.0,
+                                FONT_SIZE as u16,
+                            );
+                            for line in wrapped.lines() {
+                                ui.label(line);
+                            }
                         }
-                    }
-                });
+                    });
             });
         self.visible = open;
         Ok(())
@@ -87,7 +101,11 @@ impl Component for EventLogComponent {
         self.visible
     }
 
-    fn process_command(&mut self, command: &ComponentCommand, _data: &mut GameData) -> anyhow::Result<()> {
+    fn process_command(
+        &mut self,
+        command: &ComponentCommand,
+        _data: &mut GameData,
+    ) -> anyhow::Result<()> {
         match command {
             ComponentCommand::SetVisibility {
                 component_type: ComponentType::EventLog,

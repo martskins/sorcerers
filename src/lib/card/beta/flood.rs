@@ -72,4 +72,6 @@ impl Card for Flood {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Flood::NAME, |owner_id: PlayerId| Box::new(Flood::new(owner_id)));
+    (Flood::NAME, |owner_id: PlayerId| {
+        Box::new(Flood::new(owner_id))
+    });

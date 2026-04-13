@@ -1,5 +1,7 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
+    card::{
+        Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone,
+    },
     game::{PlayerId, Thresholds},
 };
 
@@ -72,4 +74,6 @@ impl Card for Ruins {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Ruins::NAME, |owner_id: PlayerId| Box::new(Ruins::new(owner_id)));
+    (Ruins::NAME, |owner_id: PlayerId| {
+        Box::new(Ruins::new(owner_id))
+    });

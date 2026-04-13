@@ -94,4 +94,6 @@ impl Card for CallToWar {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (CallToWar::NAME, |owner_id: PlayerId| Box::new(CallToWar::new(owner_id)));
+    (CallToWar::NAME, |owner_id: PlayerId| {
+        Box::new(CallToWar::new(owner_id))
+    });

@@ -92,7 +92,10 @@ impl Card for Thunderstorm {
                 player_id: self.get_controller_id(state).clone(),
                 card_id: self.get_id().clone(),
                 from: self.get_zone().clone(),
-                to: ZoneQuery::from_options(zones, Some("Pick a zone to move Thunderstorm to".to_string())),
+                to: ZoneQuery::from_options(
+                    zones,
+                    Some("Pick a zone to move Thunderstorm to".to_string()),
+                ),
                 tap: false,
                 region: Region::Surface,
                 through_path: None,
@@ -119,6 +122,7 @@ impl Card for Thunderstorm {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (Thunderstorm::NAME, |owner_id: PlayerId| {
-    Box::new(Thunderstorm::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (Thunderstorm::NAME, |owner_id: PlayerId| {
+        Box::new(Thunderstorm::new(owner_id))
+    });

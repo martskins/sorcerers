@@ -1,5 +1,8 @@
 use crate::{
-    card::{AdditionalCost, AvatarBase, Card, CardBase, Cost, Costs, Edition, Rarity, Region, UnitBase, Zone},
+    card::{
+        AdditionalCost, AvatarBase, Card, CardBase, Cost, Costs, Edition, Rarity, Region, UnitBase,
+        Zone,
+    },
     effect::Effect,
     game::{ActivatedAbility, Element, PlayerId},
     query::ZoneQuery,
@@ -16,12 +19,17 @@ impl ActivatedAbility for DealDamageAction {
     }
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
-        Ok(Cost::additional_only(AdditionalCost::tap(CardQuery::from_id(
-            card_id.clone(),
-        ))))
+        Ok(Cost::additional_only(AdditionalCost::tap(
+            CardQuery::from_id(card_id.clone()),
+        )))
     }
 
-    fn can_activate(&self, card_id: &uuid::Uuid, _player_id: &PlayerId, state: &State) -> anyhow::Result<bool> {
+    fn can_activate(
+        &self,
+        card_id: &uuid::Uuid,
+        _player_id: &PlayerId,
+        state: &State,
+    ) -> anyhow::Result<bool> {
         let zone = state.get_card(card_id).get_zone();
         Ok(!CardQuery::new()
             .count(1)
@@ -79,7 +87,11 @@ impl ActivatedAbility for DealDamageAction {
             });
         Ok(vec![Effect::DealDamageToTarget {
             player_id: player_id.clone(),
-            query: CardQuery::new().count(1).units().randomised().in_zone(&zone),
+            query: CardQuery::new()
+                .count(1)
+                .units()
+                .randomised()
+                .in_zone(&zone),
             from: card_id.clone(),
             damage: damage.into(),
         }])
@@ -117,7 +129,9 @@ impl Sparkmage {
                 is_token: false,
                 ..Default::default()
             },
-            avatar_base: AvatarBase { ..Default::default() },
+            avatar_base: AvatarBase {
+                ..Default::default()
+            },
         }
     }
 }
@@ -155,11 +169,16 @@ impl Card for Sparkmage {
         Some(&mut self.avatar_base)
     }
 
-    fn get_additional_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+    fn get_additional_activated_abilities(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         Ok(vec![Box::new(DealDamageAction)])
     }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Sparkmage::NAME, |owner_id: PlayerId| Box::new(Sparkmage::new(owner_id)));
+    (Sparkmage::NAME, |owner_id: PlayerId| {
+        Box::new(Sparkmage::new(owner_id))
+    });

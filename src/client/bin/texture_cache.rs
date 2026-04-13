@@ -121,7 +121,8 @@ impl TextureCache {
                                 if let Ok(img) = image::load_from_memory(&bytes) {
                                     let size = [img.width() as usize, img.height() as usize];
                                     let rgba = img.to_rgba8();
-                                    let color_image = ColorImage::from_rgba_unmultiplied(size, &rgba);
+                                    let color_image =
+                                        ColorImage::from_rgba_unmultiplied(size, &rgba);
                                     let _ = tx.send((name, color_image));
                                 }
                             }

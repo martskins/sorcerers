@@ -13,8 +13,7 @@ pub struct MotherNature {
 
 impl MotherNature {
     pub const NAME: &'static str = "Mother Nature";
-    pub const DESCRIPTION: &'static str =
-        "At the start of your turn, reveal your topmost spell. If it's a minion, you may summon it here.";
+    pub const DESCRIPTION: &'static str = "At the start of your turn, reveal your topmost spell. If it's a minion, you may summon it here.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -82,7 +81,10 @@ impl Card for MotherNature {
                 &opponent_id,
                 &cards,
                 state,
-                &format!("Mother Nature: Seeing the top card of {}'s spellbook", player.name),
+                &format!(
+                    "Mother Nature: Seeing the top card of {}'s spellbook",
+                    player.name
+                ),
             )
             .await?;
 
@@ -120,6 +122,7 @@ impl Card for MotherNature {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (MotherNature::NAME, |owner_id: PlayerId| {
-    Box::new(MotherNature::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (MotherNature::NAME, |owner_id: PlayerId| {
+        Box::new(MotherNature::new(owner_id))
+    });

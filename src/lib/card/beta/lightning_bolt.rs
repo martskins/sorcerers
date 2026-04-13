@@ -68,7 +68,11 @@ impl Card for LightningBolt {
         .await?;
         Ok(vec![Effect::DealDamageToTarget {
             player_id: self.get_owner_id().clone(),
-            query: CardQuery::new().units().in_zone(&picked_zone).randomised().count(1),
+            query: CardQuery::new()
+                .units()
+                .in_zone(&picked_zone)
+                .randomised()
+                .count(1),
             from: caster_id.clone(),
             damage: 3,
         }])
@@ -76,6 +80,7 @@ impl Card for LightningBolt {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (LightningBolt::NAME, |owner_id: PlayerId| {
-    Box::new(LightningBolt::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (LightningBolt::NAME, |owner_id: PlayerId| {
+        Box::new(LightningBolt::new(owner_id))
+    });

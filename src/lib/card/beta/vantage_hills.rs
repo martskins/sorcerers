@@ -1,6 +1,7 @@
 use crate::{
     card::{
-        Ability, AreaModifiers, Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone,
+        Ability, AreaModifiers, Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider,
+        Site, SiteBase, Zone,
     },
     game::{PlayerId, Thresholds},
     state::State,
@@ -94,6 +95,7 @@ impl Card for VantageHills {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (VantageHills::NAME, |owner_id: PlayerId| {
-    Box::new(VantageHills::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (VantageHills::NAME, |owner_id: PlayerId| {
+        Box::new(VantageHills::new(owner_id))
+    });

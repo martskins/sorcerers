@@ -26,7 +26,12 @@ pub struct PlayerHandComponent {
 }
 
 impl PlayerHandComponent {
-    pub fn new(game_id: &uuid::Uuid, player_id: &PlayerId, client: networking::client::Client, rect: Rect) -> Self {
+    pub fn new(
+        game_id: &uuid::Uuid,
+        player_id: &PlayerId,
+        client: networking::client::Client,
+        rect: Rect,
+    ) -> Self {
         Self {
             game_id: game_id.clone(),
             player_id: player_id.clone(),
@@ -196,7 +201,12 @@ impl Component for PlayerHandComponent {
         Ok(())
     }
 
-    fn render(&mut self, data: &mut GameData, _ui: &mut Ui, painter: &Painter) -> anyhow::Result<()> {
+    fn render(
+        &mut self,
+        data: &mut GameData,
+        _ui: &mut Ui,
+        painter: &Painter,
+    ) -> anyhow::Result<()> {
         let bg_color = Color32::from_rgba_unmultiplied(38, 46, 56, 217);
         painter.rect_filled(self.rect, 0.0, bg_color);
 
@@ -279,10 +289,16 @@ impl Component for PlayerHandComponent {
                 }
             }
             Status::SelectingCard {
-                cards, preview: true, ..
+                cards,
+                preview: true,
+                ..
             } => {
                 let mut selected_id = None;
-                for card_rect in self.card_rects.iter().filter(|c| cards.contains(&c.card.id)) {
+                for card_rect in self
+                    .card_rects
+                    .iter()
+                    .filter(|c| cards.contains(&c.card.id))
+                {
                     if card_rect.rect.contains(mp) && clicked {
                         selected_id = Some(card_rect.card.id);
                     }
@@ -303,7 +319,11 @@ impl Component for PlayerHandComponent {
                 ..
             } => {
                 let mut selected_id = None;
-                for card_rect in self.card_rects.iter().filter(|c| cards.contains(&c.card.id)) {
+                for card_rect in self
+                    .card_rects
+                    .iter()
+                    .filter(|c| cards.contains(&c.card.id))
+                {
                     if card_rect.rect.contains(mp) && clicked {
                         selected_id = Some(card_rect.card.id);
                     }
@@ -344,7 +364,11 @@ impl Component for PlayerHandComponent {
         self.visible
     }
 
-    fn process_command(&mut self, command: &ComponentCommand, data: &mut GameData) -> anyhow::Result<()> {
+    fn process_command(
+        &mut self,
+        command: &ComponentCommand,
+        data: &mut GameData,
+    ) -> anyhow::Result<()> {
         match command {
             ComponentCommand::DonePicking if matches!(data.status, Status::Mulligan) => {
                 let selected_cards: Vec<uuid::Uuid> = self

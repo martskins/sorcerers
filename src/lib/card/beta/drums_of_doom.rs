@@ -1,5 +1,8 @@
 use crate::{
-    card::{Ability, Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
+    card::{
+        Ability, Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity,
+        Region, Zone,
+    },
     game::PlayerId,
     state::{CardQuery, ContinuousEffect, State},
 };
@@ -69,7 +72,10 @@ impl Card for DrumsOfDoom {
         Some(self)
     }
 
-    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<ContinuousEffect>> {
         if !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }
@@ -83,4 +89,6 @@ impl Card for DrumsOfDoom {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (DrumsOfDoom::NAME, |owner_id: PlayerId| Box::new(DrumsOfDoom::new(owner_id)));
+    (DrumsOfDoom::NAME, |owner_id: PlayerId| {
+        Box::new(DrumsOfDoom::new(owner_id))
+    });

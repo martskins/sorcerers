@@ -67,6 +67,7 @@ impl Card for DeadOfNightDemon {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (DeadOfNightDemon::NAME, |owner_id: PlayerId| {
-    Box::new(DeadOfNightDemon::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (DeadOfNightDemon::NAME, |owner_id: PlayerId| {
+        Box::new(DeadOfNightDemon::new(owner_id))
+    });

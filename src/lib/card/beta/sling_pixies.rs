@@ -13,7 +13,8 @@ pub struct SlingPixies {
 
 impl SlingPixies {
     pub const NAME: &'static str = "Sling Pixies";
-    pub const DESCRIPTION: &'static str = "Airborne, Ranged\r \r Takes no damage from units with 4 or more power.";
+    pub const DESCRIPTION: &'static str =
+        "Airborne, Ranged\r \r Takes no damage from units with 4 or more power.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -67,7 +68,12 @@ impl Card for SlingPixies {
         Some(&mut self.unit_base)
     }
 
-    fn on_take_damage(&mut self, state: &State, from: &uuid::Uuid, damage: u16) -> anyhow::Result<Vec<Effect>> {
+    fn on_take_damage(
+        &mut self,
+        state: &State,
+        from: &uuid::Uuid,
+        damage: u16,
+    ) -> anyhow::Result<Vec<Effect>> {
         let dealer = state.get_card(from);
         if dealer.get_power(state)?.unwrap_or(0) >= 4 {
             // Takes no damage from units with 4 or more power:w
@@ -79,6 +85,7 @@ impl Card for SlingPixies {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (SlingPixies::NAME, |owner_id: PlayerId| {
-    Box::new(SlingPixies::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (SlingPixies::NAME, |owner_id: PlayerId| {
+        Box::new(SlingPixies::new(owner_id))
+    });

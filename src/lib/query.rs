@@ -34,10 +34,18 @@ impl QueryCache {
         QUERY_CACHE.get_or_init(|| RwLock::new(QueryCache::new()));
     }
 
-    pub async fn store_matcher_results(game_id: uuid::Uuid, matcher_id: uuid::Uuid, card_ids: Vec<uuid::Uuid>) {
+    pub async fn store_matcher_results(
+        game_id: uuid::Uuid,
+        matcher_id: uuid::Uuid,
+        card_ids: Vec<uuid::Uuid>,
+    ) {
         let mut cache = QUERY_CACHE.get().expect("to get lock").write().await;
         cache.matcher_queries.insert(matcher_id, card_ids);
-        cache.game_queries.entry(game_id).or_default().push(matcher_id);
+        cache
+            .game_queries
+            .entry(game_id)
+            .or_default()
+            .push(matcher_id);
     }
 
     pub async fn matcher_results(matcher_id: &uuid::Uuid) -> Option<Vec<uuid::Uuid>> {
@@ -45,11 +53,21 @@ impl QueryCache {
         cache.matcher_queries.get(matcher_id).cloned()
     }
 
-    pub async fn store_effect_targets(game_id: uuid::Uuid, effect_id: uuid::Uuid, affected_cards: Vec<uuid::Uuid>) {
+    pub async fn store_effect_targets(
+        game_id: uuid::Uuid,
+        effect_id: uuid::Uuid,
+        affected_cards: Vec<uuid::Uuid>,
+    ) {
         let mut cache = QUERY_CACHE.get().expect("to get lock").write().await;
-        cache.effect_targets.insert(effect_id.clone(), affected_cards);
+        cache
+            .effect_targets
+            .insert(effect_id.clone(), affected_cards);
 
-        cache.game_queries.entry(game_id).or_default().push(effect_id.clone());
+        cache
+            .game_queries
+            .entry(game_id)
+            .or_default()
+            .push(effect_id.clone());
     }
 
     pub async fn effect_targets(effect_id: &uuid::Uuid) -> Option<Vec<uuid::Uuid>> {
@@ -57,7 +75,11 @@ impl QueryCache {
         cache.effect_targets.get(effect_id).cloned()
     }
 
-    pub async fn resolve_zone(qry: &ZoneQuery, player_id: &PlayerId, state: &State) -> anyhow::Result<Zone> {
+    pub async fn resolve_zone(
+        qry: &ZoneQuery,
+        player_id: &PlayerId,
+        state: &State,
+    ) -> anyhow::Result<Zone> {
         if let Some(cached) = QUERY_CACHE
             .get()
             .expect("lock to be obtained")
@@ -103,9 +125,17 @@ impl QueryCache {
             pick_zone(player_id, &Zone::all_realm(), state, false, qry.prompt()).await?
         };
 
-        let mut cache = QUERY_CACHE.get().expect("failed to get random zone").write().await;
+        let mut cache = QUERY_CACHE
+            .get()
+            .expect("failed to get random zone")
+            .write()
+            .await;
         cache.zone_queries.insert(qry.id, zone.clone());
-        cache.game_queries.entry(state.game_id).or_default().push(qry.id);
+        cache
+            .game_queries
+            .entry(state.game_id)
+            .or_default()
+            .push(qry.id);
 
         Ok(zone)
     }
@@ -236,7 +266,10 @@ impl ZoneQuery {
     }
 
     pub fn randomised(self) -> Self {
-        Self { random: true, ..self }
+        Self {
+            random: true,
+            ..self
+        }
     }
 
     fn prompt(&self) -> &str {
@@ -339,7 +372,10 @@ impl EffectQuery {
             (
                 EffectQuery::EnterZone { card, zone },
                 Effect::MoveCard {
-                    player_id, card_id, to, ..
+                    player_id,
+                    card_id,
+                    to,
+                    ..
                 },
             ) => {
                 let zones = zone.options(state);
@@ -364,7 +400,10 @@ impl EffectQuery {
                     ..
                 },
             ) => Ok(optional_player_matches(query_player_id, effect_player_id)),
-            (EffectQuery::DamageDealt { source, target }, Effect::TakeDamage { card_id, from, .. }) => {
+            (
+                EffectQuery::DamageDealt { source, target },
+                Effect::TakeDamage { card_id, from, .. },
+            ) => {
                 if let Some(source) = source {
                     if !source.matches(from, state) {
                         return Ok(false);
@@ -379,25 +418,42 @@ impl EffectQuery {
 
                 Ok(true)
             }
-            (EffectQuery::MoveCard { card }, Effect::MoveCard { card_id, .. }) => Ok(card.matches(&card_id, state)),
-            (EffectQuery::SummonCard { card }, Effect::SummonCard { card_id, .. }) => Ok(card.matches(card_id, state)),
-            (EffectQuery::SummonCard { card }, Effect::SummonCards { cards }) => {
-                Ok(cards.into_iter().any(|(_, card_id, _)| card.matches(card_id, state)))
+            (EffectQuery::MoveCard { card }, Effect::MoveCard { card_id, .. }) => {
+                Ok(card.matches(&card_id, state))
             }
-            (EffectQuery::PlayCard { card }, Effect::PlayCard { card_id, .. }) => Ok(card.matches(card_id, state)),
-            (EffectQuery::BuryCard { card }, Effect::BuryCard { card_id }) => Ok(card.matches(card_id, state)),
+            (EffectQuery::SummonCard { card }, Effect::SummonCard { card_id, .. }) => {
+                Ok(card.matches(card_id, state))
+            }
+            (EffectQuery::SummonCard { card }, Effect::SummonCards { cards }) => Ok(cards
+                .into_iter()
+                .any(|(_, card_id, _)| card.matches(card_id, state))),
+            (EffectQuery::PlayCard { card }, Effect::PlayCard { card_id, .. }) => {
+                Ok(card.matches(card_id, state))
+            }
+            (EffectQuery::BuryCard { card }, Effect::BuryCard { card_id }) => {
+                Ok(card.matches(card_id, state))
+            }
             (EffectQuery::Attack { attacker }, Effect::Attack { attacker_id, .. }) => {
                 Ok(attacker.matches(attacker_id, state))
             }
-            (EffectQuery::DrawCard { player_id: query_pid }, Effect::DrawSpell { player_id, .. }) => {
-                Ok(optional_player_matches(query_pid, player_id))
-            }
-            (EffectQuery::DrawCard { player_id: query_pid }, Effect::DrawSite { player_id, .. }) => {
-                Ok(optional_player_matches(query_pid, player_id))
-            }
-            (EffectQuery::DrawCard { player_id: query_pid }, Effect::DrawCard { player_id, .. }) => {
-                Ok(optional_player_matches(query_pid, player_id))
-            }
+            (
+                EffectQuery::DrawCard {
+                    player_id: query_pid,
+                },
+                Effect::DrawSpell { player_id, .. },
+            ) => Ok(optional_player_matches(query_pid, player_id)),
+            (
+                EffectQuery::DrawCard {
+                    player_id: query_pid,
+                },
+                Effect::DrawSite { player_id, .. },
+            ) => Ok(optional_player_matches(query_pid, player_id)),
+            (
+                EffectQuery::DrawCard {
+                    player_id: query_pid,
+                },
+                Effect::DrawCard { player_id, .. },
+            ) => Ok(optional_player_matches(query_pid, player_id)),
             _ => Ok(false),
         }
     }

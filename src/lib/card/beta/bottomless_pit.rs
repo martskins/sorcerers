@@ -1,7 +1,10 @@
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
+    card::{
+        Ability, Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase,
+        Zone,
+    },
     effect::Effect,
     game::{PlayerId, Thresholds},
     query::{EffectQuery, ZoneQuery},
@@ -15,7 +18,8 @@ pub struct BottomlessPit {
 
 impl BottomlessPit {
     pub const NAME: &'static str = "Bottomless Pit";
-    pub const DESCRIPTION: &'static str = "Whenever a non-Airborne minion enters this site, kill it.";
+    pub const DESCRIPTION: &'static str =
+        "Whenever a non-Airborne minion enters this site, kill it.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -51,16 +55,19 @@ impl BottomlessPit {
             expires_on_effect: Some(EffectQuery::BuryCard {
                 card: CardQuery::from_id(self.get_id().clone()),
             }),
-            on_effect: Arc::new(move |state: &State, card_id: &uuid::Uuid, _effect: &Effect| {
-                let card_id = card_id.clone();
-                Box::pin(async move {
-                    let card = state.get_card(&card_id);
-                    if card.has_ability(state, &Ability::Airborne) {
-                        return Ok(vec![]);
-                    }
-                    Ok(vec![Effect::BuryCard { card_id }])
-                }) as Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>>
-            }),
+            on_effect: Arc::new(
+                move |state: &State, card_id: &uuid::Uuid, _effect: &Effect| {
+                    let card_id = card_id.clone();
+                    Box::pin(async move {
+                        let card = state.get_card(&card_id);
+                        if card.has_ability(state, &Ability::Airborne) {
+                            return Ok(vec![]);
+                        }
+                        Ok(vec![Effect::BuryCard { card_id }])
+                    })
+                        as Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>>
+                },
+            ),
             multitrigger: true,
         }
     }
@@ -110,6 +117,7 @@ impl Card for BottomlessPit {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (BottomlessPit::NAME, |owner_id: PlayerId| {
-    Box::new(BottomlessPit::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (BottomlessPit::NAME, |owner_id: PlayerId| {
+        Box::new(BottomlessPit::new(owner_id))
+    });

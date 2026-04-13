@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use crate::{
     card::{
-        Ability, AreaModifiers, Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase,
-        SiteType, Zone,
+        Ability, AreaModifiers, Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider,
+        Site, SiteBase, SiteType, Zone,
     },
     game::{PlayerId, Thresholds},
     state::State,
@@ -97,6 +97,7 @@ impl Card for UpdraftRidge {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (UpdraftRidge::NAME, |owner_id: PlayerId| {
-    Box::new(UpdraftRidge::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (UpdraftRidge::NAME, |owner_id: PlayerId| {
+        Box::new(UpdraftRidge::new(owner_id))
+    });

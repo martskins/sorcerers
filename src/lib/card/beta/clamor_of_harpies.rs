@@ -49,8 +49,7 @@ pub struct ClamorOfHarpies {
 
 impl ClamorOfHarpies {
     pub const NAME: &'static str = "Clamor of Harpies";
-    pub const DESCRIPTION: &'static str =
-        "Airborne\r \r Genesis → Teleport target weaker minion to this location. Clamor of Harpies may strike it.";
+    pub const DESCRIPTION: &'static str = "Airborne\r \r Genesis → Teleport target weaker minion to this location. Clamor of Harpies may strike it.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -151,6 +150,7 @@ impl Card for ClamorOfHarpies {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (ClamorOfHarpies::NAME, |owner_id: PlayerId| {
-    Box::new(ClamorOfHarpies::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (ClamorOfHarpies::NAME, |owner_id: PlayerId| {
+        Box::new(ClamorOfHarpies::new(owner_id))
+    });

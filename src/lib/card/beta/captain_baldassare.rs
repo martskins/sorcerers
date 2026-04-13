@@ -78,35 +78,37 @@ impl Card for CaptainBaldassare {
                 expires_on_effect: Some(EffectQuery::BuryCard {
                     card: CardQuery::from_id(self.get_id().clone()),
                 }),
-                on_effect: Arc::new(move |state: &State, _card_id: &uuid::Uuid, effect: &Effect| {
-                    Box::pin(async move {
-                        let Effect::Attack { defender_id, .. } = effect else {
-                            return Ok(vec![]);
-                        };
-                        let defender = state.get_card(defender_id);
-                        let defending_player = defender.get_controller_id(state);
+                on_effect: Arc::new(
+                    move |state: &State, _card_id: &uuid::Uuid, effect: &Effect| {
+                        Box::pin(async move {
+                            let Effect::Attack { defender_id, .. } = effect else {
+                                return Ok(vec![]);
+                            };
+                            let defender = state.get_card(defender_id);
+                            let defending_player = defender.get_controller_id(state);
 
-                        // Discard top 3 spells from the defending player's deck.
-                        let deck = state
-                            .decks
-                            .get(&defending_player)
-                            .ok_or_else(|| anyhow::anyhow!("No deck for player {:?}", defending_player))?;
-                        let top_three: Vec<uuid::Uuid> = deck.spells.iter().rev().take(3).cloned().collect();
+                            // Discard top 3 spells from the defending player's deck.
+                            let deck = state.decks.get(&defending_player).ok_or_else(|| {
+                                anyhow::anyhow!("No deck for player {:?}", defending_player)
+                            })?;
+                            let top_three: Vec<uuid::Uuid> =
+                                deck.spells.iter().rev().take(3).cloned().collect();
 
-                        let effects: Vec<Effect> = top_three
-                            .iter()
-                            .map(|spell_id| Effect::DiscardCard {
-                                player_id: defending_player.clone(),
-                                card_id: spell_id.clone(),
-                            })
-                            .collect();
+                            let effects: Vec<Effect> = top_three
+                                .iter()
+                                .map(|spell_id| Effect::DiscardCard {
+                                    player_id: defending_player.clone(),
+                                    card_id: spell_id.clone(),
+                                })
+                                .collect();
 
-                        // TODO: Allow casting those spells ignoring threshold.
-                        // This requires framework support for "cast ignoring threshold" flag.
+                            // TODO: Allow casting those spells ignoring threshold.
+                            // This requires framework support for "cast ignoring threshold" flag.
 
-                        Ok(effects)
-                    })
-                }),
+                            Ok(effects)
+                        })
+                    },
+                ),
                 multitrigger: true,
             },
         }])
@@ -114,6 +116,7 @@ impl Card for CaptainBaldassare {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (CaptainBaldassare::NAME, |owner_id: PlayerId| {
-    Box::new(CaptainBaldassare::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (CaptainBaldassare::NAME, |owner_id: PlayerId| {
+        Box::new(CaptainBaldassare::new(owner_id))
+    });

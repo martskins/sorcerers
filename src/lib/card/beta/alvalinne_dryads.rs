@@ -1,5 +1,8 @@
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, ResourceProvider, UnitBase, Zone},
+    card::{
+        Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, ResourceProvider,
+        UnitBase, Zone,
+    },
     game::{PlayerId, Thresholds},
     state::State,
 };
@@ -78,6 +81,7 @@ impl Card for AlvalinneDryads {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (AlvalinneDryads::NAME, |owner_id: PlayerId| {
-    Box::new(AlvalinneDryads::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (AlvalinneDryads::NAME, |owner_id: PlayerId| {
+        Box::new(AlvalinneDryads::new(owner_id))
+    });

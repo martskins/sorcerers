@@ -1,5 +1,7 @@
 use crate::{
-    card::{Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
+    card::{
+        Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, Zone,
+    },
     game::PlayerId,
     state::{CardQuery, State},
 };
@@ -123,6 +125,7 @@ impl Card for BlastedOak {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (BlastedOak::NAME, |owner_id: PlayerId| {
-    Box::new(BlastedOak::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (BlastedOak::NAME, |owner_id: PlayerId| {
+        Box::new(BlastedOak::new(owner_id))
+    });

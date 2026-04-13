@@ -57,7 +57,8 @@ impl CombatResolutionOverlay {
         });
 
         let defender_count = defenders.len();
-        let defenders_area_width = defender_count as f32 * cw + (defender_count as f32 - 1.0) * card_spacing;
+        let defenders_area_width =
+            defender_count as f32 * cw + (defender_count as f32 - 1.0) * card_spacing;
         let defenders_start_x = (sw - defenders_area_width) / 2.0;
         let defenders_y = (3.0 * sh / 5.0) - (ch / 2.0);
 
@@ -96,7 +97,11 @@ impl Component for CombatResolutionOverlay {
         Ok(())
     }
 
-    fn process_command(&mut self, _command: &ComponentCommand, _data: &mut GameData) -> anyhow::Result<()> {
+    fn process_command(
+        &mut self,
+        _command: &ComponentCommand,
+        _data: &mut GameData,
+    ) -> anyhow::Result<()> {
         Ok(())
     }
 
@@ -119,7 +124,12 @@ impl Component for CombatResolutionOverlay {
         Ok(None)
     }
 
-    fn render(&mut self, _data: &mut GameData, ui: &mut Ui, painter: &Painter) -> anyhow::Result<()> {
+    fn render(
+        &mut self,
+        _data: &mut GameData,
+        ui: &mut Ui,
+        painter: &Painter,
+    ) -> anyhow::Result<()> {
         let sw = screen_rect().map(|r| r.width()).unwrap_or(1280.0);
         let sh = screen_rect().map(|r| r.height()).unwrap_or(720.0);
         painter.rect_filled(
@@ -159,14 +169,22 @@ impl Component for CombatResolutionOverlay {
                     .fixed_pos(pos2(label_x - 60.0, label_y))
                     .show(ui.ctx(), |ui| {
                         ui.horizontal(|ui| {
-                            let minus = egui::Button::new(egui::RichText::new("−").size(20.0).color(Color32::WHITE))
-                                .min_size(vec2(36.0, 36.0));
+                            let minus = egui::Button::new(
+                                egui::RichText::new("−").size(20.0).color(Color32::WHITE),
+                            )
+                            .min_size(vec2(36.0, 36.0));
                             if ui.add(minus).clicked() && damage > 0 {
                                 dmg_delta = -1;
                             }
-                            ui.label(egui::RichText::new(damage.to_string()).size(20.0).color(Color32::WHITE));
-                            let plus = egui::Button::new(egui::RichText::new("+").size(20.0).color(Color32::WHITE))
-                                .min_size(vec2(36.0, 36.0));
+                            ui.label(
+                                egui::RichText::new(damage.to_string())
+                                    .size(20.0)
+                                    .color(Color32::WHITE),
+                            );
+                            let plus = egui::Button::new(
+                                egui::RichText::new("+").size(20.0).color(Color32::WHITE),
+                            )
+                            .min_size(vec2(36.0, 36.0));
                             if ui.add(plus).clicked() && damage_assigned < self.damage {
                                 dmg_delta = 1;
                             }
@@ -212,8 +230,12 @@ impl Component for CombatResolutionOverlay {
         egui::Area::new(egui::Id::new("combat_confirm_btn"))
             .fixed_pos(pos2(button_x, button_y))
             .show(ui.ctx(), |ui| {
-                let confirm = egui::Button::new(egui::RichText::new("Confirm").size(22.0).color(Color32::WHITE))
-                    .min_size(vec2(button_width, 48.0));
+                let confirm = egui::Button::new(
+                    egui::RichText::new("Confirm")
+                        .size(22.0)
+                        .color(Color32::WHITE),
+                )
+                .min_size(vec2(button_width, 48.0));
                 if ui.add(confirm).clicked() {
                     let assigned: u16 = defender_damage.values().sum();
                     if assigned != current_damage {
@@ -232,7 +254,8 @@ impl Component for CombatResolutionOverlay {
             });
 
         if set_shake {
-            self.shake_button_until = Some(chrono::Utc::now() + chrono::Duration::milliseconds(300));
+            self.shake_button_until =
+                Some(chrono::Utc::now() + chrono::Duration::milliseconds(300));
         }
         if set_invisible {
             self.visible = false;

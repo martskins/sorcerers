@@ -1,5 +1,7 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
+    card::{
+        Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone,
+    },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, Thresholds},
     state::{CardQuery, State},
@@ -109,7 +111,10 @@ impl Card for Sinkhole {
         Some(self)
     }
 
-    fn get_additional_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+    fn get_additional_activated_abilities(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         Ok(vec![Box::new(DestroyNearbySite)])
     }
 
@@ -120,4 +125,6 @@ impl Card for Sinkhole {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Sinkhole::NAME, |owner_id: PlayerId| Box::new(Sinkhole::new(owner_id)));
+    (Sinkhole::NAME, |owner_id: PlayerId| {
+        Box::new(Sinkhole::new(owner_id))
+    });

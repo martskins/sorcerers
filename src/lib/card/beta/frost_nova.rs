@@ -13,7 +13,8 @@ pub struct FrostNova {
 
 impl FrostNova {
     pub const NAME: &'static str = "Frost Nova";
-    pub const DESCRIPTION: &'static str = "Freeze nearby enemy minions. They're disabled until your next turn.";
+    pub const DESCRIPTION: &'static str =
+        "Freeze nearby enemy minions. They're disabled until your next turn.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -83,4 +84,6 @@ impl Card for FrostNova {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (FrostNova::NAME, |owner_id: PlayerId| Box::new(FrostNova::new(owner_id)));
+    (FrostNova::NAME, |owner_id: PlayerId| {
+        Box::new(FrostNova::new(owner_id))
+    });

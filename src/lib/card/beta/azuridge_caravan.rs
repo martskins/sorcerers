@@ -68,11 +68,17 @@ impl Card for AzuridgeCaravan {
     }
 
     fn get_elements(&self, _state: &State) -> anyhow::Result<Vec<Element>> {
-        Ok(vec![Element::Fire, Element::Water, Element::Air, Element::Earth])
+        Ok(vec![
+            Element::Fire,
+            Element::Water,
+            Element::Air,
+            Element::Earth,
+        ])
     }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (AzuridgeCaravan::NAME, |owner_id: PlayerId| {
-    Box::new(AzuridgeCaravan::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (AzuridgeCaravan::NAME, |owner_id: PlayerId| {
+        Box::new(AzuridgeCaravan::new(owner_id))
+    });

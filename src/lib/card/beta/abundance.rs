@@ -73,4 +73,6 @@ impl Card for Abundance {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Abundance::NAME, |owner_id: PlayerId| Box::new(Abundance::new(owner_id)));
+    (Abundance::NAME, |owner_id: PlayerId| {
+        Box::new(Abundance::new(owner_id))
+    });

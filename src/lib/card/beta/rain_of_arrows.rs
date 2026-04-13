@@ -69,6 +69,7 @@ impl Card for RainOfArrows {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (RainOfArrows::NAME, |owner_id: PlayerId| {
-    Box::new(RainOfArrows::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (RainOfArrows::NAME, |owner_id: PlayerId| {
+        Box::new(RainOfArrows::new(owner_id))
+    });

@@ -1,5 +1,8 @@
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, SiteType, Zone},
+    card::{
+        Ability, Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase,
+        SiteType, Zone,
+    },
     effect::{AbilityCounter, Effect},
     game::{PlayerId, Thresholds},
     query::{EffectQuery, ZoneQuery},
@@ -14,7 +17,8 @@ pub struct PlanarGate {
 
 impl PlanarGate {
     pub const NAME: &'static str = "Planar Gate";
-    pub const DESCRIPTION: &'static str = "Minions here can traverse the void, gaining Voidwalk until leaving it.";
+    pub const DESCRIPTION: &'static str =
+        "Minions here can traverse the void, gaining Voidwalk until leaving it.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -98,6 +102,7 @@ impl Card for PlanarGate {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (PlanarGate::NAME, |owner_id: PlayerId| {
-    Box::new(PlanarGate::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (PlanarGate::NAME, |owner_id: PlayerId| {
+        Box::new(PlanarGate::new(owner_id))
+    });

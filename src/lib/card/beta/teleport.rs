@@ -67,9 +67,12 @@ impl Card for Teleport {
             .pick(&controller_id, state, false)
             .await?;
         let card_id = card_id.expect("value not to be None");
-        let zone = ZoneQuery::any_site(None, Some("Teleport: Choose site to teleport to".to_string()))
-            .pick(&controller_id, state)
-            .await?;
+        let zone = ZoneQuery::any_site(
+            None,
+            Some("Teleport: Choose site to teleport to".to_string()),
+        )
+        .pick(&controller_id, state)
+        .await?;
         Ok(vec![Effect::TeleportCard {
             player_id: self.get_owner_id().clone(),
             card_id,
@@ -80,4 +83,6 @@ impl Card for Teleport {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Teleport::NAME, |owner_id: PlayerId| Box::new(Teleport::new(owner_id)));
+    (Teleport::NAME, |owner_id: PlayerId| {
+        Box::new(Teleport::new(owner_id))
+    });

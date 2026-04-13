@@ -12,8 +12,7 @@ pub struct Crusade {
 
 impl Crusade {
     pub const NAME: &'static str = "Crusade";
-    pub const DESCRIPTION: &'static str =
-        "You may summon earth minions to affected sites. Allied earth minions occupying affected sites have +1 power.";
+    pub const DESCRIPTION: &'static str = "You may summon earth minions to affected sites. Allied earth minions occupying affected sites have +1 power.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -81,4 +80,6 @@ impl Card for Crusade {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Crusade::NAME, |owner_id: PlayerId| Box::new(Crusade::new(owner_id)));
+    (Crusade::NAME, |owner_id: PlayerId| {
+        Box::new(Crusade::new(owner_id))
+    });

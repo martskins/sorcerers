@@ -16,8 +16,7 @@ pub struct BoneRabble {
 
 impl BoneRabble {
     pub const NAME: &'static str = "Bone Rabble";
-    pub const DESCRIPTION: &'static str =
-        "Whenever you play an earth site, you may summon Bone Rabble from your cemetery to that site.";
+    pub const DESCRIPTION: &'static str = "Whenever you play an earth site, you may summon Bone Rabble from your cemetery to that site.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -85,23 +84,32 @@ impl Card for BoneRabble {
                 expires_on_effect: Some(EffectQuery::SummonCard {
                     card: CardQuery::from_id(self.get_id().clone()),
                 }),
-                on_effect: Arc::new(move |state: &State, card_id: &uuid::Uuid, _effect: &Effect| {
-                    let owner_id = owner_id.clone();
-                    Box::pin(async move {
-                        let site = state.get_card(card_id);
-                        let summon_bone_rabble =
-                            yes_or_no(&owner_id, state, "Summon Bone Rabble atop the played site?").await?;
-                        if summon_bone_rabble {
-                            Ok(vec![Effect::SummonCard {
-                                player_id: owner_id.clone(),
-                                card_id: bone_rabble_id.clone(),
-                                zone: site.get_zone().clone(),
-                            }])
-                        } else {
-                            Ok(vec![])
-                        }
-                    }) as Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>>
-                }),
+                on_effect: Arc::new(
+                    move |state: &State, card_id: &uuid::Uuid, _effect: &Effect| {
+                        let owner_id = owner_id.clone();
+                        Box::pin(async move {
+                            let site = state.get_card(card_id);
+                            let summon_bone_rabble = yes_or_no(
+                                &owner_id,
+                                state,
+                                "Summon Bone Rabble atop the played site?",
+                            )
+                            .await?;
+                            if summon_bone_rabble {
+                                Ok(vec![Effect::SummonCard {
+                                    player_id: owner_id.clone(),
+                                    card_id: bone_rabble_id.clone(),
+                                    zone: site.get_zone().clone(),
+                                }])
+                            } else {
+                                Ok(vec![])
+                            }
+                        })
+                            as Pin<
+                                Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>,
+                            >
+                    },
+                ),
                 multitrigger: false,
             },
         }]
@@ -109,6 +117,7 @@ impl Card for BoneRabble {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (BoneRabble::NAME, |owner_id: PlayerId| {
-    Box::new(BoneRabble::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (BoneRabble::NAME, |owner_id: PlayerId| {
+        Box::new(BoneRabble::new(owner_id))
+    });

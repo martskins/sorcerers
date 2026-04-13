@@ -62,6 +62,7 @@ impl Card for AmazonWarriors {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (AmazonWarriors::NAME, |owner_id: PlayerId| {
-    Box::new(AmazonWarriors::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (AmazonWarriors::NAME, |owner_id: PlayerId| {
+        Box::new(AmazonWarriors::new(owner_id))
+    });

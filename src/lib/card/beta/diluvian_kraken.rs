@@ -1,5 +1,8 @@
 use crate::{
-    card::{Ability, AdditionalCost, Card, CardBase, Cost, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{
+        Ability, AdditionalCost, Card, CardBase, Cost, Costs, Edition, MinionType, Rarity, Region,
+        UnitBase, Zone,
+    },
     effect::Effect,
     game::{ActivatedAbility, PlayerId},
     query::ZoneQuery,
@@ -48,9 +51,9 @@ impl ActivatedAbility for TapToStrikeNearbyMinions {
     }
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
-        Ok(Cost::additional_only(AdditionalCost::surface(CardQuery::from_id(
-            card_id.clone(),
-        ))))
+        Ok(Cost::additional_only(AdditionalCost::surface(
+            CardQuery::from_id(card_id.clone()),
+        )))
     }
 }
 
@@ -62,7 +65,8 @@ pub struct DiluvianKraken {
 
 impl DiluvianKraken {
     pub const NAME: &'static str = "Diluvian Kraken";
-    pub const DESCRIPTION: &'static str = "Submerge\r \r Tap → Surface to strike each other unit nearby.";
+    pub const DESCRIPTION: &'static str =
+        "Submerge\r \r Tap → Surface to strike each other unit nearby.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -116,12 +120,16 @@ impl Card for DiluvianKraken {
         Some(&mut self.unit_base)
     }
 
-    fn get_additional_activated_abilities(&self, _state: &State) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+    fn get_additional_activated_abilities(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         Ok(vec![Box::new(TapToStrikeNearbyMinions)])
     }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (DiluvianKraken::NAME, |owner_id: PlayerId| {
-    Box::new(DiluvianKraken::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (DiluvianKraken::NAME, |owner_id: PlayerId| {
+        Box::new(DiluvianKraken::new(owner_id))
+    });

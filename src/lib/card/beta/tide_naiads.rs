@@ -67,7 +67,11 @@ impl Card for TideNaiads {
     }
 
     async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
-        let site_id = self.get_zone().get_site(state).map(|site| site.get_id()).cloned();
+        let site_id = self
+            .get_zone()
+            .get_site(state)
+            .map(|site| site.get_id())
+            .cloned();
         Ok(vec![ContinuousEffect::FloodSites {
             affected_sites: CardQuery::from_id(site_id.unwrap()),
         }])
@@ -75,6 +79,7 @@ impl Card for TideNaiads {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (TideNaiads::NAME, |owner_id: PlayerId| {
-    Box::new(TideNaiads::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (TideNaiads::NAME, |owner_id: PlayerId| {
+        Box::new(TideNaiads::new(owner_id))
+    });

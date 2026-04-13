@@ -102,7 +102,10 @@ impl Card for BrobdingnagBullfrog {
                         card_id: minion.clone(),
                         to: ZoneQuery::from_zone(zone.clone()),
                         player_id: self.get_controller_id(state),
-                        from: path.first().expect("Path should have at least one element").clone(),
+                        from: path
+                            .first()
+                            .expect("Path should have at least one element")
+                            .clone(),
                         tap: false,
                         region: self.get_region(state).clone(),
                         through_path: None,
@@ -114,10 +117,15 @@ impl Card for BrobdingnagBullfrog {
         Ok(vec![])
     }
 
-    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<ContinuousEffect>> {
         Ok(vec![ContinuousEffect::GrantAbility {
             ability: Ability::Disabled,
-            affected_cards: CardQuery::from_id(self.swallowed_minion.unwrap_or(uuid::Uuid::nil()).clone()),
+            affected_cards: CardQuery::from_id(
+                self.swallowed_minion.unwrap_or(uuid::Uuid::nil()).clone(),
+            ),
         }])
     }
 }

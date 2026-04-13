@@ -1,5 +1,8 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, SiteType, Zone},
+    card::{
+        Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, SiteType,
+        Zone,
+    },
     effect::Effect,
     game::{PlayerId, Thresholds, pick_card_with_preview},
     state::State,
@@ -13,7 +16,8 @@ pub struct Observatory {
 
 impl Observatory {
     pub const NAME: &'static str = "Observatory";
-    pub const DESCRIPTION: &'static str = "Genesis → Look at your next three spells. Put them back in any order.";
+    pub const DESCRIPTION: &'static str =
+        "Genesis → Look at your next three spells. Put them back in any order.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -69,7 +73,11 @@ impl Card for Observatory {
     }
 
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        let deck = state.decks.get(&self.get_controller_id(state)).unwrap().clone();
+        let deck = state
+            .decks
+            .get(&self.get_controller_id(state))
+            .unwrap()
+            .clone();
         let mut spells = deck.spells.clone();
         let mut cards = vec![];
         for _ in 0..3 {
@@ -114,6 +122,7 @@ impl Card for Observatory {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (Observatory::NAME, |owner_id: PlayerId| {
-    Box::new(Observatory::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (Observatory::NAME, |owner_id: PlayerId| {
+        Box::new(Observatory::new(owner_id))
+    });

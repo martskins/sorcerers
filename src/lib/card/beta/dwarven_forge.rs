@@ -1,5 +1,7 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone},
+    card::{
+        Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone,
+    },
     game::{PlayerId, Thresholds},
 };
 
@@ -11,7 +13,8 @@ pub struct DwarvenForge {
 
 impl DwarvenForge {
     pub const NAME: &'static str = "Dwarven Forge";
-    pub const DESCRIPTION: &'static str = "Anyone may conjure Weapons and Armor here, and for ① less.";
+    pub const DESCRIPTION: &'static str =
+        "Anyone may conjure Weapons and Armor here, and for ① less.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -78,6 +81,7 @@ impl Card for DwarvenForge {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (DwarvenForge::NAME, |owner_id: PlayerId| {
-    Box::new(DwarvenForge::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (DwarvenForge::NAME, |owner_id: PlayerId| {
+        Box::new(DwarvenForge::new(owner_id))
+    });

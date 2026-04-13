@@ -13,7 +13,8 @@ pub struct CourtJester {
 
 impl CourtJester {
     pub const NAME: &'static str = "Court Jester";
-    pub const DESCRIPTION: &'static str = "At the end of your turn, each nearby Avatar discards a random card.";
+    pub const DESCRIPTION: &'static str =
+        "At the end of your turn, each nearby Avatar discards a random card.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -107,6 +108,7 @@ impl Card for CourtJester {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (CourtJester::NAME, |owner_id: PlayerId| {
-    Box::new(CourtJester::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (CourtJester::NAME, |owner_id: PlayerId| {
+        Box::new(CourtJester::new(owner_id))
+    });

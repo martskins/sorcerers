@@ -1,5 +1,8 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, SiteType, Zone},
+    card::{
+        Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, SiteType,
+        Zone,
+    },
     effect::Effect,
     game::{PlayerId, Thresholds},
     state::State,
@@ -13,7 +16,8 @@ pub struct GothicTower {
 
 impl GothicTower {
     pub const NAME: &'static str = "Gothic Tower";
-    pub const DESCRIPTION: &'static str = "Genesis → If this is the only Gothic Tower you control, gain ① this turn.";
+    pub const DESCRIPTION: &'static str =
+        "Genesis → If this is the only Gothic Tower you control, gain ① this turn.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -97,6 +101,7 @@ impl Card for GothicTower {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (GothicTower::NAME, |owner_id: PlayerId| {
-    Box::new(GothicTower::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (GothicTower::NAME, |owner_id: PlayerId| {
+        Box::new(GothicTower::new(owner_id))
+    });

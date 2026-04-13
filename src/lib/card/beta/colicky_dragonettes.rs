@@ -75,7 +75,8 @@ impl Card for ColickyDragonettes {
         }
 
         let prompt = "Colicky Dragonettes: Choose a direction to shoot a projectile";
-        let direction = pick_direction(self.get_owner_id(), &CARDINAL_DIRECTIONS, state, prompt).await?;
+        let direction =
+            pick_direction(self.get_owner_id(), &CARDINAL_DIRECTIONS, state, prompt).await?;
         Ok(vec![Effect::ShootProjectile {
             id: uuid::Uuid::new_v4(),
             player_id: self.get_owner_id().clone(),
@@ -90,6 +91,7 @@ impl Card for ColickyDragonettes {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) = (ColickyDragonettes::NAME, |owner_id: PlayerId| {
-    Box::new(ColickyDragonettes::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (ColickyDragonettes::NAME, |owner_id: PlayerId| {
+        Box::new(ColickyDragonettes::new(owner_id))
+    });

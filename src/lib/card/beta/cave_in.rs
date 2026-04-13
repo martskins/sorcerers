@@ -13,7 +13,8 @@ pub struct CaveIn {
 
 impl CaveIn {
     pub const NAME: &'static str = "Cave-In";
-    pub const DESCRIPTION: &'static str = "Burrow all minions and artifacts occupying target land site.";
+    pub const DESCRIPTION: &'static str =
+        "Burrow all minions and artifacts occupying target land site.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -108,4 +109,6 @@ impl Card for CaveIn {
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (CaveIn::NAME, |owner_id: PlayerId| Box::new(CaveIn::new(owner_id)));
+    (CaveIn::NAME, |owner_id: PlayerId| {
+        Box::new(CaveIn::new(owner_id))
+    });

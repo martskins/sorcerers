@@ -89,7 +89,12 @@ impl Direction {
     }
 }
 
-pub const CARDINAL_DIRECTIONS: [Direction; 4] = [Direction::Up, Direction::Down, Direction::Left, Direction::Right];
+pub const CARDINAL_DIRECTIONS: [Direction; 4] = [
+    Direction::Up,
+    Direction::Down,
+    Direction::Left,
+    Direction::Right,
+];
 
 pub async fn pick_card_with_preview(
     player_id: impl AsRef<PlayerId>,
@@ -162,7 +167,9 @@ pub async fn distribute_damage(
     loop {
         let msg = state.get_receiver().recv().await?;
         match msg {
-            ClientMessage::ResolveCombat { damage_assignment, .. } => break Ok(damage_assignment),
+            ClientMessage::ResolveCombat {
+                damage_assignment, ..
+            } => break Ok(damage_assignment),
             ClientMessage::PlayerDisconnected { player_id, .. } => {
                 return Err(GameError::PlayerDisconnected(player_id.clone()).into());
             }
@@ -320,7 +327,11 @@ pub async fn resume(player_id: &PlayerId, state: &State) -> anyhow::Result<()> {
     Ok(())
 }
 
-pub async fn wait_for_opponent(player_id: &PlayerId, state: &State, prompt: impl AsRef<str>) -> anyhow::Result<()> {
+pub async fn wait_for_opponent(
+    player_id: &PlayerId,
+    state: &State,
+    prompt: impl AsRef<str>,
+) -> anyhow::Result<()> {
     state
         .get_sender()
         .send(ServerMessage::Wait {
@@ -341,7 +352,10 @@ pub async fn yes_or_no(
     wait_for_opponent(&opponent_id, state, "Wait for opponent...").await?;
 
     let options = vec![BaseOption::Yes, BaseOption::No];
-    let option_labels = options.iter().map(|o| o.to_string()).collect::<Vec<String>>();
+    let option_labels = options
+        .iter()
+        .map(|o| o.to_string())
+        .collect::<Vec<String>>();
     let choice = pick_option(player_id, &option_labels, state, prompt, false).await?;
 
     resume(&opponent_id, state).await?;
@@ -599,7 +613,9 @@ pub async fn pick_direction(
     loop {
         let msg = state.get_receiver().recv().await?;
         match msg {
-            ClientMessage::PickAction { action_idx, .. } => break Ok(directions[action_idx].normalise(board_flipped)),
+            ClientMessage::PickAction { action_idx, .. } => {
+                break Ok(directions[action_idx].normalise(board_flipped));
+            }
             ClientMessage::PlayerDisconnected { player_id, .. } => {
                 return Err(GameError::PlayerDisconnected(player_id.clone()).into());
             }
@@ -734,8 +750,14 @@ pub fn get_nearby_zones(zone: &Zone) -> Vec<Zone> {
                 nearby.extend(get_adjacent_zones(&realm_zone));
                 // Add diagonals for each square
                 let diagonals = match sq % 5 {
-                    0 => vec![Zone::Realm(sq.saturating_add(4)), Zone::Realm(sq.saturating_sub(6))],
-                    1 => vec![Zone::Realm(sq.saturating_sub(4)), Zone::Realm(sq.saturating_add(6))],
+                    0 => vec![
+                        Zone::Realm(sq.saturating_add(4)),
+                        Zone::Realm(sq.saturating_sub(6)),
+                    ],
+                    1 => vec![
+                        Zone::Realm(sq.saturating_sub(4)),
+                        Zone::Realm(sq.saturating_add(6)),
+                    ],
                     _ => vec![
                         Zone::Realm(sq.saturating_sub(4)),
                         Zone::Realm(sq.saturating_add(6)),
@@ -798,11 +820,15 @@ pub fn get_adjacent_zones(zone: &Zone) -> Vec<Zone> {
             ];
 
             if locs[0] > 1 {
-                intersections.push(Zone::Intersection(locs.iter().map(|l| l.saturating_sub(1)).collect()));
+                intersections.push(Zone::Intersection(
+                    locs.iter().map(|l| l.saturating_sub(1)).collect(),
+                ));
             }
 
             if locs[0] > 5 {
-                intersections.push(Zone::Intersection(locs.iter().map(|l| l.saturating_sub(5)).collect()));
+                intersections.push(Zone::Intersection(
+                    locs.iter().map(|l| l.saturating_sub(5)).collect(),
+                ));
             }
 
             intersections
@@ -828,10 +854,19 @@ where
 pub trait ActivatedAbility: std::fmt::Debug + Send + Sync + CloneBoxedAction {
     fn get_name(&self) -> String;
 
-    async fn on_select(&self, card_id: &uuid::Uuid, player_id: &PlayerId, state: &State)
-    -> anyhow::Result<Vec<Effect>>;
+    async fn on_select(
+        &self,
+        card_id: &uuid::Uuid,
+        player_id: &PlayerId,
+        state: &State,
+    ) -> anyhow::Result<Vec<Effect>>;
 
-    fn can_activate(&self, _card_id: &uuid::Uuid, _player_id: &PlayerId, _state: &State) -> anyhow::Result<bool> {
+    fn can_activate(
+        &self,
+        _card_id: &uuid::Uuid,
+        _player_id: &PlayerId,
+        _state: &State,
+    ) -> anyhow::Result<bool> {
         Ok(true)
     }
 
@@ -967,9 +1002,9 @@ impl ActivatedAbility for AvatarAction {
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
         match self {
-            AvatarAction::PlaySite | AvatarAction::DrawSite => Ok(Cost::additional_only(AdditionalCost::tap(
-                CardQuery::from_id(*card_id).untapped(),
-            ))),
+            AvatarAction::PlaySite | AvatarAction::DrawSite => Ok(Cost::additional_only(
+                AdditionalCost::tap(CardQuery::from_id(*card_id).untapped()),
+            )),
         }
     }
 
@@ -1039,7 +1074,9 @@ impl ActivatedAbility for UnitAction {
             UnitAction::Burrow => "Burrow".to_string(),
             UnitAction::Submerge => "Submerge".to_string(),
             UnitAction::Surface => "Surface".to_string(),
-            UnitAction::PickUpArtifact { artifact_name, .. } => format!("Pick Up {}", artifact_name),
+            UnitAction::PickUpArtifact { artifact_name, .. } => {
+                format!("Pick Up {}", artifact_name)
+            }
             UnitAction::DropArtifact { artifact_name, .. } => format!("Drop {}", artifact_name),
             UnitAction::PickUpMinion => "Pick Up Minion".to_string(),
             UnitAction::DropMinion => "Drop Minion".to_string(),
@@ -1087,14 +1124,23 @@ impl ActivatedAbility for UnitAction {
                     let defend = yes_or_no(
                         &opponent.id,
                         state,
-                        format!("{} attacks {}, defend?", attacker.get_name(), attacked.get_name()),
+                        format!(
+                            "{} attacks {}, defend?",
+                            attacker.get_name(),
+                            attacked.get_name()
+                        ),
                     )
                     .await?;
                     resume(player_id, state).await?;
 
                     if defend {
-                        let defenders =
-                            pick_cards(&opponent.id, &possible_defenders, state, "Pick units to defend with").await?;
+                        let defenders = pick_cards(
+                            &opponent.id,
+                            &possible_defenders,
+                            state,
+                            "Pick units to defend with",
+                        )
+                        .await?;
                         match defenders.len() {
                             // If no defenders are picked, proceed with the original attack.
                             0 => {
@@ -1128,7 +1174,8 @@ impl ActivatedAbility for UnitAction {
                                 let mut effects = defenders
                                     .iter()
                                     .flat_map(|defender_id| {
-                                        let defender_zone = state.get_card(defender_id).get_zone().clone();
+                                        let defender_zone =
+                                            state.get_card(defender_id).get_zone().clone();
                                         vec![Effect::MoveCard {
                                             player_id: opponent.id.clone(),
                                             card_id: defender_id.clone(),
@@ -1192,7 +1239,10 @@ impl ActivatedAbility for UnitAction {
                     let prompt = "Pick a path to move along";
                     pick_path(player_id, &paths, state, prompt).await?
                 } else {
-                    paths.first().ok_or(anyhow::anyhow!("no paths found"))?.to_vec()
+                    paths
+                        .first()
+                        .ok_or(anyhow::anyhow!("no paths found"))?
+                        .to_vec()
                 };
 
                 let can_be_intercepted = !card.has_ability(state, &Ability::Uninterceptable);
@@ -1318,7 +1368,10 @@ impl ActivatedAbility for UnitAction {
                     .collect::<Vec<_>>();
                 let picked = pick_cards(
                     player_id,
-                    &minions.iter().map(|c| c.get_id().clone()).collect::<Vec<_>>(),
+                    &minions
+                        .iter()
+                        .map(|c| c.get_id().clone())
+                        .collect::<Vec<_>>(),
                     state,
                     "Pick minions to carry",
                 )
@@ -1336,11 +1389,16 @@ impl ActivatedAbility for UnitAction {
                     .cards
                     .iter()
                     .filter(|minion| minion.is_minion())
-                    .filter(|minion| minion.get_bearer_id().unwrap_or_default() == Some(card_id.clone()))
+                    .filter(|minion| {
+                        minion.get_bearer_id().unwrap_or_default() == Some(card_id.clone())
+                    })
                     .collect::<Vec<_>>();
                 let picked = pick_cards(
                     player_id,
-                    &minions.iter().map(|c| c.get_id().clone()).collect::<Vec<_>>(),
+                    &minions
+                        .iter()
+                        .map(|c| c.get_id().clone())
+                        .collect::<Vec<_>>(),
                     state,
                     "Drop carried minions",
                 )
@@ -1414,7 +1472,9 @@ impl Game {
         tokio::spawn(async move {
             loop {
                 if let Ok(message) = receiver.recv().await {
-                    let stream = streams.get(&message.player_id()).expect("stream to be found");
+                    let stream = streams
+                        .get(&message.player_id())
+                        .expect("stream to be found");
                     Client::send_to_stream(&message, Arc::clone(stream))
                         .await
                         .expect("message to be sent");
@@ -1460,7 +1520,9 @@ impl Game {
             ClientMessage::PlayerDisconnected { player_id, .. } => {
                 self.player_disconnected(player_id).await?;
             }
-            ClientMessage::ClickCard { player_id, card_id, .. } => {
+            ClientMessage::ClickCard {
+                player_id, card_id, ..
+            } => {
                 let snapshot = self.state.snapshot();
                 let card = snapshot.get_card(card_id);
                 if &card.get_controller_id(&self.state) != player_id {
@@ -1472,7 +1534,10 @@ impl Game {
                 }
 
                 if let Zone::Hand = card.get_zone() {
-                    if !card.get_costs(&self.state)?.can_afford(&self.state, player_id)? {
+                    if !card
+                        .get_costs(&self.state)?
+                        .can_afford(&self.state, player_id)?
+                    {
                         return Ok(());
                     }
                 }
@@ -1491,7 +1556,8 @@ impl Game {
                             .map(|c| c.get_id().clone())
                             .collect();
                         let prompt = "Pick a spellcaster to cast the spell";
-                        let caster_id = pick_card(player_id, &spellcasters, &self.state, prompt).await?;
+                        let caster_id =
+                            pick_card(player_id, &spellcasters, &self.state, prompt).await?;
                         let caster = self.state.get_card(&caster_id);
                         self.state.queue_one(Effect::PlayMagic {
                             player_id: player_id.clone(),
@@ -1501,8 +1567,8 @@ impl Game {
                         });
                     }
                     (_, Zone::Realm(_)) => {
-                        let unit_disabled =
-                            card.is_tapped() || card.has_ability(&self.state, &Ability::SummoningSickness);
+                        let unit_disabled = card.is_tapped()
+                            || card.has_ability(&self.state, &Ability::SummoningSickness);
                         if card.is_unit() && unit_disabled {
                             return Ok(());
                         }
@@ -1513,7 +1579,9 @@ impl Game {
                                 .get_cost(card_id, &self.state)
                                 .and_then(|cost| cost.can_afford(&self.state, player_id))
                                 .unwrap_or_default();
-                            let can_activate = action.can_activate(card_id, player_id, &self.state).unwrap_or_default();
+                            let can_activate = action
+                                .can_activate(card_id, player_id, &self.state)
+                                .unwrap_or_default();
                             can_afford && can_activate
                         });
 
@@ -1523,9 +1591,12 @@ impl Game {
 
                         actions.push(Box::new(CancelAction));
                         let prompt = format!("{}: Pick action", card.get_name());
-                        let action = pick_action(player_id, &actions, &self.state, &prompt, true).await?;
+                        let action =
+                            pick_action(player_id, &actions, &self.state, &prompt, true).await?;
                         let cost = action.get_cost(card_id, &self.state)?.clone();
-                        let effects = action.on_select(card.get_id(), player_id, &self.state).await?;
+                        let effects = action
+                            .on_select(card.get_id(), player_id, &self.state)
+                            .await?;
                         // Pay costs after selecting the action to work around scenarios where
                         // the cost includes sacricing the card and the effects involve nearby
                         // cards, which would result in no valid targets, as the card would already
@@ -1542,7 +1613,9 @@ impl Game {
                 });
             }
             ClientMessage::PickCards {
-                card_ids, player_id, ..
+                card_ids,
+                player_id,
+                ..
             } if self.state.phase == Phase::Mulligan => {
                 let mut deck = self.state.get_player_deck(player_id)?.clone();
                 let mut site_count = 0;
@@ -1575,7 +1648,9 @@ impl Game {
                         count: spell_count as u8,
                     },
                 ];
-                self.state.players_with_accepted_hands.insert(player_id.clone());
+                self.state
+                    .players_with_accepted_hands
+                    .insert(player_id.clone());
                 self.state.queue(effects);
                 if self.state.players_with_accepted_hands.len() == self.state.players.len() {
                     self.state.phase = Phase::Main;
