@@ -20,12 +20,7 @@ impl GrandmasterWizard {
             unit_base: UnitBase {
                 power: 0,
                 toughness: 0,
-                abilities: vec![
-                    Ability::Spellcaster(Element::Fire),
-                    Ability::Spellcaster(Element::Air),
-                    Ability::Spellcaster(Element::Earth),
-                    Ability::Spellcaster(Element::Water),
-                ],
+                abilities: vec![Ability::Spellcaster(None)],
                 types: vec![MinionType::Mortal],
                 ..Default::default()
             },

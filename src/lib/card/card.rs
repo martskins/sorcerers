@@ -445,7 +445,7 @@ impl CostType {
                     match ac.action {
                         CostAction::Tap => query = query.untapped(),
                         CostAction::Discard => query = query.in_zone(&Zone::Hand),
-                        CostAction::Sacrifice => {} // TODO: add guard for sacrifice case
+                        CostAction::Sacrifice => query = query.in_zones(&Zone::all_realm()),
                         CostAction::Surface => query = query.in_regions(vec![Region::Underwater, Region::Underground]),
                     }
 
@@ -525,7 +525,7 @@ impl CostType {
                     match ac.action {
                         CostAction::Tap => query = query.untapped(),
                         CostAction::Discard => query = query.in_zone(&Zone::Hand),
-                        CostAction::Sacrifice => {} // TODO: add guard for sacrifice case
+                        CostAction::Sacrifice => query = query.in_zones(&Zone::all_realm()),
                         CostAction::Surface => query = query.in_regions(vec![Region::Underwater, Region::Underground]),
                     }
 
@@ -1727,9 +1727,13 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             return Ok(true);
         }
 
+        if self.has_ability(state, &Ability::Spellcaster(None)) {
+            return Ok(true);
+        }
+
         let elements = spell.get_elements(state)?;
         for element in elements {
-            if self.has_ability(state, &Ability::Spellcaster(element)) {
+            if self.has_ability(state, &Ability::Spellcaster(Some(element))) {
                 return Ok(true);
             }
         }
@@ -2155,7 +2159,7 @@ pub enum Ability {
     Burrowing,
     Landbound,
     Submerge,
-    Spellcaster(Element),
+    Spellcaster(Option<Element>),
     Charge,
     SummoningSickness,
     TakesNoDamageFromElement(Element),

@@ -73,12 +73,7 @@ Tap → Search your hand, cemetery, or spellbook for another Adept Illusionist a
             unit_base: UnitBase {
                 power: 2,
                 toughness: 2,
-                abilities: vec![
-                    Ability::Spellcaster(Element::Fire),
-                    Ability::Spellcaster(Element::Air),
-                    Ability::Spellcaster(Element::Water),
-                    Ability::Spellcaster(Element::Earth),
-                ],
+                abilities: vec![Ability::Spellcaster(None)],
                 types: vec![MinionType::Mortal],
                 ..Default::default()
             },

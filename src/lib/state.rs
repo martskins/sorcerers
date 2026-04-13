@@ -1112,11 +1112,6 @@ impl State {
     pub fn data_from_cards(&self) -> Vec<CardData> {
         self.cards
             .iter()
-            // TODO: filter only cards in play
-            // .filter_map(|c| match c.get_zone() {
-            //     Zone::Hand | Zone::Realm(_) | Zone::Intersection(_) => Some(c),
-            //     _ => return None,
-            // })
             .map(|c| CardData {
                 id: c.get_id().clone(),
                 name: c.get_name().to_string(),

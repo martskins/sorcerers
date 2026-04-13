@@ -1,5 +1,5 @@
 use crate::{
-    card::{Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
+    card::{Ability, Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::PlayerId,
     state::{CardQuery, ContinuousEffect, State},
@@ -92,7 +92,11 @@ impl Card for BlackObelisk {
             return Ok(vec![]);
         }
 
-        // TODO: This shouldn't trigger if the site is disabled.
+        // TODO: Sites cannot have abilities yet, but once they do, this check should work.
+        if site.has_ability(state, &Ability::Disabled) {
+            return Ok(vec![]);
+        }
+
         let avatar_id = state.get_player_avatar_id(&controller_id)?;
         Ok(vec![Effect::TakeDamage {
             card_id: avatar_id,

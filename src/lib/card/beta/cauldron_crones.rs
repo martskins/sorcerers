@@ -21,12 +21,7 @@ impl CauldronCrones {
             unit_base: UnitBase {
                 power: 1,
                 toughness: 1,
-                abilities: vec![
-                    Ability::Spellcaster(Element::Fire),
-                    Ability::Spellcaster(Element::Water),
-                    Ability::Spellcaster(Element::Air),
-                    Ability::Spellcaster(Element::Earth),
-                ],
+                abilities: vec![Ability::Spellcaster(None)],
                 types: vec![MinionType::Mortal],
                 ..Default::default()
             },

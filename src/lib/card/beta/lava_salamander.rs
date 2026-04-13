@@ -19,7 +19,7 @@ impl LavaSalamander {
                 power: 1,
                 toughness: 1,
                 abilities: vec![
-                    Ability::Spellcaster(Element::Fire),
+                    Ability::Spellcaster(Some(Element::Fire)),
                     Ability::TakesNoDamageFromElement(Element::Fire),
                 ],
                 types: vec![MinionType::Beast],

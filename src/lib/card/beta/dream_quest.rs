@@ -72,9 +72,15 @@ impl Card for DreamQuest {
             .into_iter()
             .filter(|id| {
                 let card = state.get_card(id);
-                [Element::Fire, Element::Water, Element::Earth, Element::Air]
-                    .iter()
-                    .any(|e| card.has_ability(state, &Ability::Spellcaster(e.clone())))
+                [
+                    Some(Element::Fire),
+                    Some(Element::Water),
+                    Some(Element::Earth),
+                    Some(Element::Air),
+                    None,
+                ]
+                .iter()
+                .any(|e| card.has_ability(state, &Ability::Spellcaster(e.clone())))
             })
             .collect();
 

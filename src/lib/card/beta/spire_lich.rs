@@ -90,10 +90,7 @@ impl Card for SpireLich {
         let mut modifiers = self.base_get_abilities(state);
         if self.is_atop_tower(state)? {
             modifiers.push(Ability::Ranged(1));
-            modifiers.push(Ability::Spellcaster(Element::Fire));
-            modifiers.push(Ability::Spellcaster(Element::Earth));
-            modifiers.push(Ability::Spellcaster(Element::Air));
-            modifiers.push(Ability::Spellcaster(Element::Water));
+            modifiers.push(Ability::Spellcaster(None));
         }
 
         Ok(modifiers)

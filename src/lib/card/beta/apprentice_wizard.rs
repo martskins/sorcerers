@@ -20,12 +20,7 @@ impl ApprenticeWizard {
             unit_base: UnitBase {
                 power: 1,
                 toughness: 1,
-                abilities: vec![
-                    Ability::Spellcaster(Element::Air),
-                    Ability::Spellcaster(Element::Fire),
-                    Ability::Spellcaster(Element::Earth),
-                    Ability::Spellcaster(Element::Fire),
-                ],
+                abilities: vec![Ability::Spellcaster(None)],
                 types: vec![MinionType::Mortal],
                 ..Default::default()
             },
