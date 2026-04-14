@@ -127,12 +127,7 @@ impl Component for CardViewerComponent {
         // Hover preview: show a larger floating card above everything (Tooltip layer).
         if let Some(idx) = hovered_idx {
             let tex = &self.cards[idx].image;
-            let pointer_pos = ui.input(|i| i.pointer.latest_pos()).unwrap_or_default();
-            let preview_painter = ui.ctx().layer_painter(egui::LayerId::new(
-                egui::Order::Tooltip,
-                egui::Id::new("card_viewer_hover_preview"),
-            ));
-            crate::render::draw_card_preview(tex.as_ref(), pointer_pos, &preview_painter).unwrap();
+            crate::render::draw_card_preview(ui, tex.as_ref()).unwrap();
         }
 
         self.visible = open;

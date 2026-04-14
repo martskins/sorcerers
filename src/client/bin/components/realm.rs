@@ -1062,7 +1062,7 @@ impl Component for RealmComponent {
 
         if !matches!(data.status, Status::SelectingCard { preview: true, .. }) {
             if let Some(card) = self.card_rects.iter().find(|c| c.is_hovered) {
-                render::draw_sidebar_card_preview(card.image.as_ref(), painter)?;
+                render::draw_sidebar_card_preview(ui, card.image.as_ref())?;
             }
         }
         self.render_paths(data, painter);

@@ -295,12 +295,15 @@ pub fn draw_card_with_rotation(
     draw_card_internal(card_rect, is_ally, draw_accessories, painter, rotation);
 }
 
-/// Draws a bigger version of a card on the given position.
-pub fn draw_card_preview(
-    tex: Option<&TextureHandle>,
-    pos: Pos2,
-    painter: &Painter,
-) -> anyhow::Result<()> {
+/// Draws a bigger version of a card under the cursor, for hover previews. The card will be rotated
+/// if it's tapped.
+pub fn draw_card_preview(ui: &egui::Ui, tex: Option<&TextureHandle>) -> anyhow::Result<()> {
+    let pointer_pos = ui.input(|i| i.pointer.latest_pos()).unwrap_or_default();
+    let preview_painter = ui.ctx().layer_painter(egui::LayerId::new(
+        egui::Order::Tooltip,
+        egui::Id::new("card_viewer_hover_preview"),
+    ));
+
     let mut preview_size = vec2(200.0, 200.0 / CARD_ASPECT_RATIO);
     if let Some(tex) = tex {
         // If the texture is wider than it is tall, it's a site.
@@ -308,15 +311,16 @@ pub fn draw_card_preview(
             std::mem::swap(&mut preview_size.x, &mut preview_size.y);
         }
     }
-    let rect = Rect::from_min_size(pos, preview_size);
-    draw_card_preview_internal(tex, rect, painter)
+    let rect = Rect::from_min_size(pointer_pos, preview_size);
+    draw_card_preview_internal(tex, rect, &preview_painter)
 }
 
 /// Draws a bigger version of a card on the left sidebar, vertically centred on screen.
-pub fn draw_sidebar_card_preview(
-    tex: Option<&TextureHandle>,
-    painter: &Painter,
-) -> anyhow::Result<()> {
+pub fn draw_sidebar_card_preview(ui: &egui::Ui, tex: Option<&TextureHandle>) -> anyhow::Result<()> {
+    let preview_painter = ui.ctx().layer_painter(egui::LayerId::new(
+        egui::Order::Tooltip,
+        egui::Id::new("card_viewer_hover_preview"),
+    ));
     const MARGIN: f32 = 4.0;
     let available_w = realm_rect()?.min.x - MARGIN * 2.0;
     let mut preview_size = vec2(available_w, available_w / CARD_ASPECT_RATIO);
@@ -328,7 +332,7 @@ pub fn draw_sidebar_card_preview(
     }
     let preview_y = screen_rect()?.height() / 2.0 - preview_size.y / 2.0;
     let dest_rect = Rect::from_min_size(pos2(MARGIN, preview_y), preview_size);
-    draw_card_preview_internal(tex, dest_rect, painter)
+    draw_card_preview_internal(tex, dest_rect, &preview_painter)
 }
 
 fn draw_card_preview_internal(

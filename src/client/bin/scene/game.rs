@@ -365,7 +365,7 @@ impl Game {
             let mut expired: Vec<usize> = Vec::new();
             for (i, toast) in self.card_toast.iter_mut().enumerate() {
                 bottom_y -= toast.height(ctx);
-                if !toast.render(ctx, &painter, bottom_y) {
+                if !toast.render(ctx, ui, bottom_y) {
                     expired.push(i);
                 }
                 bottom_y -= TOAST_GAP;

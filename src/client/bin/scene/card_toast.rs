@@ -106,7 +106,7 @@ impl CardToast {
 
     /// Render the toast at the given `base_y` (top-left y of the toast rect).
     /// Returns `true` while still active.
-    pub fn render(&mut self, ctx: &Context, painter: &Painter, base_y: f32) -> bool {
+    pub fn render(&mut self, ctx: &Context, ui: &egui::Ui, base_y: f32) -> bool {
         let now = ctx.input(|i| i.time);
         let start = *self.start_time.get_or_insert(now);
         let elapsed = now - start;
@@ -129,6 +129,11 @@ impl CardToast {
 
         let base_x = sr.width() - total_w - TOAST_MARGIN + slide;
         let toast_rect = Rect::from_min_size(pos2(base_x, base_y), vec2(total_w, total_h));
+
+        let painter = ui.ctx().layer_painter(egui::LayerId::new(
+            egui::Order::Tooltip,
+            egui::Id::new("card_viewer_hover_preview"),
+        ));
 
         // ── Background panel ──────────────────────────────────────
         painter.rect_filled(
@@ -195,7 +200,7 @@ impl CardToast {
                     .map_or(false, |p| toast_rect.contains(p));
 
                 if hovered {
-                    render::draw_sidebar_card_preview(image.as_ref(), painter).ok();
+                    render::draw_sidebar_card_preview(ui, image.as_ref()).ok();
                 }
             }
             ToastKind::Event => {

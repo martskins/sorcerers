@@ -197,7 +197,7 @@ impl Component for PlayerHandComponent {
     fn render(
         &mut self,
         data: &mut GameData,
-        _ui: &mut Ui,
+        ui: &mut Ui,
         painter: &Painter,
     ) -> anyhow::Result<()> {
         let bg_color = Color32::from_rgba_unmultiplied(38, 46, 56, 217);
@@ -212,7 +212,7 @@ impl Component for PlayerHandComponent {
 
         if !matches!(data.status, Status::SelectingCard { preview: true, .. }) {
             if let Some(card) = self.card_rects.iter().find(|c| c.is_hovered) {
-                render::draw_sidebar_card_preview(card.image.as_ref(), painter)?;
+                render::draw_sidebar_card_preview(ui, card.image.as_ref())?;
             }
         }
         Ok(())
