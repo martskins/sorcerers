@@ -66,19 +66,26 @@ impl Card for Crusade {
         Some(self)
     }
 
-    // TODO: Missing effect to allow the player to summon earth minions on affected sites,
-    // regardless of who controls those sites.
     async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
         let affected_zones = self.get_affected_zones(state);
         let controller_id = self.get_controller_id(state);
-        Ok(vec![ContinuousEffect::ModifyPower {
-            power_diff: 1,
-            affected_cards: CardQuery::new()
-                .in_zones(&affected_zones)
-                .controlled_by(&controller_id)
-                .minions()
-                .with_affinity_in(vec![Element::Earth]),
-        }])
+        Ok(vec![
+            ContinuousEffect::OverrideValidPlayZone {
+                affected_zones: self.get_affected_zones(state),
+                affected_cards: CardQuery::new()
+                    .minions()
+                    .with_affinity(Element::Earth)
+                    .including_not_in_play(),
+            },
+            ContinuousEffect::ModifyPower {
+                power_diff: 1,
+                affected_cards: CardQuery::new()
+                    .in_zones(&affected_zones)
+                    .controlled_by(&controller_id)
+                    .minions()
+                    .with_affinity_in(vec![Element::Earth]),
+            },
+        ])
     }
 }
 

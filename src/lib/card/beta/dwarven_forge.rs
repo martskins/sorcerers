@@ -1,8 +1,10 @@
 use crate::{
     card::{
-        Card, CardBase, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone,
+        ArtifactType, Card, CardBase, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase,
+        Zone,
     },
     game::{PlayerId, Thresholds},
+    state::{CardQuery, ContinuousEffect, State},
 };
 
 #[derive(Debug, Clone)]
@@ -75,8 +77,25 @@ impl Card for DwarvenForge {
         Some(self)
     }
 
-    // TODO: Implementation is missing the effect of letting anyone conjure Weapons and Armor here
-    // for ① less.
+    async fn get_continuous_effects(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<ContinuousEffect>> {
+        Ok(vec![
+            ContinuousEffect::ModifyManaCost {
+                mana_diff: -1,
+                affected_cards: CardQuery::new().minions().including_not_in_play(),
+                zones: Some(vec![self.get_zone().clone()]),
+            },
+            ContinuousEffect::OverrideValidPlayZone {
+                affected_zones: vec![self.get_zone().clone()],
+                affected_cards: CardQuery::new()
+                    .artifacts()
+                    .artifact_types(vec![ArtifactType::Weapon, ArtifactType::Armor])
+                    .including_not_in_play(),
+            },
+        ])
+    }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
