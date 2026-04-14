@@ -1,0 +1,66 @@
+use crate::{
+    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Region, Zone},
+    effect::Effect,
+    game::{PlayerId, pick_zone},
+    state::{CardQuery, State},
+};
+
+#[derive(Debug, Clone)]
+pub struct Earthquake {
+    pub card_base: CardBase,
+}
+
+impl Earthquake {
+    pub const NAME: &'static str = "Earthquake";
+    pub const DESCRIPTION: &'static str = "You may rearrange sites within a two-by-two area, carrying along everything of normal size. Then burrow all minions and artifacts on those sites.";
+
+    pub fn new(owner_id: PlayerId) -> Self {
+        Self {
+            card_base: CardBase {
+                id: uuid::Uuid::new_v4(),
+                owner_id,
+                zone: Zone::Spellbook,
+                costs: Costs::basic(5, "EE"),
+                rarity: Rarity::Elite,
+                edition: Edition::Beta,
+                controller_id: owner_id.clone(),
+                is_token: false,
+                ..Default::default()
+            },
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl Card for Earthquake {
+    fn get_name(&self) -> &str {
+        Self::NAME
+    }
+
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
+    }
+
+    fn get_base_mut(&mut self) -> &mut CardBase {
+        &mut self.card_base
+    }
+
+    fn get_base(&self) -> &CardBase {
+        &self.card_base
+    }
+
+    async fn on_cast(
+        &mut self,
+        state: &State,
+        caster_id: &uuid::Uuid,
+        _cost_paid: Cost,
+    ) -> anyhow::Result<Vec<Effect>> {
+        unimplemented!();
+    }
+}
+
+#[linkme::distributed_slice(crate::card::ALL_CARDS)]
+static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    (Earthquake::NAME, |owner_id: PlayerId| {
+        Box::new(Earthquake::new(owner_id))
+    });

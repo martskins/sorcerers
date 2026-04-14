@@ -441,6 +441,14 @@ impl CardQuery {
         }
     }
 
+    pub fn dead(self) -> Self {
+        Self {
+            in_zones: Some(vec![Zone::Cemetery]),
+            include_not_in_play: Some(true),
+            ..self
+        }
+    }
+
     pub fn minions(self) -> Self {
         Self {
             card_types: Some(vec![CardType::Minion]),
