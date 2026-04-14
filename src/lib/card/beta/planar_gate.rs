@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Ability, Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase,
+        Ability, Card, CardBase, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase,
         SiteType, Zone,
     },
     effect::{AbilityCounter, Effect},
@@ -26,15 +26,14 @@ impl PlanarGate {
                 provided_mana: 1,
                 provided_thresholds: Thresholds::parse(""),
                 types: vec![SiteType::Tower],
+                tapped: false,
                 ..Default::default()
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
-                tapped: false,
                 zone: Zone::Atlasbook,
                 costs: Costs::ZERO,
-                region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

@@ -17,16 +17,17 @@ impl {StructName} {
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
-                tapped: false,
                 zone: Zone::Spellbook,
                 cost: Cost::new({ManaCost}, "{RequiredThresholds}"),
-                region: Region::Surface,
                 rarity: Rarity::{Rarity},
                 edition: Edition::{Edition},
                 controller_id: owner_id.clone(),
                 ..Default::default()
             },
-            aura_base: AuraBase {},
+            aura_base: AuraBase {
+                tapped: false,
+                region: Region::Surface,
+            },
         }
     }
 }

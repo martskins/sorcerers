@@ -63,7 +63,7 @@ impl ActivatedAbility for RollBoulder {
                     to: ZoneQuery::from_zone(zone.clone()),
                     player_id: boulder.get_controller_id(state).clone(),
                     tap: false,
-                    region: Region::Surface,
+                    region: boulder.get_region(state).clone(),
                     through_path: None,
                 });
                 effects.push(Effect::TakeDamage {
@@ -98,14 +98,14 @@ impl RollingBoulder {
             artifact_base: ArtifactBase {
                 needs_bearer: false,
                 types: vec![ArtifactType::Relic],
+                tapped: false,
+                region: Region::Surface,
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
-                tapped: false,
                 zone: Zone::Spellbook,
                 costs: Costs::mana_only(4),
-                region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

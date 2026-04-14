@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Region, Zone},
+    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Zone},
     effect::Effect,
     game::PlayerId,
     query::ZoneQuery,
@@ -20,10 +20,8 @@ impl Teleport {
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
-                tapped: false,
                 zone: Zone::Spellbook,
                 costs: Costs::basic(2, "AA"),
-                region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

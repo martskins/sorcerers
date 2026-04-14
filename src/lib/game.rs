@@ -1303,7 +1303,7 @@ impl ActivatedAbility for UnitAction {
                         from: zone.clone(),
                         to: ZoneQuery::from_zone(to_zone.clone()),
                         tap: true,
-                        region: card.get_base().region.clone(),
+                        region: card.get_region(state).clone(),
                         through_path: Some(path.clone()),
                     });
 
@@ -1319,7 +1319,7 @@ impl ActivatedAbility for UnitAction {
                             from: interceptor_card.get_zone().clone(),
                             to: ZoneQuery::from_zone(zone.clone()),
                             tap: true,
-                            region: card.get_base().region.clone(),
+                            region: card.get_region(state).clone(),
                             through_path: Some(path.clone()),
                         });
                         effects.push(Effect::Attack {

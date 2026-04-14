@@ -23,15 +23,15 @@ impl CraveGolem {
                 toughness: 3,
                 abilities: vec![],
                 types: vec![MinionType::Automaton],
+                tapped: false,
+                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
-                tapped: false,
                 zone: Zone::Spellbook,
                 costs: Costs::mana_only(4),
-                region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

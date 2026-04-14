@@ -962,7 +962,7 @@ impl Effect {
                             let card = state.get_card_mut(card_id);
                             card.set_zone(zone.clone());
                             if *tap {
-                                card.get_base_mut().tapped = true;
+                                card.set_tapped(true);
                             }
 
                             let carried_cards = CardQuery::new().carried_by(card_id).all(state);
@@ -970,7 +970,7 @@ impl Effect {
                                 let carried_card = state.get_card_mut(&cid);
                                 carried_card.set_zone(zone.clone());
                                 if *tap {
-                                    carried_card.get_base_mut().tapped = true;
+                                    carried_card.set_tapped(true);
                                 }
                             }
 
@@ -990,7 +990,7 @@ impl Effect {
                         let card = state.get_card_mut(card_id);
                         card.set_zone(zone.clone());
                         if *tap {
-                            card.get_base_mut().tapped = true;
+                            card.set_tapped(true);
                         }
 
                         let carried_cards = CardQuery::new().carried_by(card_id).all(state);
@@ -998,7 +998,7 @@ impl Effect {
                             let carried_card = state.get_card_mut(&cid);
                             carried_card.set_zone(zone.clone());
                             if *tap {
-                                carried_card.get_base_mut().tapped = true;
+                                carried_card.set_tapped(true);
                             }
                         }
 
@@ -1182,11 +1182,11 @@ impl Effect {
                     .iter_mut()
                     .find(|c| c.get_id() == card_id)
                     .expect("to find card");
-                card.get_base_mut().tapped = true;
+                card.set_tapped(true);
 
                 let carried_cards = CardQuery::new().carried_by(card_id).all(state);
                 for cid in carried_cards {
-                    state.get_card_mut(&cid).get_base_mut().tapped = true;
+                    state.get_card_mut(&cid).set_tapped(true);
                 }
             }
             Effect::UntapCard { card_id, .. } => {
@@ -1195,11 +1195,11 @@ impl Effect {
                     .iter_mut()
                     .find(|c| c.get_id() == card_id)
                     .expect("to find card");
-                card.get_base_mut().tapped = false;
+                card.set_tapped(false);
 
                 let carried_cards = CardQuery::new().carried_by(card_id).all(state);
                 for cid in carried_cards {
-                    state.get_card_mut(&cid).get_base_mut().tapped = true;
+                    state.get_card_mut(&cid).set_tapped(true);
                 }
             }
             Effect::StartTurn { player_id, .. } => {
@@ -1218,7 +1218,7 @@ impl Effect {
                     .iter_mut()
                     .filter(|c| c.get_owner_id() == &state.current_player);
                 for card in cards {
-                    card.get_base_mut().tapped = false;
+                    card.set_tapped(false);
                     card.remove_modifier(&Ability::SummoningSickness);
                 }
 
@@ -1354,7 +1354,7 @@ impl Effect {
                     from: attacker.get_zone().clone(),
                     to: ZoneQuery::from_zone(defender.get_zone().clone()),
                     tap: true,
-                    region: attacker.get_base().region.clone(),
+                    region: attacker.get_region(state).clone(),
                     through_path: None,
                 }];
 
@@ -1594,7 +1594,7 @@ impl Effect {
                 for carried_card_id in carried_cards {
                     let carried = state.get_card_mut(&carried_card_id);
                     carried.set_zone(to_zone.clone());
-                    carried.get_base_mut().region = carried_region.clone();
+                    carried.set_region(carried_region.clone());
                 }
                 let card = state.get_card(&card_id);
                 effects.extend(card.on_visit_zone(&state, to_zone).await?);
@@ -1631,9 +1631,9 @@ impl Effect {
                 }));
 
                 let card = state.get_card_mut(card_id);
-                card.get_base_mut().region = region.clone();
+                card.set_region(region.clone());
                 if *tap {
-                    card.get_base_mut().tapped = true;
+                    card.set_tapped(true);
                 }
 
                 if card.is_minion() {

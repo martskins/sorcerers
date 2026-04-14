@@ -23,15 +23,14 @@ impl AridDesert {
             site_base: SiteBase {
                 provided_mana: 1,
                 provided_thresholds: Thresholds::parse("F"),
+                tapped: false,
                 ..Default::default()
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
-                tapped: false,
                 zone: Zone::Atlasbook,
                 costs: Costs::ZERO,
-                region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -86,7 +85,7 @@ impl Card for AridDesert {
         let units = state.get_minions_in_zone(site.get_zone());
         let units = units
             .iter()
-            .filter(|c| c.get_base().region == Region::Surface);
+            .filter(|c| c.get_region(state) == &Region::Surface);
         let mut effects = vec![];
         for unit in units {
             effects.push(Effect::take_damage(&unit.get_id(), site.get_id(), 1));

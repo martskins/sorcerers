@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site,
+        ArtifactType, Card, CardBase, Costs, Edition, Rarity, ResourceProvider, Site,
         SiteBase, Zone,
     },
     effect::Effect,
@@ -24,14 +24,13 @@ impl Battlefield {
                 provided_mana: 0,
                 provided_thresholds: Thresholds::ZERO,
                 types: vec![],
+                tapped: false,
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
-                tapped: false,
                 zone: Zone::Atlasbook,
                 costs: Costs::ZERO,
-                region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

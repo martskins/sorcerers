@@ -22,15 +22,15 @@ impl EscyllionCyclops {
                 toughness: 6,
                 abilities: vec![Ability::Charge],
                 types: vec![MinionType::Monster],
+                tapped: false,
+                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
-                tapped: false,
                 zone: Zone::Spellbook,
                 costs: Costs::basic(6, "FF"),
-                region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

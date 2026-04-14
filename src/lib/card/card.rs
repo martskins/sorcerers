@@ -572,9 +572,7 @@ impl CostType {
                         .first()
                         .expect("options to have at least one element");
                     match ac.action {
-                        CostAction::Tap => {
-                            snapshot.get_card_mut(card_id).get_base_mut().tapped = true
-                        }
+                        CostAction::Tap => snapshot.get_card_mut(card_id).set_tapped(true),
                         CostAction::Discard => {
                             snapshot.get_card_mut(card_id).set_zone(Zone::Cemetery)
                         }
@@ -582,7 +580,7 @@ impl CostType {
                             snapshot.get_card_mut(card_id).set_zone(Zone::Cemetery)
                         }
                         CostAction::Surface => {
-                            snapshot.get_card_mut(card_id).get_base_mut().region = Region::Surface
+                            snapshot.get_card_mut(card_id).set_region(Region::Surface)
                         }
                     }
                 }
@@ -755,6 +753,12 @@ impl Cost {
     }
 
     pub fn with_additional(mut self, additional: AdditionalCost) -> Self {
+        for cost_type in &mut self.0 {
+            if let CostType::Additional(additional_costs) = cost_type {
+                additional_costs.push(additional);
+                return Self(self.0);
+            }
+        }
         self.0.push(CostType::Additional(vec![additional]));
         Self(self.0)
     }
@@ -830,7 +834,51 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     fn is_tapped(&self) -> bool {
-        self.get_base().tapped
+        if let Some(sb) = self.get_site_base() {
+            return sb.tapped;
+        }
+        if let Some(ub) = self.get_unit_base() {
+            return ub.tapped;
+        }
+        if let Some(ab) = self.get_artifact_base() {
+            return ab.tapped;
+        }
+        if let Some(aura_b) = self.get_aura_base() {
+            return aura_b.tapped;
+        }
+        false
+    }
+
+    fn set_tapped(&mut self, value: bool) {
+        if let Some(sb) = self.get_site_base_mut() {
+            sb.tapped = value;
+            return;
+        }
+        if let Some(ub) = self.get_unit_base_mut() {
+            ub.tapped = value;
+            return;
+        }
+        if let Some(ab) = self.get_artifact_base_mut() {
+            ab.tapped = value;
+            return;
+        }
+        if let Some(aura_b) = self.get_aura_base_mut() {
+            aura_b.tapped = value;
+        }
+    }
+
+    fn set_region(&mut self, region: Region) {
+        if let Some(ub) = self.get_unit_base_mut() {
+            ub.region = region;
+            return;
+        }
+        if let Some(ab) = self.get_artifact_base_mut() {
+            ab.region = region;
+            return;
+        }
+        if let Some(aura_b) = self.get_aura_base_mut() {
+            aura_b.region = region;
+        }
     }
 
     fn get_id(&self) -> &uuid::Uuid {
@@ -1268,7 +1316,16 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             return &Region::Void;
         }
 
-        &self.get_base().region
+        if let Some(ub) = self.get_unit_base() {
+            return &ub.region;
+        }
+        if let Some(ab) = self.get_artifact_base() {
+            return &ab.region;
+        }
+        if let Some(aura_b) = self.get_aura_base() {
+            return &aura_b.region;
+        }
+        &Region::Void
     }
 
     fn is_flooded_site(&self, state: &State) -> bool {
@@ -1529,12 +1586,12 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             .filter(|c| c.can_be_targetted_by(state, &self.get_controller_id(state)))
             .filter(|c| !c.has_ability(state, &Ability::Unattackable))
             .filter(|c| {
-                let same_region = c.get_base().region == self.get_base().region;
+                let same_region = c.get_region(state) == self.get_region(state);
                 let ranged_on_airborne = ranged
-                    && self.get_base().region == Region::Surface
+                    && self.get_region(state) == &Region::Surface
                     && c.has_ability(state, &Ability::Airborne);
                 let airborne_on_surface = self.has_ability(state, &Ability::Airborne)
-                    && c.get_base().region == Region::Surface;
+                    && c.get_region(state) == &Region::Surface;
                 return same_region || ranged_on_airborne || airborne_on_surface;
             })
             .filter(|_| {
@@ -1734,6 +1791,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     fn get_aura_base(&self) -> Option<&AuraBase> {
+        None
+    }
+
+    fn get_aura_base_mut(&mut self) -> Option<&mut AuraBase> {
         None
     }
 
@@ -2162,11 +2223,23 @@ pub enum SiteType {
     River,
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct SiteBase {
     pub provided_mana: u8,
     pub provided_thresholds: Thresholds,
     pub types: Vec<SiteType>,
+    pub tapped: bool,
+}
+
+impl Default for SiteBase {
+    fn default() -> Self {
+        Self {
+            provided_mana: 0,
+            provided_thresholds: Thresholds::default(),
+            types: vec![],
+            tapped: false,
+        }
+    }
 }
 
 pub trait ResourceProvider: Card {
@@ -2323,7 +2396,7 @@ pub enum Ability {
     LethalTarget,
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct UnitBase {
     pub power: u16,
     pub toughness: u16,
@@ -2333,6 +2406,25 @@ pub struct UnitBase {
     pub modifier_counters: Vec<AbilityCounter>,
     pub types: Vec<MinionType>,
     pub carried_by: Option<uuid::Uuid>,
+    pub tapped: bool,
+    pub region: Region,
+}
+
+impl Default for UnitBase {
+    fn default() -> Self {
+        Self {
+            power: 0,
+            toughness: 0,
+            abilities: vec![],
+            damage: 0,
+            power_counters: vec![],
+            modifier_counters: vec![],
+            types: vec![],
+            carried_by: None,
+            tapped: false,
+            region: Region::Surface,
+        }
+    }
 }
 
 #[derive(Debug, Default, PartialEq, Serialize, Deserialize, Clone)]
@@ -2370,6 +2462,19 @@ pub enum ArtifactType {
 pub struct ArtifactBase {
     pub needs_bearer: bool,
     pub types: Vec<ArtifactType>,
+    pub tapped: bool,
+    pub region: Region,
+}
+
+impl Default for ArtifactBase {
+    fn default() -> Self {
+        Self {
+            needs_bearer: false,
+            types: vec![],
+            tapped: false,
+            region: Region::Surface,
+        }
+    }
 }
 
 pub trait Artifact: Card {
@@ -2398,15 +2503,13 @@ pub trait Artifact: Card {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct CardBase {
     pub id: uuid::Uuid,
     pub owner_id: PlayerId,
     pub controller_id: PlayerId,
-    pub tapped: bool,
     pub zone: Zone,
     pub costs: Costs,
-    pub region: Region,
     // In the case of artifacts, bearer is the id of the card that has the artifact equipped. This
     // field can also be used for units to track when another unit is carrying them (e.g. a unit
     // being carried by Beast of Burden).
@@ -2416,8 +2519,36 @@ pub struct CardBase {
     pub is_token: bool,
 }
 
+impl Default for CardBase {
+    fn default() -> Self {
+        Self {
+            id: uuid::Uuid::new_v4(),
+            owner_id: PlayerId::default(),
+            controller_id: PlayerId::default(),
+            zone: Zone::default(),
+            costs: Costs::default(),
+            bearer: None,
+            rarity: Rarity::default(),
+            edition: Edition::default(),
+            is_token: false,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
-pub struct AuraBase {}
+pub struct AuraBase {
+    pub tapped: bool,
+    pub region: Region,
+}
+
+impl Default for AuraBase {
+    fn default() -> Self {
+        Self {
+            tapped: false,
+            region: Region::Surface,
+        }
+    }
+}
 
 pub trait Aura: Card {
     fn should_dispell(&self, _state: &State) -> anyhow::Result<bool> {
@@ -2487,7 +2618,7 @@ mod tests {
         assert!(can_afford, "an untapped unit is present in the zone");
 
         let unit = state.get_card_mut(&unit_id);
-        unit.get_base_mut().tapped = true;
+        unit.set_tapped(true);
         let can_afford = cost
             .can_afford(&state, &player_id)
             .expect("should not error");
@@ -2534,7 +2665,7 @@ mod tests {
         assert!(can_afford, "two untapped units the zone");
 
         let unit = state.get_card_mut(&unit_id);
-        unit.get_base_mut().tapped = true;
+        unit.set_tapped(true);
         let can_afford = cost
             .can_afford(&state, &player_id)
             .expect("should not error");

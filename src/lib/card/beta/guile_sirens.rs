@@ -24,15 +24,15 @@ impl GuileSirens {
                 toughness: 3,
                 abilities: vec![Ability::Submerge],
                 types: vec![MinionType::Beast],
+                tapped: false,
+                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
-                tapped: false,
                 zone: Zone::Spellbook,
                 costs: Costs::basic(3, "WW"),
-                region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -129,7 +129,7 @@ impl Card for GuileSirens {
                 from: picked_card.get_zone().clone(),
                 to: ZoneQuery::from_zone(picked_zone),
                 tap: false,
-                region: Region::Surface,
+                region: picked_card.get_region(state).clone(),
                 through_path: None,
             }]);
         }

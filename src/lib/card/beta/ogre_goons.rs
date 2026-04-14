@@ -19,15 +19,15 @@ impl OgreGoons {
                 toughness: 3,
                 abilities: vec![],
                 types: vec![MinionType::Ogre],
+                tapped: false,
+                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
-                tapped: false,
                 zone: Zone::Spellbook,
                 costs: Costs::basic(3, "F"),
-                region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

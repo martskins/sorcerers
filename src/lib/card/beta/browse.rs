@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Region, Zone},
+    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Zone},
     effect::Effect,
     game::{PlayerId, pick_card_with_preview},
     state::State,
@@ -19,10 +19,8 @@ impl Browse {
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
-                tapped: false,
                 zone: Zone::Spellbook,
                 costs: Costs::basic(1, "AAA"),
-                region: Region::Surface,
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

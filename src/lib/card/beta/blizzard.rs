@@ -23,17 +23,18 @@ impl Blizzard {
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
-                tapped: false,
                 zone: Zone::Spellbook,
                 costs: Costs::basic(1, "W"),
-                region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
                 is_token: false,
                 ..Default::default()
             },
-            aura_base: AuraBase {},
+            aura_base: AuraBase {
+                tapped: false,
+                region: Region::Surface,
+            },
         }
     }
 }
@@ -78,6 +79,9 @@ impl Card for Blizzard {
 
     fn get_aura_base(&self) -> Option<&AuraBase> {
         Some(&self.aura_base)
+    }
+    fn get_aura_base_mut(&mut self) -> Option<&mut AuraBase> {
+        Some(&mut self.aura_base)
     }
 
     fn get_aura(&self) -> Option<&dyn Aura> {

@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Region, Zone},
+    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Zone},
     effect::Effect,
     game::{CARDINAL_DIRECTIONS, PlayerId, pick_direction, yes_or_no},
     state::{CardQuery, State},
@@ -19,10 +19,8 @@ impl GrappleShot {
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
-                tapped: false,
                 zone: Zone::Spellbook,
                 costs: Costs::basic(3, "A"),
-                region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -105,7 +103,7 @@ impl Card for GrappleShot {
                 from: ally_zone.clone(),
                 to: cur_zone.clone().into(),
                 tap: false,
-                region: ally_card.get_base().region.clone(),
+                region: ally_card.get_region(state).clone(),
                 through_path: None,
             }];
             // 5. Ask if you want to strike the hit unit

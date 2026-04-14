@@ -1,7 +1,7 @@
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Costs, Edition, Rarity, Region, Zone},
+    card::{Ability, Card, CardBase, Cost, Costs, Edition, Rarity, Zone},
     effect::{AbilityCounter, Effect},
     game::{Element, PlayerId, yes_or_no},
     query::EffectQuery,
@@ -22,10 +22,8 @@ impl DreamQuest {
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
-                tapped: false,
                 zone: Zone::Spellbook,
                 costs: Costs::basic(1, "A"),
-                region: Region::Surface,
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

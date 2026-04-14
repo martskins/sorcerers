@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        AdditionalCost, Card, CardBase, Cost, Costs, Edition, Rarity, Region, ResourceProvider,
+        AdditionalCost, Card, CardBase, Cost, Costs, Edition, Rarity, ResourceProvider,
         Site, SiteBase, Zone,
     },
     effect::Effect,
@@ -63,15 +63,14 @@ impl Vesuvius {
             site_base: SiteBase {
                 provided_mana: 1,
                 provided_thresholds: Thresholds::parse("F"),
+                tapped: false,
                 ..Default::default()
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
-                tapped: false,
                 zone: Zone::Atlasbook,
                 costs: Costs::ZERO,
-                region: Region::Surface,
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

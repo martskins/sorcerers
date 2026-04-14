@@ -1,5 +1,5 @@
 use crate::{
-    card::{AdditionalCost, Card, CardBase, Cost, Costs, Edition, Rarity, Region, Zone},
+    card::{AdditionalCost, Card, CardBase, Cost, Costs, Edition, Rarity, Zone},
     effect::Effect,
     game::{Direction, PlayerId, pick_card},
     query::ZoneQuery,
@@ -20,7 +20,6 @@ impl Craterize {
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
-                tapped: false,
                 zone: Zone::Spellbook,
                 costs: Costs::single(
                     Cost::new(8, "EE").with_additional(AdditionalCost::discard(
@@ -30,7 +29,6 @@ impl Craterize {
                             .controlled_by(&owner_id),
                     )),
                 ),
-                region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

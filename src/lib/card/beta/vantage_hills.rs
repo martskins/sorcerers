@@ -23,15 +23,14 @@ impl VantageHills {
                 provided_mana: 1,
                 provided_thresholds: Thresholds::parse("E"),
                 types: vec![],
+                tapped: false,
                 ..Default::default()
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
-                tapped: false,
                 zone: Zone::Atlasbook,
                 costs: Costs::ZERO,
-                region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -79,7 +78,7 @@ impl Card for VantageHills {
             .get_zone()
             .get_units(state, None)
             .iter()
-            .filter(|c| c.get_base().region == Region::Surface)
+            .filter(|c| c.get_region(state) == &Region::Surface)
             .map(|c| (c.get_id().clone(), vec![Ability::Ranged(1)]))
             .collect();
 

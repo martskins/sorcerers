@@ -92,14 +92,14 @@ impl BatteringRam {
             artifact_base: ArtifactBase {
                 needs_bearer: false,
                 types: vec![ArtifactType::Device],
+                tapped: false,
+                region: Region::Surface,
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
-                tapped: false,
                 zone: Zone::Spellbook,
                 costs: Costs::mana_only(2),
-                region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

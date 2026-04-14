@@ -20,10 +20,8 @@ impl Bury {
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
-                tapped: false,
                 zone: Zone::Spellbook,
                 costs: Costs::basic(3, "E"),
-                region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -62,7 +60,7 @@ impl Card for Bury {
             .cards
             .iter()
             .filter(|c| c.is_minion() || c.is_artifact())
-            .filter(|c| c.get_base().region >= Region::Surface)
+            .filter(|c| c.get_region(state) >= &Region::Surface)
             .map(|c| c.get_id())
             .cloned()
             .collect::<Vec<_>>();

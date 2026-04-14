@@ -43,7 +43,7 @@ impl ActivatedAbility for TapToStrikeNearbyMinions {
             from: kraken.get_zone().clone(),
             to: ZoneQuery::from_zone(kraken.get_zone().clone()),
             tap: false,
-            region: Region::Surface,
+            region: kraken.get_region(state).clone(),
             through_path: None,
         });
 
@@ -75,15 +75,15 @@ impl DiluvianKraken {
                 toughness: 8,
                 abilities: vec![Ability::Submerge],
                 types: vec![MinionType::Monster],
+                tapped: false,
+                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
-                tapped: false,
                 zone: Zone::Spellbook,
                 costs: Costs::basic(8, "WWW"),
-                region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

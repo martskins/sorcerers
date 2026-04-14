@@ -21,17 +21,18 @@ impl Thunderstorm {
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
-                tapped: false,
                 zone: Zone::Spellbook,
                 costs: Costs::basic(4, "AA"),
-                region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
                 is_token: false,
                 ..Default::default()
             },
-            aura_base: AuraBase {},
+            aura_base: AuraBase {
+                tapped: false,
+                region: Region::Surface,
+            },
         }
     }
 }
@@ -77,6 +78,9 @@ impl Card for Thunderstorm {
     fn get_aura_base(&self) -> Option<&AuraBase> {
         Some(&self.aura_base)
     }
+    fn get_aura_base_mut(&mut self) -> Option<&mut AuraBase> {
+        Some(&mut self.aura_base)
+    }
 
     async fn on_turn_end(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         if state.current_player != self.get_controller_id(state) {
@@ -97,7 +101,7 @@ impl Card for Thunderstorm {
                     Some("Pick a zone to move Thunderstorm to".to_string()),
                 ),
                 tap: false,
-                region: Region::Surface,
+                region: self.get_region(state).clone(),
                 through_path: None,
             },
             Effect::DealDamageToTarget {

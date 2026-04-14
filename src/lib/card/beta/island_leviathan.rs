@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Card, CardBase, Cost, Costs, Edition, MinionType, Rarity, Region, Site, SiteBase, UnitBase,
+        Card, CardBase, Cost, Costs, Edition, MinionType, Rarity, Site, SiteBase, UnitBase,
         Zone,
     },
     effect::{Effect, TokenType},
@@ -84,10 +84,8 @@ impl IslandLeviathan {
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
-                tapped: false,
                 zone: Zone::Atlasbook,
                 costs: Costs::ZERO,
-                region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

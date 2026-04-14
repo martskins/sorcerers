@@ -24,14 +24,14 @@ impl LuckyCharm {
             artifact_base: ArtifactBase {
                 needs_bearer: true,
                 types: vec![ArtifactType::Relic],
+                tapped: false,
+                region: Region::Surface,
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
-                tapped: false,
                 zone: Zone::Spellbook,
                 costs: Costs::mana_only(1),
-                region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Card, CardBase, Cost, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase,
+        Card, CardBase, Cost, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase,
         Zone,
     },
     effect::Effect,
@@ -56,7 +56,7 @@ impl ActivatedAbility for FlyToVoid {
                 from: card.get_zone().clone(),
                 to: ZoneQuery::from_zone(picked_void.clone()),
                 tap: false,
-                region: Region::Surface,
+                region: card.get_region(state).clone(),
                 through_path: None,
             },
             Effect::SetCardData {
@@ -73,7 +73,7 @@ impl ActivatedAbility for FlyToVoid {
                 from: card.get_zone().clone(),
                 to: ZoneQuery::from_zone(picked_void.clone()),
                 tap: false,
-                region: unit.get_base().region.clone(),
+                region: unit.get_region(state).clone(),
                 through_path: None,
             });
         }
@@ -100,15 +100,14 @@ impl CloudCity {
                 provided_mana: 1,
                 provided_thresholds: Thresholds::parse("A"),
                 types: vec![],
+                tapped: false,
                 ..Default::default()
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
-                tapped: false,
                 zone: Zone::Atlasbook,
                 costs: Costs::ZERO,
-                region: Region::Surface,
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

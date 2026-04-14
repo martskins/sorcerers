@@ -1,5 +1,5 @@
 pub const SITE_TEMPLATE: &str = r#"use crate::{
-    card::{Card, CardBase, Costs, Edition, Region, Rarity, ResourceProvider, Site, SiteBase, SiteType, Zone},
+    card::{Card, CardBase, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, SiteType, Zone},
     game::{PlayerId, Thresholds},
 };
 
@@ -18,15 +18,14 @@ impl {StructName} {
                 provided_mana: {ProvidedMana},
                 provided_thresholds: Thresholds::parse("{ProvidedThresholds}"),
                 types: vec![{SiteTypes}],
+                tapped: false,
                 ..Default::default()
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
-                tapped: false,
                 zone: Zone::Atlasbook,
                 cost: Costs::ZERO,
-                region: Region::Surface,
                 rarity: Rarity::{Rarity},
                 edition: Edition::{Edition},
                 controller_id: owner_id.clone(),

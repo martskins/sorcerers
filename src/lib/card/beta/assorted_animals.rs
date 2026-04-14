@@ -1,7 +1,7 @@
 use rand::seq::SliceRandom;
 
 use crate::{
-    card::{Card, CardBase, Cost, CostType, Costs, Edition, MinionType, Rarity, Region, Zone},
+    card::{Card, CardBase, Cost, CostType, Costs, Edition, MinionType, Rarity, Zone},
     effect::Effect,
     game::{PlayerId, pick_card_with_options, reveal_cards, yes_or_no},
     state::{CardQuery, State},
@@ -21,10 +21,8 @@ impl AssortedAnimals {
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
-                tapped: false,
                 zone: Zone::Spellbook,
                 costs: Costs::single(Cost::from_variable_mana("EE")),
-                region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

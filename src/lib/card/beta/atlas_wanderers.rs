@@ -22,15 +22,15 @@ impl AtlasWanderers {
                 toughness: 5,
                 abilities: vec![],
                 types: vec![MinionType::Giant],
+                tapped: false,
+                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
-                tapped: false,
                 zone: Zone::Atlasbook,
                 costs: Costs::basic(5, "EEE"),
-                region: Region::Surface,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

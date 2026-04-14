@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, Zone,
+        Card, CardBase, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone,
     },
     game::{PlayerId, Thresholds},
 };
@@ -20,15 +20,14 @@ impl Lighthouse {
                 provided_mana: 1,
                 provided_thresholds: Thresholds::parse("AW"),
                 types: vec![],
+                tapped: false,
                 ..Default::default()
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
-                tapped: false,
                 zone: Zone::Atlasbook,
                 costs: Costs::ZERO,
-                region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

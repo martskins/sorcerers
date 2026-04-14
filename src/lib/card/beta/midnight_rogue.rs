@@ -20,15 +20,15 @@ impl MidnightRogue {
                 toughness: 2,
                 abilities: vec![Ability::Ranged(1), Ability::Stealth],
                 types: vec![MinionType::Mortal],
+                tapped: false,
+                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
-                tapped: false,
                 zone: Zone::Spellbook,
                 costs: Costs::basic(3, "A"),
-                region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

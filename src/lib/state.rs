@@ -1130,14 +1130,47 @@ impl State {
         path: &[Zone],
         controller_id: &PlayerId,
     ) -> Vec<(uuid::Uuid, Zone)> {
-        self.cards
-            .iter()
-            .filter(|c| &c.get_controller_id(self) == controller_id)
-            .filter(|c| c.is_unit())
-            .filter(|c| c.get_zone().is_in_play())
-            .filter(|c| path.contains(c.get_zone()))
-            .map(|c| (c.get_id().clone(), c.get_zone().clone()))
-            .collect()
+        let mut interceptors = Vec::new();
+
+        for card in &self.cards {
+            if &card.get_controller_id(self) != controller_id {
+                continue;
+            }
+            if !card.is_unit() {
+                continue;
+            }
+            if !card.get_zone().is_in_play() {
+                continue;
+            }
+
+            let unit_zone = card.get_zone();
+
+            let reachable_path_zones: Vec<Zone> = if card.has_ability(self, &Ability::Airborne) {
+                let nearby = unit_zone.get_nearby();
+                path.iter()
+                    .filter(|z| nearby.contains(z) || z == &unit_zone)
+                    .cloned()
+                    .collect()
+            } else if card.has_ability(self, &Ability::Voidwalk)
+                || card
+                    .get_unit_base()
+                    .is_some_and(|ub| ub.abilities.iter().any(|a| matches!(a, Ability::Ranged(_))))
+            {
+                let adjacent = unit_zone.get_adjacent();
+                path.iter()
+                    .filter(|z| adjacent.contains(z) || z == &unit_zone)
+                    .cloned()
+                    .collect()
+            } else {
+                path.iter().filter(|z| z == &unit_zone).cloned().collect()
+            };
+
+            for zone in reachable_path_zones {
+                interceptors.push((card.get_id().clone(), zone));
+            }
+        }
+
+        interceptors
     }
 
     pub async fn apply_effects_without_log(&mut self) -> anyhow::Result<()> {

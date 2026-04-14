@@ -23,15 +23,15 @@ impl HeadlessHaunt {
                 toughness: 4,
                 abilities: vec![Ability::Voidwalk],
                 types: vec![MinionType::Spirit],
+                tapped: false,
+                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
-                tapped: false,
                 zone: Zone::Spellbook,
                 costs: Costs::basic(3, "AA"),
-                region: Region::Surface,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),
@@ -84,7 +84,7 @@ impl Card for HeadlessHaunt {
             from: self.get_zone().clone(),
             to: ZoneQuery::random(Zone::all_realm()),
             tap: false,
-            region: Region::Surface,
+            region: self.get_region(_state).clone(),
             through_path: None,
         }])
     }

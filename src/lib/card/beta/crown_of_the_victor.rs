@@ -22,14 +22,14 @@ impl CrownOfTheVictor {
             artifact_base: ArtifactBase {
                 needs_bearer: true,
                 types: vec![ArtifactType::Relic],
+                tapped: false,
+                region: Region::Surface,
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
-                tapped: false,
                 zone: Zone::Spellbook,
                 costs: Costs::mana_only(3),
-                region: Region::Surface,
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

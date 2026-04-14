@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Costs, Edition, Rarity, Region, Zone},
+    card::{Ability, Card, CardBase, Cost, Costs, Edition, Rarity, Zone},
     effect::{AbilityCounter, Effect},
     game::{PlayerId, pick_card},
     query::EffectQuery,
@@ -20,10 +20,8 @@ impl MadDash {
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
-                tapped: false,
                 zone: Zone::Spellbook,
                 costs: Costs::basic(2, "F"),
-                region: Region::Surface,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
                 controller_id: owner_id.clone(),

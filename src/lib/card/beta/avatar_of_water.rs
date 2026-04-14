@@ -83,15 +83,15 @@ impl AvatarOfWater {
             unit_base: UnitBase {
                 power: 1,
                 toughness: 20,
+                tapped: false,
+                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
-                tapped: false,
                 zone: Zone::Spellbook,
                 costs: Costs::ZERO,
-                region: Region::Surface,
                 rarity: Rarity::Unique,
                 edition: Edition::Alpha,
                 controller_id: owner_id.clone(),
