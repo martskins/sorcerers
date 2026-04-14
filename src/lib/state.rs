@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        Ability, ArtifactType, Card, CardData, CardType, DodgeRoll, MinionType, Rarity, Region,
-        SiteType, Zone,
+        Ability, ArtifactType, Card, CardData, CardType, Costs, DodgeRoll, MinionType, Rarity,
+        Region, SiteType, Zone,
     },
     deck::Deck,
     effect::Effect,
@@ -991,6 +991,52 @@ impl State {
         self.player_mana.entry(player_id.clone()).or_insert(0)
     }
 
+    /// Returns the effective play costs for a card after applying all matching
+    /// `ModifyManaCost` continuous effects.
+    ///
+    /// `target_zone` is the zone the card is about to be placed in (e.g. the
+    /// realm zone chosen by the player). Effects whose `zones` filter does not
+    /// include `target_zone` are skipped; effects with `zones: None` are always
+    /// applied.
+    pub fn get_effective_costs(
+        &self,
+        card_id: &uuid::Uuid,
+        target_zone: Option<&Zone>,
+    ) -> anyhow::Result<Costs> {
+        let base_costs = self.get_card(card_id).get_costs(self)?.clone();
+
+        let total_diff: i8 = self
+            .continuous_effects
+            .iter()
+            .filter_map(|ce| match ce {
+                ContinuousEffect::ModifyManaCost {
+                    mana_diff,
+                    affected_cards,
+                    zones,
+                } => {
+                    if !affected_cards.matches(card_id, self) {
+                        return None;
+                    }
+                    let zone_ok = match zones {
+                        None => true,
+                        Some(effect_zones) => match target_zone {
+                            None => false,
+                            Some(z) => effect_zones.contains(z),
+                        },
+                    };
+                    if zone_ok { Some(*mana_diff) } else { None }
+                }
+                _ => None,
+            })
+            .sum();
+
+        if total_diff == 0 {
+            return Ok(base_costs);
+        }
+
+        Ok(base_costs.with_mana_adjusted(total_diff))
+    }
+
     pub fn queue(&mut self, effects: impl IntoIterator<Item = Effect>) {
         self.effects.extend(effects.into_iter().map(Arc::new));
     }
@@ -1362,14 +1408,14 @@ impl State {
 
     #[cfg(test)]
     pub fn new_mock_state(zones_with_sites: impl AsRef<[Zone]>) -> State {
-        use crate::card::from_name_and_zone;
+        use crate::card::{AridDesert, from_name_and_zone};
 
         let player_one_id = uuid::Uuid::new_v4();
         let player_two_id = uuid::Uuid::new_v4();
         let cards: Vec<Box<dyn Card>> = zones_with_sites
             .as_ref()
             .into_iter()
-            .map(|z| from_name_and_zone("Arid Desert", &player_one_id, z.clone()))
+            .map(|z| from_name_and_zone(AridDesert::NAME, &player_one_id, z.clone()))
             .collect();
 
         let player1 = PlayerWithDeck {
@@ -1411,7 +1457,9 @@ impl State {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::card::{HeadlessHaunt, KiteArcher, NimbusJinn, RimlandNomads};
+    use crate::card::{
+        CauldronCrones, DonnybrookInn, HeadlessHaunt, KiteArcher, NimbusJinn, RimlandNomads,
+    };
 
     #[test]
     fn test_inteceptors() {
@@ -1485,5 +1533,29 @@ mod tests {
         let path = vec![Zone::Realm(8), Zone::Realm(13), Zone::Realm(18)];
         let interceptors = state.get_interceptors_for_move(&path, &opponent_id);
         assert_eq!(interceptors.len(), 3);
+    }
+
+    #[tokio::test]
+    async fn test_get_effective_costs_donnybrook_inn() {
+        let mut state = State::new_mock_state(vec![Zone::Realm(8)]);
+        let player_id = state.players[0].id.clone();
+        let mut donnybrook_inn = DonnybrookInn::new(player_id.clone());
+        donnybrook_inn.set_zone(Zone::Realm(3));
+        state.cards.push(Box::new(donnybrook_inn.clone()));
+
+        let mut cauldron_crones = CauldronCrones::new(player_id.clone());
+        cauldron_crones.set_zone(Zone::Hand);
+        state.cards.push(Box::new(cauldron_crones.clone()));
+
+        state.compute_world_effects().await.unwrap();
+        let regular_costs = state
+            .get_effective_costs(cauldron_crones.get_id(), None)
+            .unwrap();
+        assert_eq!(regular_costs.mana_cost(), 3);
+
+        let inn_costs = state
+            .get_effective_costs(cauldron_crones.get_id(), Some(donnybrook_inn.get_zone()))
+            .unwrap();
+        assert_eq!(inn_costs.mana_cost(), 2);
     }
 }

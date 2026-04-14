@@ -786,6 +786,11 @@ impl Costs {
         Self(self.0)
     }
 
+    /// Returns a new `Costs` with every mana component adjusted by `diff`, clamped to 0.
+    pub fn with_mana_adjusted(&self, diff: i8) -> Self {
+        Self(self.0.iter().map(|c| c.with_mana_adjusted(diff)).collect())
+    }
+
     pub async fn pay(&self, state: &mut State, player_id: &PlayerId) -> anyhow::Result<Cost> {
         match self.0.len() {
             0 => Ok(Cost::ZERO),
@@ -823,7 +828,7 @@ impl Costs {
             }
         }
 
-        Ok(false)
+        Ok(true)
     }
 }
 
@@ -917,6 +922,21 @@ impl Cost {
         }
 
         parts.join(" + ")
+    }
+
+    /// Returns a copy of this `Cost` with every `ManaCost` adjusted by `diff`, clamped to 0.
+    pub fn with_mana_adjusted(&self, diff: i8) -> Self {
+        Self(
+            self.0
+                .iter()
+                .map(|ct| match ct {
+                    CostType::ManaCost(mc) => {
+                        CostType::ManaCost(((*mc as i16) + (diff as i16)).max(0) as u8)
+                    }
+                    other => other.clone(),
+                })
+                .collect(),
+        )
     }
 
     pub async fn pay(&self, state: &mut State, player_id: &PlayerId) -> anyhow::Result<Cost> {
@@ -1345,12 +1365,20 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     fn default_get_valid_play_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {
+        let controller_id = self.get_controller_id(state);
         Ok(Zone::all_board()
             .into_iter()
             .filter(|z| {
-                let keep = z.is_valid_play_zone_for(state, self.get_id())
+                let costs = state
+                    .get_effective_costs(self.get_id(), Some(z))
                     .unwrap_or_default();
-                keep
+                let can_afford = costs.can_afford(state, controller_id).unwrap_or_default();
+                if !can_afford {
+                    return false;
+                }
+
+                z.is_valid_play_zone_for(state, self.get_id())
+                    .unwrap_or_default()
             })
             .collect::<Vec<Zone>>())
     }
@@ -2647,7 +2675,9 @@ pub fn from_name_and_zone(name: &str, player_id: &PlayerId, zone: Zone) -> Box<d
 #[cfg(test)]
 mod tests {
     use crate::{
-        card::{Ability, AdditionalCost, ApprenticeWizard, AridDesert, Card, Cost, RimlandNomads, Zone},
+        card::{
+            Ability, AdditionalCost, ApprenticeWizard, AridDesert, Card, Cost, RimlandNomads, Zone,
+        },
         state::{CardQuery, State},
     };
 
@@ -3033,11 +3063,9 @@ mod tests {
         assert_eq!(zones, expected);
     }
 
-#[test]
+    #[test]
     fn test_get_valid_play_zones_site_second_site() {
-        let zones_with_sites = vec![
-            Zone::Realm(3),
-        ];
+        let zones_with_sites = vec![Zone::Realm(3)];
         let mut state = State::new_mock_state(zones_with_sites);
         let player_id = state.players[0].id.clone();
         let mut card = AridDesert::new(player_id.clone());
@@ -3048,13 +3076,8 @@ mod tests {
             .get_valid_play_zones(&state)
             .expect("zones to be computed");
         zones.sort();
-        let mut expected = vec![
-            Zone::Realm(8),
-            Zone::Realm(4),
-            Zone::Realm(2),
-        ];
+        let mut expected = vec![Zone::Realm(8), Zone::Realm(4), Zone::Realm(2)];
         expected.sort();
         assert_eq!(zones, expected);
     }
-
 }

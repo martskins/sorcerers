@@ -1536,10 +1536,22 @@ impl Game {
                 }
 
                 if let Zone::Hand = card.get_zone() {
-                    if !card
-                        .get_costs(&self.state)?
-                        .can_afford(&self.state, player_id)?
-                    {
+                    // A card is playable if affordable at ANY of its valid target zones
+                    // (accounting for zone-specific cost reductions like Donnybrook Inn).
+                    let valid_zones = card.get_valid_play_zones(&self.state)?;
+                    let affordable = if valid_zones.is_empty() {
+                        self.state
+                            .get_effective_costs(card_id, None)?
+                            .can_afford(&self.state, player_id)?
+                    } else {
+                        valid_zones.iter().any(|zone| {
+                            self.state
+                                .get_effective_costs(card_id, Some(zone))
+                                .and_then(|costs| costs.can_afford(&self.state, player_id))
+                                .unwrap_or(false)
+                        })
+                    };
+                    if !affordable {
                         return Ok(());
                     }
                 }

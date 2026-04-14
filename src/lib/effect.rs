@@ -1074,7 +1074,7 @@ impl Effect {
                 caster_id,
                 ..
             } => {
-                let costs = state.get_card(card_id).get_costs(&state)?.clone();
+                let costs = state.get_effective_costs(card_id, None)?;
                 let paid_cost = costs.pay(state, player_id).await?;
 
                 let snapshot = state.snapshot();
@@ -1092,9 +1092,9 @@ impl Effect {
                 ..
             } => {
                 let zone = zone.resolve(player_id, state).await?;
-                let snapshot = state.snapshot();
-                let costs = state.get_card(card_id).get_costs(&snapshot)?.clone();
+                let costs = state.get_effective_costs(card_id, Some(&zone))?;
                 Box::pin(costs.pay(state, &player_id)).await?;
+                let snapshot = state.snapshot();
                 let card = state
                     .cards
                     .iter_mut()
