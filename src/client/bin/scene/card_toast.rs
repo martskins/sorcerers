@@ -3,7 +3,7 @@ use crate::{
     render,
     texture_cache::TextureCache,
 };
-use egui::{Color32, Context, FontId, Painter, Rect, TextureHandle, pos2, vec2};
+use egui::{Color32, Context, FontId, Rect, TextureHandle, pos2, vec2};
 use sorcerers::card::CardData;
 
 /// Duration of a card-played toast (longer so the image can be appreciated).

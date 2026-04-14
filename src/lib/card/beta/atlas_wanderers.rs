@@ -83,13 +83,13 @@ impl Card for AtlasWanderers {
         let from_cards = state
             .get_cards_in_zone(&from_zone)
             .iter()
-            .filter(|card| !card.is_oversized())
+            .filter(|card| !card.is_oversized(state))
             .map(|card| card.get_id().clone())
             .collect::<Vec<_>>();
         let to_cards = state
             .get_cards_in_zone(&to_zone)
             .iter()
-            .filter(|card| !card.is_oversized())
+            .filter(|card| !card.is_oversized(state))
             .map(|card| card.get_id().clone())
             .collect::<Vec<_>>();
 

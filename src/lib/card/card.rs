@@ -130,6 +130,114 @@ impl Zone {
         }
     }
 
+    pub fn is_valid_play_zone_for(
+        &self,
+        state: &State,
+        card_id: &uuid::Uuid,
+    ) -> anyhow::Result<bool> {
+        if !self.is_in_play() {
+            return Ok(false);
+        }
+
+        match self {
+            Zone::Realm(_) => {
+                let site_in_zone = self.get_site(state);
+                if let Some(site) = site_in_zone {
+                    return site.is_valid_play_zone_for(state, card_id);
+                }
+
+                // If there's no site in the zone, only cards with Voidwalk can be played there.
+                let card = state.get_card(card_id);
+                match card.get_card_type() {
+                    CardType::Site => {
+                        let player_id = card.get_controller_id(state);
+                        let has_played_site = CardQuery::new()
+                            .sites()
+                            .in_play()
+                            .controlled_by(&player_id)
+                            .all(state)
+                            .len()
+                            > 0;
+                        if !has_played_site {
+                            let avatar_id = CardQuery::new()
+                                .avatars()
+                                .in_play()
+                                .controlled_by(&player_id)
+                                .all(state)
+                                .first()
+                                .cloned()
+                                .ok_or(anyhow::anyhow!("player has no avatar"))?;
+                            let avatar = state.get_card(&avatar_id);
+                            return Ok(avatar.get_zone() == self);
+                        }
+
+                        let sites: Vec<&Zone> = CardQuery::new()
+                            .sites()
+                            .in_play()
+                            .not_named(&Rubble::NAME)
+                            .all(state)
+                            .into_iter()
+                            .map(|cid| state.get_card(&cid).get_zone())
+                            .collect();
+
+                        let occupied_squares: Vec<&Zone> = CardQuery::new()
+                            .sites()
+                            .in_play()
+                            .not_named(&Rubble::NAME)
+                            .controlled_by(&player_id)
+                            .all(state)
+                            .into_iter()
+                            .map(|cid| state.get_card(&cid).get_zone())
+                            .collect();
+
+                        Ok(occupied_squares
+                            .iter()
+                            .flat_map(|c| get_adjacent_zones(c))
+                            .filter(|c| !occupied_squares.contains(&c))
+                            .filter(|c| !sites.contains(&c))
+                            .find(|c| c == self)
+                            .is_some())
+                    }
+                    _ => Ok(card.has_ability(state, &Ability::Voidwalk)),
+                }
+            }
+            Zone::Intersection(sqs) => {
+                let card = state.get_card(card_id);
+                let player_id = card.get_controller_id(state);
+                match card.get_card_type() {
+                    CardType::Minion => {
+                        if !card.is_oversized(state) {
+                            return Ok(false);
+                        }
+
+                        let site_squares: Vec<u8> = CardQuery::new()
+                            .sites()
+                            .in_play()
+                            .controlled_by(&player_id)
+                            .all(state)
+                            .into_iter()
+                            .filter_map(|cid| state.get_card(&cid).get_zone().get_square())
+                            .collect();
+                        Ok(sqs.iter().any(|sq| site_squares.contains(&sq)))
+                    }
+                    CardType::Aura => {
+                        let site_squares: Vec<u8> = CardQuery::new()
+                            .sites()
+                            .in_play()
+                            .controlled_by(&player_id)
+                            .all(state)
+                            .into_iter()
+                            .filter_map(|cid| state.get_card(&cid).get_zone().get_square())
+                            .collect();
+                        Ok(sqs.iter().any(|sq| site_squares.contains(&sq)))
+                    }
+                    _ => Ok(false),
+                }
+            }
+            _ => return Ok(false),
+        }
+    }
+
     pub fn steps_to_zone(&self, other: &Zone) -> Option<u8> {
         self.min_steps_to_zone(other)
     }
@@ -174,6 +282,12 @@ impl Zone {
 
     pub fn all_realm() -> Vec<Zone> {
         (1..=20).map(|sq| Zone::Realm(sq)).collect()
+    }
+
+    pub fn all_board() -> Vec<Zone> {
+        let mut zones = Self::all_realm();
+        zones.extend(Self::all_intersections());
+        zones
     }
 
     pub fn get_square(&self) -> Option<u8> {
@@ -1216,97 +1330,104 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     fn default_get_valid_play_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {
-        match self.get_card_type() {
-            CardType::Aura => Ok(Zone::all_intersections()
-                .iter()
-                .filter(|z| match z {
-                    Zone::Intersection(sqs) => {
-                        sqs.iter().any(|_| state.cards.iter().any(|c| c.is_site()))
-                    }
-                    _ => false,
-                })
-                .cloned()
-                .collect()),
-            CardType::Minion | CardType::Artifact => {
-                // Oversized units are placed at intersection zones (occupying all 4 sub-sites).
-                if self.is_oversized() {
-                    return Ok(Zone::all_intersections()
-                        .into_iter()
-                        .filter(|z| {
-                            if let Zone::Intersection(sqs) = z {
-                                sqs.iter()
-                                    .all(|sq| Zone::Realm(*sq).get_site(state).is_some())
-                            } else {
-                                false
-                            }
-                        })
-                        .collect());
-                }
-
-                Ok(state
-                    .cards
-                    .iter()
-                    .filter(|c| c.get_owner_id() == self.get_owner_id())
-                    .filter(|c| c.is_site())
-                    .filter_map(|c| match c.get_zone() {
-                        z @ Zone::Realm(_) => Some(z),
-                        _ => None,
-                    })
-                    .cloned()
-                    .collect())
-            }
-            CardType::Site => {
-                let player_id = self.get_owner_id();
-                let has_played_site = state.cards.iter().any(|c| {
-                    c.get_owner_id() == player_id
-                        && c.is_site()
-                        && matches!(c.get_zone(), Zone::Realm(_))
-                });
-                if !has_played_site {
-                    let avatar = state
-                        .cards
-                        .iter()
-                        .find(|c| c.get_owner_id() == player_id && c.is_avatar())
-                        .ok_or(anyhow::anyhow!("player has no avatar"))?;
-                    match avatar.get_zone() {
-                        z @ Zone::Realm(_) => return Ok(vec![z.clone()]),
-                        _ => return Err(anyhow::anyhow!("Avatar not in realm")),
-                    }
-                }
-
-                let sites: Vec<&Zone> = state
-                    .cards
-                    .iter()
-                    .filter(|c| c.is_site())
-                    .filter(|c| c.get_name() != Rubble::NAME)
-                    .filter_map(|c| match c.get_zone() {
-                        z @ Zone::Realm(_) => Some(z),
-                        _ => None,
-                    })
-                    .collect();
-
-                let occupied_squares: Vec<&Zone> = state
-                    .cards
-                    .iter()
-                    .filter(|c| c.get_owner_id() == player_id)
-                    .filter(|c| c.is_site())
-                    .filter(|c| c.get_name() != Rubble::NAME)
-                    .filter(|c| matches!(c.get_zone(), Zone::Realm(_)))
-                    .flat_map(|c| match c.get_zone() {
-                        z @ Zone::Realm(_) => vec![z],
-                        _ => vec![],
-                    })
-                    .collect();
-
-                Ok(occupied_squares
-                    .iter()
-                    .flat_map(|c| get_adjacent_zones(c))
-                    .filter(|c| !occupied_squares.contains(&c))
-                    .filter(|c| !sites.contains(&c))
-                    .collect())
-            }
-            _ => Ok(vec![]),
-        }
+        Ok(Zone::all_board()
+            .into_iter()
+            .filter(|z| {
+                z.is_valid_play_zone_for(state, self.get_id())
+                    .unwrap_or_default()
+            })
+            .collect::<Vec<Zone>>())
+        // match self.get_card_type() {
+        //     CardType::Aura => Ok(Zone::all_intersections()
+        //         .iter()
+        //         .filter(|z| match z {
+        //             Zone::Intersection(sqs) => {
+        //                 sqs.iter().any(|_| state.cards.iter().any(|c| c.is_site()))
+        //             }
+        //             _ => false,
+        //         })
+        //         .cloned()
+        //         .collect()),
+        //     CardType::Minion | CardType::Artifact => {
+        //         // Oversized units are placed at intersection zones (occupying all 4 sub-sites).
+        //         if self.is_oversized(state) {
+        //             return Ok(Zone::all_intersections()
+        //                 .into_iter()
+        //                 .filter(|z| {
+        //                     if let Zone::Intersection(sqs) = z {
+        //                         sqs.iter()
+        //                             .all(|sq| Zone::Realm(*sq).get_site(state).is_some())
+        //                     } else {
+        //                         false
+        //                     }
+        //                 })
+        //                 .collect());
+        //         }
+        //
+        //         Ok(state
+        //             .cards
+        //             .iter()
+        //             .filter(|c| c.get_owner_id() == self.get_owner_id())
+        //             .filter(|c| c.is_site())
+        //             .filter_map(|c| match c.get_zone() {
+        //                 z @ Zone::Realm(_) => Some(z),
+        //                 _ => None,
+        //             })
+        //             .cloned()
+        //             .collect())
+        //     }
+        //     CardType::Site => {
+        //         let player_id = self.get_owner_id();
+        //         let has_played_site = state.cards.iter().any(|c| {
+        //             c.get_owner_id() == player_id
+        //                 && c.is_site()
+        //                 && matches!(c.get_zone(), Zone::Realm(_))
+        //         });
+        //         if !has_played_site {
+        //             let avatar = state
+        //                 .cards
+        //                 .iter()
+        //                 .find(|c| c.get_owner_id() == player_id && c.is_avatar())
+        //                 .ok_or(anyhow::anyhow!("player has no avatar"))?;
+        //             match avatar.get_zone() {
+        //                 z @ Zone::Realm(_) => return Ok(vec![z.clone()]),
+        //                 _ => return Err(anyhow::anyhow!("Avatar not in realm")),
+        //             }
+        //         }
+        //
+        //         let sites: Vec<&Zone> = state
+        //             .cards
+        //             .iter()
+        //             .filter(|c| c.is_site())
+        //             .filter(|c| c.get_name() != Rubble::NAME)
+        //             .filter_map(|c| match c.get_zone() {
+        //                 z @ Zone::Realm(_) => Some(z),
+        //                 _ => None,
+        //             })
+        //             .collect();
+        //
+        //         let occupied_squares: Vec<&Zone> = state
+        //             .cards
+        //             .iter()
+        //             .filter(|c| c.get_owner_id() == player_id)
+        //             .filter(|c| c.is_site())
+        //             .filter(|c| c.get_name() != Rubble::NAME)
+        //             .filter(|c| matches!(c.get_zone(), Zone::Realm(_)))
+        //             .flat_map(|c| match c.get_zone() {
+        //                 z @ Zone::Realm(_) => vec![z],
+        //                 _ => vec![],
+        //             })
+        //             .collect();
+        //
+        //         Ok(occupied_squares
+        //             .iter()
+        //             .flat_map(|c| get_adjacent_zones(c))
+        //             .filter(|c| !occupied_squares.contains(&c))
+        //             .filter(|c| !sites.contains(&c))
+        //             .collect())
+        //     }
+        //     _ => Ok(vec![]),
+        // }
     }
 
     // Retuns the region the card is currently on. If the card is not in a zone with a site, it is
@@ -1414,9 +1535,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     /// Returns true if this is an oversized unit (occupies a 2×2 intersection).
-    fn is_oversized(&self) -> bool {
-        self.get_unit_base()
-            .map_or(false, |ub| ub.abilities.contains(&Ability::Oversized))
+    fn is_oversized(&self, state: &State) -> bool {
+        self.has_ability(state, &Ability::Oversized)
     }
 
     /// Returns true if this card physically occupies `zone`.
@@ -1424,11 +1544,11 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     /// For normal cards this is equivalent to `self.get_zone() == zone`.
     /// For oversized units at a `Zone::Intersection`, the unit also occupies
     /// each of the four constituent `Zone::Realm` sub-zones.
-    fn occupies_zone(&self, zone: &Zone) -> bool {
+    fn occupies_zone(&self, state: &State, zone: &Zone) -> bool {
         if self.get_zone() == zone {
             return true;
         }
-        if self.is_oversized() {
+        if self.is_oversized(state) {
             if let Zone::Intersection(sub_zones) = self.get_zone() {
                 if let Zone::Realm(sq) = zone {
                     return sub_zones.contains(sq);
@@ -1544,7 +1664,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 }
 
                 // Oversized units may only move to intersection zones where all 4 sub-zones have sites.
-                if self.is_oversized() {
+                if self.is_oversized(state) {
                     return match z {
                         Zone::Intersection(sqs) => sqs
                             .iter()
@@ -2305,6 +2425,14 @@ pub trait ResourceProvider: Card {
 impl<T> ResourceProvider for T where T: Site {}
 
 pub trait Site: Card + ResourceProvider {
+    fn is_valid_play_zone_for(&self, state: &State, uuid: &uuid::Uuid) -> anyhow::Result<bool> {
+        if self.get_controller_id(state) == state.get_card(uuid).get_controller_id(state) {
+            return Ok(true);
+        }
+
+        Ok(true)
+    }
+
     fn is_land_site(&self, state: &State) -> anyhow::Result<bool> {
         if let Some(rp) = self.get_resource_provider() {
             return Ok(rp.provided_affinity(state)?.water == 0);

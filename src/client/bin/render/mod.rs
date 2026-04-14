@@ -1,9 +1,6 @@
-use crate::{
-    config::{CARD_ASPECT_RATIO, realm_rect, screen_rect},
-    texture_cache::TextureCache,
-};
+use crate::config::{CARD_ASPECT_RATIO, realm_rect, screen_rect};
 use egui::{
-    Color32, Context, FontId, Painter, Pos2, Rect, Stroke, TextureHandle, Vec2,
+    Color32, FontId, Painter, Pos2, Rect, Stroke, TextureHandle, Vec2,
     epaint::{Mesh, Shape, Vertex},
     pos2, vec2,
 };

@@ -6,12 +6,10 @@ use crate::{
     texture_cache::TextureCache,
 };
 use egui::{Color32, Context, Painter, Rect, Sense, Stroke, Ui, pos2, vec2};
-use sorcerers::game::PlayerId;
 
 const THUMB_W: f32 = 80.0;
 const THUMB_H: f32 = THUMB_W / CARD_ASPECT_RATIO;
 const CARD_PAD: f32 = 6.0;
-const PREVIEW_SCALE: f32 = 3.0;
 
 #[derive(Debug)]
 pub struct CardViewerComponent {
@@ -50,7 +48,7 @@ impl Component for CardViewerComponent {
         &mut self,
         _data: &mut GameData,
         ui: &mut Ui,
-        painter: &Painter,
+        _painter: &Painter,
     ) -> anyhow::Result<()> {
         if !self.visible {
             return Ok(());

@@ -47,6 +47,7 @@ pub struct CardQuery {
     ids: Option<Vec<uuid::Uuid>>,
     card_names: Option<Vec<String>>,
     card_name_contains: Option<String>,
+    not_named: Option<Vec<String>>,
     controller_id: Option<PlayerId>,
     not_in_ids: Option<Vec<uuid::Uuid>>,
     abilities: Option<Vec<Ability>>,
@@ -213,6 +214,13 @@ impl CardQuery {
     pub fn card_name_contains(self, name: &str) -> Self {
         Self {
             card_name_contains: Some(name.to_string()),
+            ..self
+        }
+    }
+
+    pub fn not_named(self, name: &str) -> Self {
+        Self {
+            not_named: Some(vec![name.to_string()]),
             ..self
         }
     }
@@ -510,7 +518,7 @@ impl CardQuery {
             }
         }
 
-        if let Some(can_be_attacked_by) = &self.can_be_attacked_by {
+        if let Some(_can_be_attacked_by) = &self.can_be_attacked_by {
             // TODO: this needs to check for flying, etc
             // let attacker = state.get_card(can_be_attacked_by);
         }
@@ -546,6 +554,12 @@ impl CardQuery {
 
         if let Some(name) = &self.card_name_contains {
             if !card.get_name().contains(name) {
+                return false;
+            }
+        }
+
+        if let Some(not_named) = &self.not_named {
+            if not_named.contains(&card.get_name().to_string()) {
                 return false;
             }
         }
@@ -721,7 +735,7 @@ impl CardQuery {
         }
 
         if let Some(in_zones) = &self.in_zones {
-            if !in_zones.iter().any(|z| card.occupies_zone(z)) {
+            if !in_zones.iter().any(|z| card.occupies_zone(state, z)) {
                 return false;
             }
         }
@@ -1270,7 +1284,7 @@ impl State {
     pub fn get_minions_in_zone(&self, zone: &Zone) -> Vec<&Box<dyn Card>> {
         self.cards
             .iter()
-            .filter(|c| c.occupies_zone(zone))
+            .filter(|c| c.occupies_zone(&self, zone))
             .filter(|c| c.is_minion())
             .collect()
     }
@@ -1278,7 +1292,7 @@ impl State {
     pub fn get_units_in_zone(&self, zone: &Zone) -> Vec<&Box<dyn Card>> {
         self.cards
             .iter()
-            .filter(|c| c.occupies_zone(zone))
+            .filter(|c| c.occupies_zone(&self, zone))
             .filter(|c| c.is_unit())
             .collect()
     }
@@ -1286,7 +1300,7 @@ impl State {
     pub fn get_cards_in_zone(&self, zone: &Zone) -> Vec<&Box<dyn Card>> {
         self.cards
             .iter()
-            .filter(|c| c.occupies_zone(zone))
+            .filter(|c| c.occupies_zone(&self, zone))
             .collect()
     }
 
