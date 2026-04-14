@@ -1,6 +1,6 @@
 use async_channel::Sender;
 use sorcerers::{
-    card::ALL_PRECONS,
+    card::{ALL_PRECONS, DonnybrookInn},
     game::Game,
     networking::{
         client::Client,
@@ -163,8 +163,14 @@ impl Server {
         self.game_players
             .insert(game.id.clone(), vec![player1.clone(), player2.clone()]);
 
-        // // Uncomment this to setup a basic game state for testing
-        // let player_one = game.state.players[0].id.clone();
+        // Uncomment this to setup a basic game state for testing
+        let player_one = game.state.players[0].id.clone();
+        game.state.cards.push(sorcerers::card::from_name_and_zone(
+            DonnybrookInn::NAME,
+            &player_one,
+            sorcerers::card::Zone::Hand,
+        ));
+
         // let player_two = game.state.players[1].id.clone();
         // game.state.cards.push(sorcerers::card::from_name_and_zone(
         //     "Chain Lightning",
@@ -227,11 +233,6 @@ impl Server {
         //     AridDesert::NAME,
         //     &player_two,
         //     sorcerers::card::Zone::Realm(13),
-        // ));
-        // game.state.cards.push(sorcerers::card::from_name_and_zone(
-        //     SunkenTreasure::NAME,
-        //     &player_one,
-        //     sorcerers::card::Zone::Hand,
         // ));
         // game.state.cards.push(sorcerers::card::from_name_and_zone(
         //     AridDesert::NAME,

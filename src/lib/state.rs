@@ -504,7 +504,7 @@ impl CardQuery {
         }
     }
 
-    pub(crate) fn matches(&self, card_id: &uuid::Uuid, state: &State) -> bool {
+    pub fn matches(&self, card_id: &uuid::Uuid, state: &State) -> bool {
         let card = state.get_card(card_id);
         if let Some(ids) = &self.ids {
             if !ids.contains(card_id) {
@@ -827,6 +827,15 @@ pub enum ContinuousEffect {
     ModifyProvidedMana {
         mana_diff: i8,
         affected_cards: CardQuery,
+    },
+    OverrideValidPlayZone {
+        affected_zones: Vec<Zone>,
+        affected_cards: CardQuery,
+    },
+    ModifyManaCost {
+        mana_diff: i8,
+        affected_cards: CardQuery,
+        zones: Option<Vec<Zone>>,
     },
 }
 

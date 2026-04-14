@@ -1,8 +1,7 @@
 use crate::{
-    card::{
-        Card, CardBase, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone,
-    },
+    card::{Card, CardBase, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone},
     game::{PlayerId, Thresholds},
+    state::{CardQuery, ContinuousEffect, State},
 };
 
 #[derive(Debug, Clone)]
@@ -75,8 +74,22 @@ impl Card for DonnybrookInn {
         Some(self)
     }
 
-    // TODO: Missing implementation for the effect of reducing minion costs by 1 and allowing any
-    // player to cast minions here.
+    async fn get_continuous_effects(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<ContinuousEffect>> {
+        Ok(vec![
+            ContinuousEffect::ModifyManaCost {
+                mana_diff: -1,
+                affected_cards: CardQuery::new().minions(),
+                zones: Some(vec![self.get_zone().clone()]),
+            },
+            ContinuousEffect::OverrideValidPlayZone {
+                affected_zones: vec![self.get_zone().clone()],
+                affected_cards: CardQuery::new().minions().in_zone(&Zone::Hand),
+            },
+        ])
+    }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]

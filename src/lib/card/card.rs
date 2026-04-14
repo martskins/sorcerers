@@ -139,6 +139,23 @@ impl Zone {
             return Ok(false);
         }
 
+        let should_override = state
+            .continuous_effects
+            .iter()
+            .filter(|e| match e {
+                ContinuousEffect::OverrideValidPlayZone {
+                    affected_zones,
+                    affected_cards,
+                    ..
+                } => affected_zones.contains(self) && affected_cards.matches(card_id, state),
+                _ => false,
+            })
+            .count()
+            > 0;
+        if should_override {
+            return Ok(true);
+        }
+
         match self {
             Zone::Realm(_) => {
                 let site_in_zone = self.get_site(state);
@@ -159,44 +176,42 @@ impl Zone {
                             .len()
                             > 0;
                         if !has_played_site {
-                            let avatar_id = CardQuery::new()
-                                .avatars()
-                                .in_play()
-                                .controlled_by(&player_id)
-                                .all(state)
-                                .first()
-                                .cloned()
-                                .ok_or(anyhow::anyhow!("player has no avatar"))?;
+                            let avatar_id = state.get_player_avatar_id(&player_id)?;
                             let avatar = state.get_card(&avatar_id);
                             return Ok(avatar.get_zone() == self);
                         }
 
-                        let sites: Vec<&Zone> = CardQuery::new()
+                        let empty_adjacent_zones: Vec<Zone> = CardQuery::new()
                             .sites()
                             .in_play()
-                            .not_named(&Rubble::NAME)
-                            .all(state)
-                            .into_iter()
-                            .map(|cid| state.get_card(&cid).get_zone())
-                            .collect();
-
-                        let occupied_squares: Vec<&Zone> = CardQuery::new()
-                            .sites()
-                            .in_play()
-                            .not_named(&Rubble::NAME)
                             .controlled_by(&player_id)
+                            .not_named(&Rubble::NAME)
                             .all(state)
                             .into_iter()
                             .map(|cid| state.get_card(&cid).get_zone())
+                            .flat_map(|z| z.get_adjacent())
+                            .filter(|z| z.get_site(state).is_none())
                             .collect();
 
-                        Ok(occupied_squares
-                            .iter()
-                            .flat_map(|c| get_adjacent_zones(c))
-                            .filter(|c| !occupied_squares.contains(&c))
-                            .filter(|c| !sites.contains(&c))
-                            .find(|c| c == self)
-                            .is_some())
+                        Ok(empty_adjacent_zones.contains(self))
+
+                        // let occupied_squares: Vec<&Zone> = CardQuery::new()
+                        //     .sites()
+                        //     .in_play()
+                        //     .not_named(&Rubble::NAME)
+                        //     .controlled_by(&player_id)
+                        //     .all(state)
+                        //     .into_iter()
+                        //     .map(|cid| state.get_card(&cid).get_zone())
+                        //     .collect();
+                        //
+                        // Ok(occupied_squares
+                        //     .iter()
+                        //     .flat_map(|c| get_adjacent_zones(c))
+                        //     .filter(|c| !occupied_squares.contains(&c))
+                        //     .filter(|c| !sites.contains(&c))
+                        //     .find(|c| c == self)
+                        //     .is_some())
                     }
                     _ => Ok(card.has_ability(state, &Ability::Voidwalk)),
                 }
@@ -1333,101 +1348,11 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(Zone::all_board()
             .into_iter()
             .filter(|z| {
-                z.is_valid_play_zone_for(state, self.get_id())
-                    .unwrap_or_default()
+                let keep = z.is_valid_play_zone_for(state, self.get_id())
+                    .unwrap_or_default();
+                keep
             })
             .collect::<Vec<Zone>>())
-        // match self.get_card_type() {
-        //     CardType::Aura => Ok(Zone::all_intersections()
-        //         .iter()
-        //         .filter(|z| match z {
-        //             Zone::Intersection(sqs) => {
-        //                 sqs.iter().any(|_| state.cards.iter().any(|c| c.is_site()))
-        //             }
-        //             _ => false,
-        //         })
-        //         .cloned()
-        //         .collect()),
-        //     CardType::Minion | CardType::Artifact => {
-        //         // Oversized units are placed at intersection zones (occupying all 4 sub-sites).
-        //         if self.is_oversized(state) {
-        //             return Ok(Zone::all_intersections()
-        //                 .into_iter()
-        //                 .filter(|z| {
-        //                     if let Zone::Intersection(sqs) = z {
-        //                         sqs.iter()
-        //                             .all(|sq| Zone::Realm(*sq).get_site(state).is_some())
-        //                     } else {
-        //                         false
-        //                     }
-        //                 })
-        //                 .collect());
-        //         }
-        //
-        //         Ok(state
-        //             .cards
-        //             .iter()
-        //             .filter(|c| c.get_owner_id() == self.get_owner_id())
-        //             .filter(|c| c.is_site())
-        //             .filter_map(|c| match c.get_zone() {
-        //                 z @ Zone::Realm(_) => Some(z),
-        //                 _ => None,
-        //             })
-        //             .cloned()
-        //             .collect())
-        //     }
-        //     CardType::Site => {
-        //         let player_id = self.get_owner_id();
-        //         let has_played_site = state.cards.iter().any(|c| {
-        //             c.get_owner_id() == player_id
-        //                 && c.is_site()
-        //                 && matches!(c.get_zone(), Zone::Realm(_))
-        //         });
-        //         if !has_played_site {
-        //             let avatar = state
-        //                 .cards
-        //                 .iter()
-        //                 .find(|c| c.get_owner_id() == player_id && c.is_avatar())
-        //                 .ok_or(anyhow::anyhow!("player has no avatar"))?;
-        //             match avatar.get_zone() {
-        //                 z @ Zone::Realm(_) => return Ok(vec![z.clone()]),
-        //                 _ => return Err(anyhow::anyhow!("Avatar not in realm")),
-        //             }
-        //         }
-        //
-        //         let sites: Vec<&Zone> = state
-        //             .cards
-        //             .iter()
-        //             .filter(|c| c.is_site())
-        //             .filter(|c| c.get_name() != Rubble::NAME)
-        //             .filter_map(|c| match c.get_zone() {
-        //                 z @ Zone::Realm(_) => Some(z),
-        //                 _ => None,
-        //             })
-        //             .collect();
-        //
-        //         let occupied_squares: Vec<&Zone> = state
-        //             .cards
-        //             .iter()
-        //             .filter(|c| c.get_owner_id() == player_id)
-        //             .filter(|c| c.is_site())
-        //             .filter(|c| c.get_name() != Rubble::NAME)
-        //             .filter(|c| matches!(c.get_zone(), Zone::Realm(_)))
-        //             .flat_map(|c| match c.get_zone() {
-        //                 z @ Zone::Realm(_) => vec![z],
-        //                 _ => vec![],
-        //             })
-        //             .collect();
-        //
-        //         Ok(occupied_squares
-        //             .iter()
-        //             .flat_map(|c| get_adjacent_zones(c))
-        //             .filter(|c| !occupied_squares.contains(&c))
-        //             .filter(|c| !sites.contains(&c))
-        //             .collect())
-        //     }
-        //     _ => Ok(vec![]),
-        // }
     }
 
     // Retuns the region the card is currently on. If the card is not in a zone with a site, it is
@@ -2425,12 +2350,17 @@ pub trait ResourceProvider: Card {
 impl<T> ResourceProvider for T where T: Site {}
 
 pub trait Site: Card + ResourceProvider {
-    fn is_valid_play_zone_for(&self, state: &State, uuid: &uuid::Uuid) -> anyhow::Result<bool> {
-        if self.get_controller_id(state) == state.get_card(uuid).get_controller_id(state) {
+    fn is_valid_play_zone_for(&self, state: &State, card_id: &uuid::Uuid) -> anyhow::Result<bool> {
+        let card = state.get_card(card_id);
+        if card.is_site() {
+            return Ok(false);
+        }
+
+        if self.get_controller_id(state) == card.get_controller_id(state) {
             return Ok(true);
         }
 
-        Ok(true)
+        Ok(false)
     }
 
     fn is_land_site(&self, state: &State) -> anyhow::Result<bool> {
@@ -2717,7 +2647,7 @@ pub fn from_name_and_zone(name: &str, player_id: &PlayerId, zone: Zone) -> Box<d
 #[cfg(test)]
 mod tests {
     use crate::{
-        card::{Ability, AdditionalCost, ApprenticeWizard, Card, Cost, RimlandNomads, Zone},
+        card::{Ability, AdditionalCost, ApprenticeWizard, AridDesert, Card, Cost, RimlandNomads, Zone},
         state::{CardQuery, State},
     };
 
@@ -3102,4 +3032,29 @@ mod tests {
         expected.sort();
         assert_eq!(zones, expected);
     }
+
+#[test]
+    fn test_get_valid_play_zones_site_second_site() {
+        let zones_with_sites = vec![
+            Zone::Realm(3),
+        ];
+        let mut state = State::new_mock_state(zones_with_sites);
+        let player_id = state.players[0].id.clone();
+        let mut card = AridDesert::new(player_id.clone());
+        card.set_zone(Zone::Hand);
+        state.cards.push(Box::new(card.clone()));
+
+        let mut zones = card
+            .get_valid_play_zones(&state)
+            .expect("zones to be computed");
+        zones.sort();
+        let mut expected = vec![
+            Zone::Realm(8),
+            Zone::Realm(4),
+            Zone::Realm(2),
+        ];
+        expected.sort();
+        assert_eq!(zones, expected);
+    }
+
 }

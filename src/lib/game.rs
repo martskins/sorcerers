@@ -1155,6 +1155,12 @@ impl ActivatedAbility for UnitAction {
                                 let defender_id = defenders[0];
                                 let defender = state.get_card(&defender_id);
                                 return Ok(vec![
+                                    // Return the attack effect first so that MoveCard is applied
+                                    // before attack and the attack happens on the correct zone.
+                                    Effect::Attack {
+                                        attacker_id: card_id.clone(),
+                                        defender_id: defender_id.clone(),
+                                    },
                                     Effect::MoveCard {
                                         player_id: opponent.id.clone(),
                                         card_id: defender_id.clone(),
@@ -1163,10 +1169,6 @@ impl ActivatedAbility for UnitAction {
                                         tap: true,
                                         region: attacker.get_region(state).clone(),
                                         through_path: None,
-                                    },
-                                    Effect::Attack {
-                                        attacker_id: card_id.clone(),
-                                        defender_id: defender_id.clone(),
                                     },
                                 ]);
                             }
