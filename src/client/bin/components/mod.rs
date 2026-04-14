@@ -1,6 +1,7 @@
 use crate::scene::game::GameData;
 use egui::Rect;
 
+pub mod card_viewer;
 pub mod event_log;
 pub mod player_hand;
 pub mod player_status;
@@ -15,6 +16,7 @@ pub enum ComponentType {
     SelectionOverlay,
     CombatResolutionOverlay,
     ActionOverlay,
+    CardViewer,
 }
 
 #[derive(Debug, Clone)]
@@ -28,6 +30,10 @@ pub enum ComponentCommand {
         rect: Rect,
     },
     DonePicking,
+    OpenCardViewer {
+        title: String,
+        cards: Vec<uuid::Uuid>,
+    },
 }
 
 pub trait Component: std::fmt::Debug {

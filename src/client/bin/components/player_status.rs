@@ -33,6 +33,7 @@ pub struct PlayerStatusComponent {
     player: bool,
     rect: Rect,
     pending_open_log: bool,
+    pending_open_cemetery: bool,
 }
 
 impl PlayerStatusComponent {
@@ -43,6 +44,7 @@ impl PlayerStatusComponent {
             rect,
             player,
             pending_open_log: false,
+            pending_open_cemetery: false,
         }
     }
 }
@@ -145,6 +147,7 @@ impl Component for PlayerStatusComponent {
 
         let area_id = if self.player { "ps_self" } else { "ps_opp" };
         let mut open_log = false;
+        let mut open_cemetery = false;
 
         egui::Area::new(egui::Id::new(area_id))
             .fixed_pos(pos2(4.0, panel_y))
@@ -229,13 +232,30 @@ impl Component for PlayerStatusComponent {
                                 &ctx,
                             );
                             ui.add_space(5.0);
-                            stat_cell(
-                                ui,
-                                "assets/icons/tombstone.png",
-                                grave_count,
-                                Color32::from_rgb(170, 170, 190),
-                                &ctx,
+                            let tomb_scope = ui.scope(|ui| {
+                                stat_cell(
+                                    ui,
+                                    "assets/icons/tombstone.png",
+                                    grave_count,
+                                    Color32::from_rgb(170, 170, 190),
+                                    &ctx,
+                                );
+                            });
+                            let tomb_response = ui.interact(
+                                tomb_scope.response.rect,
+                                egui::Id::new(if self.player {
+                                    "grave_click_self"
+                                } else {
+                                    "grave_click_opp"
+                                }),
+                                egui::Sense::click(),
                             );
+                            if tomb_response.hovered() {
+                                ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
+                            }
+                            if tomb_response.clicked() {
+                                open_cemetery = true;
+                            }
                         });
 
                         ui.add_space(4.0);
@@ -254,13 +274,16 @@ impl Component for PlayerStatusComponent {
         if open_log {
             self.pending_open_log = true;
         }
+        if open_cemetery {
+            self.pending_open_cemetery = true;
+        }
         Ok(())
     }
 
     fn process_input(
         &mut self,
         _in_turn: bool,
-        _data: &mut GameData,
+        data: &mut GameData,
         _ctx: &Context,
     ) -> anyhow::Result<Option<ComponentCommand>> {
         if self.pending_open_log {
@@ -269,6 +292,21 @@ impl Component for PlayerStatusComponent {
                 component_type: ComponentType::EventLog,
                 visible: true,
             }));
+        }
+        if self.pending_open_cemetery {
+            self.pending_open_cemetery = false;
+            let cards: Vec<uuid::Uuid> = data
+                .cards
+                .iter()
+                .filter(|c| c.owner_id == self.player_id && c.zone == sorcerers::card::Zone::Cemetery)
+                .map(|c| c.id)
+                .collect();
+            let title = if data.player_id == self.player_id {
+                "Your Cemetery".to_string()
+            } else {
+                "Opponent's Cemetery".to_string()
+            };
+            return Ok(Some(ComponentCommand::OpenCardViewer { title, cards }));
         }
         Ok(None)
     }

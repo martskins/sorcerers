@@ -1,9 +1,9 @@
 use super::selection_overlay::SelectionOverlayBehaviour;
 use crate::{
     components::{
-        Component, ComponentCommand, ComponentType, event_log::EventLogComponent,
-        player_hand::PlayerHandComponent, player_status::PlayerStatusComponent,
-        realm::RealmComponent,
+        Component, ComponentCommand, ComponentType, card_viewer::CardViewerComponent,
+        event_log::EventLogComponent, player_hand::PlayerHandComponent,
+        player_status::PlayerStatusComponent, realm::RealmComponent,
     },
     config::*,
     input::Mouse,
@@ -112,6 +112,7 @@ fn component_rect(component_type: ComponentType) -> anyhow::Result<Rect> {
         ComponentType::SelectionOverlay => screen_rect(),
         ComponentType::CombatResolutionOverlay => screen_rect(),
         ComponentType::ActionOverlay => screen_rect(),
+        ComponentType::CardViewer => screen_rect(),
     }
 }
 
@@ -225,6 +226,7 @@ impl Game {
                     hand_r,
                 )),
                 Box::new(EventLogComponent::new(log_rect)),
+                Box::new(CardViewerComponent::new()),
             ],
             data: GameData::new(&player_id, cards),
             audio_manager,

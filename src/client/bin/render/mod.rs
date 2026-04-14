@@ -1,6 +1,9 @@
-use crate::config::{CARD_ASPECT_RATIO, realm_rect, screen_rect};
+use crate::{
+    config::{CARD_ASPECT_RATIO, realm_rect, screen_rect},
+    texture_cache::TextureCache,
+};
 use egui::{
-    Color32, FontId, Painter, Pos2, Rect, Stroke, TextureHandle, Vec2,
+    Color32, Context, FontId, Painter, Pos2, Rect, Stroke, TextureHandle, Vec2,
     epaint::{Mesh, Shape, Vertex},
     pos2, vec2,
 };
@@ -292,7 +295,24 @@ pub fn draw_card_with_rotation(
     draw_card_internal(card_rect, is_ally, draw_accessories, painter, rotation);
 }
 
-/// Draws a card image scaled to fill the left sidebar, vertically centred on screen.
+/// Draws a bigger version of a card on the given position.
+pub fn draw_card_preview(
+    tex: Option<&TextureHandle>,
+    pos: Pos2,
+    painter: &Painter,
+) -> anyhow::Result<()> {
+    let mut preview_size = vec2(200.0, 200.0 / CARD_ASPECT_RATIO);
+    if let Some(tex) = tex {
+        // If the texture is wider than it is tall, it's a site.
+        if tex.aspect_ratio() > 1.0 {
+            std::mem::swap(&mut preview_size.x, &mut preview_size.y);
+        }
+    }
+    let rect = Rect::from_min_size(pos, preview_size);
+    draw_card_preview_internal(tex, rect, painter)
+}
+
+/// Draws a bigger version of a card on the left sidebar, vertically centred on screen.
 pub fn draw_sidebar_card_preview(
     tex: Option<&TextureHandle>,
     painter: &Painter,
@@ -308,7 +328,14 @@ pub fn draw_sidebar_card_preview(
     }
     let preview_y = screen_rect()?.height() / 2.0 - preview_size.y / 2.0;
     let dest_rect = Rect::from_min_size(pos2(MARGIN, preview_y), preview_size);
+    draw_card_preview_internal(tex, dest_rect, painter)
+}
 
+fn draw_card_preview_internal(
+    tex: Option<&TextureHandle>,
+    dest_rect: Rect,
+    painter: &Painter,
+) -> anyhow::Result<()> {
     if let Some(tex) = tex {
         painter.image(
             tex.id(),
