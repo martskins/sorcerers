@@ -6,7 +6,8 @@ use crate::{
     deck::Deck,
     effect::Effect,
     game::{
-        Element, InputStatus, PlayerId, Resources, Thresholds, pick_card, pick_zone, yes_or_no,
+        Element, InputStatus, PlayerId, Resources, Thresholds, pick_card, pick_card_with_options,
+        pick_zone, yes_or_no,
     },
     networking::message::{ClientMessage, ServerMessage},
     query::{EffectQuery, ZoneQuery},
@@ -180,7 +181,12 @@ impl CardQuery {
                 .prompt
                 .clone()
                 .unwrap_or_else(|| "Pick a card".to_string());
-            pick_card(player_id, &card_ids, state, &prompt).await?
+            if use_preview {
+                pick_card_with_options(player_id, &card_ids, &card_ids, false, state, &prompt)
+                    .await?
+            } else {
+                pick_card(player_id, &card_ids, state, &prompt).await?
+            }
         };
 
         QueryCache::store_matcher_results(state.game_id, self.id, vec![output.clone()]).await;
@@ -627,7 +633,7 @@ impl CardQuery {
         }
 
         if let Some(mc) = &self.mana_cost {
-            if card.get_costs(state).unwrap().mana_cost() > *mc {
+            if card.get_costs(state).unwrap().mana_value() > *mc {
                 return false;
             }
         }
@@ -1559,11 +1565,11 @@ mod tests {
         let regular_costs = state
             .get_effective_costs(cauldron_crones.get_id(), None)
             .unwrap();
-        assert_eq!(regular_costs.mana_cost(), 3);
+        assert_eq!(regular_costs.mana_value(), 3);
 
         let inn_costs = state
             .get_effective_costs(cauldron_crones.get_id(), Some(donnybrook_inn.get_zone()))
             .unwrap();
-        assert_eq!(inn_costs.mana_cost(), 2);
+        assert_eq!(inn_costs.mana_value(), 2);
     }
 }

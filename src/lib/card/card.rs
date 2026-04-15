@@ -749,7 +749,23 @@ impl Costs {
         Self(costs)
     }
 
-    pub fn mana_cost(&self) -> u8 {
+    pub fn mana_cost(&self) -> &Cost {
+        if self.0.len() == 0 {
+            return &Cost::ZERO;
+        }
+
+        for cost in &self.0 {
+            for cost_type in &cost.0 {
+                if let CostType::ManaCost(_) = cost_type {
+                    return cost;
+                }
+            }
+        }
+
+        &Cost::ZERO
+    }
+
+    pub fn mana_value(&self) -> u8 {
         if self.0.len() == 0 {
             return 0;
         }
@@ -793,7 +809,7 @@ impl Costs {
 
     pub async fn pay(&self, state: &mut State, player_id: &PlayerId) -> anyhow::Result<Cost> {
         match self.0.len() {
-            0 => Ok(Cost::ZERO),
+            0 => Ok(Cost::ZERO.clone()),
             1 => {
                 let cost = self.0.first().expect("costs to have one item");
                 Box::pin(cost.pay(state, player_id)).await
@@ -822,13 +838,17 @@ impl Costs {
         state: &State,
         player_id: impl AsRef<PlayerId>,
     ) -> anyhow::Result<bool> {
+        if self.0.is_empty() {
+            return Ok(true);
+        }
+
         for cost in &self.0 {
             if cost.can_afford(state, player_id.as_ref())? {
                 return Ok(true);
             }
         }
 
-        Ok(true)
+        Ok(false)
     }
 }
 
@@ -848,7 +868,7 @@ impl IntoIterator for Cost {
 }
 
 impl Cost {
-    pub const ZERO: Cost = Cost(vec![]);
+    pub const ZERO: &'static Cost = &Cost(vec![]);
 
     pub fn new(mana: u8, thresholds: impl Into<Thresholds>) -> Self {
         let mut basic_cost = vec![];
@@ -2236,6 +2256,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         }
     }
 
+    // Returns a list of additional activated abilities for this card. The base abilities, like
+    // attack and move for units, or draw site and play site for avatars, should not be returned in
+    // this function, as they are automatically included in the activated abilities of the card
+    // based on its type and current state.
     fn get_additional_activated_abilities(
         &self,
         _state: &State,
@@ -2676,7 +2700,7 @@ pub fn from_name_and_zone(name: &str, player_id: &PlayerId, zone: Zone) -> Box<d
 mod tests {
     use crate::{
         card::{
-            Ability, AdditionalCost, ApprenticeWizard, AridDesert, Card, Cost, RimlandNomads, Zone,
+            Ability, AdditionalCost, ApprenticeWizard, AridDesert, Card, Cost, OgreGoons, RimlandNomads, Zone
         },
         state::{CardQuery, State},
     };
@@ -2718,6 +2742,7 @@ mod tests {
         let mut state = State::new_mock_state(Zone::all_realm());
         let player_id = state.players[0].id.clone();
         let cost = Cost::ZERO
+            .clone()
             .with_additional(AdditionalCost::tap(
                 CardQuery::new()
                     .untapped()
@@ -3079,5 +3104,32 @@ mod tests {
         let mut expected = vec![Zone::Realm(8), Zone::Realm(4), Zone::Realm(2)];
         expected.sort();
         assert_eq!(zones, expected);
+    }
+
+    #[test]
+    fn test_can_afford_cost() {
+        let mut state = State::new_mock_state(vec![]);
+        let player_id = state.players[0].id.clone();
+        *state.get_player_mana_mut(&player_id) = 2;
+
+        let mut card = OgreGoons::new(player_id.clone());
+        card.set_zone(Zone::Hand);
+        state.cards.push(Box::new(card.clone()));
+
+        let can_afford = card.get_costs(&state).unwrap().can_afford(&state, player_id).unwrap();
+        assert_eq!(can_afford, false);
+
+        *state.get_player_mana_mut(&player_id) = 3;
+        let can_afford = card.get_costs(&state).unwrap().can_afford(&state, player_id).unwrap();
+        assert_eq!(can_afford, false);
+
+        let mut arid_desert = AridDesert::new(player_id.clone());
+        arid_desert.set_zone(Zone::Realm(3));
+        state.cards.push(Box::new(arid_desert));
+
+        // The player now has 3 mana and a fire affinity of 1, so they should be able to afford the
+        // Ogre Goons in their hand, which costs 3F.
+        let can_afford = card.get_costs(&state).unwrap().can_afford(&state, player_id).unwrap();
+        assert_eq!(can_afford, true);
     }
 }

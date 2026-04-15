@@ -8,13 +8,21 @@ use crate::{
 };
 use egui::{Color32, Context, Painter, Rect, Ui, pos2, vec2};
 use sorcerers::{
-    card::CardData,
+    card::{CardData, Zone},
     game::PlayerId,
     networking::{self, message::ClientMessage},
 };
 use std::collections::HashSet;
 
 const FONT_SIZE: f32 = 24.0;
+/// Height reserved for a zone-group header label row.
+const HEADER_H: f32 = 28.0;
+/// Gap between the header label and the first card row.
+const HEADER_GAP: f32 = 8.0;
+/// Vertical gap between consecutive zone groups.
+const GROUP_GAP: f32 = 20.0;
+/// Font size for zone-group header labels.
+const HEADER_FONT: f32 = 16.0;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum SelectionOverlayBehaviour {
@@ -25,6 +33,8 @@ pub enum SelectionOverlayBehaviour {
 #[derive(Debug)]
 pub struct SelectionOverlay {
     card_rects: Vec<CardRect>,
+    /// Zone group headers: (label text, centre position on screen).
+    zone_group_headers: Vec<(String, egui::Pos2)>,
     prompt: String,
     behaviour: SelectionOverlayBehaviour,
     close: bool,
@@ -32,6 +42,65 @@ pub struct SelectionOverlay {
     game_id: uuid::Uuid,
     client: networking::client::Client,
     pickable_cards: HashSet<uuid::Uuid>,
+}
+
+/// Maps a card's zone + ownership into a (sort_order, display_label) pair.
+fn zone_order_and_label(zone: &Zone, is_mine: bool) -> (u32, String) {
+    match zone {
+        Zone::Hand => (
+            if is_mine { 0 } else { 1 },
+            if is_mine {
+                "Your Hand".into()
+            } else {
+                "Opponent's Hand".into()
+            },
+        ),
+        Zone::Realm(_) | Zone::Intersection(_) => (2, "In Play".into()),
+        Zone::Cemetery => (
+            if is_mine { 3 } else { 4 },
+            if is_mine {
+                "Your Cemetery".into()
+            } else {
+                "Opponent's Cemetery".into()
+            },
+        ),
+        Zone::Spellbook => (
+            if is_mine { 5 } else { 6 },
+            if is_mine {
+                "Your Spellbook".into()
+            } else {
+                "Opponent's Spellbook".into()
+            },
+        ),
+        Zone::Atlasbook => (
+            if is_mine { 7 } else { 8 },
+            if is_mine {
+                "Your Atlas".into()
+            } else {
+                "Opponent's Atlas".into()
+            },
+        ),
+        Zone::Banish => (9, "Banished".into()),
+        _ => (10, "Other".into()),
+    }
+}
+
+/// Groups `cards` by zone (and ownership) in a canonical display order.
+fn group_cards_by_zone<'a>(
+    cards: &[&'a CardData],
+    player_id: &PlayerId,
+) -> Vec<(String, Vec<&'a CardData>)> {
+    use std::collections::BTreeMap;
+    let mut map: BTreeMap<u32, (String, Vec<&'a CardData>)> = BTreeMap::new();
+    for &card in cards {
+        let is_mine = &card.owner_id == player_id;
+        let (order, label) = zone_order_and_label(&card.zone, is_mine);
+        map.entry(order)
+            .or_insert_with(|| (label, Vec::new()))
+            .1
+            .push(card);
+    }
+    map.into_values().collect()
 }
 
 impl SelectionOverlay {
@@ -44,9 +113,13 @@ impl SelectionOverlay {
         prompt: &str,
         behaviour: SelectionOverlayBehaviour,
     ) -> Self {
-        let card_rects = match behaviour {
-            SelectionOverlayBehaviour::Preview => Self::build_preview_rects(&cards),
-            SelectionOverlayBehaviour::Pick => Self::build_pick_rects(&cards),
+        let (card_rects, zone_group_headers) = match behaviour {
+            SelectionOverlayBehaviour::Preview => {
+                (Self::build_preview_rects(&cards), vec![])
+            }
+            SelectionOverlayBehaviour::Pick => {
+                Self::build_pick_rects_grouped(&cards, player_id)
+            }
         };
 
         let pickable_cards = if pickable_cards.is_empty() {
@@ -59,6 +132,7 @@ impl SelectionOverlay {
             client,
             game_id: game_id.clone(),
             card_rects,
+            zone_group_headers,
             prompt: prompt.to_string(),
             behaviour,
             player_id: player_id.clone(),
@@ -100,57 +174,86 @@ impl SelectionOverlay {
         rects
     }
 
-    fn build_pick_rects(cards: &[&CardData]) -> Vec<CardRect> {
+    /// Lays out cards grouped by zone, stacked vertically on screen.
+    /// Returns both the card rects and the zone-group header positions.
+    fn build_pick_rects_grouped(
+        cards: &[&CardData],
+        player_id: &PlayerId,
+    ) -> (Vec<CardRect>, Vec<(String, egui::Pos2)>) {
         let sw = screen_rect().map(|r| r.width()).unwrap_or(1280.0);
         let sh = screen_rect().map(|r| r.height()).unwrap_or(720.0);
-        let card_count = cards.len();
-        if card_count == 0 {
-            return Vec::new();
-        }
 
         let base_w = card_width().unwrap_or(80.0);
         let base_h = card_height().unwrap_or(112.0);
-        let card_gap_x = 22.0;
         let row_step = (base_h * 0.18).max(18.0);
-        let top_margin = 100.0;
-        let bottom_margin = 80.0;
-        let available_h = (sh - top_margin - bottom_margin).max(base_h);
-
-        let cards_per_column = (((available_h - base_h) / row_step).floor() as usize + 1).max(1);
-        let max_columns = (((sw - 80.0) + card_gap_x) / (base_w.max(base_h) + card_gap_x))
-            .floor()
-            .max(1.0) as usize;
-        let mut columns = (card_count + cards_per_column - 1) / cards_per_column;
-        columns = columns.clamp(1, max_columns.max(1));
-        let cards_per_column = (card_count + columns - 1) / columns;
-
+        let card_gap_x = 22.0;
         let column_w = base_w.max(base_h);
-        let total_width = columns as f32 * column_w + (columns as f32 - 1.0) * card_gap_x;
-        let start_x = (sw - total_width) / 2.0;
-        let start_y = top_margin;
 
-        let mut rects = Vec::with_capacity(card_count);
-        for (column_idx, column_cards) in cards.chunks(cards_per_column).enumerate() {
-            let column_x = start_x + column_idx as f32 * (column_w + card_gap_x);
-            for (row_idx, card) in column_cards.iter().enumerate() {
-                let size = if card.is_site() {
-                    vec2(base_h, base_w)
-                } else {
-                    vec2(base_w, base_h)
-                };
-                let x = column_x + (column_w - size.x) / 2.0;
-                let y = start_y + row_idx as f32 * row_step;
-                rects.push(CardRect {
-                    image: None,
-                    rect: Rect::from_min_size(pos2(x, y), size),
-                    is_hovered: false,
-                    is_selected: false,
-                    card: (*card).clone(),
-                });
-            }
+        let groups = group_cards_by_zone(cards, player_id);
+        if groups.is_empty() {
+            return (Vec::new(), Vec::new());
         }
 
-        rects
+        let top_margin = 70.0; // room for the prompt text
+        let bottom_margin = 80.0;
+
+        // Distribute available vertical space evenly across groups.
+        let header_overhead = groups.len() as f32 * (HEADER_H + HEADER_GAP)
+            + (groups.len().saturating_sub(1)) as f32 * GROUP_GAP;
+        let available_h =
+            (sh - top_margin - bottom_margin - header_overhead).max(base_h);
+        let per_group_h = available_h / groups.len() as f32;
+        let cards_per_col = (((per_group_h - base_h) / row_step).floor() as usize + 1)
+            .clamp(1, 10);
+
+        let mut all_rects: Vec<CardRect> = Vec::new();
+        let mut headers: Vec<(String, egui::Pos2)> = Vec::new();
+        let mut current_y = top_margin;
+
+        for (label, group_cards) in &groups {
+            let n = group_cards.len();
+            let num_cols = n.div_ceil(cards_per_col);
+            // Balance cards across columns.
+            let actual_per_col = n.div_ceil(num_cols);
+            let col_h =
+                row_step * actual_per_col.saturating_sub(1) as f32 + base_h;
+
+            let total_w = num_cols as f32 * column_w
+                + (num_cols.saturating_sub(1)) as f32 * card_gap_x;
+            let start_x = (sw - total_w) / 2.0;
+
+            // Header centred horizontally.
+            headers.push((
+                label.clone(),
+                egui::pos2(sw / 2.0, current_y + HEADER_H / 2.0),
+            ));
+
+            let cards_y = current_y + HEADER_H + HEADER_GAP;
+
+            for (ci, chunk) in group_cards.chunks(actual_per_col).enumerate() {
+                let col_x = start_x + ci as f32 * (column_w + card_gap_x);
+                for (ri, card) in chunk.iter().enumerate() {
+                    let size = if card.is_site() {
+                        vec2(base_h, base_w)
+                    } else {
+                        vec2(base_w, base_h)
+                    };
+                    let x = col_x + (column_w - size.x) / 2.0;
+                    let y = cards_y + ri as f32 * row_step;
+                    all_rects.push(CardRect {
+                        image: None,
+                        rect: Rect::from_min_size(pos2(x, y), size),
+                        is_hovered: false,
+                        is_selected: false,
+                        card: (*card).clone(),
+                    });
+                }
+            }
+
+            current_y = cards_y + col_h + GROUP_GAP;
+        }
+
+        (all_rects, headers)
     }
 
     fn hovered_card_index(&self, ctx: &Context) -> Option<usize> {
@@ -345,6 +448,40 @@ impl Component for SelectionOverlay {
                     Color32::from_rgba_unmultiplied(0, 0, 0, 110),
                 );
             }
+        }
+
+        // Draw zone-group headers above each group's cards.
+        for (label, centre) in &self.zone_group_headers {
+            let galley = ui.fonts(|f| {
+                f.layout_no_wrap(
+                    label.clone(),
+                    egui::FontId::proportional(HEADER_FONT),
+                    Color32::WHITE,
+                )
+            });
+            let text_size = galley.size();
+            let bg_rect = Rect::from_center_size(*centre, text_size + vec2(20.0, 8.0));
+            painter.rect_filled(
+                bg_rect,
+                4.0,
+                Color32::from_rgba_unmultiplied(20, 20, 70, 220),
+            );
+            // Horizontal separator lines extending to the left and right of the pill.
+            let sep_y = centre.y;
+            let sep_pad = 12.0;
+            painter.line_segment(
+                [pos2(0.0, sep_y), pos2(bg_rect.min.x - sep_pad, sep_y)],
+                egui::Stroke::new(1.0, Color32::from_rgba_unmultiplied(120, 120, 200, 100)),
+            );
+            painter.line_segment(
+                [pos2(bg_rect.max.x + sep_pad, sep_y), pos2(sw, sep_y)],
+                egui::Stroke::new(1.0, Color32::from_rgba_unmultiplied(120, 120, 200, 100)),
+            );
+            painter.galley(
+                pos2(centre.x - text_size.x / 2.0, centre.y - text_size.y / 2.0),
+                galley,
+                Color32::WHITE,
+            );
         }
 
         if let Some(hovered) = self.hovered_card() {

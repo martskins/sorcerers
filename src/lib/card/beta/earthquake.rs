@@ -1,8 +1,8 @@
 use crate::{
-    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Region, Zone},
+    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Zone},
     effect::Effect,
-    game::{PlayerId, pick_zone},
-    state::{CardQuery, State},
+    game::PlayerId,
+    state::State,
 };
 
 #[derive(Debug, Clone)]
@@ -51,8 +51,8 @@ impl Card for Earthquake {
 
     async fn on_cast(
         &mut self,
-        state: &State,
-        caster_id: &uuid::Uuid,
+        _state: &State,
+        _caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         unimplemented!();

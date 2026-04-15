@@ -1,4 +1,4 @@
-use std::{pin::Pin, sync::Arc};
+use std::sync::Arc;
 
 use crate::{
     card::{
@@ -73,7 +73,7 @@ impl Card for EvilPresence {
         Some(self)
     }
 
-    async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+    async fn genesis(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
         let owner_id = self.get_owner_id().clone();
         let zone = self.get_zone().clone();
         let evil_presence_id = self.get_id().clone();

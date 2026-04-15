@@ -85,7 +85,7 @@ impl Card for AssortedAnimals {
                 (
                     card.get_name().to_string(),
                     card.get_id().clone(),
-                    card.get_base().costs.mana_cost(),
+                    card.get_base().costs.mana_value(),
                 )
             })
             .collect::<Vec<_>>();

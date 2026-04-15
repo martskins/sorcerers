@@ -25,6 +25,7 @@ impl ActivatedAbility for TapToDealDamage {
             .get_bearer()?
             .ok_or(anyhow::anyhow!("Artifact has no bearer"))?;
         Ok(Cost::ZERO
+            .clone()
             .with_additional(AdditionalCost::tap(
                 CardQuery::from_id(bearer.clone()).untapped(),
             ))

@@ -9,7 +9,11 @@ use egui::{Color32, Context, Painter, Rect, Sense, Stroke, Ui, pos2, vec2};
 
 const THUMB_W: f32 = 80.0;
 const THUMB_H: f32 = THUMB_W / CARD_ASPECT_RATIO;
-const CARD_PAD: f32 = 6.0;
+const CARD_PAD: f32 = 10.0;
+/// Height of the visible strip exposed by each backing card in a stack.
+const STACK_STRIP: f32 = 22.0;
+/// Maximum cards per column before a new column is started.
+const MAX_PER_COLUMN: usize = 10;
 
 #[derive(Debug)]
 pub struct CardViewerComponent {
@@ -38,7 +42,6 @@ impl Component for CardViewerComponent {
                 card_rect.image = TextureCache::get_card_texture_blocking(&card_rect.card, ctx);
             }
         }
-        // Keep flushing so textures arrive promptly.
         TextureCache::flush_blocking(ctx);
         let _ = data;
         Ok(())
@@ -56,12 +59,13 @@ impl Component for CardViewerComponent {
 
         let mut open = self.visible;
         let mut hovered_idx: Option<usize> = None;
+
         egui::Window::new(self.title.clone())
             .open(&mut open)
             .movable(true)
             .resizable(true)
-            .min_width(600.0)
-            .min_height(400.0)
+            .min_width(THUMB_W + CARD_PAD * 2.0)
+            .min_height(THUMB_H + CARD_PAD * 2.0)
             .default_size(vec2(600.0, 400.0))
             .show(ui.ctx(), |ui| {
                 if self.cards.is_empty() {
@@ -75,54 +79,151 @@ impl Component for CardViewerComponent {
                     return;
                 }
 
-                egui::ScrollArea::vertical().show(ui, |ui| {
-                    let card_size = vec2(THUMB_W, THUMB_H);
+                // Reset hover state before detection.
+                for card in &mut self.cards {
+                    card.is_hovered = false;
+                }
 
-                    ui.horizontal_wrapped(|ui| {
-                        ui.spacing_mut().item_spacing = vec2(CARD_PAD, CARD_PAD);
-                        for (i, card_rect) in self.cards.iter_mut().enumerate() {
-                            let (rect, response) =
-                                ui.allocate_exact_size(card_size, Sense::hover());
-                            card_rect.rect = rect;
-                            card_rect.is_hovered = response.hovered();
-                            if response.hovered() {
-                                hovered_idx = Some(i);
-                                ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
-                            }
+                let total = self.cards.len();
+                let num_cols = total.div_ceil(MAX_PER_COLUMN);
+                let mouse_pos = ui.ctx().input(|i| i.pointer.hover_pos());
 
-                            if ui.is_rect_visible(rect) {
-                                let painter = ui.painter_at(rect);
-                                if let Some(ref tex) = card_rect.image {
-                                    painter.image(
-                                        tex.id(),
-                                        rect,
-                                        Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
-                                        Color32::WHITE,
+                // `auto_shrink([false, false])` lets the user drag the window
+                // larger than its content without it snapping back.
+                egui::ScrollArea::both()
+                    .auto_shrink([false, false])
+                    .show(ui, |ui| {
+                        ui.horizontal_top(|ui| {
+                            ui.spacing_mut().item_spacing = vec2(CARD_PAD, 0.0);
+
+                            for col_idx in 0..num_cols {
+                                let start = col_idx * MAX_PER_COLUMN;
+                                let end = (start + MAX_PER_COLUMN).min(total);
+                                let n = end - start;
+
+                                let col_h = STACK_STRIP * n.saturating_sub(1) as f32 + THUMB_H;
+                                let (col_rect, _) =
+                                    ui.allocate_exact_size(vec2(THUMB_W, col_h), Sense::hover());
+
+                                // Hover detection (done before drawing so the highlighted
+                                // border is correct in the same frame).
+                                if let Some(mp) = mouse_pos {
+                                    for local_i in (0..n).rev() {
+                                        let gi = start + local_i;
+                                        let y =
+                                            col_rect.min.y + local_i as f32 * STACK_STRIP;
+                                        let visible_h = if local_i == n - 1 {
+                                            THUMB_H
+                                        } else {
+                                            STACK_STRIP
+                                        };
+                                        let hit = Rect::from_min_size(
+                                            pos2(col_rect.min.x, y),
+                                            vec2(THUMB_W, visible_h),
+                                        );
+                                        if hit.contains(mp) {
+                                            self.cards[gi].is_hovered = true;
+                                            hovered_idx = Some(gi);
+                                            ui.ctx().set_cursor_icon(
+                                                egui::CursorIcon::PointingHand,
+                                            );
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                if !ui.is_rect_visible(col_rect) {
+                                    continue;
+                                }
+
+                                let painter = ui.painter();
+
+                                // Pass 1: draw all card images / placeholders back-to-front.
+                                // Each successive card covers the lower portion of the one
+                                // before it, leaving only the STACK_STRIP strip visible.
+                                for local_i in 0..n {
+                                    let gi = start + local_i;
+                                    let y = col_rect.min.y + local_i as f32 * STACK_STRIP;
+                                    let card_rect = Rect::from_min_size(
+                                        pos2(col_rect.min.x, y),
+                                        vec2(THUMB_W, THUMB_H),
                                     );
-                                } else {
-                                    painter.rect_filled(rect, 4.0, Color32::DARK_GRAY);
-                                    painter.text(
-                                        rect.center(),
-                                        egui::Align2::CENTER_CENTER,
-                                        card_rect.card.get_name(),
-                                        egui::FontId::proportional(9.0),
-                                        Color32::LIGHT_GRAY,
+                                    self.cards[gi].rect = card_rect;
+
+                                    if let Some(ref tex) = self.cards[gi].image {
+                                        painter.image(
+                                            tex.id(),
+                                            card_rect,
+                                            Rect::from_min_max(
+                                                pos2(0.0, 0.0),
+                                                pos2(1.0, 1.0),
+                                            ),
+                                            Color32::WHITE,
+                                        );
+                                    } else {
+                                        painter.rect_filled(
+                                            card_rect,
+                                            4.0,
+                                            Color32::DARK_GRAY,
+                                        );
+                                        // For the front card with no image, show name in centre.
+                                        if local_i == n - 1 {
+                                            painter.text(
+                                                card_rect.center(),
+                                                egui::Align2::CENTER_CENTER,
+                                                self.cards[gi].card.get_name(),
+                                                egui::FontId::proportional(9.0),
+                                                Color32::LIGHT_GRAY,
+                                            );
+                                        }
+                                    }
+                                }
+
+                                // Pass 2: draw name strip overlays for backing cards and
+                                // borders for all cards.
+                                for local_i in 0..n {
+                                    let gi = start + local_i;
+                                    let y = col_rect.min.y + local_i as f32 * STACK_STRIP;
+                                    let card_rect = self.cards[gi].rect;
+
+                                    if local_i < n - 1 {
+                                        // Semi-transparent overlay over the visible strip.
+                                        let strip = Rect::from_min_size(
+                                            pos2(col_rect.min.x, y),
+                                            vec2(THUMB_W, STACK_STRIP),
+                                        );
+                                        painter.rect_filled(
+                                            strip,
+                                            4.0,
+                                            Color32::from_rgba_unmultiplied(0, 0, 0, 160),
+                                        );
+                                        painter.text(
+                                            strip.center(),
+                                            egui::Align2::CENTER_CENTER,
+                                            self.cards[gi].card.get_name(),
+                                            egui::FontId::proportional(9.0),
+                                            Color32::LIGHT_GRAY,
+                                        );
+                                    }
+
+                                    let border_color = if self.cards[gi].is_hovered {
+                                        Color32::WHITE
+                                    } else {
+                                        Color32::from_gray(100)
+                                    };
+                                    painter.rect_stroke(
+                                        card_rect,
+                                        4.0,
+                                        Stroke::new(1.0, border_color),
+                                        egui::StrokeKind::Outside,
                                     );
                                 }
-                                let border_color = Color32::from_gray(100);
-                                painter.rect_stroke(
-                                    rect,
-                                    4.0,
-                                    Stroke::new(1.0, border_color),
-                                    egui::StrokeKind::Outside,
-                                );
                             }
-                        }
+                        });
                     });
-                });
             });
 
-        // Hover preview: show a larger floating card above everything (Tooltip layer).
+        // Hover preview rendered at the Tooltip layer so it floats above the window.
         if let Some(idx) = hovered_idx {
             let tex = &self.cards[idx].image;
             crate::render::draw_card_preview(ui, tex.as_ref()).unwrap();

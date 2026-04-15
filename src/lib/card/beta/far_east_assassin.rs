@@ -64,7 +64,7 @@ impl ActivatedAbility for ThrowArtifactAbility {
         .await?;
 
         let artifact = state.get_card(&artifact_id);
-        let damage = artifact.get_base().costs.mana_cost() as u16;
+        let damage = artifact.get_base().costs.mana_value() as u16;
 
         let Some(target_id) = CardQuery::new()
             .minions()

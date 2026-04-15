@@ -1,6 +1,6 @@
 use crate::{
     card::{AvatarBase, Card, CardBase, Costs, Edition, Rarity, Region, UnitBase, Zone},
-    game::{ActivatedAbility, AvatarAction, PlayerId},
+    game::PlayerId,
     state::{ContinuousEffect, State},
 };
 

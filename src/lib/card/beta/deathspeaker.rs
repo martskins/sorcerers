@@ -1,7 +1,7 @@
 use crate::{
     card::{AvatarBase, Card, CardBase, Cost, Costs, Edition, Rarity, Region, UnitBase, Zone},
     effect::Effect,
-    game::{ActivatedAbility, AvatarAction, PlayerId},
+    game::{ActivatedAbility, PlayerId, pick_zone},
     state::{CardQuery, State},
 };
 
@@ -11,22 +11,7 @@ struct DeathspeakerAbility;
 #[async_trait::async_trait]
 impl ActivatedAbility for DeathspeakerAbility {
     fn get_name(&self) -> String {
-        "Banish a dead minion".to_string()
-    }
-
-    async fn on_select(
-        &self,
-        _card_id: &uuid::Uuid,
-        _player_id: &PlayerId,
-        _state: &State,
-    ) -> anyhow::Result<Vec<Effect>> {
-        // TODO: Implement the banish and copy effect.
-        //  - Add a copy card effect that creates a new instance of the given card, except it's a token.
-        //  - Have the player decide where to summon the copy.
-        //  - Check if the player is on Death's Door, and if so, make the cost of the copy 0.
-        //  - Banish the original card.
-        //  - Banish the copy after it enters the realm and uses its Genesis ability.
-        Ok(vec![])
+        "Banish a dead minion to cast a copy".to_string()
     }
 
     fn can_activate(
@@ -35,26 +20,125 @@ impl ActivatedAbility for DeathspeakerAbility {
         player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<bool> {
-        Ok(CardQuery::new()
-            .dead()
-            .minions()
-            .controlled_by(player_id)
-            .all(state)
-            .len()
-            > 0)
+        let dead_minions = CardQuery::new().dead().minions().all(state);
+        let has_dead_minion = !dead_minions.is_empty();
+        let can_afford_any = dead_minions.iter().any(|id| {
+            let card = state.get_card(id);
+            let mana_cost = card.get_base().costs.mana_cost();
+            let can_afford = mana_cost.can_afford(state, player_id).unwrap_or_default();
+            can_afford
+        });
+
+        Ok(has_dead_minion && can_afford_any)
     }
 
     fn get_cost(&self, _card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
-        // TODO: Implement this
-        Ok(Cost::ZERO)
+        // The activation is free; the copy's mana cost is consumed inside on_select.
+        Ok(Cost::ZERO.clone())
+    }
+
+    async fn on_select(
+        &self,
+        card_id: &uuid::Uuid,
+        player_id: &PlayerId,
+        state: &State,
+    ) -> anyhow::Result<Vec<Effect>> {
+        // Step 1: Pick a dead minion to copy.
+        let Some(chosen_id) = CardQuery::new()
+            .dead()
+            .minions()
+            .with_prompt("Deathspeaker: Pick a dead minion to copy")
+            .pick(player_id, state, true)
+            .await?
+        else {
+            return Ok(vec![]);
+        };
+
+        let chosen = state.get_card(&chosen_id);
+        let card_name = chosen.get_name().to_string();
+        let mana_cost = chosen.get_base().costs.mana_value();
+
+        // Step 2: Check Death's Door (avatar has taken max damage).
+        let deaths_door = state
+            .get_player_avatar_id(player_id)
+            .ok()
+            .and_then(|avatar_id| {
+                state
+                    .get_card(&avatar_id)
+                    .get_avatar_base()
+                    .map(|ab| ab.deaths_door)
+            })
+            .unwrap_or(false);
+
+        // Step 3: Check affordability (skip if on Death's Door).
+        if !deaths_door {
+            let available = *state.player_mana.get(player_id).unwrap_or(&0);
+            if available < mana_cost {
+                return Ok(vec![]);
+            }
+        }
+
+        // Step 4: Pick a zone to summon the copy.
+        let deathspeaker = state.get_card(card_id);
+        let zones = deathspeaker.get_zones_within_steps_of(state, 1, deathspeaker.get_zone());
+        let valid_zones: Vec<Zone> = zones
+            .into_iter()
+            .filter(|z| z.get_site(state).is_some())
+            .collect();
+
+        if valid_zones.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let chosen_zone = pick_zone(
+            player_id,
+            &valid_zones,
+            state,
+            false,
+            "Deathspeaker: Pick a zone to summon the copy",
+        )
+        .await?;
+
+        // Build effects.
+        let mut effects: Vec<Effect> = vec![];
+
+        // Banish the original dead minion.
+        effects.push(Effect::BanishCard {
+            card_id: chosen_id.clone(),
+            from: Zone::Cemetery,
+        });
+
+        // Consume mana unless on Death's Door.
+        if !deaths_door && mana_cost > 0 {
+            effects.push(Effect::ConsumeMana {
+                player_id: player_id.clone(),
+                mana: mana_cost,
+            });
+        }
+
+        // Summon a token copy (it will trigger Genesis then be auto-banished).
+        effects.push(Effect::SummonCopy {
+            card_name,
+            player_id: player_id.clone(),
+            zone: chosen_zone,
+        });
+
+        // Record that this ability was used this turn.
+        effects.push(Effect::SetCardData {
+            card_id: card_id.clone(),
+            data: Box::new(true),
+        });
+
+        Ok(effects)
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct Deathspeaker {
-    pub card_base: CardBase,
-    pub unit_base: UnitBase,
-    pub avatar_base: AvatarBase,
+    card_base: CardBase,
+    unit_base: UnitBase,
+    avatar_base: AvatarBase,
+    has_used_ability: bool,
 }
 
 impl Deathspeaker {
@@ -84,10 +168,12 @@ impl Deathspeaker {
             avatar_base: AvatarBase {
                 ..Default::default()
             },
+            has_used_ability: false,
         }
     }
 }
 
+#[async_trait::async_trait]
 impl Card for Deathspeaker {
     fn get_name(&self) -> &str {
         Self::NAME
@@ -125,7 +211,27 @@ impl Card for Deathspeaker {
         &self,
         _state: &State,
     ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+        if self.has_used_ability {
+            return Ok(vec![]);
+        }
+
         Ok(vec![Box::new(DeathspeakerAbility)])
+    }
+
+    fn set_data(&mut self, data: &Box<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
+        if let Some(ability_used) = data.downcast_ref::<bool>() {
+            self.has_used_ability = *ability_used;
+        }
+
+        Ok(())
+    }
+
+    async fn on_turn_start(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
+        // Reset the once-per-turn ability usage at the start of the turn.
+        Ok(vec![Effect::SetCardData {
+            card_id: self.card_base.id,
+            data: Box::new(false),
+        }])
     }
 }
 

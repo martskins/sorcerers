@@ -871,7 +871,7 @@ pub trait ActivatedAbility: std::fmt::Debug + Send + Sync + CloneBoxedAction {
     }
 
     fn get_cost(&self, _card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
-        Ok(Cost::ZERO)
+        Ok(Cost::ZERO.clone())
     }
 }
 

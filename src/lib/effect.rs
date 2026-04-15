@@ -220,6 +220,13 @@ pub enum Effect {
         card_id: uuid::Uuid,
         player_id: PlayerId,
     },
+    /// Creates a token copy of the named card for the given player and summons it in the target
+    /// zone. The copy triggers its Genesis, then is automatically banished afterwards.
+    SummonCopy {
+        card_name: String,
+        player_id: PlayerId,
+        zone: Zone,
+    },
 }
 
 fn player_name<'a>(player_id: &PlayerId, state: &'a State) -> &'a str {
@@ -307,6 +314,7 @@ impl Effect {
             Effect::SetBearer { card_id, .. } => Some(card_id),
             Effect::ShuffleDeck { .. } => None,
             Effect::SetController { card_id, .. } => Some(card_id),
+            Effect::SummonCopy { player_id, .. } => Some(player_id),
         }
     }
 
@@ -659,6 +667,16 @@ impl Effect {
                     card_name
                 ))
             }
+            Effect::SummonCopy {
+                card_name,
+                player_id,
+                zone,
+            } => Some(format!(
+                "{} summons a copy of {} in {}",
+                player_name(player_id, state),
+                card_name,
+                zone
+            )),
         };
 
         Ok(desc)
@@ -1678,6 +1696,39 @@ impl Effect {
             Effect::SetController { card_id, player_id } => {
                 let card = state.get_card_mut(card_id);
                 card.get_base_mut().controller_id = player_id.clone();
+            }
+            Effect::SummonCopy {
+                card_name,
+                player_id,
+                zone,
+            } => {
+                let mut copy = crate::card::from_name(card_name, player_id);
+                copy.get_base_mut().is_token = true;
+
+                let has_charge = copy.has_ability(state, &Ability::Charge);
+                let copy_id = copy.get_id().clone();
+                state.cards.push(copy);
+
+                let card = state.get_card_mut(&copy_id);
+                card.set_zone(zone.clone());
+                if !has_charge {
+                    card.add_modifier(Ability::SummoningSickness);
+                }
+
+                for player in &state.players {
+                    crate::game::force_sync(&player.id, state).await?;
+                }
+
+                let card = state.get_card(&copy_id);
+                let mut effects: Vec<Effect> = vec![];
+                effects.extend(card.on_summon(state)?);
+                effects.extend(card.genesis(state).await?);
+                effects.extend(card.on_visit_zone(state, zone).await?);
+                effects.push(Effect::BanishCard {
+                    card_id: copy_id,
+                    from: zone.clone(),
+                });
+                state.queue(effects);
             }
         }
 

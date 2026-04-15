@@ -1,8 +1,5 @@
 use crate::{
-    card::{
-        Card, CardBase, Cost, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase,
-        Zone,
-    },
+    card::{Card, CardBase, Cost, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone},
     effect::Effect,
     game::{ActivatedAbility, PlayerId, Thresholds, pick_zone},
     query::ZoneQuery,
@@ -162,6 +159,10 @@ impl Card for CloudCity {
         &self,
         _state: &State,
     ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+        if self.moved_this_turn {
+            return Ok(vec![]);
+        }
+
         Ok(vec![Box::new(FlyToVoid)])
     }
 

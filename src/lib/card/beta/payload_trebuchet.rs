@@ -51,7 +51,7 @@ impl ActivatedAbility for ShootPayload {
                             card.get_costs(state)
                                 .cloned()
                                 .unwrap_or_default()
-                                .mana_cost(),
+                                .mana_value(),
                         )
                     }
                     _ => None,
@@ -75,6 +75,7 @@ impl ActivatedAbility for ShootPayload {
             Some(bearer_id) => {
                 let bearer = state.get_card(&bearer_id);
                 Ok(Cost::ZERO
+                    .clone()
                     .with_additional(AdditionalCost::tap(
                         CardQuery::from_id(bearer_id.clone()).untapped(),
                     ))
@@ -91,7 +92,7 @@ impl ActivatedAbility for ShootPayload {
                             .controlled_by(&bearer.get_controller_id(state)),
                     )))
             }
-            None => Ok(Cost::ZERO),
+            None => Ok(Cost::ZERO.clone()),
         }
     }
 }

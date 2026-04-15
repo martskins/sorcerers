@@ -193,7 +193,7 @@ impl DeckBuilder {
                 zone: base.zone.clone(),
                 is_avatar: card.is_avatar(),
                 rarity: base.rarity.clone(),
-                mana: base.costs.mana_cost(),
+                mana: base.costs.mana_value(),
                 thresholds: base.costs.thresholds_cost().clone(),
                 image_path: card.get_image_path(),
                 power: card.get_unit_base().map(|u| u.power),

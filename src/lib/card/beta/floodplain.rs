@@ -1,8 +1,5 @@
 use crate::{
-    card::{
-        Card, CardBase, Cost, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase,
-        Zone,
-    },
+    card::{Card, CardBase, Cost, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone},
     effect::Effect,
     game::{ActivatedAbility, PlayerId, Thresholds},
     query::EffectQuery,
@@ -43,7 +40,7 @@ impl ActivatedAbility for FloodAdjacentSite {
     }
 
     fn get_cost(&self, _card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
-        Ok(Cost::ZERO)
+        Ok(Cost::ZERO.clone())
     }
 
     fn can_activate(
