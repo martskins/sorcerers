@@ -12,9 +12,9 @@ linkme = "0.3.35"
 thiserror = "2.0.17"
 chrono = { version = "0.4.42", features = ["serde"] }
 async-trait = "0.1.89"
-eframe = { version = "0.31", features = ["default"] }
-egui = "0.31"
-egui_extras = { version = "0.31", features = ["image", "default"] }
+eframe = { version = "0.34", features = ["default"] }
+egui = "0.34"
+egui_extras = { version = "0.34", features = ["image", "default"] }
 async-channel = "2.5.0"
 crossbeam = "0.8.4"
 oneshot = "0.1.11"

@@ -1,5 +1,5 @@
 use crate::scene::{Scene, game::Game};
-use egui::{Color32, Context, Margin, Ui, vec2};
+use egui::{Color32, Context, Frame, Margin, Ui, vec2};
 use kira::{
     AudioManager, AudioManagerSettings, DefaultBackend, sound::static_sound::StaticSoundData,
 };
@@ -109,14 +109,14 @@ impl Menu {
         }
     }
 
-    pub fn render(&mut self, _ui: &mut Ui, ctx: &Context) -> Option<Scene> {
-        let time = ctx.input(|i| i.time);
+    pub fn render(&mut self, ui: &mut Ui) -> Option<Scene> {
+        let time = ui.ctx().input(|i| i.time);
 
         // ── Shake calculation (decaying sine, 0.45 s duration) ───────────────
         let shake_x: f32 = if let Some(start) = self.shake_start {
             let elapsed = (time - start) as f32;
             if elapsed < 0.45 {
-                ctx.request_repaint();
+                ui.ctx().request_repaint();
                 let amplitude = 11.0 * (1.0 - elapsed / 0.45);
                 (elapsed * 38.0).sin() * amplitude
             } else {
@@ -136,7 +136,7 @@ impl Menu {
 
         egui::CentralPanel::default()
             .frame(egui::Frame::NONE.fill(Color32::from_rgb(8, 8, 14)))
-            .show(ctx, |ui| {
+            .show_inside(ui, |ui| {
                 let panel_h = ui.available_height();
                 ui.add_space(panel_h * 0.18);
 
@@ -191,7 +191,7 @@ impl Menu {
                             .hint_text("Your name…")
                             .background_color(Color32::LIGHT_GRAY)
                             .margin(Margin::same(5))
-                            .frame(true); // we draw our own frame above
+                            .frame(Frame::NONE); // we draw our own frame above
                         let resp = ui.put(inner, te);
 
                         // Auto-focus the field on first render
@@ -216,14 +216,14 @@ impl Menu {
                             egui::Button::new(egui::RichText::new("Search for Match").size(24.0).color(Color32::WHITE))
                                 .min_size(vec2(280.0, 52.0));
 
-                        let clicked = ui.add(btn).clicked() || ctx.input(|i| i.key_pressed(egui::Key::Enter));
+                        let clicked = ui.add(btn).clicked() || ui.ctx().input(|i| i.key_pressed(egui::Key::Enter));
 
                         if clicked {
                             if self.player_name.is_empty() {
                                 // Trigger shake + error state
                                 self.shake_start = Some(time);
                                 self.show_name_error = true;
-                                ctx.request_repaint();
+                                ui.ctx().request_repaint();
                             } else {
                                 self.client.send(ClientMessage::Connect).ok();
                             }

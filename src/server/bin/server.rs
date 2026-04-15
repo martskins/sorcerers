@@ -1,6 +1,9 @@
 use async_channel::Sender;
 use sorcerers::{
-    card::{ALL_PRECONS, ApprenticeWizard, AramosMercenaries, PitVipers},
+    card::{
+        ALL_PRECONS, ApprenticeWizard, AramosMercenaries, AridDesert, FelbogFrogMen, RubyCore,
+        SummerRiver,
+    },
     game::Game,
     networking::{
         client::Client,
@@ -176,86 +179,81 @@ impl Server {
             sorcerers::card::Zone::Cemetery,
         ));
         game.state.cards.push(sorcerers::card::from_name_and_zone(
-            PitVipers::NAME,
+            RubyCore::NAME,
             &player_one,
-            sorcerers::card::Zone::Cemetery,
+            sorcerers::card::Zone::Hand,
         ));
 
-        // let player_two = game.state.players[1].id.clone();
-        // game.state.cards.push(sorcerers::card::from_name_and_zone(
-        //     "Chain Lightning",
-        //     &player_one,
-        //     sorcerers::card::Zone::Hand,
-        // ));
-        // game.state.cards.push(sorcerers::card::from_name_and_zone(
-        //     SummerRiver::NAME,
-        //     &player_one,
-        //     sorcerers::card::Zone::Realm(3),
-        // ));
-        // game.state.cards.push(sorcerers::card::from_name_and_zone(
-        //     SummerRiver::NAME,
-        //     &player_one,
-        //     sorcerers::card::Zone::Realm(9),
-        // ));
-        // game.state.cards.push(sorcerers::card::from_name_and_zone(
-        //     SummerRiver::NAME,
-        //     &player_one,
-        //     sorcerers::card::Zone::Realm(4),
-        // ));
-        // game.state.cards.push(sorcerers::card::from_name_and_zone(
-        //     SummerRiver::NAME,
-        //     &player_one,
-        //     sorcerers::card::Zone::Realm(6),
-        // ));
-        // game.state.cards.push(sorcerers::card::from_name_and_zone(
-        //     SummerRiver::NAME,
-        //     &player_one,
-        //     sorcerers::card::Zone::Realm(7),
-        // ));
-        // game.state.cards.push(sorcerers::card::from_name_and_zone(
-        //     SummerRiver::NAME,
-        //     &player_one,
-        //     sorcerers::card::Zone::Realm(2),
-        // ));
-        // game.state.cards.push(sorcerers::card::from_name_and_zone(
-        //     AridDesert::NAME,
-        //     &player_one,
-        //     sorcerers::card::Zone::Realm(8),
-        // ));
-        // let mut anui =
-        //     sorcerers::card::from_name_and_zone(AnuiUndine::NAME, &player_one, sorcerers::card::Zone::Realm(7));
-        // anui.get_base_mut().region = Region::Underwater;
-        // game.state.cards.push(anui);
-        //
-        // let mut sunken_treasure =
-        //     sorcerers::card::from_name_and_zone(SunkenTreasure::NAME, &player_one, sorcerers::card::Zone::Realm(7));
-        // sunken_treasure.get_base_mut().region = Region::Underwater;
-        //
-        // game.state.cards.push(sunken_treasure);
-        // let kite_archer =
-        //     sorcerers::card::from_name_and_zone("Kite Archer", &player_one, sorcerers::card::Zone::Realm(8));
-        // let mut lucky_charm =
-        //     sorcerers::card::from_name_and_zone("Lucky Charm", &player_two, sorcerers::card::Zone::Realm(1));
-        // lucky_charm.get_artifact_base_mut().unwrap().bearer = Some(kite_archer.get_id().clone());
-        // game.state.cards.push(lucky_charm);
-        // game.state.cards.push(kite_archer);
-        // game.state.cards.push(sorcerers::card::from_name_and_zone(
-        //     AridDesert::NAME,
-        //     &player_two,
-        //     sorcerers::card::Zone::Realm(13),
-        // ));
-        // game.state.cards.push(sorcerers::card::from_name_and_zone(
-        //     AridDesert::NAME,
-        //     &player_two,
-        //     sorcerers::card::Zone::Realm(18),
-        // ));
-        // game.state.cards.push(sorcerers::card::from_name_and_zone(
-        //     "Rimland Nomads",
-        //     &player_two,
-        //     sorcerers::card::Zone::Realm(13),
-        // ));
-        // let player_mana = game.state.get_player_mana_mut(&player_one);
-        // *player_mana = 10;
+        let player_two = game.state.players[1].id.clone();
+        game.state.cards.push(sorcerers::card::from_name_and_zone(
+            "Chain Lightning",
+            &player_one,
+            sorcerers::card::Zone::Hand,
+        ));
+        game.state.cards.push(sorcerers::card::from_name_and_zone(
+            SummerRiver::NAME,
+            &player_one,
+            sorcerers::card::Zone::Realm(3),
+        ));
+        game.state.cards.push(sorcerers::card::from_name_and_zone(
+            SummerRiver::NAME,
+            &player_one,
+            sorcerers::card::Zone::Realm(9),
+        ));
+        game.state.cards.push(sorcerers::card::from_name_and_zone(
+            SummerRiver::NAME,
+            &player_one,
+            sorcerers::card::Zone::Realm(4),
+        ));
+        game.state.cards.push(sorcerers::card::from_name_and_zone(
+            SummerRiver::NAME,
+            &player_one,
+            sorcerers::card::Zone::Realm(6),
+        ));
+        game.state.cards.push(sorcerers::card::from_name_and_zone(
+            SummerRiver::NAME,
+            &player_one,
+            sorcerers::card::Zone::Realm(7),
+        ));
+        game.state.cards.push(sorcerers::card::from_name_and_zone(
+            SummerRiver::NAME,
+            &player_one,
+            sorcerers::card::Zone::Realm(2),
+        ));
+        game.state.cards.push(sorcerers::card::from_name_and_zone(
+            AridDesert::NAME,
+            &player_one,
+            sorcerers::card::Zone::Realm(8),
+        ));
+
+        let kite_archer = sorcerers::card::from_name_and_zone(
+            "Kite Archer",
+            &player_one,
+            sorcerers::card::Zone::Realm(8),
+        );
+        game.state.cards.push(kite_archer);
+        game.state.cards.push(sorcerers::card::from_name_and_zone(
+            AridDesert::NAME,
+            &player_two,
+            sorcerers::card::Zone::Realm(13),
+        ));
+        game.state.cards.push(sorcerers::card::from_name_and_zone(
+            AridDesert::NAME,
+            &player_two,
+            sorcerers::card::Zone::Realm(18),
+        ));
+        game.state.cards.push(sorcerers::card::from_name_and_zone(
+            "Rimland Nomads",
+            &player_two,
+            sorcerers::card::Zone::Realm(3),
+        ));
+        game.state.cards.push(sorcerers::card::from_name_and_zone(
+            FelbogFrogMen::NAME,
+            &player_one,
+            sorcerers::card::Zone::Realm(13),
+        ));
+        let player_mana = game.state.get_player_mana_mut(&player_one);
+        *player_mana = 10;
 
         tokio::spawn(async move {
             game.start().await.expect("game to start");

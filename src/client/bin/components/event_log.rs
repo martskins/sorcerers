@@ -84,15 +84,6 @@ impl Component for EventLogComponent {
         Ok(())
     }
 
-    fn process_input(
-        &mut self,
-        _in_turn: bool,
-        _data: &mut GameData,
-        _ctx: &Context,
-    ) -> anyhow::Result<Option<ComponentCommand>> {
-        Ok(None)
-    }
-
     fn toggle_visibility(&mut self) {
         self.visible = !self.visible;
     }

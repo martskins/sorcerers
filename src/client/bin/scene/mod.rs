@@ -16,11 +16,11 @@ pub enum Scene {
 }
 
 impl Scene {
-    pub fn render(&mut self, ui: &mut Ui, ctx: &Context) -> Option<Scene> {
+    pub fn render(&mut self, ui: &mut Ui) -> Option<Scene> {
         match self {
-            Scene::Menu(menu) => menu.render(ui, ctx),
-            Scene::Game(game) => game.render(ui, ctx),
-            Scene::DeckBuilder(db) => db.render(ui, ctx),
+            Scene::Menu(menu) => menu.render(ui),
+            Scene::Game(game) => game.render(ui),
+            Scene::DeckBuilder(db) => db.render(ui),
         }
     }
 

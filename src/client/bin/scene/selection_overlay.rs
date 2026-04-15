@@ -1,12 +1,12 @@
 use crate::{
-    components::{Component, ComponentCommand, ComponentType},
+    components::{Component, ComponentType},
     config::{card_height, card_width, screen_rect},
     input::Mouse,
     render::{self, CardRect},
     scene::game::{GameData, Status},
     texture_cache::TextureCache,
 };
-use egui::{Color32, Context, Painter, Rect, Ui, pos2, vec2};
+use egui::{Color32, Context, Painter, Rect, Sense, Ui, pos2, vec2};
 use sorcerers::{
     card::{CardData, Zone},
     game::PlayerId,
@@ -280,44 +280,34 @@ impl SelectionOverlay {
         self.card_rects.iter().rev().find(|card| card.is_hovered)
     }
 
-    fn render_hover_preview(&self, hovered: &CardRect, ui: &Ui, painter: &Painter) {
-        let screen =
-            screen_rect().unwrap_or(Rect::from_min_size(pos2(0.0, 0.0), vec2(1280.0, 720.0)));
-        let mouse = Mouse::position(ui.ctx()).unwrap_or(hovered.rect.center());
-        let preview_scale = 2.0;
-        let preview_size = vec2(
-            hovered.rect.width() * preview_scale,
-            hovered.rect.height() * preview_scale,
-        );
-        let mut preview_pos = mouse + vec2(28.0, 28.0);
-        if preview_pos.x + preview_size.x > screen.max.x - 8.0 {
-            preview_pos.x = mouse.x - preview_size.x - 28.0;
+    fn handle_card_click(
+        &mut self,
+        card_id: &uuid::Uuid,
+        data: &mut GameData,
+    ) -> anyhow::Result<()> {
+        match self.behaviour {
+            SelectionOverlayBehaviour::Preview => {
+                self.client.send(ClientMessage::ClickCard {
+                    game_id: self.game_id,
+                    player_id: self.player_id,
+                    card_id: card_id.clone(),
+                })?;
+                self.close = true;
+            }
+            SelectionOverlayBehaviour::Pick => {
+                if self.is_pickable(card_id) {
+                    self.client.send(ClientMessage::PickCard {
+                        game_id: self.game_id,
+                        player_id: self.player_id,
+                        card_id: card_id.clone(),
+                    })?;
+                    self.close = true;
+                }
+            }
         }
-        if preview_pos.y + preview_size.y > screen.max.y - 8.0 {
-            preview_pos.y = screen.max.y - preview_size.y - 8.0;
-        }
-        let min_x = screen.min.x + 8.0;
-        let min_y = screen.min.y + 8.0;
-        let max_x = (screen.max.x - preview_size.x - 8.0).max(min_x);
-        let max_y = (screen.max.y - preview_size.y - 8.0).max(min_y);
-        preview_pos.x = preview_pos.x.clamp(min_x, max_x);
-        preview_pos.y = preview_pos.y.clamp(min_y, max_y);
 
-        let preview_rect = Rect::from_min_size(preview_pos, preview_size);
-        let preview_card = CardRect {
-            rect: preview_rect,
-            image: hovered.image.clone(),
-            is_hovered: false,
-            is_selected: false,
-            card: hovered.card.clone(),
-        };
-
-        painter.rect_filled(
-            preview_rect.expand(6.0),
-            8.0,
-            Color32::from_rgba_unmultiplied(0, 0, 0, 140),
-        );
-        render::draw_card(&preview_card, true, false, painter);
+        data.status = Status::Idle;
+        Ok(())
     }
 }
 
@@ -332,14 +322,6 @@ impl Component for SelectionOverlay {
         Ok(())
     }
 
-    fn process_command(
-        &mut self,
-        _command: &ComponentCommand,
-        _data: &mut GameData,
-    ) -> anyhow::Result<()> {
-        Ok(())
-    }
-
     fn toggle_visibility(&mut self) {}
 
     fn is_visible(&self) -> bool {
@@ -350,63 +332,15 @@ impl Component for SelectionOverlay {
         ComponentType::SelectionOverlay
     }
 
-    fn process_input(
-        &mut self,
-        _in_turn: bool,
-        data: &mut GameData,
-        ctx: &Context,
-    ) -> anyhow::Result<Option<ComponentCommand>> {
-        if !Mouse::enabled() {
-            return Ok(None);
-        }
-
-        self.update_hover_state(ctx);
-        let clicked = Mouse::clicked(ctx);
-
-        if !clicked {
-            return Ok(None);
-        }
-
-        let hovered = match self.hovered_card() {
-            Some(card) => card,
-            None => return Ok(None),
-        };
-
-        match self.behaviour {
-            SelectionOverlayBehaviour::Preview => {
-                self.client.send(ClientMessage::ClickCard {
-                    game_id: self.game_id,
-                    player_id: self.player_id,
-                    card_id: hovered.card.id,
-                })?;
-                self.close = true;
-            }
-            SelectionOverlayBehaviour::Pick => {
-                if self.is_pickable(&hovered.card.id) {
-                    self.client.send(ClientMessage::PickCard {
-                        game_id: self.game_id,
-                        player_id: self.player_id,
-                        card_id: hovered.card.id,
-                    })?;
-                    self.close = true;
-                }
-            }
-        }
-
-        data.status = Status::Idle;
-
-        Ok(None)
-    }
-
     fn render(
         &mut self,
-        _data: &mut GameData,
+        data: &mut GameData,
         ui: &mut Ui,
         painter: &Painter,
     ) -> anyhow::Result<()> {
         let sw = screen_rect().map(|r| r.width()).unwrap_or(1280.0);
         let sh = screen_rect().map(|r| r.height()).unwrap_or(720.0);
-        let title = ui.fonts(|f| {
+        let title = ui.fonts_mut(|f| {
             f.layout_no_wrap(
                 self.prompt.clone(),
                 egui::FontId::proportional(FONT_SIZE),
@@ -425,13 +359,20 @@ impl Component for SelectionOverlay {
             Color32::WHITE,
         );
 
+        let mut clicked_card = None;
         for card_rect in &self.card_rects {
+            let resp = ui.allocate_rect(card_rect.rect, Sense::click());
             render::draw_card(
                 card_rect,
                 card_rect.card.controller_id == self.player_id,
                 false,
                 painter,
             );
+
+            if resp.clicked() {
+                clicked_card = Some(card_rect.card.id);
+            }
+
             if self.behaviour == SelectionOverlayBehaviour::Pick
                 && !self.is_pickable(&card_rect.card.id)
             {
@@ -443,9 +384,13 @@ impl Component for SelectionOverlay {
             }
         }
 
+        if let Some(card_id) = clicked_card {
+            self.handle_card_click(&card_id, data)?;
+        }
+
         // Draw zone-group headers above each group's cards.
         for (label, centre) in &self.zone_group_headers {
-            let galley = ui.fonts(|f| {
+            let galley = ui.fonts_mut(|f| {
                 f.layout_no_wrap(
                     label.clone(),
                     egui::FontId::proportional(HEADER_FONT),
@@ -479,7 +424,7 @@ impl Component for SelectionOverlay {
 
         if let Some(hovered) = self.hovered_card() {
             if self.behaviour == SelectionOverlayBehaviour::Pick {
-                self.render_hover_preview(hovered, ui, painter);
+                render::draw_card_preview(ui, hovered.image.as_ref())?;
             }
         }
 

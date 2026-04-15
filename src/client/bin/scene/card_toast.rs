@@ -180,7 +180,7 @@ impl CardToast {
                 }
 
                 // Description label below the card image, sized to fit the panel.
-                let desc_galley = ctx.fonts(|f| {
+                let desc_galley = ctx.fonts_mut(|f| {
                     f.layout(
                         self.description.clone(),
                         FontId::proportional(TOAST_FONT_SIZE),
@@ -205,7 +205,7 @@ impl CardToast {
             }
             ToastKind::Event => {
                 // Text laid out to wrap within the inner width; panel height matches.
-                let galley = ctx.fonts(|f| {
+                let galley = ctx.fonts_mut(|f| {
                     f.layout(
                         self.description.clone(),
                         FontId::proportional(TOAST_FONT_SIZE),
@@ -250,7 +250,7 @@ fn toast_inner_width(kind: &ToastKind) -> f32 {
 
 /// Measures the height of `text` when wrapped at `wrap_width` pixels.
 fn measure_text_height(ctx: &Context, text: &str, wrap_width: f32) -> f32 {
-    ctx.fonts(|f| {
+    ctx.fonts_mut(|f| {
         f.layout(
             text.to_string(),
             FontId::proportional(TOAST_FONT_SIZE),

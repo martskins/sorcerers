@@ -333,11 +333,11 @@ impl Game {
         }
     }
 
-    pub fn render(&mut self, ui: &mut Ui, ctx: &Context) -> Option<Scene> {
+    pub fn render(&mut self, ui: &mut Ui) -> Option<Scene> {
         let painter = ui.painter().clone();
 
         if self.game_id.is_nil() {
-            let time = ctx.input(|i| i.time);
+            let time = ui.ctx().input(|i| i.time);
             let dot_count = ((time * 2.0) as usize % 3) + 1;
             let dots = ".".repeat(dot_count) + &" ".repeat(3 - dot_count);
             let message = format!("Looking for match{}", dots);
@@ -358,7 +358,7 @@ impl Game {
             }
         }
 
-        let new_scene = self.render_gui(ui, ctx, &painter);
+        let new_scene = self.render_gui(ui, &painter);
 
         // Toasts — drawn above the board but below any blocking overlay.
         // Stack from the bottom of the realm area upward (oldest at bottom).
@@ -368,8 +368,8 @@ impl Game {
             let mut bottom_y = realm_bottom - TOAST_MARGIN;
             let mut expired: Vec<usize> = Vec::new();
             for (i, toast) in self.card_toast.iter_mut().enumerate() {
-                bottom_y -= toast.height(ctx);
-                if !toast.render(ctx, ui, bottom_y) {
+                bottom_y -= toast.height(ui.ctx());
+                if !toast.render(ui.ctx(), ui, bottom_y) {
                     expired.push(i);
                 }
                 bottom_y -= TOAST_GAP;
@@ -388,7 +388,7 @@ impl Game {
         new_scene
     }
 
-    fn render_gui(&mut self, _ui: &mut Ui, ctx: &Context, painter: &Painter) -> Option<Scene> {
+    fn render_gui(&mut self, ui: &mut Ui, painter: &Painter) -> Option<Scene> {
         let sr = screen_rect().unwrap_or(Rect::ZERO);
         let sidebar_w = realm_rect().map(|r| r.min.x).unwrap_or(220.0);
         let is_in_turn = self.current_player == self.data.player_id;
@@ -448,7 +448,7 @@ impl Game {
             let game_id = self.game_id;
             egui::Area::new(egui::Id::new("pass_turn_btn"))
                 .fixed_pos(btn_pos)
-                .show(ctx, |ui| {
+                .show(ui, |ui| {
                     let btn = egui::Button::new(
                         egui::RichText::new("Pass Turn")
                             .size(18.0)
@@ -470,7 +470,7 @@ impl Game {
             let mut done = false;
             egui::Area::new(egui::Id::new("done_selecting_btn"))
                 .fixed_pos(btn_pos)
-                .show(ctx, |ui| {
+                .show(ui, |ui| {
                     let btn = egui::Button::new(
                         egui::RichText::new("Done Selecting")
                             .size(18.0)
@@ -541,7 +541,7 @@ impl Game {
                 egui::Area::new(egui::Id::new("amount_picker_popup"))
                     .fixed_pos(origin)
                     .order(egui::Order::Foreground)
-                    .show(ctx, |ui| {
+                    .show(ui, |ui| {
                         ui.vertical_centered(|ui| {
                             ui.horizontal(|ui| {
                                 ui.add_space(16.0);
@@ -619,7 +619,7 @@ impl Game {
                 } else {
                     None
                 };
-                let result = popup_action_menu(ctx, pos, &prompt, &actions, painter);
+                let result = popup_action_menu(ui, pos, &prompt, &actions, painter);
                 if let Some(idx) = result {
                     self.client
                         .send(ClientMessage::PickAction {
@@ -640,7 +640,7 @@ impl Game {
                     .collapsible(false)
                     .resizable(false)
                     .anchor(egui::Align2::CENTER_CENTER, vec2(0.0, 0.0))
-                    .show(ctx, |ui| {
+                    .show(ui, |ui| {
                         for line in reason.lines() {
                             ui.label(RichText::new(line).size(12.0));
                         }

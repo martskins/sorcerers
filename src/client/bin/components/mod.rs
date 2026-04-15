@@ -38,24 +38,34 @@ pub enum ComponentCommand {
 
 pub trait Component: std::fmt::Debug {
     fn update(&mut self, data: &mut GameData, ctx: &egui::Context) -> anyhow::Result<()>;
+
     fn render(
         &mut self,
         data: &mut GameData,
         ui: &mut egui::Ui,
         painter: &egui::Painter,
     ) -> anyhow::Result<()>;
+
     fn process_input(
         &mut self,
-        in_turn: bool,
-        data: &mut GameData,
-        ctx: &egui::Context,
-    ) -> anyhow::Result<Option<ComponentCommand>>;
+        _in_turn: bool,
+        _data: &mut GameData,
+        _ctx: &egui::Context,
+    ) -> anyhow::Result<Option<ComponentCommand>> {
+        Ok(None)
+    }
+
     fn process_command(
         &mut self,
-        command: &ComponentCommand,
-        data: &mut GameData,
-    ) -> anyhow::Result<()>;
+        _command: &ComponentCommand,
+        _data: &mut GameData,
+    ) -> anyhow::Result<()> {
+        Ok(())
+    }
+
     fn toggle_visibility(&mut self);
+
     fn is_visible(&self) -> bool;
+
     fn get_component_type(&self) -> ComponentType;
 }

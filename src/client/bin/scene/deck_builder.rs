@@ -248,13 +248,13 @@ impl DeckBuilder {
         }
     }
 
-    pub fn render(&mut self, _ui: &mut Ui, ctx: &Context) -> Option<Scene> {
-        let screen = ctx.screen_rect();
+    pub fn render(&mut self, ui: &mut Ui) -> Option<Scene> {
+        let screen = ui.ctx().content_rect();
         let mut next_scene: Option<Scene> = None;
 
         egui::CentralPanel::default()
             .frame(Frame::new().fill(BG))
-            .show(ctx, |ui| {
+            .show_inside(ui, |ui| {
                 // ── Header bar ────────────────────────────────────────────────
                 let header_rect = Rect::from_min_size(screen.min, vec2(screen.width(), HEADER_H));
                 ui.painter()
@@ -408,15 +408,15 @@ impl DeckBuilder {
                 // ── Left panel: card collection ────────────────────────────────
                 self.hovered_card = None; // reset each frame; render_left_panel sets it
                 let mut left_ui = ui.new_child(egui::UiBuilder::new().max_rect(left_rect));
-                self.render_left_panel(&mut left_ui, ctx, left_rect);
+                self.render_left_panel(&mut left_ui, ui.ctx(), left_rect);
 
                 // ── Right panel: deck summary ──────────────────────────────────
                 let mut right_ui = ui.new_child(egui::UiBuilder::new().max_rect(right_rect));
-                self.render_right_panel(&mut right_ui, ctx, right_rect);
+                self.render_right_panel(&mut right_ui, ui.ctx(), right_rect);
 
                 // ── Card preview popup (floating, over everything) ─────────────
                 if let Some((ref entry, anchor)) = self.hovered_card.clone() {
-                    Self::draw_card_preview(ctx, entry, anchor, screen);
+                    Self::draw_card_preview(ui.ctx(), entry, anchor, screen);
                 }
             });
 
@@ -856,7 +856,7 @@ impl DeckBuilder {
             .font(egui::FontId::proportional(13.0))
             .text_color(TEXT_BRIGHT)
             .background_color(Color32::TRANSPARENT)
-            .frame(false);
+            .frame(Frame::default());
         ui.put(name_rect.shrink(4.0), te);
         y += 34.0;
 

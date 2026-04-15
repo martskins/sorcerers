@@ -2,7 +2,7 @@ use crate::config::SCREEN_RECT;
 use crate::scene::Scene;
 use crate::scene::menu::Menu;
 use crate::texture_cache::TextureCache;
-use eframe::egui::{self};
+use eframe::egui;
 use sorcerers::networking;
 use sorcerers::networking::message::{Message, ServerMessage};
 use std::sync::RwLock;
@@ -141,7 +141,7 @@ impl SorcerersApp {
         ctx.set_visuals(visuals);
 
         // ── Spacing / style ──────────────────────────────────────────────────
-        let mut style = (*ctx.style()).clone();
+        let mut style = (*ctx.global_style()).clone();
         style.spacing.button_padding = egui::vec2(14.0, 8.0);
         style.spacing.item_spacing = egui::vec2(8.0, 8.0);
         style.spacing.text_edit_width = 300.0;
@@ -159,14 +159,14 @@ impl SorcerersApp {
             .text_styles
             .insert(TextStyle::Small, FontId::proportional(14.0));
 
-        ctx.set_style(style);
+        ctx.set_global_style(style);
     }
 }
 
 impl eframe::App for SorcerersApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // Update screen rect
-        let screen = ctx.screen_rect();
+        let screen = ctx.content_rect();
         {
             let rect_lock = SCREEN_RECT.get_or_init(|| RwLock::new(screen));
             if let Ok(mut r) = rect_lock.write() {
@@ -191,23 +191,22 @@ impl eframe::App for SorcerersApp {
         if let Some(new_scene) = self.scene.process_input(ctx) {
             self.scene = new_scene;
         }
-
-        // Render
-        egui::CentralPanel::default()
-            .frame(egui::Frame::NONE.fill(egui::Color32::BLACK))
-            .show(ctx, |ui| {
-                if let Some(new_scene) = self.scene.render(ui, ctx) {
-                    self.scene = new_scene;
-                }
-            });
-
-        ctx.request_repaint();
     }
 
     /// When the window is closed the tokio networking task is blocked on
     /// `receiver.recv()` and will never wake up, causing the process to hang
     /// on drop.  Force-exit immediately instead.
-    fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
+    fn on_exit(&mut self) {
         std::process::exit(0);
+    }
+
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        egui::CentralPanel::default()
+            .frame(egui::Frame::NONE.fill(egui::Color32::BLACK))
+            .show_inside(ui, |ui| {
+                if let Some(new_scene) = self.scene.render(ui) {
+                    self.scene = new_scene;
+                }
+            });
     }
 }

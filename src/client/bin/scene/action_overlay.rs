@@ -120,15 +120,6 @@ impl Component for ActionOverlay {
         ComponentType::ActionOverlay
     }
 
-    fn process_input(
-        &mut self,
-        _in_turn: bool,
-        _data: &mut GameData,
-        _ctx: &Context,
-    ) -> anyhow::Result<Option<ComponentCommand>> {
-        Ok(None)
-    }
-
     fn render(
         &mut self,
         _data: &mut GameData,

@@ -79,7 +79,7 @@ impl Component for CardViewerComponent {
 
     fn render(
         &mut self,
-        _data: &mut GameData,
+        data: &mut GameData,
         ui: &mut Ui,
         _painter: &Painter,
     ) -> anyhow::Result<()> {
@@ -186,11 +186,8 @@ impl Component for CardViewerComponent {
                                         );
 
                                         if resp.clicked() {
-                                            // TODO: Handle click card
-                                            println!(
-                                                "Clicked card: {}",
-                                                self.cards[gi].card.get_name()
-                                            );
+                                            self.handle_card_click(data, &self.cards[gi])
+                                                .expect("handling card click failed");
                                         }
                                     } else {
                                         let painter = ui.painter();
@@ -261,32 +258,6 @@ impl Component for CardViewerComponent {
 
         self.visible = open;
         Ok(())
-    }
-
-    fn process_input(
-        &mut self,
-        _in_turn: bool,
-        data: &mut GameData,
-        ctx: &Context,
-    ) -> anyhow::Result<Option<ComponentCommand>> {
-        Ok(None)
-        // match data.status {
-        //     Status::SelectingCard { cards, multiple: false, .. } => {
-        //         if let Some(mp) = ctx.input(|i| i.pointer.hover_pos()) {
-        //             for card_rect in &mut self.cards {
-        //                 if card_rect.rect.contains(mp) {
-        //                     card_rect.is_selected = true;
-        //                     return Ok(Some(ComponentCommand::CardSelected {
-        //                         id: card_rect.card.id,
-        //                     }));
-        //                 }
-        //             }
-        //         }
-        //
-        //         Ok(None)
-        //     }
-        //     _ => Ok(None),
-        // }
     }
 
     fn process_command(

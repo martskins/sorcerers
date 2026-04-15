@@ -356,7 +356,7 @@ pub fn wrap_text<S: AsRef<str>>(text: S, _max_width: f32, _font_size: u16) -> St
 }
 
 pub fn popup_action_menu(
-    ctx: &egui::Context,
+    ui: &mut egui::Ui,
     anchor: Option<Pos2>,
     prompt: &str,
     options: &[String],
@@ -393,7 +393,7 @@ pub fn popup_action_menu(
     };
 
     // ── Determine position ────────────────────────────────────────
-    let title = painter.fonts(|f| {
+    let title = painter.fonts_mut(|f| {
         f.layout_no_wrap(
             prompt.to_string(),
             egui::FontId::proportional(14.0),
@@ -404,7 +404,7 @@ pub fn popup_action_menu(
     let option_galleys = options
         .iter()
         .map(|option| {
-            painter.fonts(|f| {
+            painter.fonts_mut(|f| {
                 f.layout_no_wrap(
                     option.clone(),
                     egui::FontId::proportional(18.0),
@@ -426,7 +426,7 @@ pub fn popup_action_menu(
     egui::Area::new(egui::Id::new("action_menu_popup"))
         .fixed_pos(origin)
         .order(egui::Order::Foreground)
-        .show(ctx, |ui| {
+        .show(ui, |ui| {
             let menu_rect = Rect::from_min_size(origin, vec2(total_w, total_h));
             let p = ui.painter();
 

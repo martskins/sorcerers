@@ -6,7 +6,10 @@ use crate::{
     scene::game::{GameData, Status},
     texture_cache::TextureCache,
 };
-use egui::{Color32, Context, Painter, Pos2, Rect, Stroke, Ui, Vec2, epaint::Shape, pos2, vec2};
+use egui::{
+    Color32, Context, CursorIcon, Painter, Pos2, Rect, Sense, Stroke, Ui, Vec2, epaint::Shape,
+    pos2, vec2,
+};
 use rand::SeedableRng;
 use sorcerers::{
     card::{CardData, CardType, Zone},
@@ -364,83 +367,104 @@ impl RealmComponent {
         Ok(())
     }
 
-    fn render_paths(&self, data: &GameData, painter: &Painter) {
-        match &data.status {
-            Status::SelectingPath { paths, .. } => {
-                let mouse = self.last_mouse_pos;
+    fn render_paths(&mut self, ui: &mut egui::Ui, data: &mut GameData, painter: &Painter) {
+        let Status::SelectingPath { paths, .. } = &data.status.clone() else {
+            return;
+        };
 
-                let mut closest_idx = None;
-                let mut closest_dist = f32::MAX;
-
-                let mut path_points: Vec<Vec<Pos2>> = Vec::new();
-                for path in paths {
-                    let mut points = Vec::new();
-                    for zone in path {
-                        if let Zone::Realm(id) = zone {
-                            if let Some(cell_r) = self.cell_rects.iter().find(|c| c.id == *id) {
-                                points.push(cell_r.rect.center());
-                            }
-                        }
-                    }
-                    path_points.push(points);
-                }
-
-                for (idx, points) in path_points.iter().enumerate() {
-                    for pair in points.windows(2) {
-                        let (start, end) = (pair[0], pair[1]);
-                        let seg: Vec2 = end - start;
-                        let t = ((mouse - start).dot(seg) / seg.length_sq()).clamp(0.0, 1.0);
-                        let proj: Pos2 = start + seg * t;
-                        let dist = (mouse - proj).length();
-                        if dist < closest_dist && dist < 20.0 {
-                            closest_dist = dist;
-                            closest_idx = Some(idx);
-                        }
-                    }
-                }
-
-                let path_colors: [Color32; 10] = [
-                    Color32::from_rgb(255, 204, 51),
-                    Color32::from_rgb(51, 153, 255),
-                    Color32::from_rgb(153, 51, 255),
-                    Color32::from_rgb(255, 128, 0),
-                    Color32::from_rgb(230, 51, 255),
-                    Color32::from_rgb(0, 204, 255),
-                    Color32::from_rgb(255, 153, 179),
-                    Color32::from_rgb(153, 153, 255),
-                    Color32::from_rgb(204, 204, 77),
-                    Color32::from_rgb(179, 102, 255),
-                ];
-
-                for (idx, points) in path_points.iter().enumerate() {
-                    let color = path_colors[idx % path_colors.len()];
-                    let thickness = if Some(idx) == closest_idx { 4.0 } else { 1.0 };
-
-                    if points.len() >= 2 {
-                        for pair in points.windows(2) {
-                            painter.line_segment([pair[0], pair[1]], Stroke::new(thickness, color));
-                        }
-                        let tip = points[points.len() - 1];
-                        let prev = points[points.len() - 2];
-                        let dir = (tip - prev).normalized();
-                        let perp = Vec2::new(-dir.y, dir.x);
-                        let arrow_len = 12.0;
-                        let arrow_width = 6.0;
-                        let left = tip - dir * arrow_len + perp * arrow_width;
-                        let right = tip - dir * arrow_len - perp * arrow_width;
-                        painter.add(Shape::convex_polygon(
-                            vec![tip, left, right],
-                            color,
-                            Stroke::NONE,
-                        ));
+        let mut path_points: Vec<Vec<Pos2>> = Vec::new();
+        for path in paths {
+            let mut points = Vec::new();
+            for zone in path {
+                if let Zone::Realm(id) = zone {
+                    if let Some(cell_r) = self.cell_rects.iter().find(|c| c.id == *id) {
+                        points.push(cell_r.rect.center());
                     }
                 }
             }
-            _ => {}
+            path_points.push(points);
+        }
+
+        // Use egui's Sense::click() to detect clicks on the realm area.
+        let response = ui.interact(self.rect, ui.id().with("path_select"), Sense::click());
+
+        let mouse = response.hover_pos().unwrap_or(self.last_mouse_pos);
+
+        let mut closest_idx = None;
+        let mut closest_dist = f32::MAX;
+        for (idx, points) in path_points.iter().enumerate() {
+            for pair in points.windows(2) {
+                let (start, end) = (pair[0], pair[1]);
+                let seg: Vec2 = end - start;
+                let t = ((mouse - start).dot(seg) / seg.length_sq()).clamp(0.0, 1.0);
+                let proj: Pos2 = start + seg * t;
+                let dist = (mouse - proj).length();
+                if dist < closest_dist && dist < 20.0 {
+                    closest_dist = dist;
+                    closest_idx = Some(idx);
+                }
+            }
+        }
+
+        let path_colors: [Color32; 10] = [
+            Color32::from_rgb(255, 204, 51),
+            Color32::from_rgb(51, 153, 255),
+            Color32::from_rgb(153, 51, 255),
+            Color32::from_rgb(255, 128, 0),
+            Color32::from_rgb(230, 51, 255),
+            Color32::from_rgb(0, 204, 255),
+            Color32::from_rgb(255, 153, 179),
+            Color32::from_rgb(153, 153, 255),
+            Color32::from_rgb(204, 204, 77),
+            Color32::from_rgb(179, 102, 255),
+        ];
+
+        for (idx, points) in path_points.iter().enumerate() {
+            let color = path_colors[idx % path_colors.len()];
+            let thickness = if Some(idx) == closest_idx { 4.0 } else { 1.0 };
+
+            if points.len() >= 2 {
+                for pair in points.windows(2) {
+                    painter.line_segment([pair[0], pair[1]], Stroke::new(thickness, color));
+                }
+                let tip = points[points.len() - 1];
+                let prev = points[points.len() - 2];
+                let dir = (tip - prev).normalized();
+                let perp = Vec2::new(-dir.y, dir.x);
+                let arrow_len = 12.0;
+                let arrow_width = 6.0;
+                let left = tip - dir * arrow_len + perp * arrow_width;
+                let right = tip - dir * arrow_len - perp * arrow_width;
+                painter.add(Shape::convex_polygon(
+                    vec![tip, left, right],
+                    color,
+                    Stroke::NONE,
+                ));
+            }
+        }
+
+        if let Some(idx) = closest_idx {
+            if response.clicked() {
+                if let Status::SelectingPath { paths, .. } = &data.status {
+                    if let Err(e) = self.client.send(ClientMessage::PickPath {
+                        player_id: self.player_id,
+                        game_id: self.game_id,
+                        path: paths[idx].clone(),
+                    }) {
+                        eprintln!("Error sending PickPath: {}", e);
+                    }
+                    data.status = Status::Idle;
+                }
+            }
         }
     }
 
-    fn render_grid(&self, data: &GameData, painter: &Painter) {
+    fn render_grid(
+        &mut self,
+        ui: &mut egui::Ui,
+        data: &mut GameData,
+        painter: &Painter,
+    ) -> anyhow::Result<()> {
         let grid_color = Color32::WHITE;
         let grid_thickness = 1.0;
 
@@ -454,6 +478,7 @@ impl RealmComponent {
             })
             .collect();
 
+        let mut clicked_zone = None;
         for (idx, cell) in self.cell_rects.iter().enumerate() {
             let rect = cell.rect;
             let bg_color = if occupied_zones.contains(&cell.id) {
@@ -482,6 +507,11 @@ impl RealmComponent {
             match &data.status {
                 Status::SelectingZone { zones, .. } => {
                     if zones.iter().any(|i| i == &Zone::Realm(cell.id)) {
+                        let resp = ui.allocate_rect(rect, Sense::click());
+                        if resp.clicked() {
+                            clicked_zone = Some(Zone::Realm(cell.id));
+                        }
+
                         painter.rect_stroke(
                             rect,
                             0.0,
@@ -503,34 +533,6 @@ impl RealmComponent {
                     continue;
                 }
                 Status::SelectingCard { preview: false, .. } | Status::Idle => {}
-            }
-        }
-
-        if let Status::SelectingZoneGroup { groups, .. } = &data.status {
-            let mouse = self.last_mouse_pos;
-            let highlight_group_idx = self.cell_rects.iter().find_map(|cell_rect| {
-                if !cell_rect.rect.contains(mouse) {
-                    return None;
-                }
-                groups
-                    .iter()
-                    .position(|group| group.contains(&Zone::Realm(cell_rect.id)))
-            });
-
-            for (group_idx, group) in groups.iter().enumerate() {
-                let base_alpha = if highlight_group_idx == Some(group_idx) {
-                    179u8
-                } else {
-                    77u8
-                };
-                let color = Color32::from_rgba_unmultiplied(51, 153, 255, base_alpha);
-                for zone in group {
-                    if let Zone::Realm(cell_id) = zone {
-                        if let Some(cell) = self.cell_rects.iter().find(|c| c.id == *cell_id) {
-                            painter.rect_filled(cell.rect, 0.0, color);
-                        }
-                    }
-                }
             }
         }
 
@@ -566,279 +568,49 @@ impl RealmComponent {
                 Status::SelectingCard { preview: false, .. } | Status::Idle => {}
             }
         }
-    }
 
-    fn handle_square_click(
-        &mut self,
-        mouse_position: Pos2,
-        in_turn: bool,
-        status: &mut Status,
-        ctx: &Context,
-    ) -> anyhow::Result<()> {
-        if !in_turn
-            && !matches!(
-                status,
-                Status::SelectingZone { .. } | Status::SelectingZoneGroup { .. }
-            )
-        {
-            return Ok(());
+        if let Some(zone) = clicked_zone {
+            self.zone_clicked(&zone, data)?;
         }
 
-        if let Status::SelectingAction { .. } = &status {
-            return Ok(());
-        }
+        let mut clicked_group_idx = None;
+        if let Status::SelectingZoneGroup { groups, .. } = &data.status {
+            let mouse = self.last_mouse_pos;
+            let highlight_group_idx = self.cell_rects.iter().find_map(|cell_rect| {
+                if !cell_rect.rect.contains(mouse) {
+                    return None;
+                }
+                groups
+                    .iter()
+                    .position(|group| group.contains(&Zone::Realm(cell_rect.id)))
+            });
 
-        let clicked = Mouse::clicked(ctx);
+            for (group_idx, group) in groups.iter().enumerate() {
+                let base_alpha = if highlight_group_idx == Some(group_idx) {
+                    179u8
+                } else {
+                    77u8
+                };
+                let color = Color32::from_rgba_unmultiplied(51, 153, 255, base_alpha);
+                for zone in group {
+                    if let Zone::Realm(cell_id) = zone {
+                        if let Some(cell) = self.cell_rects.iter().find(|c| c.id == *cell_id) {
+                            let resp = ui.allocate_rect(cell.rect, Sense::click());
+                            painter.rect_filled(cell.rect, 0.0, color);
 
-        match &status.clone() {
-            Status::SelectingZoneGroup { groups, .. } => {
-                for (group_idx, group) in groups.iter().enumerate() {
-                    for zone in group {
-                        if let Zone::Realm(cell_id) = zone {
-                            if let Some(cell) = self.cell_rects.iter().find(|c| c.id == *cell_id) {
-                                if cell.rect.contains(mouse_position) && clicked {
-                                    self.client.send(ClientMessage::PickZoneGroup {
-                                        player_id: self.player_id,
-                                        game_id: self.game_id,
-                                        group_idx,
-                                    })?;
-                                    *status = Status::Idle;
-                                    return Ok(());
-                                }
+                            if resp.clicked() {
+                                clicked_group_idx = Some(group_idx);
                             }
                         }
                     }
                 }
             }
-            Status::SelectingZone { zones, .. } => {
-                let zones = zones.clone();
-                for (idx, cell) in self.cell_rects.iter().enumerate() {
-                    let can_pick_zone = zones.iter().any(|i| i == &Zone::Realm(cell.id));
-                    if !can_pick_zone {
-                        continue;
-                    }
-                    if cell.rect.contains(mouse_position) && clicked {
-                        let square = self.cell_rects[idx].id;
-                        self.client.send(ClientMessage::PickZone {
-                            player_id: self.player_id,
-                            game_id: self.game_id,
-                            zone: Zone::Realm(square),
-                        })?;
-                        *status = Status::Idle;
-                    }
-                }
-                for (idx, cell) in self.intersection_rects.iter().enumerate() {
-                    let can_pick = zones.iter().any(|z| match z {
-                        Zone::Intersection(locations) => locations == &cell.locations,
-                        _ => false,
-                    });
-                    if !can_pick {
-                        continue;
-                    }
-                    if cell.rect.contains(mouse_position) && clicked {
-                        let locs = self.intersection_rects[idx].locations.clone();
-                        self.client.send(ClientMessage::PickZone {
-                            player_id: self.player_id,
-                            game_id: self.game_id,
-                            zone: Zone::Intersection(locs),
-                        })?;
-                        *status = Status::Idle;
-                    }
-                }
-            }
-            _ => {}
-        }
-        Ok(())
-    }
-
-    fn handle_card_click(
-        &mut self,
-        mouse_position: Pos2,
-        in_turn: bool,
-        data: &mut GameData,
-        ctx: &Context,
-    ) -> anyhow::Result<()> {
-        if let Status::SelectingCard { preview: true, .. } = &data.status {
-            return Ok(());
         }
 
-        if !in_turn && !matches!(data.status, Status::SelectingCard { .. }) {
-            return Ok(());
+        if let Some(group_idx) = clicked_group_idx {
+            self.zone_group_clicked(group_idx, data)?;
         }
 
-        match &data.status {
-            Status::SelectingAction { .. } | Status::SelectingZoneGroup { .. } => {
-                return Ok(());
-            }
-            _ => {}
-        }
-
-        let mut hovered_card_index = None;
-        for (idx, card) in self.card_rects.iter().enumerate() {
-            if card.rect.contains(mouse_position) {
-                hovered_card_index = Some(idx);
-            }
-        }
-        for card in &mut self.card_rects {
-            card.is_hovered = false;
-        }
-        if let Some(idx) = hovered_card_index {
-            self.card_rects
-                .get_mut(idx)
-                .ok_or(anyhow::anyhow!("failed to get card rect"))?
-                .is_hovered = true;
-        }
-
-        let clicked = Mouse::clicked(ctx);
-
-        match data.status.clone() {
-            Status::Idle => {
-                for rect in self
-                    .card_rects
-                    .iter()
-                    .filter(|c| c.card.zone.is_in_play() || c.card.zone == Zone::Hand)
-                {
-                    if rect.is_hovered && clicked {
-                        data.last_clicked_card_pos = Some(rect.rect.center());
-                        self.client.send(ClientMessage::ClickCard {
-                            card_id: rect.card.id,
-                            player_id: self.player_id,
-                            game_id: self.game_id,
-                        })?;
-                    }
-                }
-            }
-            Status::SelectingCard {
-                cards,
-                preview: true,
-                ..
-            } => {
-                let mut selected_id = None;
-                for card in self
-                    .card_rects
-                    .iter()
-                    .filter(|c| cards.contains(&c.card.id))
-                {
-                    if card.rect.contains(mouse_position) && clicked {
-                        selected_id = Some(card.card.id);
-                    }
-                }
-                if let Some(id) = selected_id {
-                    self.client.send(ClientMessage::PickCard {
-                        player_id: self.player_id,
-                        game_id: self.game_id,
-                        card_id: id,
-                    })?;
-                    data.status = Status::Idle;
-                }
-            }
-            Status::SelectingCard {
-                cards,
-                multiple: true,
-                preview: false,
-                ..
-            } => {
-                let mut selected_id = None;
-                for card in self
-                    .card_rects
-                    .iter()
-                    .filter(|c| cards.contains(&c.card.id))
-                {
-                    if card.rect.contains(mouse_position) && clicked {
-                        selected_id = Some(card.card.id);
-                    }
-                }
-                if let Some(id) = selected_id {
-                    let rect = self
-                        .card_rects
-                        .iter_mut()
-                        .find(|c| c.card.id == id)
-                        .ok_or(anyhow::anyhow!("failed to find card"))?;
-                    rect.is_selected = !rect.is_selected;
-                }
-            }
-            Status::SelectingCard {
-                cards,
-                multiple: false,
-                preview: false,
-                ..
-            } => {
-                let mut selected_id = None;
-                for card in self
-                    .card_rects
-                    .iter()
-                    .filter(|c| cards.contains(&c.card.id))
-                {
-                    if card.rect.contains(mouse_position) && clicked {
-                        selected_id = Some(card.card.id);
-                    }
-                }
-                if let Some(id) = selected_id {
-                    self.client.send(ClientMessage::PickCard {
-                        player_id: self.player_id,
-                        game_id: self.game_id,
-                        card_id: id,
-                    })?;
-                    data.status = Status::Idle;
-                }
-            }
-            _ => {}
-        }
-        Ok(())
-    }
-
-    fn handle_path_click(
-        &mut self,
-        mouse_position: Pos2,
-        in_turn: bool,
-        status: &mut Status,
-        ctx: &Context,
-    ) -> anyhow::Result<()> {
-        if !in_turn {
-            return Ok(());
-        }
-
-        if let Status::SelectingPath { paths, .. } = &status.clone() {
-            let mut path_points: Vec<Vec<Pos2>> = Vec::new();
-            for path in paths {
-                let mut points = Vec::new();
-                for zone in path {
-                    if let Zone::Realm(id) = zone {
-                        if let Some(cell_r) = self.cell_rects.iter().find(|c| c.id == *id) {
-                            points.push(cell_r.rect.center());
-                        }
-                    }
-                }
-                path_points.push(points);
-            }
-
-            let mut closest_idx = None;
-            let mut closest_dist = f32::MAX;
-            for (idx, points) in path_points.iter().enumerate() {
-                for pair in points.windows(2) {
-                    let (start, end) = (pair[0], pair[1]);
-                    let seg: Vec2 = end - start;
-                    let t = ((mouse_position - start).dot(seg) / seg.length_sq()).clamp(0.0, 1.0);
-                    let proj: Pos2 = start + seg * t;
-                    let dist = (mouse_position - proj).length();
-                    if dist < closest_dist && dist < 20.0 {
-                        closest_dist = dist;
-                        closest_idx = Some(idx);
-                    }
-                }
-            }
-
-            if let Some(idx) = closest_idx {
-                if Mouse::clicked(ctx) {
-                    self.client.send(ClientMessage::PickPath {
-                        player_id: self.player_id,
-                        game_id: self.game_id,
-                        path: paths[idx].clone(),
-                    })?;
-                    *status = Status::Idle;
-                }
-            }
-        }
         Ok(())
     }
 
@@ -859,7 +631,7 @@ impl RealmComponent {
             let text_size = 32.0;
             let rect_w = self.rect.width();
             let rect_h = 60.0;
-            let title = painter.fonts(|f| {
+            let title = painter.fonts_mut(|f| {
                 f.layout_no_wrap(
                     prompt.to_string(),
                     egui::FontId::proportional(text_size),
@@ -877,6 +649,108 @@ impl RealmComponent {
                 Color32::WHITE,
             );
         }
+        Ok(())
+    }
+
+    fn card_clicked(&mut self, card_id: &uuid::Uuid, data: &mut GameData) -> anyhow::Result<()> {
+        let mut reset_status = false;
+        match data.status.clone() {
+            Status::Idle => {
+                self.client.send(ClientMessage::ClickCard {
+                    card_id: card_id.clone(),
+                    player_id: self.player_id,
+                    game_id: self.game_id,
+                })?;
+            }
+            Status::SelectingCard {
+                cards,
+                multiple: false,
+                ..
+            } => {
+                if cards.contains(card_id) {
+                    self.client.send(ClientMessage::PickCard {
+                        player_id: self.player_id,
+                        game_id: self.game_id,
+                        card_id: card_id.clone(),
+                    })?;
+
+                    reset_status = true;
+                }
+            }
+            Status::SelectingCard {
+                cards,
+                multiple: true,
+                ..
+            } => {
+                if cards.contains(card_id) {
+                    let card_rect = self
+                        .card_rects
+                        .iter_mut()
+                        .find(|c| c.card.id == *card_id)
+                        .unwrap();
+                    card_rect.is_selected = !card_rect.is_selected;
+                    reset_status = true;
+                }
+            }
+            _ => {}
+        }
+
+        if reset_status {
+            data.status = Status::Idle;
+        }
+
+        Ok(())
+    }
+
+    fn zone_group_clicked(&mut self, group_idx: usize, data: &mut GameData) -> anyhow::Result<()> {
+        let mut reset_status = false;
+        match &data.status.clone() {
+            Status::SelectingZoneGroup { groups, .. } => {
+                if group_idx >= groups.len() {
+                    return Ok(());
+                }
+
+                self.client.send(ClientMessage::PickZoneGroup {
+                    player_id: self.player_id,
+                    game_id: self.game_id,
+                    group_idx,
+                })?;
+
+                reset_status = true;
+            }
+            _ => {}
+        }
+
+        if reset_status {
+            data.status = Status::Idle;
+        }
+
+        Ok(())
+    }
+
+    fn zone_clicked(&mut self, zone: &Zone, data: &mut GameData) -> anyhow::Result<()> {
+        let mut reset_status = false;
+        match &data.status.clone() {
+            Status::SelectingZone { zones, .. } => {
+                if !zones.iter().any(|z| z == zone) {
+                    return Ok(());
+                }
+
+                self.client.send(ClientMessage::PickZone {
+                    player_id: self.player_id,
+                    game_id: self.game_id,
+                    zone: zone.clone(),
+                })?;
+
+                reset_status = true;
+            }
+            _ => {}
+        }
+
+        if reset_status {
+            data.status = Status::Idle;
+        }
+
         Ok(())
     }
 }
@@ -981,9 +855,12 @@ impl Component for RealmComponent {
         painter: &Painter,
     ) -> anyhow::Result<()> {
         let now = ui.ctx().input(|i| i.time);
-        self.render_grid(data, painter);
+        self.render_grid(ui, data, painter)?;
 
-        for card_rect in &self.card_rects {
+        let mut clicked_card = None;
+        let mut move_delta = Vec2::default();
+        let mut moved_card_id = None;
+        for card_rect in &mut self.card_rects {
             if !card_rect.card.zone.is_in_play() {
                 continue;
             }
@@ -996,12 +873,51 @@ impl Component for RealmComponent {
                 continue;
             }
 
+            let resp = ui.allocate_rect(card_rect.rect, Sense::HOVER | Sense::CLICK | Sense::DRAG);
             render::draw_card(
                 card_rect,
                 card_rect.card.controller_id == self.player_id,
                 true,
                 painter,
             );
+
+            if resp.clicked() {
+                clicked_card = Some(card_rect.card.id);
+            }
+
+            if resp.hovered() {
+                ui.set_cursor_icon(CursorIcon::Grab);
+            }
+
+            if resp.drag_started() {
+                ui.set_cursor_icon(CursorIcon::Grab);
+            }
+
+            if resp.drag_stopped() {
+                ui.set_cursor_icon(CursorIcon::Default);
+            }
+
+            let cell = match &card_rect.card.zone {
+                Zone::Realm(cell_id) => self.cell_rects.iter().find(|c| c.id == *cell_id),
+                _ => None,
+            };
+
+            if resp.dragged() {
+                if let Some(cell) = cell {
+                    let card_id = card_rect.card.id;
+                    let min_x = cell.rect.min.x;
+                    let max_x = cell.rect.max.x - card_rect.rect.width();
+                    let min_y = cell.rect.min.y;
+                    let max_y = cell.rect.max.y - card_rect.rect.height();
+                    let delta = resp.drag_delta();
+                    let mut new_min = card_rect.rect.min + delta;
+                    new_min.x = new_min.x.clamp(min_x, max_x);
+                    new_min.y = new_min.y.clamp(min_y, max_y);
+                    move_delta = new_min - card_rect.rect.min;
+                    card_rect.rect = card_rect.rect.translate(move_delta);
+                    moved_card_id = Some(card_id);
+                }
+            }
 
             if let Status::SelectingCard {
                 cards,
@@ -1021,6 +937,28 @@ impl Component for RealmComponent {
                     );
                 }
             }
+        }
+
+        if let Some(card_id) = moved_card_id {
+            let attached_cards: Vec<uuid::Uuid> = self
+                .card_rects
+                .iter()
+                .filter(|c| c.card.bearer == Some(card_id))
+                .map(|c| c.card.id)
+                .collect();
+            for attached_id in attached_cards {
+                if let Some(ac) = self
+                    .card_rects
+                    .iter_mut()
+                    .find(|c| c.card.id == attached_id)
+                {
+                    ac.rect = ac.rect.translate(move_delta);
+                }
+            }
+        }
+
+        if let Some(card_id) = clicked_card {
+            self.card_clicked(&card_id, data)?;
         }
 
         self.card_flights.retain_mut(|flight| {
@@ -1065,28 +1003,10 @@ impl Component for RealmComponent {
                 render::draw_sidebar_card_preview(ui, card.image.as_ref())?;
             }
         }
-        self.render_paths(data, painter);
+        self.render_paths(ui, data, painter);
         self.render_prompt(data, painter)?;
 
         Ok(())
-    }
-
-    fn process_input(
-        &mut self,
-        in_turn: bool,
-        data: &mut GameData,
-        ctx: &Context,
-    ) -> anyhow::Result<Option<ComponentCommand>> {
-        if !Mouse::enabled() {
-            return Ok(None);
-        }
-
-        let mouse_position = Mouse::position(ctx).unwrap_or(pos2(0.0, 0.0));
-        self.handle_square_click(mouse_position, in_turn, &mut data.status, ctx)?;
-        self.handle_card_click(mouse_position, in_turn, data, ctx)?;
-        self.handle_path_click(mouse_position, in_turn, &mut data.status, ctx)?;
-
-        Ok(None)
     }
 
     fn toggle_visibility(&mut self) {

@@ -280,6 +280,7 @@ impl Component for PlayerStatusComponent {
         Ok(())
     }
 
+    // TODO: Review this to see if there's a better way of implementing it.
     fn process_input(
         &mut self,
         _in_turn: bool,

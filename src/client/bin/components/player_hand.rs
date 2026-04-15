@@ -1,12 +1,11 @@
 use crate::{
     components::{Component, ComponentCommand, ComponentType},
     config::CARD_ASPECT_RATIO,
-    input::Mouse,
     render::{self, CardRect},
     scene::game::{GameData, Status},
     texture_cache::TextureCache,
 };
-use egui::{Color32, Context, Painter, Rect, Ui, pos2, vec2};
+use egui::{Color32, Context, Painter, Rect, Sense, Ui, pos2, vec2};
 use sorcerers::{
     card::{CardData, Zone},
     game::PlayerId,
@@ -186,6 +185,72 @@ impl PlayerHandComponent {
         self.sites_in_hand = sites.iter().map(|c| c.id).collect();
         Ok(())
     }
+
+    fn card_clicked(&mut self, card_id: &uuid::Uuid, data: &mut GameData) -> anyhow::Result<()> {
+        if let Status::SelectingAction { .. } = &data.status {
+            return Ok(());
+        }
+
+        if let Status::SelectingCard { preview: true, .. } = &data.status {
+            return Ok(());
+        }
+
+        let mut reset_status = false;
+        match &data.status {
+            Status::Idle => {
+                self.client.send(ClientMessage::ClickCard {
+                    card_id: card_id.clone(),
+                    player_id: self.player_id,
+                    game_id: self.game_id,
+                })?;
+            }
+            Status::SelectingCard {
+                cards,
+                preview: true,
+                ..
+            } => {
+                if !cards.contains(card_id) {
+                    return Ok(());
+                }
+
+                self.client.send(ClientMessage::PickCard {
+                    player_id: self.player_id,
+                    game_id: self.game_id,
+                    card_id: card_id.clone(),
+                })?;
+                reset_status = true;
+            }
+            Status::SelectingCard {
+                cards,
+                multiple: false,
+                preview: false,
+                ..
+            } => {
+                if !cards.contains(card_id) {
+                    return Ok(());
+                }
+
+                self.client.send(ClientMessage::PickCard {
+                    player_id: self.player_id,
+                    game_id: self.game_id,
+                    card_id: card_id.clone(),
+                })?;
+                reset_status = true;
+            }
+            Status::Mulligan => {
+                if let Some(card) = self.card_rects.iter_mut().find(|c| c.card.id == *card_id) {
+                    card.is_selected = !card.is_selected;
+                }
+            }
+            _ => {}
+        }
+
+        if reset_status {
+            data.status = Status::Idle;
+        }
+
+        Ok(())
+    }
 }
 
 impl Component for PlayerHandComponent {
@@ -203,11 +268,21 @@ impl Component for PlayerHandComponent {
         let bg_color = Color32::from_rgba_unmultiplied(38, 46, 56, 217);
         painter.rect_filled(self.rect, 0.0, bg_color);
 
+        let mut clicked_card = None;
         for card_rect in &self.card_rects {
             if card_rect.card.zone != Zone::Hand {
                 continue;
             }
+
+            let resp = ui.allocate_rect(card_rect.rect, Sense::HOVER | Sense::CLICK);
             render::draw_card(card_rect, true, false, painter);
+            if resp.clicked() {
+                clicked_card = Some(card_rect.card.id);
+            }
+        }
+
+        if let Some(card_id) = clicked_card {
+            self.card_clicked(&card_id, data)?;
         }
 
         if !matches!(data.status, Status::SelectingCard { preview: true, .. }) {
@@ -216,141 +291,6 @@ impl Component for PlayerHandComponent {
             }
         }
         Ok(())
-    }
-
-    fn process_input(
-        &mut self,
-        in_turn: bool,
-        data: &mut GameData,
-        ctx: &Context,
-    ) -> anyhow::Result<Option<ComponentCommand>> {
-        if !Mouse::enabled() {
-            return Ok(None);
-        }
-
-        if let Status::SelectingAction { .. } = &data.status {
-            return Ok(None);
-        }
-
-        if let Status::SelectingCard { preview: true, .. } = &data.status {
-            return Ok(None);
-        }
-
-        if !in_turn && Status::Mulligan != data.status {
-            return Ok(None);
-        }
-
-        let mouse_pos = Mouse::position(ctx);
-
-        let mut hovered_card_index = None;
-        if let Some(mp) = mouse_pos {
-            for (idx, card_display) in self.card_rects.iter().enumerate() {
-                if card_display.rect.contains(mp) {
-                    hovered_card_index = Some(idx);
-                }
-            }
-        }
-
-        for card in &mut self.card_rects {
-            card.is_hovered = false;
-        }
-        if let Some(idx) = hovered_card_index {
-            self.card_rects
-                .get_mut(idx)
-                .ok_or(anyhow::anyhow!("expected to find rect"))?
-                .is_hovered = true;
-        }
-
-        let clicked = Mouse::clicked(ctx);
-        let mp = mouse_pos.unwrap_or_default();
-
-        match &data.status {
-            Status::Idle => {
-                for card_rect in self
-                    .card_rects
-                    .iter()
-                    .filter(|c| c.card.zone.is_in_play() || c.card.zone == Zone::Hand)
-                {
-                    if card_rect.is_hovered && clicked {
-                        data.last_clicked_card_pos = Some(card_rect.rect.center());
-                        data.last_clicked_card_time = Some(ctx.input(|i| i.time));
-                        if card_rect.card.zone == Zone::Hand {
-                            data.last_clicked_card_id = Some(card_rect.card.id);
-                        }
-                        self.client.send(ClientMessage::ClickCard {
-                            card_id: card_rect.card.id,
-                            player_id: self.player_id,
-                            game_id: self.game_id,
-                        })?;
-                    }
-                }
-            }
-            Status::SelectingCard {
-                cards,
-                preview: true,
-                ..
-            } => {
-                let mut selected_id = None;
-                for card_rect in self
-                    .card_rects
-                    .iter()
-                    .filter(|c| cards.contains(&c.card.id))
-                {
-                    if card_rect.rect.contains(mp) && clicked {
-                        selected_id = Some(card_rect.card.id);
-                    }
-                }
-                if let Some(id) = selected_id {
-                    self.client.send(ClientMessage::PickCard {
-                        player_id: self.player_id,
-                        game_id: self.game_id,
-                        card_id: id,
-                    })?;
-                    data.status = Status::Idle;
-                }
-            }
-            Status::SelectingCard {
-                cards,
-                multiple: false,
-                preview: false,
-                ..
-            } => {
-                let mut selected_id = None;
-                for card_rect in self
-                    .card_rects
-                    .iter()
-                    .filter(|c| cards.contains(&c.card.id))
-                {
-                    if card_rect.rect.contains(mp) && clicked {
-                        selected_id = Some(card_rect.card.id);
-                    }
-                }
-                if let Some(id) = selected_id {
-                    self.client.send(ClientMessage::PickCard {
-                        player_id: self.player_id,
-                        game_id: self.game_id,
-                        card_id: id,
-                    })?;
-                    data.status = Status::Idle;
-                }
-            }
-            Status::Mulligan => {
-                let mut selected_id = None;
-                for card_rect in self.card_rects.iter().filter(|c| c.card.zone == Zone::Hand) {
-                    if card_rect.rect.contains(mp) && clicked {
-                        selected_id = Some(card_rect.card.id);
-                    }
-                }
-                if let Some(id) = selected_id {
-                    if let Some(card) = self.card_rects.iter_mut().find(|c| c.card.id == id) {
-                        card.is_selected = !card.is_selected;
-                    }
-                }
-            }
-            _ => {}
-        }
-
-        Ok(None)
     }
 
     fn toggle_visibility(&mut self) {
