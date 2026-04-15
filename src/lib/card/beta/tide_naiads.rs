@@ -1,7 +1,7 @@
 use crate::{
     card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     game::PlayerId,
-    state::{CardQuery, ContinuousEffect, State},
+    state::{ContinuousEffect, State},
 };
 
 #[derive(Debug, Clone)]
@@ -73,7 +73,7 @@ impl Card for TideNaiads {
             .map(|site| site.get_id())
             .cloned();
         Ok(vec![ContinuousEffect::FloodSites {
-            affected_sites: CardQuery::from_id(site_id.unwrap()),
+            affected_sites: site_id.as_ref().unwrap().into(),
         }])
     }
 }

@@ -1,7 +1,6 @@
 use crate::{
     card::{
-        Card, CardBase, Cost, Costs, Edition, MinionType, Rarity, Site, SiteBase, UnitBase,
-        Zone,
+        Card, CardBase, Cost, Costs, Edition, MinionType, Rarity, Site, SiteBase, UnitBase, Zone,
     },
     effect::{Effect, TokenType},
     game::{ActivatedAbility, PlayerId, Thresholds},

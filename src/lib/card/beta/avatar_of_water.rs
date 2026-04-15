@@ -27,7 +27,7 @@ impl ActivatedAbility for FloodSite {
         let controller_id = avatar.get_controller_id(state);
         match state.get_body_of_water_at(avatar.get_zone()) {
             Some(body_of_water) => {
-                let picked_site_id = CardQuery::new()
+                let picked_site_id: uuid::Uuid = CardQuery::new()
                     .adjacent_to_zones(&body_of_water)
                     .sites()
                     .with_prompt("Avatar of Water: Pick a site to flood")
@@ -37,7 +37,7 @@ impl ActivatedAbility for FloodSite {
                 let mut effects = vec![Effect::SetCardData {
                     card_id: card_id.clone(),
                     data: Box::new(ContinuousEffect::FloodSites {
-                        affected_sites: CardQuery::from_id(picked_site_id),
+                        affected_sites: picked_site_id.into(),
                     }),
                 }];
                 let teleport = yes_or_no(
@@ -61,9 +61,7 @@ impl ActivatedAbility for FloodSite {
     }
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
-        Ok(Cost::additional_only(AdditionalCost::tap(
-            CardQuery::from_id(card_id.clone()).untapped(),
-        )))
+        Ok(Cost::additional_only(AdditionalCost::tap(card_id)))
     }
 }
 

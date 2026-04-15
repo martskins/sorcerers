@@ -92,7 +92,7 @@ impl Card for CerberusInChains {
                 card: CardQuery::new().avatars().controlled_by(&controller_id),
             },
             expires_on_effect: Some(EffectQuery::BuryCard {
-                card: CardQuery::from_id(self.get_id().clone()),
+                card: self.get_id().into(),
             }),
             on_effect: Arc::new(
                 move |state: &State, avatar_card_id: &uuid::Uuid, _effect: &Effect| {

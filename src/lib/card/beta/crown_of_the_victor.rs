@@ -4,7 +4,7 @@ use crate::{
     },
     effect::Effect,
     game::PlayerId,
-    state::{CardQuery, ContinuousEffect, State},
+    state::{ContinuousEffect, State},
 };
 
 #[derive(Debug, Clone)]
@@ -93,7 +93,7 @@ impl Card for CrownOfTheVictor {
 
         Ok(vec![ContinuousEffect::ModifyPower {
             power_diff: 3,
-            affected_cards: CardQuery::from_id(bearer_id),
+            affected_cards: bearer_id.into(),
         }])
     }
 }

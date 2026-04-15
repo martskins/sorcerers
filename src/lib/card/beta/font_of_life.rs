@@ -12,7 +12,8 @@ pub struct FontOfLife {
 
 impl FontOfLife {
     pub const NAME: &'static str = "Font of Life";
-    pub const DESCRIPTION: &'static str = "Each ally heals an amount equal to the number of sites in its body of water.";
+    pub const DESCRIPTION: &'static str =
+        "Each ally heals an amount equal to the number of sites in its body of water.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

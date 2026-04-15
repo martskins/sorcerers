@@ -105,7 +105,7 @@ impl Card for DreamQuest {
                     ability: Ability::Disabled,
                     expires_on_effect: Some(EffectQuery::DamageDealt {
                         source: None,
-                        target: Some(CardQuery::from_id(minion_id.clone())),
+                        target: Some(minion_id.into()),
                     }),
                 },
             },

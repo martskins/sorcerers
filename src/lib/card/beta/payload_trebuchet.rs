@@ -76,9 +76,7 @@ impl ActivatedAbility for ShootPayload {
                 let bearer = state.get_card(&bearer_id);
                 Ok(Cost::ZERO
                     .clone()
-                    .with_additional(AdditionalCost::tap(
-                        CardQuery::from_id(bearer_id.clone()).untapped(),
-                    ))
+                    .with_additional(AdditionalCost::tap(&bearer_id))
                     .with_additional(AdditionalCost::tap(
                         CardQuery::new()
                             .untapped()

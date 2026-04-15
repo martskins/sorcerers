@@ -5,7 +5,7 @@ use crate::{
     effect::{AbilityCounter, Effect},
     game::{PlayerId, pick_card},
     query::EffectQuery,
-    state::{CardQuery, DeferredEffect, State},
+    state::{DeferredEffect, State},
 };
 
 #[derive(Debug, Clone)]
@@ -79,7 +79,7 @@ impl Card for Blaze {
             Effect::AddDeferredEffect {
                 effect: DeferredEffect {
                     trigger_on_effect: EffectQuery::MoveCard {
-                        card: CardQuery::from_id(picked_card),
+                        card: picked_card.into(),
                     },
                     expires_on_effect: Some(EffectQuery::TurnEnd { player_id: None }),
                     on_effect: Arc::new(|_state: &State, card_id: &uuid::Uuid, effect: &Effect| {

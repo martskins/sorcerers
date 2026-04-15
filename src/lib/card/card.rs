@@ -515,6 +515,12 @@ pub struct AdditionalCost {
     pub action: CostAction,
 }
 
+impl Into<CardQuery> for uuid::Uuid {
+    fn into(self) -> CardQuery {
+        CardQuery::from_id(self)
+    }
+}
+
 impl Into<CardQuery> for &uuid::Uuid {
     fn into(self) -> CardQuery {
         CardQuery::from_id(self.clone())
@@ -529,23 +535,23 @@ impl AdditionalCost {
         }
     }
 
-    pub fn discard(card: CardQuery) -> Self {
+    pub fn discard(card: impl Into<CardQuery>) -> Self {
         Self {
-            card,
+            card: card.into(),
             action: CostAction::Discard,
         }
     }
 
-    pub fn sacrifice(card: CardQuery) -> Self {
+    pub fn sacrifice(card: impl Into<CardQuery>) -> Self {
         Self {
-            card,
+            card: card.into(),
             action: CostAction::Sacrifice,
         }
     }
 
-    pub fn surface(card: CardQuery) -> Self {
+    pub fn surface(card: impl Into<CardQuery>) -> Self {
         Self {
-            card,
+            card: card.into(),
             action: CostAction::Surface,
         }
     }

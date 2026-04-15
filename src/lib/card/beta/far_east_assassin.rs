@@ -19,9 +19,7 @@ impl ActivatedAbility for ThrowArtifactAbility {
     }
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
-        Ok(Cost::additional_only(AdditionalCost::tap(
-            CardQuery::from_id(*card_id).untapped(),
-        )))
+        Ok(Cost::additional_only(AdditionalCost::tap(card_id)))
     }
 
     fn can_activate(

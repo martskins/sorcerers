@@ -298,7 +298,9 @@ impl Component for PlayerStatusComponent {
             let cards: Vec<uuid::Uuid> = data
                 .cards
                 .iter()
-                .filter(|c| c.owner_id == self.player_id && c.zone == sorcerers::card::Zone::Cemetery)
+                .filter(|c| {
+                    c.owner_id == self.player_id && c.zone == sorcerers::card::Zone::Cemetery
+                })
                 .map(|c| c.id)
                 .collect();
             let title = if data.player_id == self.player_id {

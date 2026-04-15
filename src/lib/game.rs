@@ -7,7 +7,7 @@ use crate::{
         message::{ClientMessage, ServerMessage},
     },
     query::{QueryCache, ZoneQuery},
-    state::{CardQuery, LoggedEffect, Phase, PlayerWithDeck, State},
+    state::{LoggedEffect, Phase, PlayerWithDeck, State},
 };
 use async_channel::{Receiver, Sender};
 use chrono::Utc;
@@ -846,9 +846,11 @@ pub fn get_knight_move_zones(zone: &Zone) -> Vec<Zone> {
     };
     let col = ((sq - 1) % 5) + 1; // 1-5
     let row = ((sq - 1) / 5) + 1; // 1-4
+
+    #[rustfmt::skip]
     let offsets: [(i16, i16); 8] = [
-        (1, 2), (-1, 2), (1, -2), (-1, -2),
-        (2, 1), (-2, 1), (2, -1), (-2, -1),
+        (1, 2),  (-1, 2), (1, -2), (-1, -2),
+        (2, 1),  (-2, 1), (2, -1), (-2, -1),
     ];
     offsets
         .iter()
@@ -1023,9 +1025,9 @@ impl ActivatedAbility for AvatarAction {
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
         match self {
-            AvatarAction::PlaySite | AvatarAction::DrawSite => Ok(Cost::additional_only(
-                AdditionalCost::tap(CardQuery::from_id(*card_id).untapped()),
-            )),
+            AvatarAction::PlaySite | AvatarAction::DrawSite => {
+                Ok(Cost::additional_only(AdditionalCost::tap(card_id)))
+            }
         }
     }
 
@@ -1102,6 +1104,23 @@ impl ActivatedAbility for UnitAction {
             UnitAction::PickUpMinion => "Pick Up Minion".to_string(),
             UnitAction::DropMinion => "Drop Minion".to_string(),
         }
+    }
+
+    fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
+        let cost = match self {
+            UnitAction::Move
+            | UnitAction::Attack
+            | UnitAction::RangedAttack
+            | UnitAction::Burrow
+            | UnitAction::Submerge
+            | UnitAction::Surface
+            | UnitAction::PickUpArtifact { .. }
+            | UnitAction::DropArtifact { .. }
+            | UnitAction::PickUpMinion
+            | UnitAction::DropMinion => Cost::additional_only(AdditionalCost::tap(card_id)),
+        };
+
+        Ok(cost)
     }
 
     async fn on_select(
@@ -1602,8 +1621,8 @@ impl Game {
                         });
                     }
                     (_, Zone::Realm(_)) => {
-                        let unit_disabled = card.is_tapped()
-                            || card.has_ability(&self.state, &Ability::SummoningSickness);
+                        let unit_disabled =
+                            card.has_ability(&self.state, &Ability::SummoningSickness);
                         if card.is_unit() && unit_disabled {
                             return Ok(());
                         }

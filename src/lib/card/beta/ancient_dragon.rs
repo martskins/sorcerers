@@ -18,9 +18,7 @@ impl ActivatedAbility for AncientDragonAbility {
     }
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
-        Ok(Cost::additional_only(AdditionalCost::tap(
-            CardQuery::from_id(card_id.clone()),
-        )))
+        Ok(Cost::additional_only(AdditionalCost::tap(card_id)))
     }
 
     async fn on_select(

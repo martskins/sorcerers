@@ -58,7 +58,7 @@ impl AwakenedMummies {
                 zone: ZoneQuery::from_zone(zone),
             },
             expires_on_effect: Some(EffectQuery::BuryCard {
-                card: CardQuery::from_id(self.get_id().clone()),
+                card: self.get_id().into(),
             }),
             on_effect: Arc::new(
                 move |state: &State, card_id: &uuid::Uuid, _effect: &Effect| {

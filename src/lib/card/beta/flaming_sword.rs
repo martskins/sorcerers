@@ -3,7 +3,7 @@ use crate::{
         Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, Zone,
     },
     game::PlayerId,
-    state::{CardQuery, ContinuousEffect, State},
+    state::{ContinuousEffect, State},
 };
 
 #[derive(Debug, Clone)]
@@ -86,7 +86,7 @@ impl Card for FlamingSword {
             None => Ok(vec![]),
             Some(bid) => Ok(vec![ContinuousEffect::ModifyPower {
                 power_diff: 1,
-                affected_cards: CardQuery::from_id(bid),
+                affected_cards: bid.into(),
             }]),
         }
     }

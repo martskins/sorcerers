@@ -51,9 +51,7 @@ impl ActivatedAbility for TapToStrikeNearbyMinions {
     }
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
-        Ok(Cost::additional_only(AdditionalCost::surface(
-            CardQuery::from_id(card_id.clone()),
-        )))
+        Ok(Cost::additional_only(AdditionalCost::surface(card_id)))
     }
 }
 

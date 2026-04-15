@@ -110,8 +110,7 @@ impl Component for CardViewerComponent {
                                 if let Some(mp) = mouse_pos {
                                     for local_i in (0..n).rev() {
                                         let gi = start + local_i;
-                                        let y =
-                                            col_rect.min.y + local_i as f32 * STACK_STRIP;
+                                        let y = col_rect.min.y + local_i as f32 * STACK_STRIP;
                                         let visible_h = if local_i == n - 1 {
                                             THUMB_H
                                         } else {
@@ -124,9 +123,8 @@ impl Component for CardViewerComponent {
                                         if hit.contains(mp) {
                                             self.cards[gi].is_hovered = true;
                                             hovered_idx = Some(gi);
-                                            ui.ctx().set_cursor_icon(
-                                                egui::CursorIcon::PointingHand,
-                                            );
+                                            ui.ctx()
+                                                .set_cursor_icon(egui::CursorIcon::PointingHand);
                                             break;
                                         }
                                     }
@@ -154,18 +152,11 @@ impl Component for CardViewerComponent {
                                         painter.image(
                                             tex.id(),
                                             card_rect,
-                                            Rect::from_min_max(
-                                                pos2(0.0, 0.0),
-                                                pos2(1.0, 1.0),
-                                            ),
+                                            Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
                                             Color32::WHITE,
                                         );
                                     } else {
-                                        painter.rect_filled(
-                                            card_rect,
-                                            4.0,
-                                            Color32::DARK_GRAY,
-                                        );
+                                        painter.rect_filled(card_rect, 4.0, Color32::DARK_GRAY);
                                         // For the front card with no image, show name in centre.
                                         if local_i == n - 1 {
                                             painter.text(

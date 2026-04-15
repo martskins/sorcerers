@@ -114,12 +114,8 @@ impl SelectionOverlay {
         behaviour: SelectionOverlayBehaviour,
     ) -> Self {
         let (card_rects, zone_group_headers) = match behaviour {
-            SelectionOverlayBehaviour::Preview => {
-                (Self::build_preview_rects(&cards), vec![])
-            }
-            SelectionOverlayBehaviour::Pick => {
-                Self::build_pick_rects_grouped(&cards, player_id)
-            }
+            SelectionOverlayBehaviour::Preview => (Self::build_preview_rects(&cards), vec![]),
+            SelectionOverlayBehaviour::Pick => Self::build_pick_rects_grouped(&cards, player_id),
         };
 
         let pickable_cards = if pickable_cards.is_empty() {
@@ -200,11 +196,9 @@ impl SelectionOverlay {
         // Distribute available vertical space evenly across groups.
         let header_overhead = groups.len() as f32 * (HEADER_H + HEADER_GAP)
             + (groups.len().saturating_sub(1)) as f32 * GROUP_GAP;
-        let available_h =
-            (sh - top_margin - bottom_margin - header_overhead).max(base_h);
+        let available_h = (sh - top_margin - bottom_margin - header_overhead).max(base_h);
         let per_group_h = available_h / groups.len() as f32;
-        let cards_per_col = (((per_group_h - base_h) / row_step).floor() as usize + 1)
-            .clamp(1, 10);
+        let cards_per_col = (((per_group_h - base_h) / row_step).floor() as usize + 1).clamp(1, 10);
 
         let mut all_rects: Vec<CardRect> = Vec::new();
         let mut headers: Vec<(String, egui::Pos2)> = Vec::new();
@@ -215,11 +209,10 @@ impl SelectionOverlay {
             let num_cols = n.div_ceil(cards_per_col);
             // Balance cards across columns.
             let actual_per_col = n.div_ceil(num_cols);
-            let col_h =
-                row_step * actual_per_col.saturating_sub(1) as f32 + base_h;
+            let col_h = row_step * actual_per_col.saturating_sub(1) as f32 + base_h;
 
-            let total_w = num_cols as f32 * column_w
-                + (num_cols.saturating_sub(1)) as f32 * card_gap_x;
+            let total_w =
+                num_cols as f32 * column_w + (num_cols.saturating_sub(1)) as f32 * card_gap_x;
             let start_x = (sw - total_w) / 2.0;
 
             // Header centred horizontally.

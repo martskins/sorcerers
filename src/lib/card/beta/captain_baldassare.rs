@@ -5,7 +5,7 @@ use crate::{
     effect::Effect,
     game::PlayerId,
     query::EffectQuery,
-    state::{CardQuery, DeferredEffect, State},
+    state::{DeferredEffect, State},
 };
 
 #[derive(Debug, Clone)]
@@ -73,10 +73,10 @@ impl Card for CaptainBaldassare {
         Ok(vec![Effect::AddDeferredEffect {
             effect: DeferredEffect {
                 trigger_on_effect: EffectQuery::Attack {
-                    attacker: CardQuery::from_id(self.get_id().clone()),
+                    attacker: self.get_id().into(),
                 },
                 expires_on_effect: Some(EffectQuery::BuryCard {
-                    card: CardQuery::from_id(self.get_id().clone()),
+                    card: self.get_id().into(),
                 }),
                 on_effect: Arc::new(
                     move |state: &State, _card_id: &uuid::Uuid, effect: &Effect| {

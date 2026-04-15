@@ -1,7 +1,6 @@
 use crate::{
     card::{
-        Ability, Card, CardBase, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase,
-        Zone,
+        Ability, Card, CardBase, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone,
     },
     game::{PlayerId, Thresholds},
     state::{CardQuery, ContinuousEffect, State},
@@ -88,7 +87,7 @@ impl Card for DomeOfOsiros {
             // The site itself cannot be attacked.
             ContinuousEffect::GrantAbility {
                 ability: Ability::Unattackable,
-                affected_cards: CardQuery::from_id(self.get_id().clone()),
+                affected_cards: self.get_id().into(),
             },
             // Minions here cannot be attacked.
             ContinuousEffect::GrantAbility {

@@ -1,7 +1,5 @@
 use crate::{
-    card::{
-        Card, CardBase, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone,
-    },
+    card::{Card, CardBase, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone},
     effect::{Effect, TokenType},
     game::{PlayerId, Thresholds},
     state::State,

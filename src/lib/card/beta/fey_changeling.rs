@@ -14,8 +14,7 @@ pub struct FeyChangeling {
 
 impl FeyChangeling {
     pub const NAME: &'static str = "Fey Changeling";
-    pub const DESCRIPTION: &'static str =
-        "May be summoned to any site.\r \r Genesis → You may return a minion here to its owner's hand.";
+    pub const DESCRIPTION: &'static str = "May be summoned to any site.\r \r Genesis → You may return a minion here to its owner's hand.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        AdditionalCost, Card, CardBase, Cost, Costs, Edition, Rarity, ResourceProvider,
-        Site, SiteBase, Zone,
+        AdditionalCost, Card, CardBase, Cost, Costs, Edition, Rarity, ResourceProvider, Site,
+        SiteBase, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, Thresholds},
@@ -18,11 +18,7 @@ impl ActivatedAbility for UseAbility {
     }
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
-        Ok(
-            Cost::thresholds_only("FFF").with_additional(AdditionalCost::sacrifice(
-                CardQuery::from_id(card_id.clone()),
-            )),
-        )
+        Ok(Cost::thresholds_only("FFF").with_additional(AdditionalCost::sacrifice(card_id)))
     }
 
     async fn on_select(

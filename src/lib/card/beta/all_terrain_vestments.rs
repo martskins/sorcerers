@@ -4,7 +4,7 @@ use crate::{
         Region, Zone,
     },
     game::PlayerId,
-    state::{CardQuery, ContinuousEffect, State},
+    state::{ContinuousEffect, State},
 };
 
 #[derive(Debug, Clone)]
@@ -74,8 +74,8 @@ impl Card for AllTerrainVestments {
             .get_bearer()?;
 
         match bearer_id {
-            Some(bearer_id) => {
-                let bearer = state.get_card(&bearer_id);
+            Some(ref bearer_id) => {
+                let bearer = state.get_card(bearer_id);
                 if !bearer.is_minion() {
                     return Ok(vec![]);
                 }
@@ -83,15 +83,15 @@ impl Card for AllTerrainVestments {
                 Ok(vec![
                     ContinuousEffect::GrantAbility {
                         ability: Ability::Burrowing,
-                        affected_cards: CardQuery::from_id(bearer_id),
+                        affected_cards: bearer_id.into(),
                     },
                     ContinuousEffect::GrantAbility {
                         ability: Ability::Submerge,
-                        affected_cards: CardQuery::from_id(bearer_id),
+                        affected_cards: bearer_id.into(),
                     },
                     ContinuousEffect::GrantAbility {
                         ability: Ability::Voidwalk,
-                        affected_cards: CardQuery::from_id(bearer_id),
+                        affected_cards: bearer_id.into(),
                     },
                 ])
             }

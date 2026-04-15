@@ -2,8 +2,7 @@ use std::{future::Future, pin::Pin, sync::Arc};
 
 use crate::{
     card::{
-        Ability, Card, CardBase, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase,
-        Zone,
+        Ability, Card, CardBase, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone,
     },
     effect::Effect,
     game::{PlayerId, Thresholds},
@@ -52,7 +51,7 @@ impl BottomlessPit {
                 zone: ZoneQuery::from_zone(my_zone),
             },
             expires_on_effect: Some(EffectQuery::BuryCard {
-                card: CardQuery::from_id(self.get_id().clone()),
+                card: self.get_id().into(),
             }),
             on_effect: Arc::new(
                 move |state: &State, card_id: &uuid::Uuid, _effect: &Effect| {
