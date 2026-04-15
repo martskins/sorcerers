@@ -14,7 +14,7 @@ static NOTO_SANS: &[u8] = include_bytes!("../../../assets/fonts/NotoSans-Regular
 static NOTO_SYMBOLS: &[u8] = include_bytes!("../../../assets/fonts/NotoSansSymbols2-Regular.ttf");
 
 pub struct SorcerersApp {
-    pub scene: Scene,
+    scene: Scene,
     _runtime: Runtime,
     rx: mpsc::UnboundedReceiver<ServerMessage>,
 }
@@ -178,10 +178,15 @@ impl eframe::App for SorcerersApp {
         TextureCache::flush_blocking(ctx);
 
         // Drain incoming server messages
+        let mut received_message = false;
         while let Ok(msg) = self.rx.try_recv() {
             if let Some(new_scene) = self.scene.process_message(&msg) {
                 self.scene = new_scene;
             }
+            received_message = true;
+        }
+        if received_message {
+            ctx.request_repaint();
         }
 
         // Update game state

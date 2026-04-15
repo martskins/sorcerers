@@ -266,7 +266,7 @@ impl Component for PlayerHandComponent {
         let bg_color = Color32::from_rgba_unmultiplied(38, 46, 56, 217);
         painter.rect_filled(self.rect, 0.0, bg_color);
 
-        let mut clicked_card = None;
+        let mut clicked_card: Option<(uuid::Uuid, egui::Pos2)> = None;
         for card_rect in &self.card_rects {
             if card_rect.card.zone != Zone::Hand {
                 continue;
@@ -275,7 +275,7 @@ impl Component for PlayerHandComponent {
             let resp = ui.allocate_rect(card_rect.rect, Sense::HOVER | Sense::CLICK);
             render::draw_card(card_rect, true, false, painter);
             if resp.clicked() {
-                clicked_card = Some(card_rect.card.id);
+                clicked_card = Some((card_rect.card.id, card_rect.rect.center()));
             }
 
             if resp.hovered() {
@@ -283,7 +283,13 @@ impl Component for PlayerHandComponent {
             }
         }
 
-        if let Some(card_id) = clicked_card {
+        if let Some((card_id, card_center)) = clicked_card {
+            // Track the click origin so realm.rs can animate the card flying to its zone.
+            if matches!(data.status, Status::Idle) {
+                data.last_clicked_card_id = Some(card_id);
+                data.last_clicked_card_pos = Some(card_center);
+                data.last_clicked_card_time = Some(ui.ctx().input(|i| i.time));
+            }
             self.card_clicked(&card_id, data)?;
         }
 

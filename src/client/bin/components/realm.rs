@@ -945,7 +945,12 @@ impl Component for RealmComponent {
                 painter,
                 rotation,
             );
-            progress < 1.0
+            if progress < 1.0 {
+                ui.ctx().request_repaint();
+                true
+            } else {
+                false
+            }
         });
 
         self.render_paths(ui, data, painter);
