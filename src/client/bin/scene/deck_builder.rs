@@ -876,7 +876,7 @@ impl DeckBuilder {
         let avatars_per_row = avatars_per_row.max(1);
 
         let avatars: Vec<CardEntry> = self.avatars.clone();
-        for (i, av) in avatars.iter().enumerate() {
+        for (i, entry) in avatars.iter().enumerate() {
             let col = i % avatars_per_row;
             let row_i = i / avatars_per_row;
             let av_rect = Rect::from_min_size(
@@ -887,8 +887,13 @@ impl DeckBuilder {
                 avatar_sz,
             );
 
-            let is_selected = self.selected_avatar.as_deref() == Some(&av.name);
+            let is_selected = self.selected_avatar.as_deref() == Some(&entry.name);
             let av_resp = ui.allocate_rect(av_rect, Sense::click());
+
+            if av_resp.hovered() {
+                let mouse_pos = ctx.input(|i| i.pointer.latest_pos().unwrap_or_default());
+                self.hovered_card = Some((entry.clone(), pos2(mouse_pos.x, mouse_pos.y)));
+            }
 
             if is_selected {
                 ui.painter().rect_stroke(
@@ -899,7 +904,7 @@ impl DeckBuilder {
                 );
             }
 
-            let fake = av.as_card_data();
+            let fake = entry.as_card_data();
             if let Some(tex) = TextureCache::get_card_texture_blocking(&fake, ctx) {
                 egui::Image::new(egui::ImageSource::Texture(
                     egui::load::SizedTexture::from_handle(&tex),
@@ -927,13 +932,13 @@ impl DeckBuilder {
             ui.painter().text(
                 name_pos,
                 egui::Align2::CENTER_TOP,
-                &av.name,
+                &entry.name,
                 egui::FontId::proportional(10.0),
                 av_name_col,
             );
 
             if av_resp.clicked() {
-                self.selected_avatar = Some(av.name.clone());
+                self.selected_avatar = Some(entry.name.clone());
             }
         }
 
