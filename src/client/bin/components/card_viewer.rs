@@ -2,10 +2,11 @@ use crate::{
     components::{Component, ComponentCommand, ComponentType},
     config::CARD_ASPECT_RATIO,
     render::CardRect,
-    scene::game::GameData,
+    scene::game::{GameData, Status},
     texture_cache::TextureCache,
 };
 use egui::{Color32, Context, Painter, Rect, Sense, Stroke, Ui, pos2, vec2};
+use sorcerers::networking::{client::Client, message::ClientMessage};
 
 const THUMB_W: f32 = 80.0;
 const THUMB_H: f32 = THUMB_W / CARD_ASPECT_RATIO;
@@ -20,14 +21,43 @@ pub struct CardViewerComponent {
     visible: bool,
     title: String,
     cards: Vec<CardRect>,
+    client: Client,
+    game_id: uuid::Uuid,
+    player_id: uuid::Uuid,
 }
 
 impl CardViewerComponent {
-    pub fn new() -> Self {
+    pub fn new(game_id: &uuid::Uuid, player_id: &uuid::Uuid, client: Client) -> Self {
         Self {
             visible: false,
             title: "Cards".to_string(),
             cards: Vec::new(),
+            client,
+            game_id: game_id.clone(),
+            player_id: player_id.clone(),
+        }
+    }
+
+    fn handle_card_click(&self, data: &GameData, card: &CardRect) -> anyhow::Result<()> {
+        match &data.status {
+            Status::SelectingCard {
+                cards,
+                multiple: false,
+                ..
+            } => {
+                if !cards.contains(&card.card.id) {
+                    return Ok(());
+                }
+
+                self.client.send(ClientMessage::ClickCard {
+                    game_id: self.game_id.clone(),
+                    player_id: self.player_id.clone(),
+                    card_id: card.card.id,
+                })?;
+
+                Ok(())
+            }
+            _ => Ok(()),
         }
     }
 }
@@ -134,8 +164,6 @@ impl Component for CardViewerComponent {
                                     continue;
                                 }
 
-                                let painter = ui.painter();
-
                                 // Pass 1: draw all card images / placeholders back-to-front.
                                 // Each successive card covers the lower portion of the one
                                 // before it, leaving only the STACK_STRIP strip visible.
@@ -149,13 +177,23 @@ impl Component for CardViewerComponent {
                                     self.cards[gi].rect = card_rect;
 
                                     if let Some(ref tex) = self.cards[gi].image {
-                                        painter.image(
+                                        let resp = ui.allocate_rect(card_rect, Sense::click());
+                                        ui.painter().image(
                                             tex.id(),
                                             card_rect,
                                             Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
                                             Color32::WHITE,
                                         );
+
+                                        if resp.clicked() {
+                                            // TODO: Handle click card
+                                            println!(
+                                                "Clicked card: {}",
+                                                self.cards[gi].card.get_name()
+                                            );
+                                        }
                                     } else {
+                                        let painter = ui.painter();
                                         painter.rect_filled(card_rect, 4.0, Color32::DARK_GRAY);
                                         // For the front card with no image, show name in centre.
                                         if local_i == n - 1 {
@@ -170,6 +208,7 @@ impl Component for CardViewerComponent {
                                     }
                                 }
 
+                                let painter = ui.painter();
                                 // Pass 2: draw name strip overlays for backing cards and
                                 // borders for all cards.
                                 for local_i in 0..n {
@@ -227,10 +266,27 @@ impl Component for CardViewerComponent {
     fn process_input(
         &mut self,
         _in_turn: bool,
-        _data: &mut GameData,
-        _ctx: &Context,
+        data: &mut GameData,
+        ctx: &Context,
     ) -> anyhow::Result<Option<ComponentCommand>> {
         Ok(None)
+        // match data.status {
+        //     Status::SelectingCard { cards, multiple: false, .. } => {
+        //         if let Some(mp) = ctx.input(|i| i.pointer.hover_pos()) {
+        //             for card_rect in &mut self.cards {
+        //                 if card_rect.rect.contains(mp) {
+        //                     card_rect.is_selected = true;
+        //                     return Ok(Some(ComponentCommand::CardSelected {
+        //                         id: card_rect.card.id,
+        //                     }));
+        //                 }
+        //             }
+        //         }
+        //
+        //         Ok(None)
+        //     }
+        //     _ => Ok(None),
+        // }
     }
 
     fn process_command(

@@ -226,7 +226,11 @@ impl Game {
                     hand_r,
                 )),
                 Box::new(EventLogComponent::new(log_rect)),
-                Box::new(CardViewerComponent::new()),
+                Box::new(CardViewerComponent::new(
+                    &game_id,
+                    &player_id,
+                    client.clone(),
+                )),
             ],
             data: GameData::new(&player_id, cards),
             audio_manager,

@@ -1,6 +1,6 @@
 use async_channel::Sender;
 use sorcerers::{
-    card::{ALL_PRECONS, ApprenticeWizard},
+    card::{ALL_PRECONS, ApprenticeWizard, AramosMercenaries, PitVipers},
     game::Game,
     networking::{
         client::Client,
@@ -166,7 +166,17 @@ impl Server {
         // Uncomment this to setup a basic game state for testing
         let player_one = game.state.players[0].id.clone();
         game.state.cards.push(sorcerers::card::from_name_and_zone(
+            AramosMercenaries::NAME,
+            &player_one,
+            sorcerers::card::Zone::Cemetery,
+        ));
+        game.state.cards.push(sorcerers::card::from_name_and_zone(
             ApprenticeWizard::NAME,
+            &player_one,
+            sorcerers::card::Zone::Cemetery,
+        ));
+        game.state.cards.push(sorcerers::card::from_name_and_zone(
+            PitVipers::NAME,
             &player_one,
             sorcerers::card::Zone::Cemetery,
         ));
