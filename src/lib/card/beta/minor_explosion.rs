@@ -7,7 +7,7 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct MinorExplosion {
-    pub card_base: CardBase,
+    card_base: CardBase,
 }
 
 impl MinorExplosion {

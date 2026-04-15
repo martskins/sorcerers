@@ -52,8 +52,8 @@ impl ActivatedAbility for AncientDragonAbility {
 
 #[derive(Debug, Clone)]
 pub struct AncientDragon {
-    pub unit_base: UnitBase,
-    pub card_base: CardBase,
+    unit_base: UnitBase,
+    card_base: CardBase,
 }
 
 impl AncientDragon {

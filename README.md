@@ -89,7 +89,7 @@ Every playable card is a Rust struct in `src/lib/card/{edition}/`. To add a new 
 
     #[derive(Debug, Clone)]
     pub struct MyCard {
-        pub card_base: CardBase,
+        card_base: CardBase,
     }
 
     impl MyCard {

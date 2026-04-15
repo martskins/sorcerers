@@ -79,8 +79,8 @@ impl ActivatedAbility for TapToDealDamage {
 
 #[derive(Debug, Clone)]
 pub struct SiegeBallista {
-    pub artifact_base: ArtifactBase,
-    pub card_base: CardBase,
+    artifact_base: ArtifactBase,
+    card_base: CardBase,
 }
 
 impl SiegeBallista {

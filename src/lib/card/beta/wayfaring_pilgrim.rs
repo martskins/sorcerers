@@ -7,8 +7,8 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct WayfaringPilgrim {
-    pub unit_base: UnitBase,
-    pub card_base: CardBase,
+    unit_base: UnitBase,
+    card_base: CardBase,
     corners_visited: Vec<Zone>,
 }
 

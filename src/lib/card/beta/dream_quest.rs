@@ -10,7 +10,7 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct DreamQuest {
-    pub card_base: CardBase,
+    card_base: CardBase,
 }
 
 impl DreamQuest {

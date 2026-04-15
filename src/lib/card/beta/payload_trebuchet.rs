@@ -97,8 +97,8 @@ impl ActivatedAbility for ShootPayload {
 
 #[derive(Debug, Clone)]
 pub struct PayloadTrebuchet {
-    pub artifact_base: ArtifactBase,
-    pub card_base: CardBase,
+    artifact_base: ArtifactBase,
+    card_base: CardBase,
 }
 
 impl PayloadTrebuchet {

@@ -8,7 +8,7 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct CaveIn {
-    pub card_base: CardBase,
+    card_base: CardBase,
 }
 
 impl CaveIn {

@@ -76,8 +76,8 @@ impl ActivatedAbility for RamStrike {
 
 #[derive(Debug, Clone)]
 pub struct BatteringRam {
-    pub artifact_base: ArtifactBase,
-    pub card_base: CardBase,
+    artifact_base: ArtifactBase,
+    card_base: CardBase,
 }
 
 impl BatteringRam {

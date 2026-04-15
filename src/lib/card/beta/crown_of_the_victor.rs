@@ -9,8 +9,8 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct CrownOfTheVictor {
-    pub artifact_base: ArtifactBase,
-    pub card_base: CardBase,
+    artifact_base: ArtifactBase,
+    card_base: CardBase,
 }
 
 impl CrownOfTheVictor {

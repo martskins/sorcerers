@@ -12,8 +12,8 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct EvilPresence {
-    pub aura_base: AuraBase,
-    pub card_base: CardBase,
+    aura_base: AuraBase,
+    card_base: CardBase,
 }
 
 impl EvilPresence {

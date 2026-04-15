@@ -7,8 +7,8 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct BeastOfBurden {
-    pub card_base: CardBase,
-    pub unit_base: UnitBase,
+    card_base: CardBase,
+    unit_base: UnitBase,
 }
 
 impl BeastOfBurden {

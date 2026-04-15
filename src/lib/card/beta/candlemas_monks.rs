@@ -10,8 +10,8 @@ use crate::{
 /// Deathrite → Proceed to the end phase.
 #[derive(Debug, Clone)]
 pub struct CandlemasMons {
-    pub unit_base: UnitBase,
-    pub card_base: CardBase,
+    unit_base: UnitBase,
+    card_base: CardBase,
 }
 
 impl CandlemasMons {

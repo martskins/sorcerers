@@ -81,8 +81,8 @@ impl ActivatedAbility for FlyToVoid {
 
 #[derive(Debug, Clone)]
 pub struct CloudCity {
-    pub site_base: SiteBase,
-    pub card_base: CardBase,
+    site_base: SiteBase,
+    card_base: CardBase,
     moved_this_turn: bool,
 }
 

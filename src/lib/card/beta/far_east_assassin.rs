@@ -101,8 +101,8 @@ impl ActivatedAbility for ThrowArtifactAbility {
 
 #[derive(Debug, Clone)]
 pub struct FarEastAssassin {
-    pub unit_base: UnitBase,
-    pub card_base: CardBase,
+    unit_base: UnitBase,
+    card_base: CardBase,
 }
 
 impl FarEastAssassin {

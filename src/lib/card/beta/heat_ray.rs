@@ -7,7 +7,7 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct HeatRay {
-    pub card_base: CardBase,
+    card_base: CardBase,
 }
 
 impl HeatRay {

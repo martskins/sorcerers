@@ -5,8 +5,8 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct Ruins {
-    pub site_base: SiteBase,
-    pub card_base: CardBase,
+    site_base: SiteBase,
+    card_base: CardBase,
 }
 
 impl Ruins {

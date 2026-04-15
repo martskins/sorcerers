@@ -67,9 +67,9 @@ impl ActivatedAbility for FloodSite {
 
 #[derive(Debug, Clone)]
 pub struct AvatarOfWater {
-    pub card_base: CardBase,
-    pub unit_base: UnitBase,
-    pub avatar_base: AvatarBase,
+    card_base: CardBase,
+    unit_base: UnitBase,
+    avatar_base: AvatarBase,
     flood_effect: Option<ContinuousEffect>,
 }
 

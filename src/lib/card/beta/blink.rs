@@ -8,7 +8,7 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct Blink {
-    pub card_base: CardBase,
+    card_base: CardBase,
 }
 
 impl Blink {

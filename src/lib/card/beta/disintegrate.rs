@@ -10,7 +10,7 @@ use crate::{
 /// Banish target minion nearby, and everything it carries.
 #[derive(Debug, Clone)]
 pub struct Disintegrate {
-    pub card_base: CardBase,
+    card_base: CardBase,
 }
 
 impl Disintegrate {

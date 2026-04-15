@@ -56,8 +56,8 @@ impl ActivatedAbility for AdeptIllusionistAction {
 
 #[derive(Debug, Clone)]
 pub struct AdeptIllusionist {
-    pub unit_base: UnitBase,
-    pub card_base: CardBase,
+    unit_base: UnitBase,
+    card_base: CardBase,
 }
 
 impl AdeptIllusionist {

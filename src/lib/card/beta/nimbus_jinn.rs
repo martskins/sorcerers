@@ -39,8 +39,8 @@ impl ActivatedAbility for DealDamage {
 
 #[derive(Debug, Clone)]
 pub struct NimbusJinn {
-    pub unit_base: UnitBase,
-    pub card_base: CardBase,
+    unit_base: UnitBase,
+    card_base: CardBase,
 }
 
 impl NimbusJinn {

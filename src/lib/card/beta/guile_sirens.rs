@@ -9,8 +9,8 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct GuileSirens {
-    pub unit_base: UnitBase,
-    pub card_base: CardBase,
+    unit_base: UnitBase,
+    card_base: CardBase,
 }
 
 impl GuileSirens {

@@ -9,8 +9,8 @@ use crate::{
 /// Daperyll Vampire's strike damage against units heals you.
 #[derive(Debug, Clone)]
 pub struct DaperyllVampire {
-    pub unit_base: UnitBase,
-    pub card_base: CardBase,
+    unit_base: UnitBase,
+    card_base: CardBase,
 }
 
 impl DaperyllVampire {

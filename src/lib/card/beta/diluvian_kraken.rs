@@ -57,8 +57,8 @@ impl ActivatedAbility for TapToStrikeNearbyMinions {
 
 #[derive(Debug, Clone)]
 pub struct DiluvianKraken {
-    pub unit_base: UnitBase,
-    pub card_base: CardBase,
+    unit_base: UnitBase,
+    card_base: CardBase,
 }
 
 impl DiluvianKraken {

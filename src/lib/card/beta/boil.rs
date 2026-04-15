@@ -7,7 +7,7 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct Boil {
-    pub card_base: CardBase,
+    card_base: CardBase,
 }
 
 impl Boil {
