@@ -79,13 +79,7 @@ impl ActivatedAbility for DeathspeakerAbility {
         }
 
         // Step 4: Pick a zone to summon the copy.
-        let deathspeaker = state.get_card(card_id);
-        let zones = deathspeaker.get_zones_within_steps_of(state, 1, deathspeaker.get_zone());
-        let valid_zones: Vec<Zone> = zones
-            .into_iter()
-            .filter(|z| z.get_site(state).is_some())
-            .collect();
-
+        let valid_zones = chosen.get_valid_play_zones(state)?;
         if valid_zones.is_empty() {
             return Ok(vec![]);
         }
