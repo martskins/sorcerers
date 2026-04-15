@@ -51,7 +51,6 @@ impl CombatResolutionOverlay {
         rects.push(CardRect {
             rect: Rect::from_min_size(pos2(attacker_x, attacker_y), vec2(cw, ch)),
             card: attacker,
-            is_hovered: false,
             image: None,
             is_selected: false,
         });
@@ -68,7 +67,6 @@ impl CombatResolutionOverlay {
                 rect: Rect::from_min_size(pos2(x, defenders_y), vec2(cw, ch)),
                 card: defender.clone(),
                 image: None,
-                is_hovered: false,
                 is_selected: false,
             });
         }

@@ -10,7 +10,6 @@ use sorcerers::card::{Ability, CardData, CardType};
 pub struct CardRect {
     pub rect: Rect,
     pub image: Option<TextureHandle>,
-    pub is_hovered: bool,
     pub is_selected: bool,
     pub card: CardData,
 }
@@ -20,7 +19,6 @@ impl std::fmt::Debug for CardRect {
         f.debug_struct("CardRect")
             .field("rect", &self.rect)
             .field("image", &self.image.as_ref().map(|_| "<TextureHandle>"))
-            .field("is_hovered", &self.is_hovered)
             .field("is_selected", &self.is_selected)
             .field("card", &self.card)
             .finish()
@@ -107,7 +105,7 @@ fn draw_card_internal(
     rotation: f32,
 ) {
     let rect = card_rect.rect;
-    let scale = if card_rect.is_hovered || card_rect.is_selected {
+    let scale = if card_rect.is_selected {
         1.1f32
     } else {
         1.0f32

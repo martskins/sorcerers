@@ -160,7 +160,6 @@ impl SelectionOverlay {
             rects.push(CardRect {
                 image: None,
                 rect: Rect::from_min_size(pos2(x, cards_y), size),
-                is_hovered: false,
                 is_selected: false,
                 card: (*card).clone(),
             });
@@ -235,7 +234,6 @@ impl SelectionOverlay {
                     all_rects.push(CardRect {
                         image: None,
                         rect: Rect::from_min_size(pos2(x, y), size),
-                        is_hovered: false,
                         is_selected: false,
                         card: (*card).clone(),
                     });
@@ -250,10 +248,6 @@ impl SelectionOverlay {
 
     fn is_pickable(&self, card_id: &uuid::Uuid) -> bool {
         self.pickable_cards.contains(card_id)
-    }
-
-    fn hovered_card(&self) -> Option<&CardRect> {
-        self.card_rects.iter().rev().find(|card| card.is_hovered)
     }
 
     fn handle_card_click(
@@ -337,7 +331,7 @@ impl Component for SelectionOverlay {
 
         let mut clicked_card = None;
         for card_rect in &self.card_rects {
-            let resp = ui.allocate_rect(card_rect.rect, Sense::click());
+            let resp = ui.allocate_rect(card_rect.rect, Sense::CLICK | Sense::HOVER);
             render::draw_card(
                 card_rect,
                 card_rect.card.controller_id == self.player_id,
@@ -347,6 +341,10 @@ impl Component for SelectionOverlay {
 
             if resp.clicked() {
                 clicked_card = Some(card_rect.card.id);
+            }
+
+            if resp.hovered() {
+                render::draw_card_preview(ui, card_rect.image.as_ref())?;
             }
 
             if self.behaviour == SelectionOverlayBehaviour::Pick
@@ -396,12 +394,6 @@ impl Component for SelectionOverlay {
                 galley,
                 Color32::WHITE,
             );
-        }
-
-        if let Some(hovered) = self.hovered_card() {
-            if self.behaviour == SelectionOverlayBehaviour::Pick {
-                render::draw_card_preview(ui, hovered.image.as_ref())?;
-            }
         }
 
         if self.behaviour == SelectionOverlayBehaviour::Preview {

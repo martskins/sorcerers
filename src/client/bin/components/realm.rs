@@ -275,8 +275,7 @@ impl RealmComponent {
                             pos_y += jitter_y;
                         }
 
-                        let (hovered, selected) =
-                            existing.map_or((false, false), |c| (c.is_hovered, c.is_selected));
+                        let selected = existing.map_or(false, |c| c.is_selected);
                         let image = existing
                             .and_then(|c| c.image.clone())
                             .or_else(|| TextureCache::get_card_texture_blocking(card, ctx));
@@ -295,7 +294,6 @@ impl RealmComponent {
                         new_cards.push(CardRect {
                             image,
                             rect: Rect::from_min_size(pos2(pos_x, pos_y), dimensions),
-                            is_hovered: hovered,
                             is_selected: selected,
                             card: card.clone(),
                         });
@@ -321,8 +319,7 @@ impl RealmComponent {
                             dimensions,
                         );
 
-                        let (hovered, selected) =
-                            existing.map_or((false, false), |c| (c.is_hovered, c.is_selected));
+                        let selected = existing.map_or(false, |c| c.is_selected);
                         let image = existing
                             .and_then(|c| c.image.clone())
                             .or_else(|| TextureCache::get_card_texture_blocking(card, ctx));
@@ -341,7 +338,6 @@ impl RealmComponent {
                         new_cards.push(CardRect {
                             image,
                             rect: card_rect,
-                            is_hovered: hovered,
                             is_selected: selected,
                             card: card.clone(),
                         });
@@ -386,7 +382,6 @@ impl RealmComponent {
 
         // Use egui's Sense::click() to detect clicks on the realm area.
         let response = ui.interact(self.rect, ui.id().with("path_select"), Sense::click());
-
         let mouse = response.hover_pos().unwrap_or(self.last_mouse_pos);
 
         let mut closest_idx = None;
@@ -852,6 +847,10 @@ impl Component for RealmComponent {
                 ui.set_cursor_icon(CursorIcon::Default);
             }
 
+            if resp.hovered() {
+                render::draw_card_preview(ui, card_rect.image.as_ref())?;
+            }
+
             let cell = match &card_rect.card.zone {
                 Zone::Realm(cell_id) => self.cell_rects.iter().find(|c| c.id == *cell_id),
                 _ => None,
@@ -937,7 +936,6 @@ impl Component for RealmComponent {
                 rect,
                 card: flight.card.clone(),
                 image: flight.image.clone(),
-                is_hovered: false,
                 is_selected: false,
             };
             render::draw_card_with_rotation(
@@ -950,11 +948,6 @@ impl Component for RealmComponent {
             progress < 1.0
         });
 
-        if !matches!(data.status, Status::SelectingCard { preview: true, .. }) {
-            if let Some(card) = self.card_rects.iter().find(|c| c.is_hovered) {
-                render::draw_sidebar_card_preview(ui, card.image.as_ref())?;
-            }
-        }
         self.render_paths(ui, data, painter);
         self.render_prompt(data, painter)?;
 

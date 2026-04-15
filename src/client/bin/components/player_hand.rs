@@ -149,7 +149,6 @@ impl PlayerHandComponent {
             let rect = Rect::from_min_size(pos2(x, spells_y), spell_dim);
             rects.push(CardRect {
                 rect,
-                is_hovered: existing_card.map_or(false, |c| c.is_hovered),
                 is_selected: existing_card.map_or(false, |c| c.is_selected),
                 image: existing_card
                     .and_then(|c| c.image.clone())
@@ -170,7 +169,6 @@ impl PlayerHandComponent {
                 let rect = Rect::from_min_size(pos2(x, y), site_dim);
                 rects.push(CardRect {
                     rect,
-                    is_hovered: existing_card.map_or(false, |c| c.is_hovered),
                     is_selected: existing_card.map_or(false, |c| c.is_selected),
                     image: existing_card
                         .and_then(|c| c.image.clone())
@@ -279,17 +277,16 @@ impl Component for PlayerHandComponent {
             if resp.clicked() {
                 clicked_card = Some(card_rect.card.id);
             }
+
+            if resp.hovered() {
+                render::draw_card_preview(ui, card_rect.image.as_ref())?;
+            }
         }
 
         if let Some(card_id) = clicked_card {
             self.card_clicked(&card_id, data)?;
         }
 
-        if !matches!(data.status, Status::SelectingCard { preview: true, .. }) {
-            if let Some(card) = self.card_rects.iter().find(|c| c.is_hovered) {
-                render::draw_sidebar_card_preview(ui, card.image.as_ref())?;
-            }
-        }
         Ok(None)
     }
 

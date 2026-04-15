@@ -75,7 +75,6 @@ impl ActionOverlay {
                 rect,
                 card: (*card).clone(),
                 image: None,
-                is_hovered: false,
                 is_selected: false,
             })
             .collect();

@@ -1,7 +1,7 @@
 use crate::{
     components::{Component, ComponentCommand, ComponentType},
     config::CARD_ASPECT_RATIO,
-    render::CardRect,
+    render::{self, CardRect},
     scene::game::{GameData, Status},
     texture_cache::TextureCache,
 };
@@ -88,8 +88,6 @@ impl Component for CardViewerComponent {
         }
 
         let mut open = self.visible;
-        let mut hovered_idx: Option<usize> = None;
-
         egui::Window::new(self.title.clone())
             .open(&mut open)
             .movable(true)
@@ -109,17 +107,8 @@ impl Component for CardViewerComponent {
                     return;
                 }
 
-                // Reset hover state before detection.
-                for card in &mut self.cards {
-                    card.is_hovered = false;
-                }
-
                 let total = self.cards.len();
                 let num_cols = total.div_ceil(MAX_PER_COLUMN);
-                let mouse_pos = ui.ctx().input(|i| i.pointer.hover_pos());
-
-                // `auto_shrink([false, false])` lets the user drag the window
-                // larger than its content without it snapping back.
                 egui::ScrollArea::both()
                     .auto_shrink([false, false])
                     .show(ui, |ui| {
@@ -134,31 +123,6 @@ impl Component for CardViewerComponent {
                                 let col_h = STACK_STRIP * n.saturating_sub(1) as f32 + THUMB_H;
                                 let (col_rect, _) =
                                     ui.allocate_exact_size(vec2(THUMB_W, col_h), Sense::hover());
-
-                                // Hover detection (done before drawing so the highlighted
-                                // border is correct in the same frame).
-                                if let Some(mp) = mouse_pos {
-                                    for local_i in (0..n).rev() {
-                                        let gi = start + local_i;
-                                        let y = col_rect.min.y + local_i as f32 * STACK_STRIP;
-                                        let visible_h = if local_i == n - 1 {
-                                            THUMB_H
-                                        } else {
-                                            STACK_STRIP
-                                        };
-                                        let hit = Rect::from_min_size(
-                                            pos2(col_rect.min.x, y),
-                                            vec2(THUMB_W, visible_h),
-                                        );
-                                        if hit.contains(mp) {
-                                            self.cards[gi].is_hovered = true;
-                                            hovered_idx = Some(gi);
-                                            ui.ctx()
-                                                .set_cursor_icon(egui::CursorIcon::PointingHand);
-                                            break;
-                                        }
-                                    }
-                                }
 
                                 if !ui.is_rect_visible(col_rect) {
                                     continue;
@@ -177,7 +141,8 @@ impl Component for CardViewerComponent {
                                     self.cards[gi].rect = card_rect;
 
                                     if let Some(ref tex) = self.cards[gi].image {
-                                        let resp = ui.allocate_rect(card_rect, Sense::click());
+                                        let resp = ui
+                                            .allocate_rect(card_rect, Sense::CLICK | Sense::HOVER);
                                         ui.painter().image(
                                             tex.id(),
                                             card_rect,
@@ -189,6 +154,22 @@ impl Component for CardViewerComponent {
                                             self.handle_card_click(data, &self.cards[gi])
                                                 .expect("handling card click failed");
                                         }
+
+                                        // Draw border after the image so it appears on top. Highlight
+                                        // if hovered.
+                                        let border_color = if resp.hovered() {
+                                            render::draw_card_preview(ui, Some(tex)).unwrap();
+                                            Color32::WHITE
+                                        } else {
+                                            Color32::from_gray(100)
+                                        };
+
+                                        ui.painter().rect_stroke(
+                                            card_rect,
+                                            4.0,
+                                            Stroke::new(1.0, border_color),
+                                            egui::StrokeKind::Outside,
+                                        );
                                     } else {
                                         let painter = ui.painter();
                                         painter.rect_filled(card_rect, 4.0, Color32::DARK_GRAY);
@@ -203,31 +184,11 @@ impl Component for CardViewerComponent {
                                             );
                                         }
                                     }
-
-                                    // Draw border after the image so it appears on top. Highlight
-                                    // if hovered.
-                                    let border_color = if self.cards[gi].is_hovered {
-                                        Color32::WHITE
-                                    } else {
-                                        Color32::from_gray(100)
-                                    };
-                                    ui.painter().rect_stroke(
-                                        card_rect,
-                                        4.0,
-                                        Stroke::new(1.0, border_color),
-                                        egui::StrokeKind::Outside,
-                                    );
                                 }
                             }
                         });
                     });
             });
-
-        // Hover preview rendered at the Tooltip layer so it floats above the window.
-        if let Some(idx) = hovered_idx {
-            let tex = &self.cards[idx].image;
-            crate::render::draw_card_preview(ui, tex.as_ref()).unwrap();
-        }
 
         self.visible = open;
         Ok(None)
@@ -246,7 +207,6 @@ impl Component for CardViewerComponent {
                 .map(|card| CardRect {
                     rect: Rect::ZERO,
                     image: None,
-                    is_hovered: false,
                     is_selected: false,
                     card: card.clone(),
                 })
