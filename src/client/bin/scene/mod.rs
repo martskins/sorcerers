@@ -39,15 +39,4 @@ impl Scene {
             Scene::DeckBuilder(_) => None,
         }
     }
-
-    pub fn process_input(&mut self, ctx: &Context) -> Option<Scene> {
-        match self {
-            Scene::Menu(menu) => menu.process_input(ctx),
-            Scene::Game(game) => {
-                game.process_input(ctx);
-                None
-            }
-            Scene::DeckBuilder(db) => db.process_input(ctx),
-        }
-    }
 }

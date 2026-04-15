@@ -82,9 +82,9 @@ impl Component for CardViewerComponent {
         data: &mut GameData,
         ui: &mut Ui,
         _painter: &Painter,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<Option<ComponentCommand>> {
         if !self.visible {
-            return Ok(());
+            return Ok(None);
         }
 
         let mut open = self.visible;
@@ -164,7 +164,7 @@ impl Component for CardViewerComponent {
                                     continue;
                                 }
 
-                                // Pass 1: draw all card images / placeholders back-to-front.
+                                // Draw all card images / placeholders back-to-front.
                                 // Each successive card covers the lower portion of the one
                                 // before it, leaving only the STACK_STRIP strip visible.
                                 for local_i in 0..n {
@@ -203,42 +203,15 @@ impl Component for CardViewerComponent {
                                             );
                                         }
                                     }
-                                }
 
-                                let painter = ui.painter();
-                                // Pass 2: draw name strip overlays for backing cards and
-                                // borders for all cards.
-                                for local_i in 0..n {
-                                    let gi = start + local_i;
-                                    let y = col_rect.min.y + local_i as f32 * STACK_STRIP;
-                                    let card_rect = self.cards[gi].rect;
-
-                                    if local_i < n - 1 {
-                                        // Semi-transparent overlay over the visible strip.
-                                        let strip = Rect::from_min_size(
-                                            pos2(col_rect.min.x, y),
-                                            vec2(THUMB_W, STACK_STRIP),
-                                        );
-                                        painter.rect_filled(
-                                            strip,
-                                            4.0,
-                                            Color32::from_rgba_unmultiplied(0, 0, 0, 160),
-                                        );
-                                        painter.text(
-                                            strip.center(),
-                                            egui::Align2::CENTER_CENTER,
-                                            self.cards[gi].card.get_name(),
-                                            egui::FontId::proportional(9.0),
-                                            Color32::LIGHT_GRAY,
-                                        );
-                                    }
-
+                                    // Draw border after the image so it appears on top. Highlight
+                                    // if hovered.
                                     let border_color = if self.cards[gi].is_hovered {
                                         Color32::WHITE
                                     } else {
                                         Color32::from_gray(100)
                                     };
-                                    painter.rect_stroke(
+                                    ui.painter().rect_stroke(
                                         card_rect,
                                         4.0,
                                         Stroke::new(1.0, border_color),
@@ -257,7 +230,7 @@ impl Component for CardViewerComponent {
         }
 
         self.visible = open;
-        Ok(())
+        Ok(None)
     }
 
     fn process_command(

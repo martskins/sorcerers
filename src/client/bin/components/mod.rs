@@ -44,16 +44,7 @@ pub trait Component: std::fmt::Debug {
         data: &mut GameData,
         ui: &mut egui::Ui,
         painter: &egui::Painter,
-    ) -> anyhow::Result<()>;
-
-    fn process_input(
-        &mut self,
-        _in_turn: bool,
-        _data: &mut GameData,
-        _ctx: &egui::Context,
-    ) -> anyhow::Result<Option<ComponentCommand>> {
-        Ok(None)
-    }
+    ) -> anyhow::Result<Option<ComponentCommand>>;
 
     fn process_command(
         &mut self,

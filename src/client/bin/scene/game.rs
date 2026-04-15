@@ -6,7 +6,6 @@ use crate::{
         player_status::PlayerStatusComponent, realm::RealmComponent,
     },
     config::*,
-    input::Mouse,
     render::{self, popup_action_menu},
     scene::{
         Scene,
@@ -296,43 +295,6 @@ impl Game {
         }
     }
 
-    pub fn process_input(&mut self, ctx: &Context) {
-        if let Status::Waiting { .. } = self.data.status {
-            return;
-        }
-
-        if let Some(overlay) = &mut self.overlay {
-            if let Err(e) = overlay.process_input(
-                self.current_player == self.data.player_id,
-                &mut self.data,
-                ctx,
-            ) {
-                eprintln!("Error processing overlay input: {}", e);
-            }
-            if !overlay.is_visible() {
-                self.overlay = None;
-            }
-            // Don't let clicks fall through to cards behind the overlay.
-            return;
-        }
-
-        let mut component_actions = vec![];
-        for component in &mut self.components {
-            if let Ok(Some(action)) = component.process_input(
-                self.current_player == self.data.player_id,
-                &mut self.data,
-                ctx,
-            ) {
-                component_actions.push(action);
-            }
-        }
-        for action in component_actions {
-            for component in &mut self.components {
-                let _ = component.process_command(&action, &mut self.data);
-            }
-        }
-    }
-
     pub fn render(&mut self, ui: &mut Ui) -> Option<Scene> {
         let painter = ui.painter().clone();
 
@@ -352,12 +314,19 @@ impl Game {
             return None;
         }
 
+        let mut component_actions: Vec<ComponentCommand> = Vec::new();
         for component in &mut self.components {
-            if let Err(e) = component.render(&mut self.data, ui, &painter) {
-                eprintln!("Error rendering component: {}", e);
+            let actions = component.render(&mut self.data, ui, &painter).unwrap();
+            if let Some(action) = actions {
+                component_actions.push(action);
             }
         }
 
+        for action in component_actions {
+            for component in &mut self.components {
+                let _ = component.process_command(&action, &mut self.data);
+            }
+        }
         let new_scene = self.render_gui(ui, &painter);
 
         // Toasts — drawn above the board but below any blocking overlay.
@@ -456,7 +425,6 @@ impl Game {
                     )
                     .min_size(vec2(160.0, 48.0));
                     if ui.add(btn).clicked() {
-                        Mouse::set_enabled(false);
                         client
                             .send(ClientMessage::EndTurn { player_id, game_id })
                             .ok();
@@ -478,7 +446,6 @@ impl Game {
                     )
                     .min_size(vec2(180.0, 48.0));
                     if ui.add(btn).clicked() {
-                        Mouse::set_enabled(false);
                         done = true;
                     }
                 });
@@ -603,7 +570,6 @@ impl Game {
                             amount: *selected_amount as u8,
                         })
                         .ok();
-                    Mouse::set_enabled(false);
                     self.data.status = Status::Idle;
                 }
                 None
@@ -628,7 +594,6 @@ impl Game {
                             action_idx: idx,
                         })
                         .ok();
-                    Mouse::set_enabled(false);
                     self.data.status = Status::Idle;
                 }
                 None
@@ -657,7 +622,6 @@ impl Game {
                         }
                     });
                 if new_scene.is_some() {
-                    Mouse::set_enabled(false);
                     self.data.status = Status::Idle;
                 }
                 new_scene

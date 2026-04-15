@@ -32,8 +32,6 @@ pub struct PlayerStatusComponent {
     /// `true` = local player (bottom of sidebar), `false` = opponent (top).
     player: bool,
     rect: Rect,
-    pending_open_log: bool,
-    pending_open_cemetery: bool,
 }
 
 impl PlayerStatusComponent {
@@ -43,8 +41,6 @@ impl PlayerStatusComponent {
             player_id,
             rect,
             player,
-            pending_open_log: false,
-            pending_open_cemetery: false,
         }
     }
 }
@@ -98,9 +94,9 @@ impl Component for PlayerStatusComponent {
         data: &mut GameData,
         ui: &mut Ui,
         _painter: &Painter,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<Option<ComponentCommand>> {
         if !self.visible {
-            return Ok(());
+            return Ok(None);
         }
 
         let sidebar_w = crate::config::realm_rect()
@@ -272,30 +268,13 @@ impl Component for PlayerStatusComponent {
             });
 
         if open_log {
-            self.pending_open_log = true;
-        }
-        if open_cemetery {
-            self.pending_open_cemetery = true;
-        }
-        Ok(())
-    }
-
-    // TODO: Review this to see if there's a better way of implementing it.
-    fn process_input(
-        &mut self,
-        _in_turn: bool,
-        data: &mut GameData,
-        _ctx: &Context,
-    ) -> anyhow::Result<Option<ComponentCommand>> {
-        if self.pending_open_log {
-            self.pending_open_log = false;
             return Ok(Some(ComponentCommand::SetVisibility {
                 component_type: ComponentType::EventLog,
                 visible: true,
             }));
         }
-        if self.pending_open_cemetery {
-            self.pending_open_cemetery = false;
+
+        if open_cemetery {
             let cards: Vec<uuid::Uuid> = data
                 .cards
                 .iter()
@@ -311,6 +290,7 @@ impl Component for PlayerStatusComponent {
             };
             return Ok(Some(ComponentCommand::OpenCardViewer { title, cards }));
         }
+
         Ok(None)
     }
 

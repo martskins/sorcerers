@@ -1,7 +1,6 @@
 use crate::{
     components::{Component, ComponentCommand, ComponentType},
     config::CARD_ASPECT_RATIO,
-    input::Mouse,
     render::{self, CardRect, CellRect, IntersectionRect},
     scene::game::{GameData, Status},
     texture_cache::TextureCache,
@@ -757,15 +756,13 @@ impl RealmComponent {
 
 impl Component for RealmComponent {
     fn update(&mut self, data: &mut GameData, ctx: &Context) -> anyhow::Result<()> {
-        let new_mouse_pos = Mouse::position(ctx).unwrap_or(pos2(0.0, 0.0));
-        let mouse_delta: Vec2 = new_mouse_pos - self.last_mouse_pos;
-
         self.compute_rects(&data.cards, ctx)?;
-
         for cell in &mut self.cell_rects {
             cell.rect = cell_rect(&self.rect, cell.id, self.mirrored);
         }
 
+        // If a card was clicked within the last 3 seconds, find it and animate it flying to its new
+        // position.
         if let Some(card_id) = data.last_clicked_card_id {
             let click_age = data
                 .last_clicked_card_time
@@ -803,48 +800,6 @@ impl Component for RealmComponent {
             }
         }
 
-        let mut dragging_card: Option<uuid::Uuid> = None;
-        for card in &self.card_rects {
-            if card.is_hovered && Mouse::dragging(ctx) {
-                dragging_card = Some(card.card.id);
-            }
-        }
-
-        if let Some(card_id) = dragging_card {
-            if let Some(card_rect) = self.card_rects.iter_mut().find(|c| c.card.id == card_id) {
-                if let Zone::Realm(cell_id) = &card_rect.card.zone {
-                    if let Some(cell) = self.cell_rects.iter().find(|c| &c.id == cell_id) {
-                        let min_x = cell.rect.min.x;
-                        let max_x = cell.rect.max.x - card_rect.rect.width();
-                        let min_y = cell.rect.min.y;
-                        let max_y = cell.rect.max.y - card_rect.rect.height();
-                        let new_x = (card_rect.rect.min.x + mouse_delta.x).clamp(min_x, max_x);
-                        let new_y = (card_rect.rect.min.y + mouse_delta.y).clamp(min_y, max_y);
-                        let delta_x = new_x - card_rect.rect.min.x;
-                        let delta_y = new_y - card_rect.rect.min.y;
-                        card_rect.rect = card_rect.rect.translate(vec2(delta_x, delta_y));
-
-                        let attached_cards: Vec<uuid::Uuid> = self
-                            .card_rects
-                            .iter()
-                            .filter(|c| c.card.bearer == Some(card_id))
-                            .map(|c| c.card.id)
-                            .collect();
-                        for attached_id in attached_cards {
-                            if let Some(ac) = self
-                                .card_rects
-                                .iter_mut()
-                                .find(|c| c.card.id == attached_id)
-                            {
-                                ac.rect = ac.rect.translate(vec2(delta_x, delta_y));
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        self.last_mouse_pos = new_mouse_pos;
         Ok(())
     }
 
@@ -853,7 +808,7 @@ impl Component for RealmComponent {
         data: &mut GameData,
         ui: &mut Ui,
         painter: &Painter,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<Option<ComponentCommand>> {
         let now = ui.ctx().input(|i| i.time);
         self.render_grid(ui, data, painter)?;
 
@@ -925,9 +880,6 @@ impl Component for RealmComponent {
                 ..
             } = &data.status
             {
-                if !Mouse::enabled() {
-                    continue;
-                }
                 if !cards.contains(&card_rect.card.id) {
                     // Draw greying overlay
                     painter.rect_filled(
@@ -1006,7 +958,7 @@ impl Component for RealmComponent {
         self.render_paths(ui, data, painter);
         self.render_prompt(data, painter)?;
 
-        Ok(())
+        Ok(None)
     }
 
     fn toggle_visibility(&mut self) {

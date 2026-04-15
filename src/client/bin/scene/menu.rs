@@ -407,8 +407,4 @@ impl Menu {
 
         next_scene
     }
-
-    pub fn process_input(&mut self, _ctx: &Context) -> Option<Scene> {
-        None
-    }
 }

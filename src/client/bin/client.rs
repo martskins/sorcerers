@@ -186,11 +186,6 @@ impl eframe::App for SorcerersApp {
 
         // Update game state
         self.scene.update(ctx);
-
-        // Process input
-        if let Some(new_scene) = self.scene.process_input(ctx) {
-            self.scene = new_scene;
-        }
     }
 
     /// When the window is closed the tokio networking task is blocked on

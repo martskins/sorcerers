@@ -120,7 +120,7 @@ impl Component for CombatResolutionOverlay {
         _data: &mut GameData,
         ui: &mut Ui,
         painter: &Painter,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<Option<ComponentCommand>> {
         let sw = screen_rect().map(|r| r.width()).unwrap_or(1280.0);
         let sh = screen_rect().map(|r| r.height()).unwrap_or(720.0);
         painter.rect_filled(
@@ -252,6 +252,6 @@ impl Component for CombatResolutionOverlay {
             self.visible = false;
         }
 
-        Ok(())
+        Ok(None)
     }
 }

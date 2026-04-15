@@ -264,7 +264,7 @@ impl Component for PlayerHandComponent {
         data: &mut GameData,
         ui: &mut Ui,
         painter: &Painter,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<Option<ComponentCommand>> {
         let bg_color = Color32::from_rgba_unmultiplied(38, 46, 56, 217);
         painter.rect_filled(self.rect, 0.0, bg_color);
 
@@ -290,7 +290,7 @@ impl Component for PlayerHandComponent {
                 render::draw_sidebar_card_preview(ui, card.image.as_ref())?;
             }
         }
-        Ok(())
+        Ok(None)
     }
 
     fn toggle_visibility(&mut self) {

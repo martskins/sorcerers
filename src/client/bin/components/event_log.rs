@@ -53,9 +53,9 @@ impl Component for EventLogComponent {
         data: &mut GameData,
         ui: &mut Ui,
         _painter: &Painter,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<Option<ComponentCommand>> {
         if !self.visible {
-            return Ok(());
+            return Ok(None);
         }
         let mut open = self.visible;
         egui::Window::new("Event Log")
@@ -81,7 +81,7 @@ impl Component for EventLogComponent {
                     });
             });
         self.visible = open;
-        Ok(())
+        Ok(None)
     }
 
     fn toggle_visibility(&mut self) {

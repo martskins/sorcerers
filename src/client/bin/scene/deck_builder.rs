@@ -1101,10 +1101,6 @@ impl DeckBuilder {
         )))
     }
 
-    pub fn process_input(&mut self, _ctx: &Context) -> Option<Scene> {
-        None
-    }
-
     /// Draw a large card preview floating near `anchor`, flipping left/up to stay on screen.
     fn draw_card_preview(ctx: &Context, entry: &CardEntry, anchor: egui::Pos2, screen: Rect) {
         const HTOW_RATIO: f32 = 1.4; // card height-to-width ratio

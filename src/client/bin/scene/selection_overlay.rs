@@ -1,7 +1,6 @@
 use crate::{
-    components::{Component, ComponentType},
+    components::{Component, ComponentCommand, ComponentType},
     config::{card_height, card_width, screen_rect},
-    input::Mouse,
     render::{self, CardRect},
     scene::game::{GameData, Status},
     texture_cache::TextureCache,
@@ -249,29 +248,6 @@ impl SelectionOverlay {
         (all_rects, headers)
     }
 
-    fn hovered_card_index(&self, ctx: &Context) -> Option<usize> {
-        let mouse_pos = Mouse::position(ctx)?;
-        let mut hovered = None;
-        for (idx, card_rect) in self.card_rects.iter().enumerate() {
-            if card_rect.rect.contains(mouse_pos) {
-                hovered = Some(idx);
-            }
-        }
-        hovered
-    }
-
-    fn update_hover_state(&mut self, ctx: &Context) {
-        let hovered = self.hovered_card_index(ctx);
-        for card_rect in &mut self.card_rects {
-            card_rect.is_hovered = false;
-        }
-        if let Some(idx) = hovered {
-            if let Some(card_rect) = self.card_rects.get_mut(idx) {
-                card_rect.is_hovered = true;
-            }
-        }
-    }
-
     fn is_pickable(&self, card_id: &uuid::Uuid) -> bool {
         self.pickable_cards.contains(card_id)
     }
@@ -318,7 +294,7 @@ impl Component for SelectionOverlay {
                 card_rect.image = TextureCache::get_card_texture_blocking(&card_rect.card, ctx);
             }
         }
-        self.update_hover_state(ctx);
+
         Ok(())
     }
 
@@ -337,7 +313,7 @@ impl Component for SelectionOverlay {
         data: &mut GameData,
         ui: &mut Ui,
         painter: &Painter,
-    ) -> anyhow::Result<()> {
+    ) -> anyhow::Result<Option<ComponentCommand>> {
         let sw = screen_rect().map(|r| r.width()).unwrap_or(1280.0);
         let sh = screen_rect().map(|r| r.height()).unwrap_or(720.0);
         let title = ui.fonts_mut(|f| {
@@ -445,6 +421,6 @@ impl Component for SelectionOverlay {
                 });
         }
 
-        Ok(())
+        Ok(None)
     }
 }
