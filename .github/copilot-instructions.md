@@ -59,8 +59,13 @@
 
 ## Key Conventions
 
-- **Adding a Card:**
-  1. Create a file in `src/lib/card/{edition}/` (e.g., `my_card.rs`).
+- An unimplemented card is a card that does not have its own file in `src/lib/card/{edition}/` and
+  is not registered with `#[linkme::distributed_slice]`.
+- When checking for unimplemented cards, make sure you check the name of the card in the NAME
+  constant in the card's struct, not just the file name, as some cards have slightly different names
+  in the file (e.g., "Angel's Egg" is "angels_egg.rs").
+- **Implementing a Card:**
+  1. Create a file in `src/lib/card/{edition}/` (e.g., `my_card.rs`). Make sure to remove apostrophes and special characters from the file name, and use snake_case.
   2. Define a struct with a `card_base: CardBase` field and implement the `Card` trait.
   3. Register the module in `mod.rs` and with `#[linkme::distributed_slice]`.
 - **Card metadata source:**

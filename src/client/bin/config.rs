@@ -25,7 +25,14 @@ pub fn card_width() -> anyhow::Result<f32> {
 }
 
 pub fn card_height() -> anyhow::Result<f32> {
-    let height = (screen_rect()?.width() - 200.0) / 10.0 / CARD_ASPECT_RATIO;
+    // Use the same realm-width base as card_width() so both functions produce
+    // values with the correct CARD_ASPECT_RATIO.  We inline the realm-width
+    // formula here rather than calling realm_rect() to avoid the circular
+    // dependency: realm_rect → hand_space_height → card_height → realm_rect.
+    let sr = screen_rect()?;
+    let sidebar_x = (sr.width() * 0.2).clamp(200.0, 250.0);
+    let realm_width = sr.width() - sidebar_x;
+    let height = realm_width / 10.0 / CARD_ASPECT_RATIO;
     Ok(height.clamp(0.0, 200.0))
 }
 

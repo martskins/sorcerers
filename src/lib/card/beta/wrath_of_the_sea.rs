@@ -62,7 +62,7 @@ impl Card for WrathOfTheSea {
         let picked_body =
             pick_zone_group(controller_id, &bodies_of_water, state, false, prompt).await?;
         let sites = CardQuery::new().adjacent_to_zones(&picked_body);
-        let other_water_sites = CardQuery::new().sites().all(state);
+        let other_water_sites = CardQuery::new().water_sites().all(state);
         let zones: Vec<Zone> = sites
             .all(state)
             .iter()

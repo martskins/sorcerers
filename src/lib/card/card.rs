@@ -515,10 +515,16 @@ pub struct AdditionalCost {
     pub action: CostAction,
 }
 
+impl Into<CardQuery> for &uuid::Uuid {
+    fn into(self) -> CardQuery {
+        CardQuery::from_id(self.clone())
+    }
+}
+
 impl AdditionalCost {
-    pub fn tap(card: CardQuery) -> Self {
+    pub fn tap(card: impl Into<CardQuery>) -> Self {
         Self {
-            card,
+            card: card.into(),
             action: CostAction::Tap,
         }
     }
@@ -2061,6 +2067,16 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(vec![])
     }
 
+    /// Called on the Spellcaster unit after it successfully casts a spell.
+    /// `spell_id` is the UUID of the spell card just cast.
+    async fn on_cast_spell(
+        &self,
+        _state: &State,
+        _spell_id: &uuid::Uuid,
+    ) -> anyhow::Result<Vec<Effect>> {
+        Ok(vec![])
+    }
+
     async fn play_mechanic(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
         let card_id = self.get_id();
@@ -2235,6 +2251,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         state: &State,
     ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         if self.has_ability(state, &Ability::Disabled) {
+            return Ok(vec![]);
+        }
+
+        if state.permanently_disabled_abilities.contains(self.get_id()) {
             return Ok(vec![]);
         }
 
@@ -2700,7 +2720,8 @@ pub fn from_name_and_zone(name: &str, player_id: &PlayerId, zone: Zone) -> Box<d
 mod tests {
     use crate::{
         card::{
-            Ability, AdditionalCost, ApprenticeWizard, AridDesert, Card, Cost, OgreGoons, RimlandNomads, Zone
+            Ability, AdditionalCost, ApprenticeWizard, AridDesert, Card, Cost, OgreGoons,
+            RimlandNomads, Zone,
         },
         state::{CardQuery, State},
     };
@@ -3116,11 +3137,19 @@ mod tests {
         card.set_zone(Zone::Hand);
         state.cards.push(Box::new(card.clone()));
 
-        let can_afford = card.get_costs(&state).unwrap().can_afford(&state, player_id).unwrap();
+        let can_afford = card
+            .get_costs(&state)
+            .unwrap()
+            .can_afford(&state, player_id)
+            .unwrap();
         assert_eq!(can_afford, false);
 
         *state.get_player_mana_mut(&player_id) = 3;
-        let can_afford = card.get_costs(&state).unwrap().can_afford(&state, player_id).unwrap();
+        let can_afford = card
+            .get_costs(&state)
+            .unwrap()
+            .can_afford(&state, player_id)
+            .unwrap();
         assert_eq!(can_afford, false);
 
         let mut arid_desert = AridDesert::new(player_id.clone());
@@ -3129,7 +3158,11 @@ mod tests {
 
         // The player now has 3 mana and a fire affinity of 1, so they should be able to afford the
         // Ogre Goons in their hand, which costs 3F.
-        let can_afford = card.get_costs(&state).unwrap().can_afford(&state, player_id).unwrap();
+        let can_afford = card
+            .get_costs(&state)
+            .unwrap()
+            .can_afford(&state, player_id)
+            .unwrap();
         assert_eq!(can_afford, true);
     }
 }

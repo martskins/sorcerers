@@ -1102,6 +1102,11 @@ impl Effect {
                 // Set zone after on_cast so that the card is not in the cemetery during casting.
                 card.set_zone(Zone::Cemetery);
                 state.queue(effects);
+
+                // Notify the Spellcaster unit that it cast a spell.
+                let caster = state.get_card(caster_id);
+                let spell_triggered = caster.on_cast_spell(state, card_id).await?;
+                state.queue(spell_triggered);
             }
             Effect::PlayCard {
                 card_id,
@@ -1387,12 +1392,13 @@ impl Effect {
 
                 let first_striker = state.get_card(first_striker_id);
                 let first_defender = state.get_card(first_defender_id);
+                let strike_damage = first_striker
+                    .get_power(&snapshot)?
+                    .ok_or(anyhow::anyhow!("attacker has no power"))?;
                 effects.push(Effect::TakeDamage {
                     card_id: first_defender_id.clone(),
                     from: first_striker_id.clone(),
-                    damage: first_striker
-                        .get_power(&snapshot)?
-                        .ok_or(anyhow::anyhow!("attacker has no power"))?,
+                    damage: strike_damage,
                     is_strike: false,
                 });
 

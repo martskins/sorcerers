@@ -837,6 +837,27 @@ pub fn get_adjacent_zones(zone: &Zone) -> Vec<Zone> {
     }
 }
 
+/// Returns all zones reachable by a chess knight's move (L-shape) from `zone`.
+/// The realm is a 5×4 grid with squares numbered 1–20 (row-major, 5 per row).
+pub fn get_knight_move_zones(zone: &Zone) -> Vec<Zone> {
+    let sq = match zone.get_square() {
+        Some(s) => s as i16,
+        None => return vec![],
+    };
+    let col = ((sq - 1) % 5) + 1; // 1-5
+    let row = ((sq - 1) / 5) + 1; // 1-4
+    let offsets: [(i16, i16); 8] = [
+        (1, 2), (-1, 2), (1, -2), (-1, -2),
+        (2, 1), (-2, 1), (2, -1), (-2, -1),
+    ];
+    offsets
+        .iter()
+        .map(|(dc, dr)| (col + dc, row + dr))
+        .filter(|(c, r)| *c >= 1 && *c <= 5 && *r >= 1 && *r <= 4)
+        .map(|(c, r)| Zone::Realm(((r - 1) * 5 + c) as u8))
+        .collect()
+}
+
 pub trait CloneBoxedAction {
     fn clone_boxed_action(&self) -> Box<dyn ActivatedAbility>;
 }
