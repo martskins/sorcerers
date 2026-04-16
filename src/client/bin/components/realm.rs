@@ -16,13 +16,8 @@ use sorcerers::{
     networking::{self, message::ClientMessage},
 };
 
-use std::sync::OnceLock;
-
-static OCCUPIED_ZONE_BACKGROUND_COLOR: OnceLock<Color32> = OnceLock::new();
-
-fn occupied_bg_color() -> Color32 {
-    *OCCUPIED_ZONE_BACKGROUND_COLOR.get_or_init(|| Color32::from_rgba_unmultiplied(20, 31, 46, 255))
-}
+static OCCUPIED_ZONE_BACKGROUND_COLOR: Color32 =
+    Color32::from_rgba_unmultiplied_const(20, 31, 46, 255);
 
 fn cell_rect(realm_rect: &Rect, id: u8, mirror: bool) -> Rect {
     let idx = id - 1;
@@ -476,7 +471,7 @@ impl RealmComponent {
         for (idx, cell) in self.cell_rects.iter().enumerate() {
             let rect = cell.rect;
             let bg_color = if occupied_zones.contains(&cell.id) {
-                occupied_bg_color()
+                OCCUPIED_ZONE_BACKGROUND_COLOR
             } else {
                 Color32::from_rgba_unmultiplied(20, 31, 46, 102)
             };
@@ -509,8 +504,8 @@ impl RealmComponent {
                         painter.rect_stroke(
                             rect,
                             0.0,
-                            Stroke::new(5.0, Color32::GREEN),
-                            egui::StrokeKind::Outside,
+                            Stroke::new(2.5, Color32::GREEN),
+                            egui::StrokeKind::Inside,
                         );
                     }
                 }

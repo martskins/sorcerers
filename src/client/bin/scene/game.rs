@@ -6,7 +6,7 @@ use crate::{
         player_status::PlayerStatusComponent, realm::RealmComponent,
     },
     config::*,
-    render::{self, popup_action_menu},
+    render::popup_action_menu,
     scene::{
         Scene,
         action_overlay::ActionOverlay,
@@ -378,32 +378,32 @@ impl Game {
         );
 
         // Contextual prompt in sidebar
-        let prompt_text: Option<String> = match &self.data.status {
-            Status::SelectingZone { prompt, .. }
-            | Status::SelectingZoneGroup { prompt, .. }
-            | Status::SelectingPath { prompt, .. }
-            | Status::SelectingCard {
-                prompt,
-                preview: false,
-                ..
-            } => Some(prompt.clone()),
-            Status::Mulligan => Some("Select cards to\nmulligan".to_string()),
-            _ => None,
-        };
-        if let Some(ref prompt) = prompt_text {
-            let wrapped = render::wrap_text(prompt, sidebar_w - 20.0, 14);
-            let mut y_off = 142.0;
-            for line in wrapped.lines() {
-                painter.text(
-                    pos2(10.0, y_off),
-                    egui::Align2::LEFT_TOP,
-                    line,
-                    FontId::proportional(14.0),
-                    Color32::from_rgba_unmultiplied(204, 204, 219, 255),
-                );
-                y_off += 17.0;
-            }
-        }
+        // let prompt_text: Option<String> = match &self.data.status {
+        //     Status::SelectingZone { prompt, .. }
+        //     | Status::SelectingZoneGroup { prompt, .. }
+        //     | Status::SelectingPath { prompt, .. }
+        //     | Status::SelectingCard {
+        //         prompt,
+        //         preview: false,
+        //         ..
+        //     } => Some(prompt.clone()),
+        //     Status::Mulligan => Some("Select cards to\nmulligan".to_string()),
+        //     _ => None,
+        // };
+        // if let Some(ref prompt) = prompt_text {
+        //     let wrapped = render::wrap_text(prompt, sidebar_w - 20.0, 14);
+        //     let mut y_off = 142.0;
+        //     for line in wrapped.lines() {
+        //         painter.text(
+        //             pos2(10.0, y_off),
+        //             egui::Align2::LEFT_TOP,
+        //             line,
+        //             FontId::proportional(14.0),
+        //             Color32::from_rgba_unmultiplied(204, 204, 219, 255),
+        //         );
+        //         y_off += 17.0;
+        //     }
+        // }
 
         // Action buttons — placed above the player status panel with a gap
         // Panel top is at: sr.height() - SIDEBAR_PANEL_RESERVED

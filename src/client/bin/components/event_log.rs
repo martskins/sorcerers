@@ -1,9 +1,10 @@
+use std::sync::Arc;
+
 use crate::{
     components::{Component, ComponentCommand, ComponentType},
-    render,
     scene::game::GameData,
 };
-use egui::{Context, Painter, Rect, Ui};
+use egui::{Context, Painter, Rect, Ui, WidgetText, text::LayoutJob};
 
 #[derive(Debug)]
 pub struct EventLogComponent {
@@ -21,8 +22,6 @@ impl EventLogComponent {
         }
     }
 }
-
-const FONT_SIZE: f32 = 16.0;
 
 impl Component for EventLogComponent {
     fn update(&mut self, data: &mut GameData, _ctx: &Context) -> anyhow::Result<()> {
@@ -66,17 +65,13 @@ impl Component for EventLogComponent {
             .default_size(self.rect.size())
             .show(ui.ctx(), |ui| {
                 egui::ScrollArea::vertical()
+                    .auto_shrink(false)
                     .stick_to_bottom(true)
                     .show(ui, |ui| {
                         for event in &data.events {
-                            let wrapped = render::wrap_text(
-                                event.formatted(),
-                                self.rect.width() - 10.0,
-                                FONT_SIZE as u16,
-                            );
-                            for line in wrapped.lines() {
-                                ui.label(line);
-                            }
+                            let mut layout_job = LayoutJob::default();
+                            layout_job.append(&event.formatted(), 0.0, egui::TextFormat::default());
+                            ui.label(WidgetText::LayoutJob(Arc::new(layout_job)));
                         }
                     });
             });

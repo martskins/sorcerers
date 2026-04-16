@@ -1,4 +1,4 @@
-use crate::config::{CARD_ASPECT_RATIO, realm_rect, screen_rect};
+use crate::config::{CARD_ASPECT_RATIO, screen_rect};
 use egui::{
     Color32, FontId, Painter, Pos2, Rect, Stroke, TextureHandle, Vec2,
     epaint::{Mesh, Shape, Vertex},
@@ -290,6 +290,24 @@ pub fn draw_card_with_rotation(
     draw_card_internal(card_rect, is_ally, draw_accessories, painter, rotation);
 }
 
+fn translate_if_out_of_bounds(rect: Rect) -> anyhow::Result<Rect> {
+    let mut rect = rect;
+    if rect.min.x < 0.0 {
+        rect = rect.translate(vec2(-rect.min.x, 0.0));
+    }
+    if rect.min.y < 0.0 {
+        rect = rect.translate(vec2(0.0, -rect.min.y));
+    }
+    if rect.max.x > screen_rect()?.max.x {
+        rect = rect.translate(vec2(screen_rect()?.max.x - rect.max.x, 0.0));
+    }
+    if rect.max.y > screen_rect()?.max.y {
+        rect = rect.translate(vec2(0.0, screen_rect()?.max.y - rect.max.y));
+    }
+
+    Ok(rect)
+}
+
 /// Draws a bigger version of a card under the cursor, for hover previews. The card will be rotated
 /// if it's tapped.
 pub fn draw_card_preview(ui: &egui::Ui, tex: Option<&TextureHandle>) -> anyhow::Result<()> {
@@ -307,50 +325,20 @@ pub fn draw_card_preview(ui: &egui::Ui, tex: Option<&TextureHandle>) -> anyhow::
         }
     }
     let rect = Rect::from_min_size(pointer_pos, preview_size);
-    draw_card_preview_internal(tex, rect, &preview_painter)
-}
+    let rect = translate_if_out_of_bounds(rect)?;
 
-/// Draws a bigger version of a card on the left sidebar, vertically centred on screen.
-pub fn draw_sidebar_card_preview(ui: &egui::Ui, tex: Option<&TextureHandle>) -> anyhow::Result<()> {
-    let preview_painter = ui.ctx().layer_painter(egui::LayerId::new(
-        egui::Order::Tooltip,
-        egui::Id::new("card_viewer_hover_preview"),
-    ));
-    const MARGIN: f32 = 4.0;
-    let available_w = realm_rect()?.min.x - MARGIN * 2.0;
-    let mut preview_size = vec2(available_w, available_w / CARD_ASPECT_RATIO);
     if let Some(tex) = tex {
-        // If the texture is wider than it is tall, it's a site.
-        if tex.aspect_ratio() > 1.0 {
-            std::mem::swap(&mut preview_size.x, &mut preview_size.y);
-        }
-    }
-    let preview_y = screen_rect()?.height() / 2.0 - preview_size.y / 2.0;
-    let dest_rect = Rect::from_min_size(pos2(MARGIN, preview_y), preview_size);
-    draw_card_preview_internal(tex, dest_rect, &preview_painter)
-}
-
-fn draw_card_preview_internal(
-    tex: Option<&TextureHandle>,
-    dest_rect: Rect,
-    painter: &Painter,
-) -> anyhow::Result<()> {
-    if let Some(tex) = tex {
-        painter.image(
+        preview_painter.image(
             tex.id(),
-            dest_rect,
+            rect,
             Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
             Color32::WHITE,
         );
     } else {
-        painter.rect_filled(dest_rect, 4.0, Color32::DARK_GRAY);
+        preview_painter.rect_filled(rect, 4.0, Color32::DARK_GRAY);
     }
 
     Ok(())
-}
-
-pub fn wrap_text<S: AsRef<str>>(text: S, _max_width: f32, _font_size: u16) -> String {
-    text.as_ref().to_string()
 }
 
 pub fn popup_action_menu(

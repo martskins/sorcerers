@@ -1,5 +1,5 @@
 use crate::scene::{Scene, game::Game};
-use egui::{Color32, Context, Frame, Margin, Ui, vec2};
+use egui::{Color32, Context, Frame, Ui, vec2};
 use kira::{
     AudioManager, AudioManagerSettings, DefaultBackend, sound::static_sound::StaticSoundData,
 };
@@ -183,16 +183,12 @@ impl Menu {
                         let (base_rect, _) = ui.allocate_exact_size(vec2(input_w, input_h), egui::Sense::hover());
                         let shaken_rect = base_rect.translate(vec2(shake_x, 0.0));
 
-                        // Inset the TextEdit slightly so it doesn't paint over our border
-                        let inner = shaken_rect.shrink(4.0);
                         let te = egui::TextEdit::singleline(&mut self.player_name)
                             .font(egui::FontId::proportional(24.0))
                             .text_color(Color32::DARK_GRAY)
                             .hint_text("Your name…")
-                            .background_color(Color32::LIGHT_GRAY)
-                            .margin(Margin::same(5))
-                            .frame(Frame::NONE); // we draw our own frame above
-                        let resp = ui.put(inner, te);
+                            .frame(Frame::new().corner_radius(2.5).stroke(egui::Stroke::new(2.0, Color32::GRAY)));
+                        let resp = ui.put(shaken_rect, te);
 
                         // Auto-focus the field on first render
                         if resp.gained_focus() || (!resp.has_focus() && self.player_name.is_empty()) {

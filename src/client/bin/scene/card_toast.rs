@@ -194,13 +194,13 @@ impl CardToast {
                     text_color,
                 );
 
-                // Hover → show large preview on the left sidebar.
+                // Hover → show large preview on cursor
                 let hovered = ctx
                     .input(|i| i.pointer.hover_pos())
                     .map_or(false, |p| toast_rect.contains(p));
 
                 if hovered {
-                    render::draw_sidebar_card_preview(ui, image.as_ref()).ok();
+                    render::draw_card_preview(ui, image.as_ref()).ok();
                 }
             }
             ToastKind::Event => {
