@@ -132,6 +132,11 @@ impl Component for PlayerStatusComponent {
             .iter()
             .filter(|c| c.owner_id == self.player_id && c.zone == Zone::Hand)
             .count();
+        let banish_count = data
+            .cards
+            .iter()
+            .filter(|c| c.owner_id == self.player_id && c.zone == Zone::Banish)
+            .count();
         let grave_count = data
             .cards
             .iter()
@@ -144,6 +149,7 @@ impl Component for PlayerStatusComponent {
         let area_id = if self.player { "ps_self" } else { "ps_opp" };
         let mut open_log = false;
         let mut open_cemetery = false;
+        let mut open_banish = false;
 
         egui::Area::new(egui::Id::new(area_id))
             .fixed_pos(pos2(4.0, panel_y))
@@ -252,6 +258,31 @@ impl Component for PlayerStatusComponent {
                             if tomb_response.clicked() {
                                 open_cemetery = true;
                             }
+
+                            let banish_scope = ui.scope(|ui| {
+                                stat_cell(
+                                    ui,
+                                    "assets/icons/banish.png",
+                                    banish_count,
+                                    Color32::from_rgb(170, 170, 190),
+                                    &ctx,
+                                );
+                            });
+                            let banish_response = ui.interact(
+                                banish_scope.response.rect,
+                                egui::Id::new(if self.player {
+                                    "banish_click_self"
+                                } else {
+                                    "banish_click_opp"
+                                }),
+                                egui::Sense::click(),
+                            );
+                            if banish_response.hovered() {
+                                ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
+                            }
+                            if banish_response.clicked() {
+                                open_banish = true;
+                            }
                         });
 
                         ui.add_space(4.0);
@@ -275,20 +306,29 @@ impl Component for PlayerStatusComponent {
         }
 
         if open_cemetery {
-            let cards: Vec<uuid::Uuid> = data
-                .cards
-                .iter()
-                .filter(|c| {
-                    c.owner_id == self.player_id && c.zone == sorcerers::card::Zone::Cemetery
-                })
-                .map(|c| c.id)
-                .collect();
             let title = if data.player_id == self.player_id {
                 "Your Cemetery".to_string()
             } else {
                 "Opponent's Cemetery".to_string()
             };
-            return Ok(Some(ComponentCommand::OpenCardViewer { title, cards }));
+            return Ok(Some(ComponentCommand::OpenCardViewer {
+                title,
+                zone: Zone::Cemetery,
+                controller_id: Some(self.player_id.clone()),
+            }));
+        }
+
+        if open_banish {
+            let title = if data.player_id == self.player_id {
+                "Your Banished Cards".to_string()
+            } else {
+                "Opponent's Banished Cards".to_string()
+            };
+            return Ok(Some(ComponentCommand::OpenCardViewer {
+                title,
+                zone: Zone::Banish,
+                controller_id: Some(self.player_id.clone()),
+            }));
         }
 
         Ok(None)

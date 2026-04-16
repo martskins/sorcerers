@@ -48,7 +48,7 @@ impl ActivatedAbility for DeathspeakerAbility {
             .dead()
             .minions()
             .with_prompt("Deathspeaker: Pick a dead minion to copy")
-            .pick(player_id, state, true)
+            .pick(player_id, state, false)
             .await?
         else {
             return Ok(vec![]);

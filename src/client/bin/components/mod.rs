@@ -1,5 +1,6 @@
 use crate::scene::game::GameData;
 use egui::Rect;
+use sorcerers::{card::Zone, game::PlayerId};
 
 pub mod card_viewer;
 pub mod event_log;
@@ -32,7 +33,8 @@ pub enum ComponentCommand {
     DonePicking,
     OpenCardViewer {
         title: String,
-        cards: Vec<uuid::Uuid>,
+        zone: Zone,
+        controller_id: Option<PlayerId>,
     },
 }
 

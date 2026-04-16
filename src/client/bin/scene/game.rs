@@ -170,6 +170,8 @@ fn sort_cards(cards: &[CardData]) -> Vec<CardData> {
 
 pub struct Game {
     game_id: uuid::Uuid,
+    player_id: PlayerId,
+    opponent_id: PlayerId,
     client: networking::client::Client,
     current_player: PlayerId,
     overlay: Option<Box<dyn Component>>,
@@ -197,6 +199,8 @@ impl Game {
 
         Self {
             game_id,
+            player_id: player_id.clone(),
+            opponent_id: opponent_id.clone(),
             client: client.clone(),
             current_player: uuid::Uuid::nil(),
             overlay: None,
@@ -357,6 +361,45 @@ impl Game {
         new_scene
     }
 
+    fn open_viewers(&mut self, cards: &Vec<uuid::Uuid>) -> anyhow::Result<()> {
+        let open_opponent_cemetery = self
+            .data
+            .cards
+            .iter()
+            .filter(|c| c.owner_id == self.opponent_id)
+            .any(|c| cards.contains(&c.id) && c.zone == Zone::Cemetery);
+        let open_player_cemetery = self
+            .data
+            .cards
+            .iter()
+            .filter(|c| c.owner_id == self.player_id)
+            .any(|c| cards.contains(&c.id) && c.zone == Zone::Cemetery);
+
+        if open_player_cemetery {
+            let command = ComponentCommand::OpenCardViewer {
+                title: "Your Cemetery".to_string(),
+                zone: Zone::Cemetery,
+                controller_id: Some(self.player_id),
+            };
+            for cmp in self.components.iter_mut() {
+                cmp.process_command(&command, &mut self.data).unwrap();
+            }
+        }
+
+        if open_opponent_cemetery {
+            let command = ComponentCommand::OpenCardViewer {
+                title: "Opponent's Cemetery".to_string(),
+                zone: Zone::Cemetery,
+                controller_id: Some(self.opponent_id),
+            };
+            for cmp in self.components.iter_mut() {
+                cmp.process_command(&command, &mut self.data)?;
+            }
+        }
+
+        Ok(())
+    }
+
     fn render_gui(&mut self, ui: &mut Ui, painter: &Painter) -> Option<Scene> {
         let sr = screen_rect().unwrap_or(Rect::ZERO);
         let sidebar_w = realm_rect().map(|r| r.min.x).unwrap_or(220.0);
@@ -376,34 +419,6 @@ impl Game {
             FontId::proportional(18.0),
             turn_color,
         );
-
-        // Contextual prompt in sidebar
-        // let prompt_text: Option<String> = match &self.data.status {
-        //     Status::SelectingZone { prompt, .. }
-        //     | Status::SelectingZoneGroup { prompt, .. }
-        //     | Status::SelectingPath { prompt, .. }
-        //     | Status::SelectingCard {
-        //         prompt,
-        //         preview: false,
-        //         ..
-        //     } => Some(prompt.clone()),
-        //     Status::Mulligan => Some("Select cards to\nmulligan".to_string()),
-        //     _ => None,
-        // };
-        // if let Some(ref prompt) = prompt_text {
-        //     let wrapped = render::wrap_text(prompt, sidebar_w - 20.0, 14);
-        //     let mut y_off = 142.0;
-        //     for line in wrapped.lines() {
-        //         painter.text(
-        //             pos2(10.0, y_off),
-        //             egui::Align2::LEFT_TOP,
-        //             line,
-        //             FontId::proportional(14.0),
-        //             Color32::from_rgba_unmultiplied(204, 204, 219, 255),
-        //         );
-        //         y_off += 17.0;
-        //     }
-        // }
 
         // Action buttons — placed above the player status panel with a gap
         // Panel top is at: sr.height() - SIDEBAR_PANEL_RESERVED
@@ -817,6 +832,10 @@ impl Game {
                     prompt: prompt.clone(),
                     multiple: false,
                 };
+
+                self.open_viewers(cards)
+                    .expect("Failed to compute viewers for card selection");
+
                 if *preview {
                     let renderables = self
                         .data
