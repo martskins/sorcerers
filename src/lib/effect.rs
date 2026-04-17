@@ -169,7 +169,6 @@ pub enum Effect {
     },
     BanishCard {
         card_id: uuid::Uuid,
-        from: Zone,
     },
     KillMinion {
         card_id: uuid::Uuid,
@@ -1135,7 +1134,6 @@ impl Effect {
                                 .effects
                                 .push_back(std::sync::Arc::new(Effect::BanishCard {
                                     card_id: site.get_id().clone(),
-                                    from: zone.clone(),
                                 }));
                         }
                     }
@@ -1738,10 +1736,7 @@ impl Effect {
                 effects.extend(card.on_summon(state)?);
                 effects.extend(card.genesis(state).await?);
                 effects.extend(card.on_visit_zone(state, &from_zone, zone).await?);
-                effects.push(Effect::BanishCard {
-                    card_id: copy_id,
-                    from: zone.clone(),
-                });
+                effects.push(Effect::BanishCard { card_id: copy_id });
                 state.queue(effects);
             }
         }

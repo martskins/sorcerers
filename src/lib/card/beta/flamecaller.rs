@@ -65,10 +65,7 @@ impl ActivatedAbility for ShootProjectile {
             splash_damage: None,
         }];
         for minion_id in fire_minions {
-            effects.push(Effect::BanishCard {
-                card_id: minion_id,
-                from: Zone::Cemetery,
-            });
+            effects.push(Effect::BanishCard { card_id: minion_id });
         }
 
         Ok(effects)

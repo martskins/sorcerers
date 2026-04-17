@@ -69,13 +69,10 @@ impl Card for Disintegrate {
         else {
             return Ok(vec![]);
         };
-        let target = state.get_card(&target_id);
-        let target_zone = target.get_zone().clone();
 
         // Banish the target and every artifact it carries.
         let mut effects: Vec<Effect> = vec![Effect::BanishCard {
             card_id: target_id.clone(),
-            from: target_zone,
         }];
 
         let carried: Vec<uuid::Uuid> = state
@@ -87,10 +84,8 @@ impl Card for Disintegrate {
             .collect();
 
         for artifact_id in carried {
-            let artifact = state.get_card(&artifact_id);
             effects.push(Effect::BanishCard {
                 card_id: artifact_id.clone(),
-                from: artifact.get_zone().clone(),
             });
         }
 

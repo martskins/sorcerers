@@ -91,7 +91,6 @@ impl Card for GildedAegis {
                 let bearer = state.get_card(&bearer_id);
                 Some(vec![
                     Effect::BanishCard {
-                        from: self.get_zone().clone(),
                         card_id: self.get_id().clone(),
                     },
                     Effect::Heal {

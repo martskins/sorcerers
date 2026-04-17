@@ -99,7 +99,6 @@ impl ActivatedAbility for DeathspeakerAbility {
         // Banish the original dead minion.
         effects.push(Effect::BanishCard {
             card_id: chosen_id.clone(),
-            from: Zone::Cemetery,
         });
 
         // Consume mana unless on Death's Door.

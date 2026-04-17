@@ -76,10 +76,7 @@ impl Card for Extinguish {
 
         Ok(targets
             .into_iter()
-            .map(|card_id| Effect::BanishCard {
-                card_id,
-                from: picked_zone.clone(),
-            })
+            .map(|card_id| Effect::BanishCard { card_id })
             .collect())
     }
 }

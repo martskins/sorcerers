@@ -142,7 +142,6 @@ impl ActivatedAbility for GeomancerAbility {
                     Some(site_id) => Ok(vec![
                         Effect::BanishCard {
                             card_id: rubble.get_id().clone(),
-                            from: rubble.get_zone().clone(),
                         },
                         Effect::MoveCard {
                             player_id: card.get_controller_id(state).clone(),
