@@ -40,6 +40,7 @@ pub enum TokenType {
     Frog,
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum Effect {
     PlayerLost {
@@ -702,9 +703,10 @@ impl Effect {
             } else {
                 // If the effect was not triggered, check whether it needs to expire.
                 if let Some(expires_on_effect) = &de.expires_on_effect
-                    && expires_on_effect.matches(effect, state).await? {
-                        effects_to_remove.push(idx);
-                    }
+                    && expires_on_effect.matches(effect, state).await?
+                {
+                    effects_to_remove.push(idx);
+                }
             }
         }
 
@@ -749,7 +751,8 @@ impl Effect {
             .filter(|c| {
                 !c.get_unit_base()
                     .expect("unit to have a unit base component")
-                    .modifier_counters.is_empty()
+                    .modifier_counters
+                    .is_empty()
             })
             .collect();
         let mut card_modifiers_to_remove: Vec<(uuid::Uuid, Vec<uuid::Uuid>)> = vec![];
@@ -761,9 +764,10 @@ impl Effect {
                 .modifier_counters
             {
                 if let Some(effect_query) = &counter.expires_on_effect
-                    && effect_query.matches(self, state).await? {
-                        to_remove.push(counter.id);
-                    }
+                    && effect_query.matches(self, state).await?
+                {
+                    to_remove.push(counter.id);
+                }
             }
 
             if !to_remove.is_empty() {
@@ -785,7 +789,8 @@ impl Effect {
             .filter(|c| {
                 !c.get_unit_base()
                     .unwrap_or(&UnitBase::default())
-                    .power_counters.is_empty()
+                    .power_counters
+                    .is_empty()
             })
             .collect();
         let mut card_counters_to_remove: Vec<(uuid::Uuid, Vec<uuid::Uuid>)> = vec![];
@@ -797,9 +802,10 @@ impl Effect {
                 .power_counters
             {
                 if let Some(effect_query) = &counter.expires_on_effect
-                    && effect_query.matches(self, state).await? {
-                        to_remove.push(counter.id);
-                    }
+                    && effect_query.matches(self, state).await?
+                {
+                    to_remove.push(counter.id);
+                }
             }
 
             if !to_remove.is_empty() {
@@ -1122,13 +1128,14 @@ impl Effect {
                 // If playing a site and there is a rubble on that zone, remove it.
                 if card.is_site()
                     && let Some(site) = zone.get_site(&snapshot)
-                        && site.get_name() == Rubble::NAME {
-                            state
-                                .effects
-                                .push_back(std::sync::Arc::new(Effect::BanishCard {
-                                    card_id: *site.get_id(),
-                                }));
-                        }
+                    && site.get_name() == Rubble::NAME
+                {
+                    state
+                        .effects
+                        .push_back(std::sync::Arc::new(Effect::BanishCard {
+                            card_id: *site.get_id(),
+                        }));
+                }
 
                 let cast_effects = card.on_summon(&snapshot)?;
                 card.set_zone(zone.clone());
@@ -1245,7 +1252,10 @@ impl Effect {
                     .iter()
                     .filter(|c| c.get_owner_id() == player_id)
                     .filter(|c| c.get_zone().is_in_play())
-                    .filter_map(|c| c.get_resource_provider().map(|rp| rp.provided_mana(state).expect("to get provided mana")))
+                    .filter_map(|c| {
+                        c.get_resource_provider()
+                            .map(|rp| rp.provided_mana(state).expect("to get provided mana"))
+                    })
                     .sum();
                 let player_mana = state.get_player_mana_mut(player_id);
                 *player_mana = available_mana;
@@ -1313,7 +1323,8 @@ impl Effect {
                 let next_player = state
                     .players
                     .iter()
-                    .cycle().nth(current_index + 1)
+                    .cycle()
+                    .nth(current_index + 1)
                     .ok_or(anyhow::anyhow!("No next player found"))?;
 
                 // Push StartTurn to the front of the queue so all end of turn effects are resolved
@@ -1344,11 +1355,7 @@ impl Effect {
                     is_strike: true,
                 }];
 
-                effects.extend(
-                    defender
-                        .on_defend(state, striker_id)?
-                        .into_iter(),
-                );
+                effects.extend(defender.on_defend(state, striker_id)?.into_iter());
                 effects.reverse();
                 state.queue(effects);
             }
@@ -1406,11 +1413,7 @@ impl Effect {
                     return Ok(());
                 }
 
-                effects.extend(
-                    defender
-                        .on_defend(state, attacker_id)?
-                        .into_iter(),
-                );
+                effects.extend(defender.on_defend(state, attacker_id)?.into_iter());
                 effects.reverse();
                 state.queue(effects);
             }
@@ -1491,9 +1494,7 @@ impl Effect {
                 }
             }
             Effect::KillMinion { card_id, .. } => {
-                state.queue_one(Effect::BuryCard {
-                    card_id: *card_id,
-                });
+                state.queue_one(Effect::BuryCard { card_id: *card_id });
             }
             Effect::BuryCard { card_id, .. } => {
                 let card = state.get_card_mut(card_id);
@@ -1565,11 +1566,7 @@ impl Effect {
                     is_strike: true,
                 }];
                 effects.extend(attacker.after_ranged_attack(state).await?);
-                effects.extend(
-                    defender
-                        .on_defend(state, striker_id)?
-                        .into_iter(),
-                );
+                effects.extend(defender.on_defend(state, striker_id)?.into_iter());
                 state.queue(effects);
             }
             Effect::TeleportCard {
@@ -1656,9 +1653,7 @@ impl Effect {
                     let underwater_without_submerge = region == &Region::Underwater
                         && !card.has_ability(&snapshot, &Ability::Submerge);
                     if underground_without_burrowing || underwater_without_submerge {
-                        state.queue_one(Effect::BuryCard {
-                            card_id: *card_id,
-                        });
+                        state.queue_one(Effect::BuryCard { card_id: *card_id });
                     }
                 }
 

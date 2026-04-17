@@ -1,9 +1,12 @@
 use crate::{
-    card::{Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{
+        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region,
+        UnitBase, Zone,
+    },
     effect::Effect,
     game::{PlayerId, pick_card},
     query::ZoneQuery,
-    state::{ContinuousEffect, State},
+    state::{CardQuery, ContinuousEffect, State},
 };
 
 #[derive(Debug, Clone)]
@@ -71,7 +74,10 @@ impl Card for BrobdingnagBullfrog {
     }
 
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        let minions = self.get_zone().get_minion_ids(state, None);
+        let minions = CardQuery::new()
+            .minions()
+            .in_zone(self.get_zone())
+            .all(state);
         let picked_card = pick_card(
             self.get_controller_id(state),
             &minions,

@@ -1,3 +1,4 @@
+#[allow(clippy::too_many_arguments)]
 mod client;
 pub mod components;
 mod config;

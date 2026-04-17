@@ -9,6 +9,7 @@ pub mod game;
 pub mod menu;
 pub mod selection_overlay;
 
+#[allow(clippy::large_enum_variant)]
 pub enum Scene {
     Menu(menu::Menu),
     Game(game::Game),

@@ -1,6 +1,7 @@
 use crate::{
     card::{
-        Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, Zone,
+        Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs, Edition,
+        Rarity, Region, Zone,
     },
     effect::Effect,
     game::PlayerId,
@@ -81,11 +82,7 @@ impl Card for CrownOfTheVictor {
             return Ok(vec![]);
         }
         let bearer_id = bearer_id.expect("value not to be None");
-
-        let has_killed = state.effect_log.iter().find(|le| match *le.effect {
-            Effect::KillMinion { killer_id, .. } if killer_id == bearer_id => true,
-            _ => false,
-        });
+        let has_killed = state.effect_log.iter().find(|le| matches!(*le.effect, Effect::KillMinion { killer_id, .. } if killer_id == bearer_id));
 
         if has_killed.is_none() {
             return Ok(vec![]);

@@ -7,7 +7,7 @@ use crate::{
         message::{ClientMessage, ServerMessage},
     },
     query::{QueryCache, ZoneQuery},
-    state::{LoggedEffect, Phase, PlayerWithDeck, State},
+    state::{CardQuery, LoggedEffect, Phase, PlayerWithDeck, State},
 };
 use async_channel::{Receiver, Sender};
 use chrono::Utc;
@@ -1376,20 +1376,22 @@ impl ActivatedAbility for UnitAction {
             }]),
             UnitAction::PickUpMinion => {
                 let card = state.get_card(card_id);
-                let minions = card
-                    .get_zone()
-                    .get_minions(state, Some(&card.get_controller_id(state)))
+                let minions: Vec<uuid::Uuid> = CardQuery::new()
+                    .minions()
+                    .in_zone(card.get_zone())
+                    .id_not_in(vec![*card.get_id()])
+                    .all(state)
                     .into_iter()
-                    .filter(|minion| minion.get_id() != card.get_id())
-                    .filter(|minion| minion.get_bearer_id().unwrap_or_default().is_none())
-                    .collect::<Vec<_>>();
-                let picked = pick_cards(
-                    player_id,
-                    &minions.iter().map(|c| *c.get_id()).collect::<Vec<_>>(),
-                    state,
-                    "Pick minions to carry",
-                )
-                .await?;
+                    .filter(|minion_id| {
+                        state
+                            .get_card(minion_id)
+                            .get_bearer_id()
+                            .unwrap_or_default()
+                            .is_none()
+                    })
+                    .collect();
+                let picked =
+                    pick_cards(player_id, &minions, state, "Pick minions to carry").await?;
                 Ok(picked
                     .into_iter()
                     .map(|minion_id| Effect::SetBearer {

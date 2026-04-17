@@ -1,11 +1,11 @@
 use crate::{
     card::{
-        Ability, AreaModifiers, Aura, AuraBase, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region,
-        Zone,
+        Ability, AreaModifiers, Aura, AuraBase, Card, CardBase, CardConstructor, Costs, Edition,
+        Rarity, Region, Zone,
     },
     effect::Effect,
     game::PlayerId,
-    state::State,
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -46,14 +46,8 @@ impl Aura for EntangleTerrain {
         let turns_in_play = state
             .effect_log
             .iter()
-            .skip_while(|e| match *e.effect {
-                Effect::PlayCard { ref card_id, .. } if card_id == self.get_id() => false,
-                _ => true,
-            })
-            .filter(|e| match *e.effect {
-                Effect::EndTurn { ref player_id, .. } if player_id == &controller_id => true,
-                _ => false,
-            })
+            .skip_while(|e| !matches!(*e.effect, Effect::PlayCard { ref card_id, .. } if card_id == self.get_id()))
+            .filter(|e| matches!(*e.effect, Effect::EndTurn { ref player_id, .. } if player_id == &controller_id))
             .count();
 
         Ok(turns_in_play >= 3)
@@ -90,13 +84,10 @@ impl Card for EntangleTerrain {
     }
 
     fn area_modifiers(&self, state: &State) -> AreaModifiers {
-        let minions: Vec<uuid::Uuid> = self
-            .get_affected_zones(state)
-            .iter()
-            .filter(|zone| zone.get_site(state).is_some())
-            .flat_map(|zone| zone.get_minions(state, None))
-            .map(|minion| *minion.get_id())
-            .collect();
+        let minions = CardQuery::new()
+            .minions()
+            .in_zones(&self.get_affected_zones(state))
+            .all(state);
         AreaModifiers {
             grants_abilities: minions
                 .iter()

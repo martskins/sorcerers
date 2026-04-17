@@ -1,10 +1,10 @@
 use crate::{
     card::{
-        Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, SiteType,
-        Zone,
+        Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, ResourceProvider, Site,
+        SiteBase, SiteType, Zone,
     },
     game::{PlayerId, Thresholds},
-    state::State,
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -50,13 +50,12 @@ impl Site for MountainPass {
         region: &Region,
         state: &State,
     ) -> bool {
-        let minions_atop = self
-            .get_zone()
-            .get_minions(state, None)
-            .iter()
-            .filter(|c| c.get_region(state) == &Region::Surface)
-            .count();
-
+        let minions_atop = CardQuery::new()
+            .minions()
+            .in_zone(self.get_zone())
+            .in_region(&Region::Surface)
+            .all(state)
+            .len();
         let card = state.get_card(card_id);
         let ground_movement =
             card.get_region(state) == &Region::Surface && region == &Region::Surface;

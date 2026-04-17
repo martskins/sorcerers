@@ -128,9 +128,10 @@ impl CardQuery {
         }
 
         if let Some(count) = &self.count
-            && *count != 1 {
-                return Err(anyhow::anyhow!("resolve_one can only be used with count 1"));
-            }
+            && *count != 1
+        {
+            return Err(anyhow::anyhow!("resolve_one can only be used with count 1"));
+        }
 
         let mut card_ids = self.all(state);
         if card_ids.is_empty() {
@@ -169,7 +170,8 @@ impl CardQuery {
 
             let mut rng = rand::rng();
             card_ids.shuffle(&mut rng);
-            *card_ids.first()
+            *card_ids
+                .first()
                 .expect("Expected at least one card to be returned from resolve_ids")
         } else {
             let prompt = self
@@ -517,14 +519,16 @@ impl CardQuery {
     pub fn matches(&self, card_id: &uuid::Uuid, state: &State) -> bool {
         let card = state.get_card(card_id);
         if let Some(ids) = &self.ids
-            && !ids.contains(card_id) {
-                return false;
-            }
+            && !ids.contains(card_id)
+        {
+            return false;
+        }
 
         if let Some(rarity) = &self.rarity
-            && &card.get_base().rarity != rarity {
-                return false;
-            }
+            && &card.get_base().rarity != rarity
+        {
+            return false;
+        }
 
         if let Some(_can_be_attacked_by) = &self.can_be_attacked_by {
             // TODO: this needs to check for flying, etc
@@ -540,9 +544,10 @@ impl CardQuery {
         }
 
         if let Some(carrier_id) = &self.carried_by
-            && card.get_base().bearer.as_ref() != Some(carrier_id) {
-                return false;
-            }
+            && card.get_base().bearer.as_ref() != Some(carrier_id)
+        {
+            return false;
+        }
 
         if let Some(elements) = &self.elements {
             let card_elements = card.get_elements(state).unwrap_or_default();
@@ -560,29 +565,32 @@ impl CardQuery {
         }
 
         if let Some(name) = &self.card_name_contains
-            && !card.get_name().contains(name) {
-                return false;
-            }
+            && !card.get_name().contains(name)
+        {
+            return false;
+        }
 
         if let Some(not_named) = &self.not_named
-            && not_named.contains(&card.get_name().to_string()) {
-                return false;
-            }
+            && not_named.contains(&card.get_name().to_string())
+        {
+            return false;
+        }
 
         if let Some(names) = &self.card_names
-            && !names.contains(&card.get_name().to_string()) {
-                return false;
-            }
+            && !names.contains(&card.get_name().to_string())
+        {
+            return false;
+        }
 
-        if !self.include_not_in_play.unwrap_or_default()
-            && !card.get_zone().is_in_play() {
-                return false;
-            }
+        if !self.include_not_in_play.unwrap_or_default() && !card.get_zone().is_in_play() {
+            return false;
+        }
 
         if let Some(regions) = &self.in_regions
-            && !regions.contains(card.get_region(state)) {
-                return false;
-            }
+            && !regions.contains(card.get_region(state))
+        {
+            return false;
+        }
 
         if let Some(with_affinity_in) = &self.with_affinity_in {
             let mut has_affinity = false;
@@ -621,14 +629,16 @@ impl CardQuery {
         }
 
         if let Some(mc) = &self.mana_cost
-            && card.get_costs(state).unwrap().mana_value() > *mc {
-                return false;
-            }
+            && card.get_costs(state).unwrap().mana_value() > *mc
+        {
+            return false;
+        }
 
         if let Some(tapped) = &self.tapped
-            && &card.is_tapped() != tapped {
-                return false;
-            }
+            && &card.is_tapped() != tapped
+        {
+            return false;
+        }
 
         if let Some(abilities) = &self.abilities {
             let card_abilities = card.get_abilities(state).unwrap_or_default();
@@ -640,19 +650,22 @@ impl CardQuery {
         }
 
         if let Some(not_in_ids) = &self.not_in_ids
-            && not_in_ids.contains(card_id) {
-                return false;
-            }
+            && not_in_ids.contains(card_id)
+        {
+            return false;
+        }
 
         if let Some(controller_id) = &self.controller_id
-            && &card.get_controller_id(state) != controller_id {
-                return false;
-            }
+            && &card.get_controller_id(state) != controller_id
+        {
+            return false;
+        }
 
         if let Some(card_types) = &self.card_types
-            && !card_types.contains(&card.get_card_type()) {
-                return false;
-            }
+            && !card_types.contains(&card.get_card_type())
+        {
+            return false;
+        }
 
         if let Some(is_water) = &self.site_is_water {
             match is_water {
@@ -732,9 +745,10 @@ impl CardQuery {
         }
 
         if let Some(in_zones) = &self.in_zones
-            && !in_zones.iter().any(|z| card.occupies_zone(state, z)) {
-                return false;
-            }
+            && !in_zones.iter().any(|z| card.occupies_zone(state, z))
+        {
+            return false;
+        }
 
         true
     }
@@ -802,6 +816,7 @@ impl TemporaryEffect {
     }
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone)]
 pub enum ContinuousEffect {
     ControllerOverride {
@@ -1088,13 +1103,9 @@ impl State {
 
     pub fn get_body_of_water_at(&self, zone: &Zone) -> Option<Vec<Zone>> {
         let bodies_of_water = self.get_bodies_of_water();
-        for body in bodies_of_water {
-            if body.iter().any(|z| z == zone) {
-                return Some(body);
-            }
-        }
-
-        None
+        bodies_of_water
+            .into_iter()
+            .find(|body| body.iter().any(|z| z == zone))
     }
 
     pub fn get_bodies_of_water(&self) -> Vec<Vec<Zone>> {
@@ -1197,7 +1208,8 @@ impl State {
 
     pub fn get_player_avatar_id(&self, player_id: &PlayerId) -> anyhow::Result<uuid::Uuid> {
         self.decks
-            .get(player_id).map(|d| d.avatar)
+            .get(player_id)
+            .map(|d| d.avatar)
             .ok_or(anyhow::anyhow!("failed to get player avatar id"))
     }
 
@@ -1328,12 +1340,7 @@ impl State {
             resources: self
                 .players
                 .iter()
-                .map(|p| {
-                    (
-                        p.id,
-                        self.get_player_resources(&p.id).unwrap().clone(),
-                    )
-                })
+                .map(|p| (p.id, self.get_player_resources(&p.id).unwrap().clone()))
                 .collect(),
             current_player: self.current_player,
             health,
@@ -1386,16 +1393,14 @@ impl State {
     }
 
     pub fn get_player(&self, player_id: &PlayerId) -> anyhow::Result<&Player> {
-        self
-            .players
+        self.players
             .iter()
             .find(|p| &p.id == player_id)
             .ok_or(anyhow::anyhow!("failed to get player deck"))
     }
 
     pub fn get_player_deck(&self, player_id: &PlayerId) -> anyhow::Result<&Deck> {
-        self
-            .decks
+        self.decks
             .get(player_id)
             .ok_or(anyhow::anyhow!("failed to get player deck"))
     }
@@ -1441,13 +1446,13 @@ impl State {
         let player_two_id = uuid::Uuid::new_v4();
         let cards: Vec<Box<dyn Card>> = zones_with_sites
             .as_ref()
-            .into_iter()
+            .iter()
             .map(|z| from_name_and_zone(AridDesert::NAME, &player_one_id, z.clone()))
             .collect();
 
         let player1 = PlayerWithDeck {
             player: Player {
-                id: player_one_id.clone(),
+                id: player_one_id,
                 name: "Player 1".to_string(),
             },
             deck: Deck::new(
@@ -1491,13 +1496,13 @@ mod tests {
     #[test]
     fn test_inteceptors() {
         let mut state = State::new_mock_state(Zone::all_realm());
-        let player_id = state.players[0].id.clone();
-        let mut rimland_nomads = RimlandNomads::new(player_id.clone());
+        let player_id = state.players[0].id;
+        let mut rimland_nomads = RimlandNomads::new(player_id);
         rimland_nomads.set_zone(Zone::Realm(8));
         state.cards.push(Box::new(rimland_nomads.clone()));
 
-        let opponent_id = state.players[1].id.clone();
-        let mut kite_archer = KiteArcher::new(opponent_id.clone());
+        let opponent_id = state.players[1].id;
+        let mut kite_archer = KiteArcher::new(opponent_id);
         kite_archer.set_zone(Zone::Realm(12));
         state.cards.push(Box::new(kite_archer.clone()));
 
@@ -1510,13 +1515,13 @@ mod tests {
     #[test]
     fn test_no_inteceptors() {
         let mut state = State::new_mock_state(Zone::all_realm());
-        let player_id = state.players[0].id.clone();
-        let mut rimland_nomads = RimlandNomads::new(player_id.clone());
+        let player_id = state.players[0].id;
+        let mut rimland_nomads = RimlandNomads::new(player_id);
         rimland_nomads.set_zone(Zone::Realm(8));
         state.cards.push(Box::new(rimland_nomads.clone()));
 
-        let opponent_id = state.players[1].id.clone();
-        let mut kite_archer = KiteArcher::new(opponent_id.clone());
+        let opponent_id = state.players[1].id;
+        let mut kite_archer = KiteArcher::new(opponent_id);
         kite_archer.set_zone(Zone::Realm(11));
         state.cards.push(Box::new(kite_archer.clone()));
 
@@ -1529,13 +1534,13 @@ mod tests {
     fn test_voidwalking_interceptor() {
         let mut state =
             State::new_mock_state(vec![Zone::Realm(8), Zone::Realm(13), Zone::Realm(18)]);
-        let player_id = state.players[0].id.clone();
-        let mut rimland_nomads = RimlandNomads::new(player_id.clone());
+        let player_id = state.players[0].id;
+        let mut rimland_nomads = RimlandNomads::new(player_id);
         rimland_nomads.set_zone(Zone::Realm(8));
         state.cards.push(Box::new(rimland_nomads.clone()));
 
-        let opponent_id = state.players[1].id.clone();
-        let mut headless_haunt = HeadlessHaunt::new(opponent_id.clone());
+        let opponent_id = state.players[1].id;
+        let mut headless_haunt = HeadlessHaunt::new(opponent_id);
         headless_haunt.set_zone(Zone::Realm(12));
         state.cards.push(Box::new(headless_haunt.clone()));
 
@@ -1547,13 +1552,13 @@ mod tests {
     #[test]
     fn test_airborne_interceptor() {
         let mut state = State::new_mock_state(Zone::all_realm());
-        let player_id = state.players[0].id.clone();
-        let mut rimland_nomads = RimlandNomads::new(player_id.clone());
+        let player_id = state.players[0].id;
+        let mut rimland_nomads = RimlandNomads::new(player_id);
         rimland_nomads.set_zone(Zone::Realm(8));
         state.cards.push(Box::new(rimland_nomads.clone()));
 
-        let opponent_id = state.players[1].id.clone();
-        let mut headless_haunt = NimbusJinn::new(opponent_id.clone());
+        let opponent_id = state.players[1].id;
+        let mut headless_haunt = NimbusJinn::new(opponent_id);
         headless_haunt.set_zone(Zone::Realm(12));
         state.cards.push(Box::new(headless_haunt.clone()));
 
@@ -1565,12 +1570,12 @@ mod tests {
     #[tokio::test]
     async fn test_get_effective_costs_donnybrook_inn() {
         let mut state = State::new_mock_state(vec![Zone::Realm(8)]);
-        let player_id = state.players[0].id.clone();
-        let mut donnybrook_inn = DonnybrookInn::new(player_id.clone());
+        let player_id = state.players[0].id;
+        let mut donnybrook_inn = DonnybrookInn::new(player_id);
         donnybrook_inn.set_zone(Zone::Realm(3));
         state.cards.push(Box::new(donnybrook_inn.clone()));
 
-        let mut cauldron_crones = CauldronCrones::new(player_id.clone());
+        let mut cauldron_crones = CauldronCrones::new(player_id);
         cauldron_crones.set_zone(Zone::Hand);
         state.cards.push(Box::new(cauldron_crones.clone()));
 

@@ -293,9 +293,10 @@ impl Game {
         }
 
         if let Some(overlay) = &mut self.overlay
-            && let Err(e) = overlay.update(&mut self.data, ctx) {
-                eprintln!("Error updating overlay: {}", e);
-            }
+            && let Err(e) = overlay.update(&mut self.data, ctx)
+        {
+            eprintln!("Error updating overlay: {}", e);
+        }
     }
 
     pub fn render(&mut self, ui: &mut Ui) -> Option<Scene> {
@@ -352,14 +353,15 @@ impl Game {
         }
 
         if let Some(overlay) = &mut self.overlay
-            && let Err(e) = overlay.render(&mut self.data, ui, &painter) {
-                eprintln!("Error rendering overlay: {}", e);
-            }
+            && let Err(e) = overlay.render(&mut self.data, ui, &painter)
+        {
+            eprintln!("Error rendering overlay: {}", e);
+        }
 
         new_scene
     }
 
-    fn open_viewers(&mut self, cards: &Vec<uuid::Uuid>) -> anyhow::Result<()> {
+    fn open_viewers(&mut self, cards: &[uuid::Uuid]) -> anyhow::Result<()> {
         let open_opponent_cemetery = self
             .data
             .cards

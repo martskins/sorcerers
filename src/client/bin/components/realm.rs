@@ -138,10 +138,7 @@ impl RealmComponent {
         let cell_rects: Vec<CellRect> = (0..20)
             .map(|i| {
                 let r = cell_rect(&rect, i + 1, mirrored);
-                CellRect {
-                    id: i + 1,
-                    rect: r,
-                }
+                CellRect { id: i + 1, rect: r }
             })
             .collect();
         let intersection_rects = Zone::all_intersections()
@@ -172,6 +169,7 @@ impl RealmComponent {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn start_card_flight(
         &mut self,
         card: CardData,
@@ -218,31 +216,33 @@ impl RealmComponent {
         for card in cards {
             let existing = self.card_rects.iter().find(|c| c.card.id == card.id);
             if let Some(existing) = existing
-                && card.zone == existing.card.zone && card.power == existing.card.power {
-                    let mut new_card = existing.clone();
-                    if existing.card.tapped != card.tapped && card.zone.is_in_play() {
-                        pending_flights.push((
-                            card.clone(),
-                            new_card.image.clone(),
-                            existing.rect,
-                            existing.rect,
-                            card_rotation(&existing.card),
-                            card_rotation(card),
-                        ));
-                    }
-
-                    new_card.card.tapped = card.tapped;
-                    new_card.card.controller_id = card.controller_id;
-                    new_card.card.power = card.power;
-                    new_card.card.abilities = card.abilities.clone();
-                    new_card.card.damage_taken = card.damage_taken;
-                    // Update texture if not loaded yet
-                    if new_card.image.is_none() {
-                        new_card.image = TextureCache::get_card_texture_blocking(card, ctx);
-                    }
-                    new_cards.push(new_card);
-                    continue;
+                && card.zone == existing.card.zone
+                && card.power == existing.card.power
+            {
+                let mut new_card = existing.clone();
+                if existing.card.tapped != card.tapped && card.zone.is_in_play() {
+                    pending_flights.push((
+                        card.clone(),
+                        new_card.image.clone(),
+                        existing.rect,
+                        existing.rect,
+                        card_rotation(&existing.card),
+                        card_rotation(card),
+                    ));
                 }
+
+                new_card.card.tapped = card.tapped;
+                new_card.card.controller_id = card.controller_id;
+                new_card.card.power = card.power;
+                new_card.card.abilities = card.abilities.clone();
+                new_card.card.damage_taken = card.damage_taken;
+                // Update texture if not loaded yet
+                if new_card.image.is_none() {
+                    new_card.image = TextureCache::get_card_texture_blocking(card, ctx);
+                }
+                new_cards.push(new_card);
+                continue;
+            }
 
             match &card.zone {
                 Zone::Realm(square) => {
@@ -274,16 +274,17 @@ impl RealmComponent {
                             .and_then(|c| c.image.clone())
                             .or_else(|| TextureCache::get_card_texture_blocking(card, ctx));
                         if let Some(existing) = existing
-                            && existing.card.zone.is_in_play() {
-                                pending_flights.push((
-                                    card.clone(),
-                                    image.clone(),
-                                    existing.rect,
-                                    Rect::from_min_size(pos2(pos_x, pos_y), dimensions),
-                                    card_rotation(&existing.card),
-                                    card_rotation(card),
-                                ));
-                            }
+                            && existing.card.zone.is_in_play()
+                        {
+                            pending_flights.push((
+                                card.clone(),
+                                image.clone(),
+                                existing.rect,
+                                Rect::from_min_size(pos2(pos_x, pos_y), dimensions),
+                                card_rotation(&existing.card),
+                                card_rotation(card),
+                            ));
+                        }
                         new_cards.push(CardRect {
                             image,
                             rect: Rect::from_min_size(pos2(pos_x, pos_y), dimensions),
@@ -317,16 +318,17 @@ impl RealmComponent {
                             .and_then(|c| c.image.clone())
                             .or_else(|| TextureCache::get_card_texture_blocking(card, ctx));
                         if let Some(existing) = existing
-                            && existing.card.zone.is_in_play() {
-                                pending_flights.push((
-                                    card.clone(),
-                                    image.clone(),
-                                    existing.rect,
-                                    card_rect,
-                                    card_rotation(&existing.card),
-                                    card_rotation(card),
-                                ));
-                            }
+                            && existing.card.zone.is_in_play()
+                        {
+                            pending_flights.push((
+                                card.clone(),
+                                image.clone(),
+                                existing.rect,
+                                card_rect,
+                                card_rotation(&existing.card),
+                                card_rotation(card),
+                            ));
+                        }
                         new_cards.push(CardRect {
                             image,
                             rect: card_rect,
@@ -364,9 +366,10 @@ impl RealmComponent {
             let mut points = Vec::new();
             for zone in path {
                 if let Zone::Realm(id) = zone
-                    && let Some(cell_r) = self.cell_rects.iter().find(|c| c.id == *id) {
-                        points.push(cell_r.rect.center());
-                    }
+                    && let Some(cell_r) = self.cell_rects.iter().find(|c| c.id == *id)
+                {
+                    points.push(cell_r.rect.center());
+                }
             }
             path_points.push(points);
         }
@@ -430,16 +433,17 @@ impl RealmComponent {
 
         if let Some(idx) = closest_idx
             && response.clicked()
-                && let Status::SelectingPath { paths, .. } = &data.status {
-                    if let Err(e) = self.client.send(ClientMessage::PickPath {
-                        player_id: self.player_id,
-                        game_id: self.game_id,
-                        path: paths[idx].clone(),
-                    }) {
-                        eprintln!("Error sending PickPath: {}", e);
-                    }
-                    data.status = Status::Idle;
-                }
+            && let Status::SelectingPath { paths, .. } = &data.status
+        {
+            if let Err(e) = self.client.send(ClientMessage::PickPath {
+                player_id: self.player_id,
+                game_id: self.game_id,
+                path: paths[idx].clone(),
+            }) {
+                eprintln!("Error sending PickPath: {}", e);
+            }
+            data.status = Status::Idle;
+        }
     }
 
     fn render_grid(
@@ -577,14 +581,15 @@ impl RealmComponent {
                 let color = Color32::from_rgba_unmultiplied(51, 153, 255, base_alpha);
                 for zone in group {
                     if let Zone::Realm(cell_id) = zone
-                        && let Some(cell) = self.cell_rects.iter().find(|c| c.id == *cell_id) {
-                            let resp = ui.allocate_rect(cell.rect, Sense::click());
-                            painter.rect_filled(cell.rect, 0.0, color);
+                        && let Some(cell) = self.cell_rects.iter().find(|c| c.id == *cell_id)
+                    {
+                        let resp = ui.allocate_rect(cell.rect, Sense::click());
+                        painter.rect_filled(cell.rect, 0.0, color);
 
-                            if resp.clicked() {
-                                clicked_group_idx = Some(group_idx);
-                            }
+                        if resp.clicked() {
+                            clicked_group_idx = Some(group_idx);
                         }
+                    }
                 }
             }
         }
@@ -839,34 +844,36 @@ impl Component for RealmComponent {
             };
 
             if resp.dragged()
-                && let Some(cell) = cell {
-                    let card_id = card_rect.card.id;
-                    let min_x = cell.rect.min.x;
-                    let max_x = cell.rect.max.x - card_rect.rect.width();
-                    let min_y = cell.rect.min.y;
-                    let max_y = cell.rect.max.y - card_rect.rect.height();
-                    let delta = resp.drag_delta();
-                    let mut new_min = card_rect.rect.min + delta;
-                    new_min.x = new_min.x.clamp(min_x, max_x);
-                    new_min.y = new_min.y.clamp(min_y, max_y);
-                    move_delta = new_min - card_rect.rect.min;
-                    card_rect.rect = card_rect.rect.translate(move_delta);
-                    moved_card_id = Some(card_id);
-                }
+                && let Some(cell) = cell
+            {
+                let card_id = card_rect.card.id;
+                let min_x = cell.rect.min.x;
+                let max_x = cell.rect.max.x - card_rect.rect.width();
+                let min_y = cell.rect.min.y;
+                let max_y = cell.rect.max.y - card_rect.rect.height();
+                let delta = resp.drag_delta();
+                let mut new_min = card_rect.rect.min + delta;
+                new_min.x = new_min.x.clamp(min_x, max_x);
+                new_min.y = new_min.y.clamp(min_y, max_y);
+                move_delta = new_min - card_rect.rect.min;
+                card_rect.rect = card_rect.rect.translate(move_delta);
+                moved_card_id = Some(card_id);
+            }
 
             if let Status::SelectingCard {
                 cards,
                 preview: false,
                 ..
             } = &data.status
-                && !cards.contains(&card_rect.card.id) {
-                    // Draw greying overlay
-                    painter.rect_filled(
-                        card_rect.rect,
-                        0.0,
-                        Color32::from_rgba_unmultiplied(100, 100, 100, 153),
-                    );
-                }
+                && !cards.contains(&card_rect.card.id)
+            {
+                // Draw greying overlay
+                painter.rect_filled(
+                    card_rect.rect,
+                    0.0,
+                    Color32::from_rgba_unmultiplied(100, 100, 100, 153),
+                );
+            }
         }
 
         if let Some(card_id) = moved_card_id {

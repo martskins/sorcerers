@@ -59,9 +59,7 @@ impl QueryCache {
         affected_cards: Vec<uuid::Uuid>,
     ) {
         let mut cache = QUERY_CACHE.get().expect("to get lock").write().await;
-        cache
-            .effect_targets
-            .insert(effect_id, affected_cards);
+        cache.effect_targets.insert(effect_id, affected_cards);
 
         cache
             .game_queries
@@ -326,6 +324,7 @@ impl ZoneQuery {
     }
 }
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum EffectQuery {
     EnterZone {
@@ -405,14 +404,16 @@ impl EffectQuery {
                 Effect::TakeDamage { card_id, from, .. },
             ) => {
                 if let Some(source) = source
-                    && !source.matches(from, state) {
-                        return Ok(false);
-                    }
+                    && !source.matches(from, state)
+                {
+                    return Ok(false);
+                }
 
                 if let Some(target) = target
-                    && !target.matches(card_id, state) {
-                        return Ok(false);
-                    }
+                    && !target.matches(card_id, state)
+                {
+                    return Ok(false);
+                }
 
                 Ok(true)
             }
