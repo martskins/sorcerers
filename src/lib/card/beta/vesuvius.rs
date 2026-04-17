@@ -32,9 +32,14 @@ impl ActivatedAbility for UseAbility {
         let mut effects = vec![];
         for site_id in site_ids {
             let site = state.get_card(&site_id);
-            let units = state.get_units_in_zone(site.get_zone());
+            let units = CardQuery::new().units().in_zone(site.get_zone()).all(state);
             for unit in units {
-                effects.push(Effect::take_damage(unit.get_id(), card.get_id(), 3));
+                effects.push(Effect::TakeDamage {
+                    card_id: unit,
+                    from: *card.get_id(),
+                    damage: 3,
+                    is_strike: false,
+                });
             }
         }
         Ok(effects)

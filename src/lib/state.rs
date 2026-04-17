@@ -52,6 +52,7 @@ pub struct CardQuery {
     controller_id: Option<PlayerId>,
     not_in_ids: Option<Vec<uuid::Uuid>>,
     abilities: Option<Vec<Ability>>,
+    can_cast: Option<uuid::Uuid>,
     card_types: Option<Vec<CardType>>,
     minion_types: Option<Vec<MinionType>>,
     artifact_types: Option<Vec<ArtifactType>>,
@@ -66,7 +67,9 @@ pub struct CardQuery {
     can_be_attacked_by: Option<uuid::Uuid>,
     in_regions: Option<Vec<Region>>,
     tapped: Option<bool>,
+    oversized: Option<bool>,
     include_not_in_play: Option<bool>,
+    can_be_targeted_by_player: Option<uuid::Uuid>,
     elements: Option<Vec<Element>>,
     prompt: Option<String>,
 }
@@ -198,6 +201,23 @@ impl CardQuery {
             .filter(|c| self.matches(c.get_id(), state))
     }
 
+    pub fn any(&self, state: &State) -> bool {
+        state
+            .cards
+            .iter()
+            .filter(|c| self.matches(c.get_id(), state))
+            .count()
+            > 0
+    }
+
+    pub fn first(&self, state: &State) -> Option<uuid::Uuid> {
+        state
+            .cards
+            .iter()
+            .map(|c| *c.get_id())
+            .find(|id| self.matches(id, state))
+    }
+
     pub fn all(&self, state: &State) -> Vec<uuid::Uuid> {
         state
             .cards
@@ -261,6 +281,13 @@ impl CardQuery {
         Self {
             in_zones: Some(zones.to_vec()),
             include_not_in_play: Some(true),
+            ..self
+        }
+    }
+
+    pub fn normal_sized(self) -> Self {
+        Self {
+            oversized: Some(false),
             ..self
         }
     }
@@ -374,6 +401,13 @@ impl CardQuery {
         }
     }
 
+    pub fn can_cast(self, spell: &uuid::Uuid) -> Self {
+        Self {
+            can_cast: Some(*spell),
+            ..self
+        }
+    }
+
     pub fn with_abilities(self, abilities: Vec<Ability>) -> Self {
         Self {
             abilities: Some(abilities),
@@ -384,6 +418,13 @@ impl CardQuery {
     pub fn controlled_by(self, controller_id: &PlayerId) -> Self {
         Self {
             controller_id: Some(*controller_id),
+            ..self
+        }
+    }
+
+    pub fn id_not(self, id: &uuid::Uuid) -> Self {
+        Self {
+            not_in_ids: Some(vec![*id]),
             ..self
         }
     }
@@ -460,6 +501,13 @@ impl CardQuery {
         }
     }
 
+    pub fn can_be_targeted_by_player(self, player_id: &uuid::Uuid) -> Self {
+        Self {
+            can_be_targeted_by_player: Some(*player_id),
+            ..self
+        }
+    }
+
     pub fn units(self) -> Self {
         Self {
             card_types: Some(vec![CardType::Minion, CardType::Avatar]),
@@ -530,9 +578,29 @@ impl CardQuery {
             return false;
         }
 
+        if let Some(oversized) = &self.oversized
+            && &card.is_oversized(state) != oversized
+        {
+            return false;
+        }
+
         if let Some(_can_be_attacked_by) = &self.can_be_attacked_by {
             // TODO: this needs to check for flying, etc
             // let attacker = state.get_card(can_be_attacked_by);
+        }
+
+        if let Some(spell) = &self.can_cast
+            && !card
+                .can_cast_spell_with_id(state, spell)
+                .unwrap_or_default()
+        {
+            return false;
+        }
+
+        if let Some(player_id) = &self.can_be_targeted_by_player
+            && !card.can_be_targetted_by_player(state, player_id)
+        {
+            return false;
         }
 
         if let Some(within_range_of) = &self.within_range_of {
@@ -1165,13 +1233,8 @@ impl State {
                 return;
             }
             visited.push(zone.clone());
-            let sites = state.get_cards_in_zone(zone);
-            let is_water = sites.iter().any(|card| {
-                card.get_site_base()
-                    .map(|base| base.provided_thresholds.water > 0)
-                    .unwrap_or(false)
-            });
-            if is_water {
+            let water_site_in_zone = CardQuery::new().water_sites().in_zone(zone).any(state);
+            if water_site_in_zone {
                 if !water_zones.iter().any(|z| z == zone) {
                     water_zones.push(zone.clone());
                 }
@@ -1362,34 +1425,12 @@ impl State {
             .expect("failed to get card")
     }
 
-    pub fn get_card(&self, card_id: &uuid::Uuid) -> &Box<dyn Card> {
+    pub fn get_card(&self, card_id: &uuid::Uuid) -> &dyn Card {
         self.cards
             .iter()
             .find(|c| c.get_id() == card_id)
             .expect("failed to get card")
-    }
-
-    pub fn get_minions_in_zone(&self, zone: &Zone) -> Vec<&Box<dyn Card>> {
-        self.cards
-            .iter()
-            .filter(|c| c.occupies_zone(self, zone))
-            .filter(|c| c.is_minion())
-            .collect()
-    }
-
-    pub fn get_units_in_zone(&self, zone: &Zone) -> Vec<&Box<dyn Card>> {
-        self.cards
-            .iter()
-            .filter(|c| c.occupies_zone(self, zone))
-            .filter(|c| c.is_unit())
-            .collect()
-    }
-
-    pub fn get_cards_in_zone(&self, zone: &Zone) -> Vec<&Box<dyn Card>> {
-        self.cards
-            .iter()
-            .filter(|c| c.occupies_zone(self, zone))
-            .collect()
+            .as_ref()
     }
 
     pub fn get_player(&self, player_id: &PlayerId) -> anyhow::Result<&Player> {

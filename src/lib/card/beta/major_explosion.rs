@@ -2,7 +2,7 @@ use crate::{
     card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
     effect::Effect,
     game::{Direction, PlayerId, pick_zone},
-    state::State,
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -73,9 +73,14 @@ impl Card for MajorExplosion {
         let mut effects = vec![];
         for (zone, dmg) in zone_dmg {
             if let Some(z) = zone {
-                let units = state.get_units_in_zone(&z);
+                let units = CardQuery::new().units().in_zone(&z).all(state);
                 for unit in units {
-                    effects.push(Effect::take_damage(unit.get_id(), self.get_id(), dmg));
+                    effects.push(Effect::TakeDamage {
+                        card_id: unit,
+                        from: *self.get_id(),
+                        damage: dmg,
+                        is_strike: false,
+                    });
                 }
             }
         }

@@ -82,19 +82,10 @@ impl Card for AtlasWanderers {
         let to_zone = picked_site.get_zone().clone();
 
         let mut effects = Vec::new();
-        let from_cards = state
-            .get_cards_in_zone(&from_zone)
-            .iter()
-            .filter(|card| !card.is_oversized(state))
-            .map(|card| *card.get_id())
-            .collect::<Vec<_>>();
-        let to_cards = state
-            .get_cards_in_zone(&to_zone)
-            .iter()
-            .filter(|card| !card.is_oversized(state))
-            .map(|card| *card.get_id())
-            .collect::<Vec<_>>();
-
+        let from_cards = CardQuery::new()
+            .normal_sized()
+            .in_zone(&from_zone)
+            .all(state);
         for card_id in from_cards {
             effects.push(Effect::SetCardZone {
                 card_id,
@@ -102,6 +93,7 @@ impl Card for AtlasWanderers {
             });
         }
 
+        let to_cards = CardQuery::new().normal_sized().in_zone(&to_zone).all(state);
         for card_id in to_cards {
             effects.push(Effect::SetCardZone {
                 card_id,

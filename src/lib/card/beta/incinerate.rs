@@ -2,7 +2,7 @@ use crate::{
     card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, MinionType, Rarity, Zone},
     effect::Effect,
     game::{PlayerId, pick_zone},
-    state::State,
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -75,16 +75,19 @@ impl Card for Incinerate {
 
         let prompt = "Incinerate: Pick a zone to deal 4 damage to all other units in that zone";
         let picked_zone = pick_zone(self.get_owner_id(), &zones, state, false, prompt).await?;
-        let units = state.get_units_in_zone(&picked_zone);
-        let mut effects = vec![];
-        for unit in units {
-            if unit.get_id() == self.get_id() {
-                continue;
-            }
-
-            effects.push(Effect::take_damage(unit.get_id(), self.get_id(), 4));
-        }
-        Ok(effects)
+        Ok(CardQuery::new()
+            .units()
+            .id_not(self.get_id())
+            .in_zone(&picked_zone)
+            .all(state)
+            .into_iter()
+            .map(|id| Effect::TakeDamage {
+                card_id: id,
+                from: *self.get_id(),
+                damage: 4,
+                is_strike: false,
+            })
+            .collect())
     }
 }
 

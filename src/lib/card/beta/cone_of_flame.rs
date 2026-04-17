@@ -2,7 +2,7 @@ use crate::{
     card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
     effect::Effect,
     game::{CARDINAL_DIRECTIONS, PlayerId, pick_direction},
-    state::State,
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -72,9 +72,9 @@ impl Card for ConeOfFlame {
         let mut effects = vec![];
         for (zone, dmg) in zone_dmg {
             if let Some(zone) = zone {
-                let units = state.get_units_in_zone(&zone);
+                let units = CardQuery::new().units().in_zone(&zone).all(state);
                 for unit in units {
-                    effects.push(Effect::take_damage(unit.get_id(), self.get_id(), dmg));
+                    effects.push(Effect::take_damage(&unit, self.get_id(), dmg));
                 }
             }
         }

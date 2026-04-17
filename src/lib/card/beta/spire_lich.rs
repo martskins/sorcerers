@@ -48,22 +48,15 @@ impl SpireLich {
             return Ok(false);
         }
 
-        let site = state
-            .get_cards_in_zone(self.get_zone())
-            .iter()
-            .find(|c| c.is_site())
-            .cloned();
-        match site {
-            Some(site) => Ok(site
-                .get_site_base()
-                .ok_or(anyhow::anyhow!(
-                    "{} does not have site base",
-                    site.get_name()
-                ))?
-                .types
-                .contains(&SiteType::Tower)),
-            None => Ok(false),
-        }
+        let Some(site) = self.get_zone().get_site(state) else {
+            return Ok(false);
+        };
+
+        Ok(site
+            .get_site_base()
+            .unwrap()
+            .types
+            .contains(&SiteType::Tower))
     }
 }
 

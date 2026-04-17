@@ -56,7 +56,7 @@ impl Card for BorderMilitia {
         _caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
-        let mut sites: Vec<&Box<dyn Card>> = state
+        let mut sites: Vec<&dyn Card> = state
             .cards
             .iter()
             .filter(|c| c.is_site())
@@ -75,6 +75,7 @@ impl Card for BorderMilitia {
 
                 false
             })
+            .map(|c| c.as_ref())
             .collect();
         sites.dedup_by(|a, b| a.get_id() == b.get_id());
 

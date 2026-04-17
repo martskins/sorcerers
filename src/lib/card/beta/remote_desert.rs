@@ -75,13 +75,14 @@ impl Card for RemoteDesert {
             return Ok(vec![]);
         };
         let site = state.get_card(&picked_site_id);
-        let units = state.get_minions_in_zone(site.get_zone());
-        let units = units
-            .iter()
-            .filter(|c| c.get_region(state) == &Region::Surface);
+        let minions = CardQuery::new()
+            .minions()
+            .in_zone(site.get_zone())
+            .in_region(&Region::Surface)
+            .all(state);
         let mut effects = vec![];
-        for unit in units {
-            effects.push(Effect::take_damage(unit.get_id(), site.get_id(), 1));
+        for minion in minions {
+            effects.push(Effect::take_damage(&minion, site.get_id(), 1));
         }
         Ok(effects)
     }

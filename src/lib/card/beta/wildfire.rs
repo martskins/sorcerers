@@ -3,7 +3,7 @@ use crate::{
     effect::Effect,
     game::{PlayerId, pick_zone},
     query::ZoneQuery,
-    state::State,
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -106,11 +106,19 @@ impl Card for Wildfire {
             }]);
         }
 
-        let mut effects: Vec<Effect> = state
-            .get_units_in_zone(self.get_zone())
-            .iter()
-            .map(|c| Effect::take_damage(c.get_id(), self.get_id(), 3))
-            .collect();
+        let mut effects = CardQuery::new()
+            .units()
+            .in_zone(self.get_zone())
+            .all(state)
+            .into_iter()
+            .map(|id| Effect::TakeDamage {
+                card_id: id,
+                from: *self.get_id(),
+                damage: 3,
+                is_strike: false,
+            })
+            .collect::<Vec<Effect>>();
+
         let prompt = "Wildfire: Pick a zone to move to:";
         let picked_zone = pick_zone(self.get_owner_id(), &zones, state, false, prompt).await?;
         effects.push(Effect::MoveCard {

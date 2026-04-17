@@ -6,7 +6,7 @@ use crate::{
     effect::Effect,
     game::{ActivatedAbility, PlayerId, Thresholds, pick_zone},
     query::ZoneQuery,
-    state::State,
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -65,15 +65,15 @@ impl ActivatedAbility for FlyToVoid {
             },
         ];
 
-        let units_on_site = state.get_units_in_zone(card.get_zone());
-        for unit in units_on_site {
+        let units_in_zone = CardQuery::new().units().in_zone(card.get_zone()).all(state);
+        for unit in units_in_zone {
             effects.push(Effect::MoveCard {
                 player_id: *player_id,
-                card_id: *unit.get_id(),
+                card_id: unit,
                 from: card.get_zone().clone(),
                 to: ZoneQuery::from_zone(picked_void.clone()),
                 tap: false,
-                region: unit.get_region(state).clone(),
+                region: state.get_card(&unit).get_region(state).clone(),
                 through_path: None,
             });
         }

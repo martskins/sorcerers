@@ -90,17 +90,7 @@ impl Card for FlankingManeuver {
             .controlled_by(&controller)
             .all(state);
 
-        // Build valid destination zones: knight's move from source that are either empty realm
-        // squares (void = no site) or have an allied site.
-        let destinations: Vec<Zone> = get_knight_move_zones(&source_zone)
-            .into_iter()
-            .filter(|z| {
-                let cards_here = state.get_cards_in_zone(z);
-                // Only units/artifacts count as "occupied" — a zone with only a site is fine.
-                cards_here.iter().all(|c| c.is_site())
-            })
-            .collect();
-
+        let destinations = get_knight_move_zones(&source_zone);
         if destinations.is_empty() {
             return Ok(vec![Effect::DrawCard {
                 player_id: controller,

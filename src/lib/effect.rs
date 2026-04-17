@@ -744,7 +744,7 @@ impl Effect {
     }
 
     async fn expire_counters(&self, state: &mut State) -> anyhow::Result<()> {
-        let modified_cards: Vec<&Box<dyn Card>> = state
+        let modified_cards: Vec<&dyn Card> = state
             .cards
             .iter()
             .filter(|c| c.is_unit())
@@ -754,6 +754,7 @@ impl Effect {
                     .modifier_counters
                     .is_empty()
             })
+            .map(|c| c.as_ref())
             .collect();
         let mut card_modifiers_to_remove: Vec<(uuid::Uuid, Vec<uuid::Uuid>)> = vec![];
         for card in modified_cards {
@@ -782,7 +783,7 @@ impl Effect {
             }
         }
 
-        let cards_with_counters: Vec<&Box<dyn Card>> = state
+        let cards_with_counters: Vec<&dyn Card> = state
             .cards
             .iter()
             .filter(|c| c.is_unit())
@@ -792,6 +793,7 @@ impl Effect {
                     .power_counters
                     .is_empty()
             })
+            .map(|c| c.as_ref())
             .collect();
         let mut card_counters_to_remove: Vec<(uuid::Uuid, Vec<uuid::Uuid>)> = vec![];
         for card in cards_with_counters {
@@ -894,12 +896,11 @@ impl Effect {
                     let picked_unit_id = match self.affected_cards().await {
                         Some(affected_cards) => affected_cards.first().cloned(),
                         None => {
-                            let units = state
-                                .get_units_in_zone(&zone)
-                                .iter()
-                                .filter(|c| c.can_be_targetted_by(state, player_id))
-                                .map(|c| *c.get_id())
-                                .collect::<Vec<_>>();
+                            let units = CardQuery::new()
+                                .units()
+                                .in_zone(&zone)
+                                .can_be_targeted_by_player(player_id)
+                                .all(state);
                             match units.len() {
                                 0 => None,
                                 1 => Some(units[0]),
@@ -927,12 +928,14 @@ impl Effect {
                             is_strike: false,
                         });
                         if let Some(splash_damage) = splash_damage {
-                            let splash_effects = state
-                                .get_units_in_zone(&zone)
-                                .iter()
-                                .filter(|c| c.get_id() != &picked_unit_id)
+                            let splash_effects = CardQuery::new()
+                                .units()
+                                .in_zone(&zone)
+                                .id_not(&picked_unit_id)
+                                .all(state)
+                                .into_iter()
                                 .map(|c| Effect::TakeDamage {
-                                    card_id: *c.get_id(),
+                                    card_id: c,
                                     from: *shooter,
                                     damage: *splash_damage,
                                     is_strike: false,

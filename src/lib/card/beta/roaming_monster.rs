@@ -3,7 +3,7 @@ use crate::{
         Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
     },
     game::PlayerId,
-    state::State,
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -69,14 +69,12 @@ impl Card for RoamingMonster {
     }
 
     fn get_valid_play_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {
-        Ok((1..=20)
-            .filter_map(|z| {
-                state
-                    .get_cards_in_zone(&Zone::Realm(z))
-                    .iter()
-                    .find(|c| c.is_site())
-                    .map(|_| Zone::Realm(z))
-            })
+        Ok(CardQuery::new()
+            .sites()
+            .all(state)
+            .into_iter()
+            .map(|site_id| state.get_card(&site_id).get_zone())
+            .cloned()
             .collect())
     }
 }

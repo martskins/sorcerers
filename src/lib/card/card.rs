@@ -318,11 +318,11 @@ impl Zone {
     }
 
     pub fn get_site<'a>(&self, state: &'a State) -> Option<&'a dyn Site> {
-        state
-            .get_cards_in_zone(self)
-            .iter()
-            .find(|c| c.is_site())
-            .and_then(|c| c.get_site())
+        CardQuery::new()
+            .sites()
+            .in_zone(self)
+            .first(state)
+            .and_then(|site_id| state.get_card(&site_id).get_site())
     }
 
     pub fn zone_in_direction(&self, direction: &Direction, steps: u8) -> Option<Self> {
@@ -1637,7 +1637,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             .iter()
             .filter(|c| c.get_controller_id(state) != self.get_controller_id(state))
             .filter(|c| c.is_unit() || c.is_site())
-            .filter(|c| c.can_be_targetted_by(state, &self.get_controller_id(state)))
+            .filter(|c| c.can_be_targetted_by_player(state, &self.get_controller_id(state)))
             .filter(|c| !c.has_ability(state, &Ability::Unattackable))
             .filter(|c| {
                 let same_region = c.get_region(state) == self.get_region(state);
@@ -1905,7 +1905,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         vec![]
     }
 
-    fn can_be_targetted_by(&self, state: &State, player_id: &PlayerId) -> bool {
+    fn can_be_targetted_by_player(&self, state: &State, player_id: &PlayerId) -> bool {
         if self.has_ability(state, &Ability::Stealth) && &self.get_controller_id(state) != player_id
         {
             return false;
@@ -1938,7 +1938,11 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         self.get_aura_base().is_some()
     }
 
-    fn can_cast(&self, state: &State, spell: &Box<dyn Card>) -> anyhow::Result<bool> {
+    fn can_cast_spell_with_id(&self, state: &State, spell_id: &uuid::Uuid) -> anyhow::Result<bool> {
+        self.can_cast(state, state.get_card(spell_id))
+    }
+
+    fn can_cast(&self, state: &State, spell: &dyn Card) -> anyhow::Result<bool> {
         if !self.get_zone().is_in_play() {
             return Ok(false);
         }

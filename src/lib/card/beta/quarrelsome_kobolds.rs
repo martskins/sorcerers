@@ -4,7 +4,7 @@ use crate::{
     },
     effect::Effect,
     game::{PlayerId, pick_card},
-    state::State,
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -77,13 +77,13 @@ impl Card for QuarrelsomeKobolds {
         let zone = self.get_zone();
         let adjacent_zones = zone.get_adjacent();
         let mut units = vec![];
+        let player_id = self.get_controller_id(state);
         for zone in adjacent_zones {
-            let units_in_zone = state
-                .get_units_in_zone(&zone)
-                .iter()
-                .filter(|c| c.can_be_targetted_by(state, &self.get_controller_id(state)))
-                .map(|c| *c.get_id())
-                .collect::<Vec<uuid::Uuid>>();
+            let units_in_zone = CardQuery::new()
+                .units()
+                .in_zone(&zone)
+                .can_be_targeted_by_player(&player_id)
+                .all(state);
             units.extend(units_in_zone);
         }
 

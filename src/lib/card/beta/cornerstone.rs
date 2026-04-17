@@ -69,17 +69,16 @@ impl Card for Cornerstone {
 
     fn get_valid_play_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {
         let mut valid_zones = self.default_get_valid_play_zones(state)?;
-        let corners = [1, 5, 16, 20];
-        let valid_corners = corners.iter().filter_map(|c| {
-            match state
-                .get_cards_in_zone(&Zone::Realm(*c))
-                .iter()
-                .find(|c| c.is_site())
-            {
-                Some(_) => None,
-                None => Some(Zone::Realm(*c)),
-            }
-        });
+        let corners: [Zone; 4] = [
+            Zone::Realm(1),
+            Zone::Realm(5),
+            Zone::Realm(16),
+            Zone::Realm(20),
+        ];
+        let valid_corners: Vec<Zone> = corners
+            .into_iter()
+            .filter(|z| z.get_site(state).is_none())
+            .collect();
         valid_zones.extend(valid_corners);
         Ok(valid_zones)
     }

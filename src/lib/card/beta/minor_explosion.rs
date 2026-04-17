@@ -2,7 +2,7 @@ use crate::{
     card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
     effect::Effect,
     game::{PlayerId, pick_zone},
-    state::State,
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -60,10 +60,17 @@ impl Card for MinorExplosion {
         let valid_zones = caster.get_zones_within_steps(state, 2);
         let prompt = "Pick a zone to center Minor Explosion:";
         let zone = pick_zone(self.get_owner_id(), &valid_zones, state, false, prompt).await?;
-        let units = state.get_units_in_zone(&zone);
-        Ok(units
-            .iter()
-            .map(|c| Effect::take_damage(c.get_id(), self.get_id(), 3))
+        Ok(CardQuery::new()
+            .units()
+            .in_zone(&zone)
+            .all(state)
+            .into_iter()
+            .map(|id| Effect::TakeDamage {
+                card_id: id,
+                from: *caster_id,
+                damage: 3,
+                is_strike: false,
+            })
             .collect())
     }
 }

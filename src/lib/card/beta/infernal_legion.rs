@@ -4,7 +4,7 @@ use crate::{
     },
     effect::Effect,
     game::PlayerId,
-    state::State,
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -71,13 +71,10 @@ impl Card for InfernalLegion {
     }
 
     async fn on_turn_end(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        let adjacent_units: Vec<uuid::Uuid> = self
-            .get_zone()
-            .get_adjacent()
-            .iter()
-            .flat_map(|z| state.get_units_in_zone(z))
-            .map(|c| *c.get_id())
-            .collect();
+        let adjacent_units = CardQuery::new()
+            .units()
+            .adjacent_to(self.get_zone())
+            .all(state);
         let mut effects = Vec::new();
         for unit in adjacent_units {
             effects.push(Effect::TakeDamage {

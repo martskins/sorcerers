@@ -1,5 +1,8 @@
 use crate::{
-    card::{Aura, AuraBase, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, Zone},
+    card::{
+        Aura, AuraBase, Card, CardBase, CardConstructor, CardType, Costs, Edition, Rarity, Region,
+        Zone,
+    },
     effect::Effect,
     game::PlayerId,
     state::{CardQuery, ContinuousEffect, State},
@@ -94,28 +97,22 @@ impl Card for AtlanteanFate {
     }
 
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        let mut effects = Vec::new();
-
-        for site_id in self.flooded_site_ids(state) {
-            let site = state.get_card(&site_id);
-            let zone = site.get_zone().clone();
-            for card in state.get_cards_in_zone(&zone) {
-                if card.get_id() == &site_id {
-                    continue;
-                }
-                if !card.is_minion() && !card.is_artifact() {
-                    continue;
-                }
-
-                effects.push(Effect::SetCardRegion {
-                    card_id: *card.get_id(),
-                    region: Region::Underwater,
-                    tap: false,
-                });
-            }
-        }
-
-        Ok(effects)
+        let affected_zones: Vec<Zone> = self
+            .get_affected_zones(state)
+            .into_iter()
+            .filter(|z| z.get_site(state).is_some())
+            .collect();
+        Ok(CardQuery::new()
+            .card_types(vec![CardType::Minion, CardType::Artifact])
+            .in_zones(&affected_zones)
+            .all(state)
+            .into_iter()
+            .map(|id| Effect::SetCardRegion {
+                card_id: id,
+                region: Region::Underwater,
+                tap: false,
+            })
+            .collect())
     }
 }
 

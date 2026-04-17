@@ -6,7 +6,7 @@ use crate::{
         Rarity, Region, UnitBase, Zone,
     },
     game::{Direction, PlayerId},
-    state::State,
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -81,16 +81,17 @@ impl Card for HillockBasilisk {
             zones.push(zone);
         }
 
-        let grants_abilities = zones
-            .iter()
-            .flat_map(|z| state.get_units_in_zone(z))
-            .filter(|c| c.get_id() != self.get_id())
-            .map(|c| (*c.get_id(), vec![Ability::Disabled]))
+        let grants_abilities = CardQuery::new()
+            .units()
+            .in_zones(&zones)
+            .id_not(self.get_id())
+            .all(state)
+            .into_iter()
+            .map(|id| (id, vec![Ability::Disabled]))
             .collect::<HashMap<uuid::Uuid, Vec<Ability>>>();
 
         AreaModifiers {
             grants_abilities,
-            // grants_abilities: vec![(Ability::Disabled, units)],
             ..Default::default()
         }
     }

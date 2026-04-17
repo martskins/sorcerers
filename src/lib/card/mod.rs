@@ -9,10 +9,6 @@ pub use foot_soldier::*;
 pub use frog::*;
 pub use rubble::*;
 
-pub mod predule {
-    pub use crate::card::CardConstructor;
-}
-
 pub type CardConstructor = fn(PlayerId) -> Box<dyn Card>;
 
 use crate::{deck::Deck, game::PlayerId, networking::message::PreconDeck};

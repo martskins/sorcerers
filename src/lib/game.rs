@@ -1571,13 +1571,8 @@ impl Game {
                         self.state.queue(effects);
                     }
                     (CardType::Magic, Zone::Hand) => {
-                        let spellcasters: Vec<uuid::Uuid> = self
-                            .state
-                            .cards
-                            .iter()
-                            .filter(|c| c.can_cast(&self.state, card).unwrap_or_default())
-                            .map(|c| *c.get_id())
-                            .collect();
+                        let spellcasters =
+                            CardQuery::new().units().can_cast(card_id).all(&self.state);
                         let prompt = "Pick a spellcaster to cast the spell";
                         let caster_id =
                             pick_card(player_id, &spellcasters, &self.state, prompt).await?;

@@ -116,10 +116,11 @@ impl Card for CraveGolem {
                     }
                     visited.push(current.clone());
 
-                    let has_minion = state
-                        .get_minions_in_zone(&current)
-                        .iter()
-                        .any(|c| c.get_id() != self.get_id());
+                    let has_minion = CardQuery::new()
+                        .minions()
+                        .in_zone(&current)
+                        .id_not_in(vec![*self.get_id()])
+                        .any(state);
 
                     if has_minion {
                         first_step = Some(step_from_self);
