@@ -74,7 +74,12 @@ impl Card for Wildfire {
         Ok(())
     }
 
-    async fn on_visit_zone(&self, _state: &State, to: &Zone) -> anyhow::Result<Vec<Effect>> {
+    async fn on_visit_zone(
+        &self,
+        _state: &State,
+        _from: &Zone,
+        to: &Zone,
+    ) -> anyhow::Result<Vec<Effect>> {
         let mut sites_visited = self.sites_visited.clone();
         if sites_visited.is_empty() {
             sites_visited.push(self.get_zone().clone());

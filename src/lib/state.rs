@@ -759,7 +759,7 @@ impl CardQuery {
     }
 }
 
-pub type DeferredCallback = Arc<
+pub type EffectCallback = Arc<
     dyn Sync
         + Send
         + for<'a> Fn(
@@ -774,7 +774,7 @@ pub type DeferredCallback = Arc<
 pub struct DeferredEffect {
     pub trigger_on_effect: EffectQuery,
     pub expires_on_effect: Option<EffectQuery>,
-    pub on_effect: DeferredCallback,
+    pub on_effect: EffectCallback,
     pub multitrigger: bool,
 }
 
@@ -787,10 +787,16 @@ impl std::fmt::Debug for DeferredEffect {
     }
 }
 
+// TODO: Process temporary effects
 #[derive(Debug, Clone)]
 pub enum TemporaryEffect {
     FloodSites {
         affected_sites: CardQuery,
+        expires_on_effect: EffectQuery,
+    },
+    GrantAbility {
+        affected_cards: CardQuery,
+        ability: Ability,
         expires_on_effect: EffectQuery,
     },
 }
@@ -799,6 +805,7 @@ impl TemporaryEffect {
     pub fn affected_cards(&self, state: &State) -> Vec<uuid::Uuid> {
         match self {
             TemporaryEffect::FloodSites { affected_sites, .. } => affected_sites.all(state),
+            TemporaryEffect::GrantAbility { affected_cards, .. } => affected_cards.all(state),
         }
     }
 
@@ -807,11 +814,14 @@ impl TemporaryEffect {
             TemporaryEffect::FloodSites {
                 expires_on_effect, ..
             } => Some(expires_on_effect),
+            TemporaryEffect::GrantAbility {
+                expires_on_effect, ..
+            } => Some(expires_on_effect),
         }
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum ContinuousEffect {
     ControllerOverride {
         controller_id: PlayerId,
@@ -852,6 +862,24 @@ pub enum ContinuousEffect {
         affected_cards: CardQuery,
         zones: Option<Vec<Zone>>,
     },
+    AddTriggeredEffect {
+        trigger_on_effect: EffectQuery,
+        on_effect: EffectCallback,
+    },
+}
+
+impl std::fmt::Debug for ContinuousEffect {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::AddTriggeredEffect {
+                trigger_on_effect, ..
+            } => f
+                .debug_struct("AddTriggeredEffect")
+                .field("trigger_on_effect", trigger_on_effect)
+                .finish(),
+            _ => std::fmt::Debug::fmt(self, f),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

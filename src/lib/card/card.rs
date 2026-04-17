@@ -1489,12 +1489,35 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     // Returns whether the card has the given modifier.
-    fn has_ability(&self, state: &State, modifier: &Ability) -> bool {
+    fn has_ability(&self, state: &State, ability: &Ability) -> bool {
+        let has_temporary = state.temporary_effects.iter().any(|te| match te {
+            TemporaryEffect::GrantAbility {
+                affected_cards,
+                ability: granted_ability,
+                ..
+            } => {
+                if ability != granted_ability {
+                    return false;
+                }
+
+                if !affected_cards.matches(self.get_id(), state) {
+                    return false;
+                }
+
+                true
+            }
+            _ => false,
+        });
+
+        if has_temporary {
+            return true;
+        }
+
         if self
             .get_unit_base()
             .unwrap_or(&UnitBase::default())
             .abilities
-            .contains(&modifier)
+            .contains(&ability)
         {
             return true;
         }
@@ -1504,7 +1527,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             .unwrap_or(&UnitBase::default())
             .modifier_counters
             .iter()
-            .any(|c| &c.ability == modifier)
+            .any(|c| &c.ability == ability)
         {
             return true;
         }
@@ -1514,7 +1537,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             ContinuousEffect::GrantAbility {
                 ability,
                 affected_cards,
-            } if ability == modifier => affected_cards.matches(self.get_id(), state),
+            } if ability == ability => affected_cards.matches(self.get_id(), state),
             _ => false,
         })
     }
@@ -2021,7 +2044,12 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(vec![])
     }
 
-    async fn on_visit_zone(&self, _state: &State, _to: &Zone) -> anyhow::Result<Vec<Effect>> {
+    async fn on_visit_zone(
+        &self,
+        _state: &State,
+        _from: &Zone,
+        _to: &Zone,
+    ) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![])
     }
 

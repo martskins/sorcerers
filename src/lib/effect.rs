@@ -978,6 +978,7 @@ impl Effect {
                                 .resolve(player_id, state)
                                 .await?;
                             let card = state.get_card_mut(card_id);
+                            let from_zone = card.get_zone().clone();
                             card.set_zone(zone.clone());
                             if *tap {
                                 card.set_tapped(true);
@@ -994,7 +995,7 @@ impl Effect {
 
                             let card = state.get_card(card_id);
                             let mut effects = card.on_move(&snapshot, path).await?;
-                            effects.extend(card.on_visit_zone(&snapshot, &zone).await?);
+                            effects.extend(card.on_visit_zone(&snapshot, &from_zone, &zone).await?);
                             if let Some(site) = zone.get_site(state) {
                                 effects.extend(site.on_card_enter(state, card_id));
                             }
@@ -1006,6 +1007,7 @@ impl Effect {
                         let snapshot = state.snapshot();
                         let zone = to.resolve(player_id, state).await?;
                         let card = state.get_card_mut(card_id);
+                        let from_zone = card.get_zone().clone();
                         card.set_zone(zone.clone());
                         if *tap {
                             card.set_tapped(true);
@@ -1023,7 +1025,7 @@ impl Effect {
                         let card = state.get_card(card_id);
                         let path = vec![from.clone(), zone.clone()];
                         let mut effects = card.on_move(&snapshot, &path).await?;
-                        effects.extend(card.on_visit_zone(&snapshot, &zone).await?);
+                        effects.extend(card.on_visit_zone(&snapshot, &from_zone, &zone).await?);
                         if let Some(site) = zone.get_site(state) {
                             effects.extend(site.on_card_enter(state, card_id));
                         }
@@ -1123,6 +1125,7 @@ impl Effect {
                     .iter_mut()
                     .find(|c| c.get_id() == card_id)
                     .expect("to find card");
+                let from_zone = card.get_zone().clone();
 
                 // If playing a site and there is a rubble on that zone, remove it.
                 if card.is_site() {
@@ -1145,11 +1148,12 @@ impl Effect {
                 }
 
                 let mut effects = card.genesis(&snapshot).await?;
-                effects.extend(card.on_visit_zone(&snapshot, &zone).await?);
+                effects.extend(card.on_visit_zone(&snapshot, &from_zone, &zone).await?);
                 state.queue(effects);
                 state.queue(cast_effects);
             }
             Effect::SummonCards { cards } => {
+                let snapshot = state.snapshot();
                 for (_, card_id, zone) in cards {
                     let has_charge = state.get_card(card_id).has_ability(state, &Ability::Charge);
                     let card = state.get_card_mut(card_id);
@@ -1169,9 +1173,10 @@ impl Effect {
                 let mut effects = vec![];
                 for (_, card_id, zone) in cards {
                     let card = state.get_card(card_id);
+                    let from_zone = snapshot.get_card(card_id).get_zone().clone();
                     effects.extend(card.on_summon(state)?);
                     effects.extend(card.genesis(state).await?);
-                    effects.extend(card.on_visit_zone(state, zone).await?);
+                    effects.extend(card.on_visit_zone(state, &from_zone, zone).await?);
                 }
 
                 state.queue(effects);
@@ -1179,6 +1184,7 @@ impl Effect {
             Effect::SummonCard { card_id, zone, .. } => {
                 let has_charge = state.get_card(card_id).has_ability(state, &Ability::Charge);
                 let card = state.get_card_mut(card_id);
+                let from_zone = card.get_zone().clone();
                 card.set_zone(zone.clone());
 
                 if !has_charge {
@@ -1195,7 +1201,7 @@ impl Effect {
                 let card = state.get_card(card_id);
                 effects.extend(card.on_summon(state)?);
                 effects.extend(card.genesis(state).await?);
-                effects.extend(card.on_visit_zone(state, zone).await?);
+                effects.extend(card.on_visit_zone(state, &from_zone, zone).await?);
 
                 state.queue(effects);
             }
@@ -1592,6 +1598,7 @@ impl Effect {
                 ..
             } => {
                 let card = state.get_card(&card_id);
+                let from_zone = card.get_zone().clone();
                 let mut effects = vec![Effect::MoveCard {
                     player_id: player_id.clone(),
                     card_id: card_id.clone(),
@@ -1621,7 +1628,7 @@ impl Effect {
                     carried.set_region(carried_region.clone());
                 }
                 let card = state.get_card(&card_id);
-                effects.extend(card.on_visit_zone(&state, to_zone).await?);
+                effects.extend(card.on_visit_zone(&state, &from_zone, to_zone).await?);
                 state.queue(effects);
             }
             Effect::RearrangeDeck { spells, sites, .. } => {
@@ -1716,6 +1723,7 @@ impl Effect {
                 state.cards.push(copy);
 
                 let card = state.get_card_mut(&copy_id);
+                let from_zone = card.get_zone().clone();
                 card.set_zone(zone.clone());
                 if !has_charge {
                     card.add_modifier(Ability::SummoningSickness);
@@ -1729,7 +1737,7 @@ impl Effect {
                 let mut effects: Vec<Effect> = vec![];
                 effects.extend(card.on_summon(state)?);
                 effects.extend(card.genesis(state).await?);
-                effects.extend(card.on_visit_zone(state, zone).await?);
+                effects.extend(card.on_visit_zone(state, &from_zone, zone).await?);
                 effects.push(Effect::BanishCard {
                     card_id: copy_id,
                     from: zone.clone(),

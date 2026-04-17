@@ -77,7 +77,12 @@ impl Card for WayfaringPilgrim {
         Ok(())
     }
 
-    async fn on_visit_zone(&self, state: &State, to: &Zone) -> anyhow::Result<Vec<Effect>> {
+    async fn on_visit_zone(
+        &self,
+        state: &State,
+        _from: &Zone,
+        to: &Zone,
+    ) -> anyhow::Result<Vec<Effect>> {
         if !to.is_in_play() {
             return Ok(vec![]);
         }
