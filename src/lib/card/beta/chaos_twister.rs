@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Zone},
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
     effect::Effect,
     game::{PlayerId, pick_card_with_preview},
     query::ZoneQuery,
@@ -24,7 +24,7 @@ impl ChaosTwister {
                 costs: Costs::basic(4, "AA"),
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -83,8 +83,8 @@ impl Card for ChaosTwister {
 
         Ok(vec![
             Effect::MoveCard {
-                player_id: controller_id.clone(),
-                card_id: target_id.clone(),
+                player_id: controller_id,
+                card_id: target_id,
                 from: from_zone,
                 to: landing_zone.clone(),
                 tap: false,
@@ -94,7 +94,7 @@ impl Card for ChaosTwister {
             Effect::DealDamageAllUnitsInZone {
                 player_id: controller_id,
                 zone: landing_zone,
-                from: self.get_id().clone(),
+                from: *self.get_id(),
                 damage: power,
             },
         ])
@@ -102,7 +102,6 @@ impl Card for ChaosTwister {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (ChaosTwister::NAME, |owner_id: PlayerId| {
-        Box::new(ChaosTwister::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (ChaosTwister::NAME, |owner_id: PlayerId| {
+    Box::new(ChaosTwister::new(owner_id))
+});

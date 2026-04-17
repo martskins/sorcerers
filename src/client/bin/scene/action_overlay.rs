@@ -81,10 +81,10 @@ impl ActionOverlay {
 
         Self {
             client,
-            game_id: game_id.clone(),
+            game_id: *game_id,
             card_rects: rects,
             prompt,
-            player_id: player_id.clone(),
+            player_id: *player_id,
             visible: true,
             action,
         }

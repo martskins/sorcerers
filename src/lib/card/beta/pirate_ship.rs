@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     game::PlayerId,
 };
 
@@ -31,7 +31,7 @@ impl PirateShip {
                 costs: Costs::basic(4, "W"),
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -67,7 +67,6 @@ impl Card for PirateShip {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (PirateShip::NAME, |owner_id: PlayerId| {
-        Box::new(PirateShip::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (PirateShip::NAME, |owner_id: PlayerId| {
+    Box::new(PirateShip::new(owner_id))
+});

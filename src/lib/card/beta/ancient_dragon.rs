@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        Ability, AdditionalCost, Card, CardBase, Cost, Costs, Edition, MinionType, Rarity, Region,
-        UnitBase, Zone,
+        Ability, AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Edition, MinionType,
+        Rarity, Region, UnitBase, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_zone_near},
@@ -39,7 +39,7 @@ impl ActivatedAbility for AncientDragonAbility {
         let unit_ids = CardQuery::new()
             .in_zone(&picked_zone)
             .units()
-            .id_not_in(vec![card_id.clone()])
+            .id_not_in(vec![*card_id])
             .all(state);
         let mut effects = vec![];
         for unit_id in unit_ids {
@@ -79,7 +79,7 @@ impl AncientDragon {
                 costs: Costs::basic(7, "FFF"),
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -122,7 +122,7 @@ impl Card for AncientDragon {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (AncientDragon::NAME, |owner_id: PlayerId| {
         Box::new(AncientDragon::new(owner_id))
     });

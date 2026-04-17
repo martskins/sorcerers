@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardType, Cost, Costs, Edition, Rarity, Zone},
+    card::{Card, CardBase, CardConstructor, CardType, Cost, Costs, Edition, Rarity, Zone},
     effect::Effect,
     game::PlayerId,
     state::{CardQuery, State},
@@ -23,7 +23,7 @@ impl Backstab {
                 costs: Costs::basic(2, "F"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -73,7 +73,7 @@ impl Card for Backstab {
             .in_region(&caster_region)
             .tapped()
             .in_zones(&mover.get_zone().get_adjacent())
-            .id_not_in(vec![mover_id.clone()])
+            .id_not_in(vec![mover_id])
             .with_prompt("Backstab: Pick a tapped minion to strike")
             .pick(&controller_id, state, false)
             .await?
@@ -83,13 +83,12 @@ impl Card for Backstab {
 
         Ok(vec![Effect::Strike {
             striker_id: mover_id,
-            target_id: target_id,
+            target_id,
         }])
     }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Backstab::NAME, |owner_id: PlayerId| {
-        Box::new(Backstab::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Backstab::NAME, |owner_id: PlayerId| {
+    Box::new(Backstab::new(owner_id))
+});

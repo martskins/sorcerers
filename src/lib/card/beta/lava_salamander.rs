@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     game::{Element, PlayerId},
 };
 
@@ -34,7 +34,7 @@ impl LavaSalamander {
                 costs: Costs::basic(2, "FF"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -69,7 +69,7 @@ impl Card for LavaSalamander {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (LavaSalamander::NAME, |owner_id: PlayerId| {
         Box::new(LavaSalamander::new(owner_id))
     });

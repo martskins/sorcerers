@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Zone},
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
     effect::Effect,
     game::{PlayerId, pick_card_with_preview},
     state::State,
@@ -23,7 +23,7 @@ impl Browse {
                 costs: Costs::basic(1, "AAA"),
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -102,7 +102,7 @@ impl Card for Browse {
                 &format!("Browse: Pick a spell to place at {}", position_label),
             )
             .await?;
-            ordered_bottom.push(picked_id.clone());
+            ordered_bottom.push(picked_id);
             bottom_spells.retain(|id| id != &picked_id);
         }
 
@@ -127,7 +127,6 @@ impl Card for Browse {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Browse::NAME, |owner_id: PlayerId| {
-        Box::new(Browse::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Browse::NAME, |owner_id: PlayerId| {
+    Box::new(Browse::new(owner_id))
+});

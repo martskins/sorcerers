@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     game::PlayerId,
 };
 
@@ -36,7 +36,7 @@ impl DaperyllVampire {
                 costs: Costs::basic(5, "A"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -72,7 +72,7 @@ impl Card for DaperyllVampire {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (DaperyllVampire::NAME, |owner_id: PlayerId| {
         Box::new(DaperyllVampire::new(owner_id))
     });

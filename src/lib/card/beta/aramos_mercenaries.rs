@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        AdditionalCost, Card, CardBase, Cost, Costs, Edition, MinionType, Rarity, Region, UnitBase,
-        Zone,
+        AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Edition, MinionType, Rarity,
+        Region, UnitBase, Zone,
     },
     game::PlayerId,
     state::CardQuery,
@@ -44,7 +44,7 @@ impl AramosMercenaries {
                 )),
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -80,7 +80,7 @@ impl Card for AramosMercenaries {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (AramosMercenaries::NAME, |owner_id: PlayerId| {
         Box::new(AramosMercenaries::new(owner_id))
     });

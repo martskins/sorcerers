@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Costs, Edition, Rarity, Zone},
+    card::{Ability, Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
     effect::{AbilityCounter, Effect},
     game::{PlayerId, pick_card},
     query::EffectQuery,
@@ -24,7 +24,7 @@ impl MadDash {
                 costs: Costs::basic(2, "F"),
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -57,7 +57,7 @@ impl Card for MadDash {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let mut effects = vec![Effect::DrawCard {
-            player_id: self.get_controller_id(state).clone(),
+            player_id: self.get_controller_id(state),
             count: 1,
         }];
         let cards = state
@@ -65,13 +65,13 @@ impl Card for MadDash {
             .iter()
             .filter(|c| c.is_unit())
             .filter(|c| c.get_controller_id(state) == self.get_controller_id(state))
-            .map(|c| c.get_id().clone())
+            .map(|c| *c.get_id())
             .collect::<Vec<uuid::Uuid>>();
         let prompt = "Mad Dash: Pick a unit to gain Movement +1";
         let picked_card_id =
             pick_card(self.get_controller_id(state), &cards, state, prompt).await?;
         effects.push(Effect::AddAbilityCounter {
-            card_id: picked_card_id.clone(),
+            card_id: picked_card_id,
             counter: AbilityCounter {
                 id: uuid::Uuid::new_v4(),
                 ability: Ability::Movement(1),
@@ -84,7 +84,6 @@ impl Card for MadDash {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (MadDash::NAME, |owner_id: PlayerId| {
-        Box::new(MadDash::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (MadDash::NAME, |owner_id: PlayerId| {
+    Box::new(MadDash::new(owner_id))
+});

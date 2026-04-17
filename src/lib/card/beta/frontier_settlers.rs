@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        AdditionalCost, Card, CardBase, Cost, Costs, Edition, MinionType, Rarity, Region, Rubble,
-        UnitBase, Zone,
+        AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Edition, MinionType, Rarity,
+        Region, Rubble, UnitBase, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_zone},
@@ -61,7 +61,7 @@ impl ActivatedAbility for SettleAction {
         }
 
         let site_id = match state.decks.get(player_id).and_then(|d| d.sites.last()) {
-            Some(id) => id.clone(),
+            Some(id) => *id,
             None => return Ok(vec![]),
         };
 
@@ -77,18 +77,18 @@ impl ActivatedAbility for SettleAction {
         Ok(vec![
             // Draw the top site to hand, then immediately summon it to the chosen zone.
             Effect::DrawSite {
-                player_id: player_id.clone(),
+                player_id: *player_id,
                 count: 1,
             },
             Effect::SummonCard {
-                player_id: player_id.clone(),
+                player_id: *player_id,
                 card_id: site_id,
                 zone: chosen_zone.clone(),
             },
             // Move the settlers to their new home.
             Effect::MoveCard {
-                player_id: player_id.clone(),
-                card_id: card_id.clone(),
+                player_id: *player_id,
+                card_id: *card_id,
                 from: state.get_card(card_id).get_zone().clone(),
                 to: crate::query::ZoneQuery::from_zone(chosen_zone.clone()),
                 tap: false,
@@ -96,7 +96,7 @@ impl ActivatedAbility for SettleAction {
                 through_path: None,
             },
             Effect::SetCardData {
-                card_id: card_id.clone(),
+                card_id: *card_id,
                 data: Box::new(false),
             },
         ])
@@ -132,7 +132,7 @@ impl FrontierSettlers {
                 costs: Costs::basic(2, "EE"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -189,7 +189,7 @@ impl Card for FrontierSettlers {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (FrontierSettlers::NAME, |owner_id: PlayerId| {
         Box::new(FrontierSettlers::new(owner_id))
     });

@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     game::PlayerId,
 };
 
@@ -30,7 +30,7 @@ impl OgreGoons {
                 costs: Costs::basic(3, "F"),
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -62,7 +62,6 @@ impl Card for OgreGoons {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (OgreGoons::NAME, |owner_id: PlayerId| {
-        Box::new(OgreGoons::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (OgreGoons::NAME, |owner_id: PlayerId| {
+    Box::new(OgreGoons::new(owner_id))
+});

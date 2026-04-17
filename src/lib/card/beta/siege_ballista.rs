@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        AdditionalCost, Artifact, ArtifactBase, ArtifactType, Card, CardBase, Cost, Costs, Edition,
-        Rarity, Region, Zone,
+        AdditionalCost, Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor,
+        Cost, Costs, Edition, Rarity, Region, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_card},
@@ -26,7 +26,7 @@ impl ActivatedAbility for TapToDealDamage {
             .ok_or(anyhow::anyhow!("Artifact has no bearer"))?;
         Ok(Cost::ZERO
             .clone()
-            .with_additional(AdditionalCost::tap(&bearer))
+            .with_additional(AdditionalCost::tap(bearer))
             .with_additional(AdditionalCost::tap(
                 CardQuery::new()
                     .in_zone(card.get_zone())
@@ -103,7 +103,7 @@ impl SiegeBallista {
                 costs: Costs::mana_only(3),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -152,7 +152,7 @@ impl Card for SiegeBallista {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (SiegeBallista::NAME, |owner_id: PlayerId| {
         Box::new(SiegeBallista::new(owner_id))
     });

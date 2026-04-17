@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::PlayerId,
     query::{EffectQuery, ZoneQuery},
@@ -36,7 +36,7 @@ impl AwakenedMummies {
                 costs: Costs::basic(1, "F"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -46,7 +46,7 @@ impl AwakenedMummies {
     fn burrow_trigger(&self, state: &State) -> anyhow::Result<DeferredEffect> {
         let controller_id = self.get_controller_id(state);
         let opponent_id = state.get_opponent_id(&controller_id)?;
-        let mummy_id = self.get_id().clone();
+        let mummy_id = *self.get_id();
         let zone = self.get_zone().clone();
 
         Ok(DeferredEffect {
@@ -62,7 +62,7 @@ impl AwakenedMummies {
             }),
             on_effect: Arc::new(
                 move |state: &State, card_id: &uuid::Uuid, _effect: &Effect| {
-                    let mummy_id = mummy_id.clone();
+                    let mummy_id = mummy_id;
                     Box::pin(async move {
                         let mummy = state.get_card(&mummy_id);
                         if mummy.get_region(state) != &Region::Underground {
@@ -71,13 +71,13 @@ impl AwakenedMummies {
 
                         Ok(vec![
                             Effect::SetCardRegion {
-                                card_id: mummy_id.clone(),
+                                card_id: mummy_id,
                                 region: Region::Surface,
                                 tap: false,
                             },
                             Effect::Attack {
-                                attacker_id: mummy_id.clone(),
-                                defender_id: card_id.clone(),
+                                attacker_id: mummy_id,
+                                defender_id: *card_id,
                             },
                         ])
                     })
@@ -117,7 +117,7 @@ impl Card for AwakenedMummies {
     fn on_summon(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![
             Effect::SetCardRegion {
-                card_id: self.get_id().clone(),
+                card_id: *self.get_id(),
                 region: Region::Underground,
                 tap: false,
             },
@@ -129,7 +129,7 @@ impl Card for AwakenedMummies {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (AwakenedMummies::NAME, |owner_id: PlayerId| {
         Box::new(AwakenedMummies::new(owner_id))
     });

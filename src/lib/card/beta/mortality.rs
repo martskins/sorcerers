@@ -1,5 +1,7 @@
 use crate::{
-    card::{Card, CardBase, CardType, Cost, Costs, Edition, MinionType, Rarity, Zone},
+    card::{
+        Card, CardBase, CardConstructor, CardType, Cost, Costs, Edition, MinionType, Rarity, Zone,
+    },
     effect::Effect,
     game::{PlayerId, pick_zone},
     state::{CardQuery, State},
@@ -24,7 +26,7 @@ impl Mortality {
                 costs: Costs::basic(2, "A"),
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -74,7 +76,7 @@ impl Card for Mortality {
             .all(state)
             .iter()
             .map(|minion_id| Effect::BuryCard {
-                card_id: minion_id.clone(),
+                card_id: *minion_id,
             })
             .collect();
         Ok(effects)
@@ -82,7 +84,6 @@ impl Card for Mortality {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Mortality::NAME, |owner_id: PlayerId| {
-        Box::new(Mortality::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Mortality::NAME, |owner_id: PlayerId| {
+    Box::new(Mortality::new(owner_id))
+});

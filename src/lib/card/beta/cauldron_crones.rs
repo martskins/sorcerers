@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{PlayerId, yes_or_no},
     state::{CardQuery, State},
@@ -34,7 +34,7 @@ impl CauldronCrones {
                 costs: Costs::basic(3, "F"),
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -85,7 +85,7 @@ impl Card for CauldronCrones {
             .minions()
             .controlled_by(&controller_id)
             .in_zone(self.get_zone())
-            .id_not_in(vec![self.get_id().clone()])
+            .id_not_in(vec![*self.get_id()])
             .with_prompt("Cauldron Crones: Choose a minion to sacrifice")
             .pick(&controller_id, state, false)
             .await?
@@ -103,7 +103,7 @@ impl Card for CauldronCrones {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (CauldronCrones::NAME, |owner_id: PlayerId| {
         Box::new(CauldronCrones::new(owner_id))
     });

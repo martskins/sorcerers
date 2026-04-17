@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{BaseOption, PlayerId, pick_option, pick_zone},
     query::ZoneQuery,
@@ -35,7 +35,7 @@ impl KiteArcher {
                 costs: Costs::basic(3, "A"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -70,7 +70,7 @@ impl Card for KiteArcher {
     }
 
     async fn after_ranged_attack(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        let options = vec![BaseOption::Yes, BaseOption::No];
+        let options = [BaseOption::Yes, BaseOption::No];
         let option_labels = options.iter().map(|o| o.to_string()).collect::<Vec<_>>();
         let picked_action = pick_option(
             self.get_controller_id(state),
@@ -94,8 +94,8 @@ impl Card for KiteArcher {
         )
         .await?;
         Ok(vec![Effect::MoveCard {
-            player_id: self.get_owner_id().clone(),
-            card_id: self.get_id().clone(),
+            player_id: *self.get_owner_id(),
+            card_id: *self.get_id(),
             from: self.get_zone().clone(),
             to: ZoneQuery::from_zone(picked_zone.clone()),
             tap: false,
@@ -106,7 +106,6 @@ impl Card for KiteArcher {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (KiteArcher::NAME, |owner_id: PlayerId| {
-        Box::new(KiteArcher::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (KiteArcher::NAME, |owner_id: PlayerId| {
+    Box::new(KiteArcher::new(owner_id))
+});

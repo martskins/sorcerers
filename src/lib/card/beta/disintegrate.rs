@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Zone},
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
     effect::Effect,
     game::PlayerId,
     state::{CardQuery, State},
@@ -26,7 +26,7 @@ impl Disintegrate {
                 costs: Costs::basic(3, "FF"),
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -71,21 +71,19 @@ impl Card for Disintegrate {
         };
 
         // Banish the target and every artifact it carries.
-        let mut effects: Vec<Effect> = vec![Effect::BanishCard {
-            card_id: target_id.clone(),
-        }];
+        let mut effects: Vec<Effect> = vec![Effect::BanishCard { card_id: target_id }];
 
         let carried: Vec<uuid::Uuid> = state
             .cards
             .iter()
             .filter(|c| c.is_artifact())
             .filter(|c| c.get_base().bearer == Some(target_id))
-            .map(|c| c.get_id().clone())
+            .map(|c| *c.get_id())
             .collect();
 
         for artifact_id in carried {
             effects.push(Effect::BanishCard {
-                card_id: artifact_id.clone(),
+                card_id: artifact_id,
             });
         }
 
@@ -94,7 +92,6 @@ impl Card for Disintegrate {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Disintegrate::NAME, |owner_id: PlayerId| {
-        Box::new(Disintegrate::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Disintegrate::NAME, |owner_id: PlayerId| {
+    Box::new(Disintegrate::new(owner_id))
+});

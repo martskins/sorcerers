@@ -197,7 +197,7 @@ impl CardToast {
                 // Hover → show large preview on cursor
                 let hovered = ctx
                     .input(|i| i.pointer.hover_pos())
-                    .map_or(false, |p| toast_rect.contains(p));
+                    .is_some_and(|p| toast_rect.contains(p));
 
                 if hovered {
                     render::draw_card_preview(ui, image.as_ref()).ok();

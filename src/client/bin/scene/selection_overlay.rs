@@ -125,12 +125,12 @@ impl SelectionOverlay {
 
         Self {
             client,
-            game_id: game_id.clone(),
+            game_id: *game_id,
             card_rects,
             zone_group_headers,
             prompt: prompt.to_string(),
             behaviour,
-            player_id: player_id.clone(),
+            player_id: *player_id,
             close: false,
             pickable_cards,
         }
@@ -260,7 +260,7 @@ impl SelectionOverlay {
                 self.client.send(ClientMessage::ClickCard {
                     game_id: self.game_id,
                     player_id: self.player_id,
-                    card_id: card_id.clone(),
+                    card_id: *card_id,
                 })?;
                 self.close = true;
             }
@@ -269,7 +269,7 @@ impl SelectionOverlay {
                     self.client.send(ClientMessage::PickCard {
                         game_id: self.game_id,
                         player_id: self.player_id,
-                        card_id: card_id.clone(),
+                        card_id: *card_id,
                     })?;
                     self.close = true;
                 }

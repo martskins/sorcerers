@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Region, Zone},
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::{PlayerId, pick_card},
     query::ZoneQuery,
@@ -24,7 +24,7 @@ impl Bury {
                 costs: Costs::basic(3, "E"),
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -74,8 +74,8 @@ impl Card for Bury {
         let picked_card = state.get_card(&picked_card_id);
 
         Ok(vec![Effect::MoveCard {
-            player_id: self.get_controller_id(state).clone(),
-            card_id: picked_card_id.clone(),
+            player_id: self.get_controller_id(state),
+            card_id: picked_card_id,
             from: picked_card.get_zone().clone(),
             to: ZoneQuery::from_zone(picked_card.get_zone().clone()),
             tap: false,
@@ -86,7 +86,6 @@ impl Card for Bury {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Bury::NAME, |owner_id: PlayerId| {
-        Box::new(Bury::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Bury::NAME, |owner_id: PlayerId| {
+    Box::new(Bury::new(owner_id))
+});

@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Card, CardBase, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, SiteType, Zone,
+        Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, SiteType, Zone,
     },
     effect::Effect,
     game::{PlayerId, Thresholds},
@@ -34,7 +34,7 @@ impl ShiftingSands {
                 costs: Costs::ZERO,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -94,7 +94,7 @@ impl Card for ShiftingSands {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (ShiftingSands::NAME, |owner_id: PlayerId| {
         Box::new(ShiftingSands::new(owner_id))
     });

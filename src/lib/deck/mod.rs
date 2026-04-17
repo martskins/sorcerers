@@ -190,9 +190,9 @@ impl DeckList {
         let mut deck = Deck::new(
             player_id,
             self.name.clone(),
-            site_cards.iter().map(|c| c.get_id().clone()).collect(),
-            spell_cards.iter().map(|c| c.get_id().clone()).collect(),
-            avatar_card.get_id().clone(),
+            site_cards.iter().map(|c| *c.get_id()).collect(),
+            spell_cards.iter().map(|c| *c.get_id()).collect(),
+            *avatar_card.get_id(),
         );
         deck.shuffle();
         let all_cards = std::iter::once(avatar_card)
@@ -222,7 +222,7 @@ impl Deck {
     ) -> Self {
         Deck {
             name,
-            player_id: player_id.clone(),
+            player_id: *player_id,
             sites,
             spells,
             avatar,
@@ -235,7 +235,7 @@ impl Deck {
 
     pub fn draw_site(&mut self) -> Vec<Effect> {
         vec![Effect::DrawSite {
-            player_id: self.player_id.clone(),
+            player_id: self.player_id,
             count: 1,
         }]
     }
@@ -246,7 +246,7 @@ impl Deck {
 
     pub fn draw_spell(&mut self) -> Vec<Effect> {
         vec![Effect::DrawSpell {
-            player_id: self.player_id.clone(),
+            player_id: self.player_id,
             count: 1,
         }]
     }
@@ -302,10 +302,10 @@ impl Deck {
 
         let mut deck = Deck {
             name: decklist.name,
-            player_id: player_id.clone(),
-            spells: spell_cards.iter().map(|c| c.get_id().clone()).collect(),
-            sites: site_cards.iter().map(|c| c.get_id().clone()).collect(),
-            avatar: avatar_card.get_id().clone(),
+            player_id: *player_id,
+            spells: spell_cards.iter().map(|c| *c.get_id()).collect(),
+            sites: site_cards.iter().map(|c| *c.get_id()).collect(),
+            avatar: *avatar_card.get_id(),
         };
         deck.shuffle();
 

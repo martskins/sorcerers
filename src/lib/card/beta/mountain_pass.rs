@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, SiteType,
+        Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, SiteType,
         Zone,
     },
     game::{PlayerId, Thresholds},
@@ -34,7 +34,7 @@ impl MountainPass {
                 costs: Costs::ZERO,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -100,7 +100,6 @@ impl Card for MountainPass {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (MountainPass::NAME, |owner_id: PlayerId| {
-        Box::new(MountainPass::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (MountainPass::NAME, |owner_id: PlayerId| {
+    Box::new(MountainPass::new(owner_id))
+});

@@ -32,8 +32,8 @@ impl PlayerHandComponent {
         rect: Rect,
     ) -> Self {
         Self {
-            game_id: game_id.clone(),
-            player_id: player_id.clone(),
+            game_id: *game_id,
+            player_id: *player_id,
             card_rects: Vec::new(),
             client,
             visible: true,
@@ -122,7 +122,7 @@ impl PlayerHandComponent {
         };
 
         let sites_per_column = 4;
-        let site_columns = ((site_count + sites_per_column - 1) / sites_per_column).max(1);
+        let site_columns = site_count.div_ceil(sites_per_column).max(1);
         let site_spacing_y = (site_dim.y * 0.15).max(20.0);
         let site_spacing_x = 20.0;
 
@@ -149,7 +149,7 @@ impl PlayerHandComponent {
             let rect = Rect::from_min_size(pos2(x, spells_y), spell_dim);
             rects.push(CardRect {
                 rect,
-                is_selected: existing_card.map_or(false, |c| c.is_selected),
+                is_selected: existing_card.is_some_and(|c| c.is_selected),
                 image: existing_card
                     .and_then(|c| c.image.clone())
                     .or_else(|| TextureCache::get_card_texture_blocking(card, ctx)),
@@ -169,7 +169,7 @@ impl PlayerHandComponent {
                 let rect = Rect::from_min_size(pos2(x, y), site_dim);
                 rects.push(CardRect {
                     rect,
-                    is_selected: existing_card.map_or(false, |c| c.is_selected),
+                    is_selected: existing_card.is_some_and(|c| c.is_selected),
                     image: existing_card
                         .and_then(|c| c.image.clone())
                         .or_else(|| TextureCache::get_card_texture_blocking(card, ctx)),
@@ -197,7 +197,7 @@ impl PlayerHandComponent {
         match &data.status {
             Status::Idle => {
                 self.client.send(ClientMessage::ClickCard {
-                    card_id: card_id.clone(),
+                    card_id: *card_id,
                     player_id: self.player_id,
                     game_id: self.game_id,
                 })?;
@@ -214,7 +214,7 @@ impl PlayerHandComponent {
                 self.client.send(ClientMessage::PickCard {
                     player_id: self.player_id,
                     game_id: self.game_id,
-                    card_id: card_id.clone(),
+                    card_id: *card_id,
                 })?;
                 reset_status = true;
             }
@@ -231,7 +231,7 @@ impl PlayerHandComponent {
                 self.client.send(ClientMessage::PickCard {
                     player_id: self.player_id,
                     game_id: self.game_id,
-                    card_id: card_id.clone(),
+                    card_id: *card_id,
                 })?;
                 reset_status = true;
             }

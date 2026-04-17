@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Card, CardBase, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, SiteType, Zone,
+        Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, SiteType, Zone,
     },
     effect::Effect,
     game::{PlayerId, Thresholds, pick_card_with_preview},
@@ -34,7 +34,7 @@ impl Observatory {
                 costs: Costs::ZERO,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -84,7 +84,7 @@ impl Card for Observatory {
             }
         }
 
-        while cards.len() > 0 {
+        while !cards.is_empty() {
             let position = match cards.len() {
                 3 => "third from the top",
                 2 => "second from the top",
@@ -98,14 +98,14 @@ impl Card for Observatory {
                 &format!("Pick a spell to put back into your spellbook, {}", position),
             )
             .await?;
-            spells.push(picked_card_id.clone());
+            spells.push(picked_card_id);
 
             let idx = cards.iter().position(|id| id == &picked_card_id).unwrap();
             cards.remove(idx);
         }
 
         Ok(vec![Effect::RearrangeDeck {
-            spells: spells,
+            spells,
             sites: deck.sites.clone(),
         }])
     }
@@ -120,7 +120,6 @@ impl Card for Observatory {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Observatory::NAME, |owner_id: PlayerId| {
-        Box::new(Observatory::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Observatory::NAME, |owner_id: PlayerId| {
+    Box::new(Observatory::new(owner_id))
+});

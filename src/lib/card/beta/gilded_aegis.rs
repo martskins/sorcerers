@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, Zone,
+        Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, Zone,
     },
     effect::Effect,
     game::PlayerId,
@@ -33,7 +33,7 @@ impl GildedAegis {
                 costs: Costs::mana_only(2),
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -91,10 +91,10 @@ impl Card for GildedAegis {
                 let bearer = state.get_card(&bearer_id);
                 Some(vec![
                     Effect::BanishCard {
-                        card_id: self.get_id().clone(),
+                        card_id: *self.get_id(),
                     },
                     Effect::Heal {
-                        card_id: bearer_id.clone(),
+                        card_id: bearer_id,
                         amount: bearer.get_toughness(state).unwrap_or_default(),
                     },
                 ])
@@ -107,7 +107,6 @@ impl Card for GildedAegis {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (GildedAegis::NAME, |owner_id: PlayerId| {
-        Box::new(GildedAegis::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (GildedAegis::NAME, |owner_id: PlayerId| {
+    Box::new(GildedAegis::new(owner_id))
+});

@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     game::PlayerId,
 };
 
@@ -30,7 +30,7 @@ impl AutumnUnicorn {
                 costs: Costs::basic(3, "EE"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -62,7 +62,7 @@ impl Card for AutumnUnicorn {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (AutumnUnicorn::NAME, |owner_id: PlayerId| {
         Box::new(AutumnUnicorn::new(owner_id))
     });

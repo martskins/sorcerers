@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Zone},
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
     effect::Effect,
     game::{PlayerId, get_knight_move_zones, pick_card, pick_zone},
     state::{CardQuery, State},
@@ -23,7 +23,7 @@ impl FlankingManeuver {
                 costs: Costs::basic(3, "A"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -70,7 +70,7 @@ impl Card for FlankingManeuver {
 
         if source_zones.is_empty() {
             return Ok(vec![Effect::DrawCard {
-                player_id: controller.clone(),
+                player_id: controller,
                 count: 1,
             }]);
         }
@@ -103,7 +103,7 @@ impl Card for FlankingManeuver {
 
         if destinations.is_empty() {
             return Ok(vec![Effect::DrawCard {
-                player_id: controller.clone(),
+                player_id: controller,
                 count: 1,
             }]);
         }
@@ -137,14 +137,14 @@ impl Card for FlankingManeuver {
                 pick_card(&controller, &remaining, state, "Pick an ally to teleport").await?;
             remaining.retain(|id| id != &picked);
             effects.push(Effect::TeleportCard {
-                player_id: controller.clone(),
+                player_id: controller,
                 card_id: picked,
                 to_zone: dest_zone.clone(),
             });
         }
 
         effects.push(Effect::DrawCard {
-            player_id: controller.clone(),
+            player_id: controller,
             count: 1,
         });
         Ok(effects)
@@ -152,7 +152,7 @@ impl Card for FlankingManeuver {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (FlankingManeuver::NAME, |owner_id: PlayerId| {
         Box::new(FlankingManeuver::new(owner_id))
     });

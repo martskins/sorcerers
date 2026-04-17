@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        AdditionalCost, AvatarBase, Card, CardBase, Cost, Costs, Edition, Rarity, Region, UnitBase,
-        Zone,
+        AdditionalCost, AvatarBase, Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity,
+        Region, UnitBase, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, Element, PlayerId},
@@ -33,7 +33,7 @@ impl ActivatedAbility for DealDamageAction {
             .count(1)
             .units()
             .randomised()
-            .in_zone(&zone)
+            .in_zone(zone)
             .all(state)
             .is_empty())
     }
@@ -84,13 +84,13 @@ impl ActivatedAbility for DealDamageAction {
                 _ => acc,
             });
         Ok(vec![Effect::DealDamageToTarget {
-            player_id: player_id.clone(),
+            player_id: *player_id,
             query: CardQuery::new()
                 .count(1)
                 .units()
                 .randomised()
                 .in_zone(&zone),
-            from: card_id.clone(),
+            from: *card_id,
             damage: damage.into(),
         }])
     }
@@ -123,7 +123,7 @@ impl Sparkmage {
                 costs: Costs::ZERO,
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -176,7 +176,6 @@ impl Card for Sparkmage {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Sparkmage::NAME, |owner_id: PlayerId| {
-        Box::new(Sparkmage::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Sparkmage::NAME, |owner_id: PlayerId| {
+    Box::new(Sparkmage::new(owner_id))
+});

@@ -1,5 +1,5 @@
 use crate::{
-    card::{Aura, AuraBase, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
+    card::{Aura, AuraBase, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, Zone},
     game::{Element, PlayerId},
     state::{CardQuery, ContinuousEffect, State},
 };
@@ -23,7 +23,7 @@ impl Crusade {
                 costs: Costs::basic(2, "EE"),
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -90,7 +90,6 @@ impl Card for Crusade {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Crusade::NAME, |owner_id: PlayerId| {
-        Box::new(Crusade::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Crusade::NAME, |owner_id: PlayerId| {
+    Box::new(Crusade::new(owner_id))
+});

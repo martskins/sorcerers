@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::PlayerId,
     state::{CardQuery, State},
@@ -32,7 +32,7 @@ impl BaneWidow {
                 costs: Costs::basic(4, "FF"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -71,7 +71,7 @@ impl Card for BaneWidow {
         let Some(minion_id) = CardQuery::new()
             .minions()
             .in_zone(self.get_zone())
-            .id_not_in(vec![self.get_id().clone()])
+            .id_not_in(vec![*self.get_id()])
             .with_prompt("Bane Widow: Pick a minion to kill")
             .pick(&controller_id, state, false)
             .await?
@@ -83,7 +83,6 @@ impl Card for BaneWidow {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (BaneWidow::NAME, |owner_id: PlayerId| {
-        Box::new(BaneWidow::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (BaneWidow::NAME, |owner_id: PlayerId| {
+    Box::new(BaneWidow::new(owner_id))
+});

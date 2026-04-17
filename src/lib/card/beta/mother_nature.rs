@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{PlayerId, reveal_cards, take_action},
     state::State,
@@ -33,7 +33,7 @@ impl MotherNature {
                 costs: Costs::basic(6, "WWW"),
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -76,7 +76,7 @@ impl Card for MotherNature {
         if let Some(top_card_id) = deck.peek_spell() {
             let player = state.get_player(&controller_id)?;
             let opponent_id = state.get_opponent_id(&controller_id)?;
-            let cards = vec![top_card_id.clone()];
+            let cards = vec![*top_card_id];
             reveal_cards(
                 &opponent_id,
                 &cards,
@@ -101,8 +101,8 @@ impl Card for MotherNature {
 
                 if summon {
                     return Ok(vec![Effect::SummonCard {
-                        player_id: controller_id.clone(),
-                        card_id: top_card_id.clone(),
+                        player_id: controller_id,
+                        card_id: *top_card_id,
                         zone: self.get_zone().clone(),
                     }]);
                 }
@@ -122,7 +122,6 @@ impl Card for MotherNature {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (MotherNature::NAME, |owner_id: PlayerId| {
-        Box::new(MotherNature::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (MotherNature::NAME, |owner_id: PlayerId| {
+    Box::new(MotherNature::new(owner_id))
+});

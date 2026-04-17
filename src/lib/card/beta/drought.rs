@@ -1,5 +1,5 @@
 use crate::{
-    card::{Aura, AuraBase, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
+    card::{Aura, AuraBase, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, Zone},
     game::PlayerId,
     state::{CardQuery, ContinuousEffect, State},
 };
@@ -24,7 +24,7 @@ impl Drought {
                 costs: Costs::basic(4, "FF"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -76,7 +76,6 @@ impl Card for Drought {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Drought::NAME, |owner_id: PlayerId| {
-        Box::new(Drought::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Drought::NAME, |owner_id: PlayerId| {
+    Box::new(Drought::new(owner_id))
+});

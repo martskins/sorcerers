@@ -1,5 +1,5 @@
 use crate::{
-    card::{AvatarBase, Card, CardBase, Costs, Edition, Rarity, Region, Rubble, UnitBase, Zone},
+    card::{AvatarBase, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, Rubble, UnitBase, Zone},
     effect::{Effect, TokenType},
     game::{ActivatedAbility, AvatarAction, Element, PlayerId, pick_card, pick_zone},
     query::ZoneQuery,
@@ -58,7 +58,7 @@ impl ActivatedAbility for GeomancerAbility {
                     .filter(|c| c.is_site())
                     .filter(|c| c.get_zone() == &Zone::Hand)
                     .filter(|c| c.get_owner_id() == player_id)
-                    .map(|c| c.get_id().clone())
+                    .map(|c| *c.get_id())
                     .collect();
                 let prompt = "Pick a site to play";
                 let picked_card_id = pick_card(player_id, &cards, state, prompt).await?;
@@ -68,13 +68,11 @@ impl ActivatedAbility for GeomancerAbility {
                 let zone = pick_zone(player_id, &zones, state, false, prompt).await?;
                 let mut effects: Vec<Effect> = vec![
                     Effect::PlayCard {
-                        player_id: player_id.clone(),
-                        card_id: picked_card_id.clone(),
+                        player_id: *player_id,
+                        card_id: picked_card_id,
                         zone: zone.clone().into(),
                     },
-                    Effect::TapCard {
-                        card_id: card_id.clone(),
-                    },
+                    Effect::TapCard { card_id: *card_id },
                 ];
 
                 let picked_site = state.get_card(&picked_card_id);
@@ -90,11 +88,11 @@ impl ActivatedAbility for GeomancerAbility {
                         .get_zone()
                         .get_adjacent()
                         .iter()
-                        .filter(|z| z.get_site(&state).is_none())
+                        .filter(|z| z.get_site(state).is_none())
                         .filter(|z| z != &&zone)
                         .cloned()
                         .collect::<Vec<Zone>>();
-                    if zones.len() > 0 {
+                    if !zones.is_empty() {
                         let picked_zone = pick_zone(
                             player_id,
                             &zones,
@@ -104,7 +102,7 @@ impl ActivatedAbility for GeomancerAbility {
                         )
                         .await?;
                         effects.push(Effect::SummonToken {
-                            player_id: card.get_controller_id(state).clone(),
+                            player_id: card.get_controller_id(state),
                             token_type: TokenType::Rubble,
                             zone: picked_zone.clone(),
                         });
@@ -124,7 +122,7 @@ impl ActivatedAbility for GeomancerAbility {
                     .iter()
                     .filter(|c| c.get_name() == Rubble::NAME)
                     .filter(|c| adjacent_zones.contains(c.get_zone()))
-                    .map(|c| c.get_id().clone())
+                    .map(|c| *c.get_id())
                     .collect::<Vec<uuid::Uuid>>();
                 let picked_rubble = pick_card(
                     card.get_controller_id(state),
@@ -141,11 +139,11 @@ impl ActivatedAbility for GeomancerAbility {
                 match site_id {
                     Some(site_id) => Ok(vec![
                         Effect::BanishCard {
-                            card_id: rubble.get_id().clone(),
+                            card_id: *rubble.get_id(),
                         },
                         Effect::MoveCard {
-                            player_id: card.get_controller_id(state).clone(),
-                            card_id: site_id.clone(),
+                            player_id: card.get_controller_id(state),
+                            card_id: *site_id,
                             from: Zone::Atlasbook,
                             to: ZoneQuery::from_zone(rubble.get_zone().clone()),
                             tap: false,
@@ -153,7 +151,7 @@ impl ActivatedAbility for GeomancerAbility {
                             through_path: None,
                         },
                         Effect::TapCard {
-                            card_id: rubble.get_id().clone(),
+                            card_id: *rubble.get_id(),
                         },
                     ]),
                     None => Ok(vec![]),
@@ -190,7 +188,7 @@ impl Geomancer {
                 costs: Costs::ZERO,
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -254,7 +252,6 @@ impl Card for Geomancer {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Geomancer::NAME, |owner_id: PlayerId| {
-        Box::new(Geomancer::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Geomancer::NAME, |owner_id: PlayerId| {
+    Box::new(Geomancer::new(owner_id))
+});

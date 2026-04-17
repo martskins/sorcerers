@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, SiteBase, SiteType,
+        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, SiteBase, SiteType,
         UnitBase, Zone,
     },
     effect::Effect,
@@ -36,7 +36,7 @@ impl RimlandNomads {
                 costs: Costs::basic(2, "F"),
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -90,7 +90,7 @@ impl Card for RimlandNomads {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (RimlandNomads::NAME, |owner_id: PlayerId| {
         Box::new(RimlandNomads::new(owner_id))
     });

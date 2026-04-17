@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::PlayerId,
     state::State,
@@ -33,7 +33,7 @@ impl LandSurveyor {
                 costs: Costs::basic(2, "E"),
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -76,7 +76,6 @@ impl Card for LandSurveyor {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (LandSurveyor::NAME, |owner_id: PlayerId| {
-        Box::new(LandSurveyor::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (LandSurveyor::NAME, |owner_id: PlayerId| {
+    Box::new(LandSurveyor::new(owner_id))
+});

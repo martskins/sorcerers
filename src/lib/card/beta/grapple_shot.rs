@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Zone},
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
     effect::Effect,
     game::{CARDINAL_DIRECTIONS, PlayerId, pick_direction, yes_or_no},
     state::{CardQuery, State},
@@ -23,7 +23,7 @@ impl GrappleShot {
                 costs: Costs::basic(3, "A"),
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -79,7 +79,7 @@ impl Card for GrappleShot {
         let mut hit_unit_id = None;
         loop {
             match cur_zone.zone_in_direction(&direction, 1) {
-                Some(Zone::Realm(next_sq)) if next_sq >= 1 && next_sq <= 20 => {
+                Some(Zone::Realm(next_sq)) if (1..=20).contains(&next_sq) => {
                     cur_zone = Zone::Realm(next_sq);
                     let units = cur_zone.get_units(state, None);
                     for unit in units {
@@ -113,7 +113,7 @@ impl Card for GrappleShot {
             if strike {
                 effects.push(Effect::Attack {
                     attacker_id: ally_id,
-                    defender_id: target_id.clone(),
+                    defender_id: *target_id,
                 });
             }
             Ok(effects)
@@ -124,7 +124,6 @@ impl Card for GrappleShot {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (GrappleShot::NAME, |owner_id: PlayerId| {
-        Box::new(GrappleShot::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (GrappleShot::NAME, |owner_id: PlayerId| {
+    Box::new(GrappleShot::new(owner_id))
+});

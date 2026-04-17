@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        ArtifactType, Card, CardBase, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase,
+        ArtifactType, Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase,
         Zone,
     },
     effect::Effect,
@@ -33,7 +33,7 @@ impl Battlefield {
                 costs: Costs::ZERO,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -98,7 +98,6 @@ impl Card for Battlefield {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Battlefield::NAME, |owner_id: PlayerId| {
-        Box::new(Battlefield::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Battlefield::NAME, |owner_id: PlayerId| {
+    Box::new(Battlefield::new(owner_id))
+});

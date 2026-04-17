@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::PlayerId,
     state::{CardQuery, State},
@@ -33,7 +33,7 @@ impl DeathDealer {
                 costs: Costs::basic(7, "FF"),
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -68,7 +68,7 @@ impl Card for DeathDealer {
     }
 
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        let self_id = self.get_id().clone();
+        let self_id = *self.get_id();
 
         Ok(CardQuery::new()
             .minions()
@@ -78,14 +78,13 @@ impl Card for DeathDealer {
             .into_iter()
             .map(|id| Effect::KillMinion {
                 card_id: id,
-                killer_id: self.get_id().clone(),
+                killer_id: *self.get_id(),
             })
             .collect())
     }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (DeathDealer::NAME, |owner_id: PlayerId| {
-        Box::new(DeathDealer::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (DeathDealer::NAME, |owner_id: PlayerId| {
+    Box::new(DeathDealer::new(owner_id))
+});

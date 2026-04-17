@@ -1,9 +1,8 @@
-use rand::seq::IndexedRandom;
-
 use crate::{
     card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     game::PlayerId,
 };
+use rand::seq::IndexedRandom;
 
 #[derive(Debug, Clone)]
 pub struct Frog {
@@ -32,7 +31,7 @@ impl Frog {
                 costs: Costs::ZERO,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: true,
                 ..Default::default()
             },
@@ -62,7 +61,7 @@ impl Card for Frog {
     }
 
     fn get_image_path(&self) -> String {
-        let arts = vec![
+        let arts = [
             "https://d27a44hjr9gen3.cloudfront.net/cards/got-frog-bt-s.png",
             "https://d27a44hjr9gen3.cloudfront.net/cards/bet-frog_blue-bt-s.png",
             "https://d27a44hjr9gen3.cloudfront.net/cards/bet-frog_green-bt-s.png",

@@ -38,20 +38,19 @@ impl TextureCache {
     }
 
     pub fn flush_blocking(ctx: &Context) {
-        if let Some(cache) = TEXTURE_CACHE.get() {
-            if let Ok(mut cache_w) = cache.lock() {
+        if let Some(cache) = TEXTURE_CACHE.get()
+            && let Ok(mut cache_w) = cache.lock() {
                 while let Ok((key, image)) = cache_w.rx.try_recv() {
                     let handle = ctx.load_texture(&key, image, TextureOptions::default());
                     cache_w.handles.insert(key.clone(), handle);
                     cache_w.pending.remove(&key);
                 }
             }
-        }
     }
 
     pub fn get_texture_blocking(path: &str, ctx: &Context) -> Option<TextureHandle> {
-        if let Some(cache) = TEXTURE_CACHE.get() {
-            if let Ok(mut cache_w) = cache.lock() {
+        if let Some(cache) = TEXTURE_CACHE.get()
+            && let Ok(mut cache_w) = cache.lock() {
                 while let Ok((key, image)) = cache_w.rx.try_recv() {
                     let handle = ctx.load_texture(&key, image, TextureOptions::default());
                     cache_w.handles.insert(key.clone(), handle);
@@ -65,24 +64,22 @@ impl TextureCache {
                     let tx = cache_w.tx.clone();
                     let path_owned = path.to_string();
                     std::thread::spawn(move || {
-                        if let Ok(bytes) = std::fs::read(&path_owned) {
-                            if let Ok(img) = image::load_from_memory(&bytes) {
+                        if let Ok(bytes) = std::fs::read(&path_owned)
+                            && let Ok(img) = image::load_from_memory(&bytes) {
                                 let size = [img.width() as usize, img.height() as usize];
                                 let rgba = img.to_rgba8();
                                 let color_image = ColorImage::from_rgba_unmultiplied(size, &rgba);
                                 let _ = tx.send((path_owned, color_image));
                             }
-                        }
                     });
                 }
             }
-        }
         None
     }
 
     pub fn get_card_texture_blocking(card: &CardData, ctx: &Context) -> Option<TextureHandle> {
-        if let Some(cache) = TEXTURE_CACHE.get() {
-            if let Ok(mut cache_w) = cache.lock() {
+        if let Some(cache) = TEXTURE_CACHE.get()
+            && let Ok(mut cache_w) = cache.lock() {
                 while let Ok((key, image)) = cache_w.rx.try_recv() {
                     let handle = ctx.load_texture(&key, image, TextureOptions::default());
                     cache_w.handles.insert(key.clone(), handle);
@@ -103,14 +100,13 @@ impl TextureCache {
                 let save_path = disk_path.clone();
                 if Path::new(&disk_path).exists() {
                     std::thread::spawn(move || {
-                        if let Ok(bytes) = std::fs::read(&save_path) {
-                            if let Ok(img) = image::load_from_memory(&bytes) {
+                        if let Ok(bytes) = std::fs::read(&save_path)
+                            && let Ok(img) = image::load_from_memory(&bytes) {
                                 let size = [img.width() as usize, img.height() as usize];
                                 let rgba = img.to_rgba8();
                                 let color_image = ColorImage::from_rgba_unmultiplied(size, &rgba);
                                 let _ = tx.send((name, color_image));
                             }
-                        }
                     });
                 } else {
                     std::thread::spawn(move || match reqwest::blocking::get(&image_url) {
@@ -131,7 +127,6 @@ impl TextureCache {
                     });
                 }
             }
-        }
         None
     }
 }

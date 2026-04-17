@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Zone},
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
     effect::Effect,
     game::{PlayerId, pick_card_with_options},
     state::State,
@@ -23,7 +23,7 @@ impl CommonSense {
                 costs: Costs::basic(2, "E"),
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -94,7 +94,6 @@ impl Card for CommonSense {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (CommonSense::NAME, |owner_id: PlayerId| {
-        Box::new(CommonSense::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (CommonSense::NAME, |owner_id: PlayerId| {
+    Box::new(CommonSense::new(owner_id))
+});

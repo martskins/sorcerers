@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Ability, Card, CardBase, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone,
+        Ability, Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone,
     },
     game::{PlayerId, Thresholds},
     state::State,
@@ -33,7 +33,7 @@ impl AstralAlcazar {
                 costs: Costs::ZERO,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -84,7 +84,7 @@ impl Card for AstralAlcazar {
             .get_zone()
             .get_units(state, None)
             .iter()
-            .map(|unit| (unit.get_id().clone(), vec![Ability::Voidwalk]))
+            .map(|unit| (*unit.get_id(), vec![Ability::Voidwalk]))
             .collect();
 
         crate::card::AreaModifiers {
@@ -95,7 +95,7 @@ impl Card for AstralAlcazar {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (AstralAlcazar::NAME, |owner_id: PlayerId| {
         Box::new(AstralAlcazar::new(owner_id))
     });

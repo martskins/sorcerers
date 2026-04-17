@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Costs, Edition, MinionType, Rarity, Zone},
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, MinionType, Rarity, Zone},
     effect::Effect,
     game::{PlayerId, pick_zone},
     state::{CardQuery, State},
@@ -24,7 +24,7 @@ impl Exorcism {
                 costs: Costs::basic(2, "E"),
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -82,7 +82,6 @@ impl Card for Exorcism {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Exorcism::NAME, |owner_id: PlayerId| {
-        Box::new(Exorcism::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Exorcism::NAME, |owner_id: PlayerId| {
+    Box::new(Exorcism::new(owner_id))
+});

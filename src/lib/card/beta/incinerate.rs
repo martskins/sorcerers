@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Costs, Edition, MinionType, Rarity, Zone},
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, MinionType, Rarity, Zone},
     effect::Effect,
     game::{PlayerId, pick_zone},
     state::State,
@@ -24,7 +24,7 @@ impl Incinerate {
                 costs: Costs::basic(2, "F"),
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -89,7 +89,6 @@ impl Card for Incinerate {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Incinerate::NAME, |owner_id: PlayerId| {
-        Box::new(Incinerate::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Incinerate::NAME, |owner_id: PlayerId| {
+    Box::new(Incinerate::new(owner_id))
+});

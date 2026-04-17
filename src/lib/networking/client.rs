@@ -24,7 +24,7 @@ pub struct Client {
 impl Clone for Client {
     fn clone(&self) -> Self {
         Client {
-            local_mode: self.local_mode.clone(),
+            local_mode: self.local_mode,
             reader: Arc::clone(&self.reader),
             writer: Arc::clone(&self.writer),
         }

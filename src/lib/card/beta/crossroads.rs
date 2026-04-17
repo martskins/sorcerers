@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone},
+    card::{Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds, pick_card_with_preview},
     state::State,
@@ -31,7 +31,7 @@ impl Crossroads {
                 costs: Costs::ZERO,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -119,7 +119,6 @@ impl Card for Crossroads {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Crossroads::NAME, |owner_id: PlayerId| {
-        Box::new(Crossroads::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Crossroads::NAME, |owner_id: PlayerId| {
+    Box::new(Crossroads::new(owner_id))
+});

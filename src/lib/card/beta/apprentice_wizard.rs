@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::PlayerId,
     state::State,
@@ -33,7 +33,7 @@ impl ApprenticeWizard {
                 costs: Costs::basic(3, "A"),
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -69,14 +69,13 @@ impl Card for ApprenticeWizard {
 
     async fn genesis(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![Effect::DrawSpell {
-            player_id: self.get_owner_id().clone(),
+            player_id: *self.get_owner_id(),
             count: 1,
         }])
     }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (ApprenticeWizard::NAME, |owner_id| {
-        Box::new(ApprenticeWizard::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (ApprenticeWizard::NAME, |owner_id| {
+    Box::new(ApprenticeWizard::new(owner_id))
+});

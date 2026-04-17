@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Costs, Edition, Rarity, Zone},
+    card::{Ability, Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
     effect::Effect,
     game::PlayerId,
     query::EffectQuery,
@@ -25,7 +25,7 @@ impl Geyser {
                 costs: Costs::basic(2, "W"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -70,7 +70,7 @@ impl Card for Geyser {
         let target_site = state.get_card(&target_site_id);
         let minions_there = CardQuery::new()
             .minions()
-            .in_zone(&target_site.get_zone())
+            .in_zone(target_site.get_zone())
             .all(state);
 
         let mut effects = vec![
@@ -105,7 +105,6 @@ impl Card for Geyser {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Geyser::NAME, |owner_id: PlayerId| {
-        Box::new(Geyser::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Geyser::NAME, |owner_id: PlayerId| {
+    Box::new(Geyser::new(owner_id))
+});

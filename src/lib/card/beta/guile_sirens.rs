@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{PlayerId, pick_zone},
     query::ZoneQuery,
@@ -35,7 +35,7 @@ impl GuileSirens {
                 costs: Costs::basic(3, "WW"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -112,7 +112,7 @@ impl Card for GuileSirens {
             } else {
                 pick_zone(
                     &opponent_id,
-                    &closest_zones,
+                    closest_zones,
                     state,
                     true,
                     &format!(
@@ -124,8 +124,8 @@ impl Card for GuileSirens {
             };
 
             return Ok(vec![Effect::MoveCard {
-                player_id: opponent_id.clone(),
-                card_id: picked_card_id.clone(),
+                player_id: opponent_id,
+                card_id: picked_card_id,
                 from: picked_card.get_zone().clone(),
                 to: ZoneQuery::from_zone(picked_zone),
                 tap: false,
@@ -139,7 +139,6 @@ impl Card for GuileSirens {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (GuileSirens::NAME, |owner_id: PlayerId| {
-        Box::new(GuileSirens::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (GuileSirens::NAME, |owner_id: PlayerId| {
+    Box::new(GuileSirens::new(owner_id))
+});

@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone},
+    card::{Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone},
     game::{PlayerId, Thresholds},
 };
 
@@ -28,7 +28,7 @@ impl Steppe {
                 costs: Costs::ZERO,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -70,7 +70,6 @@ impl Card for Steppe {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Steppe::NAME, |owner_id: PlayerId| {
-        Box::new(Steppe::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Steppe::NAME, |owner_id: PlayerId| {
+    Box::new(Steppe::new(owner_id))
+});

@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Zone},
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
     effect::Effect,
     game::{CARDINAL_DIRECTIONS, PlayerId, pick_direction},
     state::{CardQuery, State},
@@ -23,7 +23,7 @@ impl IceLance {
                 costs: Costs::basic(3, "W"),
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -72,14 +72,14 @@ impl Card for IceLance {
                 let qry = CardQuery::new()
                     .in_zone(&zone)
                     .units()
-                    .id_not_in(vec![caster_id.clone()])
+                    .id_not_in(vec![*caster_id])
                     .in_region(caster.get_region(state))
                     .with_prompt("Pick a unit to damage with Ice Lance");
 
                 if let Some(card_id) = qry.pick(&controller_id, state, false).await? {
                     effects.push(Effect::TakeDamage {
                         card_id,
-                        from: caster_id.clone(),
+                        from: *caster_id,
                         damage: dmg,
                         is_strike: false,
                     });
@@ -92,7 +92,6 @@ impl Card for IceLance {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (IceLance::NAME, |owner_id: PlayerId| {
-        Box::new(IceLance::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (IceLance::NAME, |owner_id: PlayerId| {
+    Box::new(IceLance::new(owner_id))
+});

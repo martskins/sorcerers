@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Costs, Edition, Rarity, Zone},
+    card::{Ability, Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
     effect::{AbilityCounter, Effect},
     game::PlayerId,
     state::{CardQuery, State},
@@ -24,7 +24,7 @@ impl Fade {
                 costs: Costs::basic(2, "A"),
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -69,7 +69,7 @@ impl Card for Fade {
         };
 
         let mut effects = vec![Effect::AddAbilityCounter {
-            card_id: target_id.clone(),
+            card_id: target_id,
             counter: AbilityCounter {
                 id: uuid::Uuid::new_v4(),
                 ability: Ability::Stealth,
@@ -81,7 +81,7 @@ impl Card for Fade {
         let target_zone = target.get_zone();
         let on_enemy_site = target_zone
             .get_site(state)
-            .map_or(false, |site| site.get_controller_id(state) != controller_id);
+            .is_some_and(|site| site.get_controller_id(state) != controller_id);
 
         if on_enemy_site {
             effects.push(Effect::DrawCard {
@@ -95,7 +95,6 @@ impl Card for Fade {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Fade::NAME, |owner_id: PlayerId| {
-        Box::new(Fade::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Fade::NAME, |owner_id: PlayerId| {
+    Box::new(Fade::new(owner_id))
+});

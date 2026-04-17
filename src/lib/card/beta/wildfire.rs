@@ -1,5 +1,5 @@
 use crate::{
-    card::{Aura, AuraBase, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
+    card::{Aura, AuraBase, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::{PlayerId, pick_zone},
     query::ZoneQuery,
@@ -26,7 +26,7 @@ impl Wildfire {
                 costs: Costs::basic(4, "F"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -87,7 +87,7 @@ impl Card for Wildfire {
 
         sites_visited.push(to.clone());
         Ok(vec![Effect::SetCardData {
-            card_id: self.get_id().clone(),
+            card_id: *self.get_id(),
             data: Box::new(sites_visited),
         }])
     }
@@ -102,7 +102,7 @@ impl Card for Wildfire {
             .collect::<Vec<Zone>>();
         if zones.is_empty() {
             return Ok(vec![Effect::BuryCard {
-                card_id: self.get_id().clone(),
+                card_id: *self.get_id(),
             }]);
         }
 
@@ -114,8 +114,8 @@ impl Card for Wildfire {
         let prompt = "Wildfire: Pick a zone to move to:";
         let picked_zone = pick_zone(self.get_owner_id(), &zones, state, false, prompt).await?;
         effects.push(Effect::MoveCard {
-            player_id: self.get_owner_id().clone(),
-            card_id: self.get_id().clone(),
+            player_id: *self.get_owner_id(),
+            card_id: *self.get_id(),
             from: self.get_zone().clone(),
             to: ZoneQuery::from_zone(picked_zone.clone()),
             tap: false,
@@ -136,7 +136,6 @@ impl Card for Wildfire {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Wildfire::NAME, |owner_id: PlayerId| {
-        Box::new(Wildfire::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Wildfire::NAME, |owner_id: PlayerId| {
+    Box::new(Wildfire::new(owner_id))
+});

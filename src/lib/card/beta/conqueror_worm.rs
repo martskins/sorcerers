@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::PlayerId,
     state::{CardQuery, State},
@@ -32,7 +32,7 @@ impl ConquerorWorm {
                 costs: Costs::basic(8, "EE"),
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -103,14 +103,14 @@ impl Card for ConquerorWorm {
         }
 
         Ok(vec![Effect::SetController {
-            card_id: site.get_id().clone(),
+            card_id: *site.get_id(),
             player_id: controller_id,
         }])
     }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (ConquerorWorm::NAME, |owner_id: PlayerId| {
         Box::new(ConquerorWorm::new(owner_id))
     });

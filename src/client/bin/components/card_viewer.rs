@@ -40,8 +40,8 @@ impl CardViewerComponent {
         Self {
             viewers: Vec::new(),
             client,
-            game_id: game_id.clone(),
-            player_id: player_id.clone(),
+            game_id: *game_id,
+            player_id: *player_id,
         }
     }
 }
@@ -64,8 +64,8 @@ fn handle_card_click(
             }
 
             client.send(ClientMessage::PickCard {
-                game_id: game_id.clone(),
-                player_id: player_id.clone(),
+                game_id: *game_id,
+                player_id: *player_id,
                 card_id: card.id,
             })?;
 
@@ -86,7 +86,7 @@ fn render_viewer(
     let cards = data
         .cards
         .iter()
-        .filter(|c| c.zone == entry.zone && entry.controller_id.map_or(true, |id| c.owner_id == id))
+        .filter(|c| c.zone == entry.zone && entry.controller_id.is_none_or(|id| c.owner_id == id))
         .collect::<Vec<&CardData>>();
 
     let window_id = egui::Id::new(format!("{:?}-{:?}", entry.zone, entry.controller_id));
@@ -249,7 +249,7 @@ impl Component for CardViewerComponent {
                 self.viewers.push(ViewerEntry {
                     title: title.clone(),
                     zone: zone.clone(),
-                    controller_id: controller_id.clone(),
+                    controller_id: *controller_id,
                     visible: true,
                 });
             }

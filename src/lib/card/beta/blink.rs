@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Zone},
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
     effect::Effect,
     game::PlayerId,
     query::ZoneQuery,
@@ -25,7 +25,7 @@ impl Blink {
                 costs: Costs::basic(2, "A"),
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -63,7 +63,7 @@ impl Card for Blink {
             .units()
             .controlled_by(&controller_id)
             .with_prompt("Blink: Pick an ally to teleport")
-            .id_not_in(vec![caster_id.clone()])
+            .id_not_in(vec![*caster_id])
             .pick(&controller_id, state, false)
             .await?;
         let card_id = card_id.expect("value not to be None");
@@ -76,12 +76,12 @@ impl Card for Blink {
 
         Ok(vec![
             Effect::TeleportCard {
-                player_id: controller_id.clone(),
+                player_id: controller_id,
                 card_id,
                 to_zone: zone,
             },
             Effect::DrawCard {
-                player_id: self.get_controller_id(state).clone(),
+                player_id: self.get_controller_id(state),
                 count: 1,
             },
         ])
@@ -89,7 +89,6 @@ impl Card for Blink {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Blink::NAME, |owner_id: PlayerId| {
-        Box::new(Blink::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Blink::NAME, |owner_id: PlayerId| {
+    Box::new(Blink::new(owner_id))
+});

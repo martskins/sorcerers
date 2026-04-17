@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_action, pick_card},
     query::ZoneQuery,
@@ -31,7 +31,7 @@ impl ActivatedAbility for ClamorOfHarpiesAction {
             ClamorOfHarpiesAction::Strike => {
                 let target_card = state.get_card(card_id);
                 Ok(vec![Effect::take_damage(
-                    &target_card.get_id(),
+                    target_card.get_id(),
                     card_id,
                     state.get_card(card_id).get_power(state)?.unwrap_or(0),
                 )])
@@ -68,7 +68,7 @@ impl ClamorOfHarpies {
                 costs: Costs::basic(4, "F"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -113,7 +113,7 @@ impl Card for ClamorOfHarpies {
                 c.get_power(state).unwrap_or_default().unwrap_or(0)
                     < self.get_power(state).unwrap_or_default().unwrap_or(0)
             })
-            .map(|c| c.get_id().clone())
+            .map(|c| *c.get_id())
             .collect();
         let prompt = "Clamor of Harpies: Pick a unit to bring here";
         let card_id = pick_card(self.get_controller_id(state), &valid_cards, state, prompt).await?;
@@ -132,7 +132,7 @@ impl Card for ClamorOfHarpies {
         )
         .await?;
         let mut effects = vec![Effect::MoveCard {
-            player_id: self.get_controller_id(state).clone(),
+            player_id: self.get_controller_id(state),
             card_id,
             from: card.get_zone().clone(),
             to: ZoneQuery::from_zone(self.get_zone().clone()),
@@ -150,7 +150,7 @@ impl Card for ClamorOfHarpies {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (ClamorOfHarpies::NAME, |owner_id: PlayerId| {
         Box::new(ClamorOfHarpies::new(owner_id))
     });

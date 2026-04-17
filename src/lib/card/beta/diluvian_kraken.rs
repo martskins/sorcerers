@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        Ability, AdditionalCost, Card, CardBase, Cost, Costs, Edition, MinionType, Rarity, Region,
-        UnitBase, Zone,
+        Ability, AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Edition, MinionType,
+        Rarity, Region, UnitBase, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId},
@@ -28,18 +28,18 @@ impl ActivatedAbility for TapToStrikeNearbyMinions {
         let mut effects = CardQuery::new()
             .units()
             .near_to(kraken.get_zone())
-            .id_not_in(vec![kraken.get_id().clone()])
+            .id_not_in(vec![*kraken.get_id()])
             .all(state)
             .into_iter()
             .map(|unit_id| Effect::Strike {
-                striker_id: unit_id.clone(),
-                target_id: kraken.get_id().clone(),
+                striker_id: unit_id,
+                target_id: *kraken.get_id(),
             })
             .collect::<Vec<Effect>>();
 
         effects.push(Effect::MoveCard {
-            player_id: player_id.clone(),
-            card_id: card_id.clone(),
+            player_id: *player_id,
+            card_id: *card_id,
             from: kraken.get_zone().clone(),
             to: ZoneQuery::from_zone(kraken.get_zone().clone()),
             tap: false,
@@ -84,7 +84,7 @@ impl DiluvianKraken {
                 costs: Costs::basic(8, "WWW"),
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -127,7 +127,7 @@ impl Card for DiluvianKraken {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (DiluvianKraken::NAME, |owner_id: PlayerId| {
         Box::new(DiluvianKraken::new(owner_id))
     });

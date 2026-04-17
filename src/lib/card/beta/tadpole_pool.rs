@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone},
+    card::{Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone},
     effect::{Effect, TokenType},
     game::{PlayerId, Thresholds},
     state::State,
@@ -32,7 +32,7 @@ impl TadpolePool {
                 costs: Costs::ZERO,
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -81,17 +81,17 @@ impl Card for TadpolePool {
         let controller_id = self.get_controller_id(state);
         Ok(vec![
             Effect::SummonToken {
-                player_id: controller_id.clone(),
+                player_id: controller_id,
                 token_type: TokenType::Frog,
                 zone: self.get_zone().clone(),
             },
             Effect::SummonToken {
-                player_id: controller_id.clone(),
+                player_id: controller_id,
                 token_type: TokenType::Frog,
                 zone: self.get_zone().clone(),
             },
             Effect::SummonToken {
-                player_id: controller_id.clone(),
+                player_id: controller_id,
                 token_type: TokenType::Frog,
                 zone: self.get_zone().clone(),
             },
@@ -104,7 +104,6 @@ impl Card for TadpolePool {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (TadpolePool::NAME, |owner_id: PlayerId| {
-        Box::new(TadpolePool::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (TadpolePool::NAME, |owner_id: PlayerId| {
+    Box::new(TadpolePool::new(owner_id))
+});

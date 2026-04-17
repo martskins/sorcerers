@@ -54,7 +54,7 @@ impl Server {
                 )
                 .await?;
                 self.streams.insert(player_id, stream);
-                self.addr_to_player.insert(addr.clone(), player_id);
+                self.addr_to_player.insert(*addr, player_id);
             }
             Message::ClientMessage(ClientMessage::JoinQueue {
                 player_id,
@@ -62,19 +62,16 @@ impl Server {
                 deck,
             }) => {
                 let player = Player {
-                    id: player_id.clone(),
+                    id: *player_id,
                     name: player_name.clone(),
                 };
                 self.looking_for_match
-                    .push((player_id.clone(), (player, deck.clone())));
-                self.streams.insert(player_id.clone(), stream);
+                    .push((*player_id, (player, deck.clone())));
+                self.streams.insert(*player_id, stream);
 
-                match self.find_match() {
-                    Some((player1, player2)) => {
-                        self.create_game(&player1.0, player1.1, &player2.0, player2.1)
-                            .await?;
-                    }
-                    None => {}
+                if let Some((player1, player2)) = self.find_match() {
+                    self.create_game(&player1.0, player1.1, &player2.0, player2.1)
+                        .await?;
                 }
             }
             Message::ClientMessage(ClientMessage::Disconnect) => {
@@ -94,16 +91,15 @@ impl Server {
                     .game_players
                     .iter()
                     .find(|(_, players)| players.iter().any(|p| p.id == player_id))
-                    .map(|(game_id, _)| game_id.clone());
-                if let Some(game_id) = game_id {
-                    if let Some(tx) = self.games.get_mut(&game_id) {
+                    .map(|(game_id, _)| *game_id);
+                if let Some(game_id) = game_id
+                    && let Some(tx) = self.games.get_mut(&game_id) {
                         tx.send(ClientMessage::PlayerDisconnected {
-                            game_id: game_id.clone(),
+                            game_id,
                             player_id,
                         })
                         .await?;
                     }
-                }
             }
             Message::ClientMessage(msg) => {
                 let game_id = msg.game_id();
@@ -162,12 +158,12 @@ impl Server {
             ),
         ];
         let mut game = Game::new(players, client_rx, server_tx, server_rx);
-        self.games.insert(game.id.clone(), client_tx);
+        self.games.insert(game.id, client_tx);
         self.game_players
-            .insert(game.id.clone(), vec![player1.clone(), player2.clone()]);
+            .insert(game.id, vec![player1.clone(), player2.clone()]);
 
         // Uncomment this to setup a basic game state for testing
-        let player_one = game.state.players[0].id.clone();
+        let player_one = game.state.players[0].id;
         game.state.cards.push(sorcerers::card::from_name_and_zone(
             AramosMercenaries::NAME,
             &player_one,
@@ -184,7 +180,7 @@ impl Server {
             sorcerers::card::Zone::Hand,
         ));
 
-        let player_two = game.state.players[1].id.clone();
+        let player_two = game.state.players[1].id;
         game.state.cards.push(sorcerers::card::from_name_and_zone(
             "Chain Lightning",
             &player_one,

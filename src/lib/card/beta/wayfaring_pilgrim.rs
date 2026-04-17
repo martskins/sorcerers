@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{BaseAction, PlayerId, pick_option},
     state::State,
@@ -34,7 +34,7 @@ impl WayfaringPilgrim {
                 costs: Costs::basic(2, "F"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -114,7 +114,7 @@ impl Card for WayfaringPilgrim {
             .await?;
 
         effects.push(Effect::SetCardData {
-            card_id: self.get_id().clone(),
+            card_id: *self.get_id(),
             data: Box::new(corners_visited),
         });
         Ok(effects)
@@ -122,7 +122,7 @@ impl Card for WayfaringPilgrim {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (WayfaringPilgrim::NAME, |owner_id: PlayerId| {
         Box::new(WayfaringPilgrim::new(owner_id))
     });

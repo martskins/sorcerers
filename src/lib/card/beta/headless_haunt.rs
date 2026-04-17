@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::PlayerId,
     query::ZoneQuery,
@@ -34,7 +34,7 @@ impl HeadlessHaunt {
                 costs: Costs::basic(3, "AA"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -79,8 +79,8 @@ impl Card for HeadlessHaunt {
         }
 
         Ok(vec![Effect::MoveCard {
-            player_id: self.get_owner_id().clone(),
-            card_id: self.get_id().clone(),
+            player_id: *self.get_owner_id(),
+            card_id: *self.get_id(),
             from: self.get_zone().clone(),
             to: ZoneQuery::random(Zone::all_realm()),
             tap: false,
@@ -91,7 +91,7 @@ impl Card for HeadlessHaunt {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (HeadlessHaunt::NAME, |owner_id: PlayerId| {
         Box::new(HeadlessHaunt::new(owner_id))
     });

@@ -942,7 +942,7 @@ impl DeckBuilder {
             }
         }
 
-        let rows_count = (avatars.len() + avatars_per_row - 1) / avatars_per_row;
+        let rows_count = avatars.len().div_ceil(avatars_per_row);
         y += rows_count as f32 * (avatar_sz.y + 28.0) + 12.0;
 
         // Separator

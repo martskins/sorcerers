@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone},
+    card::{Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone},
     effect::Effect,
     game::{ActivatedAbility, PlayerId, Thresholds},
     state::{CardQuery, State},
@@ -32,9 +32,7 @@ impl ActivatedAbility for DestroyNearbySite {
             return Ok(vec![]);
         };
         Ok(vec![
-            Effect::BuryCard {
-                card_id: card_id.clone(),
-            },
+            Effect::BuryCard { card_id: *card_id },
             Effect::BuryCard {
                 card_id: picked_card_id,
             },
@@ -68,7 +66,7 @@ impl Sinkhole {
                 costs: Costs::ZERO,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -121,7 +119,6 @@ impl Card for Sinkhole {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Sinkhole::NAME, |owner_id: PlayerId| {
-        Box::new(Sinkhole::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Sinkhole::NAME, |owner_id: PlayerId| {
+    Box::new(Sinkhole::new(owner_id))
+});

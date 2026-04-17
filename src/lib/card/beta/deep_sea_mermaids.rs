@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::PlayerId,
     query::ZoneQuery,
@@ -34,7 +34,7 @@ impl DeepSeaMermaids {
                 costs: Costs::basic(3, "WW"),
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -73,8 +73,8 @@ impl Card for DeepSeaMermaids {
         let deck = state.get_player_deck(&controller_id)?;
         if let Some(card_id) = deck.spells.first() {
             return Ok(vec![Effect::MoveCard {
-                player_id: controller_id.clone(),
-                card_id: card_id.clone(),
+                player_id: controller_id,
+                card_id: *card_id,
                 from: Zone::Spellbook,
                 to: ZoneQuery::from_zone(Zone::Hand),
                 tap: false,
@@ -88,7 +88,7 @@ impl Card for DeepSeaMermaids {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (DeepSeaMermaids::NAME, |owner_id: PlayerId| {
         Box::new(DeepSeaMermaids::new(owner_id))
     });

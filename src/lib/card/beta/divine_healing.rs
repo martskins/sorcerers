@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Zone},
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
     effect::Effect,
     game::PlayerId,
     state::State,
@@ -23,7 +23,7 @@ impl DivineHealing {
                 costs: Costs::basic(1, "EEE"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -57,14 +57,14 @@ impl Card for DivineHealing {
     ) -> anyhow::Result<Vec<Effect>> {
         let avatar_id = state.get_player_avatar_id(&self.get_controller_id(state))?;
         Ok(vec![Effect::Heal {
-            card_id: avatar_id.clone(),
+            card_id: avatar_id,
             amount: 7,
         }])
     }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (DivineHealing::NAME, |owner_id: PlayerId| {
         Box::new(DivineHealing::new(owner_id))
     });

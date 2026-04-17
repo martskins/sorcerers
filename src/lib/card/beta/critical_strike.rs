@@ -1,7 +1,7 @@
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use crate::{
-    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Zone},
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
     effect::Effect,
     game::PlayerId,
     query::EffectQuery,
@@ -27,7 +27,7 @@ impl CriticalStrike {
                 costs: Costs::basic(2, "A"),
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -68,7 +68,7 @@ impl Card for CriticalStrike {
                     target: None,
                 },
                 expires_on_effect: Some(EffectQuery::TurnEnd {
-                    player_id: Some(controller_id.clone()),
+                    player_id: Some(controller_id),
                 }),
                 on_effect: Arc::new(
                     move |_state: &State, _card_id: &uuid::Uuid, effect: &Effect| {
@@ -81,8 +81,8 @@ impl Card for CriticalStrike {
                             } = effect
                             {
                                 Ok(vec![Effect::TakeDamage {
-                                    card_id: card_id.clone(),
-                                    from: from.clone(),
+                                    card_id: *card_id,
+                                    from: *from,
                                     damage: *damage,
                                     is_strike: *is_strike,
                                 }])
@@ -102,7 +102,7 @@ impl Card for CriticalStrike {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (CriticalStrike::NAME, |owner_id: PlayerId| {
         Box::new(CriticalStrike::new(owner_id))
     });

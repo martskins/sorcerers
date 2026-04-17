@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Zone},
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
     effect::Effect,
     game::PlayerId,
     state::{CardQuery, State},
@@ -24,7 +24,7 @@ impl FontOfLife {
                 costs: Costs::basic(3, "WW"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -82,7 +82,6 @@ impl Card for FontOfLife {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (FontOfLife::NAME, |owner_id: PlayerId| {
-        Box::new(FontOfLife::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (FontOfLife::NAME, |owner_id: PlayerId| {
+    Box::new(FontOfLife::new(owner_id))
+});

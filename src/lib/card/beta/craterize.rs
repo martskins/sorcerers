@@ -1,5 +1,5 @@
 use crate::{
-    card::{AdditionalCost, Card, CardBase, Cost, Costs, Edition, Rarity, Zone},
+    card::{AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
     effect::Effect,
     game::{Direction, PlayerId, pick_card},
     query::ZoneQuery,
@@ -31,7 +31,7 @@ impl Craterize {
                 ),
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -81,7 +81,7 @@ impl Card for Craterize {
         let picked_site = state.get_card(&picked_site_id);
 
         let mut effects = vec![Effect::BuryCard {
-            card_id: picked_site_id.clone(),
+            card_id: picked_site_id,
         }];
 
         let picked_zone = picked_site.get_zone();
@@ -133,10 +133,10 @@ impl Card for Craterize {
                 }
 
                 effects.push(Effect::DealDamageAllUnitsInZone {
-                    player_id: self.get_controller_id(state).clone(),
+                    player_id: self.get_controller_id(state),
                     zone: ZoneQuery::from_zone(zone),
-                    from: caster_id.clone(),
-                    damage: damage,
+                    from: *caster_id,
+                    damage,
                 });
             }
         }
@@ -146,7 +146,6 @@ impl Card for Craterize {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Craterize::NAME, |owner_id: PlayerId| {
-        Box::new(Craterize::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Craterize::NAME, |owner_id: PlayerId| {
+    Box::new(Craterize::new(owner_id))
+});

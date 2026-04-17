@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, Zone,
+        Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, Zone,
     },
     game::PlayerId,
     state::{ContinuousEffect, State},
@@ -31,7 +31,7 @@ impl FlamingSword {
                 costs: Costs::mana_only(4),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -93,7 +93,6 @@ impl Card for FlamingSword {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (FlamingSword::NAME, |owner_id: PlayerId| {
-        Box::new(FlamingSword::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (FlamingSword::NAME, |owner_id: PlayerId| {
+    Box::new(FlamingSword::new(owner_id))
+});

@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardType, Cost, Costs, Edition, Rarity, Zone},
+    card::{Card, CardBase, CardConstructor, CardType, Cost, Costs, Edition, Rarity, Zone},
     effect::Effect,
     game::PlayerId,
     query::ZoneQuery,
@@ -25,7 +25,7 @@ impl Disenchant {
                 costs: Costs::basic(2, "A"),
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -81,7 +81,6 @@ impl Card for Disenchant {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Disenchant::NAME, |owner_id: PlayerId| {
-        Box::new(Disenchant::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Disenchant::NAME, |owner_id: PlayerId| {
+    Box::new(Disenchant::new(owner_id))
+});

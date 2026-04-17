@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Zone},
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
     effect::Effect,
     game::{BaseOption, PlayerId, force_sync, pick_option},
     state::{CardQuery, State},
@@ -23,7 +23,7 @@ impl ChainLightning {
                 costs: Costs::basic(2, "AA"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -73,8 +73,8 @@ impl Card for ChainLightning {
             };
 
             let effect = Effect::TakeDamage {
-                card_id: picked_card_id.clone(),
-                from: self.get_id().clone(),
+                card_id: picked_card_id,
+                from: *self.get_id(),
                 damage: 2,
                 is_strike: false,
             };
@@ -89,7 +89,7 @@ impl Card for ChainLightning {
 
             if !first_pick {
                 let effect = Effect::ConsumeMana {
-                    player_id: self.get_controller_id(state).clone(),
+                    player_id: self.get_controller_id(state),
                     mana: 2,
                 };
                 effect.apply(&mut local_state).await?;
@@ -103,7 +103,7 @@ impl Card for ChainLightning {
                 break;
             }
 
-            let options = vec![BaseOption::Yes, BaseOption::No];
+            let options = [BaseOption::Yes, BaseOption::No];
             let option_labels = options.iter().map(|o| o.to_string()).collect::<Vec<_>>();
             let picked_option = pick_option(
                 &self.get_controller_id(state),
@@ -126,7 +126,7 @@ impl Card for ChainLightning {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (ChainLightning::NAME, |owner_id: PlayerId| {
         Box::new(ChainLightning::new(owner_id))
     });

@@ -1,5 +1,8 @@
 use crate::{
-    card::{Card, CardBase, Cost, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone},
+    card::{
+        Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, ResourceProvider, Site,
+        SiteBase, Zone,
+    },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, Thresholds},
     query::EffectQuery,
@@ -33,7 +36,7 @@ impl ActivatedAbility for FloodAdjacentSite {
                 },
             },
             Effect::SetCardData {
-                card_id: card_id.clone(),
+                card_id: *card_id,
                 data: Box::new(state.turns),
             },
         ])
@@ -81,7 +84,7 @@ impl Floodplain {
                 costs: Costs::ZERO,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -126,10 +129,10 @@ impl Card for Floodplain {
         &self,
         state: &State,
     ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
-        if let Some(last_activation) = self.last_activation_on_turn {
-            if last_activation == state.turns {
-                return Ok(vec![]);
-            }
+        if let Some(last_activation) = self.last_activation_on_turn
+            && last_activation == state.turns
+        {
+            return Ok(vec![]);
         }
 
         if state.current_player != self.card_base.controller_id {
@@ -153,7 +156,6 @@ impl Card for Floodplain {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Floodplain::NAME, |owner_id: PlayerId| {
-        Box::new(Floodplain::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Floodplain::NAME, |owner_id: PlayerId| {
+    Box::new(Floodplain::new(owner_id))
+});

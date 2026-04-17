@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::PlayerId,
     query::ZoneQuery,
@@ -34,7 +34,7 @@ impl CraveGolem {
                 costs: Costs::mana_only(4),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -80,7 +80,7 @@ impl Card for CraveGolem {
         let target_id = CardQuery::new()
             .minions()
             .within_range_of(self.get_id())
-            .id_not_in(vec![self.get_id().clone()])
+            .id_not_in(vec![*self.get_id()])
             .randomised()
             .count(1)
             .pick(&controller_id, state, false)
@@ -88,7 +88,7 @@ impl Card for CraveGolem {
         match target_id {
             Some(card_id) => {
                 return Ok(vec![Effect::Attack {
-                    attacker_id: self.get_id().clone(),
+                    attacker_id: *self.get_id(),
                     defender_id: card_id,
                 }]);
             }
@@ -131,18 +131,18 @@ impl Card for CraveGolem {
                     }
                 }
 
-                if let Some(target_zone) = first_step {
-                    if target_zone.get_site(state).is_some() {
-                        return Ok(vec![Effect::MoveCard {
-                            card_id: self.get_id().clone(),
-                            to: ZoneQuery::from_zone(target_zone),
-                            player_id: self.get_controller_id(state),
-                            from: self_zone,
-                            tap: true,
-                            region: self.get_region(state).clone(),
-                            through_path: None,
-                        }]);
-                    }
+                if let Some(target_zone) = first_step
+                    && target_zone.get_site(state).is_some()
+                {
+                    return Ok(vec![Effect::MoveCard {
+                        card_id: *self.get_id(),
+                        to: ZoneQuery::from_zone(target_zone),
+                        player_id: self.get_controller_id(state),
+                        from: self_zone,
+                        tap: true,
+                        region: self.get_region(state).clone(),
+                        through_path: None,
+                    }]);
                 }
             }
         }
@@ -152,7 +152,6 @@ impl Card for CraveGolem {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (CraveGolem::NAME, |owner_id: PlayerId| {
-        Box::new(CraveGolem::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (CraveGolem::NAME, |owner_id: PlayerId| {
+    Box::new(CraveGolem::new(owner_id))
+});

@@ -1,5 +1,5 @@
 use crate::{
-    card::{Aura, AuraBase, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
+    card::{Aura, AuraBase, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::PlayerId,
     state::{CardQuery, ContinuousEffect, State},
@@ -24,7 +24,7 @@ impl AtlanteanFate {
                 costs: Costs::basic(5, "WW"),
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -44,7 +44,7 @@ impl AtlanteanFate {
             .filter(|c| c.is_site())
             .filter(|c| c.get_zone().is_in_play())
             .filter(|c| c.get_base().rarity != Rarity::Ordinary)
-            .map(|c| c.get_id().clone())
+            .map(|c| *c.get_id())
             .collect()
     }
 }
@@ -108,7 +108,7 @@ impl Card for AtlanteanFate {
                 }
 
                 effects.push(Effect::SetCardRegion {
-                    card_id: card.get_id().clone(),
+                    card_id: *card.get_id(),
                     region: Region::Underwater,
                     tap: false,
                 });
@@ -120,7 +120,7 @@ impl Card for AtlanteanFate {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (AtlanteanFate::NAME, |owner_id: PlayerId| {
         Box::new(AtlanteanFate::new(owner_id))
     });

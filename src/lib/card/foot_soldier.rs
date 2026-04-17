@@ -1,9 +1,8 @@
-use rand::seq::IndexedRandom;
-
 use crate::{
     card::{Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     game::PlayerId,
 };
+use rand::seq::IndexedRandom;
 
 #[derive(Debug, Clone)]
 pub struct FootSoldier {
@@ -31,7 +30,7 @@ impl FootSoldier {
                 costs: Costs::ZERO,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: true,
                 ..Default::default()
             },
@@ -61,7 +60,7 @@ impl Card for FootSoldier {
     }
 
     fn get_image_path(&self) -> String {
-        let arts = vec![
+        let arts = [
             "https://d27a44hjr9gen3.cloudfront.net/cards/pro-foot_soldier_english-d-s.png",
             "https://d27a44hjr9gen3.cloudfront.net/cards/pro-foot_soldier_saracen-d-s.png",
             "https://d27a44hjr9gen3.cloudfront.net/cards/bet-foot_soldier_1-bt-s.png",

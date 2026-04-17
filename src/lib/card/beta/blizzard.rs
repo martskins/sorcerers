@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Ability, AreaModifiers, Aura, AuraBase, Card, CardBase, Costs, Edition, Rarity, Region,
+        Ability, AreaModifiers, Aura, AuraBase, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region,
         Zone,
     },
     effect::Effect,
@@ -27,7 +27,7 @@ impl Blizzard {
                 costs: Costs::basic(1, "W"),
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -94,17 +94,12 @@ impl Card for Blizzard {
             .iter()
             .filter(|zone| zone.get_site(state).is_some())
             .flat_map(|zone| zone.get_units(state, None))
-            .map(|minion| minion.get_id().clone())
+            .map(|minion| *minion.get_id())
             .collect();
         AreaModifiers {
             grants_abilities: minions
                 .iter()
-                .map(|id| {
-                    (
-                        id.clone(),
-                        vec![Ability::Unattackable, Ability::Uninterceptable],
-                    )
-                })
+                .map(|id| (*id, vec![Ability::Unattackable, Ability::Uninterceptable]))
                 .collect(),
             ..Default::default()
         }
@@ -112,7 +107,6 @@ impl Card for Blizzard {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Blizzard::NAME, |owner_id: PlayerId| {
-        Box::new(Blizzard::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Blizzard::NAME, |owner_id: PlayerId| {
+    Box::new(Blizzard::new(owner_id))
+});

@@ -122,22 +122,20 @@ pub async fn pick_card_with_options(
         .get_sender()
         .send(ServerMessage::PickCard {
             prompt: prompt.to_string(),
-            player_id: player_id.as_ref().clone(),
+            player_id: *player_id.as_ref(),
             cards: card_ids.to_vec(),
             pickable_cards: pickable_card_ids.to_vec(),
             preview: true,
         })
         .await?;
 
-    let card = loop {
-        let msg = state.get_receiver().recv().await?;
-        match msg {
-            ClientMessage::PickCard { card_id, .. } => break Ok(card_id),
-            ClientMessage::PlayerDisconnected { player_id, .. } => {
-                return Err(GameError::PlayerDisconnected(player_id.clone()).into());
-            }
-            _ => unreachable!(),
+    let msg = state.get_receiver().recv().await?;
+    let card = match msg {
+        ClientMessage::PickCard { card_id, .. } => Ok(card_id),
+        ClientMessage::PlayerDisconnected { player_id, .. } => {
+            Err(GameError::PlayerDisconnected(player_id).into())
         }
+        _ => unreachable!(),
     };
 
     if block_opponent {
@@ -157,24 +155,22 @@ pub async fn distribute_damage(
     state
         .get_sender()
         .send(ServerMessage::DistributeDamage {
-            player_id: player_id.as_ref().clone(),
-            attacker: attacker.clone(),
+            player_id: *player_id.as_ref(),
+            attacker: *attacker,
             defenders: defenders.to_vec(),
             damage: amount,
         })
         .await?;
 
-    loop {
-        let msg = state.get_receiver().recv().await?;
-        match msg {
-            ClientMessage::ResolveCombat {
-                damage_assignment, ..
-            } => break Ok(damage_assignment),
-            ClientMessage::PlayerDisconnected { player_id, .. } => {
-                return Err(GameError::PlayerDisconnected(player_id.clone()).into());
-            }
-            _ => unreachable!(),
+    let msg = state.get_receiver().recv().await?;
+    match msg {
+        ClientMessage::ResolveCombat {
+            damage_assignment, ..
+        } => Ok(damage_assignment),
+        ClientMessage::PlayerDisconnected { player_id, .. } => {
+            Err(GameError::PlayerDisconnected(player_id).into())
         }
+        _ => unreachable!(),
     }
 }
 
@@ -188,21 +184,19 @@ pub async fn pick_cards(
         .get_sender()
         .send(ServerMessage::PickCards {
             prompt: prompt.to_string(),
-            player_id: player_id.as_ref().clone(),
+            player_id: *player_id.as_ref(),
             cards: card_ids.to_vec(),
             preview: false,
         })
         .await?;
 
-    loop {
-        let msg = state.get_receiver().recv().await?;
-        match msg {
-            ClientMessage::PickCards { card_ids, .. } => break Ok(card_ids),
-            ClientMessage::PlayerDisconnected { player_id, .. } => {
-                return Err(GameError::PlayerDisconnected(player_id.clone()).into());
-            }
-            _ => unreachable!(),
+    let msg = state.get_receiver().recv().await?;
+    match msg {
+        ClientMessage::PickCards { card_ids, .. } => Ok(card_ids),
+        ClientMessage::PlayerDisconnected { player_id, .. } => {
+            Err(GameError::PlayerDisconnected(player_id).into())
         }
+        _ => unreachable!(),
     }
 }
 
@@ -216,7 +210,7 @@ pub async fn reveal_cards(
         .get_sender()
         .send(ServerMessage::RevealCards {
             prompt: prompt.to_string(),
-            player_id: player_id.as_ref().clone(),
+            player_id: *player_id.as_ref(),
             cards: preview_cards.to_vec(),
             action: None,
         })
@@ -236,21 +230,19 @@ pub async fn take_action(
         .get_sender()
         .send(ServerMessage::RevealCards {
             prompt: prompt.to_string(),
-            player_id: player_id.as_ref().clone(),
+            player_id: *player_id.as_ref(),
             cards: preview_cards.to_vec(),
             action: Some(action.to_string()),
         })
         .await?;
 
-    loop {
-        let msg = state.get_receiver().recv().await?;
-        match msg {
-            ClientMessage::ResolveAction { take_action, .. } => break Ok(take_action),
-            ClientMessage::PlayerDisconnected { player_id, .. } => {
-                return Err(GameError::PlayerDisconnected(player_id.clone()).into());
-            }
-            n => unreachable!("expected ResolveAction, got {:?}", n),
+    let msg = state.get_receiver().recv().await?;
+    match msg {
+        ClientMessage::ResolveAction { take_action, .. } => Ok(take_action),
+        ClientMessage::PlayerDisconnected { player_id, .. } => {
+            Err(GameError::PlayerDisconnected(player_id).into())
         }
+        n => unreachable!("expected ResolveAction, got {:?}", n),
     }
 }
 pub async fn pick_card(
@@ -265,22 +257,20 @@ pub async fn pick_card(
         .get_sender()
         .send(ServerMessage::PickCard {
             prompt: prompt.to_string(),
-            player_id: player_id.as_ref().clone(),
+            player_id: *player_id.as_ref(),
             cards: card_ids.to_vec(),
             pickable_cards: card_ids.to_vec(),
             preview: false,
         })
         .await?;
 
-    let card = loop {
-        let msg = state.get_receiver().recv().await?;
-        match msg {
-            ClientMessage::PickCard { card_id, .. } => break Ok(card_id),
-            ClientMessage::PlayerDisconnected { player_id, .. } => {
-                return Err(GameError::PlayerDisconnected(player_id.clone()).into());
-            }
-            _ => unreachable!(),
+    let msg = state.get_receiver().recv().await?;
+    let card = match msg {
+        ClientMessage::PickCard { card_id, .. } => Ok(card_id),
+        ClientMessage::PlayerDisconnected { player_id, .. } => {
+            Err(GameError::PlayerDisconnected(player_id).into())
         }
+        _ => unreachable!(),
     };
 
     resume(&opponent_id, state).await?;
@@ -298,21 +288,19 @@ pub async fn pick_action<'a>(
         .get_sender()
         .send(ServerMessage::PickAction {
             prompt: prompt.to_string(),
-            player_id: player_id.as_ref().clone(),
+            player_id: *player_id.as_ref(),
             actions: actions.iter().map(|c| c.get_name().to_string()).collect(),
-            anchor_on_cursor: anchor_on_cursor,
+            anchor_on_cursor,
         })
         .await?;
 
-    loop {
-        let msg = state.get_receiver().recv().await?;
-        match msg {
-            ClientMessage::PickAction { action_idx, .. } => break Ok(&actions[action_idx]),
-            ClientMessage::PlayerDisconnected { player_id, .. } => {
-                return Err(GameError::PlayerDisconnected(player_id.clone()).into());
-            }
-            _ => panic!("expected PickAction, got {:?}", msg),
+    let msg = state.get_receiver().recv().await?;
+    match msg {
+        ClientMessage::PickAction { action_idx, .. } => Ok(&actions[action_idx]),
+        ClientMessage::PlayerDisconnected { player_id, .. } => {
+            Err(GameError::PlayerDisconnected(player_id).into())
         }
+        _ => panic!("expected PickAction, got {:?}", msg),
     }
 }
 
@@ -320,7 +308,7 @@ pub async fn resume(player_id: &PlayerId, state: &State) -> anyhow::Result<()> {
     state
         .get_sender()
         .send(ServerMessage::Resume {
-            player_id: player_id.clone(),
+            player_id: *player_id,
         })
         .await?;
 
@@ -335,7 +323,7 @@ pub async fn wait_for_opponent(
     state
         .get_sender()
         .send(ServerMessage::Wait {
-            player_id: player_id.clone(),
+            player_id: *player_id,
             prompt: prompt.as_ref().to_string(),
         })
         .await?;
@@ -351,7 +339,7 @@ pub async fn yes_or_no(
     let opponent_id = state.get_opponent_id(player_id.as_ref())?;
     wait_for_opponent(&opponent_id, state, "Wait for opponent...").await?;
 
-    let options = vec![BaseOption::Yes, BaseOption::No];
+    let options = [BaseOption::Yes, BaseOption::No];
     let option_labels = options
         .iter()
         .map(|o| o.to_string())
@@ -373,21 +361,19 @@ pub async fn pick_amount(
         .get_sender()
         .send(ServerMessage::PickAmount {
             prompt: prompt.as_ref().to_string(),
-            player_id: player_id.as_ref().clone(),
+            player_id: *player_id.as_ref(),
             min_amount,
             max_amount,
         })
         .await?;
 
-    loop {
-        let msg = state.get_receiver().recv().await?;
-        match msg {
-            ClientMessage::PickAmount { amount, .. } => break Ok(amount),
-            ClientMessage::PlayerDisconnected { player_id, .. } => {
-                return Err(GameError::PlayerDisconnected(player_id.clone()).into());
-            }
-            _ => panic!("expected PickAction, got {:?}", msg),
+    let msg = state.get_receiver().recv().await?;
+    match msg {
+        ClientMessage::PickAmount { amount, .. } => Ok(amount),
+        ClientMessage::PlayerDisconnected { player_id, .. } => {
+            Err(GameError::PlayerDisconnected(player_id).into())
         }
+        _ => panic!("expected PickAction, got {:?}", msg),
     }
 }
 
@@ -402,21 +388,19 @@ pub async fn pick_option(
         .get_sender()
         .send(ServerMessage::PickAction {
             prompt: prompt.as_ref().to_string(),
-            player_id: player_id.as_ref().clone(),
+            player_id: *player_id.as_ref(),
             actions: options.to_vec(),
             anchor_on_cursor,
         })
         .await?;
 
-    loop {
-        let msg = state.get_receiver().recv().await?;
-        match msg {
-            ClientMessage::PickAction { action_idx, .. } => break Ok(action_idx),
-            ClientMessage::PlayerDisconnected { player_id, .. } => {
-                return Err(GameError::PlayerDisconnected(player_id.clone()).into());
-            }
-            _ => panic!("expected PickAction, got {:?}", msg),
+    let msg = state.get_receiver().recv().await?;
+    match msg {
+        ClientMessage::PickAction { action_idx, .. } => Ok(action_idx),
+        ClientMessage::PlayerDisconnected { player_id, .. } => {
+            Err(GameError::PlayerDisconnected(player_id).into())
         }
+        _ => panic!("expected PickAction, got {:?}", msg),
     }
 }
 
@@ -430,20 +414,18 @@ pub async fn pick_path(
         .get_sender()
         .send(ServerMessage::PickPath {
             prompt: prompt.to_string(),
-            player_id: player_id.as_ref().clone(),
+            player_id: *player_id.as_ref(),
             paths: paths.to_vec(),
         })
         .await?;
 
-    loop {
-        let msg = state.get_receiver().recv().await?;
-        match msg {
-            ClientMessage::PickPath { path, .. } => break Ok(path),
-            ClientMessage::PlayerDisconnected { player_id, .. } => {
-                return Err(GameError::PlayerDisconnected(player_id.clone()).into());
-            }
-            _ => panic!("expected PickPath, got {:?}", msg),
+    let msg = state.get_receiver().recv().await?;
+    match msg {
+        ClientMessage::PickPath { path, .. } => Ok(path),
+        ClientMessage::PlayerDisconnected { player_id, .. } => {
+            Err(GameError::PlayerDisconnected(player_id).into())
         }
+        _ => panic!("expected PickPath, got {:?}", msg),
     }
 }
 
@@ -463,20 +445,18 @@ pub async fn pick_zone_group(
         .get_sender()
         .send(ServerMessage::PickZoneGroup {
             prompt: prompt.to_string(),
-            player_id: player_id.as_ref().clone(),
+            player_id: *player_id.as_ref(),
             groups: groups.to_vec(),
         })
         .await?;
 
-    let zone = loop {
-        let msg = state.get_receiver().recv().await?;
-        match msg {
-            ClientMessage::PickZoneGroup { group_idx, .. } => break Ok(groups[group_idx].clone()),
-            ClientMessage::PlayerDisconnected { player_id, .. } => {
-                return Err(GameError::PlayerDisconnected(player_id.clone()).into());
-            }
-            _ => panic!("expected PickSquare, got {:?}", msg),
+    let msg = state.get_receiver().recv().await?;
+    let zone = match msg {
+        ClientMessage::PickZoneGroup { group_idx, .. } => Ok(groups[group_idx].clone()),
+        ClientMessage::PlayerDisconnected { player_id, .. } => {
+            Err(GameError::PlayerDisconnected(player_id).into())
         }
+        _ => panic!("expected PickSquare, got {:?}", msg),
     };
 
     if block_opponent {
@@ -502,20 +482,18 @@ pub async fn pick_zone_near(
         .get_sender()
         .send(ServerMessage::PickZone {
             prompt: prompt.to_string(),
-            player_id: player_id.as_ref().clone(),
+            player_id: *player_id.as_ref(),
             zones: zone.get_nearby(),
         })
         .await?;
 
-    let zone = loop {
-        let msg = state.get_receiver().recv().await?;
-        match msg {
-            ClientMessage::PickZone { zone, .. } => break Ok(zone),
-            ClientMessage::PlayerDisconnected { player_id, .. } => {
-                return Err(GameError::PlayerDisconnected(player_id.clone()).into());
-            }
-            _ => panic!("expected PickSquare, got {:?}", msg),
+    let msg = state.get_receiver().recv().await?;
+    let zone = match msg {
+        ClientMessage::PickZone { zone, .. } => Ok(zone),
+        ClientMessage::PlayerDisconnected { player_id, .. } => {
+            Err(GameError::PlayerDisconnected(player_id).into())
         }
+        _ => panic!("expected PickSquare, got {:?}", msg),
     };
 
     if block_opponent {
@@ -541,20 +519,18 @@ pub async fn pick_zone(
         .get_sender()
         .send(ServerMessage::PickZone {
             prompt: prompt.to_string(),
-            player_id: player_id.as_ref().clone(),
+            player_id: *player_id.as_ref(),
             zones: zones.to_vec(),
         })
         .await?;
 
-    let zone = loop {
-        let msg = state.get_receiver().recv().await?;
-        match msg {
-            ClientMessage::PickZone { zone, .. } => break Ok(zone),
-            ClientMessage::PlayerDisconnected { player_id, .. } => {
-                return Err(GameError::PlayerDisconnected(player_id.clone()).into());
-            }
-            _ => panic!("expected PickSquare, got {:?}", msg),
+    let msg = state.get_receiver().recv().await?;
+    let zone = match msg {
+        ClientMessage::PickZone { zone, .. } => Ok(zone),
+        ClientMessage::PlayerDisconnected { player_id, .. } => {
+            Err(GameError::PlayerDisconnected(player_id).into())
         }
+        _ => panic!("expected PickSquare, got {:?}", msg),
     };
 
     if block_opponent {
@@ -579,11 +555,11 @@ pub async fn force_sync(player_id: impl AsRef<PlayerId>, state: &State) -> anyho
             state
                 .get_sender()
                 .send(ServerMessage::ForceSync {
-                    player_id: player_id.as_ref().clone(),
-                    cards: cards,
-                    resources: resources,
-                    current_player: current_player,
-                    health: health,
+                    player_id: *player_id.as_ref(),
+                    cards,
+                    resources,
+                    current_player,
+                    health,
                 })
                 .await?;
         }
@@ -603,24 +579,22 @@ pub async fn pick_direction(
         .get_sender()
         .send(ServerMessage::PickAction {
             prompt: prompt.to_string(),
-            player_id: player_id.as_ref().clone(),
+            player_id: *player_id.as_ref(),
             actions: directions.iter().map(|c| c.get_name()).collect(),
             anchor_on_cursor: false,
         })
         .await?;
 
     let board_flipped = &state.player_one != player_id.as_ref();
-    loop {
-        let msg = state.get_receiver().recv().await?;
-        match msg {
-            ClientMessage::PickAction { action_idx, .. } => {
-                break Ok(directions[action_idx].normalise(board_flipped));
-            }
-            ClientMessage::PlayerDisconnected { player_id, .. } => {
-                return Err(GameError::PlayerDisconnected(player_id.clone()).into());
-            }
-            _ => panic!("expected PickAction, got {:?}", msg),
+    let msg = state.get_receiver().recv().await?;
+    match msg {
+        ClientMessage::PickAction { action_idx, .. } => {
+            Ok(directions[action_idx].normalise(board_flipped))
         }
+        ClientMessage::PlayerDisconnected { player_id, .. } => {
+            Err(GameError::PlayerDisconnected(player_id).into())
+        }
+        _ => panic!("expected PickAction, got {:?}", msg),
     }
 }
 
@@ -657,9 +631,9 @@ impl Sum for Thresholds {
     }
 }
 
-impl Into<Thresholds> for &str {
-    fn into(self) -> Thresholds {
-        Thresholds::parse(self)
+impl From<&str> for Thresholds {
+    fn from(val: &str) -> Self {
+        Thresholds::parse(val)
     }
 }
 
@@ -711,11 +685,11 @@ pub struct Resources {
 }
 
 pub fn are_adjacent(square1: &Zone, square2: &Zone) -> bool {
-    get_adjacent_zones(square1).contains(&square2)
+    get_adjacent_zones(square1).contains(square2)
 }
 
 pub fn are_nearby(square1: &Zone, square2: &Zone) -> bool {
-    get_nearby_zones(square1).contains(&square2)
+    get_nearby_zones(square1).contains(square2)
 }
 
 pub fn get_nearby_zones(zone: &Zone) -> Vec<Zone> {
@@ -769,10 +743,11 @@ pub fn get_nearby_zones(zone: &Zone) -> Vec<Zone> {
             }
             // Add intersections that share at least one square (excluding self)
             for intersection in Zone::all_intersections() {
-                if let Zone::Intersection(isqs) = &intersection {
-                    if isqs != sqs && isqs.iter().any(|sq| sqs.contains(sq)) {
-                        nearby.push(intersection.clone());
-                    }
+                if let Zone::Intersection(isqs) = &intersection
+                    && isqs != sqs
+                    && isqs.iter().any(|sq| sqs.contains(sq))
+                {
+                    nearby.push(intersection.clone());
                 }
             }
             // Remove duplicates
@@ -949,11 +924,11 @@ pub enum BaseOption {
     No,
 }
 
-impl ToString for BaseOption {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for BaseOption {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            BaseOption::Yes => "Yes".to_string(),
-            BaseOption::No => "No".to_string(),
+            BaseOption::Yes => write!(f, "Yes"),
+            BaseOption::No => write!(f, "No"),
         }
     }
 }
@@ -996,11 +971,11 @@ impl BaseAction {
     pub async fn on_select(&self, player_id: &PlayerId, _: &State) -> anyhow::Result<Vec<Effect>> {
         match self {
             BaseAction::DrawSite => Ok(vec![Effect::DrawSite {
-                player_id: player_id.clone(),
+                player_id: *player_id,
                 count: 1,
             }]),
             BaseAction::DrawSpell => Ok(vec![Effect::DrawSpell {
-                player_id: player_id.clone(),
+                player_id: *player_id,
                 count: 1,
             }]),
             BaseAction::Cancel => Ok(vec![]),
@@ -1045,7 +1020,7 @@ impl ActivatedAbility for AvatarAction {
                     .filter(|c| c.is_site())
                     .filter(|c| c.get_zone() == &Zone::Hand)
                     .filter(|c| c.get_owner_id() == player_id)
-                    .map(|c| c.get_id().clone())
+                    .map(|c| *c.get_id())
                     .collect();
                 let prompt = "Pick a site to play";
                 let picked_card_id = pick_card(player_id, &cards, state, prompt).await?;
@@ -1054,13 +1029,13 @@ impl ActivatedAbility for AvatarAction {
                 let prompt = "Pick a zone to play the site";
                 let zone = pick_zone(player_id, &zones, state, false, prompt).await?;
                 Ok(vec![Effect::PlayCard {
-                    player_id: player_id.clone(),
-                    card_id: picked_card_id.clone(),
+                    player_id: *player_id,
+                    card_id: picked_card_id,
                     zone: zone.clone().into(),
                 }])
             }
             AvatarAction::DrawSite => Ok(vec![Effect::DrawSite {
-                player_id: player_id.clone(),
+                player_id: *player_id,
                 count: 1,
             }]),
         }
@@ -1136,7 +1111,7 @@ impl ActivatedAbility for UnitAction {
                 let prompt = "Pick a unit to attack";
                 let picked_card_id = pick_card(player_id, &cards, state, prompt).await?;
                 Ok(vec![Effect::RangedStrike {
-                    striker_id: card_id.clone(),
+                    striker_id: *card_id,
                     target_id: picked_card_id,
                 }])
             }
@@ -1157,7 +1132,7 @@ impl ActivatedAbility for UnitAction {
                     wait_for_opponent(
                         player_id,
                         state,
-                        format!("Wait for opponent to choose whether to defend"),
+                        "Wait for opponent to choose whether to defend".to_string(),
                     )
                     .await?;
 
@@ -1185,7 +1160,7 @@ impl ActivatedAbility for UnitAction {
                             // If no defenders are picked, proceed with the original attack.
                             0 => {
                                 return Ok(vec![Effect::Attack {
-                                    attacker_id: card_id.clone(),
+                                    attacker_id: *card_id,
                                     defender_id: picked_card_id,
                                 }]);
                             }
@@ -1198,12 +1173,12 @@ impl ActivatedAbility for UnitAction {
                                     // Return the attack effect first so that MoveCard is applied
                                     // before attack and the attack happens on the correct zone.
                                     Effect::Attack {
-                                        attacker_id: card_id.clone(),
-                                        defender_id: defender_id.clone(),
+                                        attacker_id: *card_id,
+                                        defender_id,
                                     },
                                     Effect::MoveCard {
-                                        player_id: opponent.id.clone(),
-                                        card_id: defender_id.clone(),
+                                        player_id: opponent.id,
+                                        card_id: defender_id,
                                         from: defender.get_zone().clone(),
                                         to: ZoneQuery::from_zone(attacker.get_zone().clone()),
                                         tap: true,
@@ -1219,8 +1194,8 @@ impl ActivatedAbility for UnitAction {
                                         let defender_zone =
                                             state.get_card(defender_id).get_zone().clone();
                                         vec![Effect::MoveCard {
-                                            player_id: opponent.id.clone(),
-                                            card_id: defender_id.clone(),
+                                            player_id: opponent.id,
+                                            card_id: *defender_id,
                                             from: defender_zone,
                                             to: ZoneQuery::from_zone(attacker.get_zone().clone()),
                                             tap: true,
@@ -1233,7 +1208,7 @@ impl ActivatedAbility for UnitAction {
                                 wait_for_opponent(
                                     &opponent.id,
                                     state,
-                                    format!("Wait for opponent to distribute damage"),
+                                    "Wait for opponent to distribute damage".to_string(),
                                 )
                                 .await?;
 
@@ -1248,8 +1223,8 @@ impl ActivatedAbility for UnitAction {
 
                                 for (defender_id, damage) in damage_distribution {
                                     effects.push(Effect::TakeDamage {
-                                        card_id: defender_id.clone(),
-                                        from: card_id.clone(),
+                                        card_id: defender_id,
+                                        from: *card_id,
                                         damage,
                                         is_strike: false,
                                     });
@@ -1267,7 +1242,7 @@ impl ActivatedAbility for UnitAction {
                 }
 
                 Ok(vec![Effect::Attack {
-                    attacker_id: card_id.clone(),
+                    attacker_id: *card_id,
                     defender_id: picked_card_id,
                 }])
             }
@@ -1313,7 +1288,7 @@ impl ActivatedAbility for UnitAction {
                     wait_for_opponent(
                         player_id,
                         state,
-                        format!("Wait for opponent to choose whether to intersect"),
+                        "Wait for opponent to choose whether to intersect".to_string(),
                     )
                     .await?;
 
@@ -1340,8 +1315,8 @@ impl ActivatedAbility for UnitAction {
 
                     let to_zone = path[idx + 1].clone();
                     effects.push(Effect::MoveCard {
-                        player_id: player_id.clone(),
-                        card_id: card_id.clone(),
+                        player_id: *player_id,
+                        card_id: *card_id,
                         from: zone.clone(),
                         to: ZoneQuery::from_zone(to_zone.clone()),
                         tap: true,
@@ -1354,10 +1329,10 @@ impl ActivatedAbility for UnitAction {
                             continue;
                         }
 
-                        let interceptor_card = state.get_card(&interceptor_id);
+                        let interceptor_card = state.get_card(interceptor_id);
                         effects.push(Effect::MoveCard {
-                            player_id: opponent.id.clone(),
-                            card_id: interceptor_id.clone(),
+                            player_id: opponent.id,
+                            card_id: *interceptor_id,
                             from: interceptor_card.get_zone().clone(),
                             to: ZoneQuery::from_zone(zone.clone()),
                             tap: true,
@@ -1365,8 +1340,8 @@ impl ActivatedAbility for UnitAction {
                             through_path: Some(path.clone()),
                         });
                         effects.push(Effect::Attack {
-                            attacker_id: interceptor_id.clone(),
-                            defender_id: card_id.clone(),
+                            attacker_id: *interceptor_id,
+                            defender_id: *card_id,
                         });
 
                         break;
@@ -1377,26 +1352,26 @@ impl ActivatedAbility for UnitAction {
                 Ok(effects)
             }
             UnitAction::Burrow => Ok(vec![Effect::SetCardRegion {
-                card_id: card_id.clone(),
+                card_id: *card_id,
                 region: Region::Underground,
                 tap: true,
             }]),
             UnitAction::Submerge => Ok(vec![Effect::SetCardRegion {
-                card_id: card_id.clone(),
+                card_id: *card_id,
                 region: Region::Underwater,
                 tap: true,
             }]),
             UnitAction::Surface => Ok(vec![Effect::SetCardRegion {
-                card_id: card_id.clone(),
+                card_id: *card_id,
                 region: Region::Surface,
                 tap: true,
             }]),
             UnitAction::PickUpArtifact { artifact_id, .. } => Ok(vec![Effect::SetBearer {
-                card_id: artifact_id.clone(),
-                bearer_id: Some(card_id.clone()),
+                card_id: *artifact_id,
+                bearer_id: Some(*card_id),
             }]),
             UnitAction::DropArtifact { artifact_id, .. } => Ok(vec![Effect::SetBearer {
-                card_id: artifact_id.clone(),
+                card_id: *artifact_id,
                 bearer_id: None,
             }]),
             UnitAction::PickUpMinion => {
@@ -1410,10 +1385,7 @@ impl ActivatedAbility for UnitAction {
                     .collect::<Vec<_>>();
                 let picked = pick_cards(
                     player_id,
-                    &minions
-                        .iter()
-                        .map(|c| c.get_id().clone())
-                        .collect::<Vec<_>>(),
+                    &minions.iter().map(|c| *c.get_id()).collect::<Vec<_>>(),
                     state,
                     "Pick minions to carry",
                 )
@@ -1422,7 +1394,7 @@ impl ActivatedAbility for UnitAction {
                     .into_iter()
                     .map(|minion_id| Effect::SetBearer {
                         card_id: minion_id,
-                        bearer_id: Some(card_id.clone()),
+                        bearer_id: Some(*card_id),
                     })
                     .collect())
             }
@@ -1431,16 +1403,11 @@ impl ActivatedAbility for UnitAction {
                     .cards
                     .iter()
                     .filter(|minion| minion.is_minion())
-                    .filter(|minion| {
-                        minion.get_bearer_id().unwrap_or_default() == Some(card_id.clone())
-                    })
+                    .filter(|minion| minion.get_bearer_id().unwrap_or_default() == Some(*card_id))
                     .collect::<Vec<_>>();
                 let picked = pick_cards(
                     player_id,
-                    &minions
-                        .iter()
-                        .map(|c| c.get_id().clone())
-                        .collect::<Vec<_>>(),
+                    &minions.iter().map(|c| *c.get_id()).collect::<Vec<_>>(),
                     state,
                     "Drop carried minions",
                 )
@@ -1475,12 +1442,12 @@ impl Game {
         let game_id = uuid::Uuid::new_v4();
         let mut streams = HashMap::new();
         for player in &players_with_streams {
-            streams.insert(player.0.player.id.clone(), player.1.clone());
+            streams.insert(player.0.player.id, player.1.clone());
         }
         let players = players_with_streams.into_iter().map(|p| p.0).collect();
 
         Game {
-            id: game_id.clone(),
+            id: game_id,
             streams,
             state: State::new(game_id, players, server_sender.clone(), receiver.clone()),
             client_receiver: receiver,
@@ -1500,9 +1467,9 @@ impl Game {
         self.process_effects().await?;
 
         self.broadcast(&ServerMessage::GameStarted {
-            player1: self.state.players[0].id.clone(),
-            player2: self.state.players[1].id.clone(),
-            game_id: self.id.clone(),
+            player1: self.state.players[0].id,
+            player2: self.state.players[1].id,
+            game_id: self.id,
             cards: self.state.data_from_cards(),
         })
         .await?;
@@ -1607,15 +1574,15 @@ impl Game {
                             .cards
                             .iter()
                             .filter(|c| c.can_cast(&self.state, card).unwrap_or_default())
-                            .map(|c| c.get_id().clone())
+                            .map(|c| *c.get_id())
                             .collect();
                         let prompt = "Pick a spellcaster to cast the spell";
                         let caster_id =
                             pick_card(player_id, &spellcasters, &self.state, prompt).await?;
                         let caster = self.state.get_card(&caster_id);
                         self.state.queue_one(Effect::PlayMagic {
-                            player_id: player_id.clone(),
-                            card_id: card_id.clone(),
+                            player_id: *player_id,
+                            card_id: *card_id,
                             caster_id,
                             from: caster.get_zone().clone(),
                         });
@@ -1663,7 +1630,7 @@ impl Game {
             }
             ClientMessage::EndTurn { player_id, .. } => {
                 self.state.queue_one(Effect::EndTurn {
-                    player_id: player_id.clone(),
+                    player_id: *player_id,
                 });
             }
             ClientMessage::PickCards {
@@ -1678,11 +1645,11 @@ impl Game {
                     match card.get_card_type() {
                         CardType::Site => {
                             site_count += 1;
-                            deck.sites.push(card_id.clone());
+                            deck.sites.push(*card_id);
                             card.set_zone(Zone::Atlasbook);
                         }
                         _ => {
-                            deck.spells.push(card_id.clone());
+                            deck.spells.push(*card_id);
                             card.set_zone(Zone::Spellbook);
                         }
                     }
@@ -1694,17 +1661,15 @@ impl Game {
 
                 let effects = vec![
                     Effect::DrawSite {
-                        player_id: player_id.clone(),
+                        player_id: *player_id,
                         count: site_count as u8,
                     },
                     Effect::DrawSpell {
-                        player_id: player_id.clone(),
+                        player_id: *player_id,
                         count: spell_count as u8,
                     },
                 ];
-                self.state
-                    .players_with_accepted_hands
-                    .insert(player_id.clone());
+                self.state.players_with_accepted_hands.insert(*player_id);
                 self.state.queue(effects);
                 if self.state.players_with_accepted_hands.len() == self.state.players.len() {
                     self.state.phase = Phase::Main;
@@ -1727,7 +1692,7 @@ impl Game {
     pub async fn player_disconnected(&mut self, player_id: &PlayerId) -> anyhow::Result<()> {
         self.streams.retain(|pid, _| pid != player_id);
         self.broadcast(&ServerMessage::PlayerDisconnected {
-            player_id: player_id.clone(),
+            player_id: *player_id,
         })
         .await?;
         self.end_game().await?;
@@ -1764,9 +1729,10 @@ impl Game {
             .cards
             .iter()
             .filter(|c| c.is_artifact())
-            .filter_map(|c| match c.get_base().bearer {
-                Some(attached_to) => Some((c.get_id().clone(), attached_to.clone())),
-                None => None,
+            .filter_map(|c| {
+                c.get_base()
+                    .bearer
+                    .map(|attached_to| (*c.get_id(), attached_to))
             })
             .collect();
         for (artifact_id, unit_id) in attached_artifacts {
@@ -1791,12 +1757,12 @@ impl Game {
         let mut effects = Vec::new();
         for player in &self.state.players {
             effects.push(Effect::DrawSite {
-                player_id: player.id.clone(),
+                player_id: player.id,
                 count: 3,
             });
 
             effects.push(Effect::DrawSpell {
-                player_id: player.id.clone(),
+                player_id: player.id,
                 count: 3,
             });
         }
@@ -1814,7 +1780,7 @@ impl Game {
             }
 
             effects.push(Effect::MoveCard {
-                player_id: player_id.clone(),
+                player_id: *player_id,
                 card_id: avatar_id,
                 from: Zone::Spellbook,
                 to: ZoneQuery::from_zone(Zone::Realm(square)),
@@ -1831,7 +1797,7 @@ impl Game {
         let mut auras_to_dispell = vec![];
         for aura in auras {
             if aura.should_dispell(state)? {
-                auras_to_dispell.push(aura.get_id().clone());
+                auras_to_dispell.push(*aura.get_id());
             }
         }
 
@@ -1874,15 +1840,13 @@ impl Game {
                     .await?;
                 }
 
-                if !is_card_played {
-                    if let Some(desc) = description {
-                        self.broadcast(&ServerMessage::LogEvent {
-                            id: uuid::Uuid::new_v4(),
-                            description: desc,
-                            datetime: Utc::now(),
-                        })
-                        .await?;
-                    }
+                if !is_card_played && let Some(desc) = description {
+                    self.broadcast(&ServerMessage::LogEvent {
+                        id: uuid::Uuid::new_v4(),
+                        description: desc,
+                        datetime: Utc::now(),
+                    })
+                    .await?;
                 }
 
                 if let Ok(Some(sound_effect)) = effect.sound_effect().await {

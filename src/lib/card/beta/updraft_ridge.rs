@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     card::{
-        Ability, AreaModifiers, Card, CardBase, Costs, Edition, Rarity, ResourceProvider, Site,
+        Ability, AreaModifiers, Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site,
         SiteBase, SiteType, Zone,
     },
     game::{PlayerId, Thresholds},
@@ -35,7 +35,7 @@ impl UpdraftRidge {
                 costs: Costs::ZERO,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -77,7 +77,7 @@ impl Card for UpdraftRidge {
             .get_units(state, None)
             .iter()
             .filter(|c| c.has_ability(state, &Ability::Airborne))
-            .map(|c| (c.get_id().clone(), vec![Ability::Movement(1)]))
+            .map(|c| (*c.get_id(), vec![Ability::Movement(1)]))
             .collect::<HashMap<uuid::Uuid, Vec<Ability>>>();
 
         AreaModifiers {
@@ -96,7 +96,6 @@ impl Card for UpdraftRidge {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (UpdraftRidge::NAME, |owner_id: PlayerId| {
-        Box::new(UpdraftRidge::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (UpdraftRidge::NAME, |owner_id: PlayerId| {
+    Box::new(UpdraftRidge::new(owner_id))
+});

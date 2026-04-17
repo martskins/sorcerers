@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     game::PlayerId,
     state::State,
 };
@@ -32,7 +32,7 @@ impl RoamingMonster {
                 costs: Costs::basic(5, "A"),
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -69,21 +69,18 @@ impl Card for RoamingMonster {
     fn get_valid_play_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {
         Ok((1..=20)
             .filter_map(|z| {
-                match state
+                state
                     .get_cards_in_zone(&Zone::Realm(z))
                     .iter()
                     .find(|c| c.is_site())
-                {
-                    Some(_) => Some(Zone::Realm(z)),
-                    None => None,
-                }
+                    .map(|_| Zone::Realm(z))
             })
             .collect())
     }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (RoamingMonster::NAME, |owner_id: PlayerId| {
         Box::new(RoamingMonster::new(owner_id))
     });

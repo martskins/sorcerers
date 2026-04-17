@@ -314,7 +314,7 @@ impl Component for PlayerStatusComponent {
             return Ok(Some(ComponentCommand::OpenCardViewer {
                 title,
                 zone: Zone::Cemetery,
-                controller_id: Some(self.player_id.clone()),
+                controller_id: Some(self.player_id),
             }));
         }
 
@@ -327,7 +327,7 @@ impl Component for PlayerStatusComponent {
             return Ok(Some(ComponentCommand::OpenCardViewer {
                 title,
                 zone: Zone::Banish,
-                controller_id: Some(self.player_id.clone()),
+                controller_id: Some(self.player_id),
             }));
         }
 

@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone},
+    card::{Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds, pick_zone},
     state::{CardQuery, State},
@@ -32,7 +32,7 @@ impl Maelström {
                 costs: Costs::ZERO,
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -105,7 +105,7 @@ impl Card for Maelström {
             if &picked_zone != minion.get_zone() {
                 effects.push(Effect::MoveCard {
                     card_id: minion_id,
-                    player_id: controller_id.clone(),
+                    player_id: controller_id,
                     from: minion.get_zone().clone(),
                     to: picked_zone.into(),
                     tap: false,
@@ -124,7 +124,6 @@ impl Card for Maelström {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Maelström::NAME, |owner_id: PlayerId| {
-        Box::new(Maelström::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Maelström::NAME, |owner_id: PlayerId| {
+    Box::new(Maelström::new(owner_id))
+});

@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Ability, Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity,
+        Ability, Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs, Edition, Rarity,
         Region, Zone,
     },
     effect::Effect,
@@ -34,7 +34,7 @@ impl BlackObelisk {
                 costs: Costs::mana_only(3),
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -106,7 +106,7 @@ impl Card for BlackObelisk {
         let avatar_id = state.get_player_avatar_id(&controller_id)?;
         Ok(vec![Effect::TakeDamage {
             card_id: avatar_id,
-            from: site.get_id().clone(),
+            from: *site.get_id(),
             damage: 2,
             is_strike: false,
         }])
@@ -114,7 +114,6 @@ impl Card for BlackObelisk {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (BlackObelisk::NAME, |owner_id: PlayerId| {
-        Box::new(BlackObelisk::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (BlackObelisk::NAME, |owner_id: PlayerId| {
+    Box::new(BlackObelisk::new(owner_id))
+});

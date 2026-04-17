@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        Ability, AdditionalCost, Card, CardBase, Cost, Costs, Edition, MinionType, Rarity, Region,
-        UnitBase, Zone,
+        Ability, AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Edition, MinionType,
+        Rarity, Region, UnitBase, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_card},
@@ -50,7 +50,7 @@ impl ActivatedAbility for ThrowArtifactAbility {
             .iter()
             .filter(|c| c.is_artifact())
             .filter(|c| c.get_bearer_id().ok().flatten().as_ref() == Some(card_id))
-            .map(|c| c.get_id().clone())
+            .map(|c| *c.get_id())
             .collect();
 
         let artifact_id = pick_card(
@@ -78,12 +78,12 @@ impl ActivatedAbility for ThrowArtifactAbility {
         Ok(vec![
             Effect::TakeDamage {
                 card_id: target_id,
-                from: card_id.clone(),
+                from: *card_id,
                 damage,
                 is_strike: false,
             },
             Effect::MoveCard {
-                player_id: player_id.clone(),
+                player_id: *player_id,
                 card_id: artifact_id,
                 from: artifact.get_zone().clone(),
                 to: ZoneQuery::from_zone(target.get_zone().clone()),
@@ -92,7 +92,7 @@ impl ActivatedAbility for ThrowArtifactAbility {
                 through_path: None,
             },
             Effect::SetBearer {
-                card_id: artifact_id.clone(),
+                card_id: artifact_id,
                 bearer_id: None,
             },
         ])
@@ -127,7 +127,7 @@ impl FarEastAssassin {
                 costs: Costs::basic(2, "F"),
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -169,7 +169,7 @@ impl Card for FarEastAssassin {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (FarEastAssassin::NAME, |owner_id: PlayerId| {
         Box::new(FarEastAssassin::new(owner_id))
     });

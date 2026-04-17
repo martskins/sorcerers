@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     card::{
-        Ability, AreaModifiers, Card, CardBase, Costs, Edition, MinionType, Rarity, Region,
+        Ability, AreaModifiers, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region,
         UnitBase, Zone,
     },
     game::{Direction, PlayerId},
@@ -38,7 +38,7 @@ impl HillockBasilisk {
                 costs: Costs::basic(4, "F"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -85,11 +85,11 @@ impl Card for HillockBasilisk {
             .iter()
             .flat_map(|z| state.get_units_in_zone(z))
             .filter(|c| c.get_id() != self.get_id())
-            .map(|c| (c.get_id().clone(), vec![Ability::Disabled]))
+            .map(|c| (*c.get_id(), vec![Ability::Disabled]))
             .collect::<HashMap<uuid::Uuid, Vec<Ability>>>();
 
         AreaModifiers {
-            grants_abilities: grants_abilities,
+            grants_abilities,
             // grants_abilities: vec![(Ability::Disabled, units)],
             ..Default::default()
         }
@@ -97,7 +97,7 @@ impl Card for HillockBasilisk {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (HillockBasilisk::NAME, |owner_id: PlayerId| {
         Box::new(HillockBasilisk::new(owner_id))
     });

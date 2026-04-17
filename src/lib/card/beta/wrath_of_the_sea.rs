@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardType, Cost, Costs, Edition, Rarity, Region, Zone},
+    card::{Card, CardBase, CardConstructor, CardType, Cost, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::{PlayerId, pick_zone_group},
     query::EffectQuery,
@@ -24,7 +24,7 @@ impl WrathOfTheSea {
                 costs: Costs::basic(7, "WW"),
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -92,7 +92,7 @@ impl Card for WrathOfTheSea {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (WrathOfTheSea::NAME, |owner_id: PlayerId| {
         Box::new(WrathOfTheSea::new(owner_id))
     });

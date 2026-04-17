@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Zone},
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
     effect::{Counter, Effect},
     game::PlayerId,
     query::EffectQuery,
@@ -24,7 +24,7 @@ impl Gigantism {
                 costs: Costs::basic(4, "EE"),
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -81,7 +81,6 @@ impl Card for Gigantism {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Gigantism::NAME, |owner_id: PlayerId| {
-        Box::new(Gigantism::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Gigantism::NAME, |owner_id: PlayerId| {
+    Box::new(Gigantism::new(owner_id))
+});

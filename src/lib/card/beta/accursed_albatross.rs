@@ -1,5 +1,8 @@
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{
+        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region,
+        UnitBase, Zone,
+    },
     effect::Effect,
     game::PlayerId,
     state::{CardQuery, State},
@@ -35,7 +38,7 @@ When a unit kills Accursed Albatross, kill that unit's other allied minions it's
                 costs: Costs::basic(3, "W"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -105,7 +108,7 @@ impl Card for AccursedAlbatross {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (AccursedAlbatross::NAME, |owner_id: PlayerId| {
         Box::new(AccursedAlbatross::new(owner_id))
     });

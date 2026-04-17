@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardType, Cost, Costs, Edition, Rarity, Zone},
+    card::{Card, CardBase, CardConstructor, CardType, Cost, Costs, Edition, Rarity, Zone},
     effect::Effect,
     game::PlayerId,
     query::ZoneQuery,
@@ -25,7 +25,7 @@ impl Dispel {
                 costs: Costs::basic(2, "E"),
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -81,7 +81,6 @@ impl Card for Dispel {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Dispel::NAME, |owner_id: PlayerId| {
-        Box::new(Dispel::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Dispel::NAME, |owner_id: PlayerId| {
+    Box::new(Dispel::new(owner_id))
+});

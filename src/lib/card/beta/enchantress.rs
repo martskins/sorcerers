@@ -1,5 +1,5 @@
 use crate::{
-    card::{AvatarBase, Card, CardBase, Costs, Edition, Rarity, Region, UnitBase, Zone},
+    card::{AvatarBase, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, UnitBase, Zone},
     game::PlayerId,
     state::{ContinuousEffect, State},
 };
@@ -31,7 +31,7 @@ impl Enchantress {
                 costs: Costs::ZERO,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -85,7 +85,6 @@ impl Card for Enchantress {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Enchantress::NAME, |owner_id: PlayerId| {
-        Box::new(Enchantress::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Enchantress::NAME, |owner_id: PlayerId| {
+    Box::new(Enchantress::new(owner_id))
+});

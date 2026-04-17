@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        AdditionalCost, AreaModifiers, Artifact, ArtifactBase, ArtifactType, Card, CardBase, Cost,
-        Costs, Edition, Rarity, Region, Zone,
+        AdditionalCost, AreaModifiers, Artifact, ArtifactBase, ArtifactType, Card, CardBase,
+        CardConstructor, Cost, Costs, Edition, Rarity, Region, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, CARDINAL_DIRECTIONS, PlayerId, pick_direction},
@@ -45,8 +45,8 @@ impl ActivatedAbility for RollBoulder {
             }
 
             effects.push(Effect::TakeDamage {
-                card_id: unit.get_id().clone(),
-                from: boulder.get_id().clone(),
+                card_id: *unit.get_id(),
+                from: *boulder.get_id(),
                 damage: 4,
                 is_strike: false,
             });
@@ -56,17 +56,17 @@ impl ActivatedAbility for RollBoulder {
             let units = zone.get_units(state, None);
             for unit in units {
                 effects.push(Effect::MoveCard {
-                    card_id: boulder.get_id().clone(),
+                    card_id: *boulder.get_id(),
                     from: last_zone.clone(),
                     to: ZoneQuery::from_zone(zone.clone()),
-                    player_id: boulder.get_controller_id(state).clone(),
+                    player_id: boulder.get_controller_id(state),
                     tap: false,
                     region: boulder.get_region(state).clone(),
                     through_path: None,
                 });
                 effects.push(Effect::TakeDamage {
-                    card_id: unit.get_id().clone(),
-                    from: boulder.get_id().clone(),
+                    card_id: *unit.get_id(),
+                    from: *boulder.get_id(),
                     damage: 4,
                     is_strike: false,
                 });
@@ -106,7 +106,7 @@ impl RollingBoulder {
                 costs: Costs::mana_only(4),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -153,8 +153,8 @@ impl Card for RollingBoulder {
             .iter()
             .map(|u| {
                 (
-                    u.get_id().clone(),
-                    vec![Box::new(RollBoulder(self.get_id().clone())) as Box<dyn ActivatedAbility>],
+                    *u.get_id(),
+                    vec![Box::new(RollBoulder(*self.get_id())) as Box<dyn ActivatedAbility>],
                 )
             })
             .collect();
@@ -166,7 +166,7 @@ impl Card for RollingBoulder {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (RollingBoulder::NAME, |owner_id: PlayerId| {
         Box::new(RollingBoulder::new(owner_id))
     });

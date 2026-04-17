@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, Zone,
+        Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, Zone,
     },
     game::PlayerId,
     state::{CardQuery, State},
@@ -31,7 +31,7 @@ impl BlastedOak {
                 costs: Costs::mana_only(3),
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -84,7 +84,7 @@ impl Card for BlastedOak {
 
         // Precedence 1: Blasted Oak itself
         if targets.contains(oak_id) {
-            return Some(vec![oak_id.clone()]);
+            return Some(vec![*oak_id]);
         }
 
         // Precedence 2: The site card at Blasted Oak's location
@@ -125,7 +125,6 @@ impl Card for BlastedOak {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (BlastedOak::NAME, |owner_id: PlayerId| {
-        Box::new(BlastedOak::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (BlastedOak::NAME, |owner_id: PlayerId| {
+    Box::new(BlastedOak::new(owner_id))
+});

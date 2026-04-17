@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::{AbilityCounter, Effect},
     game::PlayerId,
     query::EffectQuery,
@@ -35,7 +35,7 @@ impl SlumberingGiantess {
                 costs: Costs::basic(3, "E"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -71,7 +71,7 @@ impl Card for SlumberingGiantess {
 
     async fn genesis(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![Effect::AddAbilityCounter {
-            card_id: self.get_id().clone(),
+            card_id: *self.get_id(),
             counter: AbilityCounter {
                 id: uuid::Uuid::new_v4(),
                 ability: Ability::Disabled,
@@ -85,7 +85,7 @@ impl Card for SlumberingGiantess {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (SlumberingGiantess::NAME, |owner_id: PlayerId| {
         Box::new(SlumberingGiantess::new(owner_id))
     });

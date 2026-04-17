@@ -321,9 +321,9 @@ impl Menu {
                                         Color32::from_rgb(100, 110, 140)
                                     }))
                                     .min_size(vec2(btn_w, 42.0));
-                                if ui.add_enabled(can_play, play_btn).clicked() {
-                                    if let Some(idx) = self.selected_saved_deck {
-                                        if let Some(deck_list) = saved.get(idx).cloned() {
+                                if ui.add_enabled(can_play, play_btn).clicked()
+                                    && let Some(idx) = self.selected_saved_deck
+                                        && let Some(deck_list) = saved.get(idx).cloned() {
                                             match deck_list.validate() {
                                                 Ok(()) => {
                                                     self.deck_error = None;
@@ -341,8 +341,6 @@ impl Menu {
                                                 }
                                             }
                                         }
-                                    }
-                                }
 
                                 ui.add_space(gap);
 
@@ -353,9 +351,9 @@ impl Menu {
                                         Color32::from_rgb(100, 110, 140)
                                     }))
                                     .min_size(vec2(btn_w, 42.0));
-                                if ui.add_enabled(can_play, edit_btn).clicked() {
-                                    if let Some(idx) = self.selected_saved_deck {
-                                        if let Some(deck_list) = saved.get(idx).cloned() {
+                                if ui.add_enabled(can_play, edit_btn).clicked()
+                                    && let Some(idx) = self.selected_saved_deck
+                                        && let Some(deck_list) = saved.get(idx).cloned() {
                                             next_scene = Some(Scene::DeckBuilder(
                                                 crate::scene::deck_builder::DeckBuilder::from_deck_list(
                                                     self.client.clone(),
@@ -366,8 +364,6 @@ impl Menu {
                                                 ),
                                             ));
                                         }
-                                    }
-                                }
                             });
                         }
 

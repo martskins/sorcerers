@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     card::{
-        AreaModifiers, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
+        AreaModifiers, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
     },
     effect::Counter,
     game::PlayerId,
@@ -37,7 +37,7 @@ impl HouseArnBannerman {
                 costs: Costs::basic(4, "EE"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -76,7 +76,7 @@ impl Card for HouseArnBannerman {
             .units()
             .near_to(self.get_zone())
             .controlled_by(&self.get_controller_id(state))
-            .id_not_in(vec![self.get_id().clone()])
+            .id_not_in(vec![*self.get_id()])
             .all(state);
 
         let counters: HashMap<uuid::Uuid, Vec<Counter>> = nearby_allies
@@ -101,7 +101,7 @@ impl Card for HouseArnBannerman {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (HouseArnBannerman::NAME, |owner_id: PlayerId| {
         Box::new(HouseArnBannerman::new(owner_id))
     });

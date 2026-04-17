@@ -1,6 +1,7 @@
 use crate::{
     card::{
-        Card, CardBase, Cost, Costs, Edition, MinionType, Rarity, Site, SiteBase, UnitBase, Zone,
+        Card, CardBase, CardConstructor, Cost, Costs, Edition, MinionType, Rarity, Site, SiteBase,
+        UnitBase, Zone,
     },
     effect::{Effect, TokenType},
     game::{ActivatedAbility, PlayerId, Thresholds},
@@ -25,7 +26,7 @@ impl ActivatedAbility for TransformIntoAMonster {
         let card = state.get_card(card_id);
         Ok(vec![
             Effect::SetCardData {
-                card_id: card_id.clone(),
+                card_id: *card_id,
                 data: Box::new(UnitBase {
                     power: 8,
                     toughness: 8,
@@ -38,7 +39,7 @@ impl ActivatedAbility for TransformIntoAMonster {
                 }),
             },
             Effect::SummonToken {
-                player_id: player_id.clone(),
+                player_id: *player_id,
                 token_type: TokenType::Rubble,
                 zone: card.get_zone().clone(),
             },
@@ -87,7 +88,7 @@ impl IslandLeviathan {
                 costs: Costs::ZERO,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -158,7 +159,7 @@ impl Card for IslandLeviathan {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (IslandLeviathan::NAME, |owner_id: PlayerId| {
         Box::new(IslandLeviathan::new(owner_id))
     });

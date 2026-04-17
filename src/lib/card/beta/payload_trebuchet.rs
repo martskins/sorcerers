@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        AdditionalCost, Artifact, ArtifactBase, ArtifactType, Card, CardBase, Cost, Costs, Edition,
-        Rarity, Region, Zone,
+        AdditionalCost, Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor,
+        Cost, Costs, Edition, Rarity, Region, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_zone},
@@ -61,9 +61,9 @@ impl ActivatedAbility for ShootPayload {
         Ok(units
             .iter()
             .map(|unit| Effect::TakeDamage {
-                card_id: unit.get_id().clone(),
+                card_id: *unit.get_id(),
                 damage: mana_cost.into(),
-                from: card_id.clone(),
+                from: *card_id,
                 is_strike: false,
             })
             .collect())
@@ -76,7 +76,7 @@ impl ActivatedAbility for ShootPayload {
                 let bearer = state.get_card(&bearer_id);
                 Ok(Cost::ZERO
                     .clone()
-                    .with_additional(AdditionalCost::tap(&bearer_id))
+                    .with_additional(AdditionalCost::tap(bearer_id))
                     .with_additional(AdditionalCost::tap(
                         CardQuery::new()
                             .untapped()
@@ -120,7 +120,7 @@ impl PayloadTrebuchet {
                 costs: Costs::mana_only(5),
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -169,7 +169,7 @@ impl Card for PayloadTrebuchet {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (PayloadTrebuchet::NAME, |owner_id: PlayerId| {
         Box::new(PayloadTrebuchet::new(owner_id))
     });

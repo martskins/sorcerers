@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Zone},
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
     effect::Effect,
     game::PlayerId,
     state::State,
@@ -23,7 +23,7 @@ impl Earthquake {
                 costs: Costs::basic(5, "EE"),
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -60,7 +60,6 @@ impl Card for Earthquake {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Earthquake::NAME, |owner_id: PlayerId| {
-        Box::new(Earthquake::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Earthquake::NAME, |owner_id: PlayerId| {
+    Box::new(Earthquake::new(owner_id))
+});

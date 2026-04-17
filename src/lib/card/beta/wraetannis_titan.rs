@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::PlayerId,
     state::State,
@@ -33,7 +33,7 @@ impl WraetannisTitan {
                 costs: Costs::basic(7, "EE"),
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -76,8 +76,8 @@ impl Card for WraetannisTitan {
             .map(|c| c.get_id())
             .cloned()
             .map(|id| Effect::Strike {
-                striker_id: id.clone(),
-                target_id: self.get_id().clone(),
+                striker_id: id,
+                target_id: *self.get_id(),
             })
             .collect();
         Ok(effects)
@@ -85,7 +85,7 @@ impl Card for WraetannisTitan {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (WraetannisTitan::NAME, |owner_id: PlayerId| {
         Box::new(WraetannisTitan::new(owner_id))
     });

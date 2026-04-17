@@ -1,5 +1,8 @@
 use crate::{
-    card::{Card, CardBase, Cost, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone},
+    card::{
+        Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, ResourceProvider, Site,
+        SiteBase, Zone,
+    },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, Thresholds, pick_zone},
     query::ZoneQuery,
@@ -48,8 +51,8 @@ impl ActivatedAbility for FlyToVoid {
 
         let mut effects = vec![
             Effect::MoveCard {
-                player_id: player_id.clone(),
-                card_id: card.get_id().clone(),
+                player_id: *player_id,
+                card_id: *card.get_id(),
                 from: card.get_zone().clone(),
                 to: ZoneQuery::from_zone(picked_void.clone()),
                 tap: false,
@@ -57,7 +60,7 @@ impl ActivatedAbility for FlyToVoid {
                 through_path: None,
             },
             Effect::SetCardData {
-                card_id: card.get_id().clone(),
+                card_id: *card.get_id(),
                 data: Box::new(true),
             },
         ];
@@ -65,8 +68,8 @@ impl ActivatedAbility for FlyToVoid {
         let units_on_site = state.get_units_in_zone(card.get_zone());
         for unit in units_on_site {
             effects.push(Effect::MoveCard {
-                player_id: player_id.clone(),
-                card_id: unit.get_id().clone(),
+                player_id: *player_id,
+                card_id: *unit.get_id(),
                 from: card.get_zone().clone(),
                 to: ZoneQuery::from_zone(picked_void.clone()),
                 tap: false,
@@ -107,7 +110,7 @@ impl CloudCity {
                 costs: Costs::ZERO,
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -147,7 +150,7 @@ impl Card for CloudCity {
     async fn on_turn_end(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
         if self.moved_this_turn {
             return Ok(vec![Effect::SetCardData {
-                card_id: self.get_id().clone(),
+                card_id: *self.get_id(),
                 data: Box::new(false),
             }]);
         }
@@ -184,7 +187,6 @@ impl Card for CloudCity {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (CloudCity::NAME, |owner_id: PlayerId| {
-        Box::new(CloudCity::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (CloudCity::NAME, |owner_id: PlayerId| {
+    Box::new(CloudCity::new(owner_id))
+});

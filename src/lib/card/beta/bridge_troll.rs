@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    card::{Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::PlayerId,
     query::EffectQuery,
@@ -36,7 +36,7 @@ impl BridgeTroll {
                 costs: Costs::basic(4, "W"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -84,13 +84,13 @@ impl Card for BridgeTroll {
             Effect::AddDeferredEffect {
                 effect: DeferredEffect {
                     trigger_on_effect: EffectQuery::TurnStart {
-                        player_id: Some(my_controller.clone()),
+                        player_id: Some(my_controller),
                     },
                     expires_on_effect: None,
                     on_effect: Arc::new(move |_: &State, _: &uuid::Uuid, _: &Effect| {
                         Box::pin(async move {
                             Ok(vec![Effect::AddMana {
-                                player_id: my_controller.clone(),
+                                player_id: my_controller,
                                 mana: enemy_mana,
                             }])
                         })
@@ -103,8 +103,8 @@ impl Card for BridgeTroll {
         // Strike back as normal defender.
         if let Some(power) = self.get_power(state)? {
             effects.push(Effect::TakeDamage {
-                card_id: attacker_id.clone(),
-                from: self.get_id().clone(),
+                card_id: *attacker_id,
+                from: *self.get_id(),
                 damage: power,
                 is_strike: false,
             });
@@ -115,7 +115,6 @@ impl Card for BridgeTroll {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (BridgeTroll::NAME, |owner_id: PlayerId| {
-        Box::new(BridgeTroll::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (BridgeTroll::NAME, |owner_id: PlayerId| {
+    Box::new(BridgeTroll::new(owner_id))
+});

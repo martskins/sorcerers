@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Ability, AreaModifiers, Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider,
+        Ability, AreaModifiers, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, ResourceProvider,
         Site, SiteBase, Zone,
     },
     game::{PlayerId, Thresholds},
@@ -33,7 +33,7 @@ impl VantageHills {
                 costs: Costs::ZERO,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -79,7 +79,7 @@ impl Card for VantageHills {
             .get_units(state, None)
             .iter()
             .filter(|c| c.get_region(state) == &Region::Surface)
-            .map(|c| (c.get_id().clone(), vec![Ability::Ranged(1)]))
+            .map(|c| (*c.get_id(), vec![Ability::Ranged(1)]))
             .collect();
 
         AreaModifiers {
@@ -94,7 +94,6 @@ impl Card for VantageHills {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (VantageHills::NAME, |owner_id: PlayerId| {
-        Box::new(VantageHills::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (VantageHills::NAME, |owner_id: PlayerId| {
+    Box::new(VantageHills::new(owner_id))
+});

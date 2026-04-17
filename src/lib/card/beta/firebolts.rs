@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Zone},
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
     effect::Effect,
     game::{CARDINAL_DIRECTIONS, PlayerId, pick_direction},
     state::State,
@@ -24,7 +24,7 @@ impl Firebolts {
                 costs: Costs::basic(2, "F"),
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -63,8 +63,8 @@ impl Card for Firebolts {
         Ok(vec![
             Effect::ShootProjectile {
                 id: uuid::Uuid::new_v4(),
-                player_id: self.get_owner_id().clone(),
-                shooter: caster.get_id().clone(),
+                player_id: *self.get_owner_id(),
+                shooter: *caster.get_id(),
                 from_zone: caster.get_zone().clone(),
                 direction: direction.clone(),
                 damage: 1,
@@ -73,8 +73,8 @@ impl Card for Firebolts {
             },
             Effect::ShootProjectile {
                 id: uuid::Uuid::new_v4(),
-                player_id: self.get_owner_id().clone(),
-                shooter: caster.get_id().clone(),
+                player_id: *self.get_owner_id(),
+                shooter: *caster.get_id(),
                 from_zone: caster.get_zone().clone(),
                 direction: direction.clone(),
                 damage: 1,
@@ -83,8 +83,8 @@ impl Card for Firebolts {
             },
             Effect::ShootProjectile {
                 id: uuid::Uuid::new_v4(),
-                player_id: self.get_owner_id().clone(),
-                shooter: caster.get_id().clone(),
+                player_id: *self.get_owner_id(),
+                shooter: *caster.get_id(),
                 from_zone: caster.get_zone().clone(),
                 direction,
                 damage: 1,
@@ -96,7 +96,6 @@ impl Card for Firebolts {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Firebolts::NAME, |owner_id: PlayerId| {
-        Box::new(Firebolts::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Firebolts::NAME, |owner_id: PlayerId| {
+    Box::new(Firebolts::new(owner_id))
+});

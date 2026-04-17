@@ -58,10 +58,10 @@ pub fn water(player_id: &PlayerId) -> (Deck, Vec<Box<dyn Card>>) {
 
     let mut deck = Deck {
         name: "Beta Water Precon".to_string(),
-        player_id: player_id.clone(),
-        sites: sites.iter().map(|c| c.get_id().clone()).collect(),
-        spells: spells.iter().map(|c| c.get_id().clone()).collect(),
-        avatar: avatar.get_id().clone(),
+        player_id: *player_id,
+        sites: sites.iter().map(|c| *c.get_id()).collect(),
+        spells: spells.iter().map(|c| *c.get_id()).collect(),
+        avatar: *avatar.get_id(),
     };
     deck.shuffle();
 
@@ -126,10 +126,10 @@ pub fn earth(player_id: &PlayerId) -> (Deck, Vec<Box<dyn Card>>) {
 
     let mut deck = Deck {
         name: "Beta Earth Precon".to_string(),
-        player_id: player_id.clone(),
-        sites: sites.iter().map(|c| c.get_id().clone()).collect(),
-        spells: spells.iter().map(|c| c.get_id().clone()).collect(),
-        avatar: avatar.get_id().clone(),
+        player_id: *player_id,
+        sites: sites.iter().map(|c| *c.get_id()).collect(),
+        spells: spells.iter().map(|c| *c.get_id()).collect(),
+        avatar: *avatar.get_id(),
     };
     deck.shuffle();
 
@@ -193,10 +193,10 @@ pub fn fire(player_id: &PlayerId) -> (Deck, Vec<Box<dyn Card>>) {
 
     let mut deck = Deck {
         name: "Beta Fire Precon".to_string(),
-        player_id: player_id.clone(),
-        sites: sites.iter().map(|c| c.get_id().clone()).collect(),
-        spells: spells.iter().map(|c| c.get_id().clone()).collect(),
-        avatar: avatar.get_id().clone(),
+        player_id: *player_id,
+        sites: sites.iter().map(|c| *c.get_id()).collect(),
+        spells: spells.iter().map(|c| *c.get_id()).collect(),
+        avatar: *avatar.get_id(),
     };
     deck.shuffle();
 
@@ -259,10 +259,10 @@ pub fn air(player_id: &PlayerId) -> (Deck, Vec<Box<dyn Card>>) {
 
     let mut deck = Deck {
         name: "Beta Air Precon".to_string(),
-        player_id: player_id.clone(),
-        sites: sites.iter().map(|c| c.get_id().clone()).collect(),
-        spells: spells.iter().map(|c| c.get_id().clone()).collect(),
-        avatar: avatar.get_id().clone(),
+        player_id: *player_id,
+        sites: sites.iter().map(|c| *c.get_id()).collect(),
+        spells: spells.iter().map(|c| *c.get_id()).collect(),
+        avatar: *avatar.get_id(),
     };
     deck.shuffle();
 

@@ -1,7 +1,7 @@
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Costs, Edition, Rarity, Zone},
+    card::{Ability, Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
     effect::{AbilityCounter, Effect},
     game::{Element, PlayerId, yes_or_no},
     query::EffectQuery,
@@ -26,7 +26,7 @@ impl DreamQuest {
                 costs: Costs::basic(1, "A"),
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -99,7 +99,7 @@ impl Card for DreamQuest {
 
         Ok(vec![
             Effect::AddAbilityCounter {
-                card_id: minion_id.clone(),
+                card_id: minion_id,
                 counter: AbilityCounter {
                     id: counter_id,
                     ability: Ability::Disabled,
@@ -112,13 +112,13 @@ impl Card for DreamQuest {
             Effect::AddDeferredEffect {
                 effect: DeferredEffect {
                     trigger_on_effect: EffectQuery::TurnStart {
-                        player_id: Some(controller_id.clone()),
+                        player_id: Some(controller_id),
                     },
                     expires_on_effect: None,
                     on_effect: Arc::new(
                         move |state: &State, _card_id: &uuid::Uuid, _effect: &Effect| {
-                            let controller_id = controller_id.clone();
-                            let minion_id = minion_id.clone();
+                            let controller_id = controller_id;
+                            let minion_id = minion_id;
                             Box::pin(async move {
                                 let minion = state.get_card(&minion_id);
                                 if !minion.has_ability(state, &Ability::Disabled) {
@@ -169,7 +169,6 @@ impl Card for DreamQuest {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (DreamQuest::NAME, |owner_id: PlayerId| {
-        Box::new(DreamQuest::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (DreamQuest::NAME, |owner_id: PlayerId| {
+    Box::new(DreamQuest::new(owner_id))
+});

@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{PlayerId, pick_card, yes_or_no},
     query::ZoneQuery,
@@ -34,7 +34,7 @@ impl FeyChangeling {
                 costs: Costs::basic(3, "W"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -83,7 +83,7 @@ impl Card for FeyChangeling {
         let minions_here = CardQuery::new()
             .units()
             .in_zone(self.get_zone())
-            .id_not_in(vec![self.get_id().clone()])
+            .id_not_in(vec![*self.get_id()])
             .all(state);
 
         if minions_here.is_empty() {
@@ -109,7 +109,7 @@ impl Card for FeyChangeling {
         .await?;
         let target = state.get_card(&target_id);
         Ok(vec![Effect::MoveCard {
-            player_id: target.get_owner_id().clone(),
+            player_id: *target.get_owner_id(),
             card_id: target_id,
             from: target.get_zone().clone(),
             to: ZoneQuery::from_zone(Zone::Hand),
@@ -121,7 +121,7 @@ impl Card for FeyChangeling {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (FeyChangeling::NAME, |owner_id: PlayerId| {
         Box::new(FeyChangeling::new(owner_id))
     });

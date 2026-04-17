@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Ability, Card, CardBase, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase,
+        Ability, Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase,
         SiteType, Zone,
     },
     effect::{AbilityCounter, Effect},
@@ -36,7 +36,7 @@ impl PlanarGate {
                 costs: Costs::ZERO,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -52,7 +52,7 @@ impl Site for PlanarGate {
         }
 
         vec![Effect::AddAbilityCounter {
-            card_id: card_id.clone(),
+            card_id: *card_id,
             counter: AbilityCounter {
                 id: uuid::Uuid::new_v4(),
                 ability: Ability::Voidwalk,
@@ -101,7 +101,6 @@ impl Card for PlanarGate {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (PlanarGate::NAME, |owner_id: PlayerId| {
-        Box::new(PlanarGate::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (PlanarGate::NAME, |owner_id: PlayerId| {
+    Box::new(PlanarGate::new(owner_id))
+});

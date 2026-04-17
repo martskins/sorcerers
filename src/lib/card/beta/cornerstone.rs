@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone},
+    card::{Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone},
     game::{PlayerId, Thresholds},
     state::State,
 };
@@ -29,7 +29,7 @@ impl Cornerstone {
                 costs: Costs::ZERO,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -66,7 +66,7 @@ impl Card for Cornerstone {
 
     fn get_valid_play_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {
         let mut valid_zones = self.default_get_valid_play_zones(state)?;
-        let corners = vec![1, 5, 16, 20];
+        let corners = [1, 5, 16, 20];
         let valid_corners = corners.iter().filter_map(|c| {
             match state
                 .get_cards_in_zone(&Zone::Realm(*c))
@@ -91,7 +91,6 @@ impl Card for Cornerstone {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Cornerstone::NAME, |owner_id: PlayerId| {
-        Box::new(Cornerstone::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Cornerstone::NAME, |owner_id: PlayerId| {
+    Box::new(Cornerstone::new(owner_id))
+});

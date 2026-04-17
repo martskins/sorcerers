@@ -1,7 +1,7 @@
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::PlayerId,
     query::{EffectQuery, ZoneQuery},
@@ -36,7 +36,7 @@ impl CerberusInChains {
                 costs: Costs::basic(3, "FF"),
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -83,7 +83,7 @@ impl Card for CerberusInChains {
     }
 
     fn on_summon(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        let cerberus_id = self.get_id().clone();
+        let cerberus_id = *self.get_id();
         let controller_id = self.get_controller_id(state);
 
         // DeferredEffect: whenever the controller's avatar moves, Cerberus follows.
@@ -96,8 +96,8 @@ impl Card for CerberusInChains {
             }),
             on_effect: Arc::new(
                 move |state: &State, avatar_card_id: &uuid::Uuid, _effect: &Effect| {
-                    let cerberus_id = cerberus_id.clone();
-                    let owner_id = controller_id.clone();
+                    let cerberus_id = cerberus_id;
+                    let owner_id = controller_id;
                     Box::pin(async move {
                         let cerberus = state.get_card(&cerberus_id);
                         let avatar = state.get_card(avatar_card_id);
@@ -131,7 +131,7 @@ impl Card for CerberusInChains {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (CerberusInChains::NAME, |owner_id: PlayerId| {
         Box::new(CerberusInChains::new(owner_id))
     });

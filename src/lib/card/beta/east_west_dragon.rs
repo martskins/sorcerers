@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     game::PlayerId,
     state::State,
 };
@@ -32,7 +32,7 @@ impl EastWestDragon {
                 costs: Costs::basic(5, "AA"),
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -78,7 +78,7 @@ impl Card for EastWestDragon {
         let self_zone = self.get_zone().clone();
 
         let same_row_zones: Vec<Zone> = (row_start..=row_end)
-            .map(|s| Zone::Realm(s))
+            .map(Zone::Realm)
             .filter(|z| z != &self_zone)
             .filter(|z| z.get_site(state).is_some())
             .collect();
@@ -88,7 +88,7 @@ impl Card for EastWestDragon {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (EastWestDragon::NAME, |owner_id: PlayerId| {
         Box::new(EastWestDragon::new(owner_id))
     });

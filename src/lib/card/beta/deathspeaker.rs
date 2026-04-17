@@ -1,5 +1,8 @@
 use crate::{
-    card::{AvatarBase, Card, CardBase, Cost, Costs, Edition, Rarity, Region, UnitBase, Zone},
+    card::{
+        AvatarBase, Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Region,
+        UnitBase, Zone,
+    },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_zone},
     state::{CardQuery, State},
@@ -25,8 +28,8 @@ impl ActivatedAbility for DeathspeakerAbility {
         let can_afford_any = dead_minions.iter().any(|id| {
             let card = state.get_card(id);
             let mana_cost = card.get_base().costs.mana_cost();
-            let can_afford = mana_cost.can_afford(state, player_id).unwrap_or_default();
-            can_afford
+
+            mana_cost.can_afford(state, player_id).unwrap_or_default()
         });
 
         Ok(has_dead_minion && can_afford_any)
@@ -97,14 +100,12 @@ impl ActivatedAbility for DeathspeakerAbility {
         let mut effects: Vec<Effect> = vec![];
 
         // Banish the original dead minion.
-        effects.push(Effect::BanishCard {
-            card_id: chosen_id.clone(),
-        });
+        effects.push(Effect::BanishCard { card_id: chosen_id });
 
         // Consume mana unless on Death's Door.
         if !deaths_door && mana_cost > 0 {
             effects.push(Effect::ConsumeMana {
-                player_id: player_id.clone(),
+                player_id: *player_id,
                 mana: mana_cost,
             });
         }
@@ -112,13 +113,13 @@ impl ActivatedAbility for DeathspeakerAbility {
         // Summon a token copy (it will trigger Genesis then be auto-banished).
         effects.push(Effect::SummonCopy {
             card_name,
-            player_id: player_id.clone(),
+            player_id: *player_id,
             zone: chosen_zone,
         });
 
         // Record that this ability was used this turn.
         effects.push(Effect::SetCardData {
-            card_id: card_id.clone(),
+            card_id: *card_id,
             data: Box::new(true),
         });
 
@@ -154,7 +155,7 @@ impl Deathspeaker {
                 costs: Costs::ZERO,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -229,7 +230,6 @@ impl Card for Deathspeaker {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Deathspeaker::NAME, |owner_id: PlayerId| {
-        Box::new(Deathspeaker::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Deathspeaker::NAME, |owner_id: PlayerId| {
+    Box::new(Deathspeaker::new(owner_id))
+});

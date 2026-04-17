@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Zone},
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
     effect::Effect,
     game::{CARDINAL_DIRECTIONS, PlayerId, pick_direction},
     state::State,
@@ -23,7 +23,7 @@ impl ConeOfFlame {
                 costs: Costs::basic(2, "F"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -83,7 +83,6 @@ impl Card for ConeOfFlame {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (ConeOfFlame::NAME, |owner_id: PlayerId| {
-        Box::new(ConeOfFlame::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (ConeOfFlame::NAME, |owner_id: PlayerId| {
+    Box::new(ConeOfFlame::new(owner_id))
+});

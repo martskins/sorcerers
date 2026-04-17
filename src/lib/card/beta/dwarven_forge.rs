@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        ArtifactType, Card, CardBase, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase,
+        ArtifactType, Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase,
         Zone,
     },
     game::{PlayerId, Thresholds},
@@ -33,7 +33,7 @@ impl DwarvenForge {
                 costs: Costs::ZERO,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -99,7 +99,6 @@ impl Card for DwarvenForge {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (DwarvenForge::NAME, |owner_id: PlayerId| {
-        Box::new(DwarvenForge::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (DwarvenForge::NAME, |owner_id: PlayerId| {
+    Box::new(DwarvenForge::new(owner_id))
+});

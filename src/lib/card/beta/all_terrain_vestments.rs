@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Ability, Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity,
+        Ability, Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs, Edition, Rarity,
         Region, Zone,
     },
     game::PlayerId,
@@ -31,7 +31,7 @@ impl AllTerrainVestments {
                 costs: Costs::mana_only(3),
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -101,7 +101,7 @@ impl Card for AllTerrainVestments {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (AllTerrainVestments::NAME, |owner_id: PlayerId| {
         Box::new(AllTerrainVestments::new(owner_id))
     });

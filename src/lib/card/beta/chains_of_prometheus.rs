@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::{
     card::{
-        Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, Zone,
+        Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, Zone,
     },
     effect::Effect,
     game::PlayerId,
@@ -36,7 +36,7 @@ impl ChainsOfPrometheus {
                 costs: Costs::mana_only(4),
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -77,7 +77,7 @@ impl Card for ChainsOfPrometheus {
     }
 
     async fn genesis(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
-        let chains_id = self.get_id().clone();
+        let chains_id = *self.get_id();
 
         let deferred = DeferredEffect {
             trigger_on_effect: EffectQuery::DrawCard { player_id: None },
@@ -90,9 +90,9 @@ impl Card for ChainsOfPrometheus {
                     Box::pin(async move {
                         // Extract the drawing player from the effect.
                         let drawing_player = match effect {
-                            Effect::DrawSpell { player_id, .. } => player_id.clone(),
-                            Effect::DrawSite { player_id, .. } => player_id.clone(),
-                            Effect::DrawCard { player_id, .. } => player_id.clone(),
+                            Effect::DrawSpell { player_id, .. } => *player_id,
+                            Effect::DrawSite { player_id, .. } => *player_id,
+                            Effect::DrawCard { player_id, .. } => *player_id,
                             _ => return Ok(vec![]),
                         };
 
@@ -111,7 +111,7 @@ impl Card for ChainsOfPrometheus {
                         let max_power = untapped_minions
                             .iter()
                             .filter_map(|id| {
-                                let card = state.get_card(&id);
+                                let card = state.get_card(id);
                                 let power = card.get_power(state).ok()??;
                                 Some(power)
                             })
@@ -147,7 +147,7 @@ impl Card for ChainsOfPrometheus {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (ChainsOfPrometheus::NAME, |owner_id: PlayerId| {
         Box::new(ChainsOfPrometheus::new(owner_id))
     });

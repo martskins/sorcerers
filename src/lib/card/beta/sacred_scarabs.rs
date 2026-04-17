@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::PlayerId,
     state::State,
@@ -34,7 +34,7 @@ impl SacredScarabs {
                 costs: Costs::basic(2, "F"),
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -74,13 +74,13 @@ impl Card for SacredScarabs {
             .iter()
             .filter(|c| c.is_unit())
             .filter(|c| c.get_zone() == from)
-            .map(|c| c.get_id().clone())
+            .map(|c| *c.get_id())
             .collect();
         let mut effects = Vec::new();
         for unit in units_here {
             effects.push(Effect::TakeDamage {
                 card_id: unit,
-                from: self.get_id().clone(),
+                from: *self.get_id(),
                 damage: 3,
                 is_strike: false,
             });
@@ -90,7 +90,7 @@ impl Card for SacredScarabs {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (SacredScarabs::NAME, |owner_id: PlayerId| {
         Box::new(SacredScarabs::new(owner_id))
     });

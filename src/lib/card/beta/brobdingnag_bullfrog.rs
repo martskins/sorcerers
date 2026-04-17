@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{PlayerId, pick_card},
     query::ZoneQuery,
@@ -35,7 +35,7 @@ impl BrobdingnagBullfrog {
                 costs: Costs::basic(3, "WW"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -81,37 +81,36 @@ impl Card for BrobdingnagBullfrog {
         .await?;
 
         Ok(vec![Effect::SetCardData {
-            card_id: self.get_id().clone(),
+            card_id: *self.get_id(),
             data: Box::new(picked_card),
         }])
     }
 
     fn set_data(&mut self, data: &Box<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
         if let Some(swallowed_minion_id) = data.downcast_ref::<uuid::Uuid>() {
-            self.swallowed_minion = Some(swallowed_minion_id.clone());
+            self.swallowed_minion = Some(*swallowed_minion_id);
         }
 
         Ok(())
     }
 
     async fn on_move(&self, state: &State, path: &[Zone]) -> anyhow::Result<Vec<Effect>> {
-        if let Some(minion) = self.swallowed_minion {
-            if let Some(zone) = path.last() {
-                if zone.is_in_play() {
-                    return Ok(vec![Effect::MoveCard {
-                        card_id: minion.clone(),
-                        to: ZoneQuery::from_zone(zone.clone()),
-                        player_id: self.get_controller_id(state),
-                        from: path
-                            .first()
-                            .expect("Path should have at least one element")
-                            .clone(),
-                        tap: false,
-                        region: self.get_region(state).clone(),
-                        through_path: None,
-                    }]);
-                }
-            }
+        if let Some(minion) = self.swallowed_minion
+            && let Some(zone) = path.last()
+            && zone.is_in_play()
+        {
+            return Ok(vec![Effect::MoveCard {
+                card_id: minion,
+                to: ZoneQuery::from_zone(zone.clone()),
+                player_id: self.get_controller_id(state),
+                from: path
+                    .first()
+                    .expect("Path should have at least one element")
+                    .clone(),
+                tap: false,
+                region: self.get_region(state).clone(),
+                through_path: None,
+            }]);
         }
 
         Ok(vec![])
@@ -129,7 +128,7 @@ impl Card for BrobdingnagBullfrog {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (BrobdingnagBullfrog::NAME, |owner_id: PlayerId| {
         Box::new(BrobdingnagBullfrog::new(owner_id))
     });

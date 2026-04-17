@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     game::PlayerId,
 };
 
@@ -31,7 +31,7 @@ impl Megamoeba {
                 costs: Costs::basic(3, "WW"),
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -67,7 +67,6 @@ impl Card for Megamoeba {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Megamoeba::NAME, |owner_id: PlayerId| {
-        Box::new(Megamoeba::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Megamoeba::NAME, |owner_id: PlayerId| {
+    Box::new(Megamoeba::new(owner_id))
+});

@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     game::PlayerId,
     state::{CardQuery, ContinuousEffect, State},
 };
@@ -33,7 +33,7 @@ impl KingOfTheRealm {
                 costs: Costs::basic(7, "EEE"),
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -74,7 +74,7 @@ impl Card for KingOfTheRealm {
                 affected_cards: CardQuery::new()
                     .minion_types(vec![MinionType::Mortal])
                     .in_play()
-                    .id_not_in(vec![self.get_id().clone()]),
+                    .id_not_in(vec![*self.get_id()]),
             },
             ContinuousEffect::ControllerOverride {
                 controller_id: self.get_controller_id(state),
@@ -87,7 +87,7 @@ impl Card for KingOfTheRealm {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (KingOfTheRealm::NAME, |owner_id: PlayerId| {
         Box::new(KingOfTheRealm::new(owner_id))
     });

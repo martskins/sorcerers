@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, Zone,
+        Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, Zone,
     },
     effect::Effect,
     game::PlayerId,
@@ -33,7 +33,7 @@ impl DoomsdayDevice {
                 costs: Costs::mana_only(4),
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -83,7 +83,7 @@ impl Card for DoomsdayDevice {
 
     async fn genesis(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![Effect::SetCardData {
-            card_id: self.get_id().clone(),
+            card_id: *self.get_id(),
             data: Box::new(6u8),
         }])
     }
@@ -97,7 +97,7 @@ impl Card for DoomsdayDevice {
             return Ok(vec![]);
         }
 
-        let self_id = self.get_id().clone();
+        let self_id = *self.get_id();
 
         if self.doom_counters == 1 {
             // Trigger the explosion.
@@ -112,7 +112,7 @@ impl Card for DoomsdayDevice {
                 .into_iter()
                 .map(|id| Effect::TakeDamage {
                     card_id: id,
-                    from: self_id.clone(),
+                    from: self_id,
                     damage: 6,
                     is_strike: false,
                 })
@@ -130,7 +130,7 @@ impl Card for DoomsdayDevice {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (DoomsdayDevice::NAME, |owner_id: PlayerId| {
         Box::new(DoomsdayDevice::new(owner_id))
     });

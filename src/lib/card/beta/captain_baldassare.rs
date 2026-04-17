@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    card::{Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::PlayerId,
     query::EffectQuery,
@@ -35,7 +35,7 @@ impl CaptainBaldassare {
                 costs: Costs::basic(4, "WW"),
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -97,8 +97,8 @@ impl Card for CaptainBaldassare {
                             let effects: Vec<Effect> = top_three
                                 .iter()
                                 .map(|spell_id| Effect::DiscardCard {
-                                    player_id: defending_player.clone(),
-                                    card_id: spell_id.clone(),
+                                    player_id: defending_player,
+                                    card_id: *spell_id,
                                 })
                                 .collect();
 
@@ -116,7 +116,7 @@ impl Card for CaptainBaldassare {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (CaptainBaldassare::NAME, |owner_id: PlayerId| {
         Box::new(CaptainBaldassare::new(owner_id))
     });

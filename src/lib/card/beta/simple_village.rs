@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Card, CardBase, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, SiteType, Zone,
+        Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, SiteType, Zone,
     },
     effect::{Effect, TokenType},
     game::{BaseOption, PlayerId, Thresholds, pick_option},
@@ -34,7 +34,7 @@ impl SimpleVillage {
                 costs: Costs::ZERO,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -75,7 +75,7 @@ impl Card for SimpleVillage {
     }
 
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        let options = vec![BaseOption::Yes, BaseOption::No];
+        let options = [BaseOption::Yes, BaseOption::No];
         let option_labels: Vec<String> = options.iter().map(|o| o.to_string()).collect();
         let picked_option = pick_option(
             self.get_controller_id(state),
@@ -91,11 +91,11 @@ impl Card for SimpleVillage {
 
         Ok(vec![
             Effect::ConsumeMana {
-                player_id: self.get_controller_id(state).clone(),
+                player_id: self.get_controller_id(state),
                 mana: 1,
             },
             Effect::SummonToken {
-                player_id: self.get_controller_id(state).clone(),
+                player_id: self.get_controller_id(state),
                 token_type: TokenType::FootSoldier,
                 zone: self.get_zone().clone(),
             },
@@ -108,7 +108,7 @@ impl Card for SimpleVillage {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (SimpleVillage::NAME, |owner_id: PlayerId| {
         Box::new(SimpleVillage::new(owner_id))
     });

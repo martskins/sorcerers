@@ -168,13 +168,12 @@ impl Zone {
                 match card.get_card_type() {
                     CardType::Site => {
                         let player_id = card.get_controller_id(state);
-                        let has_played_site = CardQuery::new()
+                        let has_played_site = !CardQuery::new()
                             .sites()
                             .in_play()
                             .controlled_by(&player_id)
                             .all(state)
-                            .len()
-                            > 0;
+                            .is_empty();
                         if !has_played_site {
                             let avatar_id = state.get_player_avatar_id(&player_id)?;
                             let avatar = state.get_card(&avatar_id);
@@ -185,7 +184,7 @@ impl Zone {
                             .sites()
                             .in_play()
                             .controlled_by(&player_id)
-                            .not_named(&Rubble::NAME)
+                            .not_named(Rubble::NAME)
                             .all(state)
                             .into_iter()
                             .map(|cid| state.get_card(&cid).get_zone())
@@ -233,7 +232,7 @@ impl Zone {
                             .into_iter()
                             .filter_map(|cid| state.get_card(&cid).get_zone().get_square())
                             .collect();
-                        Ok(sqs.iter().any(|sq| site_squares.contains(&sq)))
+                        Ok(sqs.iter().any(|sq| site_squares.contains(sq)))
                     }
                     CardType::Aura => {
                         let site_squares: Vec<u8> = CardQuery::new()
@@ -244,12 +243,12 @@ impl Zone {
                             .into_iter()
                             .filter_map(|cid| state.get_card(&cid).get_zone().get_square())
                             .collect();
-                        Ok(sqs.iter().any(|sq| site_squares.contains(&sq)))
+                        Ok(sqs.iter().any(|sq| site_squares.contains(sq)))
                     }
                     _ => Ok(false),
                 }
             }
-            _ => return Ok(false),
+            _ => Ok(false),
         }
     }
 
@@ -296,7 +295,7 @@ impl Zone {
     }
 
     pub fn all_realm() -> Vec<Zone> {
-        (1..=20).map(|sq| Zone::Realm(sq)).collect()
+        (1..=20).map(Zone::Realm).collect()
     }
 
     pub fn all_board() -> Vec<Zone> {
@@ -381,8 +380,7 @@ impl Zone {
             .get_cards_in_zone(self)
             .iter()
             .find(|c| c.is_site())
-            .map_or(None, |c| c.get_site())
-            .clone()
+            .and_then(|c| c.get_site())
     }
 
     pub fn zone_in_direction(&self, direction: &Direction, steps: u8) -> Option<Self> {
@@ -431,10 +429,10 @@ impl Zone {
                     .collect();
 
                 for intersection in Zone::all_intersections() {
-                    if let Zone::Intersection(locs) = &intersection {
-                        if locs == &new_squares {
-                            return Some(intersection);
-                        }
+                    if let Zone::Intersection(locs) = &intersection
+                        && locs == &new_squares
+                    {
+                        return Some(intersection);
                     }
                 }
 
@@ -515,15 +513,15 @@ pub struct AdditionalCost {
     pub action: CostAction,
 }
 
-impl Into<CardQuery> for uuid::Uuid {
-    fn into(self) -> CardQuery {
-        CardQuery::from_id(self)
+impl From<uuid::Uuid> for CardQuery {
+    fn from(val: uuid::Uuid) -> Self {
+        CardQuery::from_id(val)
     }
 }
 
-impl Into<CardQuery> for &uuid::Uuid {
-    fn into(self) -> CardQuery {
-        CardQuery::from_id(self.clone())
+impl From<&uuid::Uuid> for CardQuery {
+    fn from(val: &uuid::Uuid) -> Self {
+        CardQuery::from_id(*val)
     }
 }
 
@@ -618,18 +616,14 @@ impl CostType {
                                 .first()
                                 .expect("options to have exactly one element");
                             match ac.action {
-                                CostAction::Tap => Effect::TapCard {
-                                    card_id: card_id.clone(),
-                                },
+                                CostAction::Tap => Effect::TapCard { card_id: *card_id },
                                 CostAction::Discard => Effect::DiscardCard {
-                                    card_id: card_id.clone(),
-                                    player_id: player_id.clone(),
+                                    card_id: *card_id,
+                                    player_id: *player_id,
                                 },
-                                CostAction::Sacrifice => Effect::BuryCard {
-                                    card_id: card_id.clone(),
-                                },
+                                CostAction::Sacrifice => Effect::BuryCard { card_id: *card_id },
                                 CostAction::Surface => Effect::SetCardRegion {
-                                    card_id: card_id.clone(),
+                                    card_id: *card_id,
                                     region: Region::Surface,
                                     tap: false,
                                 },
@@ -644,18 +638,14 @@ impl CostType {
                             )
                             .await?;
                             match ac.action {
-                                CostAction::Tap => Effect::TapCard {
-                                    card_id: card_id.clone(),
-                                },
+                                CostAction::Tap => Effect::TapCard { card_id },
                                 CostAction::Discard => Effect::DiscardCard {
-                                    card_id: card_id.clone(),
-                                    player_id: player_id.clone(),
+                                    card_id,
+                                    player_id: *player_id,
                                 },
-                                CostAction::Sacrifice => Effect::BuryCard {
-                                    card_id: card_id.clone(),
-                                },
+                                CostAction::Sacrifice => Effect::BuryCard { card_id },
                                 CostAction::Surface => Effect::SetCardRegion {
-                                    card_id: card_id.clone(),
+                                    card_id,
                                     region: Region::Surface,
                                     tap: true,
                                 },
@@ -762,8 +752,8 @@ impl Costs {
     }
 
     pub fn mana_cost(&self) -> &Cost {
-        if self.0.len() == 0 {
-            return &Cost::ZERO;
+        if self.0.is_empty() {
+            return Cost::ZERO;
         }
 
         for cost in &self.0 {
@@ -774,11 +764,11 @@ impl Costs {
             }
         }
 
-        &Cost::ZERO
+        Cost::ZERO
     }
 
     pub fn mana_value(&self) -> u8 {
-        if self.0.len() == 0 {
+        if self.0.is_empty() {
             return 0;
         }
 
@@ -794,7 +784,7 @@ impl Costs {
     }
 
     pub fn thresholds_cost(&self) -> &Thresholds {
-        if self.0.len() == 0 {
+        if self.0.is_empty() {
             return &Thresholds::ZERO;
         }
 
@@ -939,14 +929,10 @@ impl Cost {
                 CostType::Additional(additional) => {
                     for add in additional {
                         match add.action {
-                            CostAction::Tap { .. } => parts.push("Tap card".to_string()),
-                            CostAction::Discard { .. } => parts.push("Discard card".to_string()),
-                            CostAction::Sacrifice { .. } => {
-                                parts.push("Sacrifice card".to_string())
-                            }
-                            CostAction::Surface { .. } => {
-                                parts.push("Put card on Surface".to_string())
-                            }
+                            CostAction::Tap => parts.push("Tap card".to_string()),
+                            CostAction::Discard => parts.push("Discard card".to_string()),
+                            CostAction::Sacrifice => parts.push("Sacrifice card".to_string()),
+                            CostAction::Surface => parts.push("Put card on Surface".to_string()),
                         }
                     }
                 }
@@ -1158,12 +1144,12 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     // Returns the ID of the player who controls this card.
     fn get_controller_id(&self, state: &State) -> PlayerId {
         let mut controller = self.get_base().controller_id;
-        if let Some(artifact) = self.get_artifact() {
-            if let Some(bearer_id) = artifact.get_bearer().unwrap_or_default() {
-                let bearer = state.get_card(&bearer_id);
-                // Artifacts are controlled by the controller of their bearer.
-                controller = bearer.get_controller_id(state);
-            }
+        if let Some(artifact) = self.get_artifact()
+            && let Some(bearer_id) = artifact.get_bearer().unwrap_or_default()
+        {
+            let bearer = state.get_card(&bearer_id);
+            // Artifacts are controlled by the controller of their bearer.
+            controller = bearer.get_controller_id(state);
         }
 
         for we in &state.continuous_effects {
@@ -1171,10 +1157,9 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 controller_id,
                 affected_cards,
             } = we
+                && affected_cards.matches(self.get_id(), state)
             {
-                if affected_cards.matches(self.get_id(), state) {
-                    controller = controller_id.clone();
-                }
+                controller = *controller_id;
             }
         }
 
@@ -1186,7 +1171,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             return artifact.get_bearer();
         }
 
-        Ok(self.get_base().bearer.clone())
+        Ok(self.get_base().bearer)
     }
 
     fn set_bearer_id(&mut self, bearer_id: Option<uuid::Uuid>) {
@@ -1200,10 +1185,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     // Returns a list of effects that must be applied when this card is defending against an
     // attack.
     fn on_defend(&self, state: &State, attacker_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
-        if let Some(power) = self.get_power(&state)? {
+        if let Some(power) = self.get_power(state)? {
             return Ok(vec![Effect::TakeDamage {
-                card_id: attacker_id.clone(),
-                from: self.get_id().clone(),
+                card_id: *attacker_id,
+                from: *self.get_id(),
                 damage: power,
                 is_strike: false,
             }]);
@@ -1277,7 +1262,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         match self.get_card_type() {
             CardType::Minion => {
                 // Check LethalTarget before the mutable borrow of unit_base.
-                let has_lethal_target = self.get_unit_base().map_or(false, |ub| {
+                let has_lethal_target = self.get_unit_base().is_some_and(|ub| {
                     ub.abilities.contains(&Ability::LethalTarget)
                         || ub
                             .modifier_counters
@@ -1303,20 +1288,20 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     || has_lethal_target
                 {
                     effects.push(Effect::KillMinion {
-                        card_id: self.get_id().clone(),
-                        killer_id: from.clone(),
+                        card_id: *self.get_id(),
+                        killer_id: *from,
                     });
                 }
 
                 // Lifesteal: if the defender is a unit, heal the attacker's controller.
-                let defender = state.get_card(&self.get_id());
-                if attacker.has_ability(&state, &Ability::Lifesteal) && defender.is_unit() {
+                let defender = state.get_card(self.get_id());
+                if attacker.has_ability(state, &Ability::Lifesteal) && defender.is_unit() {
                     let controller_id = attacker.get_controller_id(state);
                     if let Ok(avatar_id) = state.get_player_avatar_id(&controller_id) {
-                        let heal = attacker.get_power(&state)?.unwrap_or(0);
+                        let heal = attacker.get_power(state)?.unwrap_or(0);
                         if heal > 0 {
                             effects.push(Effect::Heal {
-                                card_id: avatar_id.clone(),
+                                card_id: avatar_id,
                                 amount: heal,
                             });
                         }
@@ -1354,14 +1339,14 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 let attacker = state.get_card(from);
                 let mut effects = vec![];
                 // Lifesteal: if the defender is a unit, heal the attacker's controller.
-                let defender = state.get_card(&self.get_id());
-                if attacker.has_ability(&state, &Ability::Lifesteal) && defender.is_unit() {
+                let defender = state.get_card(self.get_id());
+                if attacker.has_ability(state, &Ability::Lifesteal) && defender.is_unit() {
                     let controller_id = attacker.get_controller_id(state);
                     if let Ok(avatar_id) = state.get_player_avatar_id(&controller_id) {
-                        let heal = attacker.get_power(&state)?.unwrap_or(0);
+                        let heal = attacker.get_power(state)?.unwrap_or(0);
                         if heal > 0 {
                             effects.push(Effect::Heal {
-                                card_id: avatar_id.clone(),
+                                card_id: avatar_id,
                                 amount: heal,
                             });
                         }
@@ -1374,7 +1359,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 let avatar_id = state.get_player_avatar_id(&self.get_controller_id(state))?;
                 Ok(vec![Effect::TakeDamage {
                     card_id: avatar_id,
-                    from: from.clone(),
+                    from: *from,
                     damage,
                     is_strike: false,
                 }])
@@ -1391,7 +1376,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             .get_site()
             .ok_or(anyhow::anyhow!("site card has no site base"))?;
         Ok(vec![Effect::AddMana {
-            player_id: self.get_owner_id().clone(),
+            player_id: *self.get_owner_id(),
             mana: site_base.provided_mana(state)?,
         }])
     }
@@ -1517,7 +1502,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             .get_unit_base()
             .unwrap_or(&UnitBase::default())
             .abilities
-            .contains(&ability)
+            .contains(ability)
         {
             return true;
         }
@@ -1535,9 +1520,9 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         // Also check abilities granted via continuous effects.
         state.continuous_effects.iter().any(|ce| match ce {
             ContinuousEffect::GrantAbility {
-                ability,
+                ability: granted_ability,
                 affected_cards,
-            } if ability == ability => affected_cards.matches(self.get_id(), state),
+            } if granted_ability == ability => affected_cards.matches(self.get_id(), state),
             _ => false,
         })
     }
@@ -1556,12 +1541,11 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         if self.get_zone() == zone {
             return true;
         }
-        if self.is_oversized(state) {
-            if let Zone::Intersection(sub_zones) = self.get_zone() {
-                if let Zone::Realm(sq) = zone {
-                    return sub_zones.contains(sq);
-                }
-            }
+        if self.is_oversized(state)
+            && let Zone::Intersection(sub_zones) = self.get_zone()
+            && let Zone::Realm(sq) = zone
+        {
+            return sub_zones.contains(sq);
         }
         false
     }
@@ -1602,7 +1586,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     fn get_valid_move_paths(&self, state: &State, to: &Zone) -> anyhow::Result<Vec<Vec<Zone>>> {
         let from = self.get_zone().clone();
         let valid_zones = self.get_valid_move_zones(state)?;
-        if !valid_zones.contains(&to) {
+        if !valid_zones.contains(to) {
             return Ok(vec![]);
         }
 
@@ -1621,7 +1605,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 }
                 continue;
             }
-            if path.len() - 1 >= max_steps.into() {
+            if path.len() > max_steps.into() {
                 continue;
             }
             for next in valid_zones.iter() {
@@ -1681,7 +1665,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     };
                 }
 
-                z.get_site(state).map_or(false, |c| {
+                z.get_site(state).is_some_and(|c| {
                     c.can_be_entered_by(
                         self.get_id(),
                         self.get_zone(),
@@ -1720,17 +1704,17 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     && c.has_ability(state, &Ability::Airborne);
                 let airborne_on_surface = self.has_ability(state, &Ability::Airborne)
                     && c.get_region(state) == &Region::Surface;
-                return same_region || ranged_on_airborne || airborne_on_surface;
+                same_region || ranged_on_airborne || airborne_on_surface
             })
             .filter(|_| {
                 let attacker_is_airborne = self.has_ability(state, &Ability::Airborne);
                 if !attacker_is_airborne {
-                    return zone.is_adjacent(&self.get_zone());
+                    return zone.is_adjacent(self.get_zone());
                 }
 
-                return zone.is_nearby(&self.get_zone());
+                zone.is_nearby(self.get_zone())
             })
-            .map(|c| c.get_id().clone())
+            .map(|c| *c.get_id())
             .collect()
     }
 
@@ -1755,7 +1739,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     .filter(|c| !c.is_flooded_site(state))
                     .map(|c| c.area_modifiers(state))
                     .filter_map(|mods| mods.grants_counters.get(self.get_id()).cloned())
-                    .flat_map(|counters| counters)
+                    .flatten()
                     .map(|counter| counter.toughness)
                     .sum();
                 toughness = toughness.saturating_add_signed(counters);
@@ -1835,7 +1819,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     fn has_attachments(&self, state: &State) -> anyhow::Result<bool> {
         for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
-            if card.get_bearer_id()? == Some(self.get_id().clone()) {
+            if card.get_bearer_id()? == Some(*self.get_id()) {
                 return Ok(true);
             }
         }
@@ -1856,10 +1840,9 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                         power_diff,
                         affected_cards,
                     } = we
+                        && affected_cards.matches(self.get_id(), state)
                     {
-                        if affected_cards.matches(self.get_id(), state) {
-                            power = power.saturating_add_signed(*power_diff);
-                        }
+                        power = power.saturating_add_signed(*power_diff);
                     }
                 }
 
@@ -1870,7 +1853,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     .filter(|c| !c.is_flooded_site(state))
                     .map(|c| c.area_modifiers(state))
                     .filter_map(|mods| mods.grants_counters.get(self.get_id()).cloned())
-                    .flat_map(|counters| counters)
+                    .flatten()
                     .map(|counter| counter.power)
                     .sum();
                 power = power.saturating_add_signed(power_counters);
@@ -1971,7 +1954,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     zone: from.clone(),
                 },
                 Effect::ConsumeMana {
-                    player_id: self.get_controller_id(state).clone(),
+                    player_id: self.get_controller_id(state),
                     mana: 0,
                 },
             ];
@@ -2116,62 +2099,59 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         let card_id = self.get_id();
         match self.get_card_type() {
             CardType::Minion => {
-                let zones = self.get_valid_play_zones(&state)?;
+                let zones = self.get_valid_play_zones(state)?;
                 let prompt = "Pick a zone to play the card";
-                let zone = pick_zone(controller_id, &zones, &state, false, prompt).await?;
-                Ok(vec![
-                    Effect::PlayCard {
-                        player_id: controller_id.clone(),
-                        card_id: self.get_id().clone(),
-                        zone: zone.clone().into(),
-                    }
-                    .into(),
-                ])
+                let zone = pick_zone(controller_id, &zones, state, false, prompt).await?;
+                Ok(vec![Effect::PlayCard {
+                    player_id: controller_id,
+                    card_id: *self.get_id(),
+                    zone: zone.clone().into(),
+                }])
             }
             CardType::Artifact => {
                 let units = self
                     .get_artifact()
                     .ok_or(anyhow::anyhow!("artifact card does not implement artifact"))?
-                    .get_valid_attach_targets(&state);
+                    .get_valid_attach_targets(state);
                 let needs_bearer = state
                     .get_card(card_id)
                     .get_artifact()
                     .ok_or(anyhow::anyhow!("artifact card does not implement artifact"))?
-                    .needs_bearer(&state)?;
+                    .needs_bearer(state)?;
                 match needs_bearer {
                     true => {
                         let picked_card_id = pick_card(
                             controller_id,
                             &units,
-                            &state,
+                            state,
                             format!("Pick a unit to attach {} to", self.get_name()).as_str(),
                         )
                         .await?;
                         let picked_card = state.get_card(&picked_card_id);
                         Ok(vec![
                             Effect::PlayCard {
-                                player_id: controller_id.clone(),
-                                card_id: card_id.clone(),
+                                player_id: controller_id,
+                                card_id: *card_id,
                                 zone: picked_card.get_zone().clone().into(),
                             },
                             Effect::SetBearer {
-                                card_id: card_id.clone(),
-                                bearer_id: Some(picked_card_id.clone()),
+                                card_id: *card_id,
+                                bearer_id: Some(picked_card_id),
                             },
                         ])
                     }
                     false => {
                         let picked_zone = pick_zone(
                             controller_id,
-                            &self.get_valid_play_zones(&state)?,
-                            &state,
+                            &self.get_valid_play_zones(state)?,
+                            state,
                             false,
                             "Pick a zone to play the artifact",
                         )
                         .await?;
                         Ok(vec![Effect::PlayCard {
-                            player_id: controller_id.clone(),
-                            card_id: card_id.clone(),
+                            player_id: controller_id,
+                            card_id: *card_id,
                             zone: picked_zone.clone().into(),
                         }])
                     }
@@ -2267,7 +2247,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             .iter(state)
             .filter_map(|c| c.get_artifact())
             .filter(|c| c.get_bearer().unwrap_or_default().is_none())
-            .map(|c| (c.get_id().clone(), c.get_name().to_string()))
+            .map(|c| (*c.get_id(), c.get_name().to_string()))
             .collect();
         for (artifact_id, artifact_name) in unborne_artifacts {
             activated_abilities.push(Box::new(UnitAction::PickUpArtifact {
@@ -2299,14 +2279,14 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         if self.is_avatar() {
             let mut abilities = self.base_avatar_activated_abilities(state)?;
             abilities.extend(self.get_additional_activated_abilities(state)?);
-            return Ok(abilities);
+            Ok(abilities)
         } else if self.is_unit() {
             let mut abilities = self.base_unit_activated_abilities(state)?;
             abilities.extend(self.get_additional_activated_abilities(state)?);
-            return Ok(abilities);
+            Ok(abilities)
         } else {
             let abilities = self.get_additional_activated_abilities(state)?;
-            return Ok(abilities);
+            Ok(abilities)
         }
     }
 
@@ -2375,23 +2355,12 @@ pub enum SiteType {
     River,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct SiteBase {
     pub provided_mana: u8,
     pub provided_thresholds: Thresholds,
     pub types: Vec<SiteType>,
     pub tapped: bool,
-}
-
-impl Default for SiteBase {
-    fn default() -> Self {
-        Self {
-            provided_mana: 0,
-            provided_thresholds: Thresholds::default(),
-            types: vec![],
-            tapped: false,
-        }
-    }
 }
 
 pub trait ResourceProvider: Card {
@@ -2504,7 +2473,7 @@ pub trait Site: Card + ResourceProvider {
         let temporarily_flooded = state
             .temporary_effects
             .iter()
-            .filter(|te| te.affected_cards(state).contains(&self.get_id()))
+            .filter(|te| te.affected_cards(state).contains(self.get_id()))
             .find(|te| matches!(te, TemporaryEffect::FloodSites { .. }))
             .is_some();
         if temporarily_flooded {
@@ -2657,14 +2626,14 @@ pub trait Artifact: Card {
                 .iter()
                 .filter(|c| c.is_unit())
                 .filter(|c| c.get_controller_id(state) == self.get_controller_id(state))
-                .map(|c| c.get_id().clone())
+                .map(|c| *c.get_id())
                 .collect(),
             _ => vec![],
         }
     }
 
     fn get_bearer(&self) -> anyhow::Result<Option<uuid::Uuid>> {
-        Ok(self.get_base().bearer.clone())
+        Ok(self.get_base().bearer)
     }
 }
 
@@ -2742,7 +2711,7 @@ pub struct AvatarBase {
 }
 
 pub fn from_name(name: &str, player_id: &PlayerId) -> Box<dyn Card> {
-    CARD_CONSTRUCTORS.get(name).unwrap()(player_id.clone())
+    CARD_CONSTRUCTORS.get(name).unwrap()(*player_id)
 }
 
 pub fn from_name_and_zone(name: &str, player_id: &PlayerId, zone: Zone) -> Box<dyn Card> {

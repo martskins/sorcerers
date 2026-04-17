@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{ActivatedAbility, PlayerId},
     state::{CardQuery, State},
@@ -25,13 +25,13 @@ impl ActivatedAbility for DealDamage {
             .randomised()
             .count(1)
             .in_zone(card.get_zone())
-            .id_not_in(vec![card_id.clone()])
+            .id_not_in(vec![*card_id])
             .units();
 
         Ok(vec![Effect::DealDamageToTarget {
-            from: card_id.clone(),
+            from: *card_id,
             damage: 3,
-            player_id: card.get_controller_id(state).clone(),
+            player_id: card.get_controller_id(state),
             query: possible_targets,
         }])
     }
@@ -66,7 +66,7 @@ impl NimbusJinn {
                 costs: Costs::basic(6, "AA"),
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -109,7 +109,6 @@ impl Card for NimbusJinn {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (NimbusJinn::NAME, |owner_id: PlayerId| {
-        Box::new(NimbusJinn::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (NimbusJinn::NAME, |owner_id: PlayerId| {
+    Box::new(NimbusJinn::new(owner_id))
+});

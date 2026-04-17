@@ -73,10 +73,10 @@ impl CombatResolutionOverlay {
 
         Self {
             client,
-            game_id: game_id.clone(),
+            game_id: *game_id,
             card_rects: rects,
             prompt: format!("Distribute {} damage among defenders", damage),
-            player_id: player_id.clone(),
+            player_id: *player_id,
             defender_damage: HashMap::new(),
             damage,
             shake_button_until: None,

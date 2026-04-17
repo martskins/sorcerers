@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Costs, Edition, Rarity, Zone},
+    card::{Ability, Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
     effect::{AbilityCounter, Effect},
     game::PlayerId,
     query::EffectQuery,
@@ -25,7 +25,7 @@ impl FrostNova {
                 costs: Costs::basic(4, "WW"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -81,7 +81,6 @@ impl Card for FrostNova {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (FrostNova::NAME, |owner_id: PlayerId| {
-        Box::new(FrostNova::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (FrostNova::NAME, |owner_id: PlayerId| {
+    Box::new(FrostNova::new(owner_id))
+});

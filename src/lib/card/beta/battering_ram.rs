@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        AdditionalCost, AreaModifiers, Artifact, ArtifactBase, ArtifactType, Card, CardBase, Cost,
-        Costs, Edition, Rarity, Region, Zone,
+        AdditionalCost, AreaModifiers, Artifact, ArtifactBase, ArtifactType, Card, CardBase,
+        CardConstructor, Cost, Costs, Edition, Rarity, Region, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_card},
@@ -100,7 +100,7 @@ impl BatteringRam {
                 costs: Costs::mana_only(2),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -147,7 +147,7 @@ impl Card for BatteringRam {
             .iter()
             .map(|unit| {
                 (
-                    unit.get_id().clone(),
+                    *unit.get_id(),
                     vec![Box::new(RamStrike) as Box<dyn ActivatedAbility>],
                 )
             })
@@ -161,7 +161,6 @@ impl Card for BatteringRam {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (BatteringRam::NAME, |owner_id: PlayerId| {
-        Box::new(BatteringRam::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (BatteringRam::NAME, |owner_id: PlayerId| {
+    Box::new(BatteringRam::new(owner_id))
+});

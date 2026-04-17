@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Card, CardBase, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, SiteType, Zone,
+        Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, SiteType, Zone,
     },
     effect::Effect,
     game::{PlayerId, Thresholds},
@@ -34,7 +34,7 @@ impl DarkTower {
                 costs: Costs::ZERO,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -84,7 +84,7 @@ impl Card for DarkTower {
         }
 
         Ok(vec![Effect::AddMana {
-            player_id: self.get_owner_id().clone(),
+            player_id: *self.get_owner_id(),
             mana: 1,
         }])
     }
@@ -99,7 +99,6 @@ impl Card for DarkTower {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (DarkTower::NAME, |owner_id: PlayerId| {
-        Box::new(DarkTower::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (DarkTower::NAME, |owner_id: PlayerId| {
+    Box::new(DarkTower::new(owner_id))
+});

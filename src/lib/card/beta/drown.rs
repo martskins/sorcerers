@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardType, Cost, Costs, Edition, Rarity, Region, Zone},
+    card::{Card, CardBase, CardConstructor, CardType, Cost, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::PlayerId,
     state::{CardQuery, State},
@@ -23,7 +23,7 @@ impl Drown {
                 costs: Costs::basic(3, "W"),
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -75,7 +75,6 @@ impl Card for Drown {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Drown::NAME, |owner_id: PlayerId| {
-        Box::new(Drown::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Drown::NAME, |owner_id: PlayerId| {
+    Box::new(Drown::new(owner_id))
+});

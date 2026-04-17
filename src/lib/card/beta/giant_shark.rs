@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::PlayerId,
     query::EffectQuery,
@@ -35,7 +35,7 @@ impl GiantShark {
                 costs: Costs::basic(5, "WW"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -70,7 +70,7 @@ impl Card for GiantShark {
     }
 
     async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
-        let shark_id = self.get_id().clone();
+        let shark_id = *self.get_id();
         let Some(body_of_water) = state.get_body_of_water_at(self.get_zone()) else {
             return Ok(vec![]);
         };
@@ -93,8 +93,8 @@ impl Card for GiantShark {
                                 }
 
                                 Ok(vec![Effect::Attack {
-                                    attacker_id: shark_id.clone(),
-                                    defender_id: card_id.clone(),
+                                    attacker_id: shark_id,
+                                    defender_id: *card_id,
                                 }])
                             }
                             _ => Ok(vec![]),
@@ -107,7 +107,6 @@ impl Card for GiantShark {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (GiantShark::NAME, |owner_id: PlayerId| {
-        Box::new(GiantShark::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (GiantShark::NAME, |owner_id: PlayerId| {
+    Box::new(GiantShark::new(owner_id))
+});

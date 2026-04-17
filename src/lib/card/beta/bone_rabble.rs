@@ -1,7 +1,7 @@
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{Element, PlayerId, yes_or_no},
     query::EffectQuery,
@@ -36,7 +36,7 @@ impl BoneRabble {
                 costs: Costs::basic(3, "E"),
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -71,8 +71,8 @@ impl Card for BoneRabble {
     }
 
     fn deathrite(&self, _state: &State, _from: &Zone) -> Vec<Effect> {
-        let owner_id = self.get_owner_id().clone();
-        let bone_rabble_id = self.get_id().clone();
+        let owner_id = *self.get_owner_id();
+        let bone_rabble_id = *self.get_id();
         vec![Effect::AddDeferredEffect {
             effect: DeferredEffect {
                 trigger_on_effect: EffectQuery::PlayCard {
@@ -86,7 +86,7 @@ impl Card for BoneRabble {
                 }),
                 on_effect: Arc::new(
                     move |state: &State, card_id: &uuid::Uuid, _effect: &Effect| {
-                        let owner_id = owner_id.clone();
+                        let owner_id = owner_id;
                         Box::pin(async move {
                             let site = state.get_card(card_id);
                             let summon_bone_rabble = yes_or_no(
@@ -97,8 +97,8 @@ impl Card for BoneRabble {
                             .await?;
                             if summon_bone_rabble {
                                 Ok(vec![Effect::SummonCard {
-                                    player_id: owner_id.clone(),
-                                    card_id: bone_rabble_id.clone(),
+                                    player_id: owner_id,
+                                    card_id: bone_rabble_id,
                                     zone: site.get_zone().clone(),
                                 }])
                             } else {
@@ -117,7 +117,6 @@ impl Card for BoneRabble {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (BoneRabble::NAME, |owner_id: PlayerId| {
-        Box::new(BoneRabble::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (BoneRabble::NAME, |owner_id: PlayerId| {
+    Box::new(BoneRabble::new(owner_id))
+});

@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::PlayerId,
     state::State,
@@ -34,7 +34,7 @@ impl InfernalLegion {
                 costs: Costs::basic(6, "FFF"),
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -74,13 +74,13 @@ impl Card for InfernalLegion {
             .get_adjacent()
             .iter()
             .flat_map(|z| state.get_units_in_zone(z))
-            .map(|c| c.get_id().clone())
+            .map(|c| *c.get_id())
             .collect();
         let mut effects = Vec::new();
         for unit in adjacent_units {
             effects.push(Effect::TakeDamage {
                 card_id: unit,
-                from: self.get_id().clone(),
+                from: *self.get_id(),
                 damage: 3,
                 is_strike: false,
             });
@@ -90,7 +90,7 @@ impl Card for InfernalLegion {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (InfernalLegion::NAME, |owner_id: PlayerId| {
         Box::new(InfernalLegion::new(owner_id))
     });

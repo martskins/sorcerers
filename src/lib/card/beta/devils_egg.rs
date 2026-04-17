@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, Zone,
+        Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, Zone,
     },
     effect::Effect,
     game::PlayerId,
@@ -33,7 +33,7 @@ impl DevilSEgg {
                 costs: Costs::mana_only(3),
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -88,7 +88,7 @@ impl Card for DevilSEgg {
 
         Ok(vec![Effect::TakeDamage {
             card_id: avatar_id,
-            from: self.get_id().clone(),
+            from: *self.get_id(),
             damage: 1,
             is_strike: false,
         }])
@@ -96,7 +96,6 @@ impl Card for DevilSEgg {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (DevilSEgg::NAME, |owner_id: PlayerId| {
-        Box::new(DevilSEgg::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (DevilSEgg::NAME, |owner_id: PlayerId| {
+    Box::new(DevilSEgg::new(owner_id))
+});

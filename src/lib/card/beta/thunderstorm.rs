@@ -1,5 +1,5 @@
 use crate::{
-    card::{Aura, AuraBase, Card, CardBase, Costs, Edition, Rarity, Region, Zone},
+    card::{Aura, AuraBase, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::PlayerId,
     query::ZoneQuery,
@@ -25,7 +25,7 @@ impl Thunderstorm {
                 costs: Costs::basic(4, "AA"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -93,8 +93,8 @@ impl Card for Thunderstorm {
         // move effect.
         let effects = vec![
             Effect::MoveCard {
-                player_id: self.get_controller_id(state).clone(),
-                card_id: self.get_id().clone(),
+                player_id: self.get_controller_id(state),
+                card_id: *self.get_id(),
                 from: self.get_zone().clone(),
                 to: ZoneQuery::from_options(
                     zones,
@@ -105,14 +105,14 @@ impl Card for Thunderstorm {
                 through_path: None,
             },
             Effect::DealDamageToTarget {
-                player_id: self.get_controller_id(state).clone(),
+                player_id: self.get_controller_id(state),
                 query: CardQuery::new()
                     .randomised()
                     .count(1)
                     .units()
                     .in_zones(&affected_zones)
-                    .id_not_in(vec![self.get_id().clone()]),
-                from: self.get_id().clone(),
+                    .id_not_in(vec![*self.get_id()]),
+                from: *self.get_id(),
                 damage: 3,
             },
         ];
@@ -126,7 +126,6 @@ impl Card for Thunderstorm {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Thunderstorm::NAME, |owner_id: PlayerId| {
-        Box::new(Thunderstorm::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Thunderstorm::NAME, |owner_id: PlayerId| {
+    Box::new(Thunderstorm::new(owner_id))
+});

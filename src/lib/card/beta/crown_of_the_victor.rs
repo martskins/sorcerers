@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, Zone,
+        Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, Zone,
     },
     effect::Effect,
     game::PlayerId,
@@ -32,7 +32,7 @@ impl CrownOfTheVictor {
                 costs: Costs::mana_only(3),
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -87,7 +87,7 @@ impl Card for CrownOfTheVictor {
             _ => false,
         });
 
-        if !has_killed.is_some() {
+        if has_killed.is_none() {
             return Ok(vec![]);
         }
 
@@ -99,7 +99,7 @@ impl Card for CrownOfTheVictor {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (CrownOfTheVictor::NAME, |owner_id: PlayerId| {
         Box::new(CrownOfTheVictor::new(owner_id))
     });

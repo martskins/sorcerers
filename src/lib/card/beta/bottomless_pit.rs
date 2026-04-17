@@ -2,7 +2,7 @@ use std::{future::Future, pin::Pin, sync::Arc};
 
 use crate::{
     card::{
-        Ability, Card, CardBase, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone,
+        Ability, Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone,
     },
     effect::Effect,
     game::{PlayerId, Thresholds},
@@ -36,7 +36,7 @@ impl BottomlessPit {
                 costs: Costs::ZERO,
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -55,7 +55,7 @@ impl BottomlessPit {
             }),
             on_effect: Arc::new(
                 move |state: &State, card_id: &uuid::Uuid, _effect: &Effect| {
-                    let card_id = card_id.clone();
+                    let card_id = *card_id;
                     Box::pin(async move {
                         let card = state.get_card(&card_id);
                         if card.has_ability(state, &Ability::Airborne) {
@@ -115,7 +115,7 @@ impl Card for BottomlessPit {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (BottomlessPit::NAME, |owner_id: PlayerId| {
         Box::new(BottomlessPit::new(owner_id))
     });

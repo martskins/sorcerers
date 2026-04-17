@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        Ability, AdditionalCost, Card, CardBase, Cost, Costs, Edition, MinionType, Rarity, Region,
-        UnitBase, Zone,
+        Ability, AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Edition, MinionType,
+        Rarity, Region, UnitBase, Zone,
     },
     effect::Effect,
     game::{
@@ -38,8 +38,8 @@ impl ActivatedAbility for ShootProjectile {
         let pudge = state.get_card(card_id);
         let effect = Effect::ShootProjectile {
             id: uuid::Uuid::new_v4(),
-            player_id: player_id.clone(),
-            shooter: card_id.clone(),
+            player_id: *player_id,
+            shooter: *card_id,
             from_zone: pudge.get_zone().clone(),
             direction,
             damage: 0,
@@ -56,7 +56,7 @@ impl ActivatedAbility for ShootProjectile {
                     damage: 0,
                     ..
                 } if &from == card_id => {
-                    target = Some(target_id.clone());
+                    target = Some(target_id);
                     break;
                 }
                 _ => {}
@@ -66,8 +66,8 @@ impl ActivatedAbility for ShootProjectile {
         let mut effects = vec![effect];
         if let Some(target) = target {
             effects.push(Effect::MoveCard {
-                card_id: target.clone(),
-                player_id: player_id.clone(),
+                card_id: target,
+                player_id: *player_id,
                 from: state.get_card(&target).get_zone().clone(),
                 to: ZoneQuery::from_zone(pudge.get_zone().clone()),
                 tap: false,
@@ -75,7 +75,7 @@ impl ActivatedAbility for ShootProjectile {
                 through_path: None,
             });
             let target_name = state.get_card(&target).get_name().to_string();
-            let options = vec![BaseOption::Yes, BaseOption::No];
+            let options = [BaseOption::Yes, BaseOption::No];
             let option_labels: Vec<String> = options.iter().map(|o| o.to_string()).collect();
             let picked_option = pick_option(
                 player_id,
@@ -87,7 +87,7 @@ impl ActivatedAbility for ShootProjectile {
             .await?;
             if options[picked_option] == BaseOption::Yes {
                 effects.push(Effect::Attack {
-                    attacker_id: card_id.clone(),
+                    attacker_id: *card_id,
                     defender_id: target,
                 });
             }
@@ -130,7 +130,7 @@ impl PudgeButcher {
                 costs: Costs::basic(4, "EE"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -173,7 +173,6 @@ impl Card for PudgeButcher {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (PudgeButcher::NAME, |owner_id: PlayerId| {
-        Box::new(PudgeButcher::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (PudgeButcher::NAME, |owner_id: PlayerId| {
+    Box::new(PudgeButcher::new(owner_id))
+});

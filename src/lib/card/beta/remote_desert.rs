@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Card, CardBase, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, SiteType,
+        Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, ResourceProvider, Site, SiteBase, SiteType,
         Zone,
     },
     effect::Effect,
@@ -35,7 +35,7 @@ impl RemoteDesert {
                 costs: Costs::ZERO,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -81,7 +81,7 @@ impl Card for RemoteDesert {
             .filter(|c| c.get_region(state) == &Region::Surface);
         let mut effects = vec![];
         for unit in units {
-            effects.push(Effect::take_damage(&unit.get_id(), site.get_id(), 1));
+            effects.push(Effect::take_damage(unit.get_id(), site.get_id(), 1));
         }
         Ok(effects)
     }
@@ -104,7 +104,6 @@ impl Card for RemoteDesert {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (RemoteDesert::NAME, |owner_id: PlayerId| {
-        Box::new(RemoteDesert::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (RemoteDesert::NAME, |owner_id: PlayerId| {
+    Box::new(RemoteDesert::new(owner_id))
+});

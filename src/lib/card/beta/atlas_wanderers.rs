@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::PlayerId,
     state::{CardQuery, State},
@@ -33,7 +33,7 @@ impl AtlasWanderers {
                 costs: Costs::basic(5, "EEE"),
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -84,13 +84,13 @@ impl Card for AtlasWanderers {
             .get_cards_in_zone(&from_zone)
             .iter()
             .filter(|card| !card.is_oversized(state))
-            .map(|card| card.get_id().clone())
+            .map(|card| *card.get_id())
             .collect::<Vec<_>>();
         let to_cards = state
             .get_cards_in_zone(&to_zone)
             .iter()
             .filter(|card| !card.is_oversized(state))
-            .map(|card| card.get_id().clone())
+            .map(|card| *card.get_id())
             .collect::<Vec<_>>();
 
         for card_id in from_cards {
@@ -112,7 +112,7 @@ impl Card for AtlasWanderers {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (AtlasWanderers::NAME, |owner_id: PlayerId| {
         Box::new(AtlasWanderers::new(owner_id))
     });

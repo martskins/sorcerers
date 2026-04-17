@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     game::PlayerId,
     state::{CardQuery, ContinuousEffect, State},
 };
@@ -32,7 +32,7 @@ impl DoomsdayProphet {
                 costs: Costs::basic(5, "FF"),
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -78,14 +78,14 @@ impl Card for DoomsdayProphet {
             affected_cards: CardQuery::new()
                 .near_to(self.get_zone())
                 .units()
-                .id_not_in(vec![self.get_id().clone()]),
+                .id_not_in(vec![*self.get_id()]),
             except_strikes: true,
         }])
     }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (DoomsdayProphet::NAME, |owner_id: PlayerId| {
         Box::new(DoomsdayProphet::new(owner_id))
     });

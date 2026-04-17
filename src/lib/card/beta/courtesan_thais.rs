@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::PlayerId,
     state::{CardQuery, ContinuousEffect, State},
@@ -40,7 +40,7 @@ impl CourtesanThais {
                 costs: Costs::basic(5, "FF"),
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -85,7 +85,7 @@ impl Card for CourtesanThais {
     /// Genesis: activate the controller-swap for the next 2 player turns (one round).
     async fn genesis(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![Effect::SetCardData {
-            card_id: self.get_id().clone(),
+            card_id: *self.get_id(),
             data: Box::new(ThaisData { turns_remaining: 2 }),
         }])
     }
@@ -97,7 +97,7 @@ impl Card for CourtesanThais {
         }
 
         Ok(vec![Effect::SetCardData {
-            card_id: self.get_id().clone(),
+            card_id: *self.get_id(),
             data: Box::new(ThaisData {
                 turns_remaining: self.data.turns_remaining.saturating_sub(1),
             }),
@@ -120,11 +120,11 @@ impl Card for CourtesanThais {
         // Each player's minions and avatars are controlled by the opponent.
         Ok(vec![
             ContinuousEffect::ControllerOverride {
-                controller_id: opponent_id.clone(),
+                controller_id: opponent_id,
                 affected_cards: CardQuery::new().units().controlled_by(&controller_id),
             },
             ContinuousEffect::ControllerOverride {
-                controller_id: controller_id.clone(),
+                controller_id,
                 affected_cards: CardQuery::new().units().controlled_by(&opponent_id),
             },
         ])
@@ -132,7 +132,7 @@ impl Card for CourtesanThais {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (CourtesanThais::NAME, |owner_id: PlayerId| {
         Box::new(CourtesanThais::new(owner_id))
     });

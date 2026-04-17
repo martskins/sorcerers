@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Zone},
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
     effect::{Counter, Effect},
     game::{PlayerId, pick_card},
     query::EffectQuery,
@@ -24,7 +24,7 @@ impl Overpower {
                 costs: Costs::basic(1, "E"),
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -86,7 +86,6 @@ impl Card for Overpower {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Overpower::NAME, |owner_id: PlayerId| {
-        Box::new(Overpower::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Overpower::NAME, |owner_id: PlayerId| {
+    Box::new(Overpower::new(owner_id))
+});

@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     game::PlayerId,
     state::{CardQuery, ContinuousEffect, State},
 };
@@ -33,7 +33,7 @@ impl DwarvenDiggingTeam {
                 costs: Costs::basic(2, "EE"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -80,13 +80,13 @@ impl Card for DwarvenDiggingTeam {
                 .minions()
                 .near_to(self.get_zone())
                 .controlled_by(&controller_id)
-                .id_not_in(vec![self.get_id().clone()]),
+                .id_not_in(vec![*self.get_id()]),
         }])
     }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (DwarvenDiggingTeam::NAME, |owner_id: PlayerId| {
         Box::new(DwarvenDiggingTeam::new(owner_id))
     });

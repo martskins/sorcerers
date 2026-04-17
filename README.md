@@ -81,7 +81,7 @@ Every playable card is a Rust struct in `src/lib/card/{edition}/`. To add a new 
 
     ```rust
     use crate::{
-        card::{Card, CardBase, Costs, Edition, Rarity, Region, Zone},
+        card::{Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, Zone},
         effect::Effect,
         game::PlayerId,
         state::State,
@@ -127,7 +127,7 @@ Every playable card is a Rust struct in `src/lib/card/{edition}/`. To add a new 
 
     // Registers the card in the global registry
     #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-    static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+    static CONSTRUCTOR: (&'static str, CardConstructor) =
         (MyCard::NAME, |owner_id| Box::new(MyCard::new(owner_id)));
     ```
 

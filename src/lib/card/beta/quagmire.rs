@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Ability, Card, CardBase, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone,
+        Ability, Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone,
     },
     effect::{AbilityCounter, Effect},
     game::{PlayerId, Thresholds},
@@ -35,7 +35,7 @@ impl Quagmire {
                 costs: Costs::ZERO,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -82,12 +82,12 @@ impl Card for Quagmire {
             .all(state)
             .into_iter()
             .map(|card_id| Effect::AddAbilityCounter {
-                card_id: card_id,
+                card_id,
                 counter: AbilityCounter {
                     id: uuid::Uuid::new_v4(),
                     ability: Ability::Immobile,
                     expires_on_effect: Some(EffectQuery::TurnStart {
-                        player_id: Some(self.get_controller_id(state).clone()),
+                        player_id: Some(self.get_controller_id(state)),
                     }),
                 },
             })
@@ -102,7 +102,6 @@ impl Card for Quagmire {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Quagmire::NAME, |owner_id: PlayerId| {
-        Box::new(Quagmire::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Quagmire::NAME, |owner_id: PlayerId| {
+    Box::new(Quagmire::new(owner_id))
+});

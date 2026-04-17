@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Region, Zone},
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::{PlayerId, pick_card},
     query::ZoneQuery,
@@ -24,7 +24,7 @@ impl FireHarpoons {
                 costs: Costs::basic(2, "W"),
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -77,7 +77,7 @@ impl Card for FireHarpoons {
                 Region::Surface,
                 Region::Underground,
             ])
-            .id_not_in(vec![caster_id.clone()])
+            .id_not_in(vec![*caster_id])
             .in_zones(&adjacent_water_sites)
             .all(state);
 
@@ -99,13 +99,13 @@ impl Card for FireHarpoons {
 
         Ok(vec![
             Effect::TakeDamage {
-                card_id: target_id.clone(),
-                from: caster_id.clone(),
+                card_id: target_id,
+                from: *caster_id,
                 damage: 1,
                 is_strike: false,
             },
             Effect::MoveCard {
-                player_id: controller_id.clone(),
+                player_id: controller_id,
                 card_id: target_id,
                 from: target.get_zone().clone(),
                 to: ZoneQuery::from_zone(caster_zone),
@@ -122,7 +122,6 @@ impl Card for FireHarpoons {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (FireHarpoons::NAME, |owner_id: PlayerId| {
-        Box::new(FireHarpoons::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (FireHarpoons::NAME, |owner_id: PlayerId| {
+    Box::new(FireHarpoons::new(owner_id))
+});

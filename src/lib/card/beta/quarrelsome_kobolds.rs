@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{PlayerId, pick_card},
     state::State,
@@ -33,7 +33,7 @@ impl QuarrelsomeKobolds {
                 costs: Costs::basic(3, "F"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -80,7 +80,7 @@ impl Card for QuarrelsomeKobolds {
                 .get_units_in_zone(&zone)
                 .iter()
                 .filter(|c| c.can_be_targetted_by(state, &self.get_controller_id(state)))
-                .map(|c| c.get_id().clone())
+                .map(|c| *c.get_id())
                 .collect::<Vec<uuid::Uuid>>();
             units.extend(units_in_zone);
         }
@@ -96,7 +96,7 @@ impl Card for QuarrelsomeKobolds {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (QuarrelsomeKobolds::NAME, |owner_id: PlayerId| {
         Box::new(QuarrelsomeKobolds::new(owner_id))
     });

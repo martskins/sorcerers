@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::PlayerId,
     query::ZoneQuery,
@@ -34,7 +34,7 @@ impl UnlandAngler {
                 costs: Costs::basic(5, "WW"),
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -88,7 +88,7 @@ impl Card for UnlandAngler {
             .map(|minion_id| {
                 let minion = state.get_card(&minion_id);
                 Effect::MoveCard {
-                    player_id: controller_id.clone(),
+                    player_id: controller_id,
                     card_id: minion_id,
                     from: minion.get_zone().clone(),
                     to: ZoneQuery::from_zone(self.get_zone().clone()),
@@ -103,7 +103,6 @@ impl Card for UnlandAngler {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (UnlandAngler::NAME, |owner_id: PlayerId| {
-        Box::new(UnlandAngler::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (UnlandAngler::NAME, |owner_id: PlayerId| {
+    Box::new(UnlandAngler::new(owner_id))
+});

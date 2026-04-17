@@ -1,6 +1,7 @@
 use crate::{
     card::{
-        Card, CardBase, CardType, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone,
+        Card, CardBase, CardConstructor, CardType, Costs, Edition, Rarity, ResourceProvider, Site,
+        SiteBase, Zone,
     },
     effect::Effect,
     game::{PlayerId, Thresholds},
@@ -33,7 +34,7 @@ impl HolyGround {
                 costs: Costs::ZERO,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -80,7 +81,7 @@ impl Card for HolyGround {
             .all(state)
             .iter()
             .map(|a| Effect::Heal {
-                card_id: a.clone(),
+                card_id: *a,
                 amount: 3,
             })
             .collect();
@@ -94,7 +95,6 @@ impl Card for HolyGround {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (HolyGround::NAME, |owner_id: PlayerId| {
-        Box::new(HolyGround::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (HolyGround::NAME, |owner_id: PlayerId| {
+    Box::new(HolyGround::new(owner_id))
+});

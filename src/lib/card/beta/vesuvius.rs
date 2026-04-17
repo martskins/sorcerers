@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        AdditionalCost, Card, CardBase, Cost, Costs, Edition, Rarity, ResourceProvider, Site,
-        SiteBase, Zone,
+        AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity,
+        ResourceProvider, Site, SiteBase, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, Thresholds},
@@ -69,7 +69,7 @@ impl Vesuvius {
                 costs: Costs::ZERO,
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -119,7 +119,6 @@ impl Card for Vesuvius {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Vesuvius::NAME, |owner_id: PlayerId| {
-        Box::new(Vesuvius::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Vesuvius::NAME, |owner_id: PlayerId| {
+    Box::new(Vesuvius::new(owner_id))
+});

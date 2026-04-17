@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Zone},
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
     effect::Effect,
     game::{PlayerId, pick_zone},
     state::{CardQuery, State},
@@ -23,7 +23,7 @@ impl RaiseDead {
                 costs: Costs::basic(4, "AA"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -68,7 +68,7 @@ impl Card for RaiseDead {
         let zones = minion.get_valid_play_zones(state)?;
         let picked_zone = pick_zone(self.get_owner_id(), &zones, state, false, &prompt).await?;
         Ok(vec![Effect::SummonCard {
-            player_id: self.get_owner_id().clone(),
+            player_id: *self.get_owner_id(),
             card_id: minion_id,
             zone: picked_zone,
         }])
@@ -76,7 +76,6 @@ impl Card for RaiseDead {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (RaiseDead::NAME, |owner_id: PlayerId| {
-        Box::new(RaiseDead::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (RaiseDead::NAME, |owner_id: PlayerId| {
+    Box::new(RaiseDead::new(owner_id))
+});

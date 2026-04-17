@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::PlayerId,
     state::{CardQuery, State},
@@ -33,7 +33,7 @@ impl ScentHounds {
                 costs: Costs::basic(2, "E"),
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -77,7 +77,7 @@ impl Card for ScentHounds {
             .all(state)
             .into_iter()
             .map(|card_id| Effect::RemoveAbility {
-                card_id: card_id,
+                card_id,
                 modifier: Ability::Stealth,
             })
             .collect();
@@ -87,7 +87,6 @@ impl Card for ScentHounds {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (ScentHounds::NAME, |owner_id: PlayerId| {
-        Box::new(ScentHounds::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (ScentHounds::NAME, |owner_id: PlayerId| {
+    Box::new(ScentHounds::new(owner_id))
+});

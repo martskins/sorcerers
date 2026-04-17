@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{ActivatedAbility, PlayerId, UnitAction},
     state::State,
@@ -32,7 +32,7 @@ impl BeastOfBurden {
                 costs: Costs::basic(2, "F"),
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -78,16 +78,14 @@ impl Card for BeastOfBurden {
             .filter(|card| card.get_controller_id(state) == controller_id)
             .filter(|card| card.get_zone() == self.get_zone())
             .filter(|card| card.get_id() != self.get_id())
-            .filter(|card| card.get_bearer_id().unwrap_or_default().is_none())
-            .next()
+            .find(|card| card.get_bearer_id().unwrap_or_default().is_none())
             .is_some();
 
         let can_drop = state
             .cards
             .iter()
             .filter(|card| card.is_minion())
-            .filter(|card| card.get_bearer_id().unwrap_or_default() == Some(self.get_id().clone()))
-            .next()
+            .find(|card| card.get_bearer_id().unwrap_or_default() == Some(*self.get_id()))
             .is_some();
 
         let mut abilities = vec![];
@@ -128,11 +126,11 @@ impl Card for BeastOfBurden {
             .filter(|card| card.is_minion())
             .filter(|card| card.get_controller_id(state) == controller_id)
             .filter(|card| card.get_zone() == &from_zone)
-            .filter(|card| card.get_bearer_id().unwrap_or_default() == Some(self.get_id().clone()))
+            .filter(|card| card.get_bearer_id().unwrap_or_default() == Some(*self.get_id()))
             .filter(|card| card.get_id() != self.get_id())
             .map(|card| Effect::MoveCard {
-                player_id: controller_id.clone(),
-                card_id: card.get_id().clone(),
+                player_id: controller_id,
+                card_id: *card.get_id(),
                 from: from_zone.clone(),
                 to: to_zone.clone().into(),
                 tap: false,
@@ -144,7 +142,7 @@ impl Card for BeastOfBurden {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (BeastOfBurden::NAME, |owner_id: PlayerId| {
         Box::new(BeastOfBurden::new(owner_id))
     });

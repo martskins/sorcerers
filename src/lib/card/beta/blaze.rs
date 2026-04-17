@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    card::{Ability, Card, CardBase, Cost, Costs, Edition, Rarity, Zone},
+    card::{Ability, Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
     effect::{AbilityCounter, Effect},
     game::{PlayerId, pick_card},
     query::EffectQuery,
@@ -26,7 +26,7 @@ impl Blaze {
                 costs: Costs::basic(3, "F"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -63,13 +63,13 @@ impl Card for Blaze {
             .iter()
             .filter(|c| c.is_unit())
             .filter(|c| c.get_controller_id(state) == self.get_controller_id(state))
-            .map(|c| c.get_id().clone())
+            .map(|c| *c.get_id())
             .collect::<Vec<uuid::Uuid>>();
         let prompt = "Blaze: Pick an ally";
         let picked_card = pick_card(self.get_controller_id(state), &units, state, prompt).await?;
         Ok(vec![
             Effect::AddAbilityCounter {
-                card_id: picked_card.clone(),
+                card_id: picked_card,
                 counter: AbilityCounter {
                     id: uuid::Uuid::new_v4(),
                     ability: Ability::Movement(2),
@@ -95,9 +95,9 @@ impl Card for Blaze {
                                         for zone in path {
                                             if Some(zone) != path.last() {
                                                 effects.push(Effect::DealDamageAllUnitsInZone {
-                                                    player_id: player_id.clone(),
+                                                    player_id: *player_id,
                                                     zone: zone.clone().into(),
-                                                    from: card_id.clone(),
+                                                    from: *card_id,
                                                     damage: 2,
                                                 });
                                             }
@@ -118,7 +118,6 @@ impl Card for Blaze {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Blaze::NAME, |owner_id: PlayerId| {
-        Box::new(Blaze::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Blaze::NAME, |owner_id: PlayerId| {
+    Box::new(Blaze::new(owner_id))
+});

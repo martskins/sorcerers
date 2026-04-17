@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone},
+    card::{Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone},
     game::{PlayerId, Thresholds},
 };
 
@@ -69,7 +69,6 @@ impl Card for GnomeHollows {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (GnomeHollows::NAME, |owner_id: PlayerId| {
-        Box::new(GnomeHollows::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (GnomeHollows::NAME, |owner_id: PlayerId| {
+    Box::new(GnomeHollows::new(owner_id))
+});

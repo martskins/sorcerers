@@ -27,7 +27,7 @@ impl Rubble {
                 costs: Costs::ZERO,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: true,
                 ..Default::default()
             },

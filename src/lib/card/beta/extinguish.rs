@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardType, Cost, Costs, Edition, Rarity, Zone},
+    card::{Card, CardBase, CardConstructor, CardType, Cost, Costs, Edition, Rarity, Zone},
     effect::Effect,
     game::{Element, PlayerId, pick_zone},
     state::{CardQuery, State},
@@ -24,7 +24,7 @@ impl Extinguish {
                 costs: Costs::basic(3, "WW"),
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -82,7 +82,6 @@ impl Card for Extinguish {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Extinguish::NAME, |owner_id: PlayerId| {
-        Box::new(Extinguish::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Extinguish::NAME, |owner_id: PlayerId| {
+    Box::new(Extinguish::new(owner_id))
+});

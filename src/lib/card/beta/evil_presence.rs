@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::{
     card::{
-        Ability, Aura, AuraBase, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, Zone,
+        Ability, Aura, AuraBase, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, Zone,
     },
     effect::{AbilityCounter, Effect},
     game::PlayerId,
@@ -29,7 +29,7 @@ impl EvilPresence {
                 costs: Costs::basic(2, "A"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -74,9 +74,9 @@ impl Card for EvilPresence {
     }
 
     async fn genesis(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
-        let owner_id = self.get_owner_id().clone();
+        let owner_id = *self.get_owner_id();
         let zone = self.get_zone().clone();
-        let evil_presence_id = self.get_id().clone();
+        let evil_presence_id = *self.get_id();
         Ok(vec![Effect::AddDeferredEffect {
             effect: DeferredEffect {
                 trigger_on_effect: EffectQuery::SummonCard {
@@ -92,7 +92,7 @@ impl Card for EvilPresence {
                         Box::pin(async move {
                             Ok(vec![
                                 Effect::MoveCard {
-                                    player_id: owner_id.clone(),
+                                    player_id: owner_id,
                                     card_id: evil_presence_id,
                                     from: zone,
                                     to: ZoneQuery::from_zone(Zone::Hand),
@@ -101,7 +101,7 @@ impl Card for EvilPresence {
                                     through_path: None,
                                 },
                                 Effect::AddAbilityCounter {
-                                    card_id: card_id.clone(),
+                                    card_id: *card_id,
                                     counter: AbilityCounter {
                                         id: uuid::Uuid::new_v4(),
                                         ability: Ability::Charge,
@@ -129,7 +129,6 @@ impl Card for EvilPresence {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (EvilPresence::NAME, |owner_id: PlayerId| {
-        Box::new(EvilPresence::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (EvilPresence::NAME, |owner_id: PlayerId| {
+    Box::new(EvilPresence::new(owner_id))
+});

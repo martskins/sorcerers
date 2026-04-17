@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Artifact, ArtifactBase, ArtifactType, Card, CardBase, Costs, Edition, Rarity, Region, Zone,
+        Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, Zone,
     },
     effect::Effect,
     game::PlayerId,
@@ -32,7 +32,7 @@ impl BuriedTreasure {
                 costs: Costs::mana_only(3),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -89,13 +89,13 @@ impl Card for BuriedTreasure {
         let picked_zone = state.get_card(&picked_card_id).get_zone();
         Ok(vec![
             Effect::SetCardRegion {
-                card_id: self.get_id().clone(),
+                card_id: *self.get_id(),
                 region: Region::Underground,
                 tap: false,
             },
             Effect::PlayCard {
                 player_id: controller_id,
-                card_id: self.get_id().clone(),
+                card_id: *self.get_id(),
                 zone: picked_zone.into(),
             },
         ])
@@ -121,14 +121,14 @@ impl Card for BuriedTreasure {
                 count: 2,
             },
             Effect::BuryCard {
-                card_id: self.get_id().clone(),
+                card_id: *self.get_id(),
             },
         ])
     }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (BuriedTreasure::NAME, |owner_id: PlayerId| {
         Box::new(BuriedTreasure::new(owner_id))
     });

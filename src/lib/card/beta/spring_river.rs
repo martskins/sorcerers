@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Card, CardBase, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, SiteType, Zone,
+        Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, SiteType, Zone,
     },
     effect::Effect,
     game::{PlayerId, Thresholds, take_action},
@@ -34,7 +34,7 @@ impl SpringRiver {
                 costs: Costs::ZERO,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -80,8 +80,7 @@ impl Card for SpringRiver {
         if let Some(spell_id) = deck.peek_spell() {
             let prompt = "Viewing the top card of your spellbook";
             let action = "Put into the bottom of your spellbook?";
-            let action =
-                take_action(&controller_id, &[spell_id.clone()], state, prompt, action).await?;
+            let action = take_action(&controller_id, &[*spell_id], state, prompt, action).await?;
             if action {
                 let mut deck = deck.clone();
                 deck.rotate_spells(1);
@@ -101,7 +100,6 @@ impl Card for SpringRiver {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (SpringRiver::NAME, |owner_id: PlayerId| {
-        Box::new(SpringRiver::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (SpringRiver::NAME, |owner_id: PlayerId| {
+    Box::new(SpringRiver::new(owner_id))
+});

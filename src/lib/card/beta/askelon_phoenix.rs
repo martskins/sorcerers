@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::{Counter, Effect},
     game::{Element, PlayerId},
     query::EffectQuery,
@@ -34,7 +34,7 @@ impl AskelonPhoenix {
                 costs: Costs::basic(5, "FF"),
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -76,7 +76,7 @@ impl Card for AskelonPhoenix {
         let attacker = state.get_card(from);
         if attacker.get_elements(state)?.contains(&Element::Fire) {
             return Ok(vec![Effect::AddCounter {
-                card_id: self.get_id().clone(),
+                card_id: *self.get_id(),
                 counter: Counter::new(1, 1, Some(EffectQuery::TurnEnd { player_id: None })),
             }]);
         }
@@ -87,7 +87,7 @@ impl Card for AskelonPhoenix {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (AskelonPhoenix::NAME, |owner_id: PlayerId| {
         Box::new(AskelonPhoenix::new(owner_id))
     });

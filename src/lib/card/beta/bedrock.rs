@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone},
+    card::{Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone},
     game::{PlayerId, Thresholds},
 };
 
@@ -29,7 +29,7 @@ impl Bedrock {
                 costs: Costs::ZERO,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -75,7 +75,6 @@ impl Card for Bedrock {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Bedrock::NAME, |owner_id: PlayerId| {
-        Box::new(Bedrock::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Bedrock::NAME, |owner_id: PlayerId| {
+    Box::new(Bedrock::new(owner_id))
+});

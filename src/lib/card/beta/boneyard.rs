@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone},
+    card::{Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone},
     effect::Effect,
     game::{PlayerId, Thresholds, pick_card_with_options},
     state::{CardQuery, State},
@@ -31,7 +31,7 @@ impl Boneyard {
                 costs: Costs::ZERO,
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -78,7 +78,7 @@ impl Card for Boneyard {
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let mut cards = vec![];
         for player in &state.players {
-            let player_id = player.id.clone();
+            let player_id = player.id;
             let state = state.snapshot();
             let zone = self.get_zone().clone();
 
@@ -93,15 +93,15 @@ impl Card for Boneyard {
                 .all(&state);
             let picked_minion_id = pick_card_with_options(
                 &player_id,
-                &minions,
-                &all_cards,
+                minions,
+                all_cards,
                 true,
                 &state,
                 "Pick a minion in your cemetery to summon to Boneyard",
             )
             .await?;
 
-            cards.push((player_id.clone(), picked_minion_id, zone.clone()));
+            cards.push((player_id, picked_minion_id, zone.clone()));
         }
 
         Ok(vec![Effect::SummonCards { cards }])
@@ -109,7 +109,6 @@ impl Card for Boneyard {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Boneyard::NAME, |owner_id: PlayerId| {
-        Box::new(Boneyard::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Boneyard::NAME, |owner_id: PlayerId| {
+    Box::new(Boneyard::new(owner_id))
+});

@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Region, Zone},
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::{Element, PlayerId, pick_card},
     query::ZoneQuery,
@@ -25,7 +25,7 @@ impl CaveIn {
                 costs: Costs::basic(4, "E"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -93,8 +93,8 @@ impl Card for CaveIn {
         Ok(minions_and_artifacts
             .iter()
             .map(|card_id| Effect::MoveCard {
-                player_id: self.get_controller_id(state).clone(),
-                card_id: card_id.clone(),
+                player_id: self.get_controller_id(state),
+                card_id: *card_id,
                 from: picked_site.get_zone().clone(),
                 to: ZoneQuery::from_zone(picked_site.get_zone().clone()),
                 tap: false,
@@ -106,7 +106,6 @@ impl Card for CaveIn {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (CaveIn::NAME, |owner_id: PlayerId| {
-        Box::new(CaveIn::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (CaveIn::NAME, |owner_id: PlayerId| {
+    Box::new(CaveIn::new(owner_id))
+});

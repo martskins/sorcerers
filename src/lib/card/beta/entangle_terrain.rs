@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Ability, AreaModifiers, Aura, AuraBase, Card, CardBase, Costs, Edition, Rarity, Region,
+        Ability, AreaModifiers, Aura, AuraBase, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region,
         Zone,
     },
     effect::Effect,
@@ -28,7 +28,7 @@ impl EntangleTerrain {
                 costs: Costs::basic(4, "EE"),
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -95,16 +95,16 @@ impl Card for EntangleTerrain {
             .iter()
             .filter(|zone| zone.get_site(state).is_some())
             .flat_map(|zone| zone.get_minions(state, None))
-            .map(|minion| minion.get_id().clone())
+            .map(|minion| *minion.get_id())
             .collect();
         AreaModifiers {
             grants_abilities: minions
                 .iter()
-                .map(|id| (id.clone(), vec![Ability::Immobile]))
+                .map(|id| (*id, vec![Ability::Immobile]))
                 .collect(),
             removes_abilities: minions
                 .iter()
-                .map(|id| (id.clone(), vec![Ability::Airborne]))
+                .map(|id| (*id, vec![Ability::Airborne]))
                 .collect(),
             ..Default::default()
         }
@@ -112,7 +112,7 @@ impl Card for EntangleTerrain {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (EntangleTerrain::NAME, |owner_id: PlayerId| {
         Box::new(EntangleTerrain::new(owner_id))
     });

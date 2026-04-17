@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        AdditionalCost, Card, CardBase, Cost, Costs, Edition, MinionType, Rarity, Region, UnitBase,
-        Zone,
+        AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Edition, MinionType, Rarity,
+        Region, UnitBase, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, Direction, PlayerId, pick_direction},
@@ -53,14 +53,14 @@ impl ActivatedAbility for TapMoveAndStrike {
                     let targets = CardQuery::new()
                         .units()
                         .untapped()
-                        .id_not_in(vec![card_id.clone()])
+                        .id_not_in(vec![*card_id])
                         .in_zone(&next_zone)
                         .all(state);
 
                     for target_id in targets {
                         effects.push(Effect::Strike {
-                            striker_id: card_id.clone(),
-                            target_id: target_id,
+                            striker_id: *card_id,
+                            target_id,
                         });
                     }
 
@@ -73,8 +73,8 @@ impl ActivatedAbility for TapMoveAndStrike {
 
         if let Some(final_zone) = path.last() {
             effects.push(Effect::MoveCard {
-                player_id: player_id.clone(),
-                card_id: card_id.clone(),
+                player_id: *player_id,
+                card_id: *card_id,
                 from: start_zone,
                 to: ZoneQuery::from_zone(final_zone.clone()),
                 tap: false,
@@ -119,7 +119,7 @@ impl BullDemonsOfAdum {
                 costs: Costs::basic(5, "FF"),
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -173,15 +173,15 @@ impl Card for BullDemonsOfAdum {
             .all(state)
             .into_iter()
             .map(|target_id| Effect::RangedStrike {
-                striker_id: self.get_id().clone(),
-                target_id: target_id.clone(),
+                striker_id: *self.get_id(),
+                target_id,
             })
             .collect())
     }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (BullDemonsOfAdum::NAME, |owner_id: PlayerId| {
         Box::new(BullDemonsOfAdum::new(owner_id))
     });

@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        AdditionalCost, AvatarBase, Card, CardBase, Cost, Costs, Edition, Rarity, Region, UnitBase,
-        Zone,
+        AdditionalCost, AvatarBase, Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity,
+        Region, UnitBase, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, CARDINAL_DIRECTIONS, Element, PlayerId, Thresholds, pick_direction},
@@ -36,7 +36,7 @@ impl ActivatedAbility for ShootProjectile {
                     .unwrap_or_default()
                     .contains(&Element::Fire)
             })
-            .map(|c| c.get_id().clone())
+            .map(|c| *c.get_id())
             .collect::<Vec<_>>();
         let damage = state
             .cards
@@ -56,9 +56,9 @@ impl ActivatedAbility for ShootProjectile {
             pick_direction(avatar.get_owner_id(), &CARDINAL_DIRECTIONS, state, prompt).await?;
         let mut effects = vec![Effect::ShootProjectile {
             id: uuid::Uuid::new_v4(),
-            player_id: avatar.get_owner_id().clone(),
+            player_id: *avatar.get_owner_id(),
             from_zone: avatar.get_zone().clone(),
-            shooter: card_id.clone(),
+            shooter: *card_id,
             direction,
             damage,
             piercing: false,
@@ -99,7 +99,7 @@ impl Flamecaller {
                 costs: Costs::ZERO,
                 rarity: Rarity::Unique,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -152,7 +152,6 @@ impl Card for Flamecaller {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (Flamecaller::NAME, |owner_id: PlayerId| {
-        Box::new(Flamecaller::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Flamecaller::NAME, |owner_id: PlayerId| {
+    Box::new(Flamecaller::new(owner_id))
+});

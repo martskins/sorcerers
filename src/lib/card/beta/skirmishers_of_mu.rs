@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{BaseOption, PlayerId, pick_option, pick_zone},
     state::{CardQuery, State},
@@ -33,7 +33,7 @@ impl SkirmishersOfMu {
                 costs: Costs::basic(4, "AA"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -68,7 +68,7 @@ impl Card for SkirmishersOfMu {
     }
 
     async fn on_move(&self, state: &State, path: &[Zone]) -> anyhow::Result<Vec<Effect>> {
-        let options = vec![BaseOption::Yes, BaseOption::No];
+        let options = [BaseOption::Yes, BaseOption::No];
         let option_labels = options.iter().map(|o| o.to_string()).collect::<Vec<_>>();
         let picked_option = pick_option(
             self.get_controller_id(state),
@@ -84,7 +84,7 @@ impl Card for SkirmishersOfMu {
 
         let picked_zone = pick_zone(
             self.get_controller_id(state),
-            &path,
+            path,
             state,
             false,
             "Skirmishers of Mu: Pick a zone to perform a ranged strike from",
@@ -103,14 +103,14 @@ impl Card for SkirmishersOfMu {
         };
 
         Ok(vec![Effect::RangedStrike {
-            striker_id: self.get_id().clone(),
+            striker_id: *self.get_id(),
             target_id: picked_unit_id,
         }])
     }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (SkirmishersOfMu::NAME, |owner_id: PlayerId| {
         Box::new(SkirmishersOfMu::new(owner_id))
     });

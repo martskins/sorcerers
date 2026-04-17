@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        AdditionalCost, AvatarBase, Card, CardBase, Cost, Costs, Edition, Rarity, Region, UnitBase,
-        Zone,
+        AdditionalCost, AvatarBase, Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity,
+        Region, UnitBase, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, yes_or_no},
@@ -35,7 +35,7 @@ impl ActivatedAbility for FloodSite {
                     .await?
                     .expect("Expected to pick a site");
                 let mut effects = vec![Effect::SetCardData {
-                    card_id: card_id.clone(),
+                    card_id: *card_id,
                     data: Box::new(ContinuousEffect::FloodSites {
                         affected_sites: picked_site_id.into(),
                     }),
@@ -49,7 +49,7 @@ impl ActivatedAbility for FloodSite {
                 if teleport {
                     let picked_site = state.get_card(&picked_site_id);
                     effects.push(Effect::SetCardZone {
-                        card_id: card_id.clone(),
+                        card_id: *card_id,
                         zone: picked_site.get_zone().clone(),
                     });
                 }
@@ -92,7 +92,7 @@ impl AvatarOfWater {
                 costs: Costs::ZERO,
                 rarity: Rarity::Unique,
                 edition: Edition::Alpha,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -165,7 +165,7 @@ impl Card for AvatarOfWater {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (AvatarOfWater::NAME, |owner_id: PlayerId| {
         Box::new(AvatarOfWater::new(owner_id))
     });

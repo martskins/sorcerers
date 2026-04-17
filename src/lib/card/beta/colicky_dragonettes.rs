@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
     game::{CARDINAL_DIRECTIONS, PlayerId, pick_direction},
     state::State,
@@ -34,7 +34,7 @@ impl ColickyDragonettes {
                 costs: Costs::basic(3, "FF"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -79,8 +79,8 @@ impl Card for ColickyDragonettes {
             pick_direction(self.get_owner_id(), &CARDINAL_DIRECTIONS, state, prompt).await?;
         Ok(vec![Effect::ShootProjectile {
             id: uuid::Uuid::new_v4(),
-            player_id: self.get_owner_id().clone(),
-            shooter: self.get_id().clone(),
+            player_id: *self.get_owner_id(),
+            shooter: *self.get_id(),
             from_zone: self.get_zone().clone(),
             direction,
             damage: 1,
@@ -91,7 +91,7 @@ impl Card for ColickyDragonettes {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (ColickyDragonettes::NAME, |owner_id: PlayerId| {
         Box::new(ColickyDragonettes::new(owner_id))
     });

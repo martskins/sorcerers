@@ -61,13 +61,13 @@ impl QueryCache {
         let mut cache = QUERY_CACHE.get().expect("to get lock").write().await;
         cache
             .effect_targets
-            .insert(effect_id.clone(), affected_cards);
+            .insert(effect_id, affected_cards);
 
         cache
             .game_queries
             .entry(game_id)
             .or_default()
-            .push(effect_id.clone());
+            .push(effect_id);
     }
 
     pub async fn effect_targets(effect_id: &uuid::Uuid) -> Option<Vec<uuid::Uuid>> {
@@ -97,7 +97,7 @@ impl QueryCache {
             let options = qry.options.as_deref().unwrap_or(&[]);
             for card in &state.cards {
                 if let Some(query) = card.zone_query_override(state, qry)? {
-                    return Ok(Box::pin(query.resolve(player_id, state)).await?);
+                    return Box::pin(query.resolve(player_id, state)).await;
                 }
             }
             options
@@ -115,7 +115,7 @@ impl QueryCache {
                 .filter(|c| {
                     qry.controlled_by
                         .as_ref()
-                        .map_or(true, |p| c.get_controller_id(state) == *p)
+                        .is_none_or(|p| c.get_controller_id(state) == *p)
                 })
                 .map(|c| c.get_zone().clone())
                 .collect();
@@ -305,7 +305,7 @@ impl ZoneQuery {
                 .filter(|c| {
                     self.controlled_by
                         .as_ref()
-                        .map_or(true, |p| c.get_controller_id(state) == *p)
+                        .is_none_or(|p| c.get_controller_id(state) == *p)
                 })
                 .map(|c| c.get_zone().clone())
                 .collect();
@@ -363,7 +363,7 @@ pub enum EffectQuery {
 }
 
 fn optional_player_matches(query: &Option<PlayerId>, actual: &PlayerId) -> bool {
-    query.as_ref().map_or(true, |q| q == actual)
+    query.as_ref().is_none_or(|q| q == actual)
 }
 
 impl EffectQuery {
@@ -404,28 +404,26 @@ impl EffectQuery {
                 EffectQuery::DamageDealt { source, target },
                 Effect::TakeDamage { card_id, from, .. },
             ) => {
-                if let Some(source) = source {
-                    if !source.matches(from, state) {
+                if let Some(source) = source
+                    && !source.matches(from, state) {
                         return Ok(false);
                     }
-                }
 
-                if let Some(target) = target {
-                    if !target.matches(card_id, state) {
+                if let Some(target) = target
+                    && !target.matches(card_id, state) {
                         return Ok(false);
                     }
-                }
 
                 Ok(true)
             }
             (EffectQuery::MoveCard { card }, Effect::MoveCard { card_id, .. }) => {
-                Ok(card.matches(&card_id, state))
+                Ok(card.matches(card_id, state))
             }
             (EffectQuery::SummonCard { card }, Effect::SummonCard { card_id, .. }) => {
                 Ok(card.matches(card_id, state))
             }
             (EffectQuery::SummonCard { card }, Effect::SummonCards { cards }) => Ok(cards
-                .into_iter()
+                .iter()
                 .any(|(_, card_id, _)| card.matches(card_id, state))),
             (EffectQuery::PlayCard { card }, Effect::PlayCard { card_id, .. }) => {
                 Ok(card.matches(card_id, state))

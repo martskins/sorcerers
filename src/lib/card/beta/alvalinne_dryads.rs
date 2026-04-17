@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, ResourceProvider,
+        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, ResourceProvider,
         UnitBase, Zone,
     },
     game::{PlayerId, Thresholds},
@@ -35,7 +35,7 @@ impl AlvalinneDryads {
                 costs: Costs::basic(3, "W"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -81,7 +81,7 @@ impl Card for AlvalinneDryads {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (AlvalinneDryads::NAME, |owner_id: PlayerId| {
         Box::new(AlvalinneDryads::new(owner_id))
     });

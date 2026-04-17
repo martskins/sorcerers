@@ -199,8 +199,8 @@ impl Game {
 
         Self {
             game_id,
-            player_id: player_id.clone(),
-            opponent_id: opponent_id.clone(),
+            player_id,
+            opponent_id,
             client: client.clone(),
             current_player: uuid::Uuid::nil(),
             overlay: None,
@@ -292,11 +292,10 @@ impl Game {
             self.data.status = *prev_status.clone();
         }
 
-        if let Some(overlay) = &mut self.overlay {
-            if let Err(e) = overlay.update(&mut self.data, ctx) {
+        if let Some(overlay) = &mut self.overlay
+            && let Err(e) = overlay.update(&mut self.data, ctx) {
                 eprintln!("Error updating overlay: {}", e);
             }
-        }
     }
 
     pub fn render(&mut self, ui: &mut Ui) -> Option<Scene> {
@@ -352,11 +351,10 @@ impl Game {
             }
         }
 
-        if let Some(overlay) = &mut self.overlay {
-            if let Err(e) = overlay.render(&mut self.data, ui, &painter) {
+        if let Some(overlay) = &mut self.overlay
+            && let Err(e) = overlay.render(&mut self.data, ui, &painter) {
                 eprintln!("Error rendering overlay: {}", e);
             }
-        }
 
         new_scene
     }
@@ -490,7 +488,7 @@ impl Game {
                 painter.text(
                     sr.center(),
                     egui::Align2::CENTER_CENTER,
-                    &prompt,
+                    prompt,
                     FontId::proportional(FONT_SIZE),
                     Color32::WHITE,
                 );
@@ -600,7 +598,7 @@ impl Game {
                 } else {
                     None
                 };
-                let result = popup_action_menu(ui, pos, &prompt, &actions, painter);
+                let result = popup_action_menu(ui, pos, prompt, actions, painter);
                 if let Some(idx) = result {
                     self.client
                         .send(ClientMessage::PickAction {

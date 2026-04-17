@@ -1,11 +1,12 @@
-use rand::seq::SliceRandom;
-
 use crate::{
-    card::{Card, CardBase, Cost, CostType, Costs, Edition, MinionType, Rarity, Zone},
+    card::{
+        Card, CardBase, CardConstructor, Cost, CostType, Costs, Edition, MinionType, Rarity, Zone,
+    },
     effect::Effect,
     game::{PlayerId, pick_card_with_options, reveal_cards, yes_or_no},
     state::{CardQuery, State},
 };
+use rand::seq::SliceRandom;
 
 #[derive(Debug, Clone)]
 pub struct AssortedAnimals {
@@ -25,7 +26,7 @@ impl AssortedAnimals {
                 costs: Costs::single(Cost::from_variable_mana("EE")),
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -84,7 +85,7 @@ impl Card for AssortedAnimals {
                     .expect("card id to be valid");
                 (
                     card.get_name().to_string(),
-                    card.get_id().clone(),
+                    *card.get_id(),
                     card.get_base().costs.mana_value(),
                 )
             })
@@ -109,25 +110,21 @@ impl Card for AssortedAnimals {
                 break;
             }
 
-            if !chosen.is_empty() {
-                if !yes_or_no(
+            if !chosen.is_empty()
+                && !yes_or_no(
                     &controller_id,
                     state,
                     "Assorted Animals: Search for another Beast?",
                 )
                 .await?
-                {
-                    break;
-                }
+            {
+                break;
             }
 
             let picked_id = pick_card_with_options(
                 &controller_id,
                 &display_card_ids,
-                &affordable
-                    .iter()
-                    .map(|(_, id, _)| id.clone())
-                    .collect::<Vec<_>>(),
+                &affordable.iter().map(|(_, id, _)| *id).collect::<Vec<_>>(),
                 false,
                 state,
                 "Assorted Animals: Pick a Beast to put into your hand",
@@ -145,7 +142,7 @@ impl Card for AssortedAnimals {
             display_card_ids.retain(|id| id != &picked_id);
         }
 
-        let chosen_ids: Vec<uuid::Uuid> = chosen.iter().map(|(_, id, _)| id.clone()).collect();
+        let chosen_ids: Vec<uuid::Uuid> = chosen.iter().map(|(_, id, _)| *id).collect();
         if !chosen_ids.is_empty() {
             reveal_cards(
                 &controller_id,
@@ -166,7 +163,7 @@ impl Card for AssortedAnimals {
         }];
 
         effects.extend(chosen_ids.iter().map(|card_id| Effect::SetCardZone {
-            card_id: card_id.clone(),
+            card_id: *card_id,
             zone: Zone::Hand,
         }));
 
@@ -175,7 +172,7 @@ impl Card for AssortedAnimals {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (AssortedAnimals::NAME, |owner_id: PlayerId| {
         Box::new(AssortedAnimals::new(owner_id))
     });

@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        AdditionalCost, Card, CardBase, Cost, Costs, Edition, Rarity, ResourceProvider, Site,
-        SiteBase, Zone,
+        AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity,
+        ResourceProvider, Site, SiteBase, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, Thresholds, pick_card},
@@ -68,12 +68,12 @@ impl ActivatedAbility for FreeCityAttack {
         Ok(vec![
             Effect::TakeDamage {
                 card_id: target,
-                from: card_id.clone(),
+                from: *card_id,
                 damage: 3,
                 is_strike: false,
             },
             Effect::SetCardData {
-                card_id: card_id.clone(),
+                card_id: *card_id,
                 data: Box::new(true),
             },
         ])
@@ -110,7 +110,7 @@ impl FreeCity {
                 costs: Costs::ZERO,
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -157,7 +157,7 @@ impl Card for FreeCity {
 
     fn set_data(&mut self, data: &Box<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
         if let Some(site_data) = data.downcast_ref::<bool>() {
-            self.used_ability = site_data.clone();
+            self.used_ability = *site_data;
             Ok(())
         } else {
             Err(anyhow::anyhow!("Invalid data type for FreeCity"))
@@ -166,7 +166,7 @@ impl Card for FreeCity {
 
     async fn on_turn_start(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![Effect::SetCardData {
-            card_id: self.get_id().clone(),
+            card_id: *self.get_id(),
             data: Box::new(false),
         }])
     }
@@ -184,7 +184,6 @@ impl Card for FreeCity {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (FreeCity::NAME, |owner_id: PlayerId| {
-        Box::new(FreeCity::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (FreeCity::NAME, |owner_id: PlayerId| {
+    Box::new(FreeCity::new(owner_id))
+});

@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Costs, Edition, Rarity, Zone},
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
     effect::Effect,
     game::{PlayerId, pick_zone},
     state::{CardQuery, State},
@@ -23,7 +23,7 @@ impl LightningBolt {
                 costs: Costs::basic(2, "A"),
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -65,20 +65,20 @@ impl Card for LightningBolt {
         )
         .await?;
         Ok(vec![Effect::DealDamageToTarget {
-            player_id: self.get_owner_id().clone(),
+            player_id: *self.get_owner_id(),
             query: CardQuery::new()
                 .units()
                 .in_zone(&picked_zone)
                 .randomised()
                 .count(1),
-            from: caster_id.clone(),
+            from: *caster_id,
             damage: 3,
         }])
     }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (LightningBolt::NAME, |owner_id: PlayerId| {
         Box::new(LightningBolt::new(owner_id))
     });

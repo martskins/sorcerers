@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Cost, Costs, Edition, Zone},
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Zone},
     effect::Effect,
     game::PlayerId,
     state::{CardQuery, State},
@@ -23,7 +23,7 @@ impl FlameWave {
                 costs: Costs::basic(6, "FF"),
                 rarity: crate::card::Rarity::Elite,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -55,7 +55,7 @@ impl Card for FlameWave {
         _caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
-        let spell_id = self.get_id().clone();
+        let spell_id = *self.get_id();
         let all_units = CardQuery::new().units().in_play().all(state);
         // TODO: This is incorrect, it should deal damage to units based on their position in the
         // realm, according to the following pattern:
@@ -71,7 +71,7 @@ impl Card for FlameWave {
             .into_iter()
             .map(|unit_id| Effect::TakeDamage {
                 card_id: unit_id,
-                from: spell_id.clone(),
+                from: spell_id,
                 damage: 3,
                 is_strike: false,
             })
@@ -81,7 +81,6 @@ impl Card for FlameWave {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
-    (FlameWave::NAME, |owner_id: PlayerId| {
-        Box::new(FlameWave::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (FlameWave::NAME, |owner_id: PlayerId| {
+    Box::new(FlameWave::new(owner_id))
+});

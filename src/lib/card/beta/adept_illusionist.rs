@@ -1,5 +1,8 @@
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{
+        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region,
+        UnitBase, Zone,
+    },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_zone_near},
     state::{CardQuery, State},
@@ -24,7 +27,7 @@ impl ActivatedAbility for AdeptIllusionistAction {
             .controlled_by(&player_id.clone())
             .cards_named(AdeptIllusionist::NAME)
             .including_not_in_play()
-            .id_not_in(vec![card_id.clone()])
+            .id_not_in(vec![*card_id])
             .pick(player_id, state, true)
             .await?
         else {
@@ -43,12 +46,12 @@ impl ActivatedAbility for AdeptIllusionistAction {
 
         Ok(vec![
             Effect::SummonCard {
-                player_id: player_id.clone(),
-                card_id: picked_card_id.clone(),
+                player_id: *player_id,
+                card_id: picked_card_id,
                 zone: zone.clone(),
             },
             Effect::ShuffleDeck {
-                player_id: player_id.clone(),
+                player_id: *player_id,
             },
         ])
     }
@@ -84,7 +87,7 @@ Tap → Search your hand, cemetery, or spellbook for another Adept Illusionist a
                 costs: Costs::basic(2, "WW"),
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
-                controller_id: owner_id.clone(),
+                controller_id: owner_id,
                 is_token: false,
                 ..Default::default()
             },
@@ -127,7 +130,7 @@ impl Card for AdeptIllusionist {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, fn(PlayerId) -> Box<dyn Card>) =
+static CONSTRUCTOR: (&'static str, CardConstructor) =
     (AdeptIllusionist::NAME, |owner_id: PlayerId| {
         Box::new(AdeptIllusionist::new(owner_id))
     });
