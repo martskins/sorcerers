@@ -1440,7 +1440,7 @@ impl State {
         }
     }
 
-    #[cfg(test)]
+    #[cfg(any(test, feature = "benchmark"))]
     pub fn new_mock_state(zones_with_sites: impl AsRef<[Zone]>) -> State {
         use crate::card::{AridDesert, from_name_and_zone};
 

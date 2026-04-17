@@ -53,3 +53,13 @@ path = "src/cli/bin/main.rs"
 [lib]
 name = "sorcerers"
 path = "src/lib/mod.rs"
+
+[features]
+benchmark = []
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "card_query"
+harness = false
