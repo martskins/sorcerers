@@ -1,5 +1,7 @@
 use crate::{
-    card::{Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{
+        Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
+    },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_action, pick_card},
     query::ZoneQuery,

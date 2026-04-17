@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        ArtifactType, Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase,
-        Zone,
+        ArtifactType, Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider,
+        Site, SiteBase, Zone,
     },
     effect::Effect,
     game::{PlayerId, Thresholds},

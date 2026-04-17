@@ -93,13 +93,11 @@ impl Server {
                     .find(|(_, players)| players.iter().any(|p| p.id == player_id))
                     .map(|(game_id, _)| *game_id);
                 if let Some(game_id) = game_id
-                    && let Some(tx) = self.games.get_mut(&game_id) {
-                        tx.send(ClientMessage::PlayerDisconnected {
-                            game_id,
-                            player_id,
-                        })
+                    && let Some(tx) = self.games.get_mut(&game_id)
+                {
+                    tx.send(ClientMessage::PlayerDisconnected { game_id, player_id })
                         .await?;
-                    }
+                }
             }
             Message::ClientMessage(msg) => {
                 let game_id = msg.game_id();

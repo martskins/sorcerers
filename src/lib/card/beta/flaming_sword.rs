@@ -1,6 +1,7 @@
 use crate::{
     card::{
-        Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, Zone,
+        Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs, Edition,
+        Rarity, Region, Zone,
     },
     game::PlayerId,
     state::{ContinuousEffect, State},

@@ -1,7 +1,10 @@
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use crate::{
-    card::{Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{
+        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region,
+        UnitBase, Zone,
+    },
     effect::Effect,
     game::{Element, PlayerId, yes_or_no},
     query::EffectQuery,

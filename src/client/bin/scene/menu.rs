@@ -180,18 +180,24 @@ impl Menu {
                         // `ui.put` so we can apply the shake offset.
                         let input_w = 320.0;
                         let input_h = 46.0;
-                        let (base_rect, _) = ui.allocate_exact_size(vec2(input_w, input_h), egui::Sense::hover());
+                        let (base_rect, _) =
+                            ui.allocate_exact_size(vec2(input_w, input_h), egui::Sense::hover());
                         let shaken_rect = base_rect.translate(vec2(shake_x, 0.0));
 
                         let te = egui::TextEdit::singleline(&mut self.player_name)
                             .font(egui::FontId::proportional(24.0))
                             .text_color(Color32::DARK_GRAY)
                             .hint_text("Your name…")
-                            .frame(Frame::new().corner_radius(2.5).stroke(egui::Stroke::new(2.0, Color32::GRAY)));
+                            .frame(
+                                Frame::new()
+                                    .corner_radius(2.5)
+                                    .stroke(egui::Stroke::new(2.0, Color32::GRAY)),
+                            );
                         let resp = ui.put(shaken_rect, te);
 
                         // Auto-focus the field on first render
-                        if resp.gained_focus() || (!resp.has_focus() && self.player_name.is_empty()) {
+                        if resp.gained_focus() || (!resp.has_focus() && self.player_name.is_empty())
+                        {
                             resp.request_focus();
                         }
 
@@ -208,11 +214,15 @@ impl Menu {
                             ui.add_space(20.0); // reserve same space so layout doesn't shift
                         }
 
-                        let btn =
-                            egui::Button::new(egui::RichText::new("Search for Match").size(24.0).color(Color32::WHITE))
-                                .min_size(vec2(280.0, 52.0));
+                        let btn = egui::Button::new(
+                            egui::RichText::new("Search for Match")
+                                .size(24.0)
+                                .color(Color32::WHITE),
+                        )
+                        .min_size(vec2(280.0, 52.0));
 
-                        let clicked = ui.add(btn).clicked() || ui.ctx().input(|i| i.key_pressed(egui::Key::Enter));
+                        let clicked = ui.add(btn).clicked()
+                            || ui.ctx().input(|i| i.key_pressed(egui::Key::Enter));
 
                         if clicked {
                             if self.player_name.is_empty() {
@@ -235,9 +245,12 @@ impl Menu {
 
                         // Precon decks
                         for deck in self.available_decks.clone() {
-                            let btn =
-                                egui::Button::new(egui::RichText::new(deck.name()).size(22.0).color(Color32::WHITE))
-                                    .min_size(vec2(280.0, 50.0));
+                            let btn = egui::Button::new(
+                                egui::RichText::new(deck.name())
+                                    .size(22.0)
+                                    .color(Color32::WHITE),
+                            )
+                            .min_size(vec2(280.0, 50.0));
                             if ui.add(btn).clicked() {
                                 self.deck_error = None;
                                 self.client
@@ -314,56 +327,62 @@ impl Menu {
                             ui.horizontal(|ui| {
                                 ui.add_space(left_pad);
 
-                                let play_btn =
-                                    egui::Button::new(egui::RichText::new("▶ Play").size(17.0).color(if can_play {
+                                let play_btn = egui::Button::new(
+                                    egui::RichText::new("▶ Play").size(17.0).color(if can_play {
                                         Color32::WHITE
                                     } else {
                                         Color32::from_rgb(100, 110, 140)
-                                    }))
-                                    .min_size(vec2(btn_w, 42.0));
+                                    }),
+                                )
+                                .min_size(vec2(btn_w, 42.0));
                                 if ui.add_enabled(can_play, play_btn).clicked()
                                     && let Some(idx) = self.selected_saved_deck
-                                        && let Some(deck_list) = saved.get(idx).cloned() {
-                                            match deck_list.validate() {
-                                                Ok(()) => {
-                                                    self.deck_error = None;
-                                                    self.client
-                                                        .send(ClientMessage::JoinQueue {
-                                                            player_name: self.player_name.clone(),
-                                                            player_id: self.player_id.expect("player id should be set"),
-                                                            deck: DeckChoice::Custom(deck_list),
-                                                        })
-                                                        .ok();
-                                                    self.looking_for_match = true;
-                                                }
-                                                Err(msg) => {
-                                                    self.deck_error = Some(msg);
-                                                }
-                                            }
+                                    && let Some(deck_list) = saved.get(idx).cloned()
+                                {
+                                    match deck_list.validate() {
+                                        Ok(()) => {
+                                            self.deck_error = None;
+                                            self.client
+                                                .send(ClientMessage::JoinQueue {
+                                                    player_name: self.player_name.clone(),
+                                                    player_id: self
+                                                        .player_id
+                                                        .expect("player id should be set"),
+                                                    deck: DeckChoice::Custom(deck_list),
+                                                })
+                                                .ok();
+                                            self.looking_for_match = true;
                                         }
+                                        Err(msg) => {
+                                            self.deck_error = Some(msg);
+                                        }
+                                    }
+                                }
 
                                 ui.add_space(gap);
 
-                                let edit_btn =
-                                    egui::Button::new(egui::RichText::new("✏ Edit").size(17.0).color(if can_play {
+                                let edit_btn = egui::Button::new(
+                                    egui::RichText::new("✏ Edit").size(17.0).color(if can_play {
                                         Color32::from_rgb(200, 220, 255)
                                     } else {
                                         Color32::from_rgb(100, 110, 140)
-                                    }))
-                                    .min_size(vec2(btn_w, 42.0));
+                                    }),
+                                )
+                                .min_size(vec2(btn_w, 42.0));
                                 if ui.add_enabled(can_play, edit_btn).clicked()
                                     && let Some(idx) = self.selected_saved_deck
-                                        && let Some(deck_list) = saved.get(idx).cloned() {
-                                            next_scene = Some(Scene::DeckBuilder(
-                                                crate::scene::deck_builder::DeckBuilder::from_deck_list(
-                                                    self.client.clone(),
-                                                    self.player_id,
-                                                    self.player_name.clone(),
-                                                    self.available_decks.clone(),
-                                                    deck_list,
-                                                ),
-                                            ));
-                                        }
+                                    && let Some(deck_list) = saved.get(idx).cloned()
+                                {
+                                    next_scene = Some(Scene::DeckBuilder(
+                                        crate::scene::deck_builder::DeckBuilder::from_deck_list(
+                                            self.client.clone(),
+                                            self.player_id,
+                                            self.player_name.clone(),
+                                            self.available_decks.clone(),
+                                            deck_list,
+                                        ),
+                                    ));
+                                }
                             });
                         }
 
@@ -386,12 +405,14 @@ impl Menu {
                         )
                         .min_size(vec2(280.0, 46.0));
                         if ui.add(build_btn).clicked() {
-                            next_scene = Some(Scene::DeckBuilder(crate::scene::deck_builder::DeckBuilder::from_menu(
-                                self.client.clone(),
-                                self.player_id,
-                                self.player_name.clone(),
-                                self.available_decks.clone(),
-                            )));
+                            next_scene = Some(Scene::DeckBuilder(
+                                crate::scene::deck_builder::DeckBuilder::from_menu(
+                                    self.client.clone(),
+                                    self.player_id,
+                                    self.player_name.clone(),
+                                    self.available_decks.clone(),
+                                ),
+                            ));
                         }
                     }
                 });

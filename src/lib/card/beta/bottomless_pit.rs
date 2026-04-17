@@ -2,7 +2,8 @@ use std::{future::Future, pin::Pin, sync::Arc};
 
 use crate::{
     card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone,
+        Ability, Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site,
+        SiteBase, Zone,
     },
     effect::Effect,
     game::{PlayerId, Thresholds},

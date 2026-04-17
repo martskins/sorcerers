@@ -26,10 +26,11 @@ fn get_card_text(url: &str) -> String {
                     // Path found in your provided bullfrog.html
                     let path = "/props/pageProps/trpcState/json/queries/0/state/data/rulesText";
                     if let Some(rules) = v.pointer(path)
-                        && let Some(text) = rules.as_str() {
-                            println!("{}", text);
-                            return text.replace("\n", " ").trim().to_string();
-                        }
+                        && let Some(text) = rules.as_str()
+                    {
+                        println!("{}", text);
+                        return text.replace("\n", " ").trim().to_string();
+                    }
                 }
                 "Text path not found".to_string()
             } else {

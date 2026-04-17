@@ -1,5 +1,7 @@
 use crate::{
-    card::{Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{
+        Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
+    },
     effect::Effect,
     game::{PlayerId, reveal_cards, take_action},
     state::State,

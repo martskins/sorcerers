@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, SiteType, UnitBase,
-        Zone,
+        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region,
+        SiteType, UnitBase, Zone,
     },
     effect::Effect,
     game::{PlayerId, pick_card, yes_or_no},

@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use crate::{
     card::{
-        Ability, Aura, AuraBase, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, Zone,
+        Ability, Aura, AuraBase, Card, CardBase, CardConstructor, Costs, Edition, MinionType,
+        Rarity, Region, Zone,
     },
     effect::{AbilityCounter, Effect},
     game::PlayerId,

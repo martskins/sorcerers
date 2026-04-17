@@ -32,7 +32,9 @@ impl SorcerersApp {
         let receiver = client.clone();
         rt.spawn(async move {
             loop {
-                if let Some(Message::ServerMessage(msg)) = receiver.recv().expect("message should be received") {
+                if let Some(Message::ServerMessage(msg)) =
+                    receiver.recv().expect("message should be received")
+                {
                     let _ = tx.send(msg);
                 }
             }

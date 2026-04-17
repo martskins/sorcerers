@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use crate::{
     card::{
-        Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, Zone,
+        Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs, Edition,
+        Rarity, Region, Zone,
     },
     effect::Effect,
     game::PlayerId,

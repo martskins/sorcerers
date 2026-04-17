@@ -1,5 +1,7 @@
 use crate::{
-    card::{AvatarBase, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, UnitBase, Zone},
+    card::{
+        AvatarBase, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, UnitBase, Zone,
+    },
     game::PlayerId,
 };
 

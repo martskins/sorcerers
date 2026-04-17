@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, ResourceProvider,
-        UnitBase, Zone,
+        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region,
+        ResourceProvider, UnitBase, Zone,
     },
     game::{PlayerId, Thresholds},
     state::State,

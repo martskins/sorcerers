@@ -1,5 +1,7 @@
 use crate::{
-    card::{Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{
+        Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
+    },
     effect::Effect,
     game::{CARDINAL_DIRECTIONS, PlayerId, pick_direction},
     state::State,

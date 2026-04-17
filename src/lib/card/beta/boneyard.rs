@@ -1,5 +1,8 @@
 use crate::{
-    card::{Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone},
+    card::{
+        Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase,
+        Zone,
+    },
     effect::Effect,
     game::{PlayerId, Thresholds, pick_card_with_options},
     state::{CardQuery, State},

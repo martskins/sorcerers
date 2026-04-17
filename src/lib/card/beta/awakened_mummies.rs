@@ -1,7 +1,10 @@
 use std::sync::Arc;
 
 use crate::{
-    card::{Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{
+        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region,
+        UnitBase, Zone,
+    },
     effect::Effect,
     game::PlayerId,
     query::{EffectQuery, ZoneQuery},
