@@ -2363,6 +2363,7 @@ pub enum MinionType {
     Troll,
     Dwarf,
     Automaton,
+    Gnome,
 }
 
 #[derive(Debug, PartialEq, Clone)]

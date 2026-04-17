@@ -484,3 +484,7 @@ pub mod gigantism;
 pub use gigantism::*;
 pub mod gilded_aegis;
 pub use gilded_aegis::*;
+pub mod gneissgnath_gnomes;
+pub use gneissgnath_gnomes::*;
+pub mod gnome_hollows;
+pub use gnome_hollows::*;
