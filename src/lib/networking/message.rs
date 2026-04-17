@@ -1,6 +1,6 @@
 use crate::{
     card::{Card, CardData, CardType, Zone},
-    deck::{Deck, DeckList, precon},
+    deck::{Deck, DeckList, precon::PreconDeck},
     game::{Direction, PlayerId, Resources, SoundEffect},
 };
 use serde::{Deserialize, Serialize};
@@ -14,34 +14,6 @@ pub trait ToMessage {
 pub enum Message {
     ServerMessage(ServerMessage),
     ClientMessage(ClientMessage),
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum PreconDeck {
-    BetaFire,
-    BetaAir,
-    BetaEarth,
-    BetaWater,
-}
-
-impl PreconDeck {
-    pub fn name(&self) -> &'static str {
-        match self {
-            PreconDeck::BetaFire => "Beta - Fire",
-            PreconDeck::BetaAir => "Beta - Air",
-            PreconDeck::BetaEarth => "Beta - Earth",
-            PreconDeck::BetaWater => "Beta - Water",
-        }
-    }
-
-    pub fn build(&self, player_id: &PlayerId) -> (Deck, Vec<Box<dyn Card>>) {
-        match self {
-            PreconDeck::BetaFire => precon::beta::fire(player_id),
-            PreconDeck::BetaAir => precon::beta::air(player_id),
-            PreconDeck::BetaEarth => precon::beta::earth(player_id),
-            PreconDeck::BetaWater => precon::beta::water(player_id),
-        }
-    }
 }
 
 /// A deck choice: either a preconstructed deck or a custom saved deck.

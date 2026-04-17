@@ -3,12 +3,13 @@ use egui::{
     Color32, Context, CornerRadius, Frame, Rect, ScrollArea, Sense, Stroke, StrokeKind, Ui, pos2,
     vec2,
 };
+use sorcerers::deck::precon::PreconDeck;
 use sorcerers::deck::{CardNameWithCount, DeckList};
 use sorcerers::game::PlayerId;
 use sorcerers::{
     card::{ALL_CARDS, CardType, Rarity, Zone},
     game::{Element, Thresholds},
-    networking::{self, message::PreconDeck},
+    networking,
 };
 use std::collections::HashMap;
 use unidecode::unidecode;

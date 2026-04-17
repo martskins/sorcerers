@@ -4,11 +4,12 @@ use kira::{
     AudioManager, AudioManagerSettings, DefaultBackend, sound::static_sound::StaticSoundData,
 };
 use sorcerers::deck::DeckList;
+use sorcerers::deck::precon::PreconDeck;
 use sorcerers::game::PlayerId;
 use sorcerers::networking::message::ServerMessage;
 use sorcerers::networking::{
     self,
-    message::{ClientMessage, DeckChoice, PreconDeck},
+    message::{ClientMessage, DeckChoice},
 };
 
 #[derive(Debug)]

@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::{
     card::{
         Ability, AreaModifiers, Card, CardBase, CardConstructor, Costs, Edition, MinionType,
@@ -8,6 +6,7 @@ use crate::{
     game::{Direction, PlayerId},
     state::{CardQuery, State},
 };
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct HillockBasilisk {

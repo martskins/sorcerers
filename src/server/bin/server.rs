@@ -1,9 +1,7 @@
 use async_channel::Sender;
 use sorcerers::{
-    card::{
-        ALL_PRECONS, ApprenticeWizard, AramosMercenaries, AridDesert, FelbogFrogMen, RubyCore,
-        SummerRiver,
-    },
+    card::{ApprenticeWizard, AramosMercenaries, AridDesert, FelbogFrogMen, RubyCore, SummerRiver},
+    deck::precon::ALL_PRECONS,
     game::Game,
     networking::{
         client::Client,
