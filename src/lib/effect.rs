@@ -303,7 +303,7 @@ impl Effect {
             Effect::TakeDamage { card_id, .. } => Some(card_id),
             Effect::BanishCard { card_id, .. } => Some(card_id),
             Effect::KillMinion { card_id, .. } => Some(card_id),
-            Effect::BuryCard { card_id } => Some(card_id),
+            Effect::BuryCard { card_id, .. } => Some(card_id),
             Effect::SetCardData { card_id, .. } => Some(card_id),
             Effect::TeleportCard { player_id, .. } => Some(player_id),
             Effect::DealDamageAllUnitsInZone { from, .. } => Some(from),

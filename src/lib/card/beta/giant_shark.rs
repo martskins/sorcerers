@@ -1,5 +1,3 @@
-use std::{pin::Pin, sync::Arc};
-
 use crate::{
     card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
@@ -7,6 +5,7 @@ use crate::{
     query::EffectQuery,
     state::{CardQuery, ContinuousEffect, State},
 };
+use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub struct GiantShark {
@@ -76,7 +75,7 @@ impl Card for GiantShark {
             return Ok(vec![]);
         };
 
-        Ok(vec![ContinuousEffect::AddTriggeredEffect {
+        Ok(vec![ContinuousEffect::TriggeredEffect {
             trigger_on_effect: EffectQuery::MoveCard {
                 card: CardQuery::new().units(),
             },

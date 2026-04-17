@@ -430,7 +430,7 @@ impl EffectQuery {
             (EffectQuery::PlayCard { card }, Effect::PlayCard { card_id, .. }) => {
                 Ok(card.matches(card_id, state))
             }
-            (EffectQuery::BuryCard { card }, Effect::BuryCard { card_id }) => {
+            (EffectQuery::BuryCard { card }, Effect::BuryCard { card_id, .. }) => {
                 Ok(card.matches(card_id, state))
             }
             (EffectQuery::Attack { attacker }, Effect::Attack { attacker_id, .. }) => {

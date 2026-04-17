@@ -480,3 +480,7 @@ pub mod ghost_ship;
 pub use ghost_ship::*;
 pub mod giant_shark;
 pub use giant_shark::*;
+pub mod gigantism;
+pub use gigantism::*;
+pub mod gilded_aegis;
+pub use gilded_aegis::*;

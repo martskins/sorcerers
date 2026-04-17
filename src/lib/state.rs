@@ -862,7 +862,7 @@ pub enum ContinuousEffect {
         affected_cards: CardQuery,
         zones: Option<Vec<Zone>>,
     },
-    AddTriggeredEffect {
+    TriggeredEffect {
         trigger_on_effect: EffectQuery,
         on_effect: EffectCallback,
     },
@@ -871,7 +871,7 @@ pub enum ContinuousEffect {
 impl std::fmt::Debug for ContinuousEffect {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::AddTriggeredEffect {
+            Self::TriggeredEffect {
                 trigger_on_effect, ..
             } => f
                 .debug_struct("AddTriggeredEffect")
