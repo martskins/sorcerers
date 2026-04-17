@@ -53,8 +53,6 @@ pub struct CardEntry {
     pub name: String,
     pub card_type: CardType,
     pub zone: Zone, // Spellbook or Atlasbook
-    #[allow(dead_code)]
-    pub is_avatar: bool,
     pub rarity: Rarity,
     pub mana: u8,
     pub thresholds: Thresholds,
@@ -70,22 +68,6 @@ impl CardEntry {
             Rarity::Exceptional => 3,
             Rarity::Elite => 2,
             Rarity::Unique => 1,
-        }
-    }
-
-    #[allow(dead_code)]
-    pub fn primary_element(&self) -> Option<Element> {
-        let t = &self.thresholds;
-        if t.fire > 0 {
-            Some(Element::Fire)
-        } else if t.air > 0 {
-            Some(Element::Air)
-        } else if t.earth > 0 {
-            Some(Element::Earth)
-        } else if t.water > 0 {
-            Some(Element::Water)
-        } else {
-            None
         }
     }
 
@@ -191,7 +173,6 @@ impl DeckBuilder {
                 name: card.get_name().to_string(),
                 card_type: card.get_card_type(),
                 zone: base.zone.clone(),
-                is_avatar: card.is_avatar(),
                 rarity: base.rarity.clone(),
                 mana: base.costs.mana_value(),
                 thresholds: base.costs.thresholds_cost().clone(),

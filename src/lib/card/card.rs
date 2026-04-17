@@ -2071,14 +2071,14 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                         .await?;
                         let picked_card = state.get_card(&picked_card_id);
                         Ok(vec![
+                            Effect::SetBearer {
+                                card_id: *card_id,
+                                bearer_id: Some(picked_card_id),
+                            },
                             Effect::PlayCard {
                                 player_id: controller_id,
                                 card_id: *card_id,
                                 zone: picked_card.get_zone().clone().into(),
-                            },
-                            Effect::SetBearer {
-                                card_id: *card_id,
-                                bearer_id: Some(picked_card_id),
                             },
                         ])
                     }
@@ -2563,13 +2563,10 @@ pub trait Artifact: Card {
 
     fn get_valid_attach_targets(&self, state: &State) -> Vec<uuid::Uuid> {
         match self.get_card_type() {
-            CardType::Artifact => state
-                .cards
-                .iter()
-                .filter(|c| c.is_unit())
-                .filter(|c| c.get_controller_id(state) == self.get_controller_id(state))
-                .map(|c| *c.get_id())
-                .collect(),
+            CardType::Artifact => CardQuery::new()
+                .units()
+                .controlled_by(&self.get_controller_id(state))
+                .all(state),
             _ => vec![],
         }
     }
