@@ -1418,11 +1418,12 @@ impl State {
         self.server_tx.clone()
     }
 
-    pub fn get_card_mut(&mut self, card_id: &uuid::Uuid) -> &mut Box<dyn Card> {
+    pub fn get_card_mut(&mut self, card_id: &uuid::Uuid) -> &mut dyn Card {
         self.cards
             .iter_mut()
             .find(|c| c.get_id() == card_id)
             .expect("failed to get card")
+            .as_mut()
     }
 
     pub fn get_card(&self, card_id: &uuid::Uuid) -> &dyn Card {
