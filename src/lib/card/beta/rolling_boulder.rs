@@ -6,7 +6,7 @@ use crate::{
     effect::Effect,
     game::{ActivatedAbility, CARDINAL_DIRECTIONS, PlayerId, pick_direction},
     query::ZoneQuery,
-    state::State,
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -39,13 +39,14 @@ impl ActivatedAbility for RollBoulder {
 
         let mut last_zone = boulder.get_zone().clone();
         let mut effects = Vec::new();
-        for unit in last_zone.get_units(state, None) {
-            if unit.get_id() == card_id {
-                continue;
-            }
-
+        let units = CardQuery::new()
+            .units()
+            .id_not_in(vec![*card_id])
+            .in_zone(&last_zone)
+            .all(state);
+        for unit in units {
             effects.push(Effect::TakeDamage {
-                card_id: *unit.get_id(),
+                card_id: unit,
                 from: *boulder.get_id(),
                 damage: 4,
                 is_strike: false,
@@ -53,7 +54,7 @@ impl ActivatedAbility for RollBoulder {
         }
 
         while let Some(zone) = last_zone.zone_in_direction(&picked_direction, 1) {
-            let units = zone.get_units(state, None);
+            let units = CardQuery::new().units().in_zone(&zone).all(state);
             for unit in units {
                 effects.push(Effect::MoveCard {
                     card_id: *boulder.get_id(),
@@ -65,7 +66,7 @@ impl ActivatedAbility for RollBoulder {
                     through_path: None,
                 });
                 effects.push(Effect::TakeDamage {
-                    card_id: *unit.get_id(),
+                    card_id: unit,
                     from: *boulder.get_id(),
                     damage: 4,
                     is_strike: false,
@@ -147,13 +148,14 @@ impl Card for RollingBoulder {
     }
 
     fn area_modifiers(&self, state: &State) -> AreaModifiers {
-        let granted_activated_abilities = self
-            .get_zone()
-            .get_units(state, None)
-            .iter()
+        let granted_activated_abilities = CardQuery::new()
+            .units()
+            .in_zone(self.get_zone())
+            .all(state)
+            .into_iter()
             .map(|u| {
                 (
-                    *u.get_id(),
+                    u,
                     vec![Box::new(RollBoulder(*self.get_id())) as Box<dyn ActivatedAbility>],
                 )
             })

@@ -317,26 +317,6 @@ impl Zone {
         get_nearby_zones(self)
     }
 
-    pub fn get_units<'a>(
-        &self,
-        state: &'a State,
-        controller_id: Option<&PlayerId>,
-    ) -> Vec<&'a Box<dyn Card>> {
-        state
-            .get_cards_in_zone(self)
-            .iter()
-            .filter(|c| c.is_unit())
-            .filter(|c| {
-                if let Some(controller_id) = controller_id {
-                    &c.get_controller_id(state) == controller_id
-                } else {
-                    true
-                }
-            })
-            .cloned()
-            .collect::<Vec<&Box<dyn Card>>>()
-    }
-
     pub fn get_site<'a>(&self, state: &'a State) -> Option<&'a dyn Site> {
         state
             .get_cards_in_zone(self)
@@ -2651,7 +2631,7 @@ pub trait Aura: Card {
         Ok(false)
     }
 
-    fn get_affected_zones(&self, _state: &State) -> Vec<Zone> {
+    fn base_get_affected_zones(&self, _state: &State) -> Vec<Zone> {
         match self.get_zone() {
             z @ Zone::Realm(_) => vec![z.clone()],
             Zone::Intersection(locs) => {
@@ -2663,6 +2643,10 @@ pub trait Aura: Card {
             }
             _ => vec![],
         }
+    }
+
+    fn get_affected_zones(&self, state: &State) -> Vec<Zone> {
+        self.base_get_affected_zones(state)
     }
 }
 

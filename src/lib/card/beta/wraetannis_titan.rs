@@ -1,8 +1,10 @@
 use crate::{
-    card::{Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{
+        Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
+    },
     effect::Effect,
     game::PlayerId,
-    state::State,
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -69,12 +71,12 @@ impl Card for WraetannisTitan {
 
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let opponent_id = state.get_opponent_id(&self.get_controller_id(state))?;
-        let effects = self
-            .get_zone()
-            .get_units(state, Some(&opponent_id))
-            .iter()
-            .map(|c| c.get_id())
-            .cloned()
+        let effects = CardQuery::new()
+            .units()
+            .in_zone(self.get_zone())
+            .controlled_by(&opponent_id)
+            .all(state)
+            .into_iter()
             .map(|id| Effect::Strike {
                 striker_id: id,
                 target_id: *self.get_id(),

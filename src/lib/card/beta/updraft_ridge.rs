@@ -1,12 +1,10 @@
-use std::collections::HashMap;
-
 use crate::{
     card::{
-        Ability, AreaModifiers, Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site,
-        SiteBase, SiteType, Zone,
+        Ability, AreaModifiers, Card, CardBase, CardConstructor, Costs, Edition, Rarity,
+        ResourceProvider, Site, SiteBase, SiteType, Zone,
     },
     game::{PlayerId, Thresholds},
-    state::State,
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -72,13 +70,14 @@ impl Card for UpdraftRidge {
     }
 
     fn area_modifiers(&self, state: &State) -> AreaModifiers {
-        let grants_abilities = self
-            .get_zone()
-            .get_units(state, None)
-            .iter()
-            .filter(|c| c.has_ability(state, &Ability::Airborne))
-            .map(|c| (*c.get_id(), vec![Ability::Movement(1)]))
-            .collect::<HashMap<uuid::Uuid, Vec<Ability>>>();
+        let grants_abilities = CardQuery::new()
+            .units()
+            .in_zone(self.get_zone())
+            .with_abilities(vec![Ability::Airborne])
+            .all(state)
+            .into_iter()
+            .map(|c| (c, vec![Ability::Movement(1)]))
+            .collect();
 
         AreaModifiers {
             grants_abilities,

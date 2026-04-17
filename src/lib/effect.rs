@@ -1424,12 +1424,7 @@ impl Effect {
                 damage,
             } => {
                 let zone = query.resolve(player_id, state).await?;
-                let units: Vec<uuid::Uuid> = zone
-                    .get_units(state, None)
-                    .iter()
-                    .map(|c| c.get_id())
-                    .cloned()
-                    .collect();
+                let units = CardQuery::new().units().in_zone(&zone).all(state);
                 for unit_id in units {
                     state.queue_one(Effect::TakeDamage {
                         card_id: unit_id,

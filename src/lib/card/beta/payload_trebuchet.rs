@@ -32,7 +32,7 @@ impl ActivatedAbility for ShootPayload {
             "Pick a zone to shoot the payload at",
         )
         .await?;
-        let units = picked_zone.get_units(state, None);
+        let units = CardQuery::new().units().in_zone(&picked_zone).all(state);
         let mana_cost = state
             .effect_log
             .iter()
@@ -61,7 +61,7 @@ impl ActivatedAbility for ShootPayload {
         Ok(units
             .iter()
             .map(|unit| Effect::TakeDamage {
-                card_id: *unit.get_id(),
+                card_id: *unit,
                 damage: mana_cost.into(),
                 from: *card_id,
                 is_strike: false,

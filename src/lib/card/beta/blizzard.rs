@@ -5,7 +5,7 @@ use crate::{
     },
     effect::Effect,
     game::PlayerId,
-    state::State,
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -51,6 +51,14 @@ impl Aura for Blizzard {
 
         Ok(turns_in_play >= 1)
     }
+
+    fn get_affected_zones(&self, state: &State) -> Vec<Zone> {
+        let affected_zones = self.base_get_affected_zones(state);
+        affected_zones
+            .into_iter()
+            .filter(|z| z.get_site(state).is_some())
+            .collect()
+    }
 }
 
 #[async_trait::async_trait]
@@ -83,13 +91,12 @@ impl Card for Blizzard {
     }
 
     fn area_modifiers(&self, state: &State) -> AreaModifiers {
-        let minions: Vec<uuid::Uuid> = self
-            .get_affected_zones(state)
-            .iter()
-            .filter(|zone| zone.get_site(state).is_some())
-            .flat_map(|zone| zone.get_units(state, None))
-            .map(|minion| *minion.get_id())
-            .collect();
+        let affected_sites = self.get_affected_zones(state);
+        let minions = CardQuery::new()
+            .minions()
+            .in_zones(&affected_sites)
+            .all(state);
+
         AreaModifiers {
             grants_abilities: minions
                 .iter()

@@ -48,15 +48,8 @@ impl ActivatedAbility for TapToDealDamage {
             .ok_or(anyhow::anyhow!("Card is not an artifact"))?;
         if let Some(bearer_id) = card.get_bearer()? {
             let bearer = state.get_card(&bearer_id);
-            let valid_targets: Vec<uuid::Uuid> = bearer
-                .get_zones_within_steps(state, 2)
-                .iter()
-                .flat_map(|z| z.get_units(state, None))
-                .filter(|c| c.is_unit())
-                .map(|c| c.get_id())
-                .cloned()
-                .collect();
-
+            let zones = bearer.get_zones_within_steps(state, 2);
+            let valid_targets = CardQuery::new().units().in_zones(&zones).all(state);
             let picked_unit_id = pick_card(
                 card.get_controller_id(state),
                 &valid_targets,

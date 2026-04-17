@@ -141,16 +141,12 @@ impl Card for BatteringRam {
     }
 
     fn area_modifiers(&self, state: &State) -> AreaModifiers {
-        let abilities = self
-            .get_zone()
-            .get_units(state, None)
-            .iter()
-            .map(|unit| {
-                (
-                    *unit.get_id(),
-                    vec![Box::new(RamStrike) as Box<dyn ActivatedAbility>],
-                )
-            })
+        let abilities = CardQuery::new()
+            .units()
+            .in_zone(self.get_zone())
+            .all(state)
+            .into_iter()
+            .map(|unit| (unit, vec![Box::new(RamStrike) as Box<dyn ActivatedAbility>]))
             .collect();
 
         AreaModifiers {

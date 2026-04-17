@@ -81,16 +81,11 @@ impl Card for GrappleShot {
             match cur_zone.zone_in_direction(&direction, 1) {
                 Some(Zone::Realm(next_sq)) if (1..=20).contains(&next_sq) => {
                     cur_zone = Zone::Realm(next_sq);
-                    let units = cur_zone.get_units(state, None);
-                    for unit in units {
-                        if unit.is_unit() {
-                            hit_unit_id = Some(unit.get_id());
-                            break;
-                        }
-                    }
-                    if hit_unit_id.is_some() {
+                    let units = CardQuery::new().units().in_zone(&cur_zone).all(state);
+                    if let Some(unit_id) = units.first() {
+                        hit_unit_id = Some(*unit_id);
                         break;
-                    }
+                    };
                 }
                 _ => break,
             }
@@ -113,7 +108,7 @@ impl Card for GrappleShot {
             if strike {
                 effects.push(Effect::Attack {
                     attacker_id: ally_id,
-                    defender_id: *target_id,
+                    defender_id: target_id,
                 });
             }
             Ok(effects)

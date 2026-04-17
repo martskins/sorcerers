@@ -1,9 +1,10 @@
 use crate::{
     card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone,
+        Ability, Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site,
+        SiteBase, Zone,
     },
     game::{PlayerId, Thresholds},
-    state::State,
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -80,11 +81,12 @@ impl Card for AstralAlcazar {
     fn area_modifiers(&self, state: &State) -> crate::card::AreaModifiers {
         // TODO: This ability is not quite right. It should grant the ability of moving to any void
         // as if it were adjacent to this site.
-        let grants_abilities = self
-            .get_zone()
-            .get_units(state, None)
-            .iter()
-            .map(|unit| (*unit.get_id(), vec![Ability::Voidwalk]))
+        let grants_abilities = CardQuery::new()
+            .units()
+            .in_zone(self.get_zone())
+            .all(state)
+            .into_iter()
+            .map(|unit| (unit, vec![Ability::Voidwalk]))
             .collect();
 
         crate::card::AreaModifiers {

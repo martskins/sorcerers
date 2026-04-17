@@ -1,10 +1,10 @@
 use crate::{
     card::{
-        Ability, AreaModifiers, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, ResourceProvider,
-        Site, SiteBase, Zone,
+        Ability, AreaModifiers, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region,
+        ResourceProvider, Site, SiteBase, Zone,
     },
     game::{PlayerId, Thresholds},
-    state::State,
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -74,12 +74,13 @@ impl Card for VantageHills {
     }
 
     fn area_modifiers(&self, state: &State) -> AreaModifiers {
-        let grants_abilities = self
-            .get_zone()
-            .get_units(state, None)
-            .iter()
-            .filter(|c| c.get_region(state) == &Region::Surface)
-            .map(|c| (*c.get_id(), vec![Ability::Ranged(1)]))
+        let grants_abilities = CardQuery::new()
+            .units()
+            .in_zone(self.get_zone())
+            .in_region(&Region::Surface)
+            .all(state)
+            .into_iter()
+            .map(|c| (c, vec![Ability::Ranged(1)]))
             .collect();
 
         AreaModifiers {
