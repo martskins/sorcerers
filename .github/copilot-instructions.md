@@ -70,7 +70,7 @@
   3. Register the module in `mod.rs` and with `#[linkme::distributed_slice]`.
 - **Card metadata source:**
   - Check `documents/Sorcery Contested Realm Product Tracker - Beta.csv` in the repo root before coding a Beta card. Use the row for the card name to confirm cost, thresholds, type, subtype, rarity, and Curiosa slug.
-  - Check `documents/SorceryRulebook.pdf` in the repo root for rules of the game and card mechanics before coding any card.
+  - Check `documents/rulebook.md` in the repo root for rules of the game and card mechanics before coding any card.
 - **Effects:**
   - All game actions are represented as `Effect` variants and processed by the server.
 - **Async Texture Loading:**
