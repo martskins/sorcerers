@@ -36,6 +36,7 @@ pub enum ComponentCommand {
         zone: Zone,
         controller_id: Option<PlayerId>,
     },
+    CloseOverlay,
 }
 
 pub trait Component: std::fmt::Debug {

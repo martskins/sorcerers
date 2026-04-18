@@ -676,7 +676,6 @@ impl RealmComponent {
                         .find(|c| c.card.id == *card_id)
                         .unwrap();
                     card_rect.is_selected = !card_rect.is_selected;
-                    reset_status = true;
                 }
             }
             _ => {}

@@ -356,10 +356,14 @@ impl Game {
             }
         }
 
-        if let Some(overlay) = &mut self.overlay
-            && let Err(e) = overlay.render(&mut self.data, ui, &painter)
-        {
-            eprintln!("Error rendering overlay: {}", e);
+        if let Some(overlay) = &mut self.overlay {
+            match overlay.render(&mut self.data, ui, &painter) {
+                Ok(Some(ComponentCommand::CloseOverlay)) => {
+                    self.overlay = None;
+                }
+                Ok(_) => {}
+                Err(e) => eprintln!("Error rendering overlay: {}", e),
+            }
         }
 
         new_scene

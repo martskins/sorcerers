@@ -213,7 +213,7 @@ impl Component for CombatResolutionOverlay {
         let game_id = self.game_id;
         let player_id = self.player_id;
         let defender_damage = self.defender_damage.clone();
-        let mut set_invisible = false;
+        let mut close_component = false;
         let mut set_shake = false;
 
         egui::Area::new(egui::Id::new("combat_confirm_btn"))
@@ -237,7 +237,7 @@ impl Component for CombatResolutionOverlay {
                                 damage_assignment: defender_damage,
                             })
                             .unwrap();
-                        set_invisible = true;
+                        close_component = true;
                     }
                 }
             });
@@ -246,8 +246,8 @@ impl Component for CombatResolutionOverlay {
             self.shake_button_until =
                 Some(chrono::Utc::now() + chrono::Duration::milliseconds(300));
         }
-        if set_invisible {
-            self.visible = false;
+        if close_component {
+            return Ok(Some(ComponentCommand::CloseOverlay));
         }
 
         Ok(None)
