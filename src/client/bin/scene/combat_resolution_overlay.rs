@@ -236,7 +236,7 @@ impl Component for CombatResolutionOverlay {
                                 player_id,
                                 damage_assignment: defender_damage,
                             })
-                            .ok();
+                            .unwrap();
                         set_invisible = true;
                     }
                 }

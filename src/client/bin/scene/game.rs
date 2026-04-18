@@ -320,6 +320,10 @@ impl Game {
 
         let mut component_actions: Vec<ComponentCommand> = Vec::new();
         for component in &mut self.components {
+            if !component.is_visible() {
+                continue;
+            }
+
             let actions = component.render(&mut self.data, ui, &painter).unwrap();
             if let Some(action) = actions {
                 component_actions.push(action);
