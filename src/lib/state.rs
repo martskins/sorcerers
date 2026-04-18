@@ -1251,6 +1251,7 @@ impl State {
         CardQuery::new()
             .units()
             .near_to(defender.get_zone())
+            .id_not(defender_id)
             .controlled_by(&defender.get_controller_id(self))
             .all(self)
     }

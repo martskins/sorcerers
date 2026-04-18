@@ -1661,34 +1661,58 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     fn get_valid_attack_targets_from_zone(
         &self,
         state: &State,
-        ranged: bool,
+        _ranged: bool,
         zone: &Zone,
     ) -> Vec<uuid::Uuid> {
+        let attacker_region = self.get_region(state);
+        let attacker_is_airborne = self.has_ability(state, &Ability::Airborne);
+
         state
             .cards
             .iter()
-            .filter(|c| c.get_controller_id(state) != self.get_controller_id(state))
-            .filter(|c| c.is_unit() || c.is_site())
-            .filter(|c| c.can_be_targetted_by_player(state, &self.get_controller_id(state)))
-            .filter(|c| !c.has_ability(state, &Ability::Unattackable))
-            .filter(|c| {
-                let same_region = c.get_region(state) == self.get_region(state);
-                let ranged_on_airborne = ranged
-                    && self.get_region(state) == &Region::Surface
-                    && c.has_ability(state, &Ability::Airborne);
-                let airborne_on_surface = self.has_ability(state, &Ability::Airborne)
-                    && c.get_region(state) == &Region::Surface;
-                same_region || ranged_on_airborne || airborne_on_surface
+            .filter(|target| {
+                // Only enemy units or sites
+                target.get_controller_id(state) != self.get_controller_id(state)
+                    && (target.is_unit() || target.is_site())
             })
-            .filter(|_| {
-                let attacker_is_airborne = self.has_ability(state, &Ability::Airborne);
-                if !attacker_is_airborne {
-                    return zone.is_adjacent(self.get_zone());
+            .filter(|target| {
+                // Cannot attack Unattackable or Stealth units
+                !target.has_ability(state, &Ability::Unattackable)
+                    && !target.has_ability(state, &Ability::Stealth)
+            })
+            .filter(|target| {
+                let target_region = target.get_region(state);
+                let target_is_airborne = target.has_ability(state, &Ability::Airborne);
+
+                // Airborne units can attack nearby, others only adjacent
+                let in_range = if attacker_is_airborne {
+                    zone.is_nearby(target.get_zone())
+                } else {
+                    zone.is_adjacent(target.get_zone())
+                };
+                if !in_range {
+                    return false;
                 }
 
-                zone.is_nearby(self.get_zone())
+                match attacker_region {
+                    Region::Surface => {
+                        if target.is_site() {
+                            // Sites are always on Surface
+                            true
+                        } else if target_is_airborne {
+                            // Only airborne units on Surface can attack airborne units
+                            attacker_is_airborne
+                        } else {
+                            // Both on Surface, target is not airborne
+                            matches!(target_region, Region::Surface)
+                        }
+                    }
+                    Region::Underground => matches!(target_region, Region::Underground),
+                    Region::Underwater => matches!(target_region, Region::Underwater),
+                    _ => false,
+                }
             })
-            .map(|c| *c.get_id())
+            .map(|target| *target.get_id())
             .collect()
     }
 
