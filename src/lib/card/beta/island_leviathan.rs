@@ -33,7 +33,7 @@ impl ActivatedAbility for TransformIntoAMonster {
                     abilities: vec![],
                     damage: 0,
                     power_counters: vec![],
-                    modifier_counters: vec![],
+                    ability_counters: vec![],
                     types: vec![MinionType::Monster],
                     ..Default::default()
                 }),

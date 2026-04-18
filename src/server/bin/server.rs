@@ -163,7 +163,15 @@ impl Server {
         self.game_players
             .insert(game.id, vec![player1.clone(), player2.clone()]);
 
-        // Uncomment this to setup a basic game state for testing
+        self.setup_test_state(&mut game);
+        tokio::spawn(async move {
+            game.start().await.expect("game to start");
+        });
+
+        Ok(())
+    }
+
+    fn setup_test_state(&mut self, game: &mut Game) {
         let player_one = game.state.players[0].id;
         game.state.cards.push(sorcerers::card::from_name_and_zone(
             AramosMercenaries::NAME,
@@ -251,12 +259,6 @@ impl Server {
         ));
         let player_mana = game.state.get_player_mana_mut(&player_one);
         *player_mana = 10;
-
-        tokio::spawn(async move {
-            game.start().await.expect("game to start");
-        });
-
-        Ok(())
     }
 
     pub fn find_match(&mut self) -> Option<((Player, DeckChoice), (Player, DeckChoice))> {

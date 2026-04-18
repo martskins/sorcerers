@@ -1,6 +1,6 @@
 use crate::{
     card::{Ability, Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
-    effect::Effect,
+    effect::{AbilityCounter, Effect},
     game::PlayerId,
     query::EffectQuery,
     state::{CardQuery, State, TemporaryEffect},
@@ -89,13 +89,14 @@ impl Card for Geyser {
         ];
 
         for minion_id in minions_there {
-            effects.push(Effect::AddTemporaryEffect {
-                effect: TemporaryEffect::GrantAbility {
-                    affected_cards: minion_id.into(),
+            effects.push(Effect::AddAbilityCounter {
+                card_id: minion_id,
+                counter: AbilityCounter {
+                    id: uuid::Uuid::new_v4(),
                     ability: Ability::Airborne,
-                    expires_on_effect: EffectQuery::TurnEnd {
+                    expires_on_effect: Some(EffectQuery::TurnEnd {
                         player_id: Some(player_id),
-                    },
+                    }),
                 },
             });
         }

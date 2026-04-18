@@ -751,7 +751,7 @@ impl Effect {
             .filter(|c| {
                 !c.get_unit_base()
                     .expect("unit to have a unit base component")
-                    .modifier_counters
+                    .ability_counters
                     .is_empty()
             })
             .map(|c| c.as_ref())
@@ -762,7 +762,7 @@ impl Effect {
             for counter in &card
                 .get_unit_base()
                 .unwrap_or(&UnitBase::default())
-                .modifier_counters
+                .ability_counters
             {
                 if let Some(effect_query) = &counter.expires_on_effect
                     && effect_query.matches(self, state).await?
@@ -1544,7 +1544,7 @@ impl Effect {
                     let base = card
                         .get_unit_base_mut()
                         .ok_or(anyhow::anyhow!("card has no unit base"))?;
-                    base.modifier_counters.push(counter.clone());
+                    base.ability_counters.push(counter.clone());
                 }
             }
             Effect::SetCardData { card_id, data, .. } => {

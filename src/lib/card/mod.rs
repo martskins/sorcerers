@@ -1106,7 +1106,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     // Removes the modifier counter with the given ID from the card.
     fn remove_modifier_counter(&mut self, id: &uuid::Uuid) {
         if let Some(ub) = self.get_unit_base_mut() {
-            ub.modifier_counters.retain(|c| &c.id != id);
+            ub.ability_counters.retain(|c| &c.id != id);
         }
     }
 
@@ -1239,7 +1239,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 let has_lethal_target = self.get_unit_base().is_some_and(|ub| {
                     ub.abilities.contains(&Ability::LethalTarget)
                         || ub
-                            .modifier_counters
+                            .ability_counters
                             .iter()
                             .any(|c| c.ability == Ability::LethalTarget)
                 }) || state.continuous_effects.iter().any(|ce| match ce {
@@ -1449,29 +1449,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     // Returns whether the card has the given modifier.
     fn has_ability(&self, state: &State, ability: &Ability) -> bool {
-        let has_temporary = state.temporary_effects.iter().any(|te| match te {
-            TemporaryEffect::GrantAbility {
-                affected_cards,
-                ability: granted_ability,
-                ..
-            } => {
-                if ability != granted_ability {
-                    return false;
-                }
-
-                if !affected_cards.matches(self.get_id(), state) {
-                    return false;
-                }
-
-                true
-            }
-            _ => false,
-        });
-
-        if has_temporary {
-            return true;
-        }
-
         if self
             .get_unit_base()
             .unwrap_or(&UnitBase::default())
@@ -1484,7 +1461,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         if self
             .get_unit_base()
             .unwrap_or(&UnitBase::default())
-            .modifier_counters
+            .ability_counters
             .iter()
             .any(|c| &c.ability == ability)
         {
@@ -1757,7 +1734,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         match self.get_unit_base() {
             Some(base) => {
                 let mut modifiers = base.abilities.clone();
-                for counter in &base.modifier_counters {
+                for counter in &base.ability_counters {
                     modifiers.push(counter.ability.clone());
                 }
 
@@ -2059,7 +2036,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         if let Some(ub) = self.get_unit_base_mut() {
             ub.abilities.retain(|a| a != modifier);
             // Also remove any ability counters with this ability type.
-            ub.modifier_counters.retain(|c| &c.ability != modifier);
+            ub.ability_counters.retain(|c| &c.ability != modifier);
         }
     }
 
@@ -2539,7 +2516,7 @@ pub struct UnitBase {
     pub abilities: Vec<Ability>,
     pub damage: u16,
     pub power_counters: Vec<Counter>,
-    pub modifier_counters: Vec<AbilityCounter>,
+    pub ability_counters: Vec<AbilityCounter>,
     pub types: Vec<MinionType>,
     pub carried_by: Option<uuid::Uuid>,
     pub tapped: bool,
@@ -2554,7 +2531,7 @@ impl Default for UnitBase {
             abilities: vec![],
             damage: 0,
             power_counters: vec![],
-            modifier_counters: vec![],
+            ability_counters: vec![],
             types: vec![],
             carried_by: None,
             tapped: false,

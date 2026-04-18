@@ -1760,13 +1760,12 @@ impl Game {
     /// enabled the message also carries a full board evaluation.
     fn make_sync(&self) -> anyhow::Result<ServerMessage> {
         let mut sync = self.state.into_sync()?;
-        if self.debug_eval {
-            if let ServerMessage::Sync {
+        if self.debug_eval
+            && let ServerMessage::Sync {
                 ref mut evaluation, ..
             } = sync
-            {
-                *evaluation = Some(evaluation::evaluate(&self.state));
-            }
+        {
+            *evaluation = Some(evaluation::evaluate(&self.state));
         }
         Ok(sync)
     }
