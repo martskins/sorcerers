@@ -73,6 +73,12 @@ pub enum Effect {
         card_id: uuid::Uuid,
         counter: AbilityCounter,
     },
+    // RemoveCardFromGame completely removes a card from the game, removing it from all zones and
+    // clearing all references to it. This is primarily used for token cards, as when they leave the
+    // board they hit the cemetery and then immediately cease to exist.
+    RemoveCardFromGame {
+        card_id: uuid::Uuid,
+    },
     AddCounter {
         card_id: uuid::Uuid,
         counter: Counter,
@@ -300,6 +306,7 @@ impl Effect {
             Effect::Strike { striker_id, .. } => Some(striker_id),
             Effect::RangedStrike { striker_id, .. } => Some(striker_id),
             Effect::Attack { attacker_id, .. } => Some(attacker_id),
+            Effect::RemoveCardFromGame { card_id } => Some(card_id),
             Effect::TakeDamage { card_id, .. } => Some(card_id),
             Effect::BanishCard { card_id, .. } => Some(card_id),
             Effect::KillMinion { card_id, .. } => Some(card_id),
@@ -677,6 +684,7 @@ impl Effect {
                 card_name,
                 zone
             )),
+            Effect::RemoveCardFromGame { .. } => None,
         };
 
         Ok(desc)
@@ -913,15 +921,22 @@ impl Effect {
             } => {
                 let mut effects = vec![];
                 let mut next_zone = from_zone.zone_in_direction(direction, 1);
+                let mut is_starting_location = true;
                 while let Some(zone) = next_zone {
                     let picked_unit_id = match self.affected_cards().await {
                         Some(affected_cards) => affected_cards.first().cloned(),
                         None => {
-                            let units = CardQuery::new()
+                            let mut units_query = CardQuery::new()
                                 .units()
                                 .in_zone(&zone)
-                                .can_be_targeted_by_player(player_id)
-                                .all(state);
+                                .can_be_targeted_by_player(player_id);
+                            // Allied units in the starting location are ignored by projectiles.
+                            if is_starting_location {
+                                units_query =
+                                    units_query.controlled_by(&state.get_opponent_id(player_id)?);
+                            }
+
+                            let units = units_query.all(state);
                             match units.len() {
                                 0 => None,
                                 1 => Some(units[0]),
@@ -971,6 +986,7 @@ impl Effect {
                     }
 
                     next_zone = zone.zone_in_direction(direction, 1);
+                    is_starting_location = false;
                 }
 
                 for effect in effects {
@@ -1116,6 +1132,11 @@ impl Effect {
                 caster_id,
                 ..
             } => {
+                // Casting a spell is an interaction: the caster loses Stealth.
+                state
+                    .get_card_mut(caster_id)
+                    .remove_modifier(&Ability::Stealth);
+
                 let costs = state.get_effective_costs(card_id, None)?;
                 let paid_cost = costs.pay(state, player_id).await?;
 
@@ -1282,7 +1303,6 @@ impl Effect {
                     .filter(|c| c.get_owner_id() == &state.current_player);
                 for card in cards {
                     card.set_tapped(false);
-                    card.remove_modifier(&Ability::SummoningSickness);
                 }
 
                 let available_mana: u8 = state
@@ -1344,7 +1364,15 @@ impl Effect {
 
                 let cards = state.cards.iter_mut().filter(|c| c.is_unit());
                 for card in cards {
+                    card.remove_modifier(&Ability::SummoningSickness);
+
                     if card.is_avatar() {
+                        // Avatars at death's door become killable after the turn ends.
+                        if let Some(ab) = card.get_avatar_base_mut()
+                            && ab.deaths_door
+                        {
+                            ab.can_die = true;
+                        }
                         continue;
                     }
 
@@ -1381,6 +1409,11 @@ impl Effect {
                 striker_id,
                 target_id,
             } => {
+                // Striking is an interaction: the striker loses Stealth.
+                state
+                    .get_card_mut(striker_id)
+                    .remove_modifier(&Ability::Stealth);
+
                 let snapshot = state.snapshot();
                 let attacker = state.get_card(striker_id);
                 let defender = state.get_card(target_id);
@@ -1402,6 +1435,11 @@ impl Effect {
                 defender_id,
                 ..
             } => {
+                // Attacking is an interaction: the attacker loses Stealth.
+                state
+                    .get_card_mut(attacker_id)
+                    .remove_modifier(&Ability::Stealth);
+
                 let snapshot = state.snapshot();
                 let attacker = state.get_card(attacker_id);
                 let defender = state.get_card(defender_id);
@@ -1531,6 +1569,7 @@ impl Effect {
             }
             Effect::BuryCard { card_id, .. } => {
                 let card = state.get_card_mut(card_id);
+                let is_token = card.is_token();
                 let original_zone = card.get_zone().clone();
                 card.set_bearer_id(None);
                 card.set_zone(Zone::Cemetery);
@@ -1554,6 +1593,10 @@ impl Effect {
                     .collect();
                 for borne_card_id in borne_cards {
                     state.get_card_mut(&borne_card_id).set_bearer_id(None);
+                }
+
+                if is_token {
+                    state.queue_one(Effect::RemoveCardFromGame { card_id: *card_id });
                 }
             }
             Effect::AddCounter {
@@ -1587,6 +1630,11 @@ impl Effect {
                 target_id,
                 ..
             } => {
+                // Ranged striking is an interaction: the striker loses Stealth.
+                state
+                    .get_card_mut(striker_id)
+                    .remove_modifier(&Ability::Stealth);
+
                 let snapshot = state.snapshot();
                 let attacker = state.get_card(striker_id);
                 let defender = state.get_card(target_id);
@@ -1749,6 +1797,9 @@ impl Effect {
                 effects.extend(card.on_visit_zone(state, &from_zone, zone).await?);
                 effects.push(Effect::BanishCard { card_id: copy_id });
                 state.queue(effects);
+            }
+            Effect::RemoveCardFromGame { card_id } => {
+                state.cards.retain(|c| c.get_id() != card_id);
             }
         }
 

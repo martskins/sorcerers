@@ -574,7 +574,11 @@ impl CostType {
                     let ac = ac.clone();
                     let mut query = ac.card;
                     match ac.action {
-                        CostAction::Tap => query = query.untapped(),
+                        CostAction::Tap => {
+                            query = query
+                                .untapped()
+                                .without_ability(&Ability::SummoningSickness)
+                        }
                         CostAction::Discard => query = query.in_zone(&Zone::Hand),
                         CostAction::Sacrifice => query = query.in_zones(&Zone::all_realm()),
                         CostAction::Surface => {
@@ -660,7 +664,11 @@ impl CostType {
                     let ac = ac.clone();
                     let mut query = ac.card;
                     match ac.action {
-                        CostAction::Tap => query = query.untapped(),
+                        CostAction::Tap => {
+                            query = query
+                                .untapped()
+                                .without_ability(&Ability::SummoningSickness)
+                        }
                         CostAction::Discard => query = query.in_zone(&Zone::Hand),
                         CostAction::Sacrifice => query = query.in_zones(&Zone::all_realm()),
                         CostAction::Surface => {
@@ -974,6 +982,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         &self.get_base().edition
     }
 
+    fn is_token(&self) -> bool {
+        self.get_base().is_token
+    }
+
     fn is_tapped(&self) -> bool {
         if let Some(sb) = self.get_site_base() {
             return sb.tapped;
@@ -1257,9 +1269,12 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
                 let mut effects = vec![];
                 let attacker = state.get_card(from);
-                if ub.damage >= self.get_toughness(state).unwrap_or(0)
-                    || attacker.has_ability(state, &Ability::Lethal)
-                    || has_lethal_target
+                // Zero damage is not any damage at all (rulebook). Only apply kill conditions
+                // when actual damage was dealt.
+                if damage > 0
+                    && (ub.damage >= self.get_toughness(state).unwrap_or(0)
+                        || attacker.has_ability(state, &Ability::Lethal)
+                        || has_lethal_target)
                 {
                     effects.push(Effect::KillMinion {
                         card_id: *self.get_id(),

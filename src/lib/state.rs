@@ -52,6 +52,7 @@ pub struct CardQuery {
     controller_id: Option<PlayerId>,
     not_in_ids: Option<Vec<uuid::Uuid>>,
     abilities: Option<Vec<Ability>>,
+    without_abilities: Option<Vec<Ability>>,
     can_cast: Option<uuid::Uuid>,
     card_types: Option<Vec<CardType>>,
     minion_types: Option<Vec<MinionType>>,
@@ -406,6 +407,13 @@ impl CardQuery {
         }
     }
 
+    pub fn without_ability(self, ability: &Ability) -> Self {
+        Self {
+            without_abilities: Some(vec![ability.clone()]),
+            ..self
+        }
+    }
+
     pub fn with_abilities(self, abilities: Vec<Ability>) -> Self {
         Self {
             abilities: Some(abilities),
@@ -685,10 +693,17 @@ impl CardQuery {
             }
         }
 
-        if let Some(abilities) = &self.abilities {
-            let card_abilities = card.get_abilities(state).unwrap_or_default();
+        if let Some(abilities) = &self.without_abilities {
             for ability in abilities {
-                if !card_abilities.contains(ability) {
+                if card.has_ability(state, ability) {
+                    return false;
+                }
+            }
+        }
+
+        if let Some(abilities) = &self.abilities {
+            for ability in abilities {
+                if !card.has_ability(state, ability) {
                     return false;
                 }
             }
@@ -773,8 +788,14 @@ impl CardQuery {
             return false;
         }
 
-        if let Some(_can_be_attacked_by) = &self.can_be_attacked_by {
-            // TODO: this needs to check for flying, etc
+        if let Some(attacked_by) = &self.can_be_attacked_by {
+            let attacker = state.get_card(attacked_by);
+            if !attacker
+                .get_valid_attack_targets(state, false)
+                .contains(card_id)
+            {
+                return false;
+            }
         }
 
         true
