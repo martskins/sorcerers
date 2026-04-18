@@ -2063,7 +2063,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         }
     }
 
-    fn add_modifier(&mut self, modifier: Ability) {
+    fn add_ability(&mut self, modifier: Ability) {
         if let Some(ub) = self.get_unit_base_mut() {
             ub.abilities.push(modifier);
         }
@@ -2835,7 +2835,7 @@ mod tests {
         let player_id = state.players[0].id;
         let mut card = RimlandNomads::new(player_id);
         card.set_zone(Zone::Realm(8));
-        card.add_modifier(Ability::Airborne);
+        card.add_ability(Ability::Airborne);
         state.cards.push(Box::new(card.clone()));
 
         let paths = card
@@ -2853,7 +2853,7 @@ mod tests {
         let player_id = state.players[0].id;
         let mut card = RimlandNomads::new(player_id);
         card.set_zone(Zone::Realm(8));
-        card.add_modifier(Ability::Movement(2));
+        card.add_ability(Ability::Movement(2));
         state.cards.push(Box::new(card.clone()));
 
         let paths = card
@@ -2909,7 +2909,7 @@ mod tests {
         let player_id = state.players[0].id;
         let mut card = ApprenticeWizard::new(player_id);
         card.set_zone(Zone::Realm(8));
-        card.add_modifier(Ability::Movement(1));
+        card.add_ability(Ability::Movement(1));
         state.cards.push(Box::new(card.clone()));
 
         let mut zones = card
@@ -2967,7 +2967,7 @@ mod tests {
         let player_id = state.players[0].id;
         let mut card = ApprenticeWizard::new(player_id);
         card.set_zone(Zone::Realm(8));
-        card.add_modifier(Ability::Movement(1));
+        card.add_ability(Ability::Movement(1));
         state.cards.push(Box::new(card.clone()));
 
         let mut zones = card
@@ -2994,7 +2994,7 @@ mod tests {
         let player_id = state.players[0].id;
         let mut card = ApprenticeWizard::new(player_id);
         card.set_zone(Zone::Realm(8));
-        card.add_modifier(Ability::Voidwalk);
+        card.add_ability(Ability::Voidwalk);
         state.cards.push(Box::new(card.clone()));
 
         let mut zones = card
@@ -3018,7 +3018,7 @@ mod tests {
         let player_id = state.players[0].id;
         let mut card = ApprenticeWizard::new(player_id);
         card.set_zone(Zone::Realm(8));
-        card.add_modifier(Ability::Airborne);
+        card.add_ability(Ability::Airborne);
         state.cards.push(Box::new(card.clone()));
 
         let mut zones = card
@@ -3055,7 +3055,7 @@ mod tests {
         let player_id = state.players[0].id;
         let mut card = ApprenticeWizard::new(player_id);
         card.set_zone(Zone::Realm(8));
-        card.add_modifier(Ability::Airborne);
+        card.add_ability(Ability::Airborne);
         state.cards.push(Box::new(card.clone()));
 
         let mut zones = card
@@ -3093,8 +3093,8 @@ mod tests {
         let player_id = state.players[0].id;
         let mut card = ApprenticeWizard::new(player_id);
         card.set_zone(Zone::Realm(8));
-        card.add_modifier(Ability::Airborne);
-        card.add_modifier(Ability::Voidwalk);
+        card.add_ability(Ability::Airborne);
+        card.add_ability(Ability::Voidwalk);
         state.cards.push(Box::new(card.clone()));
 
         let mut zones = card

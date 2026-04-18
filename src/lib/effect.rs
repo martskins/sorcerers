@@ -866,6 +866,10 @@ impl Effect {
                     TokenType::Frog => Box::new(Frog::new(*player_id)),
                 };
                 token.set_zone(zone.clone());
+                if token.is_unit() && !token.has_ability(state, &Ability::Charge) {
+                    token.add_ability(Ability::SummoningSickness);
+                }
+
                 state.cards.push(token);
             }
             Effect::Heal { card_id, amount } => {
@@ -1143,7 +1147,7 @@ impl Effect {
                 let cast_effects = card.on_summon(&snapshot)?;
                 card.set_zone(zone.clone());
                 if !card.has_ability(&snapshot, &Ability::Charge) {
-                    card.add_modifier(Ability::SummoningSickness);
+                    card.add_ability(Ability::SummoningSickness);
                 }
 
                 let mut effects = card.genesis(&snapshot).await?;
@@ -1159,7 +1163,7 @@ impl Effect {
                     card.set_zone(zone.clone());
 
                     if !has_charge {
-                        card.add_modifier(Ability::SummoningSickness);
+                        card.add_ability(Ability::SummoningSickness);
                     }
                 }
 
@@ -1187,7 +1191,7 @@ impl Effect {
                 card.set_zone(zone.clone());
 
                 if !has_charge {
-                    card.add_modifier(Ability::SummoningSickness);
+                    card.add_ability(Ability::SummoningSickness);
                 }
 
                 // Force sync after all cards have been put on their zones, so that players see them
@@ -1700,7 +1704,7 @@ impl Effect {
                 let from_zone = card.get_zone().clone();
                 card.set_zone(zone.clone());
                 if !has_charge {
-                    card.add_modifier(Ability::SummoningSickness);
+                    card.add_ability(Ability::SummoningSickness);
                 }
 
                 for player in &state.players {
