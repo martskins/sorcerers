@@ -1367,6 +1367,7 @@ impl State {
                 .collect(),
             current_player: self.current_player,
             health,
+            evaluation: None,
         })
     }
 

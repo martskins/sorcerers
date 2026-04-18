@@ -1,6 +1,7 @@
 use crate::{
     card::{Card, CardData, CardType, Zone},
     deck::{Deck, DeckList, precon::PreconDeck},
+    evaluation::Evaluation,
     game::{Direction, PlayerId, Resources, SoundEffect},
 };
 use serde::{Deserialize, Serialize};
@@ -91,6 +92,9 @@ pub enum ServerMessage {
         resources: HashMap<PlayerId, Resources>,
         health: HashMap<PlayerId, u16>,
         current_player: PlayerId,
+        /// Present only when the server's debug-eval flag is enabled.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        evaluation: Option<Evaluation>,
     },
     PickCards {
         prompt: String,

@@ -12,8 +12,16 @@ use tokio::{io::AsyncReadExt, net::TcpListener, sync::Mutex};
 async fn main() -> anyhow::Result<()> {
     QueryCache::init();
 
+    // Enable board-evaluation debug output with `--eval` or `SORCERERS_DEBUG_EVAL=1`.
+    let debug_eval = std::env::args().any(|a| a == "--eval")
+        || std::env::var("SORCERERS_DEBUG_EVAL").is_ok_and(|v| v == "1");
+    if debug_eval {
+        println!("Board evaluation debug mode enabled – Sync messages will include evaluation data.");
+    }
+
     let socket = TcpListener::bind("0.0.0.0:5000".parse::<SocketAddr>()?).await?;
-    let server = Arc::new(Mutex::new(Server::new()));
+    let server = Arc::new(Mutex::new(Server::new(debug_eval)));
+
     loop {
         let (stream, addr) = socket.accept().await?;
         let server_clone = Arc::clone(&server);

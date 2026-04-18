@@ -2,6 +2,7 @@ use crate::{
     card::{Ability, AdditionalCost, Aura, CardType, Cost, Region, Zone},
     effect::Effect,
     error::GameError,
+    evaluation,
     networking::{
         client::Client,
         message::{ClientMessage, ServerMessage},
@@ -551,6 +552,7 @@ pub async fn force_sync(player_id: impl AsRef<PlayerId>, state: &State) -> anyho
             resources,
             current_player,
             health,
+            ..
         } => {
             state
                 .get_sender()
@@ -1429,6 +1431,9 @@ impl ActivatedAbility for UnitAction {
 pub struct Game {
     pub id: uuid::Uuid,
     pub state: State,
+    /// When `true` every `Sync` message broadcast to clients includes a full
+    /// board evaluation so that UIs and AI agents can display/log it.
+    pub debug_eval: bool,
     streams: HashMap<PlayerId, Arc<Mutex<OwnedWriteHalf>>>,
     client_receiver: Receiver<ClientMessage>,
     server_receiver: Receiver<ServerMessage>,
@@ -1454,6 +1459,7 @@ impl Game {
             state: State::new(game_id, players, server_sender.clone(), receiver.clone()),
             client_receiver: receiver,
             server_receiver,
+            debug_eval: false,
         }
     }
 
@@ -1476,7 +1482,7 @@ impl Game {
         })
         .await?;
         self.process_effects().await?;
-        self.broadcast(&self.state.into_sync()?).await?;
+        self.broadcast(&self.make_sync()?).await?;
 
         let streams = self.streams.clone();
         let receiver = self.server_receiver.clone();
@@ -1672,7 +1678,7 @@ impl Game {
                     self.state.phase = Phase::Main;
                     self.process_effects().await?;
                     self.broadcast(&ServerMessage::MulligansEnded).await?;
-                    self.broadcast(&self.state.into_sync()?).await?;
+                    self.broadcast(&self.make_sync()?).await?;
                 }
             }
             _ => {}
@@ -1739,7 +1745,7 @@ impl Game {
             artifact.set_zone(zone);
         }
 
-        self.broadcast(&self.state.into_sync()?).await?;
+        self.broadcast(&self.make_sync()?).await?;
         Ok(())
     }
 
@@ -1748,6 +1754,21 @@ impl Game {
             Client::send_to_stream(message, Arc::clone(stream)).await?;
         }
         Ok(())
+    }
+
+    /// Build a `Sync` message for the current state.  When `debug_eval` is
+    /// enabled the message also carries a full board evaluation.
+    fn make_sync(&self) -> anyhow::Result<ServerMessage> {
+        let mut sync = self.state.into_sync()?;
+        if self.debug_eval {
+            if let ServerMessage::Sync {
+                ref mut evaluation, ..
+            } = sync
+            {
+                *evaluation = Some(evaluation::evaluate(&self.state));
+            }
+        }
+        Ok(sync)
     }
 
     pub fn draw_initial_six(&self) -> Vec<Effect> {
@@ -1862,7 +1883,7 @@ impl Game {
                 self.state.compute_world_effects().await?;
 
                 Self::dispell_auras(&mut self.state).await?;
-                self.broadcast(&self.state.into_sync()?).await?;
+                self.broadcast(&self.make_sync()?).await?;
             }
         }
 

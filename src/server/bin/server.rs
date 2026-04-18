@@ -18,16 +18,20 @@ pub struct Server {
     pub looking_for_match: Vec<(uuid::Uuid, (Player, DeckChoice))>,
     pub streams: HashMap<uuid::Uuid, Arc<Mutex<OwnedWriteHalf>>>,
     pub addr_to_player: HashMap<std::net::SocketAddr, uuid::Uuid>,
+    /// When `true` every `Sync` message sent to clients carries a board
+    /// evaluation.  Enable with the `--eval` flag or `SORCERERS_DEBUG_EVAL=1`.
+    pub debug_eval: bool,
 }
 
 impl Server {
-    pub fn new() -> Self {
+    pub fn new(debug_eval: bool) -> Self {
         Self {
             looking_for_match: Vec::new(),
             streams: HashMap::new(),
             games: HashMap::new(),
             game_players: HashMap::new(),
             addr_to_player: HashMap::new(),
+            debug_eval,
         }
     }
 
@@ -154,6 +158,7 @@ impl Server {
             ),
         ];
         let mut game = Game::new(players, client_rx, server_tx, server_rx);
+        game.debug_eval = self.debug_eval;
         self.games.insert(game.id, client_tx);
         self.game_players
             .insert(game.id, vec![player1.clone(), player2.clone()]);

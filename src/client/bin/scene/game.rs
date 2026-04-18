@@ -873,6 +873,7 @@ impl Game {
                 current_player,
                 resources,
                 health,
+                ..
             } => {
                 self.data.cards = sort_cards(cards);
                 self.current_player = *current_player;
