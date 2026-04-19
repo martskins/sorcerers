@@ -836,18 +836,26 @@ pub enum TemporaryEffect {
         affected_sites: CardQuery,
         expires_on_effect: EffectQuery,
     },
+    MakePlayable {
+        affected_cards: CardQuery,
+        expires_on_effect: EffectQuery,
+    },
 }
 
 impl TemporaryEffect {
     pub fn affected_cards(&self, state: &State) -> Vec<uuid::Uuid> {
         match self {
             TemporaryEffect::FloodSites { affected_sites, .. } => affected_sites.all(state),
+            TemporaryEffect::MakePlayable { affected_cards, .. } => affected_cards.all(state),
         }
     }
 
     pub fn expires_on_effect(&self) -> Option<&EffectQuery> {
         match self {
             TemporaryEffect::FloodSites {
+                expires_on_effect, ..
+            } => Some(expires_on_effect),
+            TemporaryEffect::MakePlayable {
                 expires_on_effect, ..
             } => Some(expires_on_effect),
         }

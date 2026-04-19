@@ -1571,64 +1571,70 @@ impl Game {
                     }
                 }
 
-                match (card.get_card_type(), card.get_zone()) {
-                    (CardType::Artifact, Zone::Hand) | (CardType::Minion, Zone::Hand) => {
-                        let effects = card.play_mechanic(&self.state).await?;
-                        self.state.queue(effects);
-                    }
-                    (CardType::Magic, Zone::Hand) => {
-                        let spellcasters =
-                            CardQuery::new().units().can_cast(card_id).all(&self.state);
-                        let prompt = "Pick a spellcaster to cast the spell";
-                        let caster_id =
-                            pick_card(player_id, &spellcasters, &self.state, prompt).await?;
-                        let caster = self.state.get_card(&caster_id);
-                        self.state.queue_one(Effect::PlayMagic {
-                            player_id: *player_id,
-                            card_id: *card_id,
-                            caster_id,
-                            from: caster.get_zone().clone(),
-                        });
-                    }
-                    (_, Zone::Realm(_)) => {
-                        let unit_disabled =
-                            card.has_ability(&self.state, &Ability::SummoningSickness);
-                        if card.is_unit() && unit_disabled {
-                            return Ok(());
+                if card.is_playable(&self.state) {
+                    match card.get_card_type() {
+                        CardType::Artifact | CardType::Minion | CardType::Aura => {
+                            let effects = card.play_mechanic(&self.state).await?;
+                            self.state.queue(effects);
                         }
-
-                        let mut actions = card.get_activated_abilities(&self.state)?;
-                        actions.retain(|action| {
-                            let can_afford = action
-                                .get_cost(card_id, &self.state)
-                                .and_then(|cost| cost.can_afford(&self.state, player_id))
-                                .unwrap_or_default();
-                            let can_activate = action
-                                .can_activate(card_id, player_id, &self.state)
-                                .unwrap_or_default();
-                            can_afford && can_activate
-                        });
-
-                        if actions.is_empty() {
-                            return Ok(());
+                        CardType::Magic => {
+                            let spellcasters =
+                                CardQuery::new().units().can_cast(card_id).all(&self.state);
+                            let prompt = "Pick a spellcaster to cast the spell";
+                            let caster_id =
+                                pick_card(player_id, &spellcasters, &self.state, prompt).await?;
+                            let caster = self.state.get_card(&caster_id);
+                            self.state.queue_one(Effect::PlayMagic {
+                                player_id: *player_id,
+                                card_id: *card_id,
+                                caster_id,
+                                from: caster.get_zone().clone(),
+                            });
                         }
-
-                        actions.push(Box::new(CancelAction));
-                        let prompt = format!("{}: Pick action", card.get_name());
-                        let action =
-                            pick_action(player_id, &actions, &self.state, &prompt, true).await?;
-                        let cost = action.get_cost(card_id, &self.state)?.clone();
-                        let effects = action
-                            .on_select(card.get_id(), player_id, &self.state)
-                            .await?;
-                        // Pay costs after selecting the action to work around scenarios where
-                        // the cost includes sacricing the card and the effects involve nearby
-                        // cards, which would result in no valid targets, as the card would already
-                        // be in the cemetery at the point of execution the action.
-                        cost.pay(&mut self.state, player_id).await?;
-                        self.state.queue(effects);
+                        // Sites are not playable by clicking, they have to be played through avatar
+                        // actions, so ignore clicks on them in the hand.
+                        CardType::Site => {}
+                        // Avatars should not even be playable from any zone.
+                        CardType::Avatar => {}
                     }
-                    _ => {}
+                }
+
+                if matches!(card.get_zone(), Zone::Realm(_)) {
+                    let unit_disabled = card.has_ability(&self.state, &Ability::SummoningSickness);
+                    if card.is_unit() && unit_disabled {
+                        return Ok(());
+                    }
+
+                    let mut actions = card.get_activated_abilities(&self.state)?;
+                    actions.retain(|action| {
+                        let can_afford = action
+                            .get_cost(card_id, &self.state)
+                            .and_then(|cost| cost.can_afford(&self.state, player_id))
+                            .unwrap_or_default();
+                        let can_activate = action
+                            .can_activate(card_id, player_id, &self.state)
+                            .unwrap_or_default();
+                        can_afford && can_activate
+                    });
+
+                    if actions.is_empty() {
+                        return Ok(());
+                    }
+
+                    actions.push(Box::new(CancelAction));
+                    let prompt = format!("{}: Pick action", card.get_name());
+                    let action =
+                        pick_action(player_id, &actions, &self.state, &prompt, true).await?;
+                    let cost = action.get_cost(card_id, &self.state)?.clone();
+                    let effects = action
+                        .on_select(card.get_id(), player_id, &self.state)
+                        .await?;
+                    // Pay costs after selecting the action to work around scenarios where
+                    // the cost includes sacricing the card and the effects involve nearby
+                    // cards, which would result in no valid targets, as the card would already
+                    // be in the cemetery at the point of execution the action.
+                    cost.pay(&mut self.state, player_id).await?;
+                    self.state.queue(effects);
                 }
             }
             ClientMessage::EndTurn { player_id, .. } => {

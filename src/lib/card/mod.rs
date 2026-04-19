@@ -986,6 +986,14 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         self.get_base().is_token
     }
 
+    fn is_playable(&self, state: &State) -> bool {
+        if state.temporary_effects.iter().find(|e| matches!(e, TemporaryEffect::MakePlayable { affected_cards, .. } if affected_cards.matches(self.get_id(), state))).is_some() {
+            return true;
+        }
+
+        self.get_zone() == &Zone::Hand
+    }
+
     fn is_tapped(&self) -> bool {
         if let Some(sb) = self.get_site_base() {
             return sb.tapped;
@@ -1165,6 +1173,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     async fn after_ranged_attack(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
+        Ok(vec![])
+    }
+
+    fn on_attack(&self, _state: &State, _defender_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![])
     }
 

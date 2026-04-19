@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crate::{
     card::{
         Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
@@ -7,7 +5,7 @@ use crate::{
     effect::Effect,
     game::PlayerId,
     query::EffectQuery,
-    state::{DeferredEffect, State},
+    state::{State, TemporaryEffect},
 };
 
 #[derive(Debug, Clone)]
@@ -71,49 +69,40 @@ impl Card for CaptainBaldassare {
         Some(&mut self.unit_base)
     }
 
-    fn on_summon(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
-        Ok(vec![Effect::AddDeferredEffect {
-            effect: DeferredEffect {
-                trigger_on_effect: EffectQuery::Attack {
-                    attacker: self.get_id().into(),
+    fn on_attack(&self, state: &State, defender_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
+        let defender = state.get_card(defender_id);
+        let defending_player = defender.get_controller_id(state);
+
+        // Discard top 3 spells from the defending player's deck.
+        let deck = state
+            .decks
+            .get(&defending_player)
+            .ok_or_else(|| anyhow::anyhow!("No deck for player {:?}", defending_player))?;
+        let top_three: Vec<uuid::Uuid> = deck.spells.iter().rev().take(3).cloned().collect();
+
+        let mut effects: Vec<Effect> = top_three
+            .iter()
+            .map(|spell_id| Effect::DiscardCard {
+                player_id: defending_player,
+                card_id: *spell_id,
+            })
+            .collect();
+
+        for card_id in top_three {
+            effects.push(Effect::AddTemporaryEffect {
+                effect: TemporaryEffect::MakePlayable {
+                    affected_cards: card_id.into(),
+                    expires_on_effect: EffectQuery::OneOf(vec![
+                        EffectQuery::TurnEnd { player_id: None },
+                        EffectQuery::PlayCard {
+                            card: card_id.into(),
+                        },
+                    ]),
                 },
-                expires_on_effect: Some(EffectQuery::BuryCard {
-                    card: self.get_id().into(),
-                }),
-                on_effect: Arc::new(
-                    move |state: &State, _card_id: &uuid::Uuid, effect: &Effect| {
-                        Box::pin(async move {
-                            let Effect::Attack { defender_id, .. } = effect else {
-                                return Ok(vec![]);
-                            };
-                            let defender = state.get_card(defender_id);
-                            let defending_player = defender.get_controller_id(state);
+            });
+        }
 
-                            // Discard top 3 spells from the defending player's deck.
-                            let deck = state.decks.get(&defending_player).ok_or_else(|| {
-                                anyhow::anyhow!("No deck for player {:?}", defending_player)
-                            })?;
-                            let top_three: Vec<uuid::Uuid> =
-                                deck.spells.iter().rev().take(3).cloned().collect();
-
-                            let effects: Vec<Effect> = top_three
-                                .iter()
-                                .map(|spell_id| Effect::DiscardCard {
-                                    player_id: defending_player,
-                                    card_id: *spell_id,
-                                })
-                                .collect();
-
-                            // TODO: Allow casting those spells ignoring threshold.
-                            // This requires framework support for "cast ignoring threshold" flag.
-
-                            Ok(effects)
-                        })
-                    },
-                ),
-                multitrigger: true,
-            },
-        }])
+        Ok(effects)
     }
 }
 

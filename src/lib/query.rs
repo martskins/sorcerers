@@ -327,6 +327,7 @@ impl ZoneQuery {
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum EffectQuery {
+    OneOf(Vec<EffectQuery>),
     EnterZone {
         card: CardQuery,
         zone: ZoneQuery,
@@ -453,6 +454,14 @@ impl EffectQuery {
                 },
                 Effect::DrawCard { player_id, .. },
             ) => Ok(optional_player_matches(query_pid, player_id)),
+            (EffectQuery::OneOf(queries), effect) => {
+                for query in queries {
+                    if Box::pin(query.matches(effect, state)).await? {
+                        return Ok(true);
+                    }
+                }
+                Ok(false)
+            }
             _ => Ok(false),
         }
     }
