@@ -76,12 +76,9 @@ pub struct CardQuery {
 }
 
 impl CardQuery {
-    pub fn is_randomised(&self) -> bool {
-        self.randomise.unwrap_or_default()
-    }
-
     pub fn from_ids(ids: Vec<uuid::Uuid>) -> Self {
         Self {
+            id: uuid::Uuid::new_v4(),
             ids: Some(ids),
             ..Default::default()
         }
@@ -89,9 +86,14 @@ impl CardQuery {
 
     pub fn from_id(id: uuid::Uuid) -> Self {
         Self {
+            id: uuid::Uuid::new_v4(),
             ids: Some(vec![id]),
             ..Default::default()
         }
+    }
+
+    pub fn is_randomised(&self) -> bool {
+        self.randomise.unwrap_or_default()
     }
 
     pub fn carried_by(self, carrier_id: &uuid::Uuid) -> Self {
@@ -199,21 +201,18 @@ impl CardQuery {
         state
             .cards
             .iter()
-            .filter(|c| self.matches_card(c.as_ref(), state))
+            .filter(|c| self.matches(c.get_id(), state))
     }
 
     pub fn any(&self, state: &State) -> bool {
-        state
-            .cards
-            .iter()
-            .any(|c| self.matches_card(c.as_ref(), state))
+        state.cards.iter().any(|c| self.matches(c.get_id(), state))
     }
 
     pub fn first(&self, state: &State) -> Option<uuid::Uuid> {
         state
             .cards
             .iter()
-            .find(|c| self.matches_card(c.as_ref(), state))
+            .find(|c| self.matches(c.get_id(), state))
             .map(|c| *c.get_id())
     }
 
@@ -221,7 +220,7 @@ impl CardQuery {
         state
             .cards
             .iter()
-            .filter(|c| self.matches_card(c.as_ref(), state))
+            .filter(|c| self.matches(c.get_id(), state))
             .map(|c| *c.get_id())
             .collect()
     }
@@ -571,13 +570,6 @@ impl CardQuery {
     }
 
     pub fn matches(&self, card_id: &uuid::Uuid, state: &State) -> bool {
-        let card = state.get_card(card_id);
-        self.matches_card(card, state)
-    }
-
-    fn matches_card(&self, card: &dyn Card, state: &State) -> bool {
-        let card_id = card.get_id();
-
         // Cheap ID based filters
         if let Some(ids) = &self.ids
             && !ids.contains(card_id)
@@ -591,6 +583,7 @@ impl CardQuery {
             return false;
         }
 
+        let card = state.get_card(card_id);
         // Zone and visibility filters
         if !self.include_not_in_play.unwrap_or_default() && !card.get_zone().is_in_play() {
             return false;
@@ -846,7 +839,11 @@ impl TemporaryEffect {
     pub fn affected_cards(&self, state: &State) -> Vec<uuid::Uuid> {
         match self {
             TemporaryEffect::FloodSites { affected_sites, .. } => affected_sites.all(state),
-            TemporaryEffect::MakePlayable { affected_cards, .. } => affected_cards.all(state),
+            // MakePlayable should always include cards not in play, so we need to add those to the
+            // results of all().
+            TemporaryEffect::MakePlayable { affected_cards, .. } => {
+                affected_cards.clone().including_not_in_play().all(state)
+            }
         }
     }
 
@@ -1103,7 +1100,7 @@ impl State {
                     affected_cards,
                     zones,
                 } => {
-                    if !affected_cards.matches_card(card, self) {
+                    if !affected_cards.matches(card.get_id(), self) {
                         return None;
                     }
                     let zone_ok = match zones {
@@ -1419,6 +1416,12 @@ impl State {
         self.players
             .iter()
             .find(|p| &p.id == player_id)
+            .ok_or(anyhow::anyhow!("failed to get player deck"))
+    }
+
+    pub fn get_player_deck_mut(&mut self, player_id: &PlayerId) -> anyhow::Result<&mut Deck> {
+        self.decks
+            .get_mut(player_id)
             .ok_or(anyhow::anyhow!("failed to get player deck"))
     }
 

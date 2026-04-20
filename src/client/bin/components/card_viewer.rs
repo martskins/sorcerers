@@ -54,6 +54,15 @@ fn handle_card_click(
     player_id: &uuid::Uuid,
 ) -> anyhow::Result<()> {
     match &data.status {
+        Status::Idle => {
+            client.send(ClientMessage::ClickCard {
+                game_id: *game_id,
+                player_id: *player_id,
+                card_id: card.id,
+            })?;
+
+            Ok(())
+        }
         Status::SelectingCard {
             cards,
             multiple: false,

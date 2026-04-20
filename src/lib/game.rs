@@ -1542,36 +1542,15 @@ impl Game {
             } => {
                 let snapshot = self.state.snapshot();
                 let card = snapshot.get_card(card_id);
-                if &card.get_controller_id(&self.state) != player_id {
-                    return Ok(());
-                }
+                // if &card.get_controller_id(&self.state) != player_id {
+                //     return Ok(());
+                // }
 
                 if player_id != &self.state.current_player {
                     return Ok(());
                 }
 
-                if let Zone::Hand = card.get_zone() {
-                    // A card is playable if affordable at ANY of its valid target zones
-                    // (accounting for zone-specific cost reductions like Donnybrook Inn).
-                    let valid_zones = card.get_valid_play_zones(&self.state)?;
-                    let affordable = if valid_zones.is_empty() {
-                        self.state
-                            .get_effective_costs(card_id, None)?
-                            .can_afford(&self.state, player_id)?
-                    } else {
-                        valid_zones.iter().any(|zone| {
-                            self.state
-                                .get_effective_costs(card_id, Some(zone))
-                                .and_then(|costs| costs.can_afford(&self.state, player_id))
-                                .unwrap_or(false)
-                        })
-                    };
-                    if !affordable {
-                        return Ok(());
-                    }
-                }
-
-                if card.is_playable(&self.state) {
+                if card.is_playable(&self.state)? && card.is_affordable(&self.state)? {
                     match card.get_card_type() {
                         CardType::Artifact | CardType::Minion | CardType::Aura => {
                             let effects = card.play_mechanic(&self.state).await?;

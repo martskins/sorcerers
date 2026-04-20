@@ -986,12 +986,47 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         self.get_base().is_token
     }
 
-    fn is_playable(&self, state: &State) -> bool {
-        if state.temporary_effects.iter().find(|e| matches!(e, TemporaryEffect::MakePlayable { affected_cards, .. } if affected_cards.matches(self.get_id(), state))).is_some() {
-            return true;
+    fn is_affordable(&self, state: &State) -> anyhow::Result<bool> {
+        // A card is playable if affordable at ANY of its valid target zones
+        // (accounting for zone-specific cost reductions like Donnybrook Inn).
+        let card_id = self.get_id();
+        let player_id = self.get_controller_id(state);
+        let valid_zones = self.get_valid_play_zones(state)?;
+        let affordable = if valid_zones.is_empty() {
+            state
+                .get_effective_costs(card_id, None)?
+                .can_afford(state, player_id)?
+        } else {
+            valid_zones.iter().any(|zone| {
+                state
+                    .get_effective_costs(card_id, Some(zone))
+                    .and_then(|costs| costs.can_afford(state, player_id))
+                    .unwrap_or(false)
+            })
+        };
+        if !affordable {
+            return Ok(false);
         }
 
-        self.get_zone() == &Zone::Hand
+        Ok(true)
+    }
+
+    fn is_playable(&self, state: &State) -> anyhow::Result<bool> {
+        if state
+            .temporary_effects
+            .iter()
+            .find(|e| match e {
+                te @ TemporaryEffect::MakePlayable { .. } => {
+                    te.affected_cards(state).contains(self.get_id())
+                }
+                _ => false,
+            })
+            .is_some()
+        {
+            return Ok(true);
+        }
+
+        Ok(self.get_zone() == &Zone::Hand)
     }
 
     fn is_tapped(&self) -> bool {

@@ -1,6 +1,9 @@
 use async_channel::Sender;
 use sorcerers::{
-    card::{ApprenticeWizard, AramosMercenaries, AridDesert, FelbogFrogMen, RubyCore, SummerRiver},
+    card::{
+        ApprenticeWizard, AramosMercenaries, AridDesert, CaptainBaldassare, FelbogFrogMen,
+        RubyCore, SummerRiver,
+    },
     deck::precon::ALL_PRECONS,
     game::Game,
     networking::{
@@ -184,9 +187,9 @@ impl Server {
             sorcerers::card::Zone::Cemetery,
         ));
         game.state.cards.push(sorcerers::card::from_name_and_zone(
-            RubyCore::NAME,
+            CaptainBaldassare::NAME,
             &player_one,
-            sorcerers::card::Zone::Hand,
+            sorcerers::card::Zone::Realm(8),
         ));
 
         let player_two = game.state.players[1].id;

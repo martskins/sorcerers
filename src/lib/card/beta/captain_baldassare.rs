@@ -5,7 +5,7 @@ use crate::{
     effect::Effect,
     game::PlayerId,
     query::EffectQuery,
-    state::{State, TemporaryEffect},
+    state::{CardQuery, State, TemporaryEffect},
 };
 
 #[derive(Debug, Clone)]
@@ -78,20 +78,20 @@ impl Card for CaptainBaldassare {
             .decks
             .get(&defending_player)
             .ok_or_else(|| anyhow::anyhow!("No deck for player {:?}", defending_player))?;
-        let top_three: Vec<uuid::Uuid> = deck.spells.iter().rev().take(3).cloned().collect();
-
+        let top_three: Vec<&uuid::Uuid> = deck.peek_spells(3);
         let mut effects: Vec<Effect> = top_three
             .iter()
             .map(|spell_id| Effect::DiscardCard {
                 player_id: defending_player,
-                card_id: *spell_id,
+                card_id: **spell_id,
             })
             .collect();
 
         for card_id in top_three {
             effects.push(Effect::AddTemporaryEffect {
                 effect: TemporaryEffect::MakePlayable {
-                    affected_cards: card_id.into(),
+                    affected_cards: std::convert::Into::<CardQuery>::into(card_id)
+                        .including_not_in_play(),
                     expires_on_effect: EffectQuery::OneOf(vec![
                         EffectQuery::TurnEnd { player_id: None },
                         EffectQuery::PlayCard {
