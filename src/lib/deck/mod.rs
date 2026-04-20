@@ -229,8 +229,8 @@ impl Deck {
         }
     }
 
-    pub fn peek_site(&self) -> Option<&uuid::Uuid> {
-        self.sites.last()
+    pub fn peek_sites(&self, count: usize) -> Vec<&uuid::Uuid> {
+        self.sites.iter().rev().take(count).collect()
     }
 
     pub fn draw_site(&mut self) -> Vec<Effect> {
@@ -240,8 +240,16 @@ impl Deck {
         }]
     }
 
+    pub fn peek_site(&self) -> Option<&uuid::Uuid> {
+        self.sites.last()
+    }
+
     pub fn peek_spell(&self) -> Option<&uuid::Uuid> {
         self.spells.last()
+    }
+
+    pub fn peek_spells(&self, count: usize) -> Vec<&uuid::Uuid> {
+        self.spells.iter().rev().take(count).collect()
     }
 
     pub fn draw_spell(&mut self) -> Vec<Effect> {

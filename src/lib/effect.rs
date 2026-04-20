@@ -1754,11 +1754,25 @@ impl Effect {
             }
             Effect::DiscardCard { player_id, card_id } => {
                 let card = state.get_card_mut(card_id);
+                let original_zone = card.get_zone().clone();
                 if card.get_owner_id() != player_id {
                     return Ok(());
                 }
-
                 card.set_zone(Zone::Cemetery);
+
+                if original_zone == Zone::Spellbook {
+                    state
+                        .get_player_deck_mut(player_id)?
+                        .spells
+                        .retain(|id| id != card_id);
+                }
+
+                if original_zone == Zone::Atlasbook {
+                    state
+                        .get_player_deck_mut(player_id)?
+                        .sites
+                        .retain(|id| id != card_id);
+                }
             }
             Effect::SetController { card_id, player_id } => {
                 let card = state.get_card_mut(card_id);
