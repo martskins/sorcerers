@@ -2065,16 +2065,17 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         self.get_aura_base().is_some()
     }
 
-    fn can_cast_spell_with_id(&self, state: &State, spell_id: &uuid::Uuid) -> anyhow::Result<bool> {
-        self.can_cast(state, state.get_card(spell_id))
-    }
-
-    fn can_cast(&self, state: &State, spell: &dyn Card) -> anyhow::Result<bool> {
+    fn can_cast_spell_with_id(
+        &self,
+        state: &State,
+        spell_id: &uuid::Uuid,
+        player_id: &PlayerId,
+    ) -> anyhow::Result<bool> {
         if !self.get_zone().is_in_play() {
             return Ok(false);
         }
 
-        if self.get_controller_id(state) != spell.get_controller_id(state) {
+        if &self.get_controller_id(state) != player_id {
             return Ok(false);
         }
 
@@ -2086,6 +2087,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             return Ok(true);
         }
 
+        let spell = state.get_card(spell_id);
         let elements = spell.get_elements(state)?;
         for element in elements {
             if self.has_ability(state, &Ability::Spellcaster(Some(element))) {

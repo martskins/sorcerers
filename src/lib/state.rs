@@ -53,7 +53,6 @@ pub struct CardQuery {
     not_in_ids: Option<Vec<uuid::Uuid>>,
     abilities: Option<Vec<Ability>>,
     without_abilities: Option<Vec<Ability>>,
-    can_cast: Option<uuid::Uuid>,
     card_types: Option<Vec<CardType>>,
     minion_types: Option<Vec<MinionType>>,
     artifact_types: Option<Vec<ArtifactType>>,
@@ -399,16 +398,16 @@ impl CardQuery {
         }
     }
 
-    pub fn can_cast(self, spell: &uuid::Uuid) -> Self {
+    pub fn without_ability(self, ability: &Ability) -> Self {
         Self {
-            can_cast: Some(*spell),
+            without_abilities: Some(vec![ability.clone()]),
             ..self
         }
     }
 
-    pub fn without_ability(self, ability: &Ability) -> Self {
+    pub fn with_ability(self, ability: &Ability) -> Self {
         Self {
-            without_abilities: Some(vec![ability.clone()]),
+            abilities: Some(vec![ability.clone()]),
             ..self
         }
     }
@@ -765,14 +764,6 @@ impl CardQuery {
             if !other_zones.contains(card.get_zone()) {
                 return false;
             }
-        }
-
-        if let Some(spell) = &self.can_cast
-            && !card
-                .can_cast_spell_with_id(state, spell)
-                .unwrap_or_default()
-        {
-            return false;
         }
 
         if let Some(player_id) = &self.can_be_targeted_by_player

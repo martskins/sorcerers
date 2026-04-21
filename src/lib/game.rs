@@ -1628,8 +1628,16 @@ impl Game {
                             self.state.queue(effects);
                         }
                         CardType::Magic => {
-                            let spellcasters =
-                                CardQuery::new().units().can_cast(card_id).all(&self.state);
+                            let spellcasters = CardQuery::new().units().in_play().all(&self.state);
+                            let spellcasters = spellcasters
+                                .into_iter()
+                                .filter(|c| {
+                                    self.state
+                                        .get_card(c)
+                                        .can_cast_spell_with_id(&self.state, card_id, player_id)
+                                        .unwrap_or_default()
+                                })
+                                .collect::<Vec<_>>();
                             let prompt = "Pick a spellcaster to cast the spell";
                             let caster_id =
                                 pick_card(player_id, &spellcasters, &self.state, prompt).await?;

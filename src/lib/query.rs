@@ -427,6 +427,9 @@ impl EffectQuery {
             (EffectQuery::SummonCard { card }, Effect::SummonCards { cards }) => Ok(cards
                 .iter()
                 .any(|(_, card_id, _)| card.matches(card_id, state))),
+            (EffectQuery::PlayCard { card }, Effect::PlayMagic { card_id, .. }) => {
+                Ok(card.matches(card_id, state))
+            }
             (EffectQuery::PlayCard { card }, Effect::PlayCard { card_id, .. }) => {
                 Ok(card.matches(card_id, state))
             }

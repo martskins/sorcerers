@@ -1142,6 +1142,7 @@ impl Effect {
 
                 let snapshot = state.snapshot();
                 let card = state.get_card_mut(card_id);
+                card.set_controller_id(player_id);
                 let effects = card.on_cast(&snapshot, caster_id, paid_cost).await?;
 
                 // Set zone after on_cast so that the card is not in the cemetery during casting.
