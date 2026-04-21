@@ -160,6 +160,7 @@ impl Zone {
         &self,
         state: &State,
         card_id: &uuid::Uuid,
+        player_id: &PlayerId,
     ) -> anyhow::Result<bool> {
         if !self.is_in_play() {
             return Ok(false);
@@ -186,22 +187,21 @@ impl Zone {
             Zone::Realm(_) => {
                 let site_in_zone = self.get_site(state);
                 if let Some(site) = site_in_zone {
-                    return site.is_valid_play_zone_for(state, card_id);
+                    return site.is_valid_play_zone_for(state, card_id, player_id);
                 }
 
                 // If there's no site in the zone, only cards with Voidwalk can be played there.
                 let card = state.get_card(card_id);
                 match card.get_card_type() {
                     CardType::Site => {
-                        let player_id = card.get_controller_id(state);
                         let has_played_site = !CardQuery::new()
                             .sites()
                             .in_play()
-                            .controlled_by(&player_id)
+                            .controlled_by(player_id)
                             .all(state)
                             .is_empty();
                         if !has_played_site {
-                            let avatar_id = state.get_player_avatar_id(&player_id)?;
+                            let avatar_id = state.get_player_avatar_id(player_id)?;
                             let avatar = state.get_card(&avatar_id);
                             return Ok(avatar.get_zone() == self);
                         }
@@ -209,7 +209,7 @@ impl Zone {
                         let empty_adjacent_zones: Vec<Zone> = CardQuery::new()
                             .sites()
                             .in_play()
-                            .controlled_by(&player_id)
+                            .controlled_by(player_id)
                             .not_named(Rubble::NAME)
                             .all(state)
                             .into_iter()
@@ -243,7 +243,6 @@ impl Zone {
             }
             Zone::Intersection(sqs) => {
                 let card = state.get_card(card_id);
-                let player_id = card.get_controller_id(state);
                 match card.get_card_type() {
                     CardType::Minion => {
                         if !card.is_oversized(state) {
@@ -253,7 +252,7 @@ impl Zone {
                         let site_squares: Vec<u8> = CardQuery::new()
                             .sites()
                             .in_play()
-                            .controlled_by(&player_id)
+                            .controlled_by(player_id)
                             .all(state)
                             .into_iter()
                             .filter_map(|cid| state.get_card(&cid).get_zone().get_square())
@@ -264,7 +263,7 @@ impl Zone {
                         let site_squares: Vec<u8> = CardQuery::new()
                             .sites()
                             .in_play()
-                            .controlled_by(&player_id)
+                            .controlled_by(player_id)
                             .all(state)
                             .into_iter()
                             .filter_map(|cid| state.get_card(&cid).get_zone().get_square())
@@ -986,12 +985,11 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         self.get_base().is_token
     }
 
-    fn is_affordable(&self, state: &State) -> anyhow::Result<bool> {
+    fn is_affordable(&self, state: &State, player_id: &PlayerId) -> anyhow::Result<bool> {
         // A card is playable if affordable at ANY of its valid target zones
         // (accounting for zone-specific cost reductions like Donnybrook Inn).
         let card_id = self.get_id();
-        let player_id = self.get_controller_id(state);
-        let valid_zones = self.get_valid_play_zones(state)?;
+        let valid_zones = self.get_valid_play_zones(state, player_id)?;
         let affordable = if valid_zones.is_empty() {
             state
                 .get_effective_costs(card_id, None)?
@@ -1418,20 +1416,23 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         }])
     }
 
-    fn default_get_valid_play_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {
-        let controller_id = self.get_controller_id(state);
+    fn default_get_valid_play_zones(
+        &self,
+        state: &State,
+        player_id: &PlayerId,
+    ) -> anyhow::Result<Vec<Zone>> {
         Ok(Zone::all_board()
             .into_iter()
             .filter(|z| {
                 let costs = state
                     .get_effective_costs(self.get_id(), Some(z))
                     .unwrap_or_default();
-                let can_afford = costs.can_afford(state, controller_id).unwrap_or_default();
+                let can_afford = costs.can_afford(state, player_id).unwrap_or_default();
                 if !can_afford {
                     return false;
                 }
 
-                z.is_valid_play_zone_for(state, self.get_id())
+                z.is_valid_play_zone_for(state, self.get_id(), player_id)
                     .unwrap_or_default()
             })
             .collect::<Vec<Zone>>())
@@ -1496,8 +1497,12 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     // Returns the valid zones where this card can be played in.
-    fn get_valid_play_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {
-        self.default_get_valid_play_zones(state)
+    fn get_valid_play_zones(
+        &self,
+        state: &State,
+        player_id: &PlayerId,
+    ) -> anyhow::Result<Vec<Zone>> {
+        self.default_get_valid_play_zones(state, player_id)
     }
 
     fn is_ranged(&self, state: &State) -> anyhow::Result<bool> {
@@ -1975,6 +1980,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         &self.get_base().zone
     }
 
+    fn set_controller_id(&mut self, controller_id: &PlayerId) {
+        self.get_base_mut().controller_id = *controller_id;
+    }
+
     fn set_zone(&mut self, zone: Zone) {
         self.get_base_mut().zone = zone;
     }
@@ -2136,16 +2145,19 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(vec![])
     }
 
-    async fn play_mechanic(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        let controller_id = self.get_controller_id(state);
+    async fn play_mechanic(
+        &self,
+        state: &State,
+        player_id: &PlayerId,
+    ) -> anyhow::Result<Vec<Effect>> {
         let card_id = self.get_id();
         match self.get_card_type() {
             CardType::Minion => {
-                let zones = self.get_valid_play_zones(state)?;
+                let zones = self.get_valid_play_zones(state, player_id)?;
                 let prompt = "Pick a zone to play the card";
-                let zone = pick_zone(controller_id, &zones, state, false, prompt).await?;
+                let zone = pick_zone(player_id, &zones, state, false, prompt).await?;
                 Ok(vec![Effect::PlayCard {
-                    player_id: controller_id,
+                    player_id: *player_id,
                     card_id: *self.get_id(),
                     zone: zone.clone().into(),
                 }])
@@ -2163,7 +2175,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 match needs_bearer {
                     true => {
                         let picked_card_id = pick_card(
-                            controller_id,
+                            *player_id,
                             &units,
                             state,
                             format!("Pick a unit to attach {} to", self.get_name()).as_str(),
@@ -2176,7 +2188,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                                 bearer_id: Some(picked_card_id),
                             },
                             Effect::PlayCard {
-                                player_id: controller_id,
+                                player_id: *player_id,
                                 card_id: *card_id,
                                 zone: picked_card.get_zone().clone().into(),
                             },
@@ -2184,15 +2196,15 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     }
                     false => {
                         let picked_zone = pick_zone(
-                            controller_id,
-                            &self.get_valid_play_zones(state)?,
+                            player_id,
+                            &self.get_valid_play_zones(state, player_id)?,
                             state,
                             false,
                             "Pick a zone to play the artifact",
                         )
                         .await?;
                         Ok(vec![Effect::PlayCard {
-                            player_id: controller_id,
+                            player_id: *player_id,
                             card_id: *card_id,
                             zone: picked_zone.clone().into(),
                         }])
@@ -2468,13 +2480,18 @@ pub trait ResourceProvider: Card {
 impl<T> ResourceProvider for T where T: Site {}
 
 pub trait Site: Card + ResourceProvider {
-    fn is_valid_play_zone_for(&self, state: &State, card_id: &uuid::Uuid) -> anyhow::Result<bool> {
+    fn is_valid_play_zone_for(
+        &self,
+        state: &State,
+        card_id: &uuid::Uuid,
+        player_id: &PlayerId,
+    ) -> anyhow::Result<bool> {
         let card = state.get_card(card_id);
         if card.is_site() {
             return Ok(false);
         }
 
-        if self.get_controller_id(state) == card.get_controller_id(state) {
+        if &self.get_controller_id(state) == player_id {
             return Ok(true);
         }
 
@@ -3166,7 +3183,7 @@ mod tests {
         state.cards.push(Box::new(card.clone()));
 
         let mut zones = card
-            .get_valid_play_zones(&state)
+            .get_valid_play_zones(&state, &player_id)
             .expect("zones to be computed");
         zones.sort();
         let mut expected = vec![Zone::Realm(8), Zone::Realm(4), Zone::Realm(2)];

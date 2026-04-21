@@ -73,12 +73,14 @@ impl Card for BuriedTreasure {
         Some(self)
     }
 
-    async fn play_mechanic(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        let controller_id = self.get_controller_id(state);
-        let opponent_id = state.get_opponent_id(&controller_id)?;
-
+    async fn play_mechanic(
+        &self,
+        state: &State,
+        player_id: &PlayerId,
+    ) -> anyhow::Result<Vec<Effect>> {
+        let opponent_id = state.get_opponent_id(player_id)?;
         let Some(picked_card_id) = CardQuery::new()
-            .controlled_by(&controller_id)
+            .controlled_by(player_id)
             .sites()
             .with_prompt("Buried Treasure: Pick a land site to place the treasure under")
             .land_sites()
@@ -95,7 +97,7 @@ impl Card for BuriedTreasure {
                 tap: false,
             },
             Effect::PlayCard {
-                player_id: controller_id,
+                player_id: *player_id,
                 card_id: *self.get_id(),
                 zone: picked_zone.into(),
             },

@@ -1198,6 +1198,7 @@ impl Effect {
                         .iter_mut()
                         .find(|c| c.get_id() == card_id)
                         .expect("to find card");
+                    card.set_controller_id(player_id);
                     let from_zone = card.get_zone().clone();
                     let cast_effects = card.on_summon(&snapshot)?;
                     card.set_zone(zone.clone());
@@ -1236,10 +1237,15 @@ impl Effect {
 
                 state.queue(effects);
             }
-            Effect::SummonCard { card_id, zone, .. } => {
+            Effect::SummonCard {
+                card_id,
+                zone,
+                player_id,
+            } => {
                 let has_charge = state.get_card(card_id).has_ability(state, &Ability::Charge);
                 let card = state.get_card_mut(card_id);
                 let from_zone = card.get_zone().clone();
+                card.set_controller_id(player_id);
                 card.set_zone(zone.clone());
 
                 if !has_charge {

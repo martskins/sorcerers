@@ -1027,7 +1027,7 @@ impl ActivatedAbility for AvatarAction {
                 let prompt = "Pick a site to play";
                 let picked_card_id = pick_card(player_id, &cards, state, prompt).await?;
                 let picked_card = state.get_card(&picked_card_id);
-                let zones = picked_card.get_valid_play_zones(state)?;
+                let zones = picked_card.get_valid_play_zones(state, player_id)?;
                 let prompt = "Pick a zone to play the site";
                 let zone = pick_zone(player_id, &zones, state, false, prompt).await?;
                 Ok(vec![Effect::PlayCard {
@@ -1550,10 +1550,12 @@ impl Game {
                     return Ok(());
                 }
 
-                if card.is_playable(&self.state, player_id)? && card.is_affordable(&self.state)? {
+                if card.is_playable(&self.state, player_id)?
+                    && card.is_affordable(&self.state, player_id)?
+                {
                     match card.get_card_type() {
                         CardType::Artifact | CardType::Minion | CardType::Aura => {
-                            let effects = card.play_mechanic(&self.state).await?;
+                            let effects = card.play_mechanic(&self.state, player_id).await?;
                             self.state.queue(effects);
                         }
                         CardType::Magic => {

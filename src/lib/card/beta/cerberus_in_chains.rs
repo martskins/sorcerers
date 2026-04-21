@@ -74,9 +74,12 @@ impl Card for CerberusInChains {
     }
 
     /// Cerberus must be summoned to the owner's avatar zone.
-    fn get_valid_play_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {
-        let owner_id = self.get_owner_id();
-        let avatar_id = state.get_player_avatar_id(owner_id)?;
+    fn get_valid_play_zones(
+        &self,
+        state: &State,
+        player_id: &PlayerId,
+    ) -> anyhow::Result<Vec<Zone>> {
+        let avatar_id = state.get_player_avatar_id(player_id)?;
         let avatar_zone = state.get_card(&avatar_id).get_zone().clone();
         Ok(vec![avatar_zone])
     }

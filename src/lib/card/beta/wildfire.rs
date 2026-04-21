@@ -134,7 +134,11 @@ impl Card for Wildfire {
         Ok(effects)
     }
 
-    fn get_valid_play_zones(&self, _state: &State) -> anyhow::Result<Vec<Zone>> {
+    fn get_valid_play_zones(
+        &self,
+        _state: &State,
+        _player_id: &PlayerId,
+    ) -> anyhow::Result<Vec<Zone>> {
         Ok(Zone::all_realm())
     }
 

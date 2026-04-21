@@ -70,7 +70,11 @@ impl Card for FeyChangeling {
         Some(&mut self.unit_base)
     }
 
-    fn get_valid_play_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {
+    fn get_valid_play_zones(
+        &self,
+        state: &State,
+        _player_id: &PlayerId,
+    ) -> anyhow::Result<Vec<Zone>> {
         Ok(CardQuery::new()
             .sites()
             .in_play()

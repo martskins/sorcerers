@@ -52,7 +52,7 @@ impl Card for RaiseDead {
     async fn on_cast(
         &mut self,
         state: &State,
-        _caster_id: &uuid::Uuid,
+        caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let prompt = "Summon a random dead minion".to_string();
@@ -65,7 +65,8 @@ impl Card for RaiseDead {
             .await?
             .expect("Raise Dead: No valid targets in cemetery");
         let minion = state.get_card(&minion_id);
-        let zones = minion.get_valid_play_zones(state)?;
+        let player_id = state.get_card(caster_id).get_controller_id(state);
+        let zones = minion.get_valid_play_zones(state, &player_id)?;
         let picked_zone = pick_zone(self.get_owner_id(), &zones, state, false, &prompt).await?;
         Ok(vec![Effect::SummonCard {
             player_id: *self.get_owner_id(),

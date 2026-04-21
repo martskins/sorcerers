@@ -67,8 +67,12 @@ impl Card for Cornerstone {
         Some(&mut self.site_base)
     }
 
-    fn get_valid_play_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {
-        let mut valid_zones = self.default_get_valid_play_zones(state)?;
+    fn get_valid_play_zones(
+        &self,
+        state: &State,
+        player_id: &PlayerId,
+    ) -> anyhow::Result<Vec<Zone>> {
+        let mut valid_zones = self.default_get_valid_play_zones(state, player_id)?;
         let corners: [Zone; 4] = [
             Zone::Realm(1),
             Zone::Realm(5),

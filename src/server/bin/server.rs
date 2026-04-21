@@ -2,7 +2,7 @@ use async_channel::Sender;
 use sorcerers::{
     card::{
         ApprenticeWizard, AramosMercenaries, AridDesert, CaptainBaldassare, FelbogFrogMen,
-        RubyCore, SummerRiver,
+        SummerRiver,
     },
     deck::precon::ALL_PRECONS,
     game::Game,
