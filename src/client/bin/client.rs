@@ -41,7 +41,6 @@ impl SorcerersApp {
         });
 
         let scene = Scene::Menu(Menu::new(client));
-
         Ok(SorcerersApp {
             scene,
             _runtime: rt,
@@ -177,19 +176,15 @@ impl eframe::App for SorcerersApp {
         TextureCache::flush_blocking(ctx);
 
         // Drain incoming server messages
-        let mut received_message = false;
         while let Ok(msg) = self.rx.try_recv() {
             if let Some(new_scene) = self.scene.process_message(&msg) {
                 self.scene = new_scene;
             }
-            received_message = true;
-        }
-        if received_message {
-            ctx.request_repaint();
         }
 
         // Update game state
         self.scene.update(ctx);
+        ctx.request_repaint();
     }
 
     /// When the window is closed the tokio networking task is blocked on
