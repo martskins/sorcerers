@@ -11,3 +11,5 @@ pub mod state;
 
 #[cfg(test)]
 mod effect_test;
+#[cfg(test)]
+mod state_test;

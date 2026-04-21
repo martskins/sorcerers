@@ -88,17 +88,28 @@ impl Card for CaptainBaldassare {
             .collect();
 
         for card_id in top_three {
+            let effects_expiry = EffectQuery::OneOf(vec![
+                EffectQuery::TurnEnd { player_id: None },
+                EffectQuery::PlayCard {
+                    card: card_id.into(),
+                },
+            ]);
+
             effects.push(Effect::AddTemporaryEffect {
                 effect: TemporaryEffect::MakePlayable {
                     affected_cards: std::convert::Into::<CardQuery>::into(card_id)
                         .including_not_in_play(),
-                    expires_on_effect: EffectQuery::OneOf(vec![
-                        EffectQuery::TurnEnd { player_id: None },
-                        EffectQuery::PlayCard {
-                            card: card_id.into(),
-                        },
-                    ]),
-                    by_player: Some(self.get_controller_id(state)),
+                    expires_on_effect: effects_expiry.clone(),
+                    by_player: self.get_controller_id(state),
+                },
+            });
+
+            effects.push(Effect::AddTemporaryEffect {
+                effect: TemporaryEffect::IgnoreCostThresholds {
+                    affected_cards: std::convert::Into::<CardQuery>::into(card_id)
+                        .including_not_in_play(),
+                    expires_on_effect: effects_expiry.clone(),
+                    for_player: self.get_controller_id(state),
                 },
             });
         }

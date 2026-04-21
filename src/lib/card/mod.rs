@@ -10,9 +10,9 @@ pub use rubble::*;
 use crate::{
     effect::{AbilityCounter, Counter, Effect, TokenType},
     game::{
-        ActivatedAbility, AvatarAction, Direction, Element, PlayerId, Thresholds, UnitAction,
-        are_adjacent, are_nearby, get_adjacent_zones, get_nearby_zones, pick_amount, pick_card,
-        pick_option, pick_zone,
+        ActivatedAbility, AvatarAction, Direction, Element, PlayerId, Thresholds, ThresholdsDiff,
+        UnitAction, are_adjacent, are_nearby, get_adjacent_zones, get_nearby_zones, pick_amount,
+        pick_card, pick_option, pick_zone,
     },
     query::ZoneQuery,
     state::{CardQuery, ContinuousEffect, LoggedEffect, State, TemporaryEffect},
@@ -790,6 +790,16 @@ impl Costs {
         Self(self.0.iter().map(|c| c.with_mana_adjusted(diff)).collect())
     }
 
+    /// Returns a new `Costs` with every mana component adjusted by `diff`, clamped to 0.
+    pub fn with_thresholds_adjusted(&self, diff: ThresholdsDiff) -> Self {
+        Self(
+            self.0
+                .iter()
+                .map(|c| c.with_thresholds_adjusted(diff.clone()))
+                .collect(),
+        )
+    }
+
     pub async fn pay(&self, state: &mut State, player_id: &PlayerId) -> anyhow::Result<Cost> {
         match self.0.len() {
             0 => Ok(Cost::ZERO.clone()),
@@ -923,6 +933,19 @@ impl Cost {
         parts.join(" + ")
     }
 
+    /// Returns a copy of this `Cost` with every `Threshold` adjusted by `diff`, clamped to 0.
+    pub fn with_thresholds_adjusted(&self, diff: ThresholdsDiff) -> Self {
+        Self(
+            self.0
+                .iter()
+                .map(|ct| match ct {
+                    CostType::Thresholds(t) => CostType::Thresholds(t + &diff),
+                    other => other.clone(),
+                })
+                .collect(),
+        )
+    }
+
     /// Returns a copy of this `Cost` with every `ManaCost` adjusted by `diff`, clamped to 0.
     pub fn with_mana_adjusted(&self, diff: i8) -> Self {
         Self(
@@ -992,12 +1015,12 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         let valid_zones = self.get_valid_play_zones(state, player_id)?;
         let affordable = if valid_zones.is_empty() {
             state
-                .get_effective_costs(card_id, None)?
+                .get_effective_costs(card_id, None, player_id)?
                 .can_afford(state, player_id)?
         } else {
             valid_zones.iter().any(|zone| {
                 state
-                    .get_effective_costs(card_id, Some(zone))
+                    .get_effective_costs(card_id, Some(zone), player_id)
                     .and_then(|costs| costs.can_afford(state, player_id))
                     .unwrap_or(false)
             })
@@ -1015,8 +1038,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             .iter()
             .find(|e| match e {
                 te @ TemporaryEffect::MakePlayable { by_player, .. } => {
-                    te.affected_cards(state).contains(self.get_id())
-                        && by_player.as_ref() == Some(player_id)
+                    te.affected_cards(state).contains(self.get_id()) && by_player == player_id
                 }
                 _ => false,
             })
@@ -1425,7 +1447,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             .into_iter()
             .filter(|z| {
                 let costs = state
-                    .get_effective_costs(self.get_id(), Some(z))
+                    .get_effective_costs(self.get_id(), Some(z), player_id)
                     .unwrap_or_default();
                 let can_afford = costs.can_afford(state, player_id).unwrap_or_default();
                 if !can_afford {

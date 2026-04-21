@@ -1137,7 +1137,7 @@ impl Effect {
                     .get_card_mut(caster_id)
                     .remove_modifier(&Ability::Stealth);
 
-                let costs = state.get_effective_costs(card_id, None)?;
+                let costs = state.get_effective_costs(card_id, None, player_id)?;
                 let paid_cost = costs.pay(state, player_id).await?;
 
                 let snapshot = state.snapshot();
@@ -1160,7 +1160,7 @@ impl Effect {
                 ..
             } => {
                 let zone = zone.resolve(player_id, state).await?;
-                let costs = state.get_effective_costs(card_id, Some(&zone))?;
+                let costs = state.get_effective_costs(card_id, Some(&zone), player_id)?;
                 Box::pin(costs.pay(state, player_id)).await?;
                 let snapshot = state.snapshot();
 

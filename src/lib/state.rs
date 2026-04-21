@@ -6,8 +6,8 @@ use crate::{
     deck::Deck,
     effect::Effect,
     game::{
-        Element, InputStatus, PlayerId, Resources, Thresholds, pick_card, pick_card_with_options,
-        pick_zone, yes_or_no,
+        Element, InputStatus, PlayerId, Resources, Thresholds, ThresholdsDiff, pick_card,
+        pick_card_with_options, pick_zone, yes_or_no,
     },
     networking::message::{ClientMessage, ServerMessage},
     query::{EffectQuery, ZoneQuery},
@@ -832,7 +832,12 @@ pub enum TemporaryEffect {
     MakePlayable {
         affected_cards: CardQuery,
         expires_on_effect: EffectQuery,
-        by_player: Option<PlayerId>,
+        by_player: PlayerId,
+    },
+    IgnoreCostThresholds {
+        affected_cards: CardQuery,
+        expires_on_effect: EffectQuery,
+        for_player: PlayerId,
     },
 }
 
@@ -845,6 +850,9 @@ impl TemporaryEffect {
             TemporaryEffect::MakePlayable { affected_cards, .. } => {
                 affected_cards.clone().including_not_in_play().all(state)
             }
+            TemporaryEffect::IgnoreCostThresholds { affected_cards, .. } => {
+                affected_cards.all(state)
+            }
         }
     }
 
@@ -854,6 +862,9 @@ impl TemporaryEffect {
                 expires_on_effect, ..
             } => Some(expires_on_effect),
             TemporaryEffect::MakePlayable {
+                expires_on_effect, ..
+            } => Some(expires_on_effect),
+            TemporaryEffect::IgnoreCostThresholds {
                 expires_on_effect, ..
             } => Some(expires_on_effect),
         }
@@ -1088,11 +1099,12 @@ impl State {
         &self,
         card_id: &uuid::Uuid,
         target_zone: Option<&Zone>,
+        player_id: &PlayerId,
     ) -> anyhow::Result<Costs> {
         let card = self.get_card(card_id);
         let base_costs = card.get_costs(self)?.clone();
 
-        let total_diff: i8 = self
+        let total_mana_diff: i8 = self
             .continuous_effects
             .iter()
             .filter_map(|ce| match ce {
@@ -1117,11 +1129,20 @@ impl State {
             })
             .sum();
 
-        if total_diff == 0 {
-            return Ok(base_costs);
+        let ignore_thresholds = self.temporary_effects
+            .iter()
+            .find(|te| matches!(te, TemporaryEffect::IgnoreCostThresholds { affected_cards, for_player, .. } if affected_cards.matches(card.get_id(), self) && for_player == player_id))
+            .is_some();
+
+        let mut thresholds_diff = ThresholdsDiff::default();
+        if ignore_thresholds {
+            thresholds_diff = card.get_costs(self)?.thresholds_cost().into();
+            thresholds_diff = thresholds_diff.negate();
         }
 
-        Ok(base_costs.with_mana_adjusted(total_diff))
+        Ok(base_costs
+            .with_mana_adjusted(total_mana_diff)
+            .with_thresholds_adjusted(thresholds_diff))
     }
 
     pub fn queue(&mut self, effects: impl IntoIterator<Item = Effect>) {
@@ -1510,111 +1531,5 @@ impl State {
         let (server_tx, _) = async_channel::unbounded();
         let (_, client_rx) = async_channel::unbounded();
         State::new(uuid::Uuid::new_v4(), players, server_tx, client_rx)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::card::{
-        CauldronCrones, DonnybrookInn, HeadlessHaunt, KiteArcher, NimbusJinn, RimlandNomads,
-    };
-
-    #[test]
-    fn test_inteceptors() {
-        let mut state = State::new_mock_state(Zone::all_realm());
-        let player_id = state.players[0].id;
-        let mut rimland_nomads = RimlandNomads::new(player_id);
-        rimland_nomads.set_zone(Zone::Realm(8));
-        state.cards.push(Box::new(rimland_nomads.clone()));
-
-        let opponent_id = state.players[1].id;
-        let mut kite_archer = KiteArcher::new(opponent_id);
-        kite_archer.set_zone(Zone::Realm(12));
-        state.cards.push(Box::new(kite_archer.clone()));
-
-        let path = vec![Zone::Realm(8), Zone::Realm(13), Zone::Realm(18)];
-        let interceptors = state.get_interceptors_for_move(&path, &opponent_id);
-        assert_eq!(interceptors.len(), 1);
-        assert_eq!(&interceptors[0].0, kite_archer.get_id());
-    }
-
-    #[test]
-    fn test_no_inteceptors() {
-        let mut state = State::new_mock_state(Zone::all_realm());
-        let player_id = state.players[0].id;
-        let mut rimland_nomads = RimlandNomads::new(player_id);
-        rimland_nomads.set_zone(Zone::Realm(8));
-        state.cards.push(Box::new(rimland_nomads.clone()));
-
-        let opponent_id = state.players[1].id;
-        let mut kite_archer = KiteArcher::new(opponent_id);
-        kite_archer.set_zone(Zone::Realm(11));
-        state.cards.push(Box::new(kite_archer.clone()));
-
-        let path = vec![Zone::Realm(8), Zone::Realm(13), Zone::Realm(18)];
-        let interceptors = state.get_interceptors_for_move(&path, &opponent_id);
-        assert_eq!(interceptors.len(), 0);
-    }
-
-    #[test]
-    fn test_voidwalking_interceptor() {
-        let mut state =
-            State::new_mock_state(vec![Zone::Realm(8), Zone::Realm(13), Zone::Realm(18)]);
-        let player_id = state.players[0].id;
-        let mut rimland_nomads = RimlandNomads::new(player_id);
-        rimland_nomads.set_zone(Zone::Realm(8));
-        state.cards.push(Box::new(rimland_nomads.clone()));
-
-        let opponent_id = state.players[1].id;
-        let mut headless_haunt = HeadlessHaunt::new(opponent_id);
-        headless_haunt.set_zone(Zone::Realm(12));
-        state.cards.push(Box::new(headless_haunt.clone()));
-
-        let path = vec![Zone::Realm(8), Zone::Realm(13), Zone::Realm(18)];
-        let interceptors = state.get_interceptors_for_move(&path, &opponent_id);
-        assert_eq!(interceptors.len(), 1);
-    }
-
-    #[test]
-    fn test_airborne_interceptor() {
-        let mut state = State::new_mock_state(Zone::all_realm());
-        let player_id = state.players[0].id;
-        let mut rimland_nomads = RimlandNomads::new(player_id);
-        rimland_nomads.set_zone(Zone::Realm(8));
-        state.cards.push(Box::new(rimland_nomads.clone()));
-
-        let opponent_id = state.players[1].id;
-        let mut headless_haunt = NimbusJinn::new(opponent_id);
-        headless_haunt.set_zone(Zone::Realm(12));
-        state.cards.push(Box::new(headless_haunt.clone()));
-
-        let path = vec![Zone::Realm(8), Zone::Realm(13), Zone::Realm(18)];
-        let interceptors = state.get_interceptors_for_move(&path, &opponent_id);
-        assert_eq!(interceptors.len(), 3);
-    }
-
-    #[tokio::test]
-    async fn test_get_effective_costs_donnybrook_inn() {
-        let mut state = State::new_mock_state(vec![Zone::Realm(8)]);
-        let player_id = state.players[0].id;
-        let mut donnybrook_inn = DonnybrookInn::new(player_id);
-        donnybrook_inn.set_zone(Zone::Realm(3));
-        state.cards.push(Box::new(donnybrook_inn.clone()));
-
-        let mut cauldron_crones = CauldronCrones::new(player_id);
-        cauldron_crones.set_zone(Zone::Hand);
-        state.cards.push(Box::new(cauldron_crones.clone()));
-
-        state.compute_world_effects().await.unwrap();
-        let regular_costs = state
-            .get_effective_costs(cauldron_crones.get_id(), None)
-            .unwrap();
-        assert_eq!(regular_costs.mana_value(), 3);
-
-        let inn_costs = state
-            .get_effective_costs(cauldron_crones.get_id(), Some(donnybrook_inn.get_zone()))
-            .unwrap();
-        assert_eq!(inn_costs.mana_value(), 2);
     }
 }

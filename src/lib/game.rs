@@ -620,6 +620,75 @@ pub struct Thresholds {
     pub water: u8,
 }
 
+#[derive(Debug, PartialEq, Default, Clone, Serialize, Deserialize)]
+pub struct ThresholdsDiff {
+    pub fire: i8,
+    pub air: i8,
+    pub earth: i8,
+    pub water: i8,
+}
+
+impl ThresholdsDiff {
+    pub fn negate(&self) -> ThresholdsDiff {
+        ThresholdsDiff {
+            fire: -self.fire,
+            air: -self.air,
+            earth: -self.earth,
+            water: -self.water,
+        }
+    }
+}
+
+impl From<&Thresholds> for ThresholdsDiff {
+    fn from(val: &Thresholds) -> Self {
+        ThresholdsDiff {
+            fire: val.fire as i8,
+            air: val.air as i8,
+            earth: val.earth as i8,
+            water: val.water as i8,
+        }
+    }
+}
+
+impl std::ops::Mul<&Thresholds> for u8 {
+    type Output = Thresholds;
+
+    fn mul(self, rhs: &Thresholds) -> Thresholds {
+        Thresholds {
+            fire: rhs.fire.saturating_mul(self),
+            air: rhs.air.saturating_mul(self),
+            earth: rhs.earth.saturating_mul(self),
+            water: rhs.water.saturating_mul(self),
+        }
+    }
+}
+
+impl std::ops::Add<&ThresholdsDiff> for &Thresholds {
+    type Output = Thresholds;
+
+    fn add(self, other: &ThresholdsDiff) -> Thresholds {
+        Thresholds {
+            fire: other.fire.saturating_add_unsigned(self.fire) as u8,
+            air: other.air.saturating_add_unsigned(self.air) as u8,
+            earth: other.earth.saturating_add_unsigned(self.earth) as u8,
+            water: other.water.saturating_add_unsigned(self.water) as u8,
+        }
+    }
+}
+
+impl std::ops::Add<&Thresholds> for &Thresholds {
+    type Output = Thresholds;
+
+    fn add(self, other: &Thresholds) -> Thresholds {
+        Thresholds {
+            fire: self.fire + other.fire,
+            air: self.air + other.air,
+            earth: self.earth + other.earth,
+            water: self.water + other.water,
+        }
+    }
+}
+
 impl Sum for Thresholds {
     fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
         let mut total = Thresholds::new();
