@@ -59,15 +59,13 @@
 
 ## Key Conventions
 
-- An unimplemented card is a card that does not have its own file in `src/lib/card/{edition}/` and
-  is not registered with `#[linkme::distributed_slice]`.
-- When checking for unimplemented cards, make sure you check the name of the card in the NAME
-  constant in the card's struct, not just the file name, as some cards have slightly different names
-  in the file (e.g., "Angel's Egg" is "angels_egg.rs").
+- An unimplemented card is a card that does not have its own file in `src/lib/card/{edition}/` and is not registered with `#[linkme::distributed_slice]`.
+- When checking for unimplemented cards, make sure you check the name of the card in the NAME constant in the card's struct, not just the file name, as some cards have slightly different names in the file (e.g., "Angel's Egg" is "angels_egg.rs").
 - **Implementing a Card:**
   1. Create a file in `src/lib/card/{edition}/` (e.g., `my_card.rs`). Make sure to remove apostrophes and special characters from the file name, and use snake_case.
   2. Define a struct with a `card_base: CardBase` field and implement the `Card` trait.
   3. Register the module in `mod.rs` and with `#[linkme::distributed_slice]`.
+  4. Try and use existing card mechanics instead of implement ad-hoc effects. Check `src/lib/effect.rs` for existing effects and `documents/rulebook.md` for game mechanics.
 - **Card metadata source:**
   - Check `documents/Sorcery Contested Realm Product Tracker - Beta.csv` in the repo root before coding a Beta card. Use the row for the card name to confirm cost, thresholds, type, subtype, rarity, and Curiosa slug.
   - Check `documents/rulebook.md` in the repo root for rules of the game and card mechanics before coding any card.
