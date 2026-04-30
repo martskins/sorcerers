@@ -17,8 +17,7 @@ pub struct LordOfTheVoid {
 
 impl LordOfTheVoid {
     pub const NAME: &'static str = "Lord of the Void";
-    pub const DESCRIPTION: &'static str =
-        "Voidwalk\r \r At the end of your turn, you may banish an adjacent site (not one guarded by an Avatar).";
+    pub const DESCRIPTION: &'static str = "Voidwalk\r \r At the end of your turn, you may banish an adjacent site (not one guarded by an Avatar).";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

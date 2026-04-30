@@ -1,29 +1,32 @@
 use crate::{
     card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site,
-        SiteBase, Zone,
+        Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase,
+        Zone,
     },
+    effect::Effect,
     game::{PlayerId, Thresholds},
-    state::{CardQuery, ContinuousEffect, State},
+    state::{CardQuery, State},
 };
 
+/// **Pillar of Zeiros** — Unique Site (Earth threshold)
+///
+/// Genesis → Banish all dead minions, and you heal 1 life for each.
 #[derive(Debug, Clone)]
-pub struct KingdomOfAgartha {
+pub struct PillarOfZeiros {
     site_base: SiteBase,
     card_base: CardBase,
 }
 
-impl KingdomOfAgartha {
-    pub const NAME: &'static str = "Kingdom of Agartha";
+impl PillarOfZeiros {
+    pub const NAME: &'static str = "Pillar of Zeiros";
     pub const DESCRIPTION: &'static str =
-        "While you have 3 or more Earth thresholds available, all minions have Burrowing.";
+        "Genesis → Banish all dead minions, and you heal 1 life for each.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
             site_base: SiteBase {
                 provided_mana: 1,
                 provided_thresholds: Thresholds::parse("E"),
-                types: vec![],
                 tapped: false,
                 ..Default::default()
             },
@@ -32,7 +35,7 @@ impl KingdomOfAgartha {
                 owner_id,
                 zone: Zone::Atlasbook,
                 costs: Costs::ZERO,
-                rarity: Rarity::Exceptional,
+                rarity: Rarity::Unique,
                 edition: Edition::Beta,
                 controller_id: owner_id,
                 is_token: false,
@@ -42,10 +45,10 @@ impl KingdomOfAgartha {
     }
 }
 
-impl Site for KingdomOfAgartha {}
+impl Site for PillarOfZeiros {}
 
 #[async_trait::async_trait]
-impl Card for KingdomOfAgartha {
+impl Card for PillarOfZeiros {
     fn get_name(&self) -> &str {
         Self::NAME
     }
@@ -78,26 +81,31 @@ impl Card for KingdomOfAgartha {
         Some(self)
     }
 
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
-        if !self.get_zone().is_in_play() {
-            return Ok(vec![]);
-        }
-
+    async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        let thresholds = state.get_thresholds_for_player(&controller_id);
-        if thresholds.earth < 3 {
-            return Ok(vec![]);
+        let avatar_id = state.get_player_avatar_id(&controller_id)?;
+
+        let dead_minions = CardQuery::new().minions().dead().all(state);
+        let count = dead_minions.len() as u32;
+
+        let mut effects: Vec<Effect> = dead_minions
+            .into_iter()
+            .map(|card_id| Effect::BanishCard { card_id })
+            .collect();
+
+        for _ in 0..count {
+            effects.push(Effect::Heal {
+                card_id: avatar_id,
+                amount: 1,
+            });
         }
 
-        Ok(vec![ContinuousEffect::GrantAbility {
-            ability: Ability::Burrowing,
-            affected_cards: CardQuery::new().minions(),
-        }])
+        Ok(effects)
     }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, CardConstructor) =
-    (KingdomOfAgartha::NAME, |owner_id: PlayerId| {
-        Box::new(KingdomOfAgartha::new(owner_id))
+    (PillarOfZeiros::NAME, |owner_id: PlayerId| {
+        Box::new(PillarOfZeiros::new(owner_id))
     });

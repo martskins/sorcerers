@@ -4,32 +4,29 @@ use crate::{
         UnitBase, Zone,
     },
     game::PlayerId,
-    state::{CardQuery, State},
 };
 
+/// **Phantasmal Shade** — Exceptional Minion (3 cost, 4/1)
+///
+/// When Phantasmal Shade is struck, destroy it.
+/// TODO: Implement on-struck destroy trigger.
 #[derive(Debug, Clone)]
-pub struct HoundsOfOndaros {
+pub struct PhantasmalShade {
     unit_base: UnitBase,
     card_base: CardBase,
 }
 
-impl HoundsOfOndaros {
-    pub const NAME: &'static str = "Hounds of Ondaros";
-    pub const DESCRIPTION: &'static str =
-        "Airborne, Burrowing, Submerge, Voidwalk\r \r Removes Stealth from all nearby enemies.";
+impl PhantasmalShade {
+    pub const NAME: &'static str = "Phantasmal Shade";
+    pub const DESCRIPTION: &'static str = "When Phantasmal Shade is struck, destroy it.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
             unit_base: UnitBase {
                 power: 4,
-                toughness: 4,
-                abilities: vec![
-                    Ability::Airborne,
-                    Ability::Burrowing,
-                    Ability::Submerge,
-                    Ability::Voidwalk,
-                ],
-                types: vec![MinionType::Beast],
+                toughness: 1,
+                abilities: vec![Ability::Voidwalk, Ability::Stealth],
+                types: vec![MinionType::Spirit],
                 tapped: false,
                 region: Region::Surface,
                 ..Default::default()
@@ -38,7 +35,7 @@ impl HoundsOfOndaros {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
                 zone: Zone::Spellbook,
-                costs: Costs::basic(5, "AA"),
+                costs: Costs::basic(3, "AA"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id,
@@ -50,7 +47,7 @@ impl HoundsOfOndaros {
 }
 
 #[async_trait::async_trait]
-impl Card for HoundsOfOndaros {
+impl Card for PhantasmalShade {
     fn get_name(&self) -> &str {
         Self::NAME
     }
@@ -74,32 +71,10 @@ impl Card for HoundsOfOndaros {
     fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
         Some(&mut self.unit_base)
     }
-
-    fn area_effects(&self, state: &State) -> anyhow::Result<Vec<crate::effect::Effect>> {
-        if !self.get_zone().is_in_play() {
-            return Ok(vec![]);
-        }
-        let controller_id = self.get_controller_id(state);
-
-        let effects = CardQuery::new()
-            .minions()
-            .near_to(self.get_zone())
-            .with_abilities(vec![Ability::Stealth])
-            .all(state)
-            .into_iter()
-            .filter(|id| state.get_card(id).get_controller_id(state) != controller_id)
-            .map(|id| crate::effect::Effect::RemoveAbility {
-                card_id: id,
-                modifier: Ability::Stealth,
-            })
-            .collect();
-
-        Ok(effects)
-    }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, CardConstructor) =
-    (HoundsOfOndaros::NAME, |owner_id: PlayerId| {
-        Box::new(HoundsOfOndaros::new(owner_id))
+    (PhantasmalShade::NAME, |owner_id: PlayerId| {
+        Box::new(PhantasmalShade::new(owner_id))
     });

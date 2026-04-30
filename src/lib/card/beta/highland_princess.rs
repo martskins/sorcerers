@@ -1,7 +1,6 @@
 use crate::{
     card::{
-        Card, CardBase, CardConstructor, Costs, Edition, MinionType,
-        Rarity, Region, UnitBase, Zone,
+        Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
     },
     effect::Effect,
     game::{PlayerId, pick_card},
@@ -78,7 +77,12 @@ impl Card for HighlandPrincess {
             .filter(|c| c.is_artifact())
             .filter(|c| c.get_zone() == &Zone::Spellbook)
             .filter(|c| c.get_controller_id(state) == controller_id)
-            .filter(|c| c.get_costs(state).map(|costs| costs.mana_value()).unwrap_or(u8::MAX) <= 1)
+            .filter(|c| {
+                c.get_costs(state)
+                    .map(|costs| costs.mana_value())
+                    .unwrap_or(u8::MAX)
+                    <= 1
+            })
             .map(|c| *c.get_id())
             .collect();
 
@@ -86,7 +90,13 @@ impl Card for HighlandPrincess {
             return Ok(vec![]);
         }
 
-        let chosen = pick_card(&controller_id, &targets, state, "Search for artifact (≤1 mana)").await?;
+        let chosen = pick_card(
+            &controller_id,
+            &targets,
+            state,
+            "Search for artifact (≤1 mana)",
+        )
+        .await?;
         Ok(vec![Effect::SetCardZone {
             card_id: chosen,
             zone: Zone::Hand,

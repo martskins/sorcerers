@@ -9,23 +9,26 @@ use crate::{
     state::State,
 };
 
+/// **Sky Baron** — Elite Minion (6 cost, 6/2)
+///
+/// Airborne. All other minions lose Airborne.
 #[derive(Debug, Clone)]
-pub struct OldSaltAnchorman {
+pub struct SkyBaron {
     unit_base: UnitBase,
     card_base: CardBase,
 }
 
-impl OldSaltAnchorman {
-    pub const NAME: &'static str = "Old Salt Anchorman";
-    pub const DESCRIPTION: &'static str =
-        "Nearby allies can't be moved by enemy spells and abilities.";
+impl SkyBaron {
+    pub const NAME: &'static str = "Sky Baron";
+    pub const DESCRIPTION: &'static str = "Airborne\n\nAll other minions lose Airborne.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
             unit_base: UnitBase {
-                power: 2,
+                power: 6,
                 toughness: 2,
-                types: vec![MinionType::Mortal],
+                abilities: vec![Ability::Airborne],
+                types: vec![MinionType::Spirit],
                 tapped: false,
                 region: Region::Surface,
                 ..Default::default()
@@ -34,8 +37,8 @@ impl OldSaltAnchorman {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
                 zone: Zone::Spellbook,
-                costs: Costs::basic(2, "W"),
-                rarity: Rarity::Ordinary,
+                costs: Costs::basic(6, "AA"),
+                rarity: Rarity::Elite,
                 edition: Edition::Beta,
                 controller_id: owner_id,
                 is_token: false,
@@ -46,7 +49,7 @@ impl OldSaltAnchorman {
 }
 
 #[async_trait::async_trait]
-impl Card for OldSaltAnchorman {
+impl Card for SkyBaron {
     fn get_name(&self) -> &str {
         Self::NAME
     }
@@ -70,31 +73,25 @@ impl Card for OldSaltAnchorman {
     fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
         Some(&mut self.unit_base)
     }
-
-    /// Grants Immobile to nearby allied units, preventing them from being moved.
     fn area_modifiers(&self, state: &State) -> AreaModifiers {
-        let controller_id = self.get_controller_id(state);
-        let my_zone = self.get_zone();
-
-        let grants: HashMap<uuid::Uuid, Vec<Ability>> = state
+        if !self.get_zone().is_in_play() {
+            return AreaModifiers::default();
+        }
+        let removes: HashMap<uuid::Uuid, Vec<Ability>> = state
             .cards
             .iter()
-            .filter(|c| c.get_zone().is_in_play())
-            .filter(|c| c.get_controller_id(state) == controller_id)
+            .filter(|c| c.get_zone().is_in_play() && c.is_unit())
             .filter(|c| c.get_id() != self.get_id())
-            .filter(|c| c.get_zone().is_nearby(my_zone))
-            .map(|c| (*c.get_id(), vec![Ability::Immobile]))
+            .map(|c| (*c.get_id(), vec![Ability::Airborne]))
             .collect();
-
         AreaModifiers {
-            grants_abilities: grants,
+            removes_abilities: removes,
             ..Default::default()
         }
     }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, CardConstructor) =
-    (OldSaltAnchorman::NAME, |owner_id: PlayerId| {
-        Box::new(OldSaltAnchorman::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (SkyBaron::NAME, |owner_id: PlayerId| {
+    Box::new(SkyBaron::new(owner_id))
+});

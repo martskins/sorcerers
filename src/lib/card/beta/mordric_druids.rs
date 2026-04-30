@@ -89,7 +89,11 @@ impl Card for MordricDruids {
                 on_effect: Arc::new(
                     move |state: &State, _avatar_id: &uuid::Uuid, effect: &Effect| {
                         Box::pin(async move {
-                            let Effect::TakeDamage { from: attacker_id, damage, .. } = effect
+                            let Effect::TakeDamage {
+                                from: attacker_id,
+                                damage,
+                                ..
+                            } = effect
                             else {
                                 return Ok(vec![]);
                             };
@@ -123,9 +127,7 @@ impl Card for MordricDruids {
                             }])
                         })
                             as Pin<
-                                Box<
-                                    dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_,
-                                >,
+                                Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>,
                             >
                     },
                 ),

@@ -12,7 +12,8 @@ pub struct LeapAttack {
 
 impl LeapAttack {
     pub const NAME: &'static str = "Leap Attack";
-    pub const DESCRIPTION: &'static str = "An ally takes a step, then strikes each enemy at that location.";
+    pub const DESCRIPTION: &'static str =
+        "An ally takes a step, then strikes each enemy at that location.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -120,7 +121,6 @@ impl Card for LeapAttack {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, CardConstructor) =
-    (LeapAttack::NAME, |owner_id: PlayerId| {
-        Box::new(LeapAttack::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (LeapAttack::NAME, |owner_id: PlayerId| {
+    Box::new(LeapAttack::new(owner_id))
+});

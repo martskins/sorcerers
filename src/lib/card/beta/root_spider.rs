@@ -4,31 +4,29 @@ use crate::{
         UnitBase, Zone,
     },
     game::PlayerId,
-    state::{CardQuery, State},
+    state::{CardQuery, ContinuousEffect, State},
 };
 
+/// **Root Spider** — Exceptional Minion (3 cost, 2/1)
+///
+/// Burrowing. While Root Spider is burrowed, minions directly above it are disabled.
 #[derive(Debug, Clone)]
-pub struct HoundsOfOndaros {
+pub struct RootSpider {
     unit_base: UnitBase,
     card_base: CardBase,
 }
 
-impl HoundsOfOndaros {
-    pub const NAME: &'static str = "Hounds of Ondaros";
+impl RootSpider {
+    pub const NAME: &'static str = "Root Spider";
     pub const DESCRIPTION: &'static str =
-        "Airborne, Burrowing, Submerge, Voidwalk\r \r Removes Stealth from all nearby enemies.";
+        "Burrowing\n\nWhile Root Spider is burrowed, minions directly above it are disabled.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
             unit_base: UnitBase {
-                power: 4,
-                toughness: 4,
-                abilities: vec![
-                    Ability::Airborne,
-                    Ability::Burrowing,
-                    Ability::Submerge,
-                    Ability::Voidwalk,
-                ],
+                power: 2,
+                toughness: 1,
+                abilities: vec![Ability::Burrowing],
                 types: vec![MinionType::Beast],
                 tapped: false,
                 region: Region::Surface,
@@ -38,7 +36,7 @@ impl HoundsOfOndaros {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
                 zone: Zone::Spellbook,
-                costs: Costs::basic(5, "AA"),
+                costs: Costs::basic(3, "E"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id,
@@ -50,7 +48,7 @@ impl HoundsOfOndaros {
 }
 
 #[async_trait::async_trait]
-impl Card for HoundsOfOndaros {
+impl Card for RootSpider {
     fn get_name(&self) -> &str {
         Self::NAME
     }
@@ -74,32 +72,26 @@ impl Card for HoundsOfOndaros {
     fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
         Some(&mut self.unit_base)
     }
-
-    fn area_effects(&self, state: &State) -> anyhow::Result<Vec<crate::effect::Effect>> {
+    async fn get_continuous_effects(
+        &self,
+        state: &State,
+    ) -> anyhow::Result<Vec<ContinuousEffect>> {
         if !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }
-        let controller_id = self.get_controller_id(state);
-
-        let effects = CardQuery::new()
-            .minions()
-            .near_to(self.get_zone())
-            .with_abilities(vec![Ability::Stealth])
-            .all(state)
-            .into_iter()
-            .filter(|id| state.get_card(id).get_controller_id(state) != controller_id)
-            .map(|id| crate::effect::Effect::RemoveAbility {
-                card_id: id,
-                modifier: Ability::Stealth,
-            })
-            .collect();
-
-        Ok(effects)
+        if self.get_region(state) != &Region::Underground {
+            return Ok(vec![]);
+        }
+        let surface_minions =
+            CardQuery::new().units().in_zone(self.get_zone()).in_region(&Region::Surface);
+        Ok(vec![ContinuousEffect::GrantAbility {
+            ability: Ability::Disabled,
+            affected_cards: surface_minions,
+        }])
     }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, CardConstructor) =
-    (HoundsOfOndaros::NAME, |owner_id: PlayerId| {
-        Box::new(HoundsOfOndaros::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (RootSpider::NAME, |owner_id: PlayerId| {
+    Box::new(RootSpider::new(owner_id))
+});

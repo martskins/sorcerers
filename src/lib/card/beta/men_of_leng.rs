@@ -2,8 +2,7 @@ use std::{future::Future, pin::Pin, sync::Arc};
 
 use crate::{
     card::{
-        Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase,
-        Zone,
+        Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
     },
     effect::Effect,
     game::PlayerId,
@@ -110,9 +109,7 @@ impl Card for MenOfLeng {
                             }
                         })
                             as Pin<
-                                Box<
-                                    dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_,
-                                >,
+                                Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>,
                             >
                     },
                 ),
@@ -123,7 +120,6 @@ impl Card for MenOfLeng {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, CardConstructor) =
-    (MenOfLeng::NAME, |owner_id: PlayerId| {
-        Box::new(MenOfLeng::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (MenOfLeng::NAME, |owner_id: PlayerId| {
+    Box::new(MenOfLeng::new(owner_id))
+});

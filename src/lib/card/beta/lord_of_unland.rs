@@ -15,7 +15,8 @@ pub struct LordOfUnland {
 
 impl LordOfUnland {
     pub const NAME: &'static str = "Lord of Unland";
-    pub const DESCRIPTION: &'static str = "Submerge\r \r Allied minions sharing the same body of water have +1 power.";
+    pub const DESCRIPTION: &'static str =
+        "Submerge\r \r Allied minions sharing the same body of water have +1 power.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -94,10 +95,7 @@ impl Card for LordOfUnland {
         Some(&mut self.unit_base)
     }
 
-    async fn get_continuous_effects(
-        &self,
-        state: &State,
-    ) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
         if !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }
@@ -134,7 +132,6 @@ impl Card for LordOfUnland {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, CardConstructor) =
-    (LordOfUnland::NAME, |owner_id: PlayerId| {
-        Box::new(LordOfUnland::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (LordOfUnland::NAME, |owner_id: PlayerId| {
+    Box::new(LordOfUnland::new(owner_id))
+});

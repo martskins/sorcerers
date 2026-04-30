@@ -101,10 +101,7 @@ impl Card for Mudflow {
         let target_site = state.get_card(&target_zone_id);
         let target_zone = target_site.get_zone().clone();
 
-        let minions = CardQuery::new()
-            .minions()
-            .in_zone(&target_zone)
-            .all(state);
+        let minions = CardQuery::new().minions().in_zone(&target_zone).all(state);
 
         let effects = minions
             .into_iter()

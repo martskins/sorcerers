@@ -87,7 +87,11 @@ impl Card for MageSlayer {
             .filter(|c| c.is_minion())
             .filter(|c| c.get_controller_id(state) != controller_id)
             .filter(|c| c.get_zone().is_nearby(&my_zone))
-            .filter(|c| spellcaster_abilities.iter().any(|a| c.has_ability(state, a)))
+            .filter(|c| {
+                spellcaster_abilities
+                    .iter()
+                    .any(|a| c.has_ability(state, a))
+            })
             .map(|c| *c.get_id())
             .collect();
 

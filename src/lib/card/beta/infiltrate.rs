@@ -108,9 +108,7 @@ impl Card for Infiltrate {
                     }),
                     multitrigger: true,
                     on_effect: Arc::new(
-                        move |state: &State,
-                              _triggered_card_id: &uuid::Uuid,
-                              _effect: &Effect| {
+                        move |state: &State, _triggered_card_id: &uuid::Uuid, _effect: &Effect| {
                             Box::pin(async move {
                                 let target = state.get_card(&target_id);
                                 if !target.has_ability(state, &Ability::Stealth) {
@@ -137,7 +135,6 @@ impl Card for Infiltrate {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, CardConstructor) =
-    (Infiltrate::NAME, |owner_id: PlayerId| {
-        Box::new(Infiltrate::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Infiltrate::NAME, |owner_id: PlayerId| {
+    Box::new(Infiltrate::new(owner_id))
+});

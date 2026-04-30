@@ -16,7 +16,9 @@ async fn main() -> anyhow::Result<()> {
     let debug_eval = std::env::args().any(|a| a == "--eval")
         || std::env::var("SORCERERS_DEBUG_EVAL").is_ok_and(|v| v == "1");
     if debug_eval {
-        println!("Board evaluation debug mode enabled – Sync messages will include evaluation data.");
+        println!(
+            "Board evaluation debug mode enabled – Sync messages will include evaluation data."
+        );
     }
 
     let socket = TcpListener::bind("0.0.0.0:5000".parse::<SocketAddr>()?).await?;

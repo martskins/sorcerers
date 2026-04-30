@@ -3,32 +3,32 @@ use crate::{
         Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region,
         UnitBase, Zone,
     },
+    effect::Effect,
     game::PlayerId,
-    state::{CardQuery, State},
+    state::State,
 };
 
+/// **Panorama Manticore** — Elite Minion (5 cost, 5/2)
+///
+/// Airborne, Lethal.
+/// At the end of your turn, if you cast a non-fire spell this turn, untap Panorama Manticore.
+/// TODO: Implement "if non-fire spell was cast this turn" check.
 #[derive(Debug, Clone)]
-pub struct HoundsOfOndaros {
+pub struct PanoramaManticore {
     unit_base: UnitBase,
     card_base: CardBase,
 }
 
-impl HoundsOfOndaros {
-    pub const NAME: &'static str = "Hounds of Ondaros";
-    pub const DESCRIPTION: &'static str =
-        "Airborne, Burrowing, Submerge, Voidwalk\r \r Removes Stealth from all nearby enemies.";
+impl PanoramaManticore {
+    pub const NAME: &'static str = "Panorama Manticore";
+    pub const DESCRIPTION: &'static str = "Airborne, Lethal\n\nAt the end of your turn, if you cast a non-fire spell this turn, untap Panorama Manticore.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
             unit_base: UnitBase {
-                power: 4,
-                toughness: 4,
-                abilities: vec![
-                    Ability::Airborne,
-                    Ability::Burrowing,
-                    Ability::Submerge,
-                    Ability::Voidwalk,
-                ],
+                power: 5,
+                toughness: 2,
+                abilities: vec![Ability::Airborne, Ability::Lethal],
                 types: vec![MinionType::Beast],
                 tapped: false,
                 region: Region::Surface,
@@ -38,8 +38,8 @@ impl HoundsOfOndaros {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
                 zone: Zone::Spellbook,
-                costs: Costs::basic(5, "AA"),
-                rarity: Rarity::Exceptional,
+                costs: Costs::basic(5, "FF"),
+                rarity: Rarity::Elite,
                 edition: Edition::Beta,
                 controller_id: owner_id,
                 is_token: false,
@@ -50,7 +50,7 @@ impl HoundsOfOndaros {
 }
 
 #[async_trait::async_trait]
-impl Card for HoundsOfOndaros {
+impl Card for PanoramaManticore {
     fn get_name(&self) -> &str {
         Self::NAME
     }
@@ -75,31 +75,26 @@ impl Card for HoundsOfOndaros {
         Some(&mut self.unit_base)
     }
 
-    fn area_effects(&self, state: &State) -> anyhow::Result<Vec<crate::effect::Effect>> {
-        if !self.get_zone().is_in_play() {
+    async fn on_turn_end(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+        if self.get_controller_id(state) != state.current_player {
             return Ok(vec![]);
         }
-        let controller_id = self.get_controller_id(state);
 
-        let effects = CardQuery::new()
-            .minions()
-            .near_to(self.get_zone())
-            .with_abilities(vec![Ability::Stealth])
-            .all(state)
-            .into_iter()
-            .filter(|id| state.get_card(id).get_controller_id(state) != controller_id)
-            .map(|id| crate::effect::Effect::RemoveAbility {
-                card_id: id,
-                modifier: Ability::Stealth,
-            })
-            .collect();
+        let zone = self.get_zone();
+        if !zone.is_in_play() {
+            return Ok(vec![]);
+        }
 
-        Ok(effects)
+        // TODO: Only untap if a non-fire spell was cast this turn.
+        // For now, always untap at end of turn as a simplified implementation.
+        Ok(vec![Effect::UntapCard {
+            card_id: *self.get_id(),
+        }])
     }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, CardConstructor) =
-    (HoundsOfOndaros::NAME, |owner_id: PlayerId| {
-        Box::new(HoundsOfOndaros::new(owner_id))
+    (PanoramaManticore::NAME, |owner_id: PlayerId| {
+        Box::new(PanoramaManticore::new(owner_id))
     });

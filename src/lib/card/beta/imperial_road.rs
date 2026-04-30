@@ -1,5 +1,8 @@
 use crate::{
-    card::{Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone},
+    card::{
+        Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase,
+        Zone,
+    },
     effect::Effect,
     game::{PlayerId, Thresholds, pick_zone},
     state::{CardQuery, State},
@@ -144,7 +147,6 @@ impl Card for ImperialRoad {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, CardConstructor) =
-    (ImperialRoad::NAME, |owner_id: PlayerId| {
-        Box::new(ImperialRoad::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (ImperialRoad::NAME, |owner_id: PlayerId| {
+    Box::new(ImperialRoad::new(owner_id))
+});

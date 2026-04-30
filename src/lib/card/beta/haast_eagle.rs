@@ -17,11 +17,7 @@ impl ActivatedAbility for PickUpWeakerMinion {
         "Pick Up Minion".to_string()
     }
 
-    fn get_cost(
-        &self,
-        card_id: &uuid::Uuid,
-        _state: &State,
-    ) -> anyhow::Result<Cost> {
+    fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
         Ok(Cost::additional_only(AdditionalCost::tap(card_id)))
     }
 
@@ -60,8 +56,6 @@ impl ActivatedAbility for PickUpWeakerMinion {
             .collect())
     }
 }
-
-
 
 #[derive(Debug, Clone)]
 pub struct HaastEagle {

@@ -21,17 +21,14 @@ fn bench_card_query(c: &mut Criterion) {
 
     group.bench_function("Zone + Untapped", |b| {
         b.iter(|| {
-            let query = CardQuery::new()
-                .in_zone(&Zone::Realm(10))
-                .untapped();
+            let query = CardQuery::new().in_zone(&Zone::Realm(10)).untapped();
             let _ = black_box(query.all(&state));
         })
     });
 
     group.bench_function("Name Contains", |b| {
         b.iter(|| {
-            let query = CardQuery::new()
-                .card_name_contains("Wizard");
+            let query = CardQuery::new().card_name_contains("Wizard");
             let _ = black_box(query.all(&state));
         })
     });

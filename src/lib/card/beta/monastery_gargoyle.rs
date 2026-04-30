@@ -4,7 +4,7 @@ use crate::{
         UnitBase, Zone,
     },
     effect::{AbilityCounter, Effect},
-    game::{BaseOption, PlayerId, pick_option},
+    game::{PlayerId, pick_option},
     state::State,
 };
 
@@ -16,8 +16,7 @@ pub struct MonasteryGargoyle {
 
 impl MonasteryGargoyle {
     pub const NAME: &'static str = "Monastery Gargoyle";
-    pub const DESCRIPTION: &'static str =
-        "At the start and end of your turn, choose whether Monastery Gargoyle has Airborne or is a Monument (Immobile).";
+    pub const DESCRIPTION: &'static str = "At the start and end of your turn, choose whether Monastery Gargoyle has Airborne or is a Monument (Immobile).";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -43,7 +42,11 @@ impl MonasteryGargoyle {
         }
     }
 
-    async fn toggle_form(card_id: uuid::Uuid, controller_id: uuid::Uuid, state: &State) -> anyhow::Result<Vec<Effect>> {
+    async fn toggle_form(
+        card_id: uuid::Uuid,
+        controller_id: uuid::Uuid,
+        state: &State,
+    ) -> anyhow::Result<Vec<Effect>> {
         let options = vec!["Airborne".to_string(), "Monument (Immobile)".to_string()];
         let picked = pick_option(
             &controller_id,

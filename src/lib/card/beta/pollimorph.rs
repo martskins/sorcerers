@@ -1,18 +1,21 @@
 use crate::{
     card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
-    effect::Effect,
+    effect::{Effect, TokenType},
     game::PlayerId,
     state::{CardQuery, State},
 };
 
+/// **Pollimorph** — Elite Magic (2 cost, WW threshold)
+///
+/// Transform target nearby minion into a Frog token.
 #[derive(Debug, Clone)]
-pub struct Immolation {
+pub struct Pollimorph {
     card_base: CardBase,
 }
 
-impl Immolation {
-    pub const NAME: &'static str = "Immolation";
-    pub const DESCRIPTION: &'static str = "Deal 7 damage to target nearby minion.";
+impl Pollimorph {
+    pub const NAME: &'static str = "Pollimorph";
+    pub const DESCRIPTION: &'static str = "Transform target nearby minion into a Frog token.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -20,7 +23,7 @@ impl Immolation {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
                 zone: Zone::Spellbook,
-                costs: Costs::basic(1, "FFF"),
+                costs: Costs::basic(2, "WW"),
                 rarity: Rarity::Elite,
                 edition: Edition::Beta,
                 controller_id: owner_id,
@@ -32,7 +35,7 @@ impl Immolation {
 }
 
 #[async_trait::async_trait]
-impl Card for Immolation {
+impl Card for Pollimorph {
     fn get_name(&self) -> &str {
         Self::NAME
     }
@@ -56,24 +59,34 @@ impl Card for Immolation {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        let caster = state.get_card(caster_id);
-        let caster_zone = caster.get_zone().clone();
+        let caster_zone = state.get_card(caster_id).get_zone().clone();
 
+        let prompt = "Pollimorph: Pick a minion to transform into a Frog";
         let Some(target_id) = CardQuery::new()
             .minions()
             .near_to(&caster_zone)
-            .with_prompt("Immolation: Pick target minion")
+            .with_prompt(prompt)
             .pick(&controller_id, state, false)
             .await?
         else {
             return Ok(vec![]);
         };
 
-        Ok(vec![Effect::take_damage(&target_id, caster_id, 7)])
+        let target_zone = state.get_card(&target_id).get_zone().clone();
+        let target_controller = state.get_card(&target_id).get_controller_id(state);
+
+        Ok(vec![
+            Effect::BuryCard { card_id: target_id },
+            Effect::SummonToken {
+                player_id: target_controller,
+                token_type: TokenType::Frog,
+                zone: target_zone,
+            },
+        ])
     }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, CardConstructor) = (Immolation::NAME, |owner_id: PlayerId| {
-    Box::new(Immolation::new(owner_id))
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Pollimorph::NAME, |owner_id: PlayerId| {
+    Box::new(Pollimorph::new(owner_id))
 });

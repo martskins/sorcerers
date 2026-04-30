@@ -67,10 +67,7 @@ impl Card for GreyWolves {
         Some(&mut self.unit_base)
     }
 
-    async fn get_continuous_effects(
-        &self,
-        state: &State,
-    ) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
         if !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }

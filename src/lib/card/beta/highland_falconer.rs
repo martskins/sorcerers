@@ -94,7 +94,13 @@ impl Card for HighlandFalconer {
             return Ok(vec![]);
         }
 
-        let chosen = pick_card(&controller_id, &targets, state, "Summon an Airborne Beast (≤2)").await?;
+        let chosen = pick_card(
+            &controller_id,
+            &targets,
+            state,
+            "Summon an Airborne Beast (≤2)",
+        )
+        .await?;
         Ok(vec![Effect::SummonCard {
             card_id: chosen,
             zone: self.get_zone().clone(),

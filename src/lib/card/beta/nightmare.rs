@@ -1,7 +1,6 @@
 use crate::{
     card::{
-        Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase,
-        Zone,
+        Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
     },
     effect::Effect,
     game::{PlayerId, pick_zone, yes_or_no},
@@ -17,8 +16,7 @@ pub struct Nightmare {
 
 impl Nightmare {
     pub const NAME: &'static str = "Nightmare";
-    pub const DESCRIPTION: &'static str =
-        "At the end of your turn, for each enemy minion here, you may push it to an adjacent location or void.";
+    pub const DESCRIPTION: &'static str = "At the end of your turn, for each enemy minion here, you may push it to an adjacent location or void.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -86,12 +84,7 @@ impl Card for Nightmare {
             .in_zone(&my_zone)
             .all(state)
             .into_iter()
-            .filter(|id| {
-                state
-                    .get_card(id)
-                    .get_controller_id(state)
-                    != controller_id
-            })
+            .filter(|id| state.get_card(id).get_controller_id(state) != controller_id)
             .collect::<Vec<_>>();
 
         let adjacent_zones = my_zone.get_adjacent();

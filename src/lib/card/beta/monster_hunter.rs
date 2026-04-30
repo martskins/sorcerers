@@ -1,11 +1,8 @@
 use crate::{
-    card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region,
-        UnitBase, Zone,
-    },
+    card::{Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
     effect::Effect,
-    game::{Element, PlayerId, pick_card},
-    state::{CardQuery, State},
+    game::{PlayerId, pick_card},
+    state::State,
 };
 
 #[derive(Debug, Clone)]

@@ -1,29 +1,29 @@
 use crate::{
     card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site,
-        SiteBase, Zone,
+        CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone,
     },
     game::{PlayerId, Thresholds},
-    state::{CardQuery, ContinuousEffect, State},
 };
 
+/// **Pristine Paradise** — Unique Site (all thresholds AEFW)
+///
+/// Provides no mana or threshold unless completely empty.
+/// TODO: Implement "provides nothing unless completely empty" mechanic.
 #[derive(Debug, Clone)]
-pub struct KingdomOfAgartha {
+pub struct PristineParadise {
     site_base: SiteBase,
     card_base: CardBase,
 }
 
-impl KingdomOfAgartha {
-    pub const NAME: &'static str = "Kingdom of Agartha";
-    pub const DESCRIPTION: &'static str =
-        "While you have 3 or more Earth thresholds available, all minions have Burrowing.";
+impl PristineParadise {
+    pub const NAME: &'static str = "Pristine Paradise";
+    pub const DESCRIPTION: &'static str = "Provides no mana or threshold unless completely empty.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
             site_base: SiteBase {
                 provided_mana: 1,
-                provided_thresholds: Thresholds::parse("E"),
-                types: vec![],
+                provided_thresholds: Thresholds::parse("AEFW"),
                 tapped: false,
                 ..Default::default()
             },
@@ -32,7 +32,7 @@ impl KingdomOfAgartha {
                 owner_id,
                 zone: Zone::Atlasbook,
                 costs: Costs::ZERO,
-                rarity: Rarity::Exceptional,
+                rarity: Rarity::Unique,
                 edition: Edition::Beta,
                 controller_id: owner_id,
                 is_token: false,
@@ -42,10 +42,10 @@ impl KingdomOfAgartha {
     }
 }
 
-impl Site for KingdomOfAgartha {}
+impl Site for PristineParadise {}
 
 #[async_trait::async_trait]
-impl Card for KingdomOfAgartha {
+impl crate::card::Card for PristineParadise {
     fn get_name(&self) -> &str {
         Self::NAME
     }
@@ -77,27 +77,10 @@ impl Card for KingdomOfAgartha {
     fn get_resource_provider(&self) -> Option<&dyn ResourceProvider> {
         Some(self)
     }
-
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
-        if !self.get_zone().is_in_play() {
-            return Ok(vec![]);
-        }
-
-        let controller_id = self.get_controller_id(state);
-        let thresholds = state.get_thresholds_for_player(&controller_id);
-        if thresholds.earth < 3 {
-            return Ok(vec![]);
-        }
-
-        Ok(vec![ContinuousEffect::GrantAbility {
-            ability: Ability::Burrowing,
-            affected_cards: CardQuery::new().minions(),
-        }])
-    }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, CardConstructor) =
-    (KingdomOfAgartha::NAME, |owner_id: PlayerId| {
-        Box::new(KingdomOfAgartha::new(owner_id))
+    (PristineParadise::NAME, |owner_id: PlayerId| {
+        Box::new(PristineParadise::new(owner_id))
     });

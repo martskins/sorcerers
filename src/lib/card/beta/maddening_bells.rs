@@ -108,15 +108,9 @@ impl Card for MaddeningBells {
             .cards
             .iter()
             .filter(|c| {
-                !c.is_site()
-                    && !c.is_avatar()
-                    && !c.is_unit()
-                    && !c.is_artifact()
-                    && !c.is_aura()
+                !c.is_site() && !c.is_avatar() && !c.is_unit() && !c.is_artifact() && !c.is_aura()
             })
-            .filter(|c| {
-                matches!(c.get_zone(), Zone::Hand | Zone::Spellbook)
-            })
+            .filter(|c| matches!(c.get_zone(), Zone::Hand | Zone::Spellbook))
             .filter(|c| spellcaster_player_ids.contains(&c.get_controller_id(state)))
             .map(|c| *c.get_id())
             .collect();

@@ -1,10 +1,8 @@
 use crate::{
-    card::{
-        Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone,
-    },
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
     effect::Effect,
     game::{Element, PlayerId},
-    state::{CardQuery, State},
+    state::State,
 };
 
 #[derive(Debug, Clone)]
@@ -14,8 +12,7 @@ pub struct OccultRitual {
 
 impl OccultRitual {
     pub const NAME: &'static str = "Occult Ritual";
-    pub const DESCRIPTION: &'static str =
-        "Gain ② this turn for each allied Spellcaster here.";
+    pub const DESCRIPTION: &'static str = "Gain ② this turn for each allied Spellcaster here.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -77,7 +74,11 @@ impl Card for OccultRitual {
             .iter()
             .filter(|c| c.get_zone() == &caster_zone)
             .filter(|c| c.get_controller_id(state) == controller_id)
-            .filter(|c| spellcaster_abilities.iter().any(|a| c.has_ability(state, a)))
+            .filter(|c| {
+                spellcaster_abilities
+                    .iter()
+                    .any(|a| c.has_ability(state, a))
+            })
             .count() as u8;
 
         if count == 0 {
@@ -92,7 +93,6 @@ impl Card for OccultRitual {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, CardConstructor) =
-    (OccultRitual::NAME, |owner_id: PlayerId| {
-        Box::new(OccultRitual::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (OccultRitual::NAME, |owner_id: PlayerId| {
+    Box::new(OccultRitual::new(owner_id))
+});

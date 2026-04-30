@@ -86,7 +86,13 @@ impl Card for MarinersCurse {
                 on_effect: Arc::new(
                     move |state: &State, _minion_id: &uuid::Uuid, effect: &Effect| {
                         Box::pin(async move {
-                            let Effect::MoveCard { card_id, to, player_id, .. } = effect else {
+                            let Effect::MoveCard {
+                                card_id,
+                                to,
+                                player_id,
+                                ..
+                            } = effect
+                            else {
                                 return Ok(vec![]);
                             };
 
@@ -132,9 +138,7 @@ impl Card for MarinersCurse {
                             ])
                         })
                             as Pin<
-                                Box<
-                                    dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_,
-                                >,
+                                Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>,
                             >
                     },
                 ),

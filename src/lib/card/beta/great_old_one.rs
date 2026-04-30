@@ -17,7 +17,8 @@ pub struct GreatOldOne {
 
 impl GreatOldOne {
     pub const NAME: &'static str = "Great Old One";
-    pub const DESCRIPTION: &'static str = "Submerge\r \r Genesis → Permanently flood the entire realm, including voids.";
+    pub const DESCRIPTION: &'static str =
+        "Submerge\r \r Genesis → Permanently flood the entire realm, including voids.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -86,10 +87,7 @@ impl Card for GreatOldOne {
         Ok(())
     }
 
-    async fn get_continuous_effects(
-        &self,
-        state: &State,
-    ) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
         if !self.flooded {
             return Ok(vec![]);
         }
