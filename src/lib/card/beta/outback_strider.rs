@@ -1,5 +1,8 @@
 use crate::{
-    card::{Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{
+        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region,
+        UnitBase, Zone,
+    },
     effect::Effect,
     game::PlayerId,
     state::State,
@@ -13,14 +16,15 @@ pub struct OutbackStrider {
 
 impl OutbackStrider {
     pub const NAME: &'static str = "Outback Strider";
-    pub const DESCRIPTION: &'static str = "Movement 2.";
+    pub const DESCRIPTION: &'static str =
+        "Moves freely between land sites not occupied by other units.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
             unit_base: UnitBase {
                 power: 3,
                 toughness: 3,
-                abilities: vec![Ability::Movement(2)],
+                abilities: vec![],
                 types: vec![MinionType::Mortal],
                 tapped: false,
                 region: Region::Surface,
@@ -43,15 +47,28 @@ impl OutbackStrider {
 
 #[async_trait::async_trait]
 impl Card for OutbackStrider {
-    fn get_name(&self) -> &str { Self::NAME }
-    fn get_description(&self) -> &str { Self::DESCRIPTION }
-    fn get_base_mut(&mut self) -> &mut CardBase { &mut self.card_base }
-    fn get_base(&self) -> &CardBase { &self.card_base }
-    fn get_unit_base(&self) -> Option<&UnitBase> { Some(&self.unit_base) }
-    fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> { Some(&mut self.unit_base) }
+    fn get_name(&self) -> &str {
+        Self::NAME
+    }
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
+    }
+    fn get_base_mut(&mut self) -> &mut CardBase {
+        &mut self.card_base
+    }
+    fn get_base(&self) -> &CardBase {
+        &self.card_base
+    }
+    fn get_unit_base(&self) -> Option<&UnitBase> {
+        Some(&self.unit_base)
+    }
+    fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
+        Some(&mut self.unit_base)
+    }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, CardConstructor) = (OutbackStrider::NAME, |owner_id: PlayerId| {
-    Box::new(OutbackStrider::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, CardConstructor) =
+    (OutbackStrider::NAME, |owner_id: PlayerId| {
+        Box::new(OutbackStrider::new(owner_id))
+    });

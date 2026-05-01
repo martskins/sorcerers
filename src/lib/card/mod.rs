@@ -2334,6 +2334,31 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             }));
         }
 
+        let carry_minions_ability = self
+            .get_abilities(state)?
+            .into_iter()
+            .find(|a| matches!(a, Ability::CarryMinions(_)));
+        if let Some(Ability::CarryMinions(n)) = carry_minions_ability {
+            let carried_minions = CardQuery::new()
+                .minions()
+                .carried_by(self.get_id())
+                .all(state);
+            let carriable_minions = CardQuery::new()
+                .minions()
+                .controlled_by(&self.get_controller_id(state))
+                .in_zone(self.get_zone())
+                .in_region(self.get_region(state))
+                .not_carried()
+                .all(state);
+            let can_carry_more = carried_minions.len() < n || n == 0;
+            if can_carry_more && !carriable_minions.is_empty() {
+                activated_abilities.push(Box::new(UnitAction::PickUpMinion));
+            }
+            if !carried_minions.is_empty() {
+                activated_abilities.push(Box::new(UnitAction::DropMinion));
+            }
+        }
+
         Ok(activated_abilities)
     }
 
@@ -2601,6 +2626,7 @@ pub enum Ability {
     Charge,
     SummoningSickness,
     TakesNoDamageFromElement(Element),
+    TakesNoDamageFromRanged,
     Immobile,
     Waterbound,
     Lifesteal,
@@ -2611,6 +2637,11 @@ pub enum Ability {
     Oversized,
     /// Any damage dealt to this unit is lethal (kills regardless of amount).
     LethalTarget,
+    /// This unit can carry other minions. The usize parameter indicates how many minions it can
+    /// carry.
+    /// 0 means it can carry any number of minions, while a positive number indicates a limit on how
+    /// many minions it can carry.
+    CarryMinions(usize),
 }
 
 #[derive(Debug, Clone)]

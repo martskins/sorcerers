@@ -42,7 +42,7 @@ pub struct PlayerWithDeck {
 #[derive(Debug, Default, Clone)]
 pub struct CardQuery {
     id: uuid::Uuid,
-    carried_by: Option<uuid::Uuid>,
+    carried_by: Option<Option<uuid::Uuid>>,
     randomise: Option<bool>,
     count: Option<usize>,
     ids: Option<Vec<uuid::Uuid>>,
@@ -95,9 +95,16 @@ impl CardQuery {
         self.randomise.unwrap_or_default()
     }
 
+    pub fn not_carried(self) -> Self {
+        Self {
+            carried_by: Some(None),
+            ..self
+        }
+    }
+
     pub fn carried_by(self, carrier_id: &uuid::Uuid) -> Self {
         Self {
-            carried_by: Some(*carrier_id),
+            carried_by: Some(Some(*carrier_id)),
             ..self
         }
     }
@@ -626,7 +633,7 @@ impl CardQuery {
         }
 
         if let Some(carrier_id) = &self.carried_by
-            && card.get_base().bearer.as_ref() != Some(carrier_id)
+            && card.get_base().bearer != *carrier_id
         {
             return false;
         }

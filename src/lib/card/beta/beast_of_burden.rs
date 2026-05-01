@@ -1,9 +1,10 @@
 use crate::{
     card::{
-        Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
+        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region,
+        UnitBase, Zone,
     },
     effect::Effect,
-    game::{ActivatedAbility, PlayerId, UnitAction},
+    game::PlayerId,
     state::State,
 };
 
@@ -22,6 +23,7 @@ impl BeastOfBurden {
             unit_base: UnitBase {
                 power: 2,
                 toughness: 2,
+                abilities: vec![Ability::CarryMinions(0)],
                 types: vec![MinionType::Beast],
                 tapped: false,
                 region: Region::Surface,
@@ -66,38 +68,6 @@ impl Card for BeastOfBurden {
 
     fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
         Some(&mut self.unit_base)
-    }
-
-    fn get_additional_activated_abilities(
-        &self,
-        state: &State,
-    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
-        let controller_id = self.get_controller_id(state);
-        let can_pick_up = state
-            .cards
-            .iter()
-            .filter(|card| card.is_minion())
-            .filter(|card| card.get_controller_id(state) == controller_id)
-            .filter(|card| card.get_zone() == self.get_zone())
-            .filter(|card| card.get_id() != self.get_id())
-            .find(|card| card.get_bearer_id().unwrap_or_default().is_none())
-            .is_some();
-
-        let can_drop = state
-            .cards
-            .iter()
-            .filter(|card| card.is_minion())
-            .find(|card| card.get_bearer_id().unwrap_or_default() == Some(*self.get_id()))
-            .is_some();
-
-        let mut abilities = vec![];
-        if can_pick_up {
-            abilities.push(Box::new(UnitAction::PickUpMinion) as Box<dyn ActivatedAbility>);
-        }
-        if can_drop {
-            abilities.push(Box::new(UnitAction::DropMinion) as Box<dyn ActivatedAbility>);
-        }
-        Ok(abilities)
     }
 
     async fn on_move(&self, state: &State, path: &[Zone]) -> anyhow::Result<Vec<Effect>> {
