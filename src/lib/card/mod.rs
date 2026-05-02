@@ -1315,7 +1315,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         damage: u16,
         is_ranged: bool,
     ) -> anyhow::Result<Vec<Effect>> {
-        if self.has_ability(state, &Ability::TakesNoDamageFromRanged) && is_ranged {
+        if self.has_ability(state, &Ability::TakesNoDamageFromRangedStrikes) && is_ranged {
             return Ok(vec![]);
         }
 
@@ -2642,7 +2642,7 @@ pub enum Ability {
     Charge,
     SummoningSickness,
     TakesNoDamageFromElement(Element),
-    TakesNoDamageFromRanged,
+    TakesNoDamageFromRangedStrikes,
     Immobile,
     Waterbound,
     Lifesteal,

@@ -1,8 +1,10 @@
 use std::collections::HashMap;
 
 use crate::{
-    card::{Ability, AreaModifiers, Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, SiteType, Zone},
-    effect::Effect,
+    card::{
+        Ability, AreaModifiers, Card, CardBase, CardConstructor, Costs, Edition, Rarity,
+        ResourceProvider, Site, SiteBase, SiteType, Zone,
+    },
     game::{Element, PlayerId, Thresholds},
     state::State,
 };
@@ -45,14 +47,30 @@ impl Site for RiverOfFlame {}
 
 #[async_trait::async_trait]
 impl Card for RiverOfFlame {
-    fn get_name(&self) -> &str { Self::NAME }
-    fn get_description(&self) -> &str { Self::DESCRIPTION }
-    fn get_base_mut(&mut self) -> &mut CardBase { &mut self.card_base }
-    fn get_base(&self) -> &CardBase { &self.card_base }
-    fn get_site_base(&self) -> Option<&SiteBase> { Some(&self.site_base) }
-    fn get_site_base_mut(&mut self) -> Option<&mut SiteBase> { Some(&mut self.site_base) }
-    fn get_site(&self) -> Option<&dyn Site> { Some(self) }
-    fn get_resource_provider(&self) -> Option<&dyn ResourceProvider> { Some(self) }
+    fn get_name(&self) -> &str {
+        Self::NAME
+    }
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
+    }
+    fn get_base_mut(&mut self) -> &mut CardBase {
+        &mut self.card_base
+    }
+    fn get_base(&self) -> &CardBase {
+        &self.card_base
+    }
+    fn get_site_base(&self) -> Option<&SiteBase> {
+        Some(&self.site_base)
+    }
+    fn get_site_base_mut(&mut self) -> Option<&mut SiteBase> {
+        Some(&mut self.site_base)
+    }
+    fn get_site(&self) -> Option<&dyn Site> {
+        Some(self)
+    }
+    fn get_resource_provider(&self) -> Option<&dyn ResourceProvider> {
+        Some(self)
+    }
 
     fn area_modifiers(&self, state: &State) -> AreaModifiers {
         if !self.get_zone().is_in_play() {

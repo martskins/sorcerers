@@ -19,7 +19,7 @@ impl ActivatedAbility for ReadManuscript {
 
     fn get_cost(&self, card_id: &uuid::Uuid, state: &State) -> anyhow::Result<Cost> {
         let bearer_id = state.get_card(card_id).get_bearer_id()?.unwrap_or(*card_id);
-        Ok(Cost::additional_only(AdditionalCost::tap(&bearer_id)))
+        Ok(Cost::additional_only(AdditionalCost::tap(bearer_id)))
     }
 
     async fn on_select(

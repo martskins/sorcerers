@@ -1,7 +1,10 @@
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use crate::{
-    card::{Aura, AuraBase, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, Zone},
+    card::{
+        Aura, AuraBase, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity,
+        Region, Zone,
+    },
     effect::Effect,
     game::PlayerId,
     query::EffectQuery,
@@ -16,7 +19,8 @@ pub struct RestInPeace {
 
 impl RestInPeace {
     pub const NAME: &'static str = "Rest in Peace";
-    pub const DESCRIPTION: &'static str = "Spirits and Undead summoned to affected sites are burrowed.";
+    pub const DESCRIPTION: &'static str =
+        "Spirits and Undead summoned to affected sites are burrowed.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -43,13 +47,27 @@ impl Aura for RestInPeace {}
 
 #[async_trait::async_trait]
 impl Card for RestInPeace {
-    fn get_name(&self) -> &str { Self::NAME }
-    fn get_description(&self) -> &str { Self::DESCRIPTION }
-    fn get_base_mut(&mut self) -> &mut CardBase { &mut self.card_base }
-    fn get_base(&self) -> &CardBase { &self.card_base }
-    fn get_aura_base(&self) -> Option<&AuraBase> { Some(&self.aura_base) }
-    fn get_aura_base_mut(&mut self) -> Option<&mut AuraBase> { Some(&mut self.aura_base) }
-    fn get_aura(&self) -> Option<&dyn Aura> { Some(self) }
+    fn get_name(&self) -> &str {
+        Self::NAME
+    }
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
+    }
+    fn get_base_mut(&mut self) -> &mut CardBase {
+        &mut self.card_base
+    }
+    fn get_base(&self) -> &CardBase {
+        &self.card_base
+    }
+    fn get_aura_base(&self) -> Option<&AuraBase> {
+        Some(&self.aura_base)
+    }
+    fn get_aura_base_mut(&mut self) -> Option<&mut AuraBase> {
+        Some(&mut self.aura_base)
+    }
+    fn get_aura(&self) -> Option<&dyn Aura> {
+        Some(self)
+    }
 
     fn on_summon(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
         let aura_id = *self.get_id();
@@ -70,11 +88,12 @@ impl Card for RestInPeace {
                             if !state.get_card(&aura_id).get_zone().is_in_play() {
                                 return Ok(vec![]);
                             }
-                            let affected_zones = if let Some(aura) = state.get_card(&aura_id).get_aura() {
-                                aura.get_affected_zones(state)
-                            } else {
-                                return Ok(vec![]);
-                            };
+                            let affected_zones =
+                                if let Some(aura) = state.get_card(&aura_id).get_aura() {
+                                    aura.get_affected_zones(state)
+                                } else {
+                                    return Ok(vec![]);
+                                };
                             let minion_zone = state.get_card(&minion_id).get_zone().clone();
                             if !affected_zones.contains(&minion_zone) {
                                 return Ok(vec![]);
@@ -84,7 +103,10 @@ impl Card for RestInPeace {
                                 region: Region::Underground,
                                 tap: false,
                             }])
-                        }) as Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>>
+                        })
+                            as Pin<
+                                Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>,
+                            >
                     },
                 ),
                 multitrigger: true,

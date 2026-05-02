@@ -1,7 +1,9 @@
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use crate::{
-    card::{Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{
+        Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
+    },
     effect::Effect,
     game::PlayerId,
     query::EffectQuery,
@@ -45,12 +47,24 @@ impl TvinnaxBerserker {
 
 #[async_trait::async_trait]
 impl Card for TvinnaxBerserker {
-    fn get_name(&self) -> &str { Self::NAME }
-    fn get_description(&self) -> &str { Self::DESCRIPTION }
-    fn get_base_mut(&mut self) -> &mut CardBase { &mut self.card_base }
-    fn get_base(&self) -> &CardBase { &self.card_base }
-    fn get_unit_base(&self) -> Option<&UnitBase> { Some(&self.unit_base) }
-    fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> { Some(&mut self.unit_base) }
+    fn get_name(&self) -> &str {
+        Self::NAME
+    }
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
+    }
+    fn get_base_mut(&mut self) -> &mut CardBase {
+        &mut self.card_base
+    }
+    fn get_base(&self) -> &CardBase {
+        &self.card_base
+    }
+    fn get_unit_base(&self) -> Option<&UnitBase> {
+        Some(&self.unit_base)
+    }
+    fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
+        Some(&mut self.unit_base)
+    }
 
     fn on_summon(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
         let self_id = *self.get_id();
@@ -64,9 +78,10 @@ impl Card for TvinnaxBerserker {
                 }),
                 on_effect: Arc::new(
                     move |_state: &State, _card_id: &uuid::Uuid, _effect: &Effect| {
-                        Box::pin(async move {
-                            Ok(vec![Effect::UntapCard { card_id: self_id }])
-                        }) as Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>>
+                        Box::pin(async move { Ok(vec![Effect::UntapCard { card_id: self_id }]) })
+                            as Pin<
+                                Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>,
+                            >
                     },
                 ),
                 multitrigger: true,
@@ -76,6 +91,7 @@ impl Card for TvinnaxBerserker {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, CardConstructor) = (TvinnaxBerserker::NAME, |owner_id: PlayerId| {
-    Box::new(TvinnaxBerserker::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, CardConstructor) =
+    (TvinnaxBerserker::NAME, |owner_id: PlayerId| {
+        Box::new(TvinnaxBerserker::new(owner_id))
+    });

@@ -1,8 +1,10 @@
 use std::collections::HashMap;
 
 use crate::{
-    card::{Ability, AreaModifiers, Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, Zone},
-    effect::Effect,
+    card::{
+        Ability, AreaModifiers, Artifact, ArtifactBase, ArtifactType, Card, CardBase,
+        CardConstructor, Costs, Edition, Rarity, Region, Zone,
+    },
     game::{Element, PlayerId},
     state::State,
 };
@@ -44,15 +46,29 @@ impl Artifact for MagneticMuzzle {}
 
 #[async_trait::async_trait]
 impl Card for MagneticMuzzle {
-    fn get_name(&self) -> &str { Self::NAME }
-    fn get_description(&self) -> &str { Self::DESCRIPTION }
-    fn get_base_mut(&mut self) -> &mut CardBase { &mut self.card_base }
-    fn get_base(&self) -> &CardBase { &self.card_base }
-    fn get_artifact_base(&self) -> Option<&ArtifactBase> { Some(&self.artifact_base) }
-    fn get_artifact_base_mut(&mut self) -> Option<&mut ArtifactBase> { Some(&mut self.artifact_base) }
-    fn get_artifact(&self) -> Option<&dyn Artifact> { Some(self) }
+    fn get_name(&self) -> &str {
+        Self::NAME
+    }
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
+    }
+    fn get_base_mut(&mut self) -> &mut CardBase {
+        &mut self.card_base
+    }
+    fn get_base(&self) -> &CardBase {
+        &self.card_base
+    }
+    fn get_artifact_base(&self) -> Option<&ArtifactBase> {
+        Some(&self.artifact_base)
+    }
+    fn get_artifact_base_mut(&mut self) -> Option<&mut ArtifactBase> {
+        Some(&mut self.artifact_base)
+    }
+    fn get_artifact(&self) -> Option<&dyn Artifact> {
+        Some(self)
+    }
 
-    fn area_modifiers(&self, state: &State) -> AreaModifiers {
+    fn area_modifiers(&self, _state: &State) -> AreaModifiers {
         let bearer_id = match self.get_bearer_id().ok().flatten() {
             Some(id) => id,
             None => return AreaModifiers::default(),
@@ -76,6 +92,7 @@ impl Card for MagneticMuzzle {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, CardConstructor) = (MagneticMuzzle::NAME, |owner_id: PlayerId| {
-    Box::new(MagneticMuzzle::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, CardConstructor) =
+    (MagneticMuzzle::NAME, |owner_id: PlayerId| {
+        Box::new(MagneticMuzzle::new(owner_id))
+    });

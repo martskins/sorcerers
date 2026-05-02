@@ -1,7 +1,9 @@
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use crate::{
-    card::{Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{
+        Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
+    },
     effect::Effect,
     game::PlayerId,
     query::EffectQuery,
@@ -16,7 +18,8 @@ pub struct ScourgeZombies {
 
 impl ScourgeZombies {
     pub const NAME: &'static str = "Scourge Zombies";
-    pub const DESCRIPTION: &'static str = "When an allied Mortal dies, return Scourge Zombies from cemetery to play.";
+    pub const DESCRIPTION: &'static str =
+        "When an allied Mortal dies, return Scourge Zombies from cemetery to play.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -45,12 +48,24 @@ impl ScourgeZombies {
 
 #[async_trait::async_trait]
 impl Card for ScourgeZombies {
-    fn get_name(&self) -> &str { Self::NAME }
-    fn get_description(&self) -> &str { Self::DESCRIPTION }
-    fn get_base_mut(&mut self) -> &mut CardBase { &mut self.card_base }
-    fn get_base(&self) -> &CardBase { &self.card_base }
-    fn get_unit_base(&self) -> Option<&UnitBase> { Some(&self.unit_base) }
-    fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> { Some(&mut self.unit_base) }
+    fn get_name(&self) -> &str {
+        Self::NAME
+    }
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
+    }
+    fn get_base_mut(&mut self) -> &mut CardBase {
+        &mut self.card_base
+    }
+    fn get_base(&self) -> &CardBase {
+        &self.card_base
+    }
+    fn get_unit_base(&self) -> Option<&UnitBase> {
+        Some(&self.unit_base)
+    }
+    fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
+        Some(&mut self.unit_base)
+    }
 
     fn on_summon(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
         let self_id = *self.get_id();
@@ -73,7 +88,8 @@ impl Card for ScourgeZombies {
                             if buried_card.get_controller_id(state) != self_controller {
                                 return Ok(vec![]);
                             }
-                            let valid_zones = self_card.get_valid_play_zones(state, &self_controller)?;
+                            let valid_zones =
+                                self_card.get_valid_play_zones(state, &self_controller)?;
                             let target_zone = match valid_zones.into_iter().next() {
                                 Some(z) => z,
                                 None => return Ok(vec![]),
@@ -83,7 +99,10 @@ impl Card for ScourgeZombies {
                                 card_id: self_id,
                                 zone: target_zone,
                             }])
-                        }) as Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>>
+                        })
+                            as Pin<
+                                Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>,
+                            >
                     },
                 ),
                 multitrigger: false,
@@ -93,6 +112,7 @@ impl Card for ScourgeZombies {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, CardConstructor) = (ScourgeZombies::NAME, |owner_id: PlayerId| {
-    Box::new(ScourgeZombies::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, CardConstructor) =
+    (ScourgeZombies::NAME, |owner_id: PlayerId| {
+        Box::new(ScourgeZombies::new(owner_id))
+    });

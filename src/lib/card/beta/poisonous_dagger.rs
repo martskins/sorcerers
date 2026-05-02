@@ -72,7 +72,10 @@ impl Card for PoisonousDagger {
         Some(self)
     }
 
-    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<ContinuousEffect>> {
         let bearer_id = match self.get_bearer_id()? {
             Some(id) => id,
             None => return Ok(vec![]),

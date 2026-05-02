@@ -13,8 +13,7 @@ pub struct Sleep {
 
 impl Sleep {
     pub const NAME: &'static str = "Sleep";
-    pub const DESCRIPTION: &'static str =
-        "Target nearby minion is Disabled until it takes damage.";
+    pub const DESCRIPTION: &'static str = "Target nearby minion is Disabled until it takes damage.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

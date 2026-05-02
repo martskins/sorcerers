@@ -90,7 +90,10 @@ impl Card for Sandstorm {
 
     fn area_modifiers(&self, state: &State) -> AreaModifiers {
         let affected_zones = self.get_affected_zones(state);
-        let units = CardQuery::new().units().in_zones(&affected_zones).all(state);
+        let units = CardQuery::new()
+            .units()
+            .in_zones(&affected_zones)
+            .all(state);
 
         AreaModifiers {
             grants_abilities: units

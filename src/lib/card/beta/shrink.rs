@@ -1,10 +1,10 @@
 use crate::{
+    card::Ability,
     card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
     effect::{AbilityCounter, Effect},
     game::PlayerId,
     query::EffectQuery,
     state::{CardQuery, State},
-    card::Ability,
 };
 
 #[derive(Debug, Clone)]

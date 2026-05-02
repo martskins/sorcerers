@@ -1,8 +1,9 @@
 use crate::{
-    card::{Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
-    effect::Effect,
+    card::{
+        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region,
+        UnitBase, Zone,
+    },
     game::PlayerId,
-    state::State,
 };
 
 #[derive(Debug, Clone)]
@@ -43,15 +44,28 @@ impl WillsOTheWisp {
 
 #[async_trait::async_trait]
 impl Card for WillsOTheWisp {
-    fn get_name(&self) -> &str { Self::NAME }
-    fn get_description(&self) -> &str { Self::DESCRIPTION }
-    fn get_base_mut(&mut self) -> &mut CardBase { &mut self.card_base }
-    fn get_base(&self) -> &CardBase { &self.card_base }
-    fn get_unit_base(&self) -> Option<&UnitBase> { Some(&self.unit_base) }
-    fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> { Some(&mut self.unit_base) }
+    fn get_name(&self) -> &str {
+        Self::NAME
+    }
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
+    }
+    fn get_base_mut(&mut self) -> &mut CardBase {
+        &mut self.card_base
+    }
+    fn get_base(&self) -> &CardBase {
+        &self.card_base
+    }
+    fn get_unit_base(&self) -> Option<&UnitBase> {
+        Some(&self.unit_base)
+    }
+    fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
+        Some(&mut self.unit_base)
+    }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, CardConstructor) = (WillsOTheWisp::NAME, |owner_id: PlayerId| {
-    Box::new(WillsOTheWisp::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, CardConstructor) =
+    (WillsOTheWisp::NAME, |owner_id: PlayerId| {
+        Box::new(WillsOTheWisp::new(owner_id))
+    });

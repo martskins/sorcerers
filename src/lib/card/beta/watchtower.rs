@@ -15,8 +15,7 @@ pub struct Watchtower {
 
 impl Watchtower {
     pub const NAME: &'static str = "Watchtower";
-    pub const DESCRIPTION: &'static str =
-        "Enemy units at nearby sites lose Stealth.";
+    pub const DESCRIPTION: &'static str = "Enemy units at nearby sites lose Stealth.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

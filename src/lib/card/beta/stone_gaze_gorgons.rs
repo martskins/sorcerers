@@ -15,8 +15,7 @@ pub struct StoneGazeGorgons {
 
 impl StoneGazeGorgons {
     pub const NAME: &'static str = "Stone-gaze Gorgons";
-    pub const DESCRIPTION: &'static str =
-        "Tapped minions at adjacent locations are Disabled.";
+    pub const DESCRIPTION: &'static str = "Tapped minions at adjacent locations are Disabled.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

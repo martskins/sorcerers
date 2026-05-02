@@ -33,10 +33,18 @@ impl ScorchedEarth {
 
 #[async_trait::async_trait]
 impl Card for ScorchedEarth {
-    fn get_name(&self) -> &str { Self::NAME }
-    fn get_description(&self) -> &str { Self::DESCRIPTION }
-    fn get_base_mut(&mut self) -> &mut CardBase { &mut self.card_base }
-    fn get_base(&self) -> &CardBase { &self.card_base }
+    fn get_name(&self) -> &str {
+        Self::NAME
+    }
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
+    }
+    fn get_base_mut(&mut self) -> &mut CardBase {
+        &mut self.card_base
+    }
+    fn get_base(&self) -> &CardBase {
+        &self.card_base
+    }
 
     async fn on_cast(
         &mut self,
@@ -57,17 +65,11 @@ impl Card for ScorchedEarth {
         };
         let site_zone = state.get_card(&site_id).get_zone().clone();
         let mut effects = vec![Effect::BuryCard { card_id: site_id }];
-        let occupants = CardQuery::new()
-            .units()
-            .in_zone(&site_zone)
-            .all(state);
+        let occupants = CardQuery::new().units().in_zone(&site_zone).all(state);
         for card_id in occupants {
             effects.push(Effect::BuryCard { card_id });
         }
-        let artifacts = CardQuery::new()
-            .artifacts()
-            .in_zone(&site_zone)
-            .all(state);
+        let artifacts = CardQuery::new().artifacts().in_zone(&site_zone).all(state);
         for card_id in artifacts {
             effects.push(Effect::BuryCard { card_id });
         }
@@ -76,6 +78,7 @@ impl Card for ScorchedEarth {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, CardConstructor) = (ScorchedEarth::NAME, |owner_id: PlayerId| {
-    Box::new(ScorchedEarth::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, CardConstructor) =
+    (ScorchedEarth::NAME, |owner_id: PlayerId| {
+        Box::new(ScorchedEarth::new(owner_id))
+    });

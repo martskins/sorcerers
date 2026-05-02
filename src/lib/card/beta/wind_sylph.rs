@@ -21,10 +21,7 @@ impl WindSylph {
             unit_base: UnitBase {
                 power: 1,
                 toughness: 1,
-                abilities: vec![
-                    Ability::Airborne,
-                    Ability::Spellcaster(Some(Element::Air)),
-                ],
+                abilities: vec![Ability::Airborne, Ability::Spellcaster(Some(Element::Air))],
                 types: vec![MinionType::Spirit],
                 tapped: false,
                 region: Region::Surface,

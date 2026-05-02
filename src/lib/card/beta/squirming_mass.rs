@@ -1,7 +1,9 @@
 use std::{future::Future, pin::Pin, sync::Arc};
 
 use crate::{
-    card::{Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{
+        Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
+    },
     effect::{Counter, Effect},
     game::PlayerId,
     query::EffectQuery,
@@ -16,7 +18,8 @@ pub struct SquirmingMass {
 
 impl SquirmingMass {
     pub const NAME: &'static str = "Squirming Mass";
-    pub const DESCRIPTION: &'static str = "Gains power equal to the power of each nearby minion that dies.";
+    pub const DESCRIPTION: &'static str =
+        "Gains power equal to the power of each nearby minion that dies.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -45,12 +48,24 @@ impl SquirmingMass {
 
 #[async_trait::async_trait]
 impl Card for SquirmingMass {
-    fn get_name(&self) -> &str { Self::NAME }
-    fn get_description(&self) -> &str { Self::DESCRIPTION }
-    fn get_base_mut(&mut self) -> &mut CardBase { &mut self.card_base }
-    fn get_base(&self) -> &CardBase { &self.card_base }
-    fn get_unit_base(&self) -> Option<&UnitBase> { Some(&self.unit_base) }
-    fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> { Some(&mut self.unit_base) }
+    fn get_name(&self) -> &str {
+        Self::NAME
+    }
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
+    }
+    fn get_base_mut(&mut self) -> &mut CardBase {
+        &mut self.card_base
+    }
+    fn get_base(&self) -> &CardBase {
+        &self.card_base
+    }
+    fn get_unit_base(&self) -> Option<&UnitBase> {
+        Some(&self.unit_base)
+    }
+    fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
+        Some(&mut self.unit_base)
+    }
 
     fn on_summon(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
         let self_id = *self.get_id();
@@ -71,7 +86,8 @@ impl Card for SquirmingMass {
                                 return Ok(vec![]);
                             }
                             let buried_card = state.get_card(&buried_id);
-                            let power = buried_card.get_unit_base()
+                            let power = buried_card
+                                .get_unit_base()
                                 .map(|ub| ub.power as i16)
                                 .unwrap_or(0);
                             if power <= 0 {
@@ -81,7 +97,10 @@ impl Card for SquirmingMass {
                                 card_id: self_id,
                                 counter: Counter::new(power, 0, None),
                             }])
-                        }) as Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>>
+                        })
+                            as Pin<
+                                Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>,
+                            >
                     },
                 ),
                 multitrigger: true,
@@ -91,6 +110,7 @@ impl Card for SquirmingMass {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, CardConstructor) = (SquirmingMass::NAME, |owner_id: PlayerId| {
-    Box::new(SquirmingMass::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, CardConstructor) =
+    (SquirmingMass::NAME, |owner_id: PlayerId| {
+        Box::new(SquirmingMass::new(owner_id))
+    });

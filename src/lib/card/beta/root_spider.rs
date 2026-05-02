@@ -72,18 +72,17 @@ impl Card for RootSpider {
     fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
         Some(&mut self.unit_base)
     }
-    async fn get_continuous_effects(
-        &self,
-        state: &State,
-    ) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
         if !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }
         if self.get_region(state) != &Region::Underground {
             return Ok(vec![]);
         }
-        let surface_minions =
-            CardQuery::new().units().in_zone(self.get_zone()).in_region(&Region::Surface);
+        let surface_minions = CardQuery::new()
+            .units()
+            .in_zone(self.get_zone())
+            .in_region(&Region::Surface);
         Ok(vec![ContinuousEffect::GrantAbility {
             ability: Ability::Disabled,
             affected_cards: surface_minions,

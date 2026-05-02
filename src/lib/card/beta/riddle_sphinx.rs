@@ -1,8 +1,11 @@
 use crate::{
-    card::{Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{
+        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region,
+        UnitBase, Zone,
+    },
     effect::Effect,
     game::PlayerId,
-    state::{CardQuery, State},
+    state::State,
 };
 
 #[derive(Debug, Clone)]
@@ -43,16 +46,31 @@ impl RiddleSphinx {
 
 #[async_trait::async_trait]
 impl Card for RiddleSphinx {
-    fn get_name(&self) -> &str { Self::NAME }
-    fn get_description(&self) -> &str { Self::DESCRIPTION }
-    fn get_base_mut(&mut self) -> &mut CardBase { &mut self.card_base }
-    fn get_base(&self) -> &CardBase { &self.card_base }
-    fn get_unit_base(&self) -> Option<&UnitBase> { Some(&self.unit_base) }
-    fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> { Some(&mut self.unit_base) }
+    fn get_name(&self) -> &str {
+        Self::NAME
+    }
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
+    }
+    fn get_base_mut(&mut self) -> &mut CardBase {
+        &mut self.card_base
+    }
+    fn get_base(&self) -> &CardBase {
+        &self.card_base
+    }
+    fn get_unit_base(&self) -> Option<&UnitBase> {
+        Some(&self.unit_base)
+    }
+    fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
+        Some(&mut self.unit_base)
+    }
 
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        Ok(vec![Effect::DrawSpell { player_id: controller_id, count: 1 }])
+        Ok(vec![Effect::DrawSpell {
+            player_id: controller_id,
+            count: 1,
+        }])
     }
 }
 

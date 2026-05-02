@@ -19,7 +19,10 @@ impl ActivatedAbility for DiscardWaterSiteToUntap {
 
     fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
         Ok(Cost::additional_only(AdditionalCost::discard(
-            CardQuery::new().water_sites().including_not_in_play().in_zone(&Zone::Hand),
+            CardQuery::new()
+                .water_sites()
+                .including_not_in_play()
+                .in_zone(&Zone::Hand),
         ))
         .with_additional(AdditionalCost::tap(card_id)))
     }
@@ -106,7 +109,6 @@ impl Card for YokaiKappas {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, CardConstructor) =
-    (YokaiKappas::NAME, |owner_id: PlayerId| {
-        Box::new(YokaiKappas::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (YokaiKappas::NAME, |owner_id: PlayerId| {
+    Box::new(YokaiKappas::new(owner_id))
+});

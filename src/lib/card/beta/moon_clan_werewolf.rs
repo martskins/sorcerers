@@ -11,8 +11,7 @@ pub struct MoonClanWerewolf {
 
 impl MoonClanWerewolf {
     pub const NAME: &'static str = "Moon Clan Werewolf";
-    pub const DESCRIPTION: &'static str =
-        "Sacrifice an allied Mortal → Summon Moon Clan Werewolf from your hand to the Mortal's location.";
+    pub const DESCRIPTION: &'static str = "Sacrifice an allied Mortal → Summon Moon Clan Werewolf from your hand to the Mortal's location.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

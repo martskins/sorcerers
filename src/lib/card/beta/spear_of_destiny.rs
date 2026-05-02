@@ -1,5 +1,8 @@
 use crate::{
-    card::{AdditionalCost, Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Region, Zone},
+    card::{
+        AdditionalCost, Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor,
+        Cost, Costs, Edition, Rarity, Region, Zone,
+    },
     effect::Effect,
     game::{ActivatedAbility, PlayerId},
     state::{CardQuery, State},
@@ -16,7 +19,7 @@ impl ActivatedAbility for SpearStrike {
 
     fn get_cost(&self, card_id: &uuid::Uuid, state: &State) -> anyhow::Result<Cost> {
         let bearer_id = state.get_card(card_id).get_bearer_id()?.unwrap_or(*card_id);
-        Ok(Cost::additional_only(AdditionalCost::tap(&bearer_id)))
+        Ok(Cost::additional_only(AdditionalCost::tap(bearer_id)))
     }
 
     async fn on_select(
@@ -63,7 +66,8 @@ pub struct SpearOfDestiny {
 
 impl SpearOfDestiny {
     pub const NAME: &'static str = "Spear of Destiny";
-    pub const DESCRIPTION: &'static str = "Tap bearer → destroy target minion and move Spear of Destiny to its location.";
+    pub const DESCRIPTION: &'static str =
+        "Tap bearer → destroy target minion and move Spear of Destiny to its location.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -92,13 +96,27 @@ impl Artifact for SpearOfDestiny {}
 
 #[async_trait::async_trait]
 impl Card for SpearOfDestiny {
-    fn get_name(&self) -> &str { Self::NAME }
-    fn get_description(&self) -> &str { Self::DESCRIPTION }
-    fn get_base_mut(&mut self) -> &mut CardBase { &mut self.card_base }
-    fn get_base(&self) -> &CardBase { &self.card_base }
-    fn get_artifact_base(&self) -> Option<&ArtifactBase> { Some(&self.artifact_base) }
-    fn get_artifact_base_mut(&mut self) -> Option<&mut ArtifactBase> { Some(&mut self.artifact_base) }
-    fn get_artifact(&self) -> Option<&dyn Artifact> { Some(self) }
+    fn get_name(&self) -> &str {
+        Self::NAME
+    }
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
+    }
+    fn get_base_mut(&mut self) -> &mut CardBase {
+        &mut self.card_base
+    }
+    fn get_base(&self) -> &CardBase {
+        &self.card_base
+    }
+    fn get_artifact_base(&self) -> Option<&ArtifactBase> {
+        Some(&self.artifact_base)
+    }
+    fn get_artifact_base_mut(&mut self) -> Option<&mut ArtifactBase> {
+        Some(&mut self.artifact_base)
+    }
+    fn get_artifact(&self) -> Option<&dyn Artifact> {
+        Some(self)
+    }
 
     fn get_additional_activated_abilities(
         &self,
@@ -109,6 +127,7 @@ impl Card for SpearOfDestiny {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, CardConstructor) = (SpearOfDestiny::NAME, |owner_id: PlayerId| {
-    Box::new(SpearOfDestiny::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, CardConstructor) =
+    (SpearOfDestiny::NAME, |owner_id: PlayerId| {
+        Box::new(SpearOfDestiny::new(owner_id))
+    });

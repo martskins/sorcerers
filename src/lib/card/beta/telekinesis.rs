@@ -13,8 +13,7 @@ pub struct Telekinesis {
 
 impl Telekinesis {
     pub const NAME: &'static str = "Telekinesis";
-    pub const DESCRIPTION: &'static str =
-        "Move a nearby artifact to your caster's location.";
+    pub const DESCRIPTION: &'static str = "Move a nearby artifact to your caster's location.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -87,7 +86,6 @@ impl Card for Telekinesis {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, CardConstructor) =
-    (Telekinesis::NAME, |owner_id: PlayerId| {
-        Box::new(Telekinesis::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (Telekinesis::NAME, |owner_id: PlayerId| {
+    Box::new(Telekinesis::new(owner_id))
+});

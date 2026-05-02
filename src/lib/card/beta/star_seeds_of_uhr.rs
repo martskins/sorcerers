@@ -33,10 +33,18 @@ impl StarSeedsOfUhr {
 
 #[async_trait::async_trait]
 impl Card for StarSeedsOfUhr {
-    fn get_name(&self) -> &str { Self::NAME }
-    fn get_description(&self) -> &str { Self::DESCRIPTION }
-    fn get_base_mut(&mut self) -> &mut CardBase { &mut self.card_base }
-    fn get_base(&self) -> &CardBase { &self.card_base }
+    fn get_name(&self) -> &str {
+        Self::NAME
+    }
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
+    }
+    fn get_base_mut(&mut self) -> &mut CardBase {
+        &mut self.card_base
+    }
+    fn get_base(&self) -> &CardBase {
+        &self.card_base
+    }
 
     async fn on_cast(
         &mut self,
@@ -61,6 +69,7 @@ impl Card for StarSeedsOfUhr {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, CardConstructor) = (StarSeedsOfUhr::NAME, |owner_id: PlayerId| {
-    Box::new(StarSeedsOfUhr::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, CardConstructor) =
+    (StarSeedsOfUhr::NAME, |owner_id: PlayerId| {
+        Box::new(StarSeedsOfUhr::new(owner_id))
+    });

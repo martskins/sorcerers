@@ -12,7 +12,8 @@ pub struct UnlikelyAlliance {
 
 impl UnlikelyAlliance {
     pub const NAME: &'static str = "Unlikely Alliance";
-    pub const DESCRIPTION: &'static str = "Draw a card for each distinct rarity among your minions.";
+    pub const DESCRIPTION: &'static str =
+        "Draw a card for each distinct rarity among your minions.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -33,10 +34,18 @@ impl UnlikelyAlliance {
 
 #[async_trait::async_trait]
 impl Card for UnlikelyAlliance {
-    fn get_name(&self) -> &str { Self::NAME }
-    fn get_description(&self) -> &str { Self::DESCRIPTION }
-    fn get_base_mut(&mut self) -> &mut CardBase { &mut self.card_base }
-    fn get_base(&self) -> &CardBase { &self.card_base }
+    fn get_name(&self) -> &str {
+        Self::NAME
+    }
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
+    }
+    fn get_base_mut(&mut self) -> &mut CardBase {
+        &mut self.card_base
+    }
+    fn get_base(&self) -> &CardBase {
+        &self.card_base
+    }
 
     async fn on_cast(
         &mut self,
@@ -70,6 +79,7 @@ impl Card for UnlikelyAlliance {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, CardConstructor) = (UnlikelyAlliance::NAME, |owner_id: PlayerId| {
-    Box::new(UnlikelyAlliance::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, CardConstructor) =
+    (UnlikelyAlliance::NAME, |owner_id: PlayerId| {
+        Box::new(UnlikelyAlliance::new(owner_id))
+    });

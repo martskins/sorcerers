@@ -14,14 +14,14 @@ pub struct YourkeCrossbowmen {
 
 impl YourkeCrossbowmen {
     pub const NAME: &'static str = "Yourke Crossbowmen";
-    pub const DESCRIPTION: &'static str = "Ranged 1";
+    pub const DESCRIPTION: &'static str = "Ranged 1.\r Takes no damage from ranged strikes.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
             unit_base: UnitBase {
                 power: 3,
                 toughness: 3,
-                abilities: vec![Ability::Ranged(1)],
+                abilities: vec![Ability::Ranged(1), Ability::TakesNoDamageFromRangedStrikes],
                 types: vec![MinionType::Mortal],
                 tapped: false,
                 region: Region::Surface,

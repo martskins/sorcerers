@@ -15,8 +15,7 @@ pub struct StandingStones {
 
 impl StandingStones {
     pub const NAME: &'static str = "Standing Stones";
-    pub const DESCRIPTION: &'static str =
-        "Minions here are Spellcasters.";
+    pub const DESCRIPTION: &'static str = "Minions here are Spellcasters.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -74,7 +73,10 @@ impl Card for StandingStones {
     }
 
     fn area_modifiers(&self, state: &State) -> AreaModifiers {
-        let minions = CardQuery::new().minions().in_zone(self.get_zone()).all(state);
+        let minions = CardQuery::new()
+            .minions()
+            .in_zone(self.get_zone())
+            .all(state);
 
         AreaModifiers {
             grants_abilities: minions

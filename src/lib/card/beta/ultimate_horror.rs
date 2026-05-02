@@ -1,5 +1,8 @@
 use crate::{
-    card::{Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{
+        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region,
+        UnitBase, Zone,
+    },
     effect::Effect,
     game::PlayerId,
     state::{CardQuery, State},
@@ -13,7 +16,8 @@ pub struct UltimateHorror {
 
 impl UltimateHorror {
     pub const NAME: &'static str = "Ultimate Horror";
-    pub const DESCRIPTION: &'static str = "Airborne. Voidwalk. Genesis → summon all dead Voidwalk minions to this location.";
+    pub const DESCRIPTION: &'static str =
+        "Airborne. Voidwalk. Genesis → summon all dead Voidwalk minions to this location.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -43,12 +47,24 @@ impl UltimateHorror {
 
 #[async_trait::async_trait]
 impl Card for UltimateHorror {
-    fn get_name(&self) -> &str { Self::NAME }
-    fn get_description(&self) -> &str { Self::DESCRIPTION }
-    fn get_base_mut(&mut self) -> &mut CardBase { &mut self.card_base }
-    fn get_base(&self) -> &CardBase { &self.card_base }
-    fn get_unit_base(&self) -> Option<&UnitBase> { Some(&self.unit_base) }
-    fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> { Some(&mut self.unit_base) }
+    fn get_name(&self) -> &str {
+        Self::NAME
+    }
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
+    }
+    fn get_base_mut(&mut self) -> &mut CardBase {
+        &mut self.card_base
+    }
+    fn get_base(&self) -> &CardBase {
+        &self.card_base
+    }
+    fn get_unit_base(&self) -> Option<&UnitBase> {
+        Some(&self.unit_base)
+    }
+    fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
+        Some(&mut self.unit_base)
+    }
 
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
@@ -71,6 +87,7 @@ impl Card for UltimateHorror {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, CardConstructor) = (UltimateHorror::NAME, |owner_id: PlayerId| {
-    Box::new(UltimateHorror::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, CardConstructor) =
+    (UltimateHorror::NAME, |owner_id: PlayerId| {
+        Box::new(UltimateHorror::new(owner_id))
+    });

@@ -1,11 +1,10 @@
-use std::{future::Future, pin::Pin, sync::Arc};
-
 use crate::{
-    card::{Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{
+        Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
+    },
     effect::Effect,
     game::PlayerId,
-    query::EffectQuery,
-    state::{CardQuery, DeferredEffect, State},
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -16,7 +15,8 @@ pub struct PurgeJuggernaut {
 
 impl PurgeJuggernaut {
     pub const NAME: &'static str = "Purge Juggernaut";
-    pub const DESCRIPTION: &'static str = "At the start of your turn, move to an adjacent site and bury all other minions there.";
+    pub const DESCRIPTION: &'static str =
+        "At the start of your turn, move to an adjacent site and bury all other minions there.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -45,12 +45,24 @@ impl PurgeJuggernaut {
 
 #[async_trait::async_trait]
 impl Card for PurgeJuggernaut {
-    fn get_name(&self) -> &str { Self::NAME }
-    fn get_description(&self) -> &str { Self::DESCRIPTION }
-    fn get_base_mut(&mut self) -> &mut CardBase { &mut self.card_base }
-    fn get_base(&self) -> &CardBase { &self.card_base }
-    fn get_unit_base(&self) -> Option<&UnitBase> { Some(&self.unit_base) }
-    fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> { Some(&mut self.unit_base) }
+    fn get_name(&self) -> &str {
+        Self::NAME
+    }
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
+    }
+    fn get_base_mut(&mut self) -> &mut CardBase {
+        &mut self.card_base
+    }
+    fn get_base(&self) -> &CardBase {
+        &self.card_base
+    }
+    fn get_unit_base(&self) -> Option<&UnitBase> {
+        Some(&self.unit_base)
+    }
+    fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
+        Some(&mut self.unit_base)
+    }
 
     async fn on_turn_start(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
@@ -62,9 +74,7 @@ impl Card for PurgeJuggernaut {
         }
         let self_id = *self.get_id();
         let adjacent = self.get_zone().get_adjacent();
-        let target_zone = adjacent
-            .into_iter()
-            .find(|z| z.get_site(state).is_some());
+        let target_zone = adjacent.into_iter().find(|z| z.get_site(state).is_some());
         let target_zone = match target_zone {
             Some(z) => z,
             None => return Ok(vec![]),
@@ -78,7 +88,11 @@ impl Card for PurgeJuggernaut {
             .map(|unit_id| Effect::BuryCard { card_id: unit_id })
             .collect();
         let mut effects = vec![
-            Effect::TeleportCard { player_id: controller_id, card_id: self_id, to_zone: target_zone },
+            Effect::TeleportCard {
+                player_id: controller_id,
+                card_id: self_id,
+                to_zone: target_zone,
+            },
             Effect::TapCard { card_id: self_id },
         ];
         effects.extend(units_to_bury);
@@ -87,6 +101,7 @@ impl Card for PurgeJuggernaut {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, CardConstructor) = (PurgeJuggernaut::NAME, |owner_id: PlayerId| {
-    Box::new(PurgeJuggernaut::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, CardConstructor) =
+    (PurgeJuggernaut::NAME, |owner_id: PlayerId| {
+        Box::new(PurgeJuggernaut::new(owner_id))
+    });

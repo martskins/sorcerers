@@ -70,7 +70,6 @@ impl Card for VrilRevenant {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, CardConstructor) =
-    (VrilRevenant::NAME, |owner_id: PlayerId| {
-        Box::new(VrilRevenant::new(owner_id))
-    });
+static CONSTRUCTOR: (&'static str, CardConstructor) = (VrilRevenant::NAME, |owner_id: PlayerId| {
+    Box::new(VrilRevenant::new(owner_id))
+});

@@ -68,7 +68,7 @@ impl Card for PactWithTheDevil {
         let max_hp = avatar.get_unit_base().map(|ub| ub.toughness).unwrap_or(20);
         let damage_taken = avatar.get_unit_base().map(|ub| ub.damage).unwrap_or(0);
         let current_hp = max_hp.saturating_sub(damage_taken);
-        let half_hp = (current_hp + 1) / 2;
+        let half_hp = current_hp.div_ceil(2);
 
         Ok(vec![
             Effect::TakeDamage {

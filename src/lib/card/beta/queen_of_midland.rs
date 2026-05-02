@@ -5,7 +5,7 @@ use crate::{
         Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
     },
     effect::Effect,
-    game::{yes_or_no, PlayerId},
+    game::{PlayerId, yes_or_no},
     query::EffectQuery,
     state::{CardQuery, DeferredEffect, State},
 };
@@ -115,9 +115,7 @@ impl Card for QueenOfMidland {
                             Ok(vec![])
                         }
                     })
-                        as Pin<
-                            Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>,
-                        >
+                        as Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>>
                 }),
                 multitrigger: true,
             },

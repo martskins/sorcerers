@@ -118,8 +118,8 @@ impl Card for ImperialRoad {
 
             let valid_zones: Vec<Zone> = adjacent_zones
                 .iter()
+                .filter(|&z| z.get_site(state).is_none())
                 .cloned()
-                .filter(|z| z.get_site(state).is_none())
                 .collect();
 
             if valid_zones.is_empty() {

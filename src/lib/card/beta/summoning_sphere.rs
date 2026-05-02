@@ -1,6 +1,5 @@
 use crate::{
     card::{Aura, AuraBase, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, Zone},
-    effect::Effect,
     game::PlayerId,
     state::{CardQuery, ContinuousEffect, State},
 };
@@ -40,13 +39,27 @@ impl Aura for SummoningSphere {}
 
 #[async_trait::async_trait]
 impl Card for SummoningSphere {
-    fn get_name(&self) -> &str { Self::NAME }
-    fn get_description(&self) -> &str { Self::DESCRIPTION }
-    fn get_base_mut(&mut self) -> &mut CardBase { &mut self.card_base }
-    fn get_base(&self) -> &CardBase { &self.card_base }
-    fn get_aura_base(&self) -> Option<&AuraBase> { Some(&self.aura_base) }
-    fn get_aura_base_mut(&mut self) -> Option<&mut AuraBase> { Some(&mut self.aura_base) }
-    fn get_aura(&self) -> Option<&dyn Aura> { Some(self) }
+    fn get_name(&self) -> &str {
+        Self::NAME
+    }
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
+    }
+    fn get_base_mut(&mut self) -> &mut CardBase {
+        &mut self.card_base
+    }
+    fn get_base(&self) -> &CardBase {
+        &self.card_base
+    }
+    fn get_aura_base(&self) -> Option<&AuraBase> {
+        Some(&self.aura_base)
+    }
+    fn get_aura_base_mut(&mut self) -> Option<&mut AuraBase> {
+        Some(&mut self.aura_base)
+    }
+    fn get_aura(&self) -> Option<&dyn Aura> {
+        Some(self)
+    }
 
     async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
         if !self.get_zone().is_in_play() {
@@ -64,6 +77,7 @@ impl Card for SummoningSphere {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, CardConstructor) = (SummoningSphere::NAME, |owner_id: PlayerId| {
-    Box::new(SummoningSphere::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, CardConstructor) =
+    (SummoningSphere::NAME, |owner_id: PlayerId| {
+        Box::new(SummoningSphere::new(owner_id))
+    });

@@ -1,10 +1,13 @@
 use std::collections::HashMap;
 
 use crate::{
-    card::{Ability, AreaModifiers, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
-    effect::{Counter, Effect},
+    card::{
+        Ability, AreaModifiers, Card, CardBase, CardConstructor, Costs, Edition, MinionType,
+        Rarity, Region, UnitBase, Zone,
+    },
+    effect::Counter,
     game::PlayerId,
-    state::{CardQuery, State},
+    state::State,
 };
 
 #[derive(Debug, Clone)]
@@ -45,12 +48,24 @@ impl WickedWitch {
 
 #[async_trait::async_trait]
 impl Card for WickedWitch {
-    fn get_name(&self) -> &str { Self::NAME }
-    fn get_description(&self) -> &str { Self::DESCRIPTION }
-    fn get_base_mut(&mut self) -> &mut CardBase { &mut self.card_base }
-    fn get_base(&self) -> &CardBase { &self.card_base }
-    fn get_unit_base(&self) -> Option<&UnitBase> { Some(&self.unit_base) }
-    fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> { Some(&mut self.unit_base) }
+    fn get_name(&self) -> &str {
+        Self::NAME
+    }
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
+    }
+    fn get_base_mut(&mut self) -> &mut CardBase {
+        &mut self.card_base
+    }
+    fn get_base(&self) -> &CardBase {
+        &self.card_base
+    }
+    fn get_unit_base(&self) -> Option<&UnitBase> {
+        Some(&self.unit_base)
+    }
+    fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
+        Some(&mut self.unit_base)
+    }
 
     fn area_modifiers(&self, state: &State) -> AreaModifiers {
         if !self.get_zone().is_in_play() {
@@ -64,12 +79,7 @@ impl Card for WickedWitch {
             .filter(|c| *c.get_id() != self_id)
             .filter(|c| c.get_unit_base().is_some())
             .filter(|c| nearby_zones.contains(c.get_zone()))
-            .map(|c| {
-                (
-                    *c.get_id(),
-                    vec![Counter::new(-2, 0, None)],
-                )
-            })
+            .map(|c| (*c.get_id(), vec![Counter::new(-2, 0, None)]))
             .collect();
         AreaModifiers {
             grants_counters: counters,

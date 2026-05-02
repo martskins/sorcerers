@@ -72,7 +72,10 @@ impl Card for TruesightCrossbow {
         Some(self)
     }
 
-    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<ContinuousEffect>> {
         let bearer_id = self
             .get_artifact()
             .expect("TruesightCrossbow should have artifact base")

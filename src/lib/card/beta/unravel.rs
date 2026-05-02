@@ -69,7 +69,10 @@ impl Card for Unravel {
         )
         .await?;
 
-        let artifacts = CardQuery::new().artifacts().in_zone(&picked_zone).all(state);
+        let artifacts = CardQuery::new()
+            .artifacts()
+            .in_zone(&picked_zone)
+            .all(state);
         let undead = CardQuery::new()
             .minions()
             .minion_type(&MinionType::Undead)
@@ -80,7 +83,11 @@ impl Card for Unravel {
             .into_iter()
             .map(|card_id| Effect::BuryCard { card_id })
             .collect();
-        effects.extend(undead.into_iter().map(|card_id| Effect::BuryCard { card_id }));
+        effects.extend(
+            undead
+                .into_iter()
+                .map(|card_id| Effect::BuryCard { card_id }),
+        );
 
         Ok(effects)
     }

@@ -1,5 +1,7 @@
 use crate::{
-    card::{Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{
+        Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
+    },
     effect::Effect,
     game::PlayerId,
     state::{CardQuery, State},
@@ -13,7 +15,8 @@ pub struct UndertakerEngine {
 
 impl UndertakerEngine {
     pub const NAME: &'static str = "Undertaker Engine";
-    pub const DESCRIPTION: &'static str = "At the end of your turn, toggle the region of all units here.";
+    pub const DESCRIPTION: &'static str =
+        "At the end of your turn, toggle the region of all units here.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -42,12 +45,24 @@ impl UndertakerEngine {
 
 #[async_trait::async_trait]
 impl Card for UndertakerEngine {
-    fn get_name(&self) -> &str { Self::NAME }
-    fn get_description(&self) -> &str { Self::DESCRIPTION }
-    fn get_base_mut(&mut self) -> &mut CardBase { &mut self.card_base }
-    fn get_base(&self) -> &CardBase { &self.card_base }
-    fn get_unit_base(&self) -> Option<&UnitBase> { Some(&self.unit_base) }
-    fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> { Some(&mut self.unit_base) }
+    fn get_name(&self) -> &str {
+        Self::NAME
+    }
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
+    }
+    fn get_base_mut(&mut self) -> &mut CardBase {
+        &mut self.card_base
+    }
+    fn get_base(&self) -> &CardBase {
+        &self.card_base
+    }
+    fn get_unit_base(&self) -> Option<&UnitBase> {
+        Some(&self.unit_base)
+    }
+    fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
+        Some(&mut self.unit_base)
+    }
 
     async fn on_turn_end(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
@@ -87,6 +102,7 @@ impl Card for UndertakerEngine {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, CardConstructor) = (UndertakerEngine::NAME, |owner_id: PlayerId| {
-    Box::new(UndertakerEngine::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, CardConstructor) =
+    (UndertakerEngine::NAME, |owner_id: PlayerId| {
+        Box::new(UndertakerEngine::new(owner_id))
+    });

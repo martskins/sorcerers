@@ -19,8 +19,7 @@ pub struct ScreamingSkull {
 
 impl ScreamingSkull {
     pub const NAME: &'static str = "Screaming Skull";
-    pub const DESCRIPTION: &'static str =
-        "Whenever a unit is buried, untap bearer.";
+    pub const DESCRIPTION: &'static str = "Whenever a unit is buried, untap bearer.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -100,9 +99,7 @@ impl Card for ScreamingSkull {
                             Ok(vec![])
                         }
                     })
-                        as Pin<
-                            Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>,
-                        >
+                        as Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>>
                 }),
                 multitrigger: true,
             },

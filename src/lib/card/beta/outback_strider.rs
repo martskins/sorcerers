@@ -1,11 +1,8 @@
 use crate::{
     card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region,
-        UnitBase, Zone,
+        Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
     },
-    effect::Effect,
     game::PlayerId,
-    state::State,
 };
 
 #[derive(Debug, Clone)]

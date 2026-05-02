@@ -66,7 +66,7 @@ impl Card for SpinAttack {
         };
         let ally = state.get_card(&ally_id);
         let ally_zone = ally.get_zone().clone();
-        let ally_power = ally.get_unit_base().map(|ub| ub.power as u16).unwrap_or(0);
+        let ally_power = ally.get_unit_base().map(|ub| ub.power).unwrap_or(0);
         let enemies: Vec<Effect> = CardQuery::new()
             .units()
             .in_zone(&ally_zone)
