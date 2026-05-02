@@ -16,7 +16,8 @@ pub struct ImperialRoad {
 
 impl ImperialRoad {
     pub const NAME: &'static str = "Imperial Road";
-    pub const DESCRIPTION: &'static str = "Genesis → Your opponent may play a site adjacent to Imperial Road, then you may play a site adjacent to Imperial Road.";
+    pub const DESCRIPTION: &'static str =
+        "Genesis → Target opponent, then you, may play a site adjacent to this one.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

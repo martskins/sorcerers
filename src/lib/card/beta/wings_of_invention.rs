@@ -15,7 +15,7 @@ pub struct WingsOfInvention {
 
 impl WingsOfInvention {
     pub const NAME: &'static str = "Wings of Invention";
-    pub const DESCRIPTION: &'static str = "Bearer has Airborne and Movement +1.";
+    pub const DESCRIPTION: &'static str = "Bearer has Airborne and Movement +1, if it's a minion.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -66,14 +66,14 @@ impl Card for WingsOfInvention {
         Some(self)
     }
 
-    async fn get_continuous_effects(
-        &self,
-        _state: &State,
-    ) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
         let bearer_id = match self.get_bearer_id()? {
             Some(id) => id,
             None => return Ok(vec![]),
         };
+        if !state.get_card(&bearer_id).is_minion() {
+            return Ok(vec![]);
+        }
         Ok(vec![
             ContinuousEffect::GrantAbility {
                 ability: Ability::Airborne,

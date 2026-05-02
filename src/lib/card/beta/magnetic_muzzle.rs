@@ -5,8 +5,10 @@ use crate::{
         Ability, AreaModifiers, Artifact, ArtifactBase, ArtifactType, Card, CardBase,
         CardConstructor, Costs, Edition, Rarity, Region, Zone,
     },
-    game::{Element, PlayerId},
-    state::State,
+    effect::Effect,
+    game::{Element, PlayerId, pick_card},
+    query::ZoneQuery,
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -17,7 +19,7 @@ pub struct MagneticMuzzle {
 
 impl MagneticMuzzle {
     pub const NAME: &'static str = "Magnetic Muzzle";
-    pub const DESCRIPTION: &'static str = "Bearer is silenced.";
+    pub const DESCRIPTION: &'static str = "Bearer is silenced and can't drop Magnetic Muzzle. At the end of each player's turn, if Magnetic Muzzle is abandoned, that player attaches it to a nearby minion.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -88,6 +90,45 @@ impl Card for MagneticMuzzle {
             removes_abilities: removes,
             ..Default::default()
         }
+    }
+
+    async fn on_turn_end(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+        if !self.get_zone().is_in_play() || self.get_bearer_id()?.is_some() {
+            return Ok(vec![]);
+        }
+
+        let nearby_minions = CardQuery::new()
+            .minions()
+            .near_to(self.get_zone())
+            .all(state);
+        if nearby_minions.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let player_id = state.current_player;
+        let target_id = pick_card(
+            &player_id,
+            &nearby_minions,
+            state,
+            "Magnetic Muzzle: Pick a nearby minion to attach",
+        )
+        .await?;
+        let target = state.get_card(&target_id);
+        Ok(vec![
+            Effect::MoveCard {
+                player_id,
+                card_id: *self.get_id(),
+                from: self.get_zone().clone(),
+                to: ZoneQuery::from_zone(target.get_zone().clone()),
+                tap: false,
+                region: target.get_region(state).clone(),
+                through_path: None,
+            },
+            Effect::SetBearer {
+                card_id: *self.get_id(),
+                bearer_id: Some(target_id),
+            },
+        ])
     }
 }
 

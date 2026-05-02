@@ -17,7 +17,7 @@ pub struct Silence {
 
 impl Silence {
     pub const NAME: &'static str = "Silence";
-    pub const DESCRIPTION: &'static str = "Minions at affected sites are silenced.";
+    pub const DESCRIPTION: &'static str = "Minions occupying affected sites are silenced.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

@@ -15,8 +15,7 @@ pub struct KingdomOfAgartha {
 
 impl KingdomOfAgartha {
     pub const NAME: &'static str = "Kingdom of Agartha";
-    pub const DESCRIPTION: &'static str =
-        "While you have 3 or more Earth thresholds available, all minions have Burrowing.";
+    pub const DESCRIPTION: &'static str = "(E)(E)(E) — All minions have Burrowing.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

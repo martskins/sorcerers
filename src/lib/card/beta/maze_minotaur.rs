@@ -3,6 +3,7 @@ use crate::{
         Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
     },
     game::PlayerId,
+    state::{CardQuery, ContinuousEffect, State},
 };
 
 #[derive(Debug, Clone)]
@@ -13,7 +14,8 @@ pub struct MazeMinotaur {
 
 impl MazeMinotaur {
     pub const NAME: &'static str = "Maze Minotaur";
-    pub const DESCRIPTION: &'static str = "";
+    pub const DESCRIPTION: &'static str =
+        "Enemy minions can't move themselves out of a maze of nine locations nearby Maze Minotaur.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -59,6 +61,21 @@ impl Card for MazeMinotaur {
     }
     fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
         Some(&mut self.unit_base)
+    }
+
+    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+        if !self.get_zone().is_in_play() {
+            return Ok(vec![]);
+        }
+
+        let allowed_zones = self.get_zone().get_nearby();
+        Ok(vec![ContinuousEffect::RestrictMoveToZones {
+            affected_cards: CardQuery::new()
+                .minions()
+                .controlled_by(&state.get_opponent_id(&self.get_controller_id(state))?)
+                .in_zones(&allowed_zones),
+            allowed_zones,
+        }])
     }
 }
 

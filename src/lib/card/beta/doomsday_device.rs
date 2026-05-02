@@ -17,7 +17,7 @@ pub struct DoomsdayDevice {
 
 impl DoomsdayDevice {
     pub const NAME: &'static str = "Doomsday Device";
-    pub const DESCRIPTION: &'static str = "Doomsday Device enters the realm with 6 counters. At the end of each player's turn, remove a counter. When the last is removed, it detonates! Deals damage to each unit at affected locations.";
+    pub const DESCRIPTION: &'static str = "Doomsday Device enters the realm with 6 counters. At the end of each player's turn, remove a counter. When the last is removed, it detonates! Deals damage to each unit at affected locations:";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

@@ -2,7 +2,9 @@ use crate::{
     card::{
         Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
     },
+    effect::Effect,
     game::PlayerId,
+    state::State,
 };
 
 #[derive(Debug, Clone)]
@@ -13,7 +15,7 @@ pub struct SirianTemplar {
 
 impl SirianTemplar {
     pub const NAME: &'static str = "Sirian Templar";
-    pub const DESCRIPTION: &'static str = "";
+    pub const DESCRIPTION: &'static str = "Takes no damage from Demon, Spirit, or Undead minions.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -59,6 +61,30 @@ impl Card for SirianTemplar {
     }
     fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
         Some(&mut self.unit_base)
+    }
+
+    fn on_take_damage(
+        &mut self,
+        state: &State,
+        from: &uuid::Uuid,
+        damage: u16,
+        is_ranged: bool,
+    ) -> anyhow::Result<Vec<Effect>> {
+        let dealer = state.get_card(from);
+        if dealer.is_minion()
+            && dealer.get_unit_base().is_some_and(|unit| {
+                unit.types.iter().any(|ty| {
+                    matches!(
+                        ty,
+                        MinionType::Demon | MinionType::Spirit | MinionType::Undead
+                    )
+                })
+            })
+        {
+            return Ok(vec![]);
+        }
+
+        self.base_take_damage(state, from, damage, is_ranged)
     }
 }
 

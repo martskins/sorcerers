@@ -14,7 +14,7 @@ pub struct YourkeCrossbowmen {
 
 impl YourkeCrossbowmen {
     pub const NAME: &'static str = "Yourke Crossbowmen";
-    pub const DESCRIPTION: &'static str = "Ranged 1.\r Takes no damage from ranged strikes.";
+    pub const DESCRIPTION: &'static str = "Ranged Takes no damage from ranged strikes.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

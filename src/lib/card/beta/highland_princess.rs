@@ -3,7 +3,7 @@ use crate::{
         Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
     },
     effect::Effect,
-    game::{PlayerId, pick_card},
+    game::{PlayerId, pick_card_with_options},
     state::State,
 };
 
@@ -15,7 +15,7 @@ pub struct HighlandPrincess {
 
 impl HighlandPrincess {
     pub const NAME: &'static str = "Highland Princess";
-    pub const DESCRIPTION: &'static str = "Genesis → Search your spellbook for an artifact with a mana cost of ≤ 1 and add it to your hand.";
+    pub const DESCRIPTION: &'static str = "Genesis → Search your spellbook for an artifact that costs ① or less, reveal it, and put it into your hand. Shuffle.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -71,6 +71,7 @@ impl Card for HighlandPrincess {
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
 
+        let deck = state.decks.get(&controller_id).unwrap();
         let targets: Vec<uuid::Uuid> = state
             .cards
             .iter()
@@ -87,20 +88,29 @@ impl Card for HighlandPrincess {
             .collect();
 
         if targets.is_empty() {
-            return Ok(vec![]);
+            return Ok(vec![Effect::ShuffleDeck {
+                player_id: controller_id,
+            }]);
         }
 
-        let chosen = pick_card(
+        let chosen = pick_card_with_options(
             &controller_id,
             &targets,
+            &deck.spells,
+            false,
             state,
-            "Search for artifact (≤1 mana)",
+            "Highland Princess: Choose an artifact to reveal and put into your hand",
         )
         .await?;
-        Ok(vec![Effect::SetCardZone {
-            card_id: chosen,
-            zone: Zone::Hand,
-        }])
+        Ok(vec![
+            Effect::SetCardZone {
+                card_id: chosen,
+                zone: Zone::Hand,
+            },
+            Effect::ShuffleDeck {
+                player_id: controller_id,
+            },
+        ])
     }
 }
 

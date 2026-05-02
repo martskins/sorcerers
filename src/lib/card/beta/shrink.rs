@@ -1,7 +1,6 @@
 use crate::{
-    card::Ability,
     card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
-    effect::{AbilityCounter, Effect},
+    effect::{Counter, Effect},
     game::PlayerId,
     query::EffectQuery,
     state::{CardQuery, State},
@@ -15,7 +14,7 @@ pub struct Shrink {
 impl Shrink {
     pub const NAME: &'static str = "Shrink";
     pub const DESCRIPTION: &'static str =
-        "Target nearby unit is Disabled until the start of your next turn.";
+        "Set the base power of target nearby unit to 0 until your next turn.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -70,12 +69,19 @@ impl Card for Shrink {
             return Ok(vec![]);
         };
 
-        Ok(vec![Effect::AddAbilityCounter {
+        let base_power = state
+            .get_card(&target_id)
+            .get_unit_base()
+            .map(|ub| ub.power as i16)
+            .unwrap_or(0);
+
+        Ok(vec![Effect::AddCounter {
             card_id: target_id,
-            counter: AbilityCounter {
+            counter: Counter {
                 id: uuid::Uuid::new_v4(),
-                ability: Ability::Disabled,
-                expires_on_effect: Some(EffectQuery::TurnEnd {
+                power: -base_power,
+                toughness: 0,
+                expires_on_effect: Some(EffectQuery::TurnStart {
                     player_id: Some(controller_id),
                 }),
             },

@@ -6,7 +6,7 @@ use crate::{
     effect::Effect,
     game::PlayerId,
     query::ZoneQuery,
-    state::State,
+    state::{ContinuousEffect, State},
 };
 
 #[derive(Debug, Clone)]
@@ -18,7 +18,7 @@ pub struct TorshammarTrinket {
 impl TorshammarTrinket {
     pub const NAME: &'static str = "Torshammar Trinket";
     pub const DESCRIPTION: &'static str =
-        "At the end of your turn, return Torshammar Trinket to your hand.";
+        "Bearer has +1 power. After each turn, return this to its owner's hand.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -75,26 +75,42 @@ impl Card for TorshammarTrinket {
         Some(self)
     }
 
-    async fn on_turn_end(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        if self.get_controller_id(state) != state.current_player {
+    async fn get_continuous_effects(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<ContinuousEffect>> {
+        let Some(bearer_id) = self.get_bearer_id()? else {
             return Ok(vec![]);
-        }
+        };
 
+        Ok(vec![ContinuousEffect::ModifyPower {
+            power_diff: 1,
+            affected_cards: bearer_id.into(),
+        }])
+    }
+
+    async fn on_turn_end(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
         let zone = self.get_zone();
         if !zone.is_in_play() {
             return Ok(vec![]);
         }
 
         let owner_id = *self.get_owner_id();
-        Ok(vec![Effect::MoveCard {
-            player_id: owner_id,
-            card_id: *self.get_id(),
-            from: zone.clone(),
-            to: ZoneQuery::from_zone(Zone::Hand),
-            tap: false,
-            region: Region::Surface,
-            through_path: None,
-        }])
+        Ok(vec![
+            Effect::SetBearer {
+                card_id: *self.get_id(),
+                bearer_id: None,
+            },
+            Effect::MoveCard {
+                player_id: owner_id,
+                card_id: *self.get_id(),
+                from: zone.clone(),
+                to: ZoneQuery::from_zone(Zone::Hand),
+                tap: false,
+                region: Region::Surface,
+                through_path: None,
+            },
+        ])
     }
 }
 

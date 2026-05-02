@@ -1,9 +1,8 @@
 use crate::{
     card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
     effect::Effect,
-    game::PlayerId,
-    query::ZoneQuery,
-    state::{CardQuery, State},
+    game::{PlayerId, pick_card},
+    state::State,
 };
 
 #[derive(Debug, Clone)]
@@ -13,7 +12,8 @@ pub struct Telekinesis {
 
 impl Telekinesis {
     pub const NAME: &'static str = "Telekinesis";
-    pub const DESCRIPTION: &'static str = "Move a nearby artifact to your caster's location.";
+    pub const DESCRIPTION: &'static str =
+        "Caster snatches and picks up target nearby artifact they can carry.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -59,28 +59,38 @@ impl Card for Telekinesis {
         let controller_id = self.get_controller_id(state);
         let caster = state.get_card(caster_id);
         let caster_zone = caster.get_zone().clone();
+        let caster_region = caster.get_region(state).clone();
 
-        let Some(artifact_id) = CardQuery::new()
+        let carryable_artifacts: Vec<uuid::Uuid> = crate::state::CardQuery::new()
             .artifacts()
             .near_to(&caster_zone)
-            .with_prompt("Telekinesis: Pick a nearby artifact to move")
-            .pick(&controller_id, state, false)
-            .await?
-        else {
+            .in_region(&caster_region)
+            .all(state)
+            .into_iter()
+            .filter(|artifact_id| {
+                let artifact = state.get_card(artifact_id);
+                artifact.get_bearer_id().unwrap_or_default().is_none()
+                    && artifact
+                        .get_artifact()
+                        .is_some_and(|a| a.get_valid_attach_targets(state).contains(caster_id))
+            })
+            .collect();
+
+        if carryable_artifacts.is_empty() {
             return Ok(vec![]);
-        };
+        }
 
-        let artifact = state.get_card(&artifact_id);
-        let artifact_zone = artifact.get_zone().clone();
+        let artifact_id = pick_card(
+            &controller_id,
+            &carryable_artifacts,
+            state,
+            "Telekinesis: Pick a nearby artifact to carry",
+        )
+        .await?;
 
-        Ok(vec![Effect::MoveCard {
-            player_id: controller_id,
+        Ok(vec![Effect::SetBearer {
             card_id: artifact_id,
-            from: artifact_zone,
-            to: ZoneQuery::from_zone(caster_zone),
-            tap: false,
-            region: crate::card::Region::Surface,
-            through_path: None,
+            bearer_id: Some(*caster_id),
         }])
     }
 }

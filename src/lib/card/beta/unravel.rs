@@ -13,7 +13,7 @@ pub struct Unravel {
 impl Unravel {
     pub const NAME: &'static str = "Unravel";
     pub const DESCRIPTION: &'static str =
-        "Bury all artifacts and Undead minions at a nearby location.";
+        "Destroy all artifacts and Undead minions at a location up to two steps away.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -58,14 +58,14 @@ impl Card for Unravel {
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
         let caster = state.get_card(caster_id);
-        let nearby_zones = caster.get_zones_within_steps(state, 1);
+        let zones = caster.get_zones_within_steps(state, 2);
 
         let picked_zone = pick_zone(
             &controller_id,
-            &nearby_zones,
+            &zones,
             state,
             false,
-            "Unravel: Pick a nearby location",
+            "Unravel: Pick a location up to two steps away",
         )
         .await?;
 

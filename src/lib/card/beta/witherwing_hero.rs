@@ -6,7 +6,7 @@ use crate::{
         UnitBase, Zone,
     },
     effect::Effect,
-    game::PlayerId,
+    game::{PlayerId, yes_or_no},
     query::EffectQuery,
     state::{CardQuery, DeferredEffect, State},
 };
@@ -19,7 +19,7 @@ pub struct WitherwingHero {
 
 impl WitherwingHero {
     pub const NAME: &'static str = "Witherwing Hero";
-    pub const DESCRIPTION: &'static str = "Airborne. When a weaker allied minion at the same location is attacked, return it to your hand.";
+    pub const DESCRIPTION: &'static str = "Airborne Whenever a weaker allied minion here is attacked, you may return it to its owner's hand.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -110,6 +110,15 @@ impl Card for WitherwingHero {
                                 return Ok(vec![]);
                             }
                             let _ = attacker_id;
+                            let should_return = yes_or_no(
+                                &hero_controller,
+                                state,
+                                "Witherwing Hero: Return the attacked ally to its owner's hand?",
+                            )
+                            .await?;
+                            if !should_return {
+                                return Ok(vec![]);
+                            }
                             Ok(vec![Effect::SetCardZone {
                                 card_id: defender_id,
                                 zone: Zone::Hand,

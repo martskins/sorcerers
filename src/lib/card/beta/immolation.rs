@@ -12,7 +12,7 @@ pub struct Immolation {
 
 impl Immolation {
     pub const NAME: &'static str = "Immolation";
-    pub const DESCRIPTION: &'static str = "Deal 7 damage to target nearby minion.";
+    pub const DESCRIPTION: &'static str = "Deal 7 damage to target minion nearby.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

@@ -3,7 +3,7 @@ use crate::{
         Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
     },
     effect::Effect,
-    game::PlayerId,
+    game::{PlayerId, pick_zone},
     state::{CardQuery, State},
 };
 
@@ -15,8 +15,7 @@ pub struct PurgeJuggernaut {
 
 impl PurgeJuggernaut {
     pub const NAME: &'static str = "Purge Juggernaut";
-    pub const DESCRIPTION: &'static str =
-        "At the start of your turn, move to an adjacent site and bury all other minions there.";
+    pub const DESCRIPTION: &'static str = "At the start of your turn, Purge Juggernaut taps and moves to an adjacent location. Kill all other minions there.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -73,29 +72,45 @@ impl Card for PurgeJuggernaut {
             return Ok(vec![]);
         }
         let self_id = *self.get_id();
-        let adjacent = self.get_zone().get_adjacent();
-        let target_zone = adjacent.into_iter().find(|z| z.get_site(state).is_some());
-        let target_zone = match target_zone {
-            Some(z) => z,
-            None => return Ok(vec![]),
-        };
-        let units_to_bury: Vec<Effect> = CardQuery::new()
+        let adjacent_locations: Vec<Zone> = self
+            .get_zone()
+            .get_adjacent()
+            .into_iter()
+            .filter(|z| z.get_site(state).is_some())
+            .collect();
+        if adjacent_locations.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let target_zone = pick_zone(
+            &controller_id,
+            &adjacent_locations,
+            state,
+            false,
+            "Purge Juggernaut: Pick an adjacent location",
+        )
+        .await?;
+        let killed_units: Vec<Effect> = CardQuery::new()
             .units()
             .in_zone(&target_zone)
             .id_not(self.get_id())
             .all(state)
             .into_iter()
-            .map(|unit_id| Effect::BuryCard { card_id: unit_id })
+            .map(|unit_id| Effect::KillMinion {
+                card_id: unit_id,
+                killer_id: self_id,
+            })
             .collect();
-        let mut effects = vec![
-            Effect::TeleportCard {
-                player_id: controller_id,
-                card_id: self_id,
-                to_zone: target_zone,
-            },
-            Effect::TapCard { card_id: self_id },
-        ];
-        effects.extend(units_to_bury);
+        let mut effects = vec![Effect::MoveCard {
+            player_id: controller_id,
+            card_id: self_id,
+            from: self.get_zone().clone(),
+            to: target_zone.clone().into(),
+            tap: true,
+            region: self.get_region(state).clone(),
+            through_path: None,
+        }];
+        effects.extend(killed_units);
         Ok(effects)
     }
 }

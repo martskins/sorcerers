@@ -5,7 +5,7 @@ use crate::{
     },
     effect::{Effect, TokenType},
     game::{ActivatedAbility, PlayerId, pick_zone},
-    state::{CardQuery, State},
+    state::State,
 };
 
 #[derive(Debug, Clone)]
@@ -35,17 +35,17 @@ impl ActivatedAbility for ArtilleryBarrage {
             &zones,
             state,
             false,
-            "Midland Army: Pick a zone to bombard (up to 3 steps away)",
+            "Midland Army: Pick a location to bombard (up to 3 steps away)",
         )
         .await?;
 
-        let effects = CardQuery::new()
-            .units()
-            .in_zone(&target_zone)
-            .all(state)
-            .into_iter()
-            .map(|unit_id| Effect::TakeDamage {
-                card_id: unit_id,
+        let effects = state
+            .cards
+            .iter()
+            .filter(|c| c.is_unit())
+            .filter(|c| c.get_zone() == &target_zone)
+            .map(|c| Effect::TakeDamage {
+                card_id: *c.get_id(),
                 from: *card_id,
                 damage: 4,
                 is_strike: false,
@@ -65,7 +65,7 @@ pub struct MidlandArmy {
 
 impl MidlandArmy {
     pub const NAME: &'static str = "Midland Army";
-    pub const DESCRIPTION: &'static str = "Tap → Each unit within 3 steps takes 4 damage.\r \r Deathrite → Summon a Foot Soldier at each adjacent site.";
+    pub const DESCRIPTION: &'static str = "Tap → Target a location up to three steps away. Deal 4 damage to each unit there.\r \r Deathrite → Summon a Foot Soldier token to each adjacent location.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -129,7 +129,6 @@ impl Card for MidlandArmy {
         let controller_id = self.get_controller_id(state);
         from.get_adjacent()
             .into_iter()
-            .filter(|z| z.get_site(state).is_some())
             .map(|zone| Effect::SummonToken {
                 player_id: controller_id,
                 token_type: TokenType::FootSoldier,

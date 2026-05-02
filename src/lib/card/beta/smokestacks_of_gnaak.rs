@@ -1,9 +1,10 @@
 use crate::{
     card::{
-        Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase,
-        Zone,
+        Ability, Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site,
+        SiteBase, Zone,
     },
     game::{PlayerId, Thresholds},
+    state::{CardQuery, ContinuousEffect, State},
 };
 
 #[derive(Debug, Clone)]
@@ -14,7 +15,7 @@ pub struct SmokestacksOfGnaak {
 
 impl SmokestacksOfGnaak {
     pub const NAME: &'static str = "Smokestacks of Gnaak";
-    pub const DESCRIPTION: &'static str = "";
+    pub const DESCRIPTION: &'static str = "Other nearby sites lose their abilities.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -67,6 +68,23 @@ impl Card for SmokestacksOfGnaak {
     }
     fn get_resource_provider(&self) -> Option<&dyn ResourceProvider> {
         Some(self)
+    }
+
+    async fn get_continuous_effects(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<ContinuousEffect>> {
+        if !self.get_zone().is_in_play() {
+            return Ok(vec![]);
+        }
+
+        Ok(vec![ContinuousEffect::GrantAbility {
+            ability: Ability::Disabled,
+            affected_cards: CardQuery::new()
+                .sites()
+                .in_zones(&self.get_zone().get_nearby())
+                .id_not_in(vec![*self.get_id()]),
+        }])
     }
 }
 

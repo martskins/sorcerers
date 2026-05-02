@@ -19,7 +19,7 @@ pub struct SquirmingMass {
 impl SquirmingMass {
     pub const NAME: &'static str = "Squirming Mass";
     pub const DESCRIPTION: &'static str =
-        "Gains power equal to the power of each nearby minion that dies.";
+        "Whenever another nearby minion dies, Squirming Mass permanently gains its power.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

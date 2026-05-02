@@ -4,7 +4,7 @@ use crate::{
         Rarity, Region, Zone,
     },
     effect::Effect,
-    game::PlayerId,
+    game::{PlayerId, pick_zone},
     state::{CardQuery, State},
 };
 
@@ -16,8 +16,7 @@ pub struct PendulumOfPeril {
 
 impl PendulumOfPeril {
     pub const NAME: &'static str = "Pendulum of Peril";
-    pub const DESCRIPTION: &'static str =
-        "At the end of each turn, kill all minions at this location.";
+    pub const DESCRIPTION: &'static str = "At the end of each player's turn, Pendulum of Peril kills all minions at its current location and another adjacent location of that player's choice.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -80,10 +79,40 @@ impl Card for PendulumOfPeril {
             return Ok(vec![]);
         }
 
-        let minions = CardQuery::new().minions().in_zone(zone).all(state);
+        let current_player = state.current_player;
+        let adjacent_zones: Vec<Zone> = zone
+            .get_adjacent()
+            .into_iter()
+            .filter(|adjacent| adjacent != zone)
+            .collect();
+        let chosen_zone = if adjacent_zones.is_empty() {
+            None
+        } else {
+            Some(
+                pick_zone(
+                    &current_player,
+                    &adjacent_zones,
+                    state,
+                    false,
+                    "Pendulum of Peril: Pick an adjacent location to destroy all minions",
+                )
+                .await?,
+            )
+        };
+
+        let mut minions = CardQuery::new().minions().in_zone(zone).all(state);
+        if let Some(chosen_zone) = chosen_zone {
+            minions.extend(CardQuery::new().minions().in_zone(&chosen_zone).all(state));
+        }
+        minions.sort();
+        minions.dedup();
+
         Ok(minions
             .into_iter()
-            .map(|card_id| Effect::BuryCard { card_id })
+            .map(|card_id| Effect::KillMinion {
+                card_id,
+                killer_id: *self.get_id(),
+            })
             .collect())
     }
 }

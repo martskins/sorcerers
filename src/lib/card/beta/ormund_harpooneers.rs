@@ -86,8 +86,7 @@ pub struct OrmundHarpooneers {
 
 impl OrmundHarpooneers {
     pub const NAME: &'static str = "Ormund Harpooneers";
-    pub const DESCRIPTION: &'static str =
-        "Tap → Deal 1 damage to a minion at an adjacent water site and pull it here.";
+    pub const DESCRIPTION: &'static str = "Tap → Deal 1 damage to target minion above or below an adjacent water site and pull that minion to this location.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

@@ -3,6 +3,7 @@ use crate::{
         Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
     },
     game::PlayerId,
+    state::{CardQuery, ContinuousEffect, State},
 };
 
 #[derive(Debug, Clone)]
@@ -13,7 +14,7 @@ pub struct TragedyWorrywart {
 
 impl TragedyWorrywart {
     pub const NAME: &'static str = "Tragedy Worrywart";
-    pub const DESCRIPTION: &'static str = "";
+    pub const DESCRIPTION: &'static str = "Units nearby take no damage from Magic spells.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -59,6 +60,21 @@ impl Card for TragedyWorrywart {
     }
     fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
         Some(&mut self.unit_base)
+    }
+
+    async fn get_continuous_effects(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<ContinuousEffect>> {
+        if !self.get_zone().is_in_play() {
+            return Ok(vec![]);
+        }
+
+        Ok(vec![ContinuousEffect::PreventDamageFromMagic {
+            affected_cards: CardQuery::new()
+                .units()
+                .in_zones(&self.get_zone().get_nearby()),
+        }])
     }
 }
 

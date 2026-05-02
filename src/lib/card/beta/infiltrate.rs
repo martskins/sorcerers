@@ -15,7 +15,7 @@ pub struct Infiltrate {
 
 impl Infiltrate {
     pub const NAME: &'static str = "Infiltrate";
-    pub const DESCRIPTION: &'static str = "Target a nearby enemy minion. It gains Stealth and is tapped. You control it until it loses Stealth.";
+    pub const DESCRIPTION: &'static str = "Target enemy minion gains Stealth and taps. You control it until it no longer has Stealth.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

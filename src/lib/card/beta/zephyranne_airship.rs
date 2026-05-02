@@ -14,7 +14,8 @@ pub struct ZephyryanneAirship {
 
 impl ZephyryanneAirship {
     pub const NAME: &'static str = "Zephyranne Airship";
-    pub const DESCRIPTION: &'static str = "Airborne. Movement +2.";
+    pub const DESCRIPTION: &'static str =
+        "Airborne, Movement +2 May carry any number of allied minions.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

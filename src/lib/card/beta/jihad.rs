@@ -1,9 +1,6 @@
 use crate::{
-    card::{
-        Aura, AuraBase, Card, CardBase, CardConstructor, Costs, Edition, Element, Rarity, Region,
-        Zone,
-    },
-    game::PlayerId,
+    card::{Aura, AuraBase, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, Zone},
+    game::{Element, PlayerId},
     state::{CardQuery, ContinuousEffect, State},
 };
 
@@ -15,7 +12,7 @@ pub struct Jihad {
 
 impl Jihad {
     pub const NAME: &'static str = "Jihad";
-    pub const DESCRIPTION: &'static str = "Allied fire minions at affected sites have +1 power.";
+    pub const DESCRIPTION: &'static str = "You may summon fire minions to affected sites. Allied fire minions occupying affected sites have +1 power.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -80,10 +77,19 @@ impl Card for Jihad {
             .controlled_by(&controller_id)
             .with_affinity(Element::Fire);
 
-        Ok(vec![ContinuousEffect::ModifyPower {
-            power_diff: 1,
-            affected_cards: affected_minions,
-        }])
+        Ok(vec![
+            ContinuousEffect::OverrideValidPlayZone {
+                affected_zones: self.get_affected_zones(state),
+                affected_cards: CardQuery::new()
+                    .minions()
+                    .with_affinity(Element::Fire)
+                    .including_not_in_play(),
+            },
+            ContinuousEffect::ModifyPower {
+                power_diff: 1,
+                affected_cards: affected_minions,
+            },
+        ])
     }
 }
 

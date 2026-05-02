@@ -2,9 +2,9 @@ use crate::{
     card::{
         Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
     },
-    effect::{Effect, TokenType},
+    effect::Effect,
     game::PlayerId,
-    state::State,
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -15,7 +15,7 @@ pub struct ScavengingFiend {
 
 impl ScavengingFiend {
     pub const NAME: &'static str = "Scavenging Fiend";
-    pub const DESCRIPTION: &'static str = "Genesis → Summon a Rubble token at this location.";
+    pub const DESCRIPTION: &'static str = "Genesis → Conjure a broken artifact to this location.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -65,11 +65,20 @@ impl Card for ScavengingFiend {
 
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        let zone = self.get_zone().clone();
-        Ok(vec![Effect::SummonToken {
+        let Some(picked_card_id) = CardQuery::new()
+            .artifacts()
+            .in_zone(&Zone::Cemetery)
+            .with_prompt("Scavenging Fiend: Pick a broken artifact to conjure")
+            .pick(&controller_id, state, true)
+            .await?
+        else {
+            return Ok(vec![]);
+        };
+
+        Ok(vec![Effect::SummonCard {
             player_id: controller_id,
-            token_type: TokenType::Rubble,
-            zone,
+            card_id: picked_card_id,
+            zone: self.get_zone().clone(),
         }])
     }
 }

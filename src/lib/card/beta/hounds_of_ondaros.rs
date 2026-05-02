@@ -16,7 +16,7 @@ pub struct HoundsOfOndaros {
 impl HoundsOfOndaros {
     pub const NAME: &'static str = "Hounds of Ondaros";
     pub const DESCRIPTION: &'static str =
-        "Airborne, Burrowing, Submerge, Voidwalk\r \r Removes Stealth from all nearby enemies.";
+        "Airborne, Burrowing, Submerge, Voidwalk Nearby enemies permanently lose Stealth.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

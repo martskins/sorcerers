@@ -13,7 +13,7 @@ pub struct Sleep {
 
 impl Sleep {
     pub const NAME: &'static str = "Sleep";
-    pub const DESCRIPTION: &'static str = "Target nearby minion is Disabled until it takes damage.";
+    pub const DESCRIPTION: &'static str = "Target minion at a location up to two steps away falls asleep. It's disabled until it takes damage.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -58,9 +58,10 @@ impl Card for Sleep {
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
         let caster = state.get_card(caster_id);
+        let zones = caster.get_zones_within_steps(state, 2);
         let Some(target_id) = CardQuery::new()
             .minions()
-            .near_to(caster.get_zone())
+            .in_zones(&zones)
             .with_prompt("Sleep: Pick a target minion")
             .pick(&controller_id, state, false)
             .await?

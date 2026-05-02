@@ -1,8 +1,9 @@
 use crate::{
     card::{
-        Ability, AreaModifiers, Card, CardBase, CardConstructor, Costs, Edition, Rarity,
-        ResourceProvider, Site, SiteBase, SiteType, Zone,
+        Ability, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, ResourceProvider,
+        Site, SiteBase, SiteType, Zone,
     },
+    effect::Effect,
     game::{PlayerId, Thresholds},
     state::{CardQuery, State},
 };
@@ -15,7 +16,7 @@ pub struct Watchtower {
 
 impl Watchtower {
     pub const NAME: &'static str = "Watchtower";
-    pub const DESCRIPTION: &'static str = "Enemy units at nearby sites lose Stealth.";
+    pub const DESCRIPTION: &'static str = "Enemy units atop nearby sites permanently lose Stealth.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -76,24 +77,27 @@ impl Card for Watchtower {
         Some(self)
     }
 
-    fn area_modifiers(&self, state: &State) -> AreaModifiers {
+    fn area_effects(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+        if !self.get_zone().is_in_play() {
+            return Ok(vec![]);
+        }
+
         let controller_id = self.get_controller_id(state);
         let nearby_zones = self.get_zone().get_nearby();
 
-        let enemy_stealth_units: std::collections::HashMap<uuid::Uuid, Vec<crate::card::Ability>> =
-            CardQuery::new()
-                .units()
-                .in_zones(&nearby_zones)
-                .all(state)
-                .into_iter()
-                .filter(|id| state.get_card(id).get_controller_id(state) != controller_id)
-                .map(|id| (id, vec![Ability::Stealth]))
-                .collect();
-
-        AreaModifiers {
-            removes_abilities: enemy_stealth_units,
-            ..Default::default()
-        }
+        Ok(CardQuery::new()
+            .units()
+            .in_zones(&nearby_zones)
+            .in_regions(vec![Region::Surface])
+            .with_abilities(vec![Ability::Stealth])
+            .all(state)
+            .into_iter()
+            .filter(|id| state.get_card(id).get_controller_id(state) != controller_id)
+            .map(|card_id| Effect::RemoveAbility {
+                card_id,
+                modifier: Ability::Stealth,
+            })
+            .collect())
     }
 }
 

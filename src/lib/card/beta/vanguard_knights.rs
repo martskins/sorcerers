@@ -3,6 +3,7 @@ use crate::{
         Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
     },
     game::PlayerId,
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -13,7 +14,8 @@ pub struct VanguardKnights {
 
 impl VanguardKnights {
     pub const NAME: &'static str = "Vanguard Knights";
-    pub const DESCRIPTION: &'static str = "";
+    pub const DESCRIPTION: &'static str =
+        "Vanguard Knights have +2 power if they alone are the furthest forward of your units.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -38,6 +40,20 @@ impl VanguardKnights {
             },
         }
     }
+
+    fn front_score(card: &dyn Card, state: &State) -> Option<u8> {
+        match card.get_zone() {
+            Zone::Realm(square) => Some(*square),
+            Zone::Intersection(squares) => {
+                if card.get_controller_id(state) == state.player_one {
+                    squares.iter().copied().max()
+                } else {
+                    squares.iter().copied().min()
+                }
+            }
+            _ => None,
+        }
+    }
 }
 
 #[async_trait::async_trait]
@@ -59,6 +75,46 @@ impl Card for VanguardKnights {
     }
     fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
         Some(&mut self.unit_base)
+    }
+
+    fn get_power(&self, state: &State) -> anyhow::Result<Option<u16>> {
+        let Some(mut power) = self.base_get_power(state) else {
+            return Ok(None);
+        };
+
+        if !self.get_zone().is_in_play() {
+            return Ok(Some(power));
+        }
+
+        let controller_id = self.get_controller_id(state);
+        let scores: Vec<(uuid::Uuid, u8)> = CardQuery::new()
+            .units()
+            .controlled_by(&controller_id)
+            .in_play()
+            .all(state)
+            .into_iter()
+            .filter_map(|id| Self::front_score(state.get_card(&id), state).map(|score| (id, score)))
+            .collect();
+
+        if let Some(self_score) = Self::front_score(self, state) {
+            let furthest = if controller_id == state.player_one {
+                scores.iter().map(|(_, score)| *score).max()
+            } else {
+                scores.iter().map(|(_, score)| *score).min()
+            };
+
+            if furthest == Some(self_score)
+                && scores
+                    .iter()
+                    .filter(|(_, score)| *score == self_score)
+                    .count()
+                    == 1
+            {
+                power += 2;
+            }
+        }
+
+        Ok(Some(power))
     }
 }
 

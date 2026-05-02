@@ -1,13 +1,10 @@
-use std::{future::Future, pin::Pin, sync::Arc};
-
 use crate::{
     card::{
         Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
     },
     effect::Effect,
     game::PlayerId,
-    query::EffectQuery,
-    state::{CardQuery, DeferredEffect, State},
+    state::State,
 };
 
 #[derive(Debug, Clone)]
@@ -18,7 +15,7 @@ pub struct SeirawanHydra {
 
 impl SeirawanHydra {
     pub const NAME: &'static str = "Seirawan Hydra";
-    pub const DESCRIPTION: &'static str = "Heals damage taken.";
+    pub const DESCRIPTION: &'static str = "Immediately heals from damage that doesn't kill it.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -66,37 +63,28 @@ impl Card for SeirawanHydra {
         Some(&mut self.unit_base)
     }
 
-    fn on_summon(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
-        let self_id = *self.get_id();
-        Ok(vec![Effect::AddDeferredEffect {
-            effect: DeferredEffect {
-                trigger_on_effect: EffectQuery::DamageDealt {
-                    source: None,
-                    target: Some(CardQuery::from_id(self_id)),
-                },
-                expires_on_effect: Some(EffectQuery::BuryCard {
-                    card: CardQuery::from_id(self_id),
-                }),
-                on_effect: Arc::new(
-                    move |_state: &State, _card_id: &uuid::Uuid, effect: &Effect| {
-                        Box::pin(async move {
-                            let damage = match effect {
-                                Effect::TakeDamage { damage, .. } => *damage,
-                                _ => return Ok(vec![]),
-                            };
-                            Ok(vec![Effect::Heal {
-                                card_id: self_id,
-                                amount: damage,
-                            }])
-                        })
-                            as Pin<
-                                Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>,
-                            >
-                    },
-                ),
-                multitrigger: true,
-            },
-        }])
+    fn on_take_damage(
+        &mut self,
+        state: &State,
+        from: &uuid::Uuid,
+        damage: u16,
+        is_ranged: bool,
+    ) -> anyhow::Result<Vec<Effect>> {
+        let damage_before = self.get_damage_taken()?;
+        let mut effects = self.base_take_damage(state, from, damage, is_ranged)?;
+        let damage_after = self.get_damage_taken()?;
+
+        let survived = !effects
+            .iter()
+            .any(|effect| matches!(effect, Effect::KillMinion { card_id, .. } if *card_id == *self.get_id()));
+        if survived && damage_after > damage_before {
+            effects.push(Effect::Heal {
+                card_id: *self.get_id(),
+                amount: damage_after - damage_before,
+            });
+        }
+
+        Ok(effects)
     }
 }
 

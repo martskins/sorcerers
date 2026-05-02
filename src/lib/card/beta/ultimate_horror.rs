@@ -4,7 +4,7 @@ use crate::{
         UnitBase, Zone,
     },
     effect::Effect,
-    game::PlayerId,
+    game::{PlayerId, pick_zone},
     state::{CardQuery, State},
 };
 
@@ -16,8 +16,7 @@ pub struct UltimateHorror {
 
 impl UltimateHorror {
     pub const NAME: &'static str = "Ultimate Horror";
-    pub const DESCRIPTION: &'static str =
-        "Airborne. Voidwalk. Genesis → summon all dead Voidwalk minions to this location.";
+    pub const DESCRIPTION: &'static str = "Airborne, Voidwalk Genesis → Summon each other dead Voidwalk minion to a nearby site or void.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -68,20 +67,31 @@ impl Card for UltimateHorror {
 
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        let dest_zone = self.get_zone().clone();
+        let nearby_zones = self.get_zone().get_nearby();
         let dead_voidwalkers = CardQuery::new()
             .minions()
             .dead()
             .with_ability(&Ability::Voidwalk)
             .all(state);
-        let effects = dead_voidwalkers
-            .into_iter()
-            .map(|card_id| Effect::SummonCard {
+        let mut effects = Vec::new();
+        for card_id in dead_voidwalkers {
+            let zone = pick_zone(
+                &controller_id,
+                &nearby_zones,
+                state,
+                false,
+                &format!(
+                    "Ultimate Horror: Pick a nearby site or void for {}",
+                    state.get_card(&card_id).get_name()
+                ),
+            )
+            .await?;
+            effects.push(Effect::SummonCard {
                 player_id: controller_id,
                 card_id,
-                zone: dest_zone.clone(),
-            })
-            .collect();
+                zone,
+            });
+        }
         Ok(effects)
     }
 }

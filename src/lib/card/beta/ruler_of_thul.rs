@@ -4,6 +4,7 @@ use crate::{
         UnitBase, Zone,
     },
     game::PlayerId,
+    state::{CardQuery, ContinuousEffect, State},
 };
 
 #[derive(Debug, Clone)]
@@ -14,7 +15,7 @@ pub struct RulerOfThul {
 
 impl RulerOfThul {
     pub const NAME: &'static str = "Ruler of Thul";
-    pub const DESCRIPTION: &'static str = "Charge.";
+    pub const DESCRIPTION: &'static str = "Charge Allies can move as if the top and bottom edges of the realm were connected. Other allies occupying sites there have +1 power.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -61,6 +62,23 @@ impl Card for RulerOfThul {
     }
     fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
         Some(&mut self.unit_base)
+    }
+
+    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+        let controller_id = self.get_controller_id(state);
+        Ok(vec![
+            ContinuousEffect::ConnectTopBottomEdges {
+                affected_cards: CardQuery::new().units().controlled_by(&controller_id),
+            },
+            ContinuousEffect::ModifyPower {
+                power_diff: 1,
+                affected_cards: CardQuery::new()
+                    .units()
+                    .controlled_by(&controller_id)
+                    .id_not(self.get_id())
+                    .in_zone(self.get_zone()),
+            },
+        ])
     }
 }
 

@@ -15,8 +15,7 @@ pub struct WickerManikin {
 
 impl WickerManikin {
     pub const NAME: &'static str = "Wicker Manikin";
-    pub const DESCRIPTION: &'static str =
-        "Units here have Spellcaster (Air), Spellcaster (Earth), and Spellcaster (Water).";
+    pub const DESCRIPTION: &'static str = "Non-fire Spellcaster";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

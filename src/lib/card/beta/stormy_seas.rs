@@ -13,7 +13,7 @@ pub struct StormySeas {
 impl StormySeas {
     pub const NAME: &'static str = "Stormy Seas";
     pub const DESCRIPTION: &'static str =
-        "Submerge all minions and artifacts at target water site.";
+        "Submerge all minions and artifacts occupying target water site.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

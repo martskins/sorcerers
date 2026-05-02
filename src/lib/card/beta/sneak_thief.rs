@@ -4,7 +4,7 @@ use crate::{
         Rarity, Region, UnitBase, Zone,
     },
     effect::Effect,
-    game::{ActivatedAbility, PlayerId},
+    game::{ActivatedAbility, PlayerId, pick_card},
     state::{CardQuery, State},
 };
 
@@ -30,26 +30,58 @@ impl ActivatedAbility for StealArtifact {
         let card = state.get_card(card_id);
         let controller_id = card.get_controller_id(state);
         let zone = card.get_zone().clone();
-        let artifact_id = match CardQuery::new()
-            .artifacts()
+
+        let candidate_units: Vec<uuid::Uuid> = CardQuery::new()
+            .units()
             .in_zone(&zone)
-            .with_prompt("Sneak Thief: Choose an enemy artifact to steal")
+            .id_not(card_id)
+            .all(state)
+            .into_iter()
+            .filter(|unit_id| CardQuery::new().artifacts().carried_by(unit_id).any(state))
+            .collect();
+        if candidate_units.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let target_unit_id = match CardQuery::from_ids(candidate_units)
+            .with_prompt("Sneak Thief: Choose a target unit here")
             .pick(player_id, state, false)
             .await?
         {
-            Some(id) => {
-                let artifact = state.get_card(&id);
-                if artifact.get_controller_id(state) == controller_id {
-                    return Ok(vec![]);
-                }
-                id
-            }
+            Some(id) => id,
             None => return Ok(vec![]),
         };
-        Ok(vec![Effect::SetController {
-            card_id: artifact_id,
-            player_id: controller_id,
-        }])
+
+        let carried_artifacts = CardQuery::new()
+            .artifacts()
+            .carried_by(&target_unit_id)
+            .all(state);
+        if carried_artifacts.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let artifact_id = if carried_artifacts.len() == 1 {
+            carried_artifacts[0]
+        } else {
+            pick_card(
+                player_id,
+                &carried_artifacts,
+                state,
+                "Sneak Thief: Choose an artifact to steal",
+            )
+            .await?
+        };
+
+        Ok(vec![
+            Effect::SetController {
+                card_id: artifact_id,
+                player_id: controller_id,
+            },
+            Effect::SetBearer {
+                card_id: artifact_id,
+                bearer_id: Some(*card_id),
+            },
+        ])
     }
 }
 
@@ -61,8 +93,7 @@ pub struct SneakThief {
 
 impl SneakThief {
     pub const NAME: &'static str = "Sneak Thief";
-    pub const DESCRIPTION: &'static str =
-        "Stealth. Tap → steal an enemy artifact at this location.";
+    pub const DESCRIPTION: &'static str = "Stealth Tap → Steal an artifact out of the hands of another target unit here, and stay Stealthed.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

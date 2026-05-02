@@ -19,7 +19,7 @@ pub struct ScreamingSkull {
 
 impl ScreamingSkull {
     pub const NAME: &'static str = "Screaming Skull";
-    pub const DESCRIPTION: &'static str = "Whenever a unit is buried, untap bearer.";
+    pub const DESCRIPTION: &'static str = "Whenever bearer attacks and kills an enemy, it untaps.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -80,24 +80,58 @@ impl Card for ScreamingSkull {
         let skull_id = *self.get_id();
         Ok(vec![Effect::AddDeferredEffect {
             effect: DeferredEffect {
-                trigger_on_effect: EffectQuery::BuryCard {
-                    card: CardQuery::new().units(),
+                trigger_on_effect: EffectQuery::DamageDealt {
+                    source: None,
+                    target: None,
                 },
                 expires_on_effect: Some(EffectQuery::BuryCard {
                     card: CardQuery::from_id(skull_id),
                 }),
-                on_effect: Arc::new(move |state: &State, _: &uuid::Uuid, _: &Effect| {
+                on_effect: Arc::new(move |state: &State, _: &uuid::Uuid, effect: &Effect| {
                     Box::pin(async move {
+                        let Effect::TakeDamage {
+                            card_id: damaged_id,
+                            from,
+                            ..
+                        } = effect
+                        else {
+                            return Ok(vec![]);
+                        };
+
                         let skull = state.get_card(&skull_id);
                         if !skull.get_zone().is_in_play() {
                             return Ok(vec![]);
                         }
-                        let bearer_id = skull.get_bearer_id()?;
-                        if let Some(bearer_id) = bearer_id {
-                            Ok(vec![Effect::UntapCard { card_id: bearer_id }])
-                        } else {
-                            Ok(vec![])
+
+                        let Some(bearer_id) = skull.get_bearer_id()? else {
+                            return Ok(vec![]);
+                        };
+                        if from != &bearer_id {
+                            return Ok(vec![]);
                         }
+
+                        let killed_enemy = state.effects.iter().any(|queued| {
+                            matches!(queued.as_ref(), Effect::KillMinion { card_id, killer_id }
+                                if card_id == damaged_id && killer_id == &bearer_id)
+                        });
+                        if !killed_enemy {
+                            return Ok(vec![]);
+                        }
+
+                        let attacked_with_bearer = state.effect_log.iter().rev().any(|logged| {
+                            matches!(logged.effect.as_ref(), Effect::Attack { attacker_id, .. }
+                                if attacker_id == &bearer_id)
+                        });
+                        if !attacked_with_bearer {
+                            return Ok(vec![]);
+                        }
+
+                        let damaged = state.get_card(damaged_id);
+                        if damaged.get_controller_id(state) == skull.get_controller_id(state) {
+                            return Ok(vec![]);
+                        }
+
+                        Ok(vec![Effect::UntapCard { card_id: bearer_id }])
                     })
                         as Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>>
                 }),

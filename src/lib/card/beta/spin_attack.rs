@@ -12,7 +12,7 @@ pub struct SpinAttack {
 
 impl SpinAttack {
     pub const NAME: &'static str = "Spin Attack";
-    pub const DESCRIPTION: &'static str = "An allied minion strikes each enemy at its location.";
+    pub const DESCRIPTION: &'static str = "An ally strikes each enemy at its location.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

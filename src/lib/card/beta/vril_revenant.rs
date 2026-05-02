@@ -1,10 +1,39 @@
 use crate::{
     card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region,
+        Ability, Card, CardBase, CardConstructor, Cost, Costs, Edition, MinionType, Rarity, Region,
         UnitBase, Zone,
     },
-    game::PlayerId,
+    effect::{Counter, Effect},
+    game::{ActivatedAbility, PlayerId},
+    query::EffectQuery,
+    state::State,
 };
+
+#[derive(Debug, Clone)]
+struct VrilRevenantAbility;
+
+#[async_trait::async_trait]
+impl ActivatedAbility for VrilRevenantAbility {
+    fn get_name(&self) -> String {
+        "Pay 1 mana to gain +1 power this turn".to_string()
+    }
+
+    fn get_cost(&self, _card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
+        Ok(Cost::mana_only(1))
+    }
+
+    async fn on_select(
+        &self,
+        card_id: &uuid::Uuid,
+        _player_id: &PlayerId,
+        _state: &State,
+    ) -> anyhow::Result<Vec<Effect>> {
+        Ok(vec![Effect::AddCounter {
+            card_id: *card_id,
+            counter: Counter::new(1, 0, Some(EffectQuery::TurnEnd { player_id: None })),
+        }])
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct VrilRevenant {
@@ -14,7 +43,7 @@ pub struct VrilRevenant {
 
 impl VrilRevenant {
     pub const NAME: &'static str = "Vril Revenant";
-    pub const DESCRIPTION: &'static str = "Voidwalk";
+    pub const DESCRIPTION: &'static str = "Voidwalk ① → Gain +1 power this turn.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -66,6 +95,13 @@ impl Card for VrilRevenant {
 
     fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
         Some(&mut self.unit_base)
+    }
+
+    fn get_additional_activated_abilities(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+        Ok(vec![Box::new(VrilRevenantAbility)])
     }
 }
 

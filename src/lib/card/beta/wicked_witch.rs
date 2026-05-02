@@ -18,7 +18,7 @@ pub struct WickedWitch {
 
 impl WickedWitch {
     pub const NAME: &'static str = "Wicked Witch";
-    pub const DESCRIPTION: &'static str = "Spellcaster. Other nearby minions have -2 power.";
+    pub const DESCRIPTION: &'static str = "Spellcaster Other nearby minions have -2 power.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

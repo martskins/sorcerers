@@ -17,7 +17,7 @@ pub struct RiverOfFlame {
 
 impl RiverOfFlame {
     pub const NAME: &'static str = "River of Flame";
-    pub const DESCRIPTION: &'static str = "Units here have Spellcaster (Fire).";
+    pub const DESCRIPTION: &'static str = "Fire Spellcaster";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

@@ -15,7 +15,7 @@ pub struct TruesightCrossbow {
 
 impl TruesightCrossbow {
     pub const NAME: &'static str = "Truesight Crossbow";
-    pub const DESCRIPTION: &'static str = "Bearer has Ranged 1.";
+    pub const DESCRIPTION: &'static str = "Bearer has Ranged and can see stealthed enemies.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -85,10 +85,16 @@ impl Card for TruesightCrossbow {
             return Ok(vec![]);
         };
 
-        Ok(vec![ContinuousEffect::GrantAbility {
-            ability: Ability::Ranged(1),
-            affected_cards: bearer_id.into(),
-        }])
+        Ok(vec![
+            ContinuousEffect::GrantAbility {
+                ability: Ability::Ranged(1),
+                affected_cards: bearer_id.into(),
+            },
+            ContinuousEffect::GrantAbility {
+                ability: Ability::CanSeeStealthed,
+                affected_cards: bearer_id.into(),
+            },
+        ])
     }
 }
 

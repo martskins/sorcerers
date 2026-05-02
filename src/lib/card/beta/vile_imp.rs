@@ -15,8 +15,7 @@ pub struct VileImp {
 
 impl VileImp {
     pub const NAME: &'static str = "Vile Imp";
-    pub const DESCRIPTION: &'static str =
-        "Genesis → You may deal 2 damage to a target adjacent unit.";
+    pub const DESCRIPTION: &'static str = "Genesis → May deal 2 damage to target adjacent unit.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

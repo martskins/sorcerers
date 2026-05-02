@@ -1,5 +1,5 @@
 use crate::{
-    card::Zone,
+    card::{Region, Zone},
     effect::Effect,
     game::{PlayerId, pick_zone},
     state::{CardQuery, State},
@@ -354,6 +354,10 @@ pub enum EffectQuery {
     BuryCard {
         card: CardQuery,
     },
+    SetCardRegion {
+        card: CardQuery,
+        region: Option<Region>,
+    },
     Attack {
         attacker: CardQuery,
     },
@@ -435,6 +439,17 @@ impl EffectQuery {
             }
             (EffectQuery::BuryCard { card }, Effect::BuryCard { card_id, .. }) => {
                 Ok(card.matches(card_id, state))
+            }
+            (
+                EffectQuery::SetCardRegion { card, region },
+                Effect::SetCardRegion {
+                    card_id,
+                    region: effect_region,
+                    ..
+                },
+            ) => {
+                Ok(card.matches(card_id, state)
+                    && region.as_ref().is_none_or(|r| r == effect_region))
             }
             (EffectQuery::Attack { attacker }, Effect::Attack { attacker_id, .. }) => {
                 Ok(attacker.matches(attacker_id, state))

@@ -1,11 +1,11 @@
 use crate::{
     card::{
-        Ability, AreaModifiers, Aura, AuraBase, Card, CardBase, CardConstructor, Costs, Edition,
-        Rarity, Region, Zone,
+        Ability, Aura, AuraBase, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region,
+        Zone,
     },
     effect::Effect,
     game::PlayerId,
-    state::{CardQuery, State},
+    state::{CardQuery, ContinuousEffect, State},
 };
 
 #[derive(Debug, Clone)]
@@ -17,7 +17,9 @@ pub struct Sandstorm {
 impl Sandstorm {
     pub const NAME: &'static str = "Sandstorm";
     pub const DESCRIPTION: &'static str =
-        "Affected units are Disabled.\n\nAt the start of your turn, dispel Sandstorm.";
+        "Affected sites and units atop them can't be attacked or intercepted.
+
+At the start of your turn, dispel Sandstorm.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -56,6 +58,13 @@ impl Aura for Sandstorm {
 
         Ok(turns_in_play >= 1)
     }
+
+    fn get_affected_zones(&self, state: &State) -> Vec<Zone> {
+        self.base_get_affected_zones(state)
+            .into_iter()
+            .filter(|zone| zone.get_site(state).is_some())
+            .collect()
+    }
 }
 
 #[async_trait::async_trait]
@@ -88,20 +97,26 @@ impl Card for Sandstorm {
         Some(self)
     }
 
-    fn area_modifiers(&self, state: &State) -> AreaModifiers {
+    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
         let affected_zones = self.get_affected_zones(state);
-        let units = CardQuery::new()
-            .units()
-            .in_zones(&affected_zones)
-            .all(state);
-
-        AreaModifiers {
-            grants_abilities: units
-                .into_iter()
-                .map(|id| (id, vec![Ability::Disabled]))
-                .collect(),
-            ..Default::default()
+        if affected_zones.is_empty() {
+            return Ok(vec![]);
         }
+
+        Ok(vec![
+            ContinuousEffect::GrantAbility {
+                ability: Ability::Unattackable,
+                affected_cards: CardQuery::new().sites().in_zones(&affected_zones),
+            },
+            ContinuousEffect::GrantAbility {
+                ability: Ability::Unattackable,
+                affected_cards: CardQuery::new().units().in_zones(&affected_zones),
+            },
+            ContinuousEffect::GrantAbility {
+                ability: Ability::Uninterceptable,
+                affected_cards: CardQuery::new().units().in_zones(&affected_zones),
+            },
+        ])
     }
 }
 

@@ -16,7 +16,7 @@ pub struct HighlandFalconer {
 
 impl HighlandFalconer {
     pub const NAME: &'static str = "Highland Falconer";
-    pub const DESCRIPTION: &'static str = "Genesis → Search your spellbook for an Airborne Beast with a mana cost of ≤ 2 and summon it.";
+    pub const DESCRIPTION: &'static str = "Genesis → You may search your hand and spellbook for a Beast with Airborne and mana cost ② or less and summon it here. Shuffle if needed.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -72,23 +72,14 @@ impl Card for HighlandFalconer {
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
 
-        let targets: Vec<uuid::Uuid> = CardQuery::new()
+        let targets = CardQuery::new()
             .minions()
-            .in_zone(&Zone::Spellbook)
+            .in_zones(&[Zone::Hand, Zone::Spellbook])
             .controlled_by(&controller_id)
             .with_abilities(vec![Ability::Airborne])
             .minion_type(&crate::card::MinionType::Beast)
-            .all(state)
-            .into_iter()
-            .filter(|id| {
-                state
-                    .get_card(id)
-                    .get_costs(state)
-                    .map(|c| c.mana_value())
-                    .unwrap_or(u8::MAX)
-                    <= 2
-            })
-            .collect();
+            .mana_cost_less_than_or_equal_to(2)
+            .all(state);
 
         if targets.is_empty() {
             return Ok(vec![]);
@@ -98,14 +89,21 @@ impl Card for HighlandFalconer {
             &controller_id,
             &targets,
             state,
-            "Summon an Airborne Beast (≤2)",
+            "Highland Falconer: Summon a Beast with Airborne and mana cost 2 or less",
         )
         .await?;
-        Ok(vec![Effect::SummonCard {
+        let from_zone = state.get_card(&chosen).get_zone().clone();
+        let mut effects = vec![Effect::SummonCard {
             card_id: chosen,
             zone: self.get_zone().clone(),
             player_id: controller_id,
-        }])
+        }];
+        if from_zone == Zone::Spellbook {
+            effects.push(Effect::ShuffleDeck {
+                player_id: controller_id,
+            });
+        }
+        Ok(effects)
     }
 }
 

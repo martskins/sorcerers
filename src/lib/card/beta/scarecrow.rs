@@ -21,7 +21,7 @@ pub struct Scarecrow {
 
 impl Scarecrow {
     pub const NAME: &'static str = "Scarecrow";
-    pub const DESCRIPTION: &'static str = "Genesis → Return each Airborne minion here to its owner's hand.\n\nAirborne minions can't enter this location.";
+    pub const DESCRIPTION: &'static str = "Genesis → Return each Airborne minion here to its owner's hand. Airborne minions can't enter this location.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

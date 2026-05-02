@@ -890,6 +890,20 @@ pub enum ContinuousEffect {
         affected_cards: CardQuery,
         except_strikes: bool,
     },
+    ReduceDamageTaken {
+        amount: u16,
+        affected_cards: CardQuery,
+    },
+    PreventDamageFromMagic {
+        affected_cards: CardQuery,
+    },
+    RestrictMoveToZones {
+        affected_cards: CardQuery,
+        allowed_zones: Vec<Zone>,
+    },
+    ConnectTopBottomEdges {
+        affected_cards: CardQuery,
+    },
     ChangeSiteType {
         site_type: SiteType,
         affected_sites: CardQuery,

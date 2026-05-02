@@ -3,6 +3,7 @@ use crate::{
         Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
     },
     game::PlayerId,
+    state::{CardQuery, ContinuousEffect, State},
 };
 
 #[derive(Debug, Clone)]
@@ -13,7 +14,7 @@ pub struct ShieldMaidens {
 
 impl ShieldMaidens {
     pub const NAME: &'static str = "Shield Maidens";
-    pub const DESCRIPTION: &'static str = "";
+    pub const DESCRIPTION: &'static str = "Nearby allies take 1 less damage.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -59,6 +60,20 @@ impl Card for ShieldMaidens {
     }
     fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
         Some(&mut self.unit_base)
+    }
+
+    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+        if !self.get_zone().is_in_play() {
+            return Ok(vec![]);
+        }
+
+        Ok(vec![ContinuousEffect::ReduceDamageTaken {
+            amount: 1,
+            affected_cards: CardQuery::new()
+                .minions()
+                .controlled_by(&self.get_controller_id(state))
+                .in_zones(&self.get_zone().get_nearby()),
+        }])
     }
 }
 

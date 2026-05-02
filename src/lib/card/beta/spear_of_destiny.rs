@@ -30,29 +30,29 @@ impl ActivatedAbility for SpearStrike {
     ) -> anyhow::Result<Vec<Effect>> {
         let spear_card = state.get_card(card_id);
         let controller_id = spear_card.get_controller_id(state);
-        let target_id = match CardQuery::new()
+        let Some(target_id) = CardQuery::new()
             .minions()
             .in_play()
-            .with_prompt("Spear of Destiny: Choose an enemy minion to destroy")
+            .with_prompt("Spear of Destiny: Choose a minion anywhere")
             .pick(player_id, state, false)
             .await?
-        {
-            Some(id) => {
-                let target = state.get_card(&id);
-                if target.get_controller_id(state) == controller_id {
-                    return Ok(vec![]);
-                }
-                id
-            }
-            None => return Ok(vec![]),
+        else {
+            return Ok(vec![]);
         };
         let target_zone = state.get_card(&target_id).get_zone().clone();
         Ok(vec![
-            Effect::BuryCard { card_id: target_id },
+            Effect::SetBearer {
+                card_id: *card_id,
+                bearer_id: None,
+            },
             Effect::TeleportCard {
                 player_id: controller_id,
                 card_id: *card_id,
                 to_zone: target_zone,
+            },
+            Effect::KillMinion {
+                card_id: target_id,
+                killer_id: *card_id,
             },
         ])
     }
@@ -66,8 +66,7 @@ pub struct SpearOfDestiny {
 
 impl SpearOfDestiny {
     pub const NAME: &'static str = "Spear of Destiny";
-    pub const DESCRIPTION: &'static str =
-        "Tap bearer → destroy target minion and move Spear of Destiny to its location.";
+    pub const DESCRIPTION: &'static str = "Bearer has \"Tap → Throw Spear of Destiny at any minion anywhere. It teleports to that minion's location and kills it.\"";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

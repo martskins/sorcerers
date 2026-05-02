@@ -4,6 +4,7 @@ use crate::{
         Zone,
     },
     game::{PlayerId, Thresholds},
+    state::State,
 };
 
 #[derive(Debug, Clone)]
@@ -14,7 +15,8 @@ pub struct TheColourOutOfSpace {
 
 impl TheColourOutOfSpace {
     pub const NAME: &'static str = "The Colour Out of Space";
-    pub const DESCRIPTION: &'static str = "";
+    pub const DESCRIPTION: &'static str =
+        "Provides no mana or threshold if not adjacent to the void.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -37,6 +39,14 @@ impl TheColourOutOfSpace {
                 ..Default::default()
             },
         }
+    }
+
+    fn adjacent_to_void(&self, state: &State) -> bool {
+        self.get_zone()
+            .get_adjacent()
+            .into_iter()
+            .filter(|zone| zone != self.get_zone())
+            .any(|zone| matches!(zone, Zone::Realm(_)) && zone.get_site(state).is_none())
     }
 }
 
@@ -67,6 +77,9 @@ impl Card for TheColourOutOfSpace {
     }
     fn get_resource_provider(&self) -> Option<&dyn ResourceProvider> {
         Some(self)
+    }
+    fn provides_no_resources(&self, state: &State) -> anyhow::Result<bool> {
+        Ok(!self.adjacent_to_void(state))
     }
 }
 

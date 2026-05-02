@@ -15,7 +15,8 @@ pub struct StoneGazeGorgons {
 
 impl StoneGazeGorgons {
     pub const NAME: &'static str = "Stone-gaze Gorgons";
-    pub const DESCRIPTION: &'static str = "Tapped minions at adjacent locations are Disabled.";
+    pub const DESCRIPTION: &'static str =
+        "Other minions at rest at adjacent locations are disabled.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -74,13 +75,13 @@ impl Card for StoneGazeGorgons {
             return Ok(vec![]);
         }
 
-        let tapped_minions = CardQuery::new()
+        let resting_minions = CardQuery::new()
             .minions()
             .adjacent_to(self.get_zone())
-            .tapped()
+            .untapped()
             .all(state);
 
-        Ok(tapped_minions
+        Ok(resting_minions
             .into_iter()
             .map(|card_id| ContinuousEffect::GrantAbility {
                 ability: Ability::Disabled,

@@ -15,7 +15,8 @@ pub struct MaddeningBells {
 
 impl MaddeningBells {
     pub const NAME: &'static str = "Maddening Bells";
-    pub const DESCRIPTION: &'static str = "Spells by Spellcasters nearby cost 2 more to cast.";
+    pub const DESCRIPTION: &'static str =
+        "Spells cast by a nearby Spellcaster cost ② more to cast.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

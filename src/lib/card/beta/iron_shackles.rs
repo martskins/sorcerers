@@ -15,7 +15,8 @@ pub struct IronShackles {
 
 impl IronShackles {
     pub const NAME: &'static str = "Iron Shackles";
-    pub const DESCRIPTION: &'static str = "Conjure onto an enemy minion. Bearer is Disabled.";
+    pub const DESCRIPTION: &'static str =
+        "May be conjured to target enemy minion. Bearer is disabled.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

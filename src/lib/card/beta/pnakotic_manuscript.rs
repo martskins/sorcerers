@@ -4,7 +4,7 @@ use crate::{
         Cost, Costs, Edition, Rarity, Region, Zone,
     },
     effect::Effect,
-    game::{ActivatedAbility, PlayerId},
+    game::{ActivatedAbility, PlayerId, reveal_cards},
     state::State,
 };
 
@@ -34,6 +34,27 @@ impl ActivatedAbility for ReadManuscript {
             Some(id) => id,
             None => return Ok(vec![]),
         };
+        let deck = state.get_player_deck(&controller_id)?;
+        let Some(top_spell_id) = deck.peek_spell() else {
+            return Ok(vec![]);
+        };
+        let top_spell_id = *top_spell_id;
+        let damage = state.get_card(&top_spell_id).get_costs(state)?.mana_value() as u16;
+        let opponent_id = state.get_opponent_id(&controller_id)?;
+        reveal_cards(
+            &controller_id,
+            &[top_spell_id],
+            state,
+            "Pnakotic Manuscript: Revealed top spell",
+        )
+        .await?;
+        reveal_cards(
+            &opponent_id,
+            &[top_spell_id],
+            state,
+            "Pnakotic Manuscript: Revealed top spell",
+        )
+        .await?;
         Ok(vec![
             Effect::DrawSpell {
                 player_id: controller_id,
@@ -42,7 +63,7 @@ impl ActivatedAbility for ReadManuscript {
             Effect::TakeDamage {
                 card_id: bearer_id,
                 from: *card_id,
-                damage: 2,
+                damage,
                 is_strike: false,
                 is_ranged: false,
             },
@@ -58,7 +79,7 @@ pub struct PnakoticManuscript {
 
 impl PnakoticManuscript {
     pub const NAME: &'static str = "Pnakotic Manuscript";
-    pub const DESCRIPTION: &'static str = "Tap bearer → DrawSpell. Bearer takes 2 damage.";
+    pub const DESCRIPTION: &'static str = "Bearer has \"Tap → Reveal your topmost spell and draw it. Bearer takes damage equal to that card's cost.\"";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

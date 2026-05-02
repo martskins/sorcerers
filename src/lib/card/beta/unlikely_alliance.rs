@@ -12,8 +12,7 @@ pub struct UnlikelyAlliance {
 
 impl UnlikelyAlliance {
     pub const NAME: &'static str = "Unlikely Alliance";
-    pub const DESCRIPTION: &'static str =
-        "Draw a card for each distinct rarity among your minions.";
+    pub const DESCRIPTION: &'static str = "Draw a card for each rarity among allied minions.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

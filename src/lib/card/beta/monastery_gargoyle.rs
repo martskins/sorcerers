@@ -16,7 +16,7 @@ pub struct MonasteryGargoyle {
 
 impl MonasteryGargoyle {
     pub const NAME: &'static str = "Monastery Gargoyle";
-    pub const DESCRIPTION: &'static str = "At the start and end of your turn, choose whether Monastery Gargoyle has Airborne or is a Monument (Immobile).";
+    pub const DESCRIPTION: &'static str = "At the start and end of your turn, choose whether Monastery Gargoyle has Airborne or is a Monument.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

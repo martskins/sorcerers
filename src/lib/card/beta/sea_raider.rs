@@ -7,7 +7,7 @@ use crate::{
     effect::Effect,
     game::PlayerId,
     query::EffectQuery,
-    state::{CardQuery, DeferredEffect, State},
+    state::{CardQuery, DeferredEffect, State, TemporaryEffect},
 };
 
 #[derive(Debug, Clone)]
@@ -18,7 +18,7 @@ pub struct SeaRaider {
 
 impl SeaRaider {
     pub const NAME: &'static str = "Sea Raider";
-    pub const DESCRIPTION: &'static str = "When Sea Raider attacks, draw a card.";
+    pub const DESCRIPTION: &'static str = "Whenever Sea Raider attacks and kills an enemy, its controller discards their topmost spell. You may cast that spell once this turn, ignoring threshold.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -70,20 +70,82 @@ impl Card for SeaRaider {
         let self_id = *self.get_id();
         Ok(vec![Effect::AddDeferredEffect {
             effect: DeferredEffect {
-                trigger_on_effect: EffectQuery::Attack {
-                    attacker: CardQuery::from_id(self_id),
+                trigger_on_effect: EffectQuery::DamageDealt {
+                    source: Some(CardQuery::from_id(self_id)),
+                    target: None,
                 },
                 expires_on_effect: Some(EffectQuery::BuryCard {
                     card: CardQuery::from_id(self_id),
                 }),
                 on_effect: Arc::new(
-                    move |state: &State, _card_id: &uuid::Uuid, _effect: &Effect| {
+                    move |state: &State, damaged_id: &uuid::Uuid, effect: &Effect| {
+                        let damaged_id = *damaged_id;
                         Box::pin(async move {
-                            let controller = state.get_card(&self_id).get_controller_id(state);
-                            Ok(vec![Effect::DrawCard {
-                                player_id: controller,
-                                count: 1,
-                            }])
+                            let Effect::TakeDamage { from, .. } = effect else {
+                                return Ok(vec![]);
+                            };
+                            if from != &self_id {
+                                return Ok(vec![]);
+                            }
+
+                            let killed_enemy = state.effects.iter().any(|queued| {
+                                matches!(queued.as_ref(), Effect::KillMinion { card_id, killer_id }
+                                    if card_id == &damaged_id && killer_id == &self_id)
+                            });
+                            if !killed_enemy {
+                                return Ok(vec![]);
+                            }
+
+                            let attacked_with_raider = state.effect_log.iter().rev().any(|logged| {
+                                matches!(logged.effect.as_ref(), Effect::Attack { attacker_id, .. }
+                                    if attacker_id == &self_id)
+                            });
+                            if !attacked_with_raider {
+                                return Ok(vec![]);
+                            }
+
+                            let sea_raider = state.get_card(&self_id);
+                            let controller = sea_raider.get_controller_id(state);
+                            if state.get_card(&damaged_id).get_controller_id(state) == controller {
+                                return Ok(vec![]);
+                            }
+
+                            let Some(&spell_id) = state.get_player_deck(&controller)?.peek_spell()
+                            else {
+                                return Ok(vec![]);
+                            };
+
+                            let expires_on_effect = EffectQuery::OneOf(vec![
+                                EffectQuery::TurnEnd {
+                                    player_id: Some(controller),
+                                },
+                                EffectQuery::PlayCard {
+                                    card: CardQuery::from_id(spell_id),
+                                },
+                            ]);
+
+                            Ok(vec![
+                                Effect::DiscardCard {
+                                    player_id: controller,
+                                    card_id: spell_id,
+                                },
+                                Effect::AddTemporaryEffect {
+                                    effect: TemporaryEffect::MakePlayable {
+                                        affected_cards: CardQuery::from_id(spell_id)
+                                            .including_not_in_play(),
+                                        expires_on_effect: expires_on_effect.clone(),
+                                        by_player: controller,
+                                    },
+                                },
+                                Effect::AddTemporaryEffect {
+                                    effect: TemporaryEffect::IgnoreCostThresholds {
+                                        affected_cards: CardQuery::from_id(spell_id)
+                                            .including_not_in_play(),
+                                        expires_on_effect,
+                                        for_player: controller,
+                                    },
+                                },
+                            ])
                         })
                             as Pin<
                                 Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>,

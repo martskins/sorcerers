@@ -2,9 +2,10 @@ use std::{future::Future, pin::Pin, sync::Arc};
 
 use crate::{
     card::{
-        Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
+        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region,
+        UnitBase, Zone,
     },
-    effect::Effect,
+    effect::{AbilityCounter, Effect},
     game::PlayerId,
     query::EffectQuery,
     state::{CardQuery, DeferredEffect, State},
@@ -18,7 +19,8 @@ pub struct TuftedTurtles {
 
 impl TuftedTurtles {
     pub const NAME: &'static str = "Tufted Turtles";
-    pub const DESCRIPTION: &'static str = "The first damage each turn is prevented.";
+    pub const DESCRIPTION: &'static str =
+        "The first time Tufted Turtles would take damage each turn, prevent that damage.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -78,23 +80,39 @@ impl Card for TuftedTurtles {
                     card: CardQuery::from_id(self_id),
                 }),
                 on_effect: Arc::new(
-                    move |_state: &State, _card_id: &uuid::Uuid, effect: &Effect| {
+                    move |state: &State, _card_id: &uuid::Uuid, effect: &Effect| {
                         Box::pin(async move {
                             let damage = match effect {
-                                Effect::TakeDamage { damage, .. } => *damage,
+                                Effect::TakeDamage { damage, .. } if *damage > 0 => *damage,
                                 _ => return Ok(vec![]),
                             };
-                            Ok(vec![Effect::Heal {
-                                card_id: self_id,
-                                amount: damage,
-                            }])
+                            let turtle = state.get_card(&self_id);
+                            if turtle.has_ability(state, &Ability::DamageShieldUsed) {
+                                return Ok(vec![]);
+                            }
+                            Ok(vec![
+                                Effect::Heal {
+                                    card_id: self_id,
+                                    amount: damage,
+                                },
+                                Effect::AddAbilityCounter {
+                                    card_id: self_id,
+                                    counter: AbilityCounter {
+                                        id: uuid::Uuid::new_v4(),
+                                        ability: Ability::DamageShieldUsed,
+                                        expires_on_effect: Some(EffectQuery::TurnEnd {
+                                            player_id: None,
+                                        }),
+                                    },
+                                },
+                            ])
                         })
                             as Pin<
                                 Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>,
                             >
                     },
                 ),
-                multitrigger: false,
+                multitrigger: true,
             },
         }])
     }

@@ -66,9 +66,8 @@
   2. Define a struct with a `card_base: CardBase` field and implement the `Card` trait.
   3. Register the module in `mod.rs` and with `#[linkme::distributed_slice]`.
   4. Try and use existing card mechanics instead of implement ad-hoc effects. Check `src/lib/effect.rs` for existing effects and `documents/rulebook.md` for game mechanics.
-- **Card metadata source:**
-  - Check `documents/Sorcery Contested Realm Product Tracker - Beta.csv` in the repo root before coding a Beta card. Use the row for the card name to confirm cost, thresholds, type, subtype, rarity, and Curiosa slug.
-  - Check `documents/rulebook.md` in the repo root for rules of the game and card mechanics before coding any card.
+  5. Check `documents/Sorcery Contested Realm Product Tracker - Beta.csv` in the repo root before coding a Beta card. Use the row for the card name to confirm cost, thresholds, type, subtype, rarity, and Curiosa slug. Also, and most important of all, make sure the card description is the one in the CSV.
+  6. Check `documents/rulebook.md` in the repo root for rules of the game and card mechanics before coding any card.
 - **Effects:**
   - All game actions are represented as `Effect` variants and processed by the server.
 - **Async Texture Loading:**

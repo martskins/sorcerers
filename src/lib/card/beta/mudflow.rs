@@ -17,7 +17,7 @@ pub struct Mudflow {
 impl Mudflow {
     pub const NAME: &'static str = "Mudflow";
     pub const DESCRIPTION: &'static str =
-        "At the start of your turn, you may surface or unburrow all minions at a nearby site.";
+        "At the start of your turn, surface or unburrow each minion occupying target site nearby.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

@@ -3,6 +3,7 @@ use crate::{
         Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
     },
     game::PlayerId,
+    state::{CardQuery, ContinuousEffect, State},
 };
 
 #[derive(Debug, Clone)]
@@ -13,7 +14,8 @@ pub struct PolarExplorers {
 
 impl PolarExplorers {
     pub const NAME: &'static str = "Polar Explorers";
-    pub const DESCRIPTION: &'static str = "";
+    pub const DESCRIPTION: &'static str =
+        "Allied units here can move as if the top and bottom edges of the realm were connected.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -59,6 +61,19 @@ impl Card for PolarExplorers {
     }
     fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
         Some(&mut self.unit_base)
+    }
+
+    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+        if !self.get_zone().is_in_play() {
+            return Ok(vec![]);
+        }
+
+        Ok(vec![ContinuousEffect::ConnectTopBottomEdges {
+            affected_cards: CardQuery::new()
+                .units()
+                .controlled_by(&self.get_controller_id(state))
+                .in_zone(self.get_zone()),
+        }])
     }
 }
 

@@ -16,7 +16,7 @@ pub struct LordOfUnland {
 impl LordOfUnland {
     pub const NAME: &'static str = "Lord of Unland";
     pub const DESCRIPTION: &'static str =
-        "Submerge\r \r Allied minions sharing the same body of water have +1 power.";
+        "Submerge Other allies occupying Lord of Unland's body of water have +1 power.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {

@@ -1266,6 +1266,21 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     // Returns the zones that are within the given steps of the specified zone, using this card as
     // the reference for movement capabilities.
     fn get_zones_within_steps_of(&self, state: &State, steps: u8, zone: &Zone) -> Vec<Zone> {
+        fn wrapped_neighbours(zone: &Zone) -> Vec<Zone> {
+            match zone {
+                Zone::Realm(id) if *id >= 1 && *id <= 5 => vec![Zone::Realm(id + 15)],
+                Zone::Realm(id) if *id >= 16 && *id <= 20 => vec![Zone::Realm(id - 15)],
+                _ => vec![],
+            }
+        }
+
+        let wraps_top_and_bottom = state.continuous_effects.iter().any(|ce| match ce {
+            ContinuousEffect::ConnectTopBottomEdges { affected_cards } => {
+                affected_cards.matches(self.get_id(), state)
+            }
+            _ => false,
+        });
+
         let mut visited = Vec::new();
         let mut to_visit = vec![(zone.clone(), 0)];
 
@@ -1284,6 +1299,12 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 } else {
                     for adjacent in current_zone.get_adjacent() {
                         to_visit.push((adjacent, current_step + 1));
+                    }
+
+                    if wraps_top_and_bottom {
+                        for wrapped in wrapped_neighbours(&current_zone) {
+                            to_visit.push((wrapped, current_step + 1));
+                        }
                     }
                 }
             }
@@ -1320,12 +1341,35 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         }
 
         let dealer = state.get_card(from);
+        if dealer.get_card_type() == CardType::Magic
+            && state.continuous_effects.iter().any(|ce| match ce {
+                ContinuousEffect::PreventDamageFromMagic { affected_cards } => {
+                    affected_cards.matches(self.get_id(), state)
+                }
+                _ => false,
+            })
+        {
+            return Ok(vec![]);
+        }
+
         let elements = dealer.get_elements(state)?;
         for element in elements {
             if self.has_ability(state, &Ability::TakesNoDamageFromElement(element)) {
                 return Ok(vec![]);
             }
         }
+
+        let reduced_damage = state
+            .continuous_effects
+            .iter()
+            .filter_map(|ce| match ce {
+                ContinuousEffect::ReduceDamageTaken {
+                    amount,
+                    affected_cards,
+                } if affected_cards.matches(self.get_id(), state) => Some(*amount),
+                _ => None,
+            })
+            .fold(damage, |remaining, amount| remaining.saturating_sub(amount));
 
         match self.get_card_type() {
             CardType::Minion => {
@@ -1347,13 +1391,13 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 let ub = self
                     .get_unit_base_mut()
                     .ok_or(anyhow::anyhow!("unit card has no unit base"))?;
-                ub.damage += damage;
+                ub.damage += reduced_damage;
 
                 let mut effects = vec![];
                 let attacker = state.get_card(from);
                 // Zero damage is not any damage at all (rulebook). Only apply kill conditions
                 // when actual damage was dealt.
-                if damage > 0
+                if reduced_damage > 0
                     && (ub.damage >= self.get_toughness(state).unwrap_or(0)
                         || attacker.has_ability(state, &Ability::Lethal)
                         || has_lethal_target)
@@ -1398,7 +1442,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 let ub = self
                     .get_unit_base_mut()
                     .ok_or(anyhow::anyhow!("unit card has no unit base"))?;
-                ub.damage += damage;
+                ub.damage += reduced_damage;
 
                 if ub.damage >= self.get_toughness(state).unwrap_or(0) {
                     let ab = self
@@ -1697,7 +1741,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     fn base_valid_move_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {
-        Ok(self
+        let mut zones: Vec<Zone> = self
             .get_zones_within_steps(state, self.get_steps_per_movement(state)?)
             .iter()
             .filter(|z| {
@@ -1731,7 +1775,20 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 })
             })
             .cloned()
-            .collect())
+            .collect();
+
+        for ce in &state.continuous_effects {
+            if let ContinuousEffect::RestrictMoveToZones {
+                affected_cards,
+                allowed_zones,
+            } = ce
+                && affected_cards.matches(self.get_id(), state)
+            {
+                zones.retain(|zone| allowed_zones.contains(zone));
+            }
+        }
+
+        Ok(zones)
     }
 
     // Returns the valid zones this card can move to from its current zone.
@@ -1758,9 +1815,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     && (target.is_unit() || target.is_site())
             })
             .filter(|target| {
-                // Cannot attack Unattackable or Stealth units
+                // Cannot attack Unattackable units, or Stealth units unless the attacker can see them.
                 !target.has_ability(state, &Ability::Unattackable)
-                    && !target.has_ability(state, &Ability::Stealth)
+                    && (!target.has_ability(state, &Ability::Stealth)
+                        || self.has_ability(state, &Ability::CanSeeStealthed))
             })
             .filter(|target| {
                 let target_region = target.get_region(state);
@@ -1970,6 +2028,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     // Upcasts a card to a resource provider trait object if it implements it, None otherwise.
     fn get_resource_provider(&self) -> Option<&dyn ResourceProvider> {
         None
+    }
+
+    fn provides_no_resources(&self, _state: &State) -> anyhow::Result<bool> {
+        Ok(false)
     }
 
     // Upcasts a card to a site trait object if it is a site, None otherwise.
@@ -2484,7 +2546,7 @@ pub struct SiteBase {
 
 pub trait ResourceProvider: Card {
     fn provided_mana(&self, state: &State) -> anyhow::Result<u8> {
-        if self.get_card_type() != CardType::Site {
+        if self.get_card_type() != CardType::Site || self.provides_no_resources(state)? {
             return Ok(0);
         }
 
@@ -2512,7 +2574,7 @@ pub trait ResourceProvider: Card {
     }
 
     fn provided_affinity(&self, state: &State) -> anyhow::Result<Thresholds> {
-        if self.get_card_type() != CardType::Site {
+        if self.get_card_type() != CardType::Site || self.provides_no_resources(state)? {
             return Ok(Thresholds::ZERO);
         }
 
@@ -2633,6 +2695,8 @@ pub enum Ability {
     Airborne,
     Ranged(u8),
     Stealth,
+    CanSeeStealthed,
+    DamageShieldUsed,
     Lethal,
     Movement(u8),
     Burrowing,

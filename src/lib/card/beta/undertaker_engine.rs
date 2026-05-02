@@ -1,9 +1,11 @@
 use crate::{
     card::{
-        Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
+        Ability, AbilityCounter, Card, CardBase, CardConstructor, Costs, Edition, MinionType,
+        Rarity, Region, UnitBase, Zone,
     },
     effect::Effect,
-    game::PlayerId,
+    game::{PlayerId, pick_cards},
+    query::EffectQuery,
     state::{CardQuery, State},
 };
 
@@ -15,8 +17,7 @@ pub struct UndertakerEngine {
 
 impl UndertakerEngine {
     pub const NAME: &'static str = "Undertaker Engine";
-    pub const DESCRIPTION: &'static str =
-        "At the end of your turn, toggle the region of all units here.";
+    pub const DESCRIPTION: &'static str = "At the end of your turn, you may burrow and/or unburrow any combination of artifacts and minions at this site.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -66,37 +67,69 @@ impl Card for UndertakerEngine {
 
     async fn on_turn_end(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        if state.current_player != controller_id {
+        if state.current_player != controller_id || !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }
-        if !self.get_zone().is_in_play() {
-            return Ok(vec![]);
-        }
-        let self_id = *self.get_id();
-        let effects: Vec<Effect> = CardQuery::new()
-            .units()
-            .in_zone(self.get_zone())
-            .id_not(&self_id)
-            .all(state)
-            .into_iter()
-            .map(|unit_id| {
-                let unit = state.get_card(&unit_id);
-                let new_region = if let Some(ub) = unit.get_unit_base() {
-                    if ub.region == Region::Surface {
-                        Region::Underground
-                    } else {
-                        Region::Surface
-                    }
-                } else {
-                    Region::Surface
-                };
-                Effect::SetCardRegion {
-                    card_id: unit_id,
-                    region: new_region,
-                    tap: false,
-                }
+
+        let cards_here: Vec<uuid::Uuid> = state
+            .cards
+            .iter()
+            .filter(|card| card.get_zone() == self.get_zone())
+            .filter(|card| card.is_minion() || card.is_artifact())
+            .filter(|card| {
+                matches!(
+                    card.get_region(state),
+                    Region::Surface | Region::Underground
+                )
             })
+            .map(|card| *card.get_id())
             .collect();
+        if cards_here.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let selected = pick_cards(
+            &controller_id,
+            &cards_here,
+            state,
+            "Undertaker Engine: Pick any artifacts and minions to burrow or unburrow",
+        )
+        .await?;
+
+        let mut effects = vec![];
+        for card_id in selected {
+            let card = state.get_card(&card_id);
+            let from_region = card.get_region(state).clone();
+            let to_region = if from_region == Region::Underground {
+                Region::Surface
+            } else {
+                Region::Underground
+            };
+
+            if card.is_minion()
+                && from_region == Region::Surface
+                && !card.has_ability(state, &Ability::Burrowing)
+            {
+                effects.push(Effect::AddAbilityCounter {
+                    card_id,
+                    counter: AbilityCounter {
+                        id: uuid::Uuid::new_v4(),
+                        ability: Ability::Burrowing,
+                        expires_on_effect: Some(EffectQuery::SetCardRegion {
+                            card: CardQuery::from_id(card_id),
+                            region: Some(Region::Surface),
+                        }),
+                    },
+                });
+            }
+
+            effects.push(Effect::SetCardRegion {
+                card_id,
+                region: to_region,
+                tap: false,
+            });
+        }
+
         Ok(effects)
     }
 }

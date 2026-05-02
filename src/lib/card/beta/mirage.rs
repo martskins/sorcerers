@@ -4,7 +4,7 @@ use crate::{
         SiteBase, Zone,
     },
     effect::Effect,
-    game::{PlayerId, Thresholds},
+    game::{PlayerId, Thresholds, pick_card, pick_zone, yes_or_no},
     query::ZoneQuery,
     state::{CardQuery, State},
 };
@@ -17,8 +17,7 @@ pub struct Mirage {
 
 impl Mirage {
     pub const NAME: &'static str = "Mirage";
-    pub const DESCRIPTION: &'static str =
-        "Genesis → Swap Mirage with one of your other sites in play.";
+    pub const DESCRIPTION: &'static str = "When played, you may return a site in play you own to your hand to play this site in its place.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -80,46 +79,66 @@ impl Card for Mirage {
         Some(self)
     }
 
-    async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        let controller_id = self.get_controller_id(state);
-        let mirage_zone = self.get_zone().clone();
-
-        let Some(other_site_id) = CardQuery::new()
+    async fn play_mechanic(
+        &self,
+        state: &State,
+        player_id: &PlayerId,
+    ) -> anyhow::Result<Vec<Effect>> {
+        let other_sites = CardQuery::new()
             .sites()
+            .controlled_by(player_id)
+            .in_play()
             .id_not(self.get_id())
-            .controlled_by(&controller_id)
-            .with_prompt("Mirage: Pick another site to swap with")
-            .pick(&controller_id, state, true)
+            .all(state);
+
+        if !other_sites.is_empty()
+            && yes_or_no(
+                player_id,
+                state,
+                "Mirage: Return one of your sites in play to your hand and play Mirage in its place?",
+            )
             .await?
-        else {
-            return Ok(vec![]);
-        };
+        {
+            let other_site_id = pick_card(
+                player_id,
+                &other_sites,
+                state,
+                "Mirage: Pick a site to return to your hand",
+            )
+            .await?;
+            let other_zone = state.get_card(&other_site_id).get_zone().clone();
+            return Ok(vec![
+                Effect::MoveCard {
+                    player_id: *player_id,
+                    card_id: other_site_id,
+                    from: other_zone.clone(),
+                    to: ZoneQuery::from_zone(Zone::Hand),
+                    tap: false,
+                    region: Region::Surface,
+                    through_path: None,
+                },
+                Effect::PlayCard {
+                    player_id: *player_id,
+                    card_id: *self.get_id(),
+                    zone: ZoneQuery::from_zone(other_zone),
+                },
+            ]);
+        }
 
-        let other_site = state.get_card(&other_site_id);
-        let other_zone = other_site.get_zone().clone();
-
-        Ok(vec![
-            // Move the picked site back to atlasbook
-            Effect::MoveCard {
-                player_id: controller_id,
-                card_id: other_site_id,
-                from: other_zone.clone(),
-                to: ZoneQuery::from_zone(Zone::Atlasbook),
-                tap: false,
-                region: Region::Surface,
-                through_path: None,
-            },
-            // Move Mirage to the zone the picked site occupied
-            Effect::MoveCard {
-                player_id: controller_id,
-                card_id: *self.get_id(),
-                from: mirage_zone,
-                to: ZoneQuery::from_zone(other_zone),
-                tap: false,
-                region: Region::Surface,
-                through_path: None,
-            },
-        ])
+        let zones = self.default_get_valid_play_zones(state, player_id)?;
+        let zone = pick_zone(
+            player_id,
+            &zones,
+            state,
+            false,
+            "Pick a zone to play the site",
+        )
+        .await?;
+        Ok(vec![Effect::PlayCard {
+            player_id: *player_id,
+            card_id: *self.get_id(),
+            zone: zone.into(),
+        }])
     }
 }
 

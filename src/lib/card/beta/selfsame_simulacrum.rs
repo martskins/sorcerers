@@ -2,7 +2,9 @@ use crate::{
     card::{
         Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
     },
-    game::PlayerId,
+    effect::Effect,
+    game::{PlayerId, pick_card},
+    state::{CardQuery, State},
 };
 
 #[derive(Debug, Clone)]
@@ -13,7 +15,7 @@ pub struct SelfsameSimulacrum {
 
 impl SelfsameSimulacrum {
     pub const NAME: &'static str = "Selfsame Simulacrum";
-    pub const DESCRIPTION: &'static str = "";
+    pub const DESCRIPTION: &'static str = "May be summoned as a basic copy of a nearby minion.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -59,6 +61,52 @@ impl Card for SelfsameSimulacrum {
     }
     fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
         Some(&mut self.unit_base)
+    }
+    fn set_data(&mut self, data: &Box<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
+        if let Some(unit_base) = data.downcast_ref::<UnitBase>() {
+            self.unit_base = unit_base.clone();
+            self.unit_base.damage = 0;
+            self.unit_base.tapped = false;
+            self.unit_base.carried_by = None;
+            self.unit_base.power_counters.clear();
+            self.unit_base.ability_counters.clear();
+        }
+        Ok(())
+    }
+
+    async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+        let controller_id = self.get_controller_id(state);
+        let targets = CardQuery::new()
+            .minions()
+            .near_to(self.get_zone())
+            .id_not(self.get_id())
+            .all(state);
+        if targets.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let chosen_id = pick_card(
+            &controller_id,
+            &targets,
+            state,
+            "Selfsame Simulacrum: Pick a nearby minion to copy",
+        )
+        .await?;
+        let mut copied = state
+            .get_card(&chosen_id)
+            .get_unit_base()
+            .cloned()
+            .ok_or(anyhow::anyhow!("chosen minion has no unit base"))?;
+        copied.damage = 0;
+        copied.tapped = false;
+        copied.carried_by = None;
+        copied.power_counters.clear();
+        copied.ability_counters.clear();
+
+        Ok(vec![Effect::SetCardData {
+            card_id: *self.get_id(),
+            data: Box::new(copied),
+        }])
     }
 }
 

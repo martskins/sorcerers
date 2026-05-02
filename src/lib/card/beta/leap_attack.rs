@@ -13,7 +13,7 @@ pub struct LeapAttack {
 impl LeapAttack {
     pub const NAME: &'static str = "Leap Attack";
     pub const DESCRIPTION: &'static str =
-        "An ally takes a step, then strikes each enemy at that location.";
+        "An ally may take a step, and then it strikes each enemy at its location.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -77,9 +77,10 @@ impl Card for LeapAttack {
         .await?;
 
         let leaper = state.get_card(&leaper_id);
-        let one_step_zones = leaper.get_zones_within_steps(state, 1);
-        if one_step_zones.is_empty() {
-            return Ok(vec![]);
+        let current_zone = leaper.get_zone().clone();
+        let mut one_step_zones = leaper.get_zones_within_steps(state, 1);
+        if !one_step_zones.contains(&current_zone) {
+            one_step_zones.push(current_zone.clone());
         }
 
         let dest_zone = pick_zone(
@@ -87,7 +88,7 @@ impl Card for LeapAttack {
             &one_step_zones,
             state,
             false,
-            "Leap Attack: Pick a zone to leap to",
+            "Leap Attack: Pick a zone to leap to, or pick the current zone to stay put",
         )
         .await?;
 
@@ -99,15 +100,18 @@ impl Card for LeapAttack {
             .filter(|id| state.get_card(id).get_controller_id(state) != controller_id)
             .collect();
 
-        let mut effects = vec![Effect::MoveCard {
-            player_id: controller_id,
-            card_id: leaper_id,
-            from: leaper.get_zone().clone(),
-            to: dest_zone.clone().into(),
-            tap: false,
-            region: leaper.get_region(state).clone(),
-            through_path: None,
-        }];
+        let mut effects = vec![];
+        if dest_zone != current_zone {
+            effects.push(Effect::MoveCard {
+                player_id: controller_id,
+                card_id: leaper_id,
+                from: current_zone.clone(),
+                to: dest_zone.clone().into(),
+                tap: false,
+                region: leaper.get_region(state).clone(),
+                through_path: None,
+            });
+        }
 
         for enemy_id in enemies_at_dest {
             effects.push(Effect::Strike {
