@@ -90,7 +90,13 @@ impl Card for AridDesert {
             .all(state);
         let mut effects = vec![];
         for minion in minions {
-            effects.push(Effect::take_damage(&minion, site.get_id(), 1));
+            effects.push(Effect::TakeDamage {
+                card_id: minion,
+                from: *site.get_id(),
+                damage: 1,
+                is_strike: false,
+                is_ranged: false,
+            });
         }
 
         Ok(effects)

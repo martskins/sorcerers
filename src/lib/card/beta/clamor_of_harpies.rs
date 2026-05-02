@@ -32,11 +32,13 @@ impl ActivatedAbility for ClamorOfHarpiesAction {
         match self {
             ClamorOfHarpiesAction::Strike => {
                 let target_card = state.get_card(card_id);
-                Ok(vec![Effect::take_damage(
-                    target_card.get_id(),
-                    card_id,
-                    state.get_card(card_id).get_power(state)?.unwrap_or(0),
-                )])
+                Ok(vec![Effect::TakeDamage {
+                    card_id: *target_card.get_id(),
+                    from: *card_id,
+                    damage: state.get_card(card_id).get_power(state)?.unwrap_or(0),
+                    is_strike: true,
+                    is_ranged: false,
+                }])
             }
             ClamorOfHarpiesAction::DoNotStrike => Ok(vec![]),
         }

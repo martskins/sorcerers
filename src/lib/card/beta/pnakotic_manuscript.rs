@@ -1,5 +1,8 @@
 use crate::{
-    card::{AdditionalCost, Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Region, Zone},
+    card::{
+        AdditionalCost, Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor,
+        Cost, Costs, Edition, Rarity, Region, Zone,
+    },
     effect::Effect,
     game::{ActivatedAbility, PlayerId},
     state::State,
@@ -32,12 +35,16 @@ impl ActivatedAbility for ReadManuscript {
             None => return Ok(vec![]),
         };
         Ok(vec![
-            Effect::DrawSpell { player_id: controller_id, count: 1 },
+            Effect::DrawSpell {
+                player_id: controller_id,
+                count: 1,
+            },
             Effect::TakeDamage {
                 card_id: bearer_id,
                 from: *card_id,
                 damage: 2,
                 is_strike: false,
+                is_ranged: false,
             },
         ])
     }
@@ -80,13 +87,27 @@ impl Artifact for PnakoticManuscript {}
 
 #[async_trait::async_trait]
 impl Card for PnakoticManuscript {
-    fn get_name(&self) -> &str { Self::NAME }
-    fn get_description(&self) -> &str { Self::DESCRIPTION }
-    fn get_base_mut(&mut self) -> &mut CardBase { &mut self.card_base }
-    fn get_base(&self) -> &CardBase { &self.card_base }
-    fn get_artifact_base(&self) -> Option<&ArtifactBase> { Some(&self.artifact_base) }
-    fn get_artifact_base_mut(&mut self) -> Option<&mut ArtifactBase> { Some(&mut self.artifact_base) }
-    fn get_artifact(&self) -> Option<&dyn Artifact> { Some(self) }
+    fn get_name(&self) -> &str {
+        Self::NAME
+    }
+    fn get_description(&self) -> &str {
+        Self::DESCRIPTION
+    }
+    fn get_base_mut(&mut self) -> &mut CardBase {
+        &mut self.card_base
+    }
+    fn get_base(&self) -> &CardBase {
+        &self.card_base
+    }
+    fn get_artifact_base(&self) -> Option<&ArtifactBase> {
+        Some(&self.artifact_base)
+    }
+    fn get_artifact_base_mut(&mut self) -> Option<&mut ArtifactBase> {
+        Some(&mut self.artifact_base)
+    }
+    fn get_artifact(&self) -> Option<&dyn Artifact> {
+        Some(self)
+    }
 
     fn get_additional_activated_abilities(
         &self,
@@ -97,6 +118,7 @@ impl Card for PnakoticManuscript {
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, CardConstructor) = (PnakoticManuscript::NAME, |owner_id: PlayerId| {
-    Box::new(PnakoticManuscript::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, CardConstructor) =
+    (PnakoticManuscript::NAME, |owner_id: PlayerId| {
+        Box::new(PnakoticManuscript::new(owner_id))
+    });

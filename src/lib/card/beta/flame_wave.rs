@@ -74,6 +74,7 @@ impl Card for FlameWave {
                 from: spell_id,
                 damage: 3,
                 is_strike: false,
+                is_ranged: false,
             })
             .collect();
         Ok(effects)

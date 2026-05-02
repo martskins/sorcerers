@@ -76,6 +76,7 @@ impl Card for PactWithTheDevil {
                 from: *caster_id,
                 damage: half_hp,
                 is_strike: false,
+                is_ranged: false,
             },
             Effect::DrawCard {
                 player_id: controller_id,

@@ -89,11 +89,13 @@ impl Card for QuarrelsomeKobolds {
 
         let prompt = "Quarrelsome Kobolds: Pick a unit to deal damage to";
         let picked_unit = pick_card(self.get_controller_id(state), &units, state, prompt).await?;
-        Ok(vec![Effect::take_damage(
-            &picked_unit,
-            self.get_id(),
-            self.get_power(state)?.unwrap_or(0),
-        )])
+        Ok(vec![Effect::TakeDamage {
+            card_id: picked_unit,
+            from: *self.get_id(),
+            damage: self.get_power(state)?.unwrap_or(0),
+            is_strike: false,
+            is_ranged: false,
+        }])
     }
 }
 

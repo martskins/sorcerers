@@ -70,6 +70,7 @@ impl Card for MinorExplosion {
                 from: *caster_id,
                 damage: 3,
                 is_strike: false,
+                is_ranged: false,
             })
             .collect())
     }

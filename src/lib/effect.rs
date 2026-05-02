@@ -173,6 +173,7 @@ pub enum Effect {
         from: uuid::Uuid,
         damage: u16,
         is_strike: bool,
+        is_ranged: bool,
     },
     BanishCard {
         card_id: uuid::Uuid,
@@ -250,21 +251,13 @@ impl Effect {
         }
     }
 
-    pub fn take_damage(card_id: &uuid::Uuid, from: &uuid::Uuid, damage: u16) -> Self {
-        Effect::TakeDamage {
-            card_id: *card_id,
-            from: *from,
-            damage,
-            is_strike: false,
-        }
-    }
-
     pub fn strike_damage(card_id: &uuid::Uuid, from: &uuid::Uuid, damage: u16) -> Self {
         Effect::TakeDamage {
             card_id: *card_id,
             from: *from,
             damage,
             is_strike: true,
+            is_ranged: false,
         }
     }
 
@@ -962,6 +955,7 @@ impl Effect {
                             from: *shooter,
                             damage: *damage,
                             is_strike: false,
+                            is_ranged: false,
                         });
                         if let Some(splash_damage) = splash_damage {
                             let splash_effects = CardQuery::new()
@@ -975,6 +969,7 @@ impl Effect {
                                     from: *shooter,
                                     damage: *splash_damage,
                                     is_strike: false,
+                                    is_ranged: false,
                                 })
                                 .collect::<Vec<_>>();
                             effects.extend(splash_effects);
@@ -1431,6 +1426,7 @@ impl Effect {
                         .get_power(&snapshot)?
                         .ok_or(anyhow::anyhow!("attacker has no power"))?,
                     is_strike: true,
+                    is_ranged: false,
                 }];
 
                 effects.extend(defender.on_defend(state, striker_id)?.into_iter());
@@ -1479,6 +1475,7 @@ impl Effect {
                     from: *first_striker_id,
                     damage: strike_damage,
                     is_strike: false,
+                    is_ranged: false,
                 });
 
                 let mut snapshot = state.snapshot();
@@ -1515,6 +1512,7 @@ impl Effect {
                         from: *from,
                         damage: *damage,
                         is_strike: false,
+                        is_ranged: false,
                     });
                 }
             }
@@ -1531,6 +1529,7 @@ impl Effect {
                         from: *from,
                         damage: *damage,
                         is_strike: false,
+                        is_ranged: false,
                     });
                 }
             }
@@ -1539,6 +1538,7 @@ impl Effect {
                 damage,
                 from,
                 is_strike,
+                is_ranged,
             } => {
                 let snapshot = state.snapshot();
                 // Check if this card has DoubleDamageTaken applied to it.
@@ -1548,7 +1548,8 @@ impl Effect {
                 });
                 let multiplier: u16 = if takes_double_damage { 2 } else { 1 };
                 let card = state.get_card_mut(card_id);
-                let effects = card.on_take_damage(&snapshot, from, *damage * multiplier)?;
+                let effects =
+                    card.on_take_damage(&snapshot, from, *damage * multiplier, *is_ranged)?;
                 state.queue(effects);
             }
             Effect::BanishCard { card_id, .. } => {
@@ -1653,6 +1654,7 @@ impl Effect {
                         .get_power(&snapshot)?
                         .ok_or(anyhow::anyhow!("attacker has no power"))?,
                     is_strike: true,
+                    is_ranged: true,
                 }];
                 effects.extend(attacker.after_ranged_attack(state).await?);
                 effects.extend(defender.on_defend(state, striker_id)?.into_iter());

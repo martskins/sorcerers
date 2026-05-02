@@ -116,6 +116,7 @@ impl Card for Wildfire {
                 from: *self.get_id(),
                 damage: 3,
                 is_strike: false,
+                is_ranged: false,
             })
             .collect::<Vec<Effect>>();
 

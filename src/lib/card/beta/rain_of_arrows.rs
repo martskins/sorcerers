@@ -60,7 +60,13 @@ impl Card for RainOfArrows {
             .in_region(&Region::Surface)
             .all(state)
             .into_iter()
-            .map(|minion_id| Effect::take_damage(&minion_id, caster_id, 1))
+            .map(|minion_id| Effect::TakeDamage {
+                card_id: minion_id,
+                from: *caster_id,
+                damage: 1,
+                is_strike: false,
+                is_ranged: false,
+            })
             .collect();
         Ok(effects)
     }

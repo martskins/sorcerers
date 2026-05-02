@@ -77,8 +77,9 @@ impl Card for AccursedAlbatross {
         state: &State,
         from: &uuid::Uuid,
         damage: u16,
+        is_ranged: bool,
     ) -> anyhow::Result<Vec<Effect>> {
-        let damage_effects = self.base_take_damage(state, from, damage)?;
+        let damage_effects = self.base_take_damage(state, from, damage, is_ranged)?;
         let mut was_killed = false;
         for effect in damage_effects {
             if matches!(effect, Effect::BuryCard { .. }) {

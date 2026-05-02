@@ -124,6 +124,7 @@ impl Card for MordricDruids {
                                 from: druids_id,
                                 damage: *damage,
                                 is_strike: false,
+                                is_ranged: false,
                             }])
                         })
                             as Pin<

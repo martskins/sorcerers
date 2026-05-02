@@ -50,6 +50,7 @@ impl ActivatedAbility for RollBoulder {
                 from: *boulder.get_id(),
                 damage: 4,
                 is_strike: false,
+                is_ranged: false,
             });
         }
 
@@ -70,6 +71,7 @@ impl ActivatedAbility for RollBoulder {
                     from: *boulder.get_id(),
                     damage: 4,
                     is_strike: false,
+                    is_ranged: false,
                 });
             }
 

@@ -63,6 +63,7 @@ impl ActivatedAbility for TapToDealDamage {
                 from: bearer_id,
                 damage: 3,
                 is_strike: false,
+                is_ranged: false,
             }]);
         }
 

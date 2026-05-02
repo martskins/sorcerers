@@ -65,6 +65,7 @@ impl ActivatedAbility for ShootPayload {
                 damage: mana_cost.into(),
                 from: *card_id,
                 is_strike: false,
+                is_ranged: false,
             })
             .collect())
     }

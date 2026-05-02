@@ -80,6 +80,7 @@ impl Card for MajorExplosion {
                         from: *self.get_id(),
                         damage: dmg,
                         is_strike: false,
+                        is_ranged: false,
                     });
                 }
             }

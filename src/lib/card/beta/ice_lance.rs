@@ -82,6 +82,7 @@ impl Card for IceLance {
                         from: *caster_id,
                         damage: dmg,
                         is_strike: false,
+                        is_ranged: false,
                     });
                 }
             }

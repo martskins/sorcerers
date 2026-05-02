@@ -78,6 +78,7 @@ impl Card for CriticalStrike {
                                 from,
                                 damage,
                                 is_strike,
+                                is_ranged,
                             } = effect
                             {
                                 Ok(vec![Effect::TakeDamage {
@@ -85,6 +86,7 @@ impl Card for CriticalStrike {
                                     from: *from,
                                     damage: *damage,
                                     is_strike: *is_strike,
+                                    is_ranged: *is_ranged,
                                 }])
                             } else {
                                 Ok(vec![])

@@ -76,6 +76,7 @@ impl Card for SlingPixies {
         state: &State,
         from: &uuid::Uuid,
         damage: u16,
+        is_ranged: bool,
     ) -> anyhow::Result<Vec<Effect>> {
         let dealer = state.get_card(from);
         if dealer.get_power(state)?.unwrap_or(0) >= 4 {
@@ -83,7 +84,7 @@ impl Card for SlingPixies {
             return Ok(vec![]);
         }
 
-        self.base_take_damage(state, from, damage)
+        self.base_take_damage(state, from, damage, is_ranged)
     }
 }
 

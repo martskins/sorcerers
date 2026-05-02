@@ -75,6 +75,7 @@ impl Card for AskelonPhoenix {
         state: &State,
         from: &uuid::Uuid,
         damage: u16,
+        is_ranged: bool,
     ) -> anyhow::Result<Vec<Effect>> {
         let attacker = state.get_card(from);
         if attacker.get_elements(state)?.contains(&Element::Fire) {
@@ -84,7 +85,7 @@ impl Card for AskelonPhoenix {
             }]);
         }
 
-        let effects = self.base_take_damage(state, from, damage)?;
+        let effects = self.base_take_damage(state, from, damage, is_ranged)?;
         Ok(effects)
     }
 }

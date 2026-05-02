@@ -63,6 +63,7 @@ impl ActivatedAbility for HarpoonPull {
                 from: *card_id,
                 damage: 1,
                 is_strike: false,
+                is_ranged: false,
             },
             Effect::MoveCard {
                 player_id: *player_id,

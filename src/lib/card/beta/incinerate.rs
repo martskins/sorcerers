@@ -86,6 +86,7 @@ impl Card for Incinerate {
                 from: *self.get_id(),
                 damage: 4,
                 is_strike: false,
+                is_ranged: false,
             })
             .collect())
     }

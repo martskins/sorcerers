@@ -39,6 +39,7 @@ impl ActivatedAbility for UseAbility {
                     from: *card.get_id(),
                     damage: 3,
                     is_strike: false,
+                    is_ranged: false,
                 });
             }
         }

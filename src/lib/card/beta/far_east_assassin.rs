@@ -81,6 +81,7 @@ impl ActivatedAbility for ThrowArtifactAbility {
                 from: *card_id,
                 damage,
                 is_strike: false,
+                is_ranged: false,
             },
             Effect::MoveCard {
                 player_id: *player_id,

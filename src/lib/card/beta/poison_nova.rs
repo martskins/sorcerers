@@ -73,6 +73,7 @@ impl Card for PoisonNova {
                         from: *caster_id,
                         damage: 1,
                         is_strike: false,
+                        is_ranged: false,
                     },
                     Effect::KillMinion {
                         card_id,

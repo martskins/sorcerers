@@ -74,7 +74,13 @@ impl Card for ConeOfFlame {
             if let Some(zone) = zone {
                 let units = CardQuery::new().units().in_zone(&zone).all(state);
                 for unit in units {
-                    effects.push(Effect::take_damage(&unit, self.get_id(), dmg));
+                    effects.push(Effect::TakeDamage {
+                        card_id: unit,
+                        from: *self.get_id(),
+                        damage: dmg,
+                        is_strike: false,
+                        is_ranged: false,
+                    });
                 }
             }
         }

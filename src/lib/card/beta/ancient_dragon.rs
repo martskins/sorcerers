@@ -43,7 +43,13 @@ impl ActivatedAbility for AncientDragonAbility {
             .all(state);
         let mut effects = vec![];
         for unit_id in unit_ids {
-            effects.push(Effect::take_damage(&unit_id, card_id, 4));
+            effects.push(Effect::TakeDamage {
+                card_id: unit_id,
+                from: *card_id,
+                damage: 4,
+                is_strike: false,
+                is_ranged: false,
+            });
         }
 
         Ok(effects)

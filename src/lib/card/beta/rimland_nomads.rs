@@ -74,6 +74,7 @@ impl Card for RimlandNomads {
         state: &State,
         from: &uuid::Uuid,
         damage: u16,
+        is_ranged: bool,
     ) -> anyhow::Result<Vec<Effect>> {
         let dealer = state.get_card(from);
         let dealer_is_desert = dealer
@@ -85,7 +86,7 @@ impl Card for RimlandNomads {
             return Ok(vec![]);
         }
 
-        self.base_take_damage(state, from, damage)
+        self.base_take_damage(state, from, damage, is_ranged)
     }
 }
 

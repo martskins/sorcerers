@@ -86,6 +86,7 @@ impl Card for SacredScarabs {
                 from: *self.get_id(),
                 damage: 3,
                 is_strike: false,
+                is_ranged: false,
             });
         }
         effects

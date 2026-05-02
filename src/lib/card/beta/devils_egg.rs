@@ -92,6 +92,7 @@ impl Card for DevilSEgg {
             from: *self.get_id(),
             damage: 1,
             is_strike: false,
+            is_ranged: false,
         }])
     }
 }

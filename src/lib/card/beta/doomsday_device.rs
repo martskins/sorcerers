@@ -116,6 +116,7 @@ impl Card for DoomsdayDevice {
                     from: self_id,
                     damage: 6,
                     is_strike: false,
+                    is_ranged: false,
                 })
                 .collect();
 

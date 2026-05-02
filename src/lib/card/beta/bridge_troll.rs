@@ -109,6 +109,7 @@ impl Card for BridgeTroll {
                 from: *self.get_id(),
                 damage: power,
                 is_strike: false,
+                is_ranged: false,
             });
         }
 

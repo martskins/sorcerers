@@ -77,6 +77,7 @@ impl Card for ChainLightning {
                 from: *self.get_id(),
                 damage: 2,
                 is_strike: false,
+                is_ranged: false,
             };
 
             // apply the effect the the local_state to keep track of the updated zones

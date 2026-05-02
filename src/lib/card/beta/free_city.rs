@@ -71,6 +71,7 @@ impl ActivatedAbility for FreeCityAttack {
                 from: *card_id,
                 damage: 3,
                 is_strike: false,
+                is_ranged: false,
             },
             Effect::SetCardData {
                 card_id: *card_id,

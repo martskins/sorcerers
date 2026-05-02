@@ -1245,6 +1245,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 from: *self.get_id(),
                 damage: power,
                 is_strike: false,
+                is_ranged: false,
             }]);
         }
 
@@ -1312,7 +1313,20 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         state: &State,
         from: &uuid::Uuid,
         damage: u16,
+        is_ranged: bool,
     ) -> anyhow::Result<Vec<Effect>> {
+        if self.has_ability(state, &Ability::TakesNoDamageFromRanged) && is_ranged {
+            return Ok(vec![]);
+        }
+
+        let dealer = state.get_card(from);
+        let elements = dealer.get_elements(state)?;
+        for element in elements {
+            if self.has_ability(state, &Ability::TakesNoDamageFromElement(element)) {
+                return Ok(vec![]);
+            }
+        }
+
         match self.get_card_type() {
             CardType::Minion => {
                 // Check LethalTarget before the mutable borrow of unit_base.
@@ -1419,6 +1433,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     from: *from,
                     damage,
                     is_strike: false,
+                    is_ranged: false,
                 }])
             }
             _ => Ok(vec![]),
@@ -2116,8 +2131,9 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         state: &State,
         from: &uuid::Uuid,
         damage: u16,
+        is_ranged: bool,
     ) -> anyhow::Result<Vec<Effect>> {
-        self.base_take_damage(state, from, damage)
+        self.base_take_damage(state, from, damage, is_ranged)
     }
 
     async fn on_turn_start(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {

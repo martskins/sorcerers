@@ -1298,6 +1298,7 @@ impl ActivatedAbility for UnitAction {
                                         from: *card_id,
                                         damage,
                                         is_strike: false,
+                                        is_ranged: false,
                                     });
 
                                     let defender = state.get_card(&defender_id);

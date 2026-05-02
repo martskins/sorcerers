@@ -69,7 +69,13 @@ impl Card for Immolation {
             return Ok(vec![]);
         };
 
-        Ok(vec![Effect::take_damage(&target_id, caster_id, 7)])
+        Ok(vec![Effect::TakeDamage {
+            card_id: target_id,
+            from: *caster_id,
+            damage: 7,
+            is_strike: false,
+            is_ranged: false,
+        }])
     }
 }
 

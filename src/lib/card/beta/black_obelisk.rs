@@ -109,6 +109,7 @@ impl Card for BlackObelisk {
             from: *site.get_id(),
             damage: 2,
             is_strike: false,
+            is_ranged: false,
         }])
     }
 }

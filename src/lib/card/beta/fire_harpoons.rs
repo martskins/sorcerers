@@ -103,6 +103,7 @@ impl Card for FireHarpoons {
                 from: *caster_id,
                 damage: 1,
                 is_strike: false,
+                is_ranged: false,
             },
             Effect::MoveCard {
                 player_id: controller_id,
