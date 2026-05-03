@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
+        Card, CardBase, CardBaseMethods, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
     },
     effect::Effect,
     game::PlayerId,
@@ -76,7 +76,7 @@ impl Card for SeirawanHydra {
 
         let survived = !effects
             .iter()
-            .any(|effect| matches!(effect, Effect::KillMinion { card_id, .. } if *card_id == *self.get_id()));
+            .any(|effect| matches!(effect, Effect::KillMinion { card_id, .. } if card_id == self.get_id()));
         if survived && damage_after > damage_before {
             effects.push(Effect::Heal {
                 card_id: *self.get_id(),

@@ -235,14 +235,7 @@ impl Card for Geomancer {
         Some(&mut self.avatar_base)
     }
 
-    fn get_additional_activated_abilities(
-        &self,
-        _state: &State,
-    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
-        Ok(vec![Box::new(GeomancerAbility::ReplaceRubble)])
-    }
-
-    fn base_avatar_activated_abilities(
+    fn get_activated_abilities(
         &self,
         _state: &State,
     ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {

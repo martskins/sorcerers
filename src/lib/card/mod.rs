@@ -1326,177 +1326,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         self.get_zones_within_steps_of(state, steps, self.get_zone())
     }
 
-    // Base take damage behaviour for cards. This method MUST NOT BE OVERRIDEN by specific card
-    // types. Instead, specific card types should override `on_take_damage`, and can use
-    // base_take_damage to get the default behaviour.
-    fn base_take_damage(
-        &mut self,
-        state: &State,
-        from: &uuid::Uuid,
-        damage: u16,
-        is_ranged: bool,
-    ) -> anyhow::Result<Vec<Effect>> {
-        if self.has_ability(state, &Ability::TakesNoDamageFromRangedStrikes) && is_ranged {
-            return Ok(vec![]);
-        }
-
-        let dealer = state.get_card(from);
-        if dealer.get_card_type() == CardType::Magic
-            && state.continuous_effects.iter().any(|ce| match ce {
-                ContinuousEffect::PreventDamageFromMagic { affected_cards } => {
-                    affected_cards.matches(self.get_id(), state)
-                }
-                _ => false,
-            })
-        {
-            return Ok(vec![]);
-        }
-
-        let elements = dealer.get_elements(state)?;
-        for element in elements {
-            if self.has_ability(state, &Ability::TakesNoDamageFromElement(element)) {
-                return Ok(vec![]);
-            }
-        }
-
-        let reduced_damage = state
-            .continuous_effects
-            .iter()
-            .filter_map(|ce| match ce {
-                ContinuousEffect::ReduceDamageTaken {
-                    amount,
-                    affected_cards,
-                } if affected_cards.matches(self.get_id(), state) => Some(*amount),
-                _ => None,
-            })
-            .fold(damage, |remaining, amount| remaining.saturating_sub(amount));
-
-        match self.get_card_type() {
-            CardType::Minion => {
-                // Check LethalTarget before the mutable borrow of unit_base.
-                let has_lethal_target = self.get_unit_base().is_some_and(|ub| {
-                    ub.abilities.contains(&Ability::LethalTarget)
-                        || ub
-                            .ability_counters
-                            .iter()
-                            .any(|c| c.ability == Ability::LethalTarget)
-                }) || state.continuous_effects.iter().any(|ce| match ce {
-                    ContinuousEffect::GrantAbility {
-                        ability: Ability::LethalTarget,
-                        affected_cards,
-                    } => affected_cards.matches(self.get_id(), state),
-                    _ => false,
-                });
-
-                let ub = self
-                    .get_unit_base_mut()
-                    .ok_or(anyhow::anyhow!("unit card has no unit base"))?;
-                ub.damage += reduced_damage;
-
-                let mut effects = vec![];
-                let attacker = state.get_card(from);
-                // Zero damage is not any damage at all (rulebook). Only apply kill conditions
-                // when actual damage was dealt.
-                if reduced_damage > 0
-                    && (ub.damage >= self.get_toughness(state).unwrap_or(0)
-                        || attacker.has_ability(state, &Ability::Lethal)
-                        || has_lethal_target)
-                {
-                    effects.push(Effect::KillMinion {
-                        card_id: *self.get_id(),
-                        killer_id: *from,
-                    });
-                }
-
-                // Lifesteal: if the defender is a unit, heal the attacker's controller.
-                let defender = state.get_card(self.get_id());
-                if attacker.has_ability(state, &Ability::Lifesteal) && defender.is_unit() {
-                    let controller_id = attacker.get_controller_id(state);
-                    if let Ok(avatar_id) = state.get_player_avatar_id(&controller_id) {
-                        let heal = attacker.get_power(state)?.unwrap_or(0);
-                        if heal > 0 {
-                            effects.push(Effect::Heal {
-                                card_id: avatar_id,
-                                amount: heal,
-                            });
-                        }
-                    }
-                }
-
-                Ok(effects)
-            }
-            CardType::Avatar => {
-                let ab = self
-                    .get_avatar_base()
-                    .ok_or(anyhow::anyhow!("avatar card has no avatar base"))?;
-                if ab.deaths_door && !ab.can_die {
-                    return Ok(vec![]);
-                }
-
-                if ab.deaths_door && ab.can_die {
-                    return Ok(vec![Effect::PlayerLost {
-                        player_id: self.get_controller_id(state),
-                    }]);
-                }
-
-                let ub = self
-                    .get_unit_base_mut()
-                    .ok_or(anyhow::anyhow!("unit card has no unit base"))?;
-                ub.damage += reduced_damage;
-
-                if ub.damage >= self.get_toughness(state).unwrap_or(0) {
-                    let ab = self
-                        .get_avatar_base_mut()
-                        .ok_or(anyhow::anyhow!("avatar card has no avatar base"))?;
-                    ab.deaths_door = true;
-                }
-
-                let attacker = state.get_card(from);
-                let mut effects = vec![];
-                // Lifesteal: if the defender is a unit, heal the attacker's controller.
-                let defender = state.get_card(self.get_id());
-                if attacker.has_ability(state, &Ability::Lifesteal) && defender.is_unit() {
-                    let controller_id = attacker.get_controller_id(state);
-                    if let Ok(avatar_id) = state.get_player_avatar_id(&controller_id) {
-                        let heal = attacker.get_power(state)?.unwrap_or(0);
-                        if heal > 0 {
-                            effects.push(Effect::Heal {
-                                card_id: avatar_id,
-                                amount: heal,
-                            });
-                        }
-                    }
-                }
-
-                Ok(effects)
-            }
-            CardType::Site => {
-                let avatar_id = state.get_player_avatar_id(&self.get_controller_id(state))?;
-                Ok(vec![Effect::TakeDamage {
-                    card_id: avatar_id,
-                    from: *from,
-                    damage,
-                    is_strike: false,
-                    is_ranged: false,
-                }])
-            }
-            _ => Ok(vec![]),
-        }
-    }
-
-    // Base on-summon behaviour for site cards. This method MUST NOT BE OVERRIDEN by specific card
-    // implementations. Instead, specific card types should override `on_summon`, and can use
-    // base_site_on_summon to get the default behaviour.
-    fn base_site_on_summon(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        let site_base = self
-            .get_site()
-            .ok_or(anyhow::anyhow!("site card has no site base"))?;
-        Ok(vec![Effect::AddMana {
-            player_id: *self.get_owner_id(),
-            mana: site_base.provided_mana(state)?,
-        }])
-    }
-
     fn default_get_valid_play_zones(
         &self,
         state: &State,
@@ -1740,58 +1569,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(extra_steps + 1)
     }
 
-    fn base_valid_move_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {
-        let mut zones: Vec<Zone> = self
-            .get_zones_within_steps(state, self.get_steps_per_movement(state)?)
-            .iter()
-            .filter(|z| {
-                // If the card is not a unit, it might be an aura, in which case the result of
-                // get_zones_within_steps should be returned as is.
-                if !self.is_unit() {
-                    return true;
-                }
-
-                if self.has_ability(state, &Ability::Voidwalk) {
-                    return true;
-                }
-
-                // Oversized units may only move to intersection zones where all 4 sub-zones have sites.
-                if self.is_oversized(state) {
-                    return match z {
-                        Zone::Intersection(sqs) => sqs
-                            .iter()
-                            .all(|sq| Zone::Realm(*sq).get_site(state).is_some()),
-                        _ => false,
-                    };
-                }
-
-                z.get_site(state).is_some_and(|c| {
-                    c.can_be_entered_by(
-                        self.get_id(),
-                        self.get_zone(),
-                        self.get_region(state),
-                        state,
-                    )
-                })
-            })
-            .cloned()
-            .collect();
-
-        for ce in &state.continuous_effects {
-            if let ContinuousEffect::RestrictMoveToZones {
-                affected_cards,
-                allowed_zones,
-            } = ce
-                && affected_cards.matches(self.get_id(), state)
-            {
-                zones.retain(|zone| allowed_zones.contains(zone));
-            }
-        }
-
-        Ok(zones)
-    }
-
-    // Returns the valid zones this card can move to from its current zone.
     fn get_valid_move_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {
         self.base_valid_move_zones(state)
     }
@@ -1893,68 +1670,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(self.base_get_abilities(state))
     }
 
-    fn base_get_abilities(&self, state: &State) -> Vec<Ability> {
-        match self.get_unit_base() {
-            Some(base) => {
-                let mut modifiers = base.abilities.clone();
-                for counter in &base.ability_counters {
-                    modifiers.push(counter.ability.clone());
-                }
-
-                for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
-                    if card.is_flooded_site(state) {
-                        continue;
-                    }
-                    let mods = card.area_modifiers(state);
-                    if let Some(mods) = mods.grants_abilities.get(self.get_id()) {
-                        modifiers.extend(mods.clone());
-                    }
-                }
-
-                if let Some(bearer_id) = self.get_bearer_id().ok().flatten() {
-                    let bearer = state.get_card(&bearer_id);
-                    for ability in [
-                        Ability::Airborne,
-                        Ability::Burrowing,
-                        Ability::Submerge,
-                        Ability::Voidwalk,
-                    ] {
-                        if bearer.has_ability(state, &ability) {
-                            modifiers.push(ability);
-                        }
-                    }
-                }
-
-                for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
-                    if card.is_flooded_site(state) {
-                        continue;
-                    }
-                    let mods = card.area_modifiers(state);
-                    if let Some(mods) = mods.removes_abilities.get(self.get_id()) {
-                        for modif in mods {
-                            modifiers.retain(|m| m != modif);
-                        }
-                    }
-                }
-
-                for ce in &state.continuous_effects {
-                    match ce {
-                        ContinuousEffect::GrantAbility {
-                            ability,
-                            affected_cards,
-                        } if affected_cards.matches(self.get_id(), state) => {
-                            modifiers.push(ability.clone())
-                        }
-                        _ => {}
-                    }
-                }
-
-                modifiers
-            }
-            None => vec![],
-        }
-    }
-
     fn has_attachments(&self, state: &State) -> anyhow::Result<bool> {
         for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
             if card.get_bearer_id()? == Some(*self.get_id()) {
@@ -1963,43 +1678,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         }
 
         Ok(false)
-    }
-
-    fn base_get_power(&self, state: &State) -> Option<u16> {
-        match self.get_unit_base() {
-            Some(base) => {
-                let mut power = base.power;
-                for counter in &base.power_counters {
-                    power = power.saturating_add_signed(counter.power);
-                }
-
-                for we in &state.continuous_effects {
-                    if let ContinuousEffect::ModifyPower {
-                        power_diff,
-                        affected_cards,
-                    } = we
-                        && affected_cards.matches(self.get_id(), state)
-                    {
-                        power = power.saturating_add_signed(*power_diff);
-                    }
-                }
-
-                let power_counters: i16 = state
-                    .cards
-                    .iter()
-                    .filter(|c| c.get_zone().is_in_play())
-                    .filter(|c| !c.is_flooded_site(state))
-                    .map(|c| c.area_modifiers(state))
-                    .filter_map(|mods| mods.grants_counters.get(self.get_id()).cloned())
-                    .flatten()
-                    .map(|counter| counter.power)
-                    .sum();
-                power = power.saturating_add_signed(power_counters);
-
-                Some(power)
-            }
-            None => None,
-        }
     }
 
     fn get_power(&self, state: &State) -> anyhow::Result<Option<u16>> {
@@ -2324,120 +2002,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         _to: &Region,
     ) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![])
-    }
-
-    fn base_avatar_activated_abilities(
-        &self,
-        state: &State,
-    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
-        let mut activated_abilities: Vec<Box<dyn ActivatedAbility>> =
-            self.base_unit_activated_abilities(state)?;
-        activated_abilities.push(Box::new(AvatarAction::DrawSite));
-        if state
-            .cards
-            .iter()
-            .filter(|c| c.get_controller_id(state) == self.get_controller_id(state))
-            .filter(|c| c.is_site())
-            .filter(|c| matches!(c.get_zone(), Zone::Hand))
-            .count()
-            > 0
-        {
-            activated_abilities.push(Box::new(AvatarAction::PlaySite));
-        }
-
-        for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
-            let mods = card.area_modifiers(state);
-            if card.is_flooded_site(state) {
-                continue;
-            }
-            if let Some(mods) = mods.grants_activated_abilities.get(self.get_id()) {
-                activated_abilities.extend(mods.clone());
-            }
-        }
-
-        Ok(activated_abilities)
-    }
-
-    fn base_unit_activated_abilities(
-        &self,
-        state: &State,
-    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
-        let mut activated_abilities: Vec<Box<dyn ActivatedAbility>> =
-            vec![Box::new(UnitAction::Attack), Box::new(UnitAction::Move)];
-        if self.is_ranged(state)? {
-            activated_abilities.push(Box::new(UnitAction::RangedAttack));
-        }
-
-        if let Some(site) = self.get_zone().get_site(state) {
-            if self.has_ability(state, &Ability::Burrowing) && site.is_land_site(state)? {
-                if self.get_region(state) == &Region::Surface {
-                    activated_abilities.push(Box::new(UnitAction::Burrow));
-                } else {
-                    activated_abilities.push(Box::new(UnitAction::Surface));
-                }
-            }
-
-            if self.has_ability(state, &Ability::Submerge) && site.is_water_site(state)? {
-                if self.get_region(state) == &Region::Surface {
-                    activated_abilities.push(Box::new(UnitAction::Submerge));
-                } else {
-                    activated_abilities.push(Box::new(UnitAction::Surface));
-                }
-            }
-        }
-
-        for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
-            let mods = card.area_modifiers(state);
-            if card.is_flooded_site(state) {
-                continue;
-            }
-            if let Some(mods) = mods.grants_activated_abilities.get(self.get_id()) {
-                activated_abilities.extend(mods.clone());
-            }
-        }
-
-        let unborne_artifacts: Vec<(uuid::Uuid, String)> = CardQuery::new()
-            .artifacts()
-            .in_zone(self.get_zone())
-            .in_region(self.get_region(state))
-            .iter(state)
-            .filter_map(|c| c.get_artifact())
-            .filter(|c| c.get_bearer().unwrap_or_default().is_none())
-            .map(|c| (*c.get_id(), c.get_name().to_string()))
-            .collect();
-        for (artifact_id, artifact_name) in unborne_artifacts {
-            activated_abilities.push(Box::new(UnitAction::PickUpArtifact {
-                artifact_id,
-                artifact_name,
-            }));
-        }
-
-        let carry_minions_ability = self
-            .get_abilities(state)?
-            .into_iter()
-            .find(|a| matches!(a, Ability::CarryMinions(_)));
-        if let Some(Ability::CarryMinions(n)) = carry_minions_ability {
-            let carried_minions = CardQuery::new()
-                .minions()
-                .carried_by(self.get_id())
-                .all(state);
-            let carriable_minions = CardQuery::new()
-                .minions()
-                .controlled_by(&self.get_controller_id(state))
-                .in_zone(self.get_zone())
-                .in_region(self.get_region(state))
-                .not_carried()
-                .all(state);
-            let can_carry_more = carried_minions.len() < n || n == 0;
-            if can_carry_more && !carriable_minions.is_empty() {
-                activated_abilities.push(Box::new(UnitAction::PickUpMinion));
-            }
-            if !carried_minions.is_empty() {
-                activated_abilities.push(Box::new(UnitAction::DropMinion));
-            }
-        }
-
-        Ok(activated_abilities)
     }
 
     // Returns the available actions for this card, given the current game state.
@@ -2880,6 +2444,45 @@ pub trait Aura: Card {
         Ok(false)
     }
 
+    fn get_affected_zones(&self, state: &State) -> Vec<Zone> {
+        self.base_get_affected_zones(state)
+    }
+}
+
+/// CardBaseMethods are the default implementations of certain card behaviours, like calculating
+/// power and toughness, or determining which zones are affected by an aura. These methods can be
+/// called by specific card types in their own implementations of the corresponding methods, to get
+/// the default behaviour and then modify it as needed. For example, a unit card can call
+/// `base_get_power` in its implementation of `get_power` to get the default power calculation, and
+/// then apply additional modifiers based on its own abilities or effects.
+///
+/// These methods should not be overridden by specific card types, as they provide the base
+/// behaviour for all cards. Instead, specific card types should override the public methods defined
+/// in the `Card` trait, and can call these base methods to get the default behaviour when needed.
+pub(crate) trait CardBaseMethods: Card {
+    fn base_get_affected_zones(&self, state: &State) -> Vec<Zone>;
+    fn base_get_power(&self, state: &State) -> Option<u16>;
+    fn base_get_abilities(&self, state: &State) -> Vec<Ability>;
+    fn base_take_damage(
+        &mut self,
+        state: &State,
+        from: &uuid::Uuid,
+        damage: u16,
+        is_ranged: bool,
+    ) -> anyhow::Result<Vec<Effect>>;
+    fn base_site_on_summon(&self, state: &State) -> anyhow::Result<Vec<Effect>>;
+    fn base_valid_move_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>>;
+    fn base_avatar_activated_abilities(
+        &self,
+        state: &State,
+    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>>;
+    fn base_unit_activated_abilities(
+        &self,
+        state: &State,
+    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>>;
+}
+
+impl<T: Card + ?Sized> CardBaseMethods for T {
     fn base_get_affected_zones(&self, _state: &State) -> Vec<Zone> {
         match self.get_zone() {
             z @ Zone::Realm(_) => vec![z.clone()],
@@ -2894,8 +2497,433 @@ pub trait Aura: Card {
         }
     }
 
-    fn get_affected_zones(&self, state: &State) -> Vec<Zone> {
-        self.base_get_affected_zones(state)
+    fn base_get_power(&self, state: &State) -> Option<u16> {
+        match self.get_unit_base() {
+            Some(base) => {
+                let mut power = base.power;
+                for counter in &base.power_counters {
+                    power = power.saturating_add_signed(counter.power);
+                }
+
+                for we in &state.continuous_effects {
+                    if let ContinuousEffect::ModifyPower {
+                        power_diff,
+                        affected_cards,
+                    } = we
+                        && affected_cards.matches(self.get_id(), state)
+                    {
+                        power = power.saturating_add_signed(*power_diff);
+                    }
+                }
+
+                let power_counters: i16 = state
+                    .cards
+                    .iter()
+                    .filter(|c| c.get_zone().is_in_play())
+                    .filter(|c| !c.is_flooded_site(state))
+                    .map(|c| c.area_modifiers(state))
+                    .filter_map(|mods| mods.grants_counters.get(self.get_id()).cloned())
+                    .flatten()
+                    .map(|counter| counter.power)
+                    .sum();
+                power = power.saturating_add_signed(power_counters);
+
+                Some(power)
+            }
+            None => None,
+        }
+    }
+
+    fn base_get_abilities(&self, state: &State) -> Vec<Ability> {
+        match self.get_unit_base() {
+            Some(base) => {
+                let mut modifiers = base.abilities.clone();
+                for counter in &base.ability_counters {
+                    modifiers.push(counter.ability.clone());
+                }
+
+                for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
+                    if card.is_flooded_site(state) {
+                        continue;
+                    }
+                    let mods = card.area_modifiers(state);
+                    if let Some(mods) = mods.grants_abilities.get(self.get_id()) {
+                        modifiers.extend(mods.clone());
+                    }
+                }
+
+                if let Some(bearer_id) = self.get_bearer_id().ok().flatten() {
+                    let bearer = state.get_card(&bearer_id);
+                    for ability in [
+                        Ability::Airborne,
+                        Ability::Burrowing,
+                        Ability::Submerge,
+                        Ability::Voidwalk,
+                    ] {
+                        if bearer.has_ability(state, &ability) {
+                            modifiers.push(ability);
+                        }
+                    }
+                }
+
+                for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
+                    if card.is_flooded_site(state) {
+                        continue;
+                    }
+                    let mods = card.area_modifiers(state);
+                    if let Some(mods) = mods.removes_abilities.get(self.get_id()) {
+                        for modif in mods {
+                            modifiers.retain(|m| m != modif);
+                        }
+                    }
+                }
+
+                for ce in &state.continuous_effects {
+                    match ce {
+                        ContinuousEffect::GrantAbility {
+                            ability,
+                            affected_cards,
+                        } if affected_cards.matches(self.get_id(), state) => {
+                            modifiers.push(ability.clone())
+                        }
+                        _ => {}
+                    }
+                }
+
+                modifiers
+            }
+            None => vec![],
+        }
+    }
+
+    fn base_take_damage(
+        &mut self,
+        state: &State,
+        from: &uuid::Uuid,
+        damage: u16,
+        is_ranged: bool,
+    ) -> anyhow::Result<Vec<Effect>> {
+        if self.has_ability(state, &Ability::TakesNoDamageFromRangedStrikes) && is_ranged {
+            return Ok(vec![]);
+        }
+
+        let dealer = state.get_card(from);
+        if dealer.get_card_type() == CardType::Magic
+            && state.continuous_effects.iter().any(|ce| match ce {
+                ContinuousEffect::PreventDamageFromMagic { affected_cards } => {
+                    affected_cards.matches(self.get_id(), state)
+                }
+                _ => false,
+            })
+        {
+            return Ok(vec![]);
+        }
+
+        let elements = dealer.get_elements(state)?;
+        for element in elements {
+            if self.has_ability(state, &Ability::TakesNoDamageFromElement(element)) {
+                return Ok(vec![]);
+            }
+        }
+
+        let reduced_damage = state
+            .continuous_effects
+            .iter()
+            .filter_map(|ce| match ce {
+                ContinuousEffect::ReduceDamageTaken {
+                    amount,
+                    affected_cards,
+                } if affected_cards.matches(self.get_id(), state) => Some(*amount),
+                _ => None,
+            })
+            .fold(damage, |remaining, amount| remaining.saturating_sub(amount));
+
+        match self.get_card_type() {
+            CardType::Minion => {
+                // Check LethalTarget before the mutable borrow of unit_base.
+                let has_lethal_target = self.get_unit_base().is_some_and(|ub| {
+                    ub.abilities.contains(&Ability::LethalTarget)
+                        || ub
+                            .ability_counters
+                            .iter()
+                            .any(|c| c.ability == Ability::LethalTarget)
+                }) || state.continuous_effects.iter().any(|ce| match ce {
+                    ContinuousEffect::GrantAbility {
+                        ability: Ability::LethalTarget,
+                        affected_cards,
+                    } => affected_cards.matches(self.get_id(), state),
+                    _ => false,
+                });
+
+                let ub = self
+                    .get_unit_base_mut()
+                    .ok_or(anyhow::anyhow!("unit card has no unit base"))?;
+                ub.damage += reduced_damage;
+
+                let mut effects = vec![];
+                let attacker = state.get_card(from);
+                // Zero damage is not any damage at all (rulebook). Only apply kill conditions
+                // when actual damage was dealt.
+                if reduced_damage > 0
+                    && (ub.damage >= self.get_toughness(state).unwrap_or(0)
+                        || attacker.has_ability(state, &Ability::Lethal)
+                        || has_lethal_target)
+                {
+                    effects.push(Effect::KillMinion {
+                        card_id: *self.get_id(),
+                        killer_id: *from,
+                    });
+                }
+
+                // Lifesteal: if the defender is a unit, heal the attacker's controller.
+                let defender = state.get_card(self.get_id());
+                if attacker.has_ability(state, &Ability::Lifesteal) && defender.is_unit() {
+                    let controller_id = attacker.get_controller_id(state);
+                    if let Ok(avatar_id) = state.get_player_avatar_id(&controller_id) {
+                        let heal = attacker.get_power(state)?.unwrap_or(0);
+                        if heal > 0 {
+                            effects.push(Effect::Heal {
+                                card_id: avatar_id,
+                                amount: heal,
+                            });
+                        }
+                    }
+                }
+
+                Ok(effects)
+            }
+            CardType::Avatar => {
+                let ab = self
+                    .get_avatar_base()
+                    .ok_or(anyhow::anyhow!("avatar card has no avatar base"))?;
+                if ab.deaths_door && !ab.can_die {
+                    return Ok(vec![]);
+                }
+
+                if ab.deaths_door && ab.can_die {
+                    return Ok(vec![Effect::PlayerLost {
+                        player_id: self.get_controller_id(state),
+                    }]);
+                }
+
+                let ub = self
+                    .get_unit_base_mut()
+                    .ok_or(anyhow::anyhow!("unit card has no unit base"))?;
+                ub.damage += reduced_damage;
+
+                if ub.damage >= self.get_toughness(state).unwrap_or(0) {
+                    let ab = self
+                        .get_avatar_base_mut()
+                        .ok_or(anyhow::anyhow!("avatar card has no avatar base"))?;
+                    ab.deaths_door = true;
+                }
+
+                let attacker = state.get_card(from);
+                let mut effects = vec![];
+                // Lifesteal: if the defender is a unit, heal the attacker's controller.
+                let defender = state.get_card(self.get_id());
+                if attacker.has_ability(state, &Ability::Lifesteal) && defender.is_unit() {
+                    let controller_id = attacker.get_controller_id(state);
+                    if let Ok(avatar_id) = state.get_player_avatar_id(&controller_id) {
+                        let heal = attacker.get_power(state)?.unwrap_or(0);
+                        if heal > 0 {
+                            effects.push(Effect::Heal {
+                                card_id: avatar_id,
+                                amount: heal,
+                            });
+                        }
+                    }
+                }
+
+                Ok(effects)
+            }
+            CardType::Site => {
+                let avatar_id = state.get_player_avatar_id(&self.get_controller_id(state))?;
+                Ok(vec![Effect::TakeDamage {
+                    card_id: avatar_id,
+                    from: *from,
+                    damage,
+                    is_strike: false,
+                    is_ranged: false,
+                }])
+            }
+            _ => Ok(vec![]),
+        }
+    }
+
+    fn base_site_on_summon(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+        let site_base = self
+            .get_site()
+            .ok_or(anyhow::anyhow!("site card has no site base"))?;
+        Ok(vec![Effect::AddMana {
+            player_id: *self.get_owner_id(),
+            mana: site_base.provided_mana(state)?,
+        }])
+    }
+
+    fn base_valid_move_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {
+        let mut zones: Vec<Zone> = self
+            .get_zones_within_steps(state, self.get_steps_per_movement(state)?)
+            .iter()
+            .filter(|z| {
+                // If the card is not a unit, it might be an aura, in which case the result of
+                // get_zones_within_steps should be returned as is.
+                if !self.is_unit() {
+                    return true;
+                }
+
+                if self.has_ability(state, &Ability::Voidwalk) {
+                    return true;
+                }
+
+                // Oversized units may only move to intersection zones where all 4 sub-zones have sites.
+                if self.is_oversized(state) {
+                    return match z {
+                        Zone::Intersection(sqs) => sqs
+                            .iter()
+                            .all(|sq| Zone::Realm(*sq).get_site(state).is_some()),
+                        _ => false,
+                    };
+                }
+
+                z.get_site(state).is_some_and(|c| {
+                    c.can_be_entered_by(
+                        self.get_id(),
+                        self.get_zone(),
+                        self.get_region(state),
+                        state,
+                    )
+                })
+            })
+            .cloned()
+            .collect();
+
+        for ce in &state.continuous_effects {
+            if let ContinuousEffect::RestrictMoveToZones {
+                affected_cards,
+                allowed_zones,
+            } = ce
+                && affected_cards.matches(self.get_id(), state)
+            {
+                zones.retain(|zone| allowed_zones.contains(zone));
+            }
+        }
+
+        Ok(zones)
+    }
+
+    fn base_avatar_activated_abilities(
+        &self,
+        state: &State,
+    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+        let mut activated_abilities: Vec<Box<dyn ActivatedAbility>> =
+            self.base_unit_activated_abilities(state)?;
+        activated_abilities.push(Box::new(AvatarAction::DrawSite));
+        if state
+            .cards
+            .iter()
+            .filter(|c| c.get_controller_id(state) == self.get_controller_id(state))
+            .filter(|c| c.is_site())
+            .filter(|c| matches!(c.get_zone(), Zone::Hand))
+            .count()
+            > 0
+        {
+            activated_abilities.push(Box::new(AvatarAction::PlaySite));
+        }
+
+        for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
+            let mods = card.area_modifiers(state);
+            if card.is_flooded_site(state) {
+                continue;
+            }
+            if let Some(mods) = mods.grants_activated_abilities.get(self.get_id()) {
+                activated_abilities.extend(mods.clone());
+            }
+        }
+
+        Ok(activated_abilities)
+    }
+
+    fn base_unit_activated_abilities(
+        &self,
+        state: &State,
+    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+        let mut activated_abilities: Vec<Box<dyn ActivatedAbility>> =
+            vec![Box::new(UnitAction::Attack), Box::new(UnitAction::Move)];
+        if self.is_ranged(state)? {
+            activated_abilities.push(Box::new(UnitAction::RangedAttack));
+        }
+
+        if let Some(site) = self.get_zone().get_site(state) {
+            if self.has_ability(state, &Ability::Burrowing) && site.is_land_site(state)? {
+                if self.get_region(state) == &Region::Surface {
+                    activated_abilities.push(Box::new(UnitAction::Burrow));
+                } else {
+                    activated_abilities.push(Box::new(UnitAction::Surface));
+                }
+            }
+
+            if self.has_ability(state, &Ability::Submerge) && site.is_water_site(state)? {
+                if self.get_region(state) == &Region::Surface {
+                    activated_abilities.push(Box::new(UnitAction::Submerge));
+                } else {
+                    activated_abilities.push(Box::new(UnitAction::Surface));
+                }
+            }
+        }
+
+        for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
+            let mods = card.area_modifiers(state);
+            if card.is_flooded_site(state) {
+                continue;
+            }
+            if let Some(mods) = mods.grants_activated_abilities.get(self.get_id()) {
+                activated_abilities.extend(mods.clone());
+            }
+        }
+
+        let unborne_artifacts: Vec<(uuid::Uuid, String)> = CardQuery::new()
+            .artifacts()
+            .in_zone(self.get_zone())
+            .in_region(self.get_region(state))
+            .iter(state)
+            .filter_map(|c| c.get_artifact())
+            .filter(|c| c.get_bearer().unwrap_or_default().is_none())
+            .map(|c| (*c.get_id(), c.get_name().to_string()))
+            .collect();
+        for (artifact_id, artifact_name) in unborne_artifacts {
+            activated_abilities.push(Box::new(UnitAction::PickUpArtifact {
+                artifact_id,
+                artifact_name,
+            }));
+        }
+
+        let carry_minions_ability = self
+            .get_abilities(state)?
+            .into_iter()
+            .find(|a| matches!(a, Ability::CarryMinions(_)));
+        if let Some(Ability::CarryMinions(n)) = carry_minions_ability {
+            let carried_minions = CardQuery::new()
+                .minions()
+                .carried_by(self.get_id())
+                .all(state);
+            let carriable_minions = CardQuery::new()
+                .minions()
+                .controlled_by(&self.get_controller_id(state))
+                .in_zone(self.get_zone())
+                .in_region(self.get_region(state))
+                .not_carried()
+                .all(state);
+            let can_carry_more = carried_minions.len() < n || n == 0;
+            if can_carry_more && !carriable_minions.is_empty() {
+                activated_abilities.push(Box::new(UnitAction::PickUpMinion));
+            }
+            if !carried_minions.is_empty() {
+                activated_abilities.push(Box::new(UnitAction::DropMinion));
+            }
+        }
+
+        Ok(activated_abilities)
     }
 }
 

@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        Ability, AreaModifiers, Aura, AuraBase, Card, CardBase, CardConstructor, Costs, Edition,
-        Rarity, Region, Zone,
+        Ability, AreaModifiers, Aura, AuraBase, Card, CardBase, CardBaseMethods, CardConstructor,
+        Costs, Edition, Rarity, Region, Zone,
     },
     effect::Effect,
     game::PlayerId,
