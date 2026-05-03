@@ -1633,6 +1633,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             .collect()
     }
 
+    fn can_attack(&self, state: &State) -> bool {
+        self.is_unit() && !self.has_ability(state, &Ability::Disabled) && !self.is_tapped()
+    }
+
     // Returns the valid attack targets for this card.
     fn get_valid_attack_targets(&self, state: &State, ranged: bool) -> Vec<uuid::Uuid> {
         self.get_valid_attack_targets_from_zone(state, ranged, self.get_zone())
@@ -2260,7 +2264,6 @@ pub enum Ability {
     Ranged(u8),
     Stealth,
     CanSeeStealthed,
-    DamageShieldUsed,
     Lethal,
     Movement(u8),
     Burrowing,
@@ -2672,6 +2675,9 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
                     effects.push(Effect::KillMinion {
                         card_id: *self.get_id(),
                         killer_id: *from,
+                        // TODO: set this to the correct value, based on the parameters of
+                        // base_take_damage.
+                        from_attack: false,
                     });
                 }
 

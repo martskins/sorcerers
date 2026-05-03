@@ -53,6 +53,7 @@ impl ActivatedAbility for SpearStrike {
             Effect::KillMinion {
                 card_id: target_id,
                 killer_id: *card_id,
+                from_attack: false,
             },
         ])
     }

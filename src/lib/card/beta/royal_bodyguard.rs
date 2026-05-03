@@ -4,7 +4,7 @@ use crate::{
     },
     effect::Effect,
     game::PlayerId,
-    state::{CardQuery, ContinuousEffect, State},
+    state::State,
 };
 
 #[derive(Debug, Clone)]

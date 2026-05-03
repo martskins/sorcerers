@@ -15,6 +15,7 @@ use crate::{
 pub struct TuftedTurtles {
     unit_base: UnitBase,
     card_base: CardBase,
+    damage_prevented: bool,
 }
 
 impl TuftedTurtles {
@@ -43,6 +44,7 @@ impl TuftedTurtles {
                 is_token: false,
                 ..Default::default()
             },
+            damage_prevented: false,
         }
     }
 }
@@ -68,53 +70,41 @@ impl Card for TuftedTurtles {
         Some(&mut self.unit_base)
     }
 
-    fn on_summon(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
-        let self_id = *self.get_id();
-        Ok(vec![Effect::AddDeferredEffect {
-            effect: DeferredEffect {
-                trigger_on_effect: EffectQuery::DamageDealt {
-                    source: None,
-                    target: Some(CardQuery::from_id(self_id)),
-                },
-                expires_on_effect: Some(EffectQuery::BuryCard {
-                    card: CardQuery::from_id(self_id),
-                }),
-                on_effect: Arc::new(
-                    move |state: &State, _card_id: &uuid::Uuid, effect: &Effect| {
-                        Box::pin(async move {
-                            let damage = match effect {
-                                Effect::TakeDamage { damage, .. } if *damage > 0 => *damage,
-                                _ => return Ok(vec![]),
-                            };
-                            let turtle = state.get_card(&self_id);
-                            if turtle.has_ability(state, &Ability::DamageShieldUsed) {
-                                return Ok(vec![]);
-                            }
-                            Ok(vec![
-                                Effect::Heal {
-                                    card_id: self_id,
-                                    amount: damage,
-                                },
-                                Effect::AddAbilityCounter {
-                                    card_id: self_id,
-                                    counter: AbilityCounter {
-                                        id: uuid::Uuid::new_v4(),
-                                        ability: Ability::DamageShieldUsed,
-                                        expires_on_effect: Some(EffectQuery::TurnEnd {
-                                            player_id: None,
-                                        }),
-                                    },
-                                },
-                            ])
-                        })
-                            as Pin<
-                                Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>,
-                            >
-                    },
-                ),
-                multitrigger: true,
-            },
+    fn set_data(&mut self, _data: &Box<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
+        if let Some(damage_prevented) = _data.downcast_ref::<bool>() {
+            self.damage_prevented = *damage_prevented;
+            Ok(())
+        } else {
+            Err(anyhow::anyhow!("Invalid data type for Tufted Turtles"))
+        }
+    }
+
+    async fn on_turn_start(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
+        Ok(vec![Effect::SetCardData {
+            card_id: *self.get_id(),
+            data: Box::new(false),
         }])
+    }
+
+    async fn replace_effect(
+        &self,
+        _state: &State,
+        effect: &Effect,
+    ) -> anyhow::Result<Option<Vec<Effect>>> {
+        if self.damage_prevented {
+            return Ok(None);
+        }
+
+        if let Effect::TakeDamage { card_id, .. } = effect
+            && card_id == self.get_id()
+        {
+            return Ok(Some(vec![Effect::SetCardData {
+                card_id: *self.get_id(),
+                data: Box::new(true),
+            }]));
+        }
+
+        Ok(None)
     }
 }
 

@@ -181,6 +181,7 @@ pub enum Effect {
     KillMinion {
         card_id: uuid::Uuid,
         killer_id: uuid::Uuid,
+        from_attack: bool,
     },
     BuryCard {
         card_id: uuid::Uuid,
@@ -580,7 +581,9 @@ impl Effect {
                     defender, damage, attacker
                 ))
             }
-            Effect::KillMinion { card_id, killer_id } => {
+            Effect::KillMinion {
+                card_id, killer_id, ..
+            } => {
                 let card = state.get_card(card_id);
                 let killer = state.get_card(killer_id);
                 Some(format!("{} kills {}", card.get_name(), killer.get_name()))

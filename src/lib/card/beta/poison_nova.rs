@@ -78,6 +78,7 @@ impl Card for PoisonNova {
                     Effect::KillMinion {
                         card_id,
                         killer_id: *caster_id,
+                        from_attack: false,
                     },
                 ]
             })

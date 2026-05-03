@@ -2,11 +2,11 @@ use std::{future::Future, pin::Pin, sync::Arc};
 
 use crate::{
     card::{
-        Ability, Card, CardBase, CardBaseMethods, CardConstructor, Costs, Edition, MinionType, Rarity, Region,
-        UnitBase, Zone,
+        Ability, Card, CardBase, CardBaseMethods, CardConstructor, Costs, Edition, MinionType,
+        Rarity, Region, UnitBase, Zone,
     },
     effect::Effect,
-    game::{ActivatedAbility, PlayerId, UnitAction},
+    game::{ActivatedAbility, PlayerId, UnitAction, pick_card},
     query::EffectQuery,
     state::{CardQuery, DeferredEffect, State},
 };
@@ -67,61 +67,48 @@ impl Card for TvinnaxBerserker {
         Some(&mut self.unit_base)
     }
 
-    fn get_activated_abilities(
-        &self,
-        state: &State,
-    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
-        if self.has_ability(state, &Ability::Disabled) {
+    async fn on_turn_start(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+        if !self.can_attack(state) {
             return Ok(vec![]);
         }
 
-        if state.permanently_disabled_abilities.contains(self.get_id()) {
+        let valid_targets = self.get_valid_attack_targets(state, false);
+        if valid_targets.is_empty() {
             return Ok(vec![]);
         }
 
-        let mut abilities: Vec<Box<dyn ActivatedAbility>> =
-            if !self.get_valid_attack_targets(state, false).is_empty() {
-                vec![Box::new(UnitAction::Attack)]
-            } else {
-                self.base_unit_activated_abilities(state)?
-            };
-        abilities.extend(self.get_additional_activated_abilities(state)?);
-        Ok(abilities)
+        let player_id = self.get_controller_id(state);
+        let picked_card_id = pick_card(
+            player_id,
+            &valid_targets,
+            state,
+            "Tvinnax Berserker: Choose a unit to attack",
+        )
+        .await?;
+        Ok(vec![Effect::Attack {
+            attacker_id: *self.get_id(),
+            defender_id: picked_card_id,
+        }])
     }
 
-    fn on_attack(&self, state: &State, defender_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
-        let defender = state.get_card(defender_id);
-        if !defender.is_minion()
-            || defender.get_controller_id(state) == self.get_controller_id(state)
+    async fn replace_effect(
+        &self,
+        _state: &State,
+        effect: &Effect,
+    ) -> anyhow::Result<Option<Vec<Effect>>> {
+        if let Effect::KillMinion {
+            killer_id,
+            from_attack: true,
+            ..
+        } = effect
+            && killer_id == self.get_id()
         {
-            return Ok(vec![]);
+            return Ok(Some(vec![Effect::UntapCard {
+                card_id: *self.get_id(),
+            }]));
         }
 
-        let self_id = *self.get_id();
-        Ok(vec![Effect::AddDeferredEffect {
-            effect: DeferredEffect {
-                trigger_on_effect: EffectQuery::BuryCard {
-                    card: CardQuery::from_id(*defender_id),
-                },
-                expires_on_effect: Some(EffectQuery::OneOf(vec![
-                    EffectQuery::TurnEnd {
-                        player_id: Some(self.get_controller_id(state)),
-                    },
-                    EffectQuery::BuryCard {
-                        card: CardQuery::from_id(self_id),
-                    },
-                ])),
-                on_effect: Arc::new(
-                    move |_state: &State, _card_id: &uuid::Uuid, _effect: &Effect| {
-                        Box::pin(async move { Ok(vec![Effect::UntapCard { card_id: self_id }]) })
-                            as Pin<
-                                Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>,
-                            >
-                    },
-                ),
-                multitrigger: false,
-            },
-        }])
+        Ok(None)
     }
 }
 

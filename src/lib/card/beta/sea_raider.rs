@@ -89,7 +89,7 @@ impl Card for SeaRaider {
                             }
 
                             let killed_enemy = state.effects.iter().any(|queued| {
-                                matches!(queued.as_ref(), Effect::KillMinion { card_id, killer_id }
+                                matches!(queued.as_ref(), Effect::KillMinion { card_id, killer_id, from_attack: true }
                                     if card_id == &damaged_id && killer_id == &self_id)
                             });
                             if !killed_enemy {

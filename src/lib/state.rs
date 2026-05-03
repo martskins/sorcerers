@@ -980,6 +980,8 @@ pub struct State {
     pub loosers: HashSet<PlayerId>,
     pub players_with_accepted_hands: HashSet<PlayerId>,
     /// Card IDs whose activated abilities have been permanently disabled (e.g. Frontier Settlers).
+    // TODO: Reimplement this. Disabling the whole card is incorrect and will definitely lead to
+    // bugs.
     pub permanently_disabled_abilities: HashSet<uuid::Uuid>,
 }
 

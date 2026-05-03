@@ -112,6 +112,7 @@ impl Card for PendulumOfPeril {
             .map(|card_id| Effect::KillMinion {
                 card_id,
                 killer_id: *self.get_id(),
+                from_attack: false,
             })
             .collect())
     }

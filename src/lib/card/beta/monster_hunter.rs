@@ -101,6 +101,7 @@ impl Card for MonsterHunter {
         Ok(vec![Effect::KillMinion {
             card_id: chosen,
             killer_id: *self.get_id(),
+            from_attack: false,
         }])
     }
 }

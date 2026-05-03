@@ -81,6 +81,7 @@ impl Card for DeathDealer {
             .map(|id| Effect::KillMinion {
                 card_id: id,
                 killer_id: *self.get_id(),
+                from_attack: false,
             })
             .collect())
     }

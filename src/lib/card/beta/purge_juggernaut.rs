@@ -99,6 +99,7 @@ impl Card for PurgeJuggernaut {
             .map(|unit_id| Effect::KillMinion {
                 card_id: unit_id,
                 killer_id: self_id,
+                from_attack: false,
             })
             .collect();
         let mut effects = vec![Effect::MoveCard {
