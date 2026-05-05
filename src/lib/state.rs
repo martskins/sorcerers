@@ -1033,6 +1033,15 @@ impl State {
         }
     }
 
+    pub fn find_caster(&self, spell_id: &uuid::Uuid) -> Option<uuid::Uuid> {
+        self.effect_log.iter().find_map(|e| match *e.effect {
+            Effect::PlayMagic {
+                card_id, caster_id, ..
+            } if card_id == *spell_id => Some(caster_id),
+            _ => None,
+        })
+    }
+
     pub async fn replace_effect(&self, effect: &Effect) -> anyhow::Result<Option<Vec<Effect>>> {
         match effect {
             Effect::Attack {

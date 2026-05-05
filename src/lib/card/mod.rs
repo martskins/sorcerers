@@ -1814,6 +1814,14 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         self.get_unit_base().is_some()
     }
 
+    fn is_magic(&self) -> bool {
+        self.get_unit_base().is_none()
+            && self.get_aura_base().is_none()
+            && self.get_site_base().is_none()
+            && self.get_artifact_base().is_none()
+            && self.get_avatar_base().is_none()
+    }
+
     fn is_minion(&self) -> bool {
         self.is_unit() && !self.is_avatar()
     }
@@ -2730,17 +2738,22 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
                 ub.damage += reduced_damage;
 
                 let mut effects = vec![];
-                let attacker = state.get_card(from);
+                let dealer = state.get_card(from);
+                let killer_id = if dealer.is_magic() {
+                    state.find_caster(from).expect("magic to have a caster")
+                } else {
+                    *from
+                };
                 // Zero damage is not any damage at all (rulebook). Only apply kill conditions
                 // when actual damage was dealt.
                 if reduced_damage > 0
                     && (ub.damage >= self.get_toughness(state).unwrap_or(0)
-                        || attacker.has_ability(state, &Ability::Lethal)
+                        || dealer.has_ability(state, &Ability::Lethal)
                         || has_lethal_target)
                 {
                     effects.push(Effect::KillMinion {
                         card_id: *self.get_id(),
-                        killer_id: *from,
+                        killer_id,
                         // TODO: set this to the correct value, based on the parameters of
                         // base_take_damage.
                         from_attack: false,
@@ -2749,10 +2762,10 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
 
                 // Lifesteal: if the defender is a unit, heal the attacker's controller.
                 let defender = state.get_card(self.get_id());
-                if attacker.has_ability(state, &Ability::Lifesteal) && defender.is_unit() {
-                    let controller_id = attacker.get_controller_id(state);
+                if dealer.has_ability(state, &Ability::Lifesteal) && defender.is_unit() {
+                    let controller_id = dealer.get_controller_id(state);
                     if let Ok(avatar_id) = state.get_player_avatar_id(&controller_id) {
-                        let heal = attacker.get_power(state)?.unwrap_or(0);
+                        let heal = dealer.get_power(state)?.unwrap_or(0);
                         if heal > 0 {
                             effects.push(Effect::Heal {
                                 card_id: avatar_id,
