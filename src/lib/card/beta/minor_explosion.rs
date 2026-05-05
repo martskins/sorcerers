@@ -67,7 +67,7 @@ impl Card for MinorExplosion {
             .into_iter()
             .map(|id| Effect::TakeDamage {
                 card_id: id,
-                from: *caster_id,
+                from: *self.get_id(),
                 damage: Damage::basic(3),
             })
             .collect())

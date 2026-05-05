@@ -79,7 +79,7 @@ impl Card for IceLance {
                 if let Some(card_id) = qry.pick(&controller_id, state, false).await? {
                     effects.push(Effect::TakeDamage {
                         card_id,
-                        from: *caster_id,
+                        from: *self.get_id(),
                         damage: Damage::basic(dmg),
                     });
                 }

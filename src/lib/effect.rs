@@ -250,14 +250,6 @@ impl Effect {
         }
     }
 
-    pub fn strike_damage(card_id: &uuid::Uuid, from: &uuid::Uuid, damage: u16) -> Self {
-        Effect::TakeDamage {
-            card_id: *card_id,
-            from: *from,
-            damage: Damage::strike(damage, false),
-        }
-    }
-
     pub async fn sound_effect(&self) -> anyhow::Result<Option<SoundEffect>> {
         let sound = match self {
             Effect::PlayCard { .. } => Some(SoundEffect::PlayCard),

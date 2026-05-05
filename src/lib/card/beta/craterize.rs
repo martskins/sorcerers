@@ -60,7 +60,7 @@ impl Card for Craterize {
     async fn on_cast(
         &mut self,
         state: &State,
-        caster_id: &uuid::Uuid,
+        _caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let sites = state
@@ -135,7 +135,7 @@ impl Card for Craterize {
                 effects.push(Effect::DealDamageAllUnitsInZone {
                     player_id: self.get_controller_id(state),
                     zone: ZoneQuery::from_zone(zone),
-                    from: *caster_id,
+                    from: *self.get_id(),
                     damage,
                 });
             }

@@ -52,7 +52,7 @@ impl Card for RainOfArrows {
     async fn on_cast(
         &mut self,
         state: &State,
-        caster_id: &uuid::Uuid,
+        _caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let effects = CardQuery::new()
@@ -62,7 +62,7 @@ impl Card for RainOfArrows {
             .into_iter()
             .map(|minion_id| Effect::TakeDamage {
                 card_id: minion_id,
-                from: *caster_id,
+                from: *self.get_id(),
                 damage: Damage::basic(1),
             })
             .collect();

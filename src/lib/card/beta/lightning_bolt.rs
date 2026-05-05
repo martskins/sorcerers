@@ -52,7 +52,7 @@ impl Card for LightningBolt {
     async fn on_cast(
         &mut self,
         state: &State,
-        caster_id: &uuid::Uuid,
+        _caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let zones = Zone::all_realm();
@@ -71,7 +71,7 @@ impl Card for LightningBolt {
                 .in_zone(&picked_zone)
                 .randomised()
                 .count(1),
-            from: *caster_id,
+            from: *self.get_id(),
             damage: 3,
         }])
     }

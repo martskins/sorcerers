@@ -71,7 +71,7 @@ impl Card for Immolation {
 
         Ok(vec![Effect::TakeDamage {
             card_id: target_id,
-            from: *caster_id,
+            from: *self.get_id(),
             damage: Damage::basic(7),
         }])
     }

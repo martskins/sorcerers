@@ -57,7 +57,7 @@ impl Card for PactWithTheDevil {
     async fn on_cast(
         &mut self,
         state: &State,
-        caster_id: &uuid::Uuid,
+        _caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
@@ -73,7 +73,7 @@ impl Card for PactWithTheDevil {
         Ok(vec![
             Effect::TakeDamage {
                 card_id: avatar_id,
-                from: *caster_id,
+                from: *self.get_id(),
                 damage: Damage::basic(half_hp),
             },
             Effect::DrawCard {

@@ -70,7 +70,7 @@ impl Card for PoisonNova {
                 vec![
                     Effect::TakeDamage {
                         card_id,
-                        from: *caster_id,
+                        from: *self.get_id(),
                         damage: Damage::basic(1),
                     },
                     Effect::KillMinion {
