@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        Ability, Card, CardBase, CardBaseMethods, CardConstructor, Costs, Edition, MinionType,
-        Rarity, Region, UnitBase, Zone,
+        Ability, Card, CardBase, CardBaseMethods, CardConstructor, Costs, Damage, Edition,
+        MinionType, Rarity, Region, UnitBase, Zone,
     },
     effect::Effect,
     game::PlayerId,
@@ -76,10 +76,9 @@ impl Card for AccursedAlbatross {
         &mut self,
         state: &State,
         from: &uuid::Uuid,
-        damage: u16,
-        is_ranged: bool,
+        damage: Damage,
     ) -> anyhow::Result<Vec<Effect>> {
-        let damage_effects = self.base_take_damage(state, from, damage, is_ranged)?;
+        let damage_effects = self.base_take_damage(state, from, damage)?;
         let mut was_killed = false;
         for effect in damage_effects {
             if matches!(effect, Effect::BuryCard { .. }) {

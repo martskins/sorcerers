@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        Ability, Card, CardBase, CardBaseMethods, CardConstructor, Costs, Edition, MinionType, Rarity, Region,
-        UnitBase, Zone,
+        Ability, Card, CardBase, CardBaseMethods, CardConstructor, Costs, Damage, Edition,
+        MinionType, Rarity, Region, UnitBase, Zone,
     },
     effect::Effect,
     game::PlayerId,
@@ -75,8 +75,7 @@ impl Card for SlingPixies {
         &mut self,
         state: &State,
         from: &uuid::Uuid,
-        damage: u16,
-        is_ranged: bool,
+        damage: Damage,
     ) -> anyhow::Result<Vec<Effect>> {
         let dealer = state.get_card(from);
         if dealer.get_power(state)?.unwrap_or(0) >= 4 {
@@ -84,7 +83,7 @@ impl Card for SlingPixies {
             return Ok(vec![]);
         }
 
-        self.base_take_damage(state, from, damage, is_ranged)
+        self.base_take_damage(state, from, damage)
     }
 }
 

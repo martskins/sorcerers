@@ -1,6 +1,7 @@
 use crate::{
     card::{
-        Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
+        Card, CardBase, CardConstructor, Costs, Damage, Edition, MinionType, Rarity, Region,
+        UnitBase, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_action, pick_card},
@@ -35,9 +36,10 @@ impl ActivatedAbility for ClamorOfHarpiesAction {
                 Ok(vec![Effect::TakeDamage {
                     card_id: *target_card.get_id(),
                     from: *card_id,
-                    damage: state.get_card(card_id).get_power(state)?.unwrap_or(0),
-                    is_strike: true,
-                    is_ranged: false,
+                    damage: Damage::strike(
+                        state.get_card(card_id).get_power(state)?.unwrap_or(0),
+                        false,
+                    ),
                 }])
             }
             ClamorOfHarpiesAction::DoNotStrike => Ok(vec![]),

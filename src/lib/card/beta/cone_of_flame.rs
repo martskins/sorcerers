@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Damage, Edition, Rarity, Zone},
     effect::Effect,
     game::{CARDINAL_DIRECTIONS, PlayerId, pick_direction},
     state::{CardQuery, State},
@@ -77,9 +77,7 @@ impl Card for ConeOfFlame {
                     effects.push(Effect::TakeDamage {
                         card_id: unit,
                         from: *self.get_id(),
-                        damage: dmg,
-                        is_strike: false,
-                        is_ranged: false,
+                        damage: Damage::basic(dmg),
                     });
                 }
             }

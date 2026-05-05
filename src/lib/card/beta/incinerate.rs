@@ -1,5 +1,7 @@
 use crate::{
-    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, MinionType, Rarity, Zone},
+    card::{
+        Card, CardBase, CardConstructor, Cost, Costs, Damage, Edition, MinionType, Rarity, Zone,
+    },
     effect::Effect,
     game::{PlayerId, pick_zone},
     state::{CardQuery, State},
@@ -84,9 +86,7 @@ impl Card for Incinerate {
             .map(|id| Effect::TakeDamage {
                 card_id: id,
                 from: *self.get_id(),
-                damage: 4,
-                is_strike: false,
-                is_ranged: false,
+                damage: Damage::basic(4),
             })
             .collect())
     }

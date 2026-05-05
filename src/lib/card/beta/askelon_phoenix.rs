@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        Ability, Card, CardBase, CardBaseMethods, CardConstructor, Costs, Edition, MinionType,
-        Rarity, Region, UnitBase, Zone,
+        Ability, Card, CardBase, CardBaseMethods, CardConstructor, Costs, Damage, Edition,
+        MinionType, Rarity, Region, UnitBase, Zone,
     },
     effect::{Counter, Effect},
     game::{Element, PlayerId},
@@ -74,8 +74,7 @@ impl Card for AskelonPhoenix {
         &mut self,
         state: &State,
         from: &uuid::Uuid,
-        damage: u16,
-        is_ranged: bool,
+        damage: Damage,
     ) -> anyhow::Result<Vec<Effect>> {
         let attacker = state.get_card(from);
         if attacker.get_elements(state)?.contains(&Element::Fire) {
@@ -85,7 +84,7 @@ impl Card for AskelonPhoenix {
             }]);
         }
 
-        let effects = self.base_take_damage(state, from, damage, is_ranged)?;
+        let effects = self.base_take_damage(state, from, damage)?;
         Ok(effects)
     }
 }

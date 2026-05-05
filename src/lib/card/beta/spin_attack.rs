@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Damage, Edition, Rarity, Zone},
     effect::Effect,
     game::PlayerId,
     state::{CardQuery, State},
@@ -79,9 +79,7 @@ impl Card for SpinAttack {
             .map(|enemy_id| Effect::TakeDamage {
                 card_id: enemy_id,
                 from: ally_id,
-                damage: ally_power,
-                is_strike: true,
-                is_ranged: false,
+                damage: Damage::strike(ally_power, false),
             })
             .collect();
         Ok(enemies)

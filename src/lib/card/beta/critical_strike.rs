@@ -77,16 +77,12 @@ impl Card for CriticalStrike {
                                 card_id,
                                 from,
                                 damage,
-                                is_strike,
-                                is_ranged,
                             } = effect
                             {
                                 Ok(vec![Effect::TakeDamage {
                                     card_id: *card_id,
                                     from: *from,
-                                    damage: *damage,
-                                    is_strike: *is_strike,
-                                    is_ranged: *is_ranged,
+                                    damage: damage.clone(),
                                 }])
                             } else {
                                 Ok(vec![])

@@ -73,8 +73,6 @@ impl Card for RoyalBodyguard {
                 card_id,
                 from,
                 damage,
-                is_strike,
-                is_ranged,
             } => {
                 let target = state.get_card(card_id);
                 let is_nearby = self.get_zone().is_nearby(target.get_zone());
@@ -95,9 +93,7 @@ impl Card for RoyalBodyguard {
                 Ok(Some(vec![Effect::TakeDamage {
                     card_id: *self.get_id(),
                     from: *from,
-                    damage: *damage,
-                    is_strike: *is_strike,
-                    is_ranged: *is_ranged,
+                    damage: damage.clone(),
                 }]))
             }
             _ => Ok(None),

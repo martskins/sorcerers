@@ -1,6 +1,7 @@
 use crate::{
     card::{
-        Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
+        Card, CardBase, CardConstructor, Costs, Damage, Edition, MinionType, Rarity, Region,
+        UnitBase, Zone,
     },
     effect::Effect,
     game::PlayerId,
@@ -87,9 +88,7 @@ impl Card for VileImp {
         Ok(vec![Effect::TakeDamage {
             card_id: target_id,
             from: imp_id,
-            damage: 2,
-            is_strike: false,
-            is_ranged: false,
+            damage: Damage::basic(2),
         }])
     }
 }

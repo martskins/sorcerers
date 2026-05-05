@@ -1,6 +1,7 @@
 use crate::{
     card::{
-        Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
+        Card, CardBase, CardConstructor, Costs, Damage, Edition, MinionType, Rarity, Region,
+        UnitBase, Zone,
     },
     effect::Effect,
     game::{PlayerId, pick_card},
@@ -92,9 +93,7 @@ impl Card for QuarrelsomeKobolds {
         Ok(vec![Effect::TakeDamage {
             card_id: picked_unit,
             from: *self.get_id(),
-            damage: self.get_power(state)?.unwrap_or(0),
-            is_strike: false,
-            is_ranged: false,
+            damage: Damage::basic(self.get_power(state)?.unwrap_or(0)),
         }])
     }
 }

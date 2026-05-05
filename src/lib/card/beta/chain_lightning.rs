@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Damage, Edition, Rarity, Zone},
     effect::Effect,
     game::{BaseOption, PlayerId, force_sync, pick_option},
     state::{CardQuery, State},
@@ -75,9 +75,7 @@ impl Card for ChainLightning {
             let effect = Effect::TakeDamage {
                 card_id: picked_card_id,
                 from: *self.get_id(),
-                damage: 2,
-                is_strike: false,
-                is_ranged: false,
+                damage: Damage::basic(2),
             };
 
             // apply the effect the the local_state to keep track of the updated zones

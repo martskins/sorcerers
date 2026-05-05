@@ -1,6 +1,7 @@
 use crate::{
     card::{
-        Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
+        Card, CardBase, CardConstructor, Costs, Damage, Edition, MinionType, Rarity, Region,
+        UnitBase, Zone,
     },
     effect::Effect,
     game::PlayerId,
@@ -80,9 +81,7 @@ impl Card for InfernalLegion {
             effects.push(Effect::TakeDamage {
                 card_id: unit,
                 from: *self.get_id(),
-                damage: 3,
-                is_strike: false,
-                is_ranged: false,
+                damage: Damage::basic(3),
             });
         }
         Ok(effects)

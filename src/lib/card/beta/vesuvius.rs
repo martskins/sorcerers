@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity,
+        AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Damage, Edition, Rarity,
         ResourceProvider, Site, SiteBase, Zone,
     },
     effect::Effect,
@@ -37,9 +37,7 @@ impl ActivatedAbility for UseAbility {
                 effects.push(Effect::TakeDamage {
                     card_id: unit,
                     from: *card.get_id(),
-                    damage: 3,
-                    is_strike: false,
-                    is_ranged: false,
+                    damage: Damage::basic(3),
                 });
             }
         }

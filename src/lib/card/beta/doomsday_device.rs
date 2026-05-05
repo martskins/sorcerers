@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs, Edition,
-        Rarity, Region, Zone,
+        Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs, Damage,
+        Edition, Rarity, Region, Zone,
     },
     effect::Effect,
     game::PlayerId,
@@ -114,9 +114,7 @@ impl Card for DoomsdayDevice {
                 .map(|id| Effect::TakeDamage {
                     card_id: id,
                     from: self_id,
-                    damage: 6,
-                    is_strike: false,
-                    is_ranged: false,
+                    damage: Damage::basic(6),
                 })
                 .collect();
 

@@ -1,7 +1,7 @@
 use crate::{
     card::{
         AdditionalCost, Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor,
-        Cost, Costs, Edition, Rarity, Region, Zone,
+        Cost, Costs, Damage, Edition, Rarity, Region, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, reveal_cards},
@@ -63,9 +63,7 @@ impl ActivatedAbility for ReadManuscript {
             Effect::TakeDamage {
                 card_id: bearer_id,
                 from: *card_id,
-                damage,
-                is_strike: false,
-                is_ranged: false,
+                damage: Damage::basic(damage),
             },
         ])
     }

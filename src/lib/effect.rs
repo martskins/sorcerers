@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, FootSoldier, Frog, Region, Rubble, UnitBase, Zone},
+    card::{Ability, Card, Damage, FootSoldier, Frog, Region, Rubble, UnitBase, Zone},
     game::{BaseAction, Direction, PlayerAction, PlayerId, SoundEffect, pick_card, pick_option},
     networking::message::ServerMessage,
     query::{EffectQuery, QueryCache, ZoneQuery},
@@ -171,9 +171,7 @@ pub enum Effect {
     TakeDamage {
         card_id: uuid::Uuid,
         from: uuid::Uuid,
-        damage: u16,
-        is_strike: bool,
-        is_ranged: bool,
+        damage: Damage,
     },
     BanishCard {
         card_id: uuid::Uuid,
@@ -256,9 +254,7 @@ impl Effect {
         Effect::TakeDamage {
             card_id: *card_id,
             from: *from,
-            damage,
-            is_strike: true,
-            is_ranged: false,
+            damage: Damage::strike(damage, false),
         }
     }
 
@@ -578,7 +574,7 @@ impl Effect {
                 let defender = state.get_card(card_id).get_name();
                 Some(format!(
                     "{} takes {} damage from {}",
-                    defender, damage, attacker
+                    defender, damage.amount, attacker
                 ))
             }
             Effect::KillMinion {
@@ -956,9 +952,7 @@ impl Effect {
                         effects.push(Effect::TakeDamage {
                             card_id: picked_unit_id,
                             from: *shooter,
-                            damage: *damage,
-                            is_strike: false,
-                            is_ranged: false,
+                            damage: Damage::basic(*damage),
                         });
                         if let Some(splash_damage) = splash_damage {
                             let splash_effects = CardQuery::new()
@@ -970,9 +964,7 @@ impl Effect {
                                 .map(|c| Effect::TakeDamage {
                                     card_id: c,
                                     from: *shooter,
-                                    damage: *splash_damage,
-                                    is_strike: false,
-                                    is_ranged: false,
+                                    damage: Damage::basic(*splash_damage),
                                 })
                                 .collect::<Vec<_>>();
                             effects.extend(splash_effects);
@@ -1425,11 +1417,12 @@ impl Effect {
                 let mut effects = vec![Effect::TakeDamage {
                     card_id: *target_id,
                     from: *striker_id,
-                    damage: attacker
-                        .get_power(&snapshot)?
-                        .ok_or(anyhow::anyhow!("attacker has no power"))?,
-                    is_strike: true,
-                    is_ranged: false,
+                    damage: Damage::strike(
+                        attacker
+                            .get_power(&snapshot)?
+                            .ok_or(anyhow::anyhow!("attacker has no power"))?,
+                        false,
+                    ),
                 }];
 
                 effects.extend(defender.on_defend(state, striker_id)?.into_iter());
@@ -1476,9 +1469,7 @@ impl Effect {
                 effects.push(Effect::TakeDamage {
                     card_id: *first_defender_id,
                     from: *first_striker_id,
-                    damage: strike_damage,
-                    is_strike: false,
-                    is_ranged: false,
+                    damage: Damage::basic(strike_damage),
                 });
 
                 let mut snapshot = state.snapshot();
@@ -1513,9 +1504,7 @@ impl Effect {
                     state.queue_one(Effect::TakeDamage {
                         card_id: unit_id,
                         from: *from,
-                        damage: *damage,
-                        is_strike: false,
-                        is_ranged: false,
+                        damage: Damage::basic(*damage),
                     });
                 }
             }
@@ -1530,9 +1519,7 @@ impl Effect {
                     state.queue_one(Effect::TakeDamage {
                         card_id: target,
                         from: *from,
-                        damage: *damage,
-                        is_strike: false,
-                        is_ranged: false,
+                        damage: Damage::basic(*damage),
                     });
                 }
             }
@@ -1540,19 +1527,16 @@ impl Effect {
                 card_id,
                 damage,
                 from,
-                is_strike,
-                is_ranged,
             } => {
                 let snapshot = state.snapshot();
                 // Check if this card has DoubleDamageTaken applied to it.
                 let takes_double_damage = snapshot.continuous_effects.iter().any(|ce| {
                     matches!(ce, ContinuousEffect::DoubleDamageTaken { affected_cards, except_strikes }
-                        if affected_cards.matches(card_id, &snapshot) && !(*except_strikes && *is_strike))
+                        if affected_cards.matches(card_id, &snapshot) && !(*except_strikes && damage.is_strike))
                 });
                 let multiplier: u16 = if takes_double_damage { 2 } else { 1 };
                 let card = state.get_card_mut(card_id);
-                let effects =
-                    card.on_take_damage(&snapshot, from, *damage * multiplier, *is_ranged)?;
+                let effects = card.on_take_damage(&snapshot, from, damage * multiplier)?;
                 state.queue(effects);
             }
             Effect::BanishCard { card_id, .. } => {
@@ -1653,11 +1637,12 @@ impl Effect {
                 let mut effects = vec![Effect::TakeDamage {
                     card_id: *target_id,
                     from: *striker_id,
-                    damage: attacker
-                        .get_power(&snapshot)?
-                        .ok_or(anyhow::anyhow!("attacker has no power"))?,
-                    is_strike: true,
-                    is_ranged: true,
+                    damage: Damage::strike(
+                        attacker
+                            .get_power(&snapshot)?
+                            .ok_or(anyhow::anyhow!("attacker has no power"))?,
+                        true,
+                    ),
                 }];
                 effects.extend(attacker.after_ranged_attack(state).await?);
                 effects.extend(defender.on_defend(state, striker_id)?.into_iter());

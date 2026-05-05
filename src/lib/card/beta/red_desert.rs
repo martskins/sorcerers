@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, ResourceProvider, Site,
-        SiteBase, SiteType, Zone,
+        Card, CardBase, CardConstructor, Costs, Damage, Edition, Rarity, Region, ResourceProvider,
+        Site, SiteBase, SiteType, Zone,
     },
     effect::Effect,
     game::{PlayerId, Thresholds},
@@ -85,9 +85,7 @@ impl Card for RedDesert {
             effects.push(Effect::TakeDamage {
                 card_id: minion,
                 from: *site.get_id(),
-                damage: 1,
-                is_strike: false,
-                is_ranged: false,
+                damage: Damage::basic(1),
             });
         }
         Ok(effects)

@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region,
-        UnitBase, Zone,
+        Ability, Card, CardBase, CardConstructor, Costs, Damage, Edition, MinionType, Rarity,
+        Region, UnitBase, Zone,
     },
     effect::Effect,
     game::PlayerId,
@@ -84,9 +84,7 @@ impl Card for SacredScarabs {
             effects.push(Effect::TakeDamage {
                 card_id: unit,
                 from: *self.get_id(),
-                damage: 3,
-                is_strike: false,
-                is_ranged: false,
+                damage: Damage::basic(3),
             });
         }
         effects

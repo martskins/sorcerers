@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        Ability, AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Edition, MinionType,
-        Rarity, Region, UnitBase, Zone,
+        Ability, AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Damage, Edition,
+        MinionType, Rarity, Region, UnitBase, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_card},
@@ -79,9 +79,7 @@ impl ActivatedAbility for ThrowArtifactAbility {
             Effect::TakeDamage {
                 card_id: target_id,
                 from: *card_id,
-                damage,
-                is_strike: false,
-                is_ranged: false,
+                damage: Damage::basic(damage),
             },
             Effect::MoveCard {
                 player_id: *player_id,

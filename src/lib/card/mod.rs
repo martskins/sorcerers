@@ -1243,9 +1243,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             return Ok(vec![Effect::TakeDamage {
                 card_id: *attacker_id,
                 from: *self.get_id(),
-                damage: power,
-                is_strike: false,
-                is_ranged: false,
+                damage: Damage::attack(power),
             }]);
         }
 
@@ -1874,10 +1872,9 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         &mut self,
         state: &State,
         from: &uuid::Uuid,
-        damage: u16,
-        is_ranged: bool,
+        damage: Damage,
     ) -> anyhow::Result<Vec<Effect>> {
-        self.base_take_damage(state, from, damage, is_ranged)
+        self.base_take_damage(state, from, damage)
     }
 
     async fn on_turn_start(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
@@ -2452,6 +2449,75 @@ pub trait Aura: Card {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct Damage {
+    pub amount: u16,
+    pub is_attack: bool,
+    pub is_ranged: bool,
+    pub is_lethal: bool,
+    pub is_strike: bool,
+}
+
+impl std::ops::Mul<u16> for &Damage {
+    type Output = Damage;
+
+    fn mul(self, rhs: u16) -> Self::Output {
+        Damage {
+            amount: self.amount.saturating_mul(rhs),
+            is_attack: self.is_attack,
+            is_ranged: self.is_ranged,
+            is_lethal: self.is_lethal,
+            is_strike: self.is_strike,
+        }
+    }
+}
+
+impl std::ops::Mul<u16> for Damage {
+    type Output = Self;
+
+    fn mul(self, rhs: u16) -> Self::Output {
+        Self {
+            amount: self.amount.saturating_mul(rhs),
+            is_attack: self.is_attack,
+            is_ranged: self.is_ranged,
+            is_lethal: self.is_lethal,
+            is_strike: self.is_strike,
+        }
+    }
+}
+
+impl Damage {
+    pub fn basic(amount: u16) -> Self {
+        Self {
+            amount,
+            is_attack: false,
+            is_ranged: false,
+            is_lethal: false,
+            is_strike: false,
+        }
+    }
+
+    pub fn attack(amount: u16) -> Self {
+        Self {
+            amount,
+            is_attack: true,
+            is_ranged: false,
+            is_lethal: false,
+            is_strike: false,
+        }
+    }
+
+    pub fn strike(amount: u16, is_ranged: bool) -> Self {
+        Self {
+            amount,
+            is_attack: true,
+            is_ranged,
+            is_lethal: false,
+            is_strike: true,
+        }
+    }
+}
+
 /// CardBaseMethods are the default implementations of certain card behaviours, like calculating
 /// power and toughness, or determining which zones are affected by an aura. These methods can be
 /// called by specific card types in their own implementations of the corresponding methods, to get
@@ -2470,8 +2536,7 @@ pub(crate) trait CardBaseMethods: Card {
         &mut self,
         state: &State,
         from: &uuid::Uuid,
-        damage: u16,
-        is_ranged: bool,
+        damage: Damage,
     ) -> anyhow::Result<Vec<Effect>>;
     fn base_site_on_summon(&self, state: &State) -> anyhow::Result<Vec<Effect>>;
     fn base_valid_move_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>>;
@@ -2603,10 +2668,9 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
         &mut self,
         state: &State,
         from: &uuid::Uuid,
-        damage: u16,
-        is_ranged: bool,
+        damage: Damage,
     ) -> anyhow::Result<Vec<Effect>> {
-        if self.has_ability(state, &Ability::TakesNoDamageFromRangedStrikes) && is_ranged {
+        if self.has_ability(state, &Ability::TakesNoDamageFromRangedStrikes) && damage.is_ranged {
             return Ok(vec![]);
         }
 
@@ -2639,7 +2703,9 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
                 } if affected_cards.matches(self.get_id(), state) => Some(*amount),
                 _ => None,
             })
-            .fold(damage, |remaining, amount| remaining.saturating_sub(amount));
+            .fold(damage.amount, |remaining, amount| {
+                remaining.saturating_sub(amount)
+            });
 
         match self.get_card_type() {
             CardType::Minion => {
@@ -2749,8 +2815,6 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
                     card_id: avatar_id,
                     from: *from,
                     damage,
-                    is_strike: false,
-                    is_ranged: false,
                 }])
             }
             _ => Ok(vec![]),

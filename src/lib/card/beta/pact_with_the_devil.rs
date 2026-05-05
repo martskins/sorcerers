@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Damage, Edition, Rarity, Zone},
     effect::Effect,
     game::PlayerId,
     state::State,
@@ -74,9 +74,7 @@ impl Card for PactWithTheDevil {
             Effect::TakeDamage {
                 card_id: avatar_id,
                 from: *caster_id,
-                damage: half_hp,
-                is_strike: false,
-                is_ranged: false,
+                damage: Damage::basic(half_hp),
             },
             Effect::DrawCard {
                 player_id: controller_id,

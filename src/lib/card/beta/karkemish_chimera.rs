@@ -1,6 +1,7 @@
 use crate::{
     card::{
-        Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
+        Card, CardBase, CardConstructor, Costs, Damage, Edition, MinionType, Rarity, Region,
+        UnitBase, Zone,
     },
     effect::Effect,
     game::PlayerId,
@@ -87,9 +88,7 @@ impl Card for KarkemishChimera {
             effects.push(Effect::TakeDamage {
                 card_id: extra_id,
                 from: attacker_id,
-                damage: power,
-                is_strike: false,
-                is_ranged: false,
+                damage: Damage::basic(power),
             });
             effects.extend(state.get_card(&extra_id).on_defend(state, &attacker_id)?);
         }

@@ -1,6 +1,7 @@
 use crate::{
     card::{
-        Card, CardBase, CardBaseMethods, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
+        Card, CardBase, CardBaseMethods, CardConstructor, Costs, Damage, Edition, MinionType,
+        Rarity, Region, UnitBase, Zone,
     },
     effect::Effect,
     game::PlayerId,
@@ -67,11 +68,10 @@ impl Card for SeirawanHydra {
         &mut self,
         state: &State,
         from: &uuid::Uuid,
-        damage: u16,
-        is_ranged: bool,
+        damage: Damage,
     ) -> anyhow::Result<Vec<Effect>> {
         let damage_before = self.get_damage_taken()?;
-        let mut effects = self.base_take_damage(state, from, damage, is_ranged)?;
+        let mut effects = self.base_take_damage(state, from, damage)?;
         let damage_after = self.get_damage_taken()?;
 
         let survived = !effects

@@ -1,7 +1,7 @@
 use crate::{
     card::{
         AdditionalCost, Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor,
-        Cost, Costs, Edition, Rarity, Region, Zone,
+        Cost, Costs, Damage, Edition, Rarity, Region, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_zone},
@@ -62,10 +62,8 @@ impl ActivatedAbility for ShootPayload {
             .iter()
             .map(|unit| Effect::TakeDamage {
                 card_id: *unit,
-                damage: mana_cost.into(),
+                damage: Damage::basic(mana_cost.into()),
                 from: *card_id,
-                is_strike: false,
-                is_ranged: false,
             })
             .collect())
     }

@@ -1,7 +1,7 @@
 use crate::{
     card::{
         Ability, Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs,
-        Edition, Rarity, Region, Zone,
+        Damage, Edition, Rarity, Region, Zone,
     },
     effect::Effect,
     game::PlayerId,
@@ -107,9 +107,7 @@ impl Card for BlackObelisk {
         Ok(vec![Effect::TakeDamage {
             card_id: avatar_id,
             from: *site.get_id(),
-            damage: 2,
-            is_strike: false,
-            is_ranged: false,
+            damage: Damage::basic(2),
         }])
     }
 }

@@ -1,14 +1,12 @@
-use std::{future::Future, pin::Pin, sync::Arc};
 
 use crate::{
     card::{
-        Ability, Card, CardBase, CardBaseMethods, CardConstructor, Costs, Edition, MinionType,
+        Card, CardBase, CardConstructor, Costs, Edition, MinionType,
         Rarity, Region, UnitBase, Zone,
     },
     effect::Effect,
-    game::{ActivatedAbility, PlayerId, UnitAction, pick_card},
-    query::EffectQuery,
-    state::{CardQuery, DeferredEffect, State},
+    game::{PlayerId, pick_card},
+    state::State,
 };
 
 #[derive(Debug, Clone)]

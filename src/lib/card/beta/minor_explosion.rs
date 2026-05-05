@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Damage, Edition, Rarity, Zone},
     effect::Effect,
     game::{PlayerId, pick_zone},
     state::{CardQuery, State},
@@ -68,9 +68,7 @@ impl Card for MinorExplosion {
             .map(|id| Effect::TakeDamage {
                 card_id: id,
                 from: *caster_id,
-                damage: 3,
-                is_strike: false,
-                is_ranged: false,
+                damage: Damage::basic(3),
             })
             .collect())
     }

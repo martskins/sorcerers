@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        Ability, AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Edition, MinionType,
-        Rarity, Region, UnitBase, Zone,
+        Ability, AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Edition,
+        MinionType, Rarity, Region, UnitBase, Zone,
     },
     effect::Effect,
     game::{
@@ -53,9 +53,9 @@ impl ActivatedAbility for ShootProjectile {
                 Effect::TakeDamage {
                     card_id: target_id,
                     from,
-                    damage: 0,
+                    ref damage,
                     ..
-                } if &from == card_id => {
+                } if damage.amount == 0 && &from == card_id => {
                     target = Some(target_id);
                     break;
                 }

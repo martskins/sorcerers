@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Region, Zone},
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Damage, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::PlayerId,
     state::{CardQuery, State},
@@ -63,9 +63,7 @@ impl Card for RainOfArrows {
             .map(|minion_id| Effect::TakeDamage {
                 card_id: minion_id,
                 from: *caster_id,
-                damage: 1,
-                is_strike: false,
-                is_ranged: false,
+                damage: Damage::basic(1),
             })
             .collect();
         Ok(effects)

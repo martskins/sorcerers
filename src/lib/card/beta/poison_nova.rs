@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Damage, Edition, Rarity, Zone},
     effect::Effect,
     game::PlayerId,
     state::{CardQuery, State},
@@ -71,9 +71,7 @@ impl Card for PoisonNova {
                     Effect::TakeDamage {
                         card_id,
                         from: *caster_id,
-                        damage: 1,
-                        is_strike: false,
-                        is_ranged: false,
+                        damage: Damage::basic(1),
                     },
                     Effect::KillMinion {
                         card_id,

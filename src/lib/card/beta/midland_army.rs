@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Edition, MinionType, Rarity,
-        Region, UnitBase, Zone,
+        AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Damage, Edition, MinionType,
+        Rarity, Region, UnitBase, Zone,
     },
     effect::{Effect, TokenType},
     game::{ActivatedAbility, PlayerId, pick_zone},
@@ -47,9 +47,7 @@ impl ActivatedAbility for ArtilleryBarrage {
             .map(|c| Effect::TakeDamage {
                 card_id: *c.get_id(),
                 from: *card_id,
-                damage: 4,
-                is_strike: false,
-                is_ranged: false,
+                damage: Damage::basic(4),
             })
             .collect();
 

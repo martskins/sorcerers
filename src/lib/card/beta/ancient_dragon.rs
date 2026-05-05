@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        Ability, AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Edition, MinionType,
-        Rarity, Region, UnitBase, Zone,
+        Ability, AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Damage, Edition,
+        MinionType, Rarity, Region, UnitBase, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_zone_near},
@@ -46,9 +46,7 @@ impl ActivatedAbility for AncientDragonAbility {
             effects.push(Effect::TakeDamage {
                 card_id: unit_id,
                 from: *card_id,
-                damage: 4,
-                is_strike: false,
-                is_ranged: false,
+                damage: Damage::basic(4),
             });
         }
 

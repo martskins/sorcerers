@@ -1,7 +1,7 @@
 use crate::{
     card::{
         AdditionalCost, AreaModifiers, Artifact, ArtifactBase, ArtifactType, Card, CardBase,
-        CardConstructor, Cost, Costs, Edition, Rarity, Region, Zone,
+        CardConstructor, Cost, Costs, Damage, Edition, Rarity, Region, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, CARDINAL_DIRECTIONS, PlayerId, pick_direction},
@@ -48,9 +48,7 @@ impl ActivatedAbility for RollBoulder {
             effects.push(Effect::TakeDamage {
                 card_id: unit,
                 from: *boulder.get_id(),
-                damage: 4,
-                is_strike: false,
-                is_ranged: false,
+                damage: Damage::basic(4),
             });
         }
 
@@ -69,9 +67,7 @@ impl ActivatedAbility for RollBoulder {
                 effects.push(Effect::TakeDamage {
                     card_id: unit,
                     from: *boulder.get_id(),
-                    damage: 4,
-                    is_strike: false,
-                    is_ranged: false,
+                    damage: Damage::basic(4),
                 });
             }
 

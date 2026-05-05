@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs, Edition,
-        Rarity, Region, Zone,
+        Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs, Damage,
+        Edition, Rarity, Region, Zone,
     },
     effect::Effect,
     game::PlayerId,
@@ -90,9 +90,7 @@ impl Card for DevilSEgg {
         Ok(vec![Effect::TakeDamage {
             card_id: avatar_id,
             from: *self.get_id(),
-            damage: 1,
-            is_strike: false,
-            is_ranged: false,
+            damage: Damage::basic(1),
         }])
     }
 }

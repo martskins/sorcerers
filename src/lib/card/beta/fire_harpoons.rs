@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Region, Zone},
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Damage, Edition, Rarity, Region, Zone},
     effect::Effect,
     game::{PlayerId, pick_card},
     query::ZoneQuery,
@@ -101,9 +101,7 @@ impl Card for FireHarpoons {
             Effect::TakeDamage {
                 card_id: target_id,
                 from: *caster_id,
-                damage: 1,
-                is_strike: false,
-                is_ranged: false,
+                damage: Damage::basic(1),
             },
             Effect::MoveCard {
                 player_id: controller_id,

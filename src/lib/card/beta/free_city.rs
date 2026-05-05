@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity,
+        AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Damage, Edition, Rarity,
         ResourceProvider, Site, SiteBase, Zone,
     },
     effect::Effect,
@@ -69,9 +69,7 @@ impl ActivatedAbility for FreeCityAttack {
             Effect::TakeDamage {
                 card_id: target,
                 from: *card_id,
-                damage: 3,
-                is_strike: false,
-                is_ranged: false,
+                damage: Damage::basic(3),
             },
             Effect::SetCardData {
                 card_id: *card_id,

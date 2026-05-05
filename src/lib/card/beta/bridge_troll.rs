@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use crate::{
     card::{
-        Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
+        Card, CardBase, CardConstructor, Costs, Damage, Edition, MinionType, Rarity, Region,
+        UnitBase, Zone,
     },
     effect::Effect,
     game::PlayerId,
@@ -107,9 +108,7 @@ impl Card for BridgeTroll {
             effects.push(Effect::TakeDamage {
                 card_id: *attacker_id,
                 from: *self.get_id(),
-                damage: power,
-                is_strike: false,
-                is_ranged: false,
+                damage: Damage::basic(power),
             });
         }
 

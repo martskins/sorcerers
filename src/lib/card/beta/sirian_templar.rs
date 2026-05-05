@@ -1,6 +1,7 @@
 use crate::{
     card::{
-        Card, CardBase, CardBaseMethods, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
+        Card, CardBase, CardBaseMethods, CardConstructor, Costs, Damage, Edition, MinionType,
+        Rarity, Region, UnitBase, Zone,
     },
     effect::Effect,
     game::PlayerId,
@@ -67,8 +68,7 @@ impl Card for SirianTemplar {
         &mut self,
         state: &State,
         from: &uuid::Uuid,
-        damage: u16,
-        is_ranged: bool,
+        damage: Damage,
     ) -> anyhow::Result<Vec<Effect>> {
         let dealer = state.get_card(from);
         if dealer.is_minion()
@@ -84,7 +84,7 @@ impl Card for SirianTemplar {
             return Ok(vec![]);
         }
 
-        self.base_take_damage(state, from, damage, is_ranged)
+        self.base_take_damage(state, from, damage)
     }
 }
 

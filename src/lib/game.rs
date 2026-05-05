@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, AdditionalCost, Aura, CardType, Cost, Region, Zone},
+    card::{Ability, AdditionalCost, Aura, CardType, Cost, Damage, Region, Zone},
     effect::Effect,
     error::GameError,
     evaluation,
@@ -1296,9 +1296,7 @@ impl ActivatedAbility for UnitAction {
                                     effects.push(Effect::TakeDamage {
                                         card_id: defender_id,
                                         from: *card_id,
-                                        damage,
-                                        is_strike: false,
-                                        is_ranged: false,
+                                        damage: Damage::basic(damage),
                                     });
 
                                     let defender = state.get_card(&defender_id);

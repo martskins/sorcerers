@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Zone},
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Damage, Edition, Zone},
     effect::Effect,
     game::PlayerId,
     state::{CardQuery, State},
@@ -72,9 +72,7 @@ impl Card for FlameWave {
             .map(|unit_id| Effect::TakeDamage {
                 card_id: unit_id,
                 from: spell_id,
-                damage: 3,
-                is_strike: false,
-                is_ranged: false,
+                damage: Damage::basic(3),
             })
             .collect();
         Ok(effects)

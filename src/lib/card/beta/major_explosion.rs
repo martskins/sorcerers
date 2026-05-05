@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Damage, Edition, Rarity, Zone},
     effect::Effect,
     game::{Direction, PlayerId, pick_zone},
     state::{CardQuery, State},
@@ -78,9 +78,7 @@ impl Card for MajorExplosion {
                     effects.push(Effect::TakeDamage {
                         card_id: unit,
                         from: *self.get_id(),
-                        damage: dmg,
-                        is_strike: false,
-                        is_ranged: false,
+                        damage: Damage::basic(dmg),
                     });
                 }
             }

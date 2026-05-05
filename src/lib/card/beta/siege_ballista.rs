@@ -1,7 +1,7 @@
 use crate::{
     card::{
         AdditionalCost, Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor,
-        Cost, Costs, Edition, Rarity, Region, Zone,
+        Cost, Costs, Damage, Edition, Rarity, Region, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_card},
@@ -61,9 +61,7 @@ impl ActivatedAbility for TapToDealDamage {
             return Ok(vec![Effect::TakeDamage {
                 card_id: picked_unit_id,
                 from: bearer_id,
-                damage: 3,
-                is_strike: false,
-                is_ranged: false,
+                damage: Damage::basic(3),
             }]);
         }
 

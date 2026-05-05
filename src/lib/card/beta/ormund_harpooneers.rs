@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Edition, MinionType, Rarity,
-        Region, UnitBase, Zone,
+        AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Damage, Edition, MinionType,
+        Rarity, Region, UnitBase, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId},
@@ -61,9 +61,7 @@ impl ActivatedAbility for HarpoonPull {
             Effect::TakeDamage {
                 card_id: target_id,
                 from: *card_id,
-                damage: 1,
-                is_strike: false,
-                is_ranged: false,
+                damage: Damage::basic(1),
             },
             Effect::MoveCard {
                 player_id: *player_id,

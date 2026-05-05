@@ -2,8 +2,8 @@ use std::{future::Future, pin::Pin, sync::Arc};
 
 use crate::{
     card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region,
-        UnitBase, Zone,
+        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity,
+        Region, UnitBase, Zone,
     },
     effect::Effect,
     game::PlayerId,
@@ -145,9 +145,7 @@ impl Card for MordricDruids {
                             Ok(vec![Effect::TakeDamage {
                                 card_id: reflected_avatar,
                                 from: druids_id,
-                                damage: *damage,
-                                is_strike: false,
-                                is_ranged: false,
+                                damage: damage.clone(),
                             }])
                         })
                             as Pin<

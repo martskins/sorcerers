@@ -1,5 +1,8 @@
 use crate::{
-    card::{Aura, AuraBase, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, Zone},
+    card::{
+        Aura, AuraBase, Card, CardBase, CardConstructor, Costs, Damage, Edition, Rarity, Region,
+        Zone,
+    },
     effect::Effect,
     game::{PlayerId, pick_zone},
     query::ZoneQuery,
@@ -114,9 +117,7 @@ impl Card for Wildfire {
             .map(|id| Effect::TakeDamage {
                 card_id: id,
                 from: *self.get_id(),
-                damage: 3,
-                is_strike: false,
-                is_ranged: false,
+                damage: Damage::basic(3),
             })
             .collect::<Vec<Effect>>();
 
