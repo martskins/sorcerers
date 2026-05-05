@@ -2025,10 +2025,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             return Ok(vec![]);
         }
 
-        if state.permanently_disabled_abilities.contains(self.get_id()) {
-            return Ok(vec![]);
-        }
-
         if self.is_site() && self.is_flooded_site(state) {
             return Ok(vec![]);
         }
@@ -2297,6 +2293,7 @@ pub enum Ability {
     /// 0 means it can carry any number of minions, while a positive number indicates a limit on how
     /// many minions it can carry.
     CarryMinions(usize),
+    SplashDamage,
 }
 
 #[derive(Debug, Clone)]

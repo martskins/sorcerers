@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs, Edition,
-        Rarity, Region, Zone,
+        Ability, Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs,
+        Edition, Rarity, Region, Zone,
     },
     game::PlayerId,
     state::{ContinuousEffect, State},
@@ -79,17 +79,24 @@ impl Card for FlamingSword {
         // TODO: Implement the splash damage effect. This will likely require a new ability that is
         // granted by this artifact and the ability should specify how the damage is splashed (e.g.
         // "full damage" vs "half damage", and which enemies are affected).
-        let bearer_id = self
+        let Some(bearer_id) = self
             .get_artifact()
             .expect("FlamingSword has artifact base")
-            .get_bearer()?;
-        match bearer_id {
-            None => Ok(vec![]),
-            Some(bid) => Ok(vec![ContinuousEffect::ModifyPower {
+            .get_bearer()?
+        else {
+            return Ok(vec![]);
+        };
+
+        Ok(vec![
+            ContinuousEffect::ModifyPower {
                 power_diff: 1,
-                affected_cards: bid.into(),
-            }]),
-        }
+                affected_cards: bearer_id.into(),
+            },
+            ContinuousEffect::GrantAbility {
+                ability: Ability::SplashDamage,
+                affected_cards: bearer_id.into(),
+            },
+        ])
     }
 }
 

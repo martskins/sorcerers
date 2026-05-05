@@ -4,15 +4,10 @@ use crate::{
         UnitBase, Zone,
     },
     effect::Effect,
-    game::PlayerId,
-    state::State,
+    game::{Element, PlayerId},
+    state::{LoggedEffect, State},
 };
 
-/// **Panorama Manticore** — Elite Minion (5 cost, 5/2)
-///
-/// Airborne, Lethal.
-/// At the end of your turn, if you cast a non-fire spell this turn, untap Panorama Manticore.
-/// TODO: Implement "if non-fire spell was cast this turn" check.
 #[derive(Debug, Clone)]
 pub struct PanoramaManticore {
     unit_base: UnitBase,
@@ -76,7 +71,8 @@ impl Card for PanoramaManticore {
     }
 
     async fn on_turn_end(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        if self.get_controller_id(state) != state.current_player {
+        let controller_id = self.get_controller_id(state);
+        if controller_id != state.current_player {
             return Ok(vec![]);
         }
 
@@ -85,11 +81,41 @@ impl Card for PanoramaManticore {
             return Ok(vec![]);
         }
 
-        // TODO: Only untap if a non-fire spell was cast this turn.
-        // For now, always untap at end of turn as a simplified implementation.
-        Ok(vec![Effect::UntapCard {
-            card_id: *self.get_id(),
-        }])
+        let turn_effects: Vec<&LoggedEffect> = state
+            .effect_log
+            .iter()
+            .take_while(|e| e.turn == state.turns)
+            .collect();
+        let played_fire_spell = turn_effects
+            .iter()
+            .find(|le| match *le.effect {
+                Effect::PlayCard {
+                    card_id, player_id, ..
+                } if player_id == controller_id => {
+                    let card = state.get_card(&card_id);
+                    card.get_elements(state)
+                        .unwrap_or_default()
+                        .contains(&Element::Fire)
+                }
+                Effect::PlayMagic {
+                    card_id, player_id, ..
+                } if player_id == controller_id => {
+                    let card = state.get_card(&card_id);
+                    card.get_elements(state)
+                        .unwrap_or_default()
+                        .contains(&Element::Fire)
+                }
+                _ => false,
+            })
+            .is_some();
+
+        if played_fire_spell {
+            return Ok(vec![Effect::UntapCard {
+                card_id: *self.get_id(),
+            }]);
+        }
+
+        Ok(vec![])
     }
 }
 

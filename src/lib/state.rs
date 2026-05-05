@@ -979,10 +979,6 @@ pub struct State {
     pub player_mana: HashMap<PlayerId, u8>,
     pub loosers: HashSet<PlayerId>,
     pub players_with_accepted_hands: HashSet<PlayerId>,
-    /// Card IDs whose activated abilities have been permanently disabled (e.g. Frontier Settlers).
-    // TODO: Reimplement this. Disabling the whole card is incorrect and will definitely lead to
-    // bugs.
-    pub permanently_disabled_abilities: HashSet<uuid::Uuid>,
 }
 
 impl State {
@@ -1029,7 +1025,6 @@ impl State {
             player_mana,
             loosers: HashSet::new(),
             players_with_accepted_hands: HashSet::new(),
-            permanently_disabled_abilities: HashSet::new(),
         }
     }
 
@@ -1505,7 +1500,6 @@ impl State {
             player_mana: self.player_mana.clone(),
             loosers: self.loosers.clone(),
             players_with_accepted_hands: self.players_with_accepted_hands.clone(),
-            permanently_disabled_abilities: self.permanently_disabled_abilities.clone(),
         }
     }
 
