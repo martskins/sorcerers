@@ -104,8 +104,8 @@ impl Card for ScourgeZombies {
                             }
 
                             let died = state.effects.iter().any(|queued| {
-                                matches!(queued.as_ref(), Effect::KillMinion { card_id, .. }
-                                    if card_id == &damaged_id)
+                                matches!(queued, Effect::KillMinion { card_id, .. }
+                                    if *card_id == damaged_id)
                             });
                             if !died {
                                 return Ok(vec![]);

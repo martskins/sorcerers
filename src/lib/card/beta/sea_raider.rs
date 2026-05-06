@@ -89,17 +89,18 @@ impl Card for SeaRaider {
                             }
 
                             let killed_enemy = state.effects.iter().any(|queued| {
-                                matches!(queued.as_ref(), Effect::KillMinion { card_id, killer_id, from_attack: true }
-                                    if card_id == &damaged_id && killer_id == &self_id)
+                                matches!(queued, Effect::KillMinion { card_id, killer_id, from_attack: true }
+                                    if *card_id == damaged_id && *killer_id == self_id)
                             });
                             if !killed_enemy {
                                 return Ok(vec![]);
                             }
 
-                            let attacked_with_raider = state.effect_log.iter().rev().any(|logged| {
-                                matches!(logged.effect.as_ref(), Effect::Attack { attacker_id, .. }
-                                    if attacker_id == &self_id)
-                            });
+                            let attacked_with_raider =
+                                state.effect_log.iter().rev().any(|logged| {
+                                    matches!(logged.effect, Effect::Attack { attacker_id, .. }
+                                    if attacker_id == self_id)
+                                });
                             if !attacked_with_raider {
                                 return Ok(vec![]);
                             }

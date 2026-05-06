@@ -684,9 +684,7 @@ impl Effect {
             if de.trigger_on_effect.matches(effect, state).await? {
                 if let Some(source_id) = effect.source_id() {
                     let effects = (de.on_effect)(state, source_id, effect).await?;
-                    state
-                        .effects
-                        .extend(effects.into_iter().map(std::sync::Arc::new));
+                    state.effects.extend(effects.into_iter());
                 }
 
                 if !de.multitrigger {
@@ -972,7 +970,7 @@ impl Effect {
                 }
 
                 for effect in effects {
-                    state.effects.push_back(effect.into());
+                    state.effects.push_back(effect);
                 }
             }
             Effect::MoveCard {
@@ -1158,11 +1156,9 @@ impl Effect {
                         && let Some(site) = zone.get_site(&snapshot)
                         && site.get_name() == Rubble::NAME
                     {
-                        state
-                            .effects
-                            .push_back(std::sync::Arc::new(Effect::BanishCard {
-                                card_id: *site.get_id(),
-                            }));
+                        state.effects.push_back(Effect::BanishCard {
+                            card_id: *site.get_id(),
+                        });
                     }
                 }
 

@@ -22,11 +22,7 @@ use crate::{
 };
 use linkme::distributed_slice;
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::HashMap,
-    fmt::Debug,
-    sync::{Arc, LazyLock},
-};
+use std::{collections::HashMap, fmt::Debug, sync::LazyLock};
 use strum_macros::EnumIter;
 
 pub type CardConstructor = fn(PlayerId) -> Box<dyn Card>;
@@ -660,7 +656,7 @@ impl CostType {
                     effect.apply(state).await?;
                     state
                         .effect_log
-                        .push(LoggedEffect::new(Arc::new(effect), state.turns));
+                        .push(LoggedEffect::new(effect, state.turns));
                     crate::game::force_sync(player_id, state).await?;
                 }
 

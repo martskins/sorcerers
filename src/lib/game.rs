@@ -1540,12 +1540,10 @@ impl Game {
     }
 
     pub async fn start(&mut self) -> anyhow::Result<()> {
+        self.state.effects.extend(self.place_avatars().into_iter());
         self.state
             .effects
-            .extend(self.place_avatars().into_iter().map(|e| e.into()));
-        self.state
-            .effects
-            .extend(self.draw_initial_six().into_iter().map(|e| e.into()));
+            .extend(self.draw_initial_six().into_iter());
 
         // Process effects before starting the game so players don't see the initial setup in the event log
         self.process_effects().await?;
@@ -1949,7 +1947,7 @@ impl Game {
                 // the game.
                 self.state
                     .effect_log
-                    .push(LoggedEffect::new(effect.clone(), self.state.turns));
+                    .push(LoggedEffect::new(effect, self.state.turns));
                 self.state.compute_world_effects().await?;
 
                 Self::dispell_auras(&mut self.state).await?;

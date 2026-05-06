@@ -88,7 +88,7 @@ impl Card for PanoramaManticore {
             .collect();
         let played_fire_spell = turn_effects
             .iter()
-            .find(|le| match *le.effect {
+            .find(|le| match le.effect {
                 Effect::PlayCard {
                     card_id, player_id, ..
                 } if player_id == controller_id => {

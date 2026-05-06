@@ -45,8 +45,8 @@ impl Aura for Blizzard {
         let turns_in_play = state
             .effect_log
             .iter()
-            .skip_while(|e| !matches!(*e.effect, Effect::PlayCard { ref card_id, .. } if card_id == self.get_id()))
-            .filter(|e| matches!(*e.effect, Effect::StartTurn { ref player_id, .. } if player_id == &controller_id))
+            .skip_while(|e| !matches!(e.effect, Effect::PlayCard { ref card_id, .. } if card_id == self.get_id()))
+            .filter(|e| matches!(e.effect, Effect::StartTurn { ref player_id, .. } if player_id == &controller_id))
             .count();
 
         Ok(turns_in_play >= 1)

@@ -81,7 +81,7 @@ impl Card for CrownOfTheVictor {
             return Ok(vec![]);
         }
         let bearer_id = bearer_id.expect("value not to be None");
-        let has_killed = state.effect_log.iter().find(|le| matches!(*le.effect, Effect::KillMinion { killer_id, .. } if killer_id == bearer_id));
+        let has_killed = state.effect_log.iter().find(|le| matches!(le.effect, Effect::KillMinion { killer_id, .. } if killer_id == bearer_id));
 
         if has_killed.is_none() {
             return Ok(vec![]);

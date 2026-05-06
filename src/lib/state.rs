@@ -955,12 +955,12 @@ impl std::fmt::Debug for ContinuousEffect {
 
 #[derive(Debug, Clone)]
 pub struct LoggedEffect {
-    pub effect: Arc<Effect>,
+    pub effect: Effect,
     pub turn: usize,
 }
 
 impl LoggedEffect {
-    pub fn new(effect: Arc<Effect>, turn: usize) -> Self {
+    pub fn new(effect: Effect, turn: usize) -> Self {
         Self { effect, turn }
     }
 }
@@ -976,7 +976,7 @@ pub struct State {
     pub phase: Phase,
     pub waiting_for_input: bool,
     pub current_player: PlayerId,
-    pub effects: VecDeque<Arc<Effect>>,
+    pub effects: VecDeque<Effect>,
     pub effect_log: Vec<LoggedEffect>,
     pub player_one: PlayerId,
     pub server_tx: Sender<ServerMessage>,
@@ -1037,7 +1037,7 @@ impl State {
     }
 
     pub fn find_caster(&self, spell_id: &uuid::Uuid) -> Option<uuid::Uuid> {
-        self.effect_log.iter().find_map(|e| match *e.effect {
+        self.effect_log.iter().find_map(|e| match e.effect {
             Effect::PlayMagic {
                 card_id, caster_id, ..
             } if card_id == *spell_id => Some(caster_id),
@@ -1172,15 +1172,15 @@ impl State {
     }
 
     pub fn queue(&mut self, effects: impl IntoIterator<Item = Effect>) {
-        self.effects.extend(effects.into_iter().map(Arc::new));
+        self.effects.extend(effects);
     }
 
     pub fn queue_one(&mut self, effect: Effect) {
-        self.effects.push_back(Arc::new(effect));
+        self.effects.push_back(effect);
     }
 
     pub fn queue_front(&mut self, effect: Effect) {
-        self.effects.push_front(Arc::new(effect));
+        self.effects.push_front(effect);
     }
 
     pub fn get_thresholds_for_player(&self, player_id: &PlayerId) -> Thresholds {

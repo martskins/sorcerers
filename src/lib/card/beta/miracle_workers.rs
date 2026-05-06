@@ -82,7 +82,7 @@ impl Card for MiracleWorkers {
             .filter(|c| {
                 state.effect_log.iter().any(|le| {
                     le.turn == current_turn
-                        && matches!(*le.effect, Effect::BuryCard { card_id } if card_id == *c.get_id())
+                        && matches!(le.effect, Effect::BuryCard { card_id } if card_id == *c.get_id())
                 })
             })
             .map(|c| *c.get_id())

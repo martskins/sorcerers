@@ -54,7 +54,7 @@ impl ActivatedAbility for DealDamageAction {
             .iter()
             .rev()
             .filter(|le| le.turn == state.turns)
-            .fold(0, |acc, e| match *e.effect {
+            .fold(0, |acc, e| match e.effect {
                 Effect::PlayMagic {
                     player_id: pid,
                     card_id: cid,

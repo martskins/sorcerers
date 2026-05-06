@@ -41,7 +41,7 @@ impl ActivatedAbility for ShootPayload {
                     return None;
                 }
 
-                match *e.effect {
+                match e.effect {
                     Effect::DiscardCard {
                         player_id: pid,
                         card_id: cid,

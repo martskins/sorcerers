@@ -49,7 +49,7 @@ impl ActivatedAbility for ShootProjectile {
         effect.apply(&mut snapshot).await?;
         let mut target = None;
         for effect in snapshot.effects {
-            match *effect {
+            match effect {
                 Effect::TakeDamage {
                     card_id: target_id,
                     from,

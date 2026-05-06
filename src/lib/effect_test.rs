@@ -175,7 +175,7 @@ async fn test_summon_card_queues_genesis_effects() {
     let has_draw_spell = state
         .effects
         .iter()
-        .any(|e| matches!(&**e, Effect::DrawSpell { .. }));
+        .any(|e| matches!(*e, Effect::DrawSpell { .. }));
     assert!(
         has_draw_spell,
         "SummonCard should queue genesis effects (DrawSpell for ApprenticeWizard)"
