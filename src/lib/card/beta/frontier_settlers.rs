@@ -167,7 +167,10 @@ impl Card for FrontierSettlers {
         Some(&mut self.unit_base)
     }
 
-    fn set_data(&mut self, data: &std::sync::Arc<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
+    fn set_data(
+        &mut self,
+        data: &std::sync::Arc<dyn std::any::Any + Send + Sync>,
+    ) -> anyhow::Result<()> {
         if let Some(has_ability) = data.downcast_ref::<bool>() {
             self.has_ability = *has_ability;
             Ok(())

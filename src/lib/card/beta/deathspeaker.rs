@@ -212,7 +212,10 @@ impl Card for Deathspeaker {
         Ok(vec![Box::new(DeathspeakerAbility)])
     }
 
-    fn set_data(&mut self, data: &std::sync::Arc<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
+    fn set_data(
+        &mut self,
+        data: &std::sync::Arc<dyn std::any::Any + Send + Sync>,
+    ) -> anyhow::Result<()> {
         if let Some(ability_used) = data.downcast_ref::<bool>() {
             self.has_used_ability = *ability_used;
         }

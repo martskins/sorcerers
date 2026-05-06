@@ -72,7 +72,10 @@ impl Card for WayfaringPilgrim {
         Some(&mut self.unit_base)
     }
 
-    fn set_data(&mut self, data: &std::sync::Arc<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
+    fn set_data(
+        &mut self,
+        data: &std::sync::Arc<dyn std::any::Any + Send + Sync>,
+    ) -> anyhow::Result<()> {
         if let Some(corners_visited) = data.downcast_ref::<Vec<Zone>>() {
             self.corners_visited = corners_visited.clone();
         }

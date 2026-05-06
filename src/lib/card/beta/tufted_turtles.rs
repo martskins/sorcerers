@@ -66,7 +66,10 @@ impl Card for TuftedTurtles {
         Some(&mut self.unit_base)
     }
 
-    fn set_data(&mut self, _data: &std::sync::Arc<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
+    fn set_data(
+        &mut self,
+        _data: &std::sync::Arc<dyn std::any::Any + Send + Sync>,
+    ) -> anyhow::Result<()> {
         if let Some(damage_prevented) = _data.downcast_ref::<bool>() {
             self.damage_prevented = *damage_prevented;
             Ok(())

@@ -155,7 +155,10 @@ impl Card for AvatarOfWater {
         }
     }
 
-    fn set_data(&mut self, data: &std::sync::Arc<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
+    fn set_data(
+        &mut self,
+        data: &std::sync::Arc<dyn std::any::Any + Send + Sync>,
+    ) -> anyhow::Result<()> {
         if let Some(effect) = data.downcast_ref::<ContinuousEffect>() {
             self.flood_effect = Some(effect.clone());
         }

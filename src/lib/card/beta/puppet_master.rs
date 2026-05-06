@@ -73,7 +73,10 @@ impl Card for PuppetMaster {
         Some(&mut self.unit_base)
     }
 
-    fn set_data(&mut self, data: &std::sync::Arc<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
+    fn set_data(
+        &mut self,
+        data: &std::sync::Arc<dyn std::any::Any + Send + Sync>,
+    ) -> anyhow::Result<()> {
         if let Some(data) = data.downcast_ref::<PuppetMasterData>() {
             self.data = data.clone();
             Ok(())

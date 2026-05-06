@@ -62,7 +62,10 @@ impl Card for SelfsameSimulacrum {
     fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
         Some(&mut self.unit_base)
     }
-    fn set_data(&mut self, data: &std::sync::Arc<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
+    fn set_data(
+        &mut self,
+        data: &std::sync::Arc<dyn std::any::Any + Send + Sync>,
+    ) -> anyhow::Result<()> {
         if let Some(unit_base) = data.downcast_ref::<UnitBase>() {
             self.unit_base = unit_base.clone();
             self.unit_base.damage = 0;

@@ -69,7 +69,10 @@ impl Card for Wildfire {
         Some(&mut self.aura_base)
     }
 
-    fn set_data(&mut self, data: &std::sync::Arc<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
+    fn set_data(
+        &mut self,
+        data: &std::sync::Arc<dyn std::any::Any + Send + Sync>,
+    ) -> anyhow::Result<()> {
         if let Some(sites_visited) = data.downcast_ref::<Vec<Zone>>() {
             self.sites_visited = sites_visited.clone();
         }

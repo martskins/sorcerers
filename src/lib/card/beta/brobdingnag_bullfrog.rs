@@ -92,7 +92,10 @@ impl Card for BrobdingnagBullfrog {
         }])
     }
 
-    fn set_data(&mut self, data: &std::sync::Arc<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
+    fn set_data(
+        &mut self,
+        data: &std::sync::Arc<dyn std::any::Any + Send + Sync>,
+    ) -> anyhow::Result<()> {
         if let Some(swallowed_minion_id) = data.downcast_ref::<uuid::Uuid>() {
             self.swallowed_minion = Some(*swallowed_minion_id);
         }
