@@ -6,10 +6,6 @@ use crate::{
     game::PlayerId,
 };
 
-/// **Phantom Steed** — Exceptional Minion (3 cost, 2/2)
-///
-/// Movement +2, Voidwalk. May carry an allied minion.
-/// TODO: Implement "may carry an allied minion" mechanic.
 #[derive(Debug, Clone)]
 pub struct PhantomSteed {
     unit_base: UnitBase,
@@ -25,7 +21,11 @@ impl PhantomSteed {
             unit_base: UnitBase {
                 power: 2,
                 toughness: 2,
-                abilities: vec![Ability::Movement(2), Ability::Voidwalk],
+                abilities: vec![
+                    Ability::Movement(2),
+                    Ability::Voidwalk,
+                    Ability::CarryMinions(1),
+                ],
                 types: vec![MinionType::Beast],
                 tapped: false,
                 region: Region::Surface,
