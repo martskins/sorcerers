@@ -13,7 +13,7 @@ use crate::{
     query::{EffectQuery, ZoneQuery},
 };
 use async_channel::{Receiver, Sender};
-use rand::seq::SliceRandom;
+use rand::seq::IndexedRandom;
 use std::{
     collections::{HashMap, HashSet, VecDeque},
     future::Future,
@@ -172,11 +172,9 @@ impl CardQuery {
                 }
             }
 
-            let mut rng = rand::rng();
-            card_ids.shuffle(&mut rng);
             *card_ids
-                .first()
-                .expect("Expected at least one card to be returned from resolve_ids")
+                .choose(&mut rand::rng())
+                .expect("a card to be picked")
         } else {
             let prompt = self
                 .prompt
