@@ -1998,12 +1998,12 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     .get_artifact()
                     .ok_or(anyhow::anyhow!("artifact card does not implement artifact"))?
                     .get_valid_attach_targets(state);
-                let needs_bearer = state
+                let can_be_carried = state
                     .get_card(card_id)
                     .get_artifact()
                     .ok_or(anyhow::anyhow!("artifact card does not implement artifact"))?
-                    .needs_bearer(state)?;
-                match needs_bearer {
+                    .can_be_carried();
+                match can_be_carried {
                     true => {
                         let picked_card_id = pick_card(
                             *player_id,
@@ -2410,7 +2410,6 @@ pub enum ArtifactType {
 
 #[derive(Debug, Clone)]
 pub struct ArtifactBase {
-    pub needs_bearer: bool,
     pub types: Vec<ArtifactType>,
     pub tapped: bool,
     pub region: Region,
@@ -2419,7 +2418,6 @@ pub struct ArtifactBase {
 impl Default for ArtifactBase {
     fn default() -> Self {
         Self {
-            needs_bearer: false,
             types: vec![],
             tapped: false,
             region: Region::Surface,
@@ -2428,11 +2426,15 @@ impl Default for ArtifactBase {
 }
 
 pub trait Artifact: Card {
-    fn needs_bearer(&self, _state: &State) -> anyhow::Result<bool> {
-        Ok(self
+    fn can_be_carried(&self) -> bool {
+        let artifact_types = &self
             .get_artifact_base()
-            .ok_or(anyhow::anyhow!("artifact card has no base"))?
-            .needs_bearer)
+            .expect("artifact to have an artifact base")
+            .types;
+
+        // Automatons and Monuments cannot be carried
+        !artifact_types.contains(&ArtifactType::Automaton)
+            && !artifact_types.contains(&ArtifactType::Monument)
     }
 
     fn get_valid_attach_targets(&self, state: &State) -> Vec<uuid::Uuid> {

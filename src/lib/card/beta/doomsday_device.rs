@@ -22,7 +22,6 @@ impl DoomsdayDevice {
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
             artifact_base: ArtifactBase {
-                needs_bearer: false,
                 types: vec![ArtifactType::Device],
                 tapped: false,
                 region: Region::Surface,
@@ -75,7 +74,10 @@ impl Card for DoomsdayDevice {
         Some(self)
     }
 
-    fn set_data(&mut self, data: &std::sync::Arc<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
+    fn set_data(
+        &mut self,
+        data: &std::sync::Arc<dyn std::any::Any + Send + Sync>,
+    ) -> anyhow::Result<()> {
         if let Some(val) = data.downcast_ref::<u8>() {
             self.doom_counters = *val;
         }

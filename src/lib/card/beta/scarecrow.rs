@@ -21,7 +21,6 @@ impl Scarecrow {
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
             artifact_base: ArtifactBase {
-                needs_bearer: false,
                 types: vec![ArtifactType::Relic],
                 tapped: false,
                 region: Region::Surface,

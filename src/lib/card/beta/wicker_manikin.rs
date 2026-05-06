@@ -20,7 +20,6 @@ impl WickerManikin {
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
             artifact_base: ArtifactBase {
-                needs_bearer: false,
                 types: vec![ArtifactType::Automaton],
                 tapped: false,
                 region: Region::Surface,

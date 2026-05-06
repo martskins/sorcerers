@@ -83,7 +83,6 @@ impl SiegeBallista {
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
             artifact_base: ArtifactBase {
-                needs_bearer: true,
                 types: vec![ArtifactType::Weapon],
                 tapped: false,
                 region: Region::Surface,
