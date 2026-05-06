@@ -59,7 +59,7 @@ impl Card for ChainLightning {
         let mut effects = vec![];
         let mut last_hit_zone = caster.get_zone().clone();
         let mut first_pick = true;
-        let mut local_state = state.snapshot();
+        let mut local_state = state.clone();
         let controller_id = self.get_controller_id(state);
         loop {
             let Some(picked_card_id) = CardQuery::new()

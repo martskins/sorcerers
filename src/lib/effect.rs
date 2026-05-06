@@ -718,7 +718,7 @@ impl Effect {
         state: &mut State,
         effect: &Effect,
     ) -> anyhow::Result<()> {
-        let snapshot = state.snapshot();
+        let snapshot = state.clone();
         let mut retained_effects = vec![];
         for te in &state.temporary_effects {
             let should_retain = match te.expires_on_effect() {
@@ -993,7 +993,7 @@ impl Effect {
                 match through_path {
                     Some(path) => {
                         for zone in path {
-                            let snapshot = state.snapshot();
+                            let snapshot = state.clone();
                             let zone = ZoneQuery::from_zone(zone.clone())
                                 .resolve(player_id, state)
                                 .await?;
@@ -1024,7 +1024,7 @@ impl Effect {
                         }
                     }
                     None => {
-                        let snapshot = state.snapshot();
+                        let snapshot = state.clone();
                         let zone = to.resolve(player_id, state).await?;
                         let card = state.get_card_mut(card_id);
                         let from_zone = card.get_zone().clone();
@@ -1122,7 +1122,7 @@ impl Effect {
                 let costs = state.get_effective_costs(card_id, None, player_id)?;
                 let paid_cost = costs.pay(state, player_id).await?;
 
-                let snapshot = state.snapshot();
+                let snapshot = state.clone();
                 let card = state.get_card_mut(card_id);
                 card.set_controller_id(player_id);
                 let effects = card.on_cast(&snapshot, caster_id, paid_cost).await?;
@@ -1145,7 +1145,7 @@ impl Effect {
                 let zone = zone.resolve(player_id, state).await?;
                 let costs = state.get_effective_costs(card_id, Some(&zone), player_id)?;
                 Box::pin(costs.pay(state, player_id)).await?;
-                let snapshot = state.snapshot();
+                let snapshot = state.clone();
 
                 // If playing a site and there is a rubble on that zone, remove it.
                 {
@@ -1192,7 +1192,7 @@ impl Effect {
                 }
             }
             Effect::SummonCards { cards } => {
-                let snapshot = state.snapshot();
+                let snapshot = state.clone();
                 for (_, card_id, zone) in cards {
                     let has_charge = state.get_card(card_id).has_ability(state, &Ability::Charge);
                     let card = state.get_card_mut(card_id);
@@ -1399,7 +1399,7 @@ impl Effect {
                     .get_card_mut(striker_id)
                     .remove_modifier(&Ability::Stealth);
 
-                let snapshot = state.snapshot();
+                let snapshot = state.clone();
                 let attacker = state.get_card(striker_id);
                 let defender = state.get_card(target_id);
                 let mut effects = vec![Effect::TakeDamage {
@@ -1427,7 +1427,7 @@ impl Effect {
                     .get_card_mut(attacker_id)
                     .remove_modifier(&Ability::Stealth);
 
-                let mut snapshot = state.snapshot();
+                let snapshot = state.clone();
                 let attacker = state.get_card(attacker_id);
                 let defender = state.get_card(defender_id);
                 let mut effects = vec![Effect::MoveCard {
@@ -1450,7 +1450,7 @@ impl Effect {
                 if attacker_has_fs != defender_has_fs {
                     // Simulate the first strike phase in a snapshot to check who survives.
                     let first_defender_survived = {
-                        let mut sim = state.snapshot();
+                        let mut sim = state.clone();
                         if attacker_has_fs {
                             let power = attacker
                                 .get_power(&snapshot)?
@@ -1562,7 +1562,7 @@ impl Effect {
                 damage,
                 from,
             } => {
-                let snapshot = state.snapshot();
+                let snapshot = state.clone();
                 // Check if this card has DoubleDamageTaken applied to it.
                 let takes_double_damage = snapshot.continuous_effects.iter().any(|ce| {
                     matches!(ce, ContinuousEffect::DoubleDamageTaken { affected_cards, except_strikes }
@@ -1604,7 +1604,7 @@ impl Effect {
                 card.set_bearer_id(None);
                 card.set_zone(Zone::Cemetery);
 
-                let snapshot = state.snapshot();
+                let snapshot = state.clone();
                 let card = state.get_card_mut(card_id);
                 let effects = card.deathrite(&snapshot, &original_zone);
                 state.queue(effects);
@@ -1665,7 +1665,7 @@ impl Effect {
                     .get_card_mut(striker_id)
                     .remove_modifier(&Ability::Stealth);
 
-                let snapshot = state.snapshot();
+                let snapshot = state.clone();
                 let attacker = state.get_card(striker_id);
                 let defender = state.get_card(target_id);
                 let mut effects = vec![Effect::TakeDamage {
@@ -1760,7 +1760,7 @@ impl Effect {
 
                 if card.is_minion() {
                     let card = state.get_card(card_id);
-                    let snapshot = state.snapshot();
+                    let snapshot = state.clone();
                     let underground_without_burrowing = region == &Region::Underground
                         && !card.has_ability(&snapshot, &Ability::Burrowing);
                     let underwater_without_submerge = region == &Region::Underwater

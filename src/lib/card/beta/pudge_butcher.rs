@@ -34,7 +34,7 @@ impl ActivatedAbility for ShootProjectile {
         )
         .await?;
 
-        let mut snapshot = state.snapshot();
+        let mut snapshot = state.clone();
         let pudge = state.get_card(card_id);
         let effect = Effect::ShootProjectile {
             id: uuid::Uuid::new_v4(),

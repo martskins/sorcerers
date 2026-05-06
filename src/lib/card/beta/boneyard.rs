@@ -82,7 +82,7 @@ impl Card for Boneyard {
         let mut cards = vec![];
         for player in &state.players {
             let player_id = player.id;
-            let state = state.snapshot();
+            let state = state.clone();
             let zone = self.get_zone().clone();
 
             let all_cards = &CardQuery::new()

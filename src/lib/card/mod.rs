@@ -468,10 +468,16 @@ pub trait CloneBoxedCard {
 
 impl<T> CloneBoxedCard for T
 where
-    T: 'static + Card + Clone,
+    T: 'static + Clone + Card,
 {
     fn clone_box(&self) -> Box<dyn Card> {
         Box::new(self.clone())
+    }
+}
+
+impl Clone for Box<dyn Card> {
+    fn clone(&self) -> Box<dyn Card> {
+        self.clone_box()
     }
 }
 
@@ -661,7 +667,7 @@ impl CostType {
                 && thresholds.earth >= tc.earth
                 && thresholds.water >= tc.water),
             CostType::Additional(additional_costs) => {
-                let mut snapshot = state.snapshot();
+                let mut snapshot = state.clone();
                 for ac in additional_costs {
                     let ac = ac.clone();
                     let mut query = ac.card;

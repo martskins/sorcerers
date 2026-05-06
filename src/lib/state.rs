@@ -957,7 +957,7 @@ impl LoggedEffect {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct State {
     pub game_id: uuid::Uuid,
     pub players: Vec<Player>,
@@ -1476,31 +1476,6 @@ impl State {
             mana: self.player_mana.get(player_id).cloned().unwrap_or(0),
             thresholds: self.get_thresholds_for_player(player_id),
         })
-    }
-
-    pub fn snapshot(&self) -> State {
-        State {
-            game_id: self.game_id,
-            players: self.players.clone(),
-            cards: self.cards.iter().map(|c| c.clone_box()).collect(),
-            decks: self.decks.clone(),
-            turns: self.turns,
-            input_status: self.input_status.clone(),
-            phase: self.phase.clone(),
-            current_player: self.current_player,
-            waiting_for_input: self.waiting_for_input,
-            effects: self.effects.clone(),
-            player_one: self.player_one,
-            server_tx: self.server_tx.clone(),
-            client_rx: self.client_rx.clone(),
-            effect_log: self.effect_log.clone(),
-            continuous_effects: self.continuous_effects.clone(),
-            temporary_effects: self.temporary_effects.clone(),
-            deferred_effects: self.deferred_effects.clone(),
-            player_mana: self.player_mana.clone(),
-            loosers: self.loosers.clone(),
-            players_with_accepted_hands: self.players_with_accepted_hands.clone(),
-        }
     }
 
     #[cfg(any(test, feature = "benchmark"))]

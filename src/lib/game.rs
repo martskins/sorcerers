@@ -1616,7 +1616,7 @@ impl Game {
             ClientMessage::ClickCard {
                 player_id, card_id, ..
             } => {
-                let snapshot = self.state.snapshot();
+                let snapshot = self.state.clone();
                 let card = snapshot.get_card(card_id);
                 // if &card.get_controller_id(&self.state) != player_id {
                 //     return Ok(());
