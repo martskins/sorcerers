@@ -1,15 +1,13 @@
 use crate::{
     card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region,
-        UnitBase, Zone,
+        Ability, Card, CardBase, CardConstructor, Costs, Damage, Edition, MinionType, Rarity,
+        Region, UnitBase, Zone,
     },
+    effect::Effect,
     game::PlayerId,
+    state::State,
 };
 
-/// **Phantasmal Shade** — Exceptional Minion (3 cost, 4/1)
-///
-/// When Phantasmal Shade is struck, destroy it.
-/// TODO: Implement on-struck destroy trigger.
 #[derive(Debug, Clone)]
 pub struct PhantasmalShade {
     unit_base: UnitBase,
@@ -24,7 +22,7 @@ impl PhantasmalShade {
         Self {
             unit_base: UnitBase {
                 power: 4,
-                toughness: 1,
+                toughness: 4,
                 abilities: vec![Ability::Voidwalk, Ability::Stealth],
                 types: vec![MinionType::Spirit],
                 tapped: false,
@@ -70,6 +68,21 @@ impl Card for PhantasmalShade {
 
     fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
         Some(&mut self.unit_base)
+    }
+
+    fn on_take_damage(
+        &mut self,
+        _state: &State,
+        _from: &uuid::Uuid,
+        damage: Damage,
+    ) -> anyhow::Result<Vec<Effect>> {
+        if !damage.is_strike {
+            return Ok(vec![]);
+        }
+
+        Ok(vec![Effect::BuryCard {
+            card_id: *self.get_id(),
+        }])
     }
 }
 
