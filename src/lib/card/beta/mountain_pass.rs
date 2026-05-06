@@ -44,7 +44,7 @@ impl MountainPass {
 
 #[async_trait::async_trait]
 impl Site for MountainPass {
-    async fn can_be_entered_by(
+    fn can_be_entered_by(
         &self,
         card_id: &uuid::Uuid,
         _from: &Zone,

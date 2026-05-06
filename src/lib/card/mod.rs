@@ -159,22 +159,14 @@ impl Zone {
         matches!(self, Zone::Realm(_) | Zone::Intersection(_))
     }
 
-    pub async fn can_be_entered_by(
-        &self,
-        state: &State,
-        card_id: &uuid::Uuid,
-    ) -> anyhow::Result<bool> {
-        let card = state.get_card(card_id);
-        let controller_id = card.get_controller_id(state);
+    pub fn can_be_entered_by(&self, state: &State, card_id: &uuid::Uuid) -> anyhow::Result<bool> {
         let mut can_enter = true;
         for ce in &state.continuous_effects {
             match ce {
                 ContinuousEffect::MakeZonesUnvisitable {
                     affected_zone,
                     affected_cards,
-                } if affected_zone.resolve(&controller_id, state).await? == *self
-                    && affected_cards.matches(card_id, state) =>
-                {
+                } if affected_zone == self && affected_cards.matches(card_id, state) => {
                     can_enter = false;
                     break;
                 }
@@ -2257,24 +2249,24 @@ pub trait Site: Card + ResourceProvider {
         vec![]
     }
 
-    async fn base_can_be_entered_by(
+    fn base_can_be_entered_by(
         &self,
         card: &uuid::Uuid,
         _from: &Zone,
         _region: &Region,
         state: &State,
     ) -> anyhow::Result<bool> {
-        self.get_zone().can_be_entered_by(state, card).await
+        self.get_zone().can_be_entered_by(state, card)
     }
 
-    async fn can_be_entered_by(
+    fn can_be_entered_by(
         &self,
         card: &uuid::Uuid,
         from: &Zone,
         region: &Region,
         state: &State,
     ) -> anyhow::Result<bool> {
-        self.base_can_be_entered_by(card, from, region, state).await
+        self.base_can_be_entered_by(card, from, region, state)
     }
 
     fn is_flooded(&self, state: &State) -> anyhow::Result<bool> {
@@ -2907,7 +2899,7 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
 
         let mut zones: Vec<Zone> = vec![];
         for zone in &self.get_zones_within_steps(state, self.get_steps_per_movement(state)?) {
-            if !zone.can_be_entered_by(state, self.get_id()).await? {
+            if !zone.can_be_entered_by(state, self.get_id())? {
                 continue;
             }
 
@@ -2930,15 +2922,12 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
                 continue;
             };
 
-            if site
-                .can_be_entered_by(
-                    self.get_id(),
-                    self.get_zone(),
-                    self.get_region(state),
-                    state,
-                )
-                .await?
-            {
+            if site.can_be_entered_by(
+                self.get_id(),
+                self.get_zone(),
+                self.get_region(state),
+                state,
+            )? {
                 zones.push(zone.clone());
             }
         }

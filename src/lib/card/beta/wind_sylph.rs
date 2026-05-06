@@ -116,12 +116,11 @@ impl Card for WindSylph {
 
             let can_enter = match zone.get_site(state) {
                 Some(site) => {
-                    site.can_be_entered_by(&unit_id, unit.get_zone(), unit.get_region(state), state)
-                        .await?
+                    site.can_be_entered_by(&unit_id, unit.get_zone(), unit.get_region(state), state)?
                 }
                 None => {
                     unit.has_ability(state, &Ability::Voidwalk)
-                        && zone.can_be_entered_by(state, &unit_id).await?
+                        && zone.can_be_entered_by(state, &unit_id)?
                 }
             };
 

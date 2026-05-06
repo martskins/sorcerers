@@ -100,7 +100,7 @@ impl Card for Scarecrow {
         _state: &State,
     ) -> anyhow::Result<Vec<ContinuousEffect>> {
         Ok(vec![ContinuousEffect::MakeZonesUnvisitable {
-            affected_zone: self.get_zone().into(),
+            affected_zone: self.get_zone().clone(),
             affected_cards: CardQuery::new().minions().with_ability(&Ability::Airborne),
         }])
     }

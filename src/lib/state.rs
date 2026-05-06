@@ -887,7 +887,7 @@ pub enum ContinuousEffect {
         affected_sites: CardQuery,
     },
     MakeZonesUnvisitable {
-        affected_zone: ZoneQuery,
+        affected_zone: Zone,
         affected_cards: CardQuery,
     },
     DoubleDamageTaken {
