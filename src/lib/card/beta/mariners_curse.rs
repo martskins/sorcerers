@@ -96,7 +96,7 @@ impl Card for MarinersCurse {
                                 return Ok(vec![]);
                             };
 
-                            let to_zone = to.resolve(player_id, state).await?;
+                            let to_zone = to.pick(player_id, state).await?;
 
                             // Check if aura is still in play.
                             if !state.get_card(&aura_id).get_zone().is_in_play() {

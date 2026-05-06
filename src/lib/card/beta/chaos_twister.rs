@@ -79,7 +79,7 @@ impl Card for ChaosTwister {
         let region = target.get_region(state).clone();
 
         // Move the minion to a random site zone, then deal power damage to all units there.
-        let landing_zone = ZoneQuery::from_options(Zone::all_realm(), None).randomised();
+        let landing_zone = ZoneQuery::random(Zone::all_realm());
 
         Ok(vec![
             Effect::MoveCard {

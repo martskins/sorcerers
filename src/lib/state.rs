@@ -131,12 +131,8 @@ impl CardQuery {
     ) -> anyhow::Result<Option<uuid::Uuid>> {
         use crate::query::QueryCache;
 
-        if let Some(cached) = QueryCache::matcher_results(&self.id).await {
-            return Ok(Some(
-                *cached
-                    .first()
-                    .expect("Expected at least one card to be returned from cache"),
-            ));
+        if let Some(cached) = QueryCache::card_result(&self.id) {
+            return Ok(Some(cached));
         }
 
         if let Some(count) = &self.count
@@ -169,13 +165,9 @@ impl CardQuery {
 
                 if let Some(query) = card.card_query_override(state, self).await? {
                     let output = Box::pin(query.pick(player_id, state, use_preview)).await?;
-
-                    QueryCache::store_matcher_results(
-                        state.game_id,
-                        self.id,
-                        output.map_or(vec![], |o| vec![o]),
-                    )
-                    .await;
+                    if let Some(output) = output {
+                        QueryCache::store_card_result(state.game_id, self.id, output);
+                    }
                     return Ok(output);
                 }
             }
@@ -198,7 +190,7 @@ impl CardQuery {
             }
         };
 
-        QueryCache::store_matcher_results(state.game_id, self.id, vec![output]).await;
+        QueryCache::store_card_result(state.game_id, self.id, output);
 
         Ok(Some(output))
     }

@@ -1756,8 +1756,8 @@ impl Game {
         Ok(())
     }
 
-    pub async fn end_game(&mut self) -> anyhow::Result<()> {
-        QueryCache::clear_game_cache(&self.id).await;
+    pub fn end_game(&mut self) -> anyhow::Result<()> {
+        QueryCache::clear_game_cache(&self.id);
         Ok(())
     }
 
@@ -1767,7 +1767,7 @@ impl Game {
             player_id: *player_id,
         })
         .await?;
-        self.end_game().await?;
+        self.end_game()?;
 
         Ok(())
     }

@@ -5,8 +5,10 @@ use crate::{
     state::{CardQuery, State},
 };
 use rand::seq::IndexedRandom;
-use std::{collections::HashMap, sync::OnceLock};
-use tokio::sync::RwLock;
+use std::{
+    collections::HashMap,
+    sync::{OnceLock, RwLock},
+};
 
 static QUERY_CACHE: OnceLock<RwLock<QueryCache>> = OnceLock::new();
 
@@ -15,7 +17,6 @@ pub struct QueryCache {
     zone_queries: HashMap<uuid::Uuid, Zone>,
     card_queries: HashMap<uuid::Uuid, uuid::Uuid>,
     effect_targets: HashMap<uuid::Uuid, Vec<uuid::Uuid>>,
-    matcher_queries: HashMap<uuid::Uuid, Vec<uuid::Uuid>>,
     game_queries: HashMap<uuid::Uuid, Vec<uuid::Uuid>>,
 }
 
@@ -24,9 +25,8 @@ impl QueryCache {
         Self {
             zone_queries: HashMap::new(),
             card_queries: HashMap::new(),
-            game_queries: HashMap::new(),
             effect_targets: HashMap::new(),
-            matcher_queries: HashMap::new(),
+            game_queries: HashMap::new(),
         }
     }
 
@@ -34,31 +34,28 @@ impl QueryCache {
         QUERY_CACHE.get_or_init(|| RwLock::new(QueryCache::new()));
     }
 
-    pub async fn store_matcher_results(
-        game_id: uuid::Uuid,
-        matcher_id: uuid::Uuid,
-        card_ids: Vec<uuid::Uuid>,
-    ) {
-        let mut cache = QUERY_CACHE.get().expect("to get lock").write().await;
-        cache.matcher_queries.insert(matcher_id, card_ids);
+    pub fn card_result(query_id: &uuid::Uuid) -> Option<uuid::Uuid> {
+        let cache = QUERY_CACHE.get().expect("to get lock").read().unwrap();
+        cache.card_queries.get(query_id).cloned()
+    }
+
+    pub fn store_card_result(game_id: uuid::Uuid, query_id: uuid::Uuid, card_id: uuid::Uuid) {
+        let mut cache = QUERY_CACHE.get().expect("to get lock").write().unwrap();
+        cache.card_queries.insert(query_id, card_id);
+
         cache
             .game_queries
             .entry(game_id)
             .or_default()
-            .push(matcher_id);
+            .push(query_id);
     }
 
-    pub async fn matcher_results(matcher_id: &uuid::Uuid) -> Option<Vec<uuid::Uuid>> {
-        let cache = QUERY_CACHE.get().expect("to get lock").read().await;
-        cache.matcher_queries.get(matcher_id).cloned()
-    }
-
-    pub async fn store_effect_targets(
+    pub fn store_effect_targets(
         game_id: uuid::Uuid,
         effect_id: uuid::Uuid,
         affected_cards: Vec<uuid::Uuid>,
     ) {
-        let mut cache = QUERY_CACHE.get().expect("to get lock").write().await;
+        let mut cache = QUERY_CACHE.get().expect("to get lock").write().unwrap();
         cache.effect_targets.insert(effect_id, affected_cards);
 
         cache
@@ -68,8 +65,8 @@ impl QueryCache {
             .push(effect_id);
     }
 
-    pub async fn effect_targets(effect_id: &uuid::Uuid) -> Option<Vec<uuid::Uuid>> {
-        let cache = QUERY_CACHE.get().expect("to get lock").read().await;
+    pub fn effect_targets(effect_id: &uuid::Uuid) -> Option<Vec<uuid::Uuid>> {
+        let cache = QUERY_CACHE.get().expect("to get lock").read().unwrap();
         cache.effect_targets.get(effect_id).cloned()
     }
 
@@ -82,7 +79,7 @@ impl QueryCache {
             .get()
             .expect("lock to be obtained")
             .read()
-            .await
+            .unwrap()
             .zone_queries
             .get(&qry.id)
         {
@@ -95,7 +92,7 @@ impl QueryCache {
             let options = qry.options.as_deref().unwrap_or(&[]);
             for card in &state.cards {
                 if let Some(query) = card.zone_query_override(state, qry)? {
-                    return Box::pin(query.resolve(player_id, state)).await;
+                    return Box::pin(query.pick(player_id, state)).await;
                 }
             }
             options
@@ -127,7 +124,7 @@ impl QueryCache {
             .get()
             .expect("failed to get random zone")
             .write()
-            .await;
+            .unwrap();
         cache.zone_queries.insert(qry.id, zone.clone());
         cache
             .game_queries
@@ -138,15 +135,14 @@ impl QueryCache {
         Ok(zone)
     }
 
-    pub async fn clear_game_cache(game_id: &uuid::Uuid) {
+    pub fn clear_game_cache(game_id: &uuid::Uuid) {
         if let Some(cache) = QUERY_CACHE.get() {
-            let mut cache = cache.write().await;
+            let mut cache = cache.write().unwrap();
             if let Some(queries) = cache.game_queries.remove(game_id) {
                 for qry_id in queries {
                     cache.zone_queries.remove(&qry_id);
                     cache.card_queries.remove(&qry_id);
                     cache.effect_targets.remove(&qry_id);
-                    cache.matcher_queries.remove(&qry_id);
                 }
             }
         }
@@ -263,13 +259,6 @@ impl ZoneQuery {
         }
     }
 
-    pub fn randomised(self) -> Self {
-        Self {
-            random: true,
-            ..self
-        }
-    }
-
     fn prompt(&self) -> &str {
         self.prompt.as_deref().unwrap_or(if self.sites_only {
             "Pick a site zone"
@@ -315,11 +304,6 @@ impl ZoneQuery {
 
     /// Resolves the query, prompting the player if needed. Caches the result.
     pub async fn pick(&self, player_id: &PlayerId, state: &State) -> anyhow::Result<Zone> {
-        QueryCache::resolve_zone(self, player_id, state).await
-    }
-
-    /// Alias for `pick` — use `pick` for new call sites.
-    pub async fn resolve(&self, player_id: &PlayerId, state: &State) -> anyhow::Result<Zone> {
         QueryCache::resolve_zone(self, player_id, state).await
     }
 }
@@ -383,7 +367,7 @@ impl EffectQuery {
                 },
             ) => {
                 let zones = zone.options(state);
-                let zone = to.resolve(player_id, state).await?;
+                let zone = to.pick(player_id, state).await?;
                 Ok(card.matches(card_id, state) && zones.contains(&zone))
             }
             (

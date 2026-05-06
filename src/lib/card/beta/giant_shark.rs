@@ -89,8 +89,7 @@ impl Card for GiantShark {
                     Box::pin(async move {
                         match effect {
                             Effect::MoveCard { to, .. } => {
-                                let moved_to =
-                                    to.resolve(&player_id, state).await.unwrap_or_default();
+                                let moved_to = to.pick(&player_id, state).await.unwrap_or_default();
                                 if !body_of_water.contains(&moved_to) {
                                     return Ok(vec![]);
                                 }

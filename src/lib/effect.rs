@@ -245,7 +245,7 @@ fn player_name<'a>(player_id: &PlayerId, state: &'a State) -> &'a str {
 impl Effect {
     pub async fn affected_cards(&self) -> Option<Vec<uuid::Uuid>> {
         match self {
-            Effect::ShootProjectile { id, .. } => QueryCache::effect_targets(id).await,
+            Effect::ShootProjectile { id, .. } => QueryCache::effect_targets(id),
             _ => None,
         }
     }
@@ -424,7 +424,7 @@ impl Effect {
                         "{} moves {} to {}",
                         player_name(player_id, state),
                         card_name,
-                        to.resolve(player_id, state).await?,
+                        to.pick(player_id, state).await?,
                     )),
                 }
             }
@@ -487,7 +487,7 @@ impl Effect {
                     "{} plays {} in zone {}",
                     player_name(player_id, state),
                     card,
-                    zone.resolve(player_id, state).await?,
+                    zone.pick(player_id, state).await?,
                 ))
             }
             Effect::SummonCards { cards } => {
@@ -612,7 +612,7 @@ impl Effect {
                 damage,
             } => {
                 let source = state.get_card(from).get_name();
-                let zone_name = zone.resolve(player_id, state).await?;
+                let zone_name = zone.pick(player_id, state).await?;
                 Some(format!(
                     "{} deals {} damage to all units in {}",
                     source, damage, zone_name
@@ -930,8 +930,7 @@ impl Effect {
                                         state.game_id,
                                         *id,
                                         vec![picked_unit_id],
-                                    )
-                                    .await;
+                                    );
                                     Some(picked_unit_id)
                                 }
                             }
@@ -993,7 +992,7 @@ impl Effect {
                         for zone in path {
                             let snapshot = state.clone();
                             let zone = ZoneQuery::from_zone(zone.clone())
-                                .resolve(player_id, state)
+                                .pick(player_id, state)
                                 .await?;
                             let card = state.get_card_mut(card_id);
                             let from_zone = card.get_zone().clone();
@@ -1023,7 +1022,7 @@ impl Effect {
                     }
                     None => {
                         let snapshot = state.clone();
-                        let zone = to.resolve(player_id, state).await?;
+                        let zone = to.pick(player_id, state).await?;
                         let card = state.get_card_mut(card_id);
                         let from_zone = card.get_zone().clone();
                         card.set_zone(zone.clone());
@@ -1140,7 +1139,7 @@ impl Effect {
                 zone,
                 ..
             } => {
-                let zone = zone.resolve(player_id, state).await?;
+                let zone = zone.pick(player_id, state).await?;
                 let costs = state.get_effective_costs(card_id, Some(&zone), player_id)?;
                 Box::pin(costs.pay(state, player_id)).await?;
                 let snapshot = state.clone();
@@ -1528,7 +1527,7 @@ impl Effect {
                 from,
                 damage,
             } => {
-                let zone = query.resolve(player_id, state).await?;
+                let zone = query.pick(player_id, state).await?;
                 let units = CardQuery::new().units().in_zone(&zone).all(state);
                 for unit_id in units {
                     state.queue_one(Effect::TakeDamage {
