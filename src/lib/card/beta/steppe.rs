@@ -42,6 +42,8 @@ impl Steppe {
 #[async_trait::async_trait]
 impl Site for Steppe {}
 
+impl ResourceProvider for Steppe {}
+
 #[async_trait::async_trait]
 impl Card for Steppe {
     fn get_name(&self) -> &str {

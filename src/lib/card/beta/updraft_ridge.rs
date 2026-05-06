@@ -44,6 +44,8 @@ impl UpdraftRidge {
 #[async_trait::async_trait]
 impl Site for UpdraftRidge {}
 
+impl ResourceProvider for UpdraftRidge {}
+
 #[async_trait::async_trait]
 impl Card for UpdraftRidge {
     fn get_name(&self) -> &str {

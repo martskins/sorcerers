@@ -46,6 +46,8 @@ impl SimpleVillage {
 #[async_trait::async_trait]
 impl Site for SimpleVillage {}
 
+impl ResourceProvider for SimpleVillage {}
+
 #[async_trait::async_trait]
 impl Card for SimpleVillage {
     fn get_name(&self) -> &str {

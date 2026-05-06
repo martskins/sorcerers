@@ -45,6 +45,8 @@ impl Boneyard {
 #[async_trait::async_trait]
 impl Site for Boneyard {}
 
+impl ResourceProvider for Boneyard {}
+
 #[async_trait::async_trait]
 impl Card for Boneyard {
     fn get_name(&self) -> &str {

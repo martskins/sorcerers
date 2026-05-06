@@ -44,6 +44,8 @@ impl Watchtower {
 #[async_trait::async_trait]
 impl Site for Watchtower {}
 
+impl ResourceProvider for Watchtower {}
+
 #[async_trait::async_trait]
 impl Card for Watchtower {
     fn get_name(&self) -> &str {

@@ -45,6 +45,8 @@ impl HolyGround {
 #[async_trait::async_trait]
 impl Site for HolyGround {}
 
+impl ResourceProvider for HolyGround {}
+
 #[async_trait::async_trait]
 impl Card for HolyGround {
     fn get_name(&self) -> &str {

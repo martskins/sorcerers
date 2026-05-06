@@ -45,6 +45,8 @@ impl Crossroads {
 #[async_trait::async_trait]
 impl Site for Crossroads {}
 
+impl ResourceProvider for Crossroads {}
+
 #[async_trait::async_trait]
 impl Card for Crossroads {
     fn get_name(&self) -> &str {

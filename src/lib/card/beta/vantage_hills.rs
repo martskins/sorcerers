@@ -44,6 +44,8 @@ impl VantageHills {
 #[async_trait::async_trait]
 impl Site for VantageHills {}
 
+impl ResourceProvider for VantageHills {}
+
 #[async_trait::async_trait]
 impl Card for VantageHills {
     fn get_name(&self) -> &str {

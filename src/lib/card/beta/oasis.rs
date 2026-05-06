@@ -42,6 +42,8 @@ impl Oasis {
 #[async_trait::async_trait]
 impl Site for Oasis {}
 
+impl ResourceProvider for Oasis {}
+
 #[async_trait::async_trait]
 impl Card for Oasis {
     fn get_name(&self) -> &str {

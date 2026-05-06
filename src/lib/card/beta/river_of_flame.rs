@@ -46,6 +46,8 @@ impl RiverOfFlame {
 #[async_trait::async_trait]
 impl Site for RiverOfFlame {}
 
+impl ResourceProvider for RiverOfFlame {}
+
 #[async_trait::async_trait]
 impl Card for RiverOfFlame {
     fn get_name(&self) -> &str {

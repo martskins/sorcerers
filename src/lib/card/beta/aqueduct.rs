@@ -41,6 +41,8 @@ impl Aqueduct {
 #[async_trait::async_trait]
 impl Site for Aqueduct {}
 
+impl ResourceProvider for Aqueduct {}
+
 #[async_trait::async_trait]
 impl Card for Aqueduct {
     fn get_name(&self) -> &str {

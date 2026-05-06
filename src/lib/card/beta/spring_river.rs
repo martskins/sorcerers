@@ -46,6 +46,8 @@ impl SpringRiver {
 #[async_trait::async_trait]
 impl Site for SpringRiver {}
 
+impl ResourceProvider for SpringRiver {}
+
 #[async_trait::async_trait]
 impl Card for SpringRiver {
     fn get_name(&self) -> &str {

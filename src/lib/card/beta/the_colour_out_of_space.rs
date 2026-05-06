@@ -53,6 +53,8 @@ impl TheColourOutOfSpace {
 #[async_trait::async_trait]
 impl Site for TheColourOutOfSpace {}
 
+impl ResourceProvider for TheColourOutOfSpace {}
+
 #[async_trait::async_trait]
 impl Card for TheColourOutOfSpace {
     fn get_name(&self) -> &str {

@@ -44,6 +44,8 @@ impl DwarvenForge {
 #[async_trait::async_trait]
 impl Site for DwarvenForge {}
 
+impl ResourceProvider for DwarvenForge {}
+
 #[async_trait::async_trait]
 impl Card for DwarvenForge {
     fn get_name(&self) -> &str {

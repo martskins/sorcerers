@@ -44,6 +44,8 @@ impl SmokestacksOfGnaak {
 #[async_trait::async_trait]
 impl Site for SmokestacksOfGnaak {}
 
+impl ResourceProvider for SmokestacksOfGnaak {}
+
 #[async_trait::async_trait]
 impl Card for SmokestacksOfGnaak {
     fn get_name(&self) -> &str {

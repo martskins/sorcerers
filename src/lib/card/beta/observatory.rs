@@ -46,6 +46,8 @@ impl Observatory {
 #[async_trait::async_trait]
 impl Site for Observatory {}
 
+impl ResourceProvider for Observatory {}
+
 #[async_trait::async_trait]
 impl Card for Observatory {
     fn get_name(&self) -> &str {

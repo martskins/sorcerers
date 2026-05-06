@@ -42,6 +42,8 @@ impl Ruins {
 #[async_trait::async_trait]
 impl Site for Ruins {}
 
+impl ResourceProvider for Ruins {}
+
 #[async_trait::async_trait]
 impl Card for Ruins {
     fn get_name(&self) -> &str {

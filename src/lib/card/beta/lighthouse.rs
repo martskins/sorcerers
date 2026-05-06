@@ -42,6 +42,8 @@ impl Lighthouse {
 #[async_trait::async_trait]
 impl Site for Lighthouse {}
 
+impl ResourceProvider for Lighthouse {}
+
 #[async_trait::async_trait]
 impl Card for Lighthouse {
     fn get_name(&self) -> &str {

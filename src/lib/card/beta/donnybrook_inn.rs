@@ -44,6 +44,8 @@ impl DonnybrookInn {
 #[async_trait::async_trait]
 impl Site for DonnybrookInn {}
 
+impl ResourceProvider for DonnybrookInn {}
+
 #[async_trait::async_trait]
 impl Card for DonnybrookInn {
     fn get_name(&self) -> &str {

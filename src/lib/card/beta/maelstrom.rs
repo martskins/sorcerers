@@ -46,6 +46,8 @@ impl Maelström {
 #[async_trait::async_trait]
 impl Site for Maelström {}
 
+impl ResourceProvider for Maelström {}
+
 #[async_trait::async_trait]
 impl Card for Maelström {
     fn get_name(&self) -> &str {

@@ -42,6 +42,8 @@ impl Windmill {
 #[async_trait::async_trait]
 impl Site for Windmill {}
 
+impl ResourceProvider for Windmill {}
+
 #[async_trait::async_trait]
 impl Card for Windmill {
     fn get_name(&self) -> &str {

@@ -44,6 +44,8 @@ impl Battlefield {
 #[async_trait::async_trait]
 impl Site for Battlefield {}
 
+impl ResourceProvider for Battlefield {}
+
 #[async_trait::async_trait]
 impl Card for Battlefield {
     fn get_name(&self) -> &str {

@@ -121,6 +121,8 @@ impl FreeCity {
 #[async_trait::async_trait]
 impl Site for FreeCity {}
 
+impl ResourceProvider for FreeCity {}
+
 #[async_trait::async_trait]
 impl Card for FreeCity {
     fn get_name(&self) -> &str {

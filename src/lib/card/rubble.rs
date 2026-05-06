@@ -38,6 +38,8 @@ impl Rubble {
 #[async_trait::async_trait]
 impl Site for Rubble {}
 
+impl ResourceProvider for Rubble {}
+
 impl Card for Rubble {
     fn get_name(&self) -> &str {
         Self::NAME

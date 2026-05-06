@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        Card, CardBase, CardConstructor, Cost, Costs, Edition, MinionType, Rarity, Site, SiteBase,
-        UnitBase, Zone,
+        Card, CardBase, CardConstructor, Cost, Costs, Edition, MinionType, Rarity,
+        ResourceProvider, Site, SiteBase, UnitBase, Zone,
     },
     effect::{Effect, TokenType},
     game::{ActivatedAbility, PlayerId, Thresholds},
@@ -100,6 +100,8 @@ impl IslandLeviathan {
 #[async_trait::async_trait]
 impl Site for IslandLeviathan {}
 
+impl ResourceProvider for IslandLeviathan {}
+
 #[async_trait::async_trait]
 impl Card for IslandLeviathan {
     fn get_name(&self) -> &str {
@@ -140,6 +142,10 @@ impl Card for IslandLeviathan {
         } else {
             None
         }
+    }
+
+    fn get_resource_provider(&self) -> Option<&dyn ResourceProvider> {
+        Some(self)
     }
 
     fn get_additional_activated_abilities(

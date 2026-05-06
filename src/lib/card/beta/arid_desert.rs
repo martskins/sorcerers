@@ -45,6 +45,8 @@ impl AridDesert {
 #[async_trait::async_trait]
 impl Site for AridDesert {}
 
+impl ResourceProvider for AridDesert {}
+
 #[async_trait::async_trait]
 impl Card for AridDesert {
     fn get_name(&self) -> &str {

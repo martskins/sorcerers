@@ -47,6 +47,8 @@ impl Undertow {
 #[async_trait::async_trait]
 impl Site for Undertow {}
 
+impl ResourceProvider for Undertow {}
+
 #[async_trait::async_trait]
 impl Card for Undertow {
     fn get_name(&self) -> &str {

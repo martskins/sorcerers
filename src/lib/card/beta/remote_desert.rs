@@ -46,6 +46,8 @@ impl RemoteDesert {
 #[async_trait::async_trait]
 impl Site for RemoteDesert {}
 
+impl ResourceProvider for RemoteDesert {}
+
 #[async_trait::async_trait]
 impl Card for RemoteDesert {
     fn get_name(&self) -> &str {

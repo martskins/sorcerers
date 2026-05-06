@@ -48,6 +48,8 @@ impl PillarOfZeiros {
 #[async_trait::async_trait]
 impl Site for PillarOfZeiros {}
 
+impl ResourceProvider for PillarOfZeiros {}
+
 #[async_trait::async_trait]
 impl Card for PillarOfZeiros {
     fn get_name(&self) -> &str {

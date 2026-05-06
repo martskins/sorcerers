@@ -43,6 +43,8 @@ impl Bedrock {
 #[async_trait::async_trait]
 impl Site for Bedrock {}
 
+impl ResourceProvider for Bedrock {}
+
 #[async_trait::async_trait]
 impl Card for Bedrock {
     fn get_name(&self) -> &str {

@@ -43,6 +43,8 @@ impl Cornerstone {
 #[async_trait::async_trait]
 impl Site for Cornerstone {}
 
+impl ResourceProvider for Cornerstone {}
+
 impl Card for Cornerstone {
     fn get_name(&self) -> &str {
         Self::NAME

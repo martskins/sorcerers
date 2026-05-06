@@ -44,6 +44,8 @@ impl KingdomOfAgartha {
 #[async_trait::async_trait]
 impl Site for KingdomOfAgartha {}
 
+impl ResourceProvider for KingdomOfAgartha {}
+
 #[async_trait::async_trait]
 impl Card for KingdomOfAgartha {
     fn get_name(&self) -> &str {

@@ -75,6 +75,8 @@ impl BottomlessPit {
 #[async_trait::async_trait]
 impl Site for BottomlessPit {}
 
+impl ResourceProvider for BottomlessPit {}
+
 #[async_trait::async_trait]
 impl Card for BottomlessPit {
     fn get_name(&self) -> &str {

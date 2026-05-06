@@ -46,6 +46,8 @@ impl RusticVillage {
 #[async_trait::async_trait]
 impl Site for RusticVillage {}
 
+impl ResourceProvider for RusticVillage {}
+
 #[async_trait::async_trait]
 impl Card for RusticVillage {
     fn get_name(&self) -> &str {

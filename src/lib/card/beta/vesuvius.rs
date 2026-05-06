@@ -48,6 +48,8 @@ impl ActivatedAbility for UseAbility {
 #[async_trait::async_trait]
 impl Site for Vesuvius {}
 
+impl ResourceProvider for Vesuvius {}
+
 #[derive(Debug, Clone)]
 pub struct Vesuvius {
     site_base: SiteBase,

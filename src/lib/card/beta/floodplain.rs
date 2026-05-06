@@ -96,6 +96,8 @@ impl Floodplain {
 #[async_trait::async_trait]
 impl Site for Floodplain {}
 
+impl ResourceProvider for Floodplain {}
+
 #[async_trait::async_trait]
 impl Card for Floodplain {
     fn get_name(&self) -> &str {

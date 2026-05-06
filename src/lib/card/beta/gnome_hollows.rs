@@ -41,6 +41,8 @@ impl GnomeHollows {
 #[async_trait::async_trait]
 impl Site for GnomeHollows {}
 
+impl ResourceProvider for GnomeHollows {}
+
 #[async_trait::async_trait]
 impl Card for GnomeHollows {
     fn get_name(&self) -> &str {

@@ -46,6 +46,8 @@ impl Mirage {
 #[async_trait::async_trait]
 impl Site for Mirage {}
 
+impl ResourceProvider for Mirage {}
+
 #[async_trait::async_trait]
 impl Card for Mirage {
     fn get_name(&self) -> &str {

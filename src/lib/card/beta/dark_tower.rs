@@ -46,6 +46,8 @@ impl DarkTower {
 #[async_trait::async_trait]
 impl Site for DarkTower {}
 
+impl ResourceProvider for DarkTower {}
+
 #[async_trait::async_trait]
 impl Card for DarkTower {
     fn get_name(&self) -> &str {

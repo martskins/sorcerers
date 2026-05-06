@@ -44,6 +44,8 @@ impl Iceberg {
 #[async_trait::async_trait]
 impl Site for Iceberg {}
 
+impl ResourceProvider for Iceberg {}
+
 #[async_trait::async_trait]
 impl Card for Iceberg {
     fn get_name(&self) -> &str {

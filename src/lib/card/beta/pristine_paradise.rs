@@ -1,16 +1,12 @@
 use crate::{
     card::{
-        Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase,
-        Zone,
+        Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider,
+        ResourceProviderBaseMethods, Site, SiteBase, Zone,
     },
     game::{PlayerId, Thresholds},
     state::{CardQuery, State},
 };
 
-/// **Pristine Paradise** — Unique Site (all thresholds AEFW)
-///
-/// Provides no mana or threshold unless completely empty.
-/// TODO: Implement "provides nothing unless completely empty" mechanic.
 #[derive(Debug, Clone)]
 pub struct PristineParadise {
     site_base: SiteBase,

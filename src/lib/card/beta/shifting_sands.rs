@@ -46,6 +46,8 @@ impl ShiftingSands {
 #[async_trait::async_trait]
 impl Site for ShiftingSands {}
 
+impl ResourceProvider for ShiftingSands {}
+
 #[async_trait::async_trait]
 impl Card for ShiftingSands {
     fn get_name(&self) -> &str {

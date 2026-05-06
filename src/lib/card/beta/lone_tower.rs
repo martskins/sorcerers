@@ -46,6 +46,8 @@ impl LoneTower {
 #[async_trait::async_trait]
 impl Site for LoneTower {}
 
+impl ResourceProvider for LoneTower {}
+
 #[async_trait::async_trait]
 impl Card for LoneTower {
     fn get_name(&self) -> &str {

@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        Ability, AreaModifiers, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Site,
-        SiteBase, Zone,
+        Ability, AreaModifiers, Card, CardBase, CardConstructor, Costs, Edition, Rarity,
+        ResourceProvider, Site, SiteBase, Zone,
     },
     game::{PlayerId, Thresholds},
     state::{CardQuery, State},
@@ -43,6 +43,8 @@ impl StandingStones {
 #[async_trait::async_trait]
 impl Site for StandingStones {}
 
+impl ResourceProvider for StandingStones {}
+
 #[async_trait::async_trait]
 impl Card for StandingStones {
     fn get_name(&self) -> &str {
@@ -70,6 +72,10 @@ impl Card for StandingStones {
     }
 
     fn get_site(&self) -> Option<&dyn Site> {
+        Some(self)
+    }
+
+    fn get_resource_provider(&self) -> Option<&dyn ResourceProvider> {
         Some(self)
     }
 

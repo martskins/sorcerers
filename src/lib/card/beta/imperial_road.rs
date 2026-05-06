@@ -46,6 +46,8 @@ impl ImperialRoad {
 #[async_trait::async_trait]
 impl Site for ImperialRoad {}
 
+impl ResourceProvider for ImperialRoad {}
+
 #[async_trait::async_trait]
 impl Card for ImperialRoad {
     fn get_name(&self) -> &str {

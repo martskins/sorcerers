@@ -43,6 +43,8 @@ impl DomeOfOsiros {
 #[async_trait::async_trait]
 impl Site for DomeOfOsiros {}
 
+impl ResourceProvider for DomeOfOsiros {}
+
 #[async_trait::async_trait]
 impl Card for DomeOfOsiros {
     fn get_name(&self) -> &str {

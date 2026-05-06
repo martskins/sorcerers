@@ -65,6 +65,8 @@ impl Site for MountainPass {
     }
 }
 
+impl ResourceProvider for MountainPass {}
+
 #[async_trait::async_trait]
 impl Card for MountainPass {
     fn get_name(&self) -> &str {

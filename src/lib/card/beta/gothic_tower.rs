@@ -46,6 +46,8 @@ impl GothicTower {
 #[async_trait::async_trait]
 impl Site for GothicTower {}
 
+impl ResourceProvider for GothicTower {}
+
 #[async_trait::async_trait]
 impl Card for GothicTower {
     fn get_name(&self) -> &str {

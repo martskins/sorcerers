@@ -45,6 +45,8 @@ impl AstralAlcazar {
 #[async_trait::async_trait]
 impl Site for AstralAlcazar {}
 
+impl ResourceProvider for AstralAlcazar {}
+
 #[async_trait::async_trait]
 impl Card for AstralAlcazar {
     fn get_name(&self) -> &str {

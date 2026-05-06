@@ -122,6 +122,8 @@ impl CloudCity {
 #[async_trait::async_trait]
 impl Site for CloudCity {}
 
+impl ResourceProvider for CloudCity {}
+
 #[async_trait::async_trait]
 impl Card for CloudCity {
     fn get_name(&self) -> &str {

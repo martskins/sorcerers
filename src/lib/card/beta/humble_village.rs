@@ -46,6 +46,8 @@ impl HumbleVillage {
 #[async_trait::async_trait]
 impl Site for HumbleVillage {}
 
+impl ResourceProvider for HumbleVillage {}
+
 #[async_trait::async_trait]
 impl Card for HumbleVillage {
     fn get_name(&self) -> &str {

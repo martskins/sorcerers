@@ -48,6 +48,8 @@ impl PrimordialSpring {
 #[async_trait::async_trait]
 impl Site for PrimordialSpring {}
 
+impl ResourceProvider for PrimordialSpring {}
+
 #[async_trait::async_trait]
 impl Card for PrimordialSpring {
     fn get_name(&self) -> &str {

@@ -80,6 +80,8 @@ impl Sinkhole {
 #[async_trait::async_trait]
 impl Site for Sinkhole {}
 
+impl ResourceProvider for Sinkhole {}
+
 #[async_trait::async_trait]
 impl Card for Sinkhole {
     fn get_name(&self) -> &str {

@@ -47,6 +47,8 @@ impl Quagmire {
 #[async_trait::async_trait]
 impl Site for Quagmire {}
 
+impl ResourceProvider for Quagmire {}
+
 #[async_trait::async_trait]
 impl Card for Quagmire {
     fn get_name(&self) -> &str {

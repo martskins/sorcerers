@@ -2210,7 +2210,12 @@ pub struct SiteBase {
     pub tapped: bool,
 }
 
-pub trait ResourceProvider: Card {
+trait ResourceProviderBaseMethods: Card {
+    fn base_provided_mana(&self, state: &State) -> anyhow::Result<u8>;
+    fn base_provided_affinity(&self, state: &State) -> anyhow::Result<Thresholds>;
+}
+
+impl<T: Card + ?Sized> ResourceProviderBaseMethods for T {
     fn base_provided_mana(&self, state: &State) -> anyhow::Result<u8> {
         if self.get_card_type() != CardType::Site || self.provides_no_resources(state)? {
             return Ok(0);
@@ -2279,9 +2284,13 @@ pub trait ResourceProvider: Card {
             _ => Ok(Thresholds::ZERO),
         }
     }
+}
+
+pub trait ResourceProvider: Card {
     fn provided_mana(&self, state: &State) -> anyhow::Result<u8> {
         self.base_provided_mana(state)
     }
+
     fn provided_affinity(&self, state: &State) -> anyhow::Result<Thresholds> {
         self.base_provided_affinity(state)
     }

@@ -66,6 +66,8 @@ impl Site for PlanarGate {
     }
 }
 
+impl ResourceProvider for PlanarGate {}
+
 #[async_trait::async_trait]
 impl Card for PlanarGate {
     fn get_name(&self) -> &str {

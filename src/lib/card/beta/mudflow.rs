@@ -46,6 +46,8 @@ impl Mudflow {
 #[async_trait::async_trait]
 impl Site for Mudflow {}
 
+impl ResourceProvider for Mudflow {}
+
 #[async_trait::async_trait]
 impl Card for Mudflow {
     fn get_name(&self) -> &str {

@@ -46,6 +46,8 @@ impl SummerRiver {
 #[async_trait::async_trait]
 impl Site for SummerRiver {}
 
+impl ResourceProvider for SummerRiver {}
+
 #[async_trait::async_trait]
 impl Card for SummerRiver {
     fn get_name(&self) -> &str {

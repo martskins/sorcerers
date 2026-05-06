@@ -46,6 +46,8 @@ impl TadpolePool {
 #[async_trait::async_trait]
 impl Site for TadpolePool {}
 
+impl ResourceProvider for TadpolePool {}
+
 #[async_trait::async_trait]
 impl Card for TadpolePool {
     fn get_name(&self) -> &str {

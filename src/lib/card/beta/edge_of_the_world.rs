@@ -42,6 +42,8 @@ impl EdgeOfTheWorld {
 #[async_trait::async_trait]
 impl Site for EdgeOfTheWorld {}
 
+impl ResourceProvider for EdgeOfTheWorld {}
+
 #[async_trait::async_trait]
 impl Card for EdgeOfTheWorld {
     fn get_name(&self) -> &str {
