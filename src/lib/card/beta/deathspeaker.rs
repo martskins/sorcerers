@@ -120,7 +120,7 @@ impl ActivatedAbility for DeathspeakerAbility {
         // Record that this ability was used this turn.
         effects.push(Effect::SetCardData {
             card_id: *card_id,
-            data: Box::new(true),
+            data: std::sync::Arc::new(true),
         });
 
         Ok(effects)
@@ -212,7 +212,7 @@ impl Card for Deathspeaker {
         Ok(vec![Box::new(DeathspeakerAbility)])
     }
 
-    fn set_data(&mut self, data: &Box<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
+    fn set_data(&mut self, data: &std::sync::Arc<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
         if let Some(ability_used) = data.downcast_ref::<bool>() {
             self.has_used_ability = *ability_used;
         }
@@ -224,7 +224,7 @@ impl Card for Deathspeaker {
         // Reset the once-per-turn ability usage at the start of the turn.
         Ok(vec![Effect::SetCardData {
             card_id: self.card_base.id,
-            data: Box::new(false),
+            data: std::sync::Arc::new(false),
         }])
     }
 }

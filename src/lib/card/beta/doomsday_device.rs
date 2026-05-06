@@ -75,7 +75,7 @@ impl Card for DoomsdayDevice {
         Some(self)
     }
 
-    fn set_data(&mut self, data: &Box<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
+    fn set_data(&mut self, data: &std::sync::Arc<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
         if let Some(val) = data.downcast_ref::<u8>() {
             self.doom_counters = *val;
         }
@@ -85,7 +85,7 @@ impl Card for DoomsdayDevice {
     async fn genesis(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![Effect::SetCardData {
             card_id: *self.get_id(),
-            data: Box::new(6u8),
+            data: std::sync::Arc::new(6u8),
         }])
     }
 
@@ -124,7 +124,7 @@ impl Card for DoomsdayDevice {
 
         Ok(vec![Effect::SetCardData {
             card_id: self_id,
-            data: Box::new(self.doom_counters - 1),
+            data: std::sync::Arc::new(self.doom_counters - 1),
         }])
     }
 }

@@ -66,7 +66,7 @@ impl Card for TuftedTurtles {
         Some(&mut self.unit_base)
     }
 
-    fn set_data(&mut self, _data: &Box<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
+    fn set_data(&mut self, _data: &std::sync::Arc<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
         if let Some(damage_prevented) = _data.downcast_ref::<bool>() {
             self.damage_prevented = *damage_prevented;
             Ok(())
@@ -78,7 +78,7 @@ impl Card for TuftedTurtles {
     async fn on_turn_start(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![Effect::SetCardData {
             card_id: *self.get_id(),
-            data: Box::new(false),
+            data: std::sync::Arc::new(false),
         }])
     }
 
@@ -96,7 +96,7 @@ impl Card for TuftedTurtles {
         {
             return Ok(Some(vec![Effect::SetCardData {
                 card_id: *self.get_id(),
-                data: Box::new(true),
+                data: std::sync::Arc::new(true),
             }]));
         }
 

@@ -36,7 +36,7 @@ impl ActivatedAbility for FloodSite {
                     .expect("Expected to pick a site");
                 let mut effects = vec![Effect::SetCardData {
                     card_id: *card_id,
-                    data: Box::new(ContinuousEffect::FloodSites {
+                    data: std::sync::Arc::new(ContinuousEffect::FloodSites {
                         affected_sites: picked_site_id.into(),
                     }),
                 }];
@@ -155,7 +155,7 @@ impl Card for AvatarOfWater {
         }
     }
 
-    fn set_data(&mut self, data: &Box<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
+    fn set_data(&mut self, data: &std::sync::Arc<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
         if let Some(effect) = data.downcast_ref::<ContinuousEffect>() {
             self.flood_effect = Some(effect.clone());
         }

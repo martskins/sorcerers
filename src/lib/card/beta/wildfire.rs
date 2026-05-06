@@ -69,7 +69,7 @@ impl Card for Wildfire {
         Some(&mut self.aura_base)
     }
 
-    fn set_data(&mut self, data: &Box<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
+    fn set_data(&mut self, data: &std::sync::Arc<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
         if let Some(sites_visited) = data.downcast_ref::<Vec<Zone>>() {
             self.sites_visited = sites_visited.clone();
         }
@@ -91,7 +91,7 @@ impl Card for Wildfire {
         sites_visited.push(to.clone());
         Ok(vec![Effect::SetCardData {
             card_id: *self.get_id(),
-            data: Box::new(sites_visited),
+            data: std::sync::Arc::new(sites_visited),
         }])
     }
 

@@ -73,7 +73,7 @@ impl Card for PuppetMaster {
         Some(&mut self.unit_base)
     }
 
-    fn set_data(&mut self, data: &Box<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
+    fn set_data(&mut self, data: &std::sync::Arc<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
         if let Some(data) = data.downcast_ref::<PuppetMasterData>() {
             self.data = data.clone();
             Ok(())
@@ -93,7 +93,7 @@ impl Card for PuppetMaster {
             .all(state);
         Ok(vec![Effect::SetCardData {
             card_id: self_id,
-            data: Box::new(PuppetMasterData {
+            data: std::sync::Arc::new(PuppetMasterData {
                 controller_id: Some(controller_id),
                 controlled_minions,
             }),

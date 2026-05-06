@@ -60,7 +60,7 @@ impl ActivatedAbility for PossessArtifact {
 
         Ok(vec![Effect::SetCardData {
             card_id: *card_id,
-            data: Box::new(Some(picked_artifact_id)),
+            data: std::sync::Arc::new(Some(picked_artifact_id)),
         }])
     }
 }
@@ -123,7 +123,7 @@ impl Card for GrossePoltergeist {
         Some(&mut self.unit_base)
     }
 
-    fn set_data(&mut self, data: &Box<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
+    fn set_data(&mut self, data: &std::sync::Arc<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
         if let Some(controlled_artifact) = data.downcast_ref::<Option<uuid::Uuid>>() {
             self.controlled_artifact = *controlled_artifact;
             return Ok(());

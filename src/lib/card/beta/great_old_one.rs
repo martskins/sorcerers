@@ -76,11 +76,11 @@ impl Card for GreatOldOne {
     async fn genesis(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![Effect::SetCardData {
             card_id: *self.get_id(),
-            data: Box::new(true),
+            data: std::sync::Arc::new(true),
         }])
     }
 
-    fn set_data(&mut self, data: &Box<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
+    fn set_data(&mut self, data: &std::sync::Arc<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
         if let Some(b) = data.downcast_ref::<bool>() {
             self.flooded = *b;
         }

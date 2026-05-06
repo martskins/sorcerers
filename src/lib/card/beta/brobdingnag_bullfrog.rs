@@ -88,11 +88,11 @@ impl Card for BrobdingnagBullfrog {
 
         Ok(vec![Effect::SetCardData {
             card_id: *self.get_id(),
-            data: Box::new(picked_card),
+            data: std::sync::Arc::new(picked_card),
         }])
     }
 
-    fn set_data(&mut self, data: &Box<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
+    fn set_data(&mut self, data: &std::sync::Arc<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
         if let Some(swallowed_minion_id) = data.downcast_ref::<uuid::Uuid>() {
             self.swallowed_minion = Some(*swallowed_minion_id);
         }

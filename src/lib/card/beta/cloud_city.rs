@@ -61,7 +61,7 @@ impl ActivatedAbility for FlyToVoid {
             },
             Effect::SetCardData {
                 card_id: *card.get_id(),
-                data: Box::new(true),
+                data: std::sync::Arc::new(true),
             },
         ];
 
@@ -151,7 +151,7 @@ impl Card for CloudCity {
         if self.moved_this_turn {
             return Ok(vec![Effect::SetCardData {
                 card_id: *self.get_id(),
-                data: Box::new(false),
+                data: std::sync::Arc::new(false),
             }]);
         }
 
@@ -169,7 +169,7 @@ impl Card for CloudCity {
         Ok(vec![Box::new(FlyToVoid)])
     }
 
-    fn set_data(&mut self, data: &Box<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
+    fn set_data(&mut self, data: &std::sync::Arc<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
         if let Some(moved) = data.downcast_ref::<bool>() {
             self.moved_this_turn = *moved;
         }

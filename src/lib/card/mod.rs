@@ -1263,7 +1263,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     // the operation is not implemented for the specific card type.
     // If a card needs to hold specific data, and you need to modify it, override this method with
     // a method that downcasts the data to the appropriate type and sets it on the card.
-    fn set_data(&mut self, _data: &Box<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
+    fn set_data(&mut self, _data: &std::sync::Arc<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
         Err(anyhow::anyhow!(
             "set_data not implemented for {}",
             self.get_name()

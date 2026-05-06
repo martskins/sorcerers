@@ -33,7 +33,7 @@ impl Counter {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum TokenType {
     Rubble,
     FootSoldier,
@@ -41,7 +41,7 @@ pub enum TokenType {
 }
 
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Effect {
     PlayerLost {
         player_id: PlayerId,
@@ -186,7 +186,7 @@ pub enum Effect {
     },
     SetCardData {
         card_id: uuid::Uuid,
-        data: Box<dyn std::any::Any + Send + Sync>,
+        data: std::sync::Arc<dyn std::any::Any + Send + Sync>,
     },
     TeleportCard {
         player_id: PlayerId,

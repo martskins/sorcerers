@@ -73,7 +73,7 @@ impl ActivatedAbility for FreeCityAttack {
             },
             Effect::SetCardData {
                 card_id: *card_id,
-                data: Box::new(true),
+                data: std::sync::Arc::new(true),
             },
         ])
     }
@@ -154,7 +154,7 @@ impl Card for FreeCity {
         Some(self)
     }
 
-    fn set_data(&mut self, data: &Box<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
+    fn set_data(&mut self, data: &std::sync::Arc<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
         if let Some(site_data) = data.downcast_ref::<bool>() {
             self.used_ability = *site_data;
             Ok(())
@@ -166,7 +166,7 @@ impl Card for FreeCity {
     async fn on_turn_start(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![Effect::SetCardData {
             card_id: *self.get_id(),
-            data: Box::new(false),
+            data: std::sync::Arc::new(false),
         }])
     }
 

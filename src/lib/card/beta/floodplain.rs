@@ -37,7 +37,7 @@ impl ActivatedAbility for FloodAdjacentSite {
             },
             Effect::SetCardData {
                 card_id: *card_id,
-                data: Box::new(state.turns),
+                data: std::sync::Arc::new(state.turns),
             },
         ])
     }
@@ -142,7 +142,7 @@ impl Card for Floodplain {
         Ok(vec![Box::new(FloodAdjacentSite)])
     }
 
-    fn set_data(&mut self, data: &Box<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
+    fn set_data(&mut self, data: &std::sync::Arc<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
         if let Some(last_activation) = data.downcast_ref::<usize>() {
             self.last_activation_on_turn = Some(*last_activation);
         }
