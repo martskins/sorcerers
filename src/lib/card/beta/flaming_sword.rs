@@ -75,9 +75,6 @@ impl Card for FlamingSword {
         &self,
         _state: &State,
     ) -> anyhow::Result<Vec<ContinuousEffect>> {
-        // TODO: Implement the splash damage effect. This will likely require a new ability that is
-        // granted by this artifact and the ability should specify how the damage is splashed (e.g.
-        // "full damage" vs "half damage", and which enemies are affected).
         let Some(bearer_id) = self
             .get_artifact()
             .expect("FlamingSword has artifact base")
