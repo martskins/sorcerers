@@ -2263,6 +2263,17 @@ pub trait ResourceProvider: Card {
                     thresholds.water = 0;
                 }
 
+                state.continuous_effects.iter().for_each(|ce| {
+                    if let ContinuousEffect::ModifyProvidedAffinities {
+                        new_affinities,
+                        affected_sites,
+                    } = ce
+                        && affected_sites.matches(self.get_id(), state)
+                    {
+                        thresholds = new_affinities.clone();
+                    }
+                });
+
                 Ok(thresholds)
             }
             _ => Ok(Thresholds::ZERO),

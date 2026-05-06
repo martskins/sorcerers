@@ -916,6 +916,10 @@ pub enum ContinuousEffect {
         ability: Ability,
         affected_cards: CardQuery,
     },
+    ModifyProvidedAffinities {
+        new_affinities: Thresholds,
+        affected_sites: CardQuery,
+    },
     ModifyProvidedMana {
         mana_diff: i8,
         affected_cards: CardQuery,

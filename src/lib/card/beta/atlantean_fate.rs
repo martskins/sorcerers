@@ -4,7 +4,7 @@ use crate::{
         Zone,
     },
     effect::Effect,
-    game::PlayerId,
+    game::{PlayerId, Thresholds},
     state::{CardQuery, ContinuousEffect, State},
 };
 
@@ -89,11 +89,15 @@ impl Card for AtlanteanFate {
             return Ok(vec![]);
         }
 
-        // TODO: This is missing the effect of removing all other abilities and affinities from the
-        // affected sites.
-        Ok(vec![ContinuousEffect::FloodSites {
-            affected_sites: CardQuery::from_ids(flooded_sites),
-        }])
+        Ok(vec![
+            ContinuousEffect::FloodSites {
+                affected_sites: CardQuery::from_ids(flooded_sites.clone()),
+            },
+            ContinuousEffect::ModifyProvidedAffinities {
+                new_affinities: Thresholds::parse("W"),
+                affected_sites: CardQuery::from_ids(flooded_sites),
+            },
+        ])
     }
 
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
