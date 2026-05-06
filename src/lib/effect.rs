@@ -1413,7 +1413,7 @@ impl Effect {
                     ),
                 }];
 
-                effects.extend(defender.on_defend(state, striker_id)?.into_iter());
+                effects.extend(defender.on_defend(state, striker_id)?);
                 effects.reverse();
                 state.queue(effects);
             }

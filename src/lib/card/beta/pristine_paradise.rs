@@ -1,8 +1,10 @@
 use crate::{
     card::{
-        CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase, Zone,
+        Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase,
+        Zone,
     },
     game::{PlayerId, Thresholds},
+    state::{CardQuery, State},
 };
 
 /// **Pristine Paradise** — Unique Site (all thresholds AEFW)
@@ -44,6 +46,23 @@ impl PristineParadise {
 
 #[async_trait::async_trait]
 impl Site for PristineParadise {}
+
+impl ResourceProvider for PristineParadise {
+    fn provided_mana(&self, state: &State) -> anyhow::Result<u8> {
+        if CardQuery::new().in_zone(self.get_zone()).all(state).len() > 1 {
+            return Ok(0);
+        }
+
+        self.base_provided_mana(state)
+    }
+    fn provided_affinity(&self, state: &State) -> anyhow::Result<Thresholds> {
+        if CardQuery::new().in_zone(self.get_zone()).all(state).len() > 1 {
+            return Ok(Thresholds::ZERO);
+        }
+
+        self.base_provided_affinity(state)
+    }
+}
 
 #[async_trait::async_trait]
 impl crate::card::Card for PristineParadise {

@@ -653,30 +653,31 @@ impl RealmComponent {
                 cards,
                 multiple: false,
                 ..
-            } => {
-                if cards.contains(card_id) {
-                    self.client.send(ClientMessage::PickCard {
-                        player_id: self.player_id,
-                        game_id: self.game_id,
-                        card_id: *card_id,
-                    })?;
+            } if cards.contains(card_id) => {
+                self.client.send(ClientMessage::PickCard {
+                    player_id: self.player_id,
+                    game_id: self.game_id,
+                    card_id: *card_id,
+                })?;
 
-                    reset_status = true;
-                }
+                reset_status = true;
             }
+            Status::SelectingCard {
+                cards: _,
+                multiple: false,
+                ..
+            } => {}
             Status::SelectingCard {
                 cards,
                 multiple: true,
                 ..
-            } => {
-                if cards.contains(card_id) {
-                    let card_rect = self
-                        .card_rects
-                        .iter_mut()
-                        .find(|c| c.card.id == *card_id)
-                        .unwrap();
-                    card_rect.is_selected = !card_rect.is_selected;
-                }
+            } if cards.contains(card_id) => {
+                let card_rect = self
+                    .card_rects
+                    .iter_mut()
+                    .find(|c| c.card.id == *card_id)
+                    .unwrap();
+                card_rect.is_selected = !card_rect.is_selected;
             }
             _ => {}
         }

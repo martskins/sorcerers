@@ -2211,7 +2211,7 @@ pub struct SiteBase {
 }
 
 pub trait ResourceProvider: Card {
-    fn provided_mana(&self, state: &State) -> anyhow::Result<u8> {
+    fn base_provided_mana(&self, state: &State) -> anyhow::Result<u8> {
         if self.get_card_type() != CardType::Site || self.provides_no_resources(state)? {
             return Ok(0);
         }
@@ -2239,7 +2239,7 @@ pub trait ResourceProvider: Card {
         Ok(mana)
     }
 
-    fn provided_affinity(&self, state: &State) -> anyhow::Result<Thresholds> {
+    fn base_provided_affinity(&self, state: &State) -> anyhow::Result<Thresholds> {
         if self.get_card_type() != CardType::Site || self.provides_no_resources(state)? {
             return Ok(Thresholds::ZERO);
         }
@@ -2279,9 +2279,13 @@ pub trait ResourceProvider: Card {
             _ => Ok(Thresholds::ZERO),
         }
     }
+    fn provided_mana(&self, state: &State) -> anyhow::Result<u8> {
+        self.base_provided_mana(state)
+    }
+    fn provided_affinity(&self, state: &State) -> anyhow::Result<Thresholds> {
+        self.base_provided_affinity(state)
+    }
 }
-
-impl<T> ResourceProvider for T where T: Site {}
 
 #[async_trait::async_trait]
 pub trait Site: Card + ResourceProvider {
