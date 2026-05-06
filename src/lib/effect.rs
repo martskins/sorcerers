@@ -574,7 +574,7 @@ impl Effect {
             } => {
                 let card = state.get_card(card_id);
                 let killer = state.get_card(killer_id);
-                Some(format!("{} kills {}", card.get_name(), killer.get_name()))
+                Some(format!("{} kills {}", killer.get_name(), card.get_name()))
             }
             Effect::BuryCard { card_id, .. } => {
                 let card = state.get_card(card_id);
@@ -1205,9 +1205,7 @@ impl Effect {
 
                 // Force sync after all cards have been put on their zones, so that players see them
                 // on the board while resolving effects from on_summon, genesis and on_visit_zone.
-                for player in &state.players {
-                    crate::game::force_sync(&player.id, state).await?;
-                }
+                crate::game::force_sync_all(state).await?;
 
                 let mut effects = vec![];
                 for (_, card_id, zone) in cards {
@@ -1237,9 +1235,7 @@ impl Effect {
 
                 // Force sync after all cards have been put on their zones, so that players see them
                 // on the board while resolving effects from on_summon, genesis and on_visit_zone.
-                for player in &state.players {
-                    crate::game::force_sync(&player.id, state).await?;
-                }
+                crate::game::force_sync_all(state).await?;
 
                 let mut effects = vec![];
                 let card = state.get_card(card_id);
@@ -1431,56 +1427,102 @@ impl Effect {
                     .get_card_mut(attacker_id)
                     .remove_modifier(&Ability::Stealth);
 
-                let snapshot = state.snapshot();
+                let mut snapshot = state.snapshot();
                 let attacker = state.get_card(attacker_id);
                 let defender = state.get_card(defender_id);
                 let mut effects = vec![Effect::MoveCard {
                     player_id: attacker.get_controller_id(state),
                     card_id: *attacker_id,
                     from: attacker.get_zone().clone(),
-                    to: ZoneQuery::from_zone(defender.get_zone().clone()),
+                    to: defender.get_zone().into(),
                     tap: true,
                     region: attacker.get_region(state).clone(),
                     through_path: None,
                 }];
 
-                let mut first_striker_id = attacker_id;
-                let mut first_defender_id = defender_id;
-                if defender.has_ability(state, &Ability::FirstStrike)
-                    && !attacker.has_ability(&snapshot, &Ability::FirstStrike)
-                {
-                    first_striker_id = defender_id;
-                    first_defender_id = attacker_id;
+                let attacker_has_fs = attacker.has_ability(state, &Ability::FirstStrike);
+                let defender_has_fs = defender.has_ability(state, &Ability::FirstStrike);
+
+                // First Strike Phase: only when exactly one side has FirstStrike.
+                // The unit with FirstStrike deals damage before the other can respond.
+                // Attacker's strike = explicit TakeDamage + on_attack hooks.
+                // Defender's strike = on_defend (which includes counter-strike damage + hooks).
+                if attacker_has_fs != defender_has_fs {
+                    // Simulate the first strike phase in a snapshot to check who survives.
+                    let first_defender_survived = {
+                        let mut sim = state.snapshot();
+                        if attacker_has_fs {
+                            let power = attacker
+                                .get_power(&snapshot)?
+                                .ok_or(anyhow::anyhow!("attacker has no power"))?;
+                            sim.queue_one(Effect::TakeDamage {
+                                card_id: *defender_id,
+                                from: *attacker_id,
+                                damage: Damage::strike(power, false),
+                            });
+                            for eff in attacker.on_attack(state, defender_id)? {
+                                sim.queue_one(eff);
+                            }
+                        } else {
+                            for eff in defender.on_defend(state, attacker_id)? {
+                                sim.queue_one(eff);
+                            }
+                        }
+                        Box::pin(sim.apply_effects_without_log()).await?;
+                        if attacker_has_fs {
+                            sim.get_card(defender_id).get_zone() != &Zone::Cemetery
+                        } else {
+                            sim.get_card(attacker_id).get_zone() != &Zone::Cemetery
+                        }
+                    };
+
+                    // Queue the first strike effects for real.
+                    if attacker_has_fs {
+                        let power = attacker
+                            .get_power(&snapshot)?
+                            .ok_or(anyhow::anyhow!("attacker has no power"))?;
+                        effects.push(Effect::TakeDamage {
+                            card_id: *defender_id,
+                            from: *attacker_id,
+                            damage: Damage::strike(power, false),
+                        });
+                        effects.extend(attacker.on_attack(state, defender_id)?);
+                    } else {
+                        effects.extend(defender.on_defend(state, attacker_id)?);
+                    }
+
+                    // Regular Phase: the unit without FirstStrike strikes back (if it survived).
+                    if first_defender_survived {
+                        if attacker_has_fs {
+                            // Defender survived; defender strikes in regular phase.
+                            effects.extend(defender.on_defend(state, attacker_id)?);
+                        } else {
+                            // Attacker survived; attacker strikes in regular phase.
+                            let power = attacker
+                                .get_power(&snapshot)?
+                                .ok_or(anyhow::anyhow!("attacker has no power"))?;
+                            effects.push(Effect::TakeDamage {
+                                card_id: *defender_id,
+                                from: *attacker_id,
+                                damage: Damage::strike(power, false),
+                            });
+                            effects.extend(attacker.on_attack(state, defender_id)?);
+                        }
+                    }
+                } else {
+                    // Both have FirstStrike or neither does: both strike simultaneously.
+                    let power = attacker
+                        .get_power(&snapshot)?
+                        .ok_or(anyhow::anyhow!("attacker has no power"))?;
+                    effects.push(Effect::TakeDamage {
+                        card_id: *defender_id,
+                        from: *attacker_id,
+                        damage: Damage::strike(power, false),
+                    });
+                    effects.extend(attacker.on_attack(state, defender_id)?);
+                    effects.extend(defender.on_defend(state, attacker_id)?);
                 }
 
-                let first_striker = state.get_card(first_striker_id);
-                let first_defender = state.get_card(first_defender_id);
-                let strike_damage = first_striker
-                    .get_power(&snapshot)?
-                    .ok_or(anyhow::anyhow!("attacker has no power"))?;
-                effects.push(Effect::TakeDamage {
-                    card_id: *first_defender_id,
-                    from: *first_striker_id,
-                    damage: Damage::basic(strike_damage),
-                });
-
-                let mut snapshot = state.snapshot();
-                Box::pin(snapshot.apply_effects_without_log()).await?;
-
-                let killed_defender =
-                    state.get_card(first_defender_id).get_zone() == &Zone::Cemetery;
-                if killed_defender
-                    && first_striker.has_ability(state, &Ability::FirstStrike)
-                    && !first_defender.has_ability(state, &Ability::FirstStrike)
-                {
-                    // If the first striker killed the defender before it could strike back, skip the defender's strike.
-                    effects.reverse();
-                    state.queue(effects);
-                    return Ok(());
-                }
-
-                effects.extend(defender.on_defend(state, attacker_id)?.into_iter());
-                effects.extend(attacker.on_attack(state, defender_id)?.into_iter());
                 effects.reverse();
                 state.queue(effects);
             }
@@ -1786,9 +1828,7 @@ impl Effect {
                     card.add_ability(Ability::SummoningSickness);
                 }
 
-                for player in &state.players {
-                    crate::game::force_sync(&player.id, state).await?;
-                }
+                crate::game::force_sync_all(state).await?;
 
                 let card = state.get_card(&copy_id);
                 let mut effects: Vec<Effect> = vec![];
@@ -1815,9 +1855,7 @@ impl Effect {
         self.process_deferred_effects(state, self).await?;
         self.expire_temporary_effects(state, self).await?;
 
-        for player in &state.players {
-            crate::game::force_sync(&player.id, state).await?;
-        }
+        crate::game::force_sync_all(state).await?;
 
         Ok(())
     }

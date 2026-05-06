@@ -541,6 +541,14 @@ pub async fn pick_zone(
     zone
 }
 
+pub async fn force_sync_all(state: &State) -> anyhow::Result<()> {
+    for player in &state.players {
+        crate::game::force_sync(&player.id, state).await?;
+    }
+
+    Ok(())
+}
+
 // Sends a ForceSync message to the specified player with the provided game state. This can be used
 // to temporarily override the state of the game for the player, which is useful in cases where the
 // state needs to be mutated as part of the card resolution process.

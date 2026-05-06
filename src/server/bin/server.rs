@@ -251,7 +251,7 @@ impl Server {
             sorcerers::card::Zone::Realm(18),
         ));
         game.state.cards.push(sorcerers::card::from_name_and_zone(
-            "Rimland Nomads",
+            "Albespine Pikemen",
             &player_two,
             sorcerers::card::Zone::Realm(3),
         ));
