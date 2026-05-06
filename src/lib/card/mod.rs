@@ -163,7 +163,7 @@ impl Zone {
         let mut can_enter = true;
         for ce in &state.continuous_effects {
             match ce {
-                ContinuousEffect::MakeZonesUnvisitable {
+                ContinuousEffect::MakeZoneUnvisitable {
                     affected_zone,
                     affected_cards,
                 } if affected_zone == self && affected_cards.matches(card_id, state) => {
@@ -1624,6 +1624,12 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     && (target.is_unit() || target.is_site())
             })
             .filter(|target| {
+                target
+                    .get_zone()
+                    .can_be_entered_by(state, self.get_id())
+                    .unwrap_or_default()
+            })
+            .filter(|target| {
                 // Cannot attack Unattackable units, or Stealth units unless the attacker can see them.
                 !target.has_ability(state, &Ability::Unattackable)
                     && (!target.has_ability(state, &Ability::Stealth)
@@ -1990,6 +1996,13 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     .get_artifact()
                     .ok_or(anyhow::anyhow!("artifact card does not implement artifact"))?
                     .get_valid_attach_targets(state);
+                let valid_play_zones: Vec<uuid::Uuid> = self
+                    .get_valid_play_zones(state, player_id)?
+                    .into_iter()
+                    .filter_map(|z| z.get_site(state))
+                    .map(|s| s.get_id())
+                    .cloned()
+                    .collect();
                 let can_be_carried = state
                     .get_card(card_id)
                     .get_artifact()
@@ -1997,25 +2010,75 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     .can_be_carried();
                 match can_be_carried {
                     true => {
-                        let picked_card_id = pick_card(
-                            *player_id,
-                            &units,
-                            state,
-                            format!("Pick a unit to attach {} to", self.get_name()).as_str(),
-                        )
-                        .await?;
-                        let picked_card = state.get_card(&picked_card_id);
-                        Ok(vec![
-                            Effect::SetBearer {
-                                card_id: *card_id,
-                                bearer_id: Some(picked_card_id),
-                            },
-                            Effect::PlayCard {
-                                player_id: *player_id,
-                                card_id: *card_id,
-                                zone: picked_card.get_zone().clone().into(),
-                            },
-                        ])
+                        const EQUIP_TO_UNIT: &str = "Equip to unit";
+                        const PLAY_ATOP_SITE: &str = "Play atop site";
+                        let mut options = vec![];
+                        if !units.is_empty() {
+                            options.push(EQUIP_TO_UNIT.to_string());
+                        }
+                        if !valid_play_zones.is_empty() {
+                            options.push(PLAY_ATOP_SITE.to_string());
+                        }
+
+                        if options.is_empty() {
+                            return Err(anyhow::anyhow!(
+                                "expected at least one valid placement for artifact"
+                            ));
+                        }
+
+                        let mut picked_option_idx = 0;
+                        if options.len() > 1 {
+                            picked_option_idx = pick_option(
+                                player_id,
+                                &options,
+                                state,
+                                "Choose how to play artifact",
+                                false,
+                            )
+                            .await?;
+                        }
+
+                        match options[picked_option_idx].as_str() {
+                            EQUIP_TO_UNIT => {
+                                let picked_card_id = pick_card(
+                                    *player_id,
+                                    &units,
+                                    state,
+                                    format!("Pick a unit to attach {} to", self.get_name())
+                                        .as_str(),
+                                )
+                                .await?;
+                                let picked_card = state.get_card(&picked_card_id);
+                                Ok(vec![
+                                    Effect::SetBearer {
+                                        card_id: *card_id,
+                                        bearer_id: Some(picked_card_id),
+                                    },
+                                    Effect::PlayCard {
+                                        player_id: *player_id,
+                                        card_id: *card_id,
+                                        zone: picked_card.get_zone().clone().into(),
+                                    },
+                                ])
+                            }
+                            PLAY_ATOP_SITE => {
+                                let picked_site_id = pick_card(
+                                    *player_id,
+                                    &valid_play_zones,
+                                    state,
+                                    format!("Pick a site to play {} onto", self.get_name())
+                                        .as_str(),
+                                )
+                                .await?;
+                                let picked_site = state.get_card(&picked_site_id);
+                                Ok(vec![Effect::PlayCard {
+                                    player_id: *player_id,
+                                    card_id: *card_id,
+                                    zone: picked_site.get_zone().clone().into(),
+                                }])
+                            }
+                            _ => unreachable!(),
+                        }
                     }
                     false => {
                         let picked_zone = pick_zone(
