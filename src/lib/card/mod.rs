@@ -2874,9 +2874,7 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
                     effects.push(Effect::KillMinion {
                         card_id: *self.get_id(),
                         killer_id,
-                        // TODO: set this to the correct value, based on the parameters of
-                        // base_take_damage.
-                        from_attack: false,
+                        from_attack: damage.is_attack,
                     });
                 }
 
