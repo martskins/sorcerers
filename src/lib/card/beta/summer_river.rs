@@ -43,6 +43,7 @@ impl SummerRiver {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for SummerRiver {}
 
 #[async_trait::async_trait]

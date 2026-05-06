@@ -39,6 +39,7 @@ impl Windmill {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for Windmill {}
 
 #[async_trait::async_trait]

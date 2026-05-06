@@ -159,6 +159,32 @@ impl Zone {
         matches!(self, Zone::Realm(_) | Zone::Intersection(_))
     }
 
+    pub async fn can_be_entered_by(
+        &self,
+        state: &State,
+        card_id: &uuid::Uuid,
+    ) -> anyhow::Result<bool> {
+        let card = state.get_card(card_id);
+        let controller_id = card.get_controller_id(state);
+        let mut can_enter = true;
+        for ce in &state.continuous_effects {
+            match ce {
+                ContinuousEffect::MakeZonesUnvisitable {
+                    affected_zone,
+                    affected_cards,
+                } if affected_zone.resolve(&controller_id, state).await? == *self
+                    && affected_cards.matches(card_id, state) =>
+                {
+                    can_enter = false;
+                    break;
+                }
+                _ => {}
+            }
+        }
+
+        Ok(can_enter)
+    }
+
     pub fn is_valid_play_zone_for(
         &self,
         state: &State,
@@ -1263,7 +1289,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     // the operation is not implemented for the specific card type.
     // If a card needs to hold specific data, and you need to modify it, override this method with
     // a method that downcasts the data to the appropriate type and sets it on the card.
-    fn set_data(&mut self, _data: &std::sync::Arc<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
+    fn set_data(
+        &mut self,
+        _data: &std::sync::Arc<dyn std::any::Any + Send + Sync>,
+    ) -> anyhow::Result<()> {
         Err(anyhow::anyhow!(
             "set_data not implemented for {}",
             self.get_name()
@@ -1519,9 +1548,13 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     // Returns all valid move paths from the card's current zone to the given zone. The paths
     // include the starting, ending and all intermediate zones.
-    fn get_valid_move_paths(&self, state: &State, to: &Zone) -> anyhow::Result<Vec<Vec<Zone>>> {
+    async fn get_valid_move_paths(
+        &self,
+        state: &State,
+        to: &Zone,
+    ) -> anyhow::Result<Vec<Vec<Zone>>> {
         let from = self.get_zone().clone();
-        let valid_zones = self.get_valid_move_zones(state)?;
+        let valid_zones = self.get_valid_move_zones(state).await?;
         if !valid_zones.contains(to) {
             return Ok(vec![]);
         }
@@ -1576,8 +1609,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(extra_steps + 1)
     }
 
-    fn get_valid_move_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {
-        self.base_valid_move_zones(state)
+    async fn get_valid_move_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {
+        self.base_valid_move_zones(state).await
     }
 
     // Returns the valid attack targets for this card.
@@ -2184,6 +2217,7 @@ pub trait ResourceProvider: Card {
 
 impl<T> ResourceProvider for T where T: Site {}
 
+#[async_trait::async_trait]
 pub trait Site: Card + ResourceProvider {
     fn is_valid_play_zone_for(
         &self,
@@ -2223,14 +2257,24 @@ pub trait Site: Card + ResourceProvider {
         vec![]
     }
 
-    fn can_be_entered_by(
+    async fn base_can_be_entered_by(
         &self,
-        _card: &uuid::Uuid,
+        card: &uuid::Uuid,
         _from: &Zone,
         _region: &Region,
-        _state: &State,
-    ) -> bool {
-        true
+        state: &State,
+    ) -> anyhow::Result<bool> {
+        self.get_zone().can_be_entered_by(state, card).await
+    }
+
+    async fn can_be_entered_by(
+        &self,
+        card: &uuid::Uuid,
+        from: &Zone,
+        region: &Region,
+        state: &State,
+    ) -> anyhow::Result<bool> {
+        self.base_can_be_entered_by(card, from, region, state).await
     }
 
     fn is_flooded(&self, state: &State) -> anyhow::Result<bool> {
@@ -2542,6 +2586,7 @@ impl Damage {
 /// These methods should not be overridden by specific card types, as they provide the base
 /// behaviour for all cards. Instead, specific card types should override the public methods defined
 /// in the `Card` trait, and can call these base methods to get the default behaviour when needed.
+#[async_trait::async_trait]
 pub(crate) trait CardBaseMethods: Card {
     fn base_get_affected_zones(&self, state: &State) -> Vec<Zone>;
     fn base_get_power(&self, state: &State) -> Option<u16>;
@@ -2553,7 +2598,7 @@ pub(crate) trait CardBaseMethods: Card {
         damage: Damage,
     ) -> anyhow::Result<Vec<Effect>>;
     fn base_site_on_summon(&self, state: &State) -> anyhow::Result<Vec<Effect>>;
-    fn base_valid_move_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>>;
+    async fn base_valid_move_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>>;
     fn base_avatar_activated_abilities(
         &self,
         state: &State,
@@ -2564,6 +2609,7 @@ pub(crate) trait CardBaseMethods: Card {
     ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>>;
 }
 
+#[async_trait::async_trait]
 impl<T: Card + ?Sized> CardBaseMethods for T {
     fn base_get_affected_zones(&self, _state: &State) -> Vec<Zone> {
         match self.get_zone() {
@@ -2850,42 +2896,50 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
         }])
     }
 
-    fn base_valid_move_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {
-        let mut zones: Vec<Zone> = self
-            .get_zones_within_steps(state, self.get_steps_per_movement(state)?)
-            .iter()
-            .filter(|z| {
-                // If the card is not a unit, it might be an aura, in which case the result of
-                // get_zones_within_steps should be returned as is.
-                if !self.is_unit() {
-                    return true;
-                }
+    async fn base_valid_move_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {
+        // If the card is not a unit, it might be an aura, in which case the result of
+        // get_zones_within_steps should be returned as is.
+        if !self.is_unit() {
+            return Ok(self.get_zones_within_steps(state, self.get_steps_per_movement(state)?));
+        }
 
-                if self.has_ability(state, &Ability::Voidwalk) {
-                    return true;
-                }
+        let mut zones: Vec<Zone> = vec![];
+        for zone in &self.get_zones_within_steps(state, self.get_steps_per_movement(state)?) {
+            if !zone.can_be_entered_by(state, self.get_id()).await? {
+                continue;
+            }
 
-                // Oversized units may only move to intersection zones where all 4 sub-zones have sites.
-                if self.is_oversized(state) {
-                    return match z {
-                        Zone::Intersection(sqs) => sqs
-                            .iter()
-                            .all(|sq| Zone::Realm(*sq).get_site(state).is_some()),
-                        _ => false,
-                    };
-                }
+            if zone.get_site(state).is_none() && !self.has_ability(state, &Ability::Voidwalk) {
+                continue;
+            }
 
-                z.get_site(state).is_some_and(|c| {
-                    c.can_be_entered_by(
-                        self.get_id(),
-                        self.get_zone(),
-                        self.get_region(state),
-                        state,
-                    )
-                })
-            })
-            .cloned()
-            .collect();
+            // Oversized units may only move to intersection zones where all 4 sub-zones have sites.
+            if self.is_oversized(state)
+                && let Zone::Intersection(sqs) = zone
+                && sqs
+                    .iter()
+                    .all(|sq| Zone::Realm(*sq).get_site(state).is_some())
+            {
+                zones.push(zone.clone());
+                continue;
+            };
+
+            let Some(site) = zone.get_site(state) else {
+                continue;
+            };
+
+            if site
+                .can_be_entered_by(
+                    self.get_id(),
+                    self.get_zone(),
+                    self.get_region(state),
+                    state,
+                )
+                .await?
+            {
+                zones.push(zone.clone());
+            }
+        }
 
         for ce in &state.continuous_effects {
             if let ContinuousEffect::RestrictMoveToZones {

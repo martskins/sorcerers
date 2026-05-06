@@ -69,7 +69,7 @@ impl Card for EastWestDragon {
         Some(&mut self.unit_base)
     }
 
-    fn get_valid_move_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {
+    async fn get_valid_move_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {
         let sq = match self.get_zone().get_square() {
             Some(s) => s,
             None => return Ok(vec![]),

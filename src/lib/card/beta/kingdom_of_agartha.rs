@@ -41,6 +41,7 @@ impl KingdomOfAgartha {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for KingdomOfAgartha {}
 
 #[async_trait::async_trait]

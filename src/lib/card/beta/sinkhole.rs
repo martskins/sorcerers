@@ -77,6 +77,7 @@ impl Sinkhole {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for Sinkhole {}
 
 #[async_trait::async_trait]

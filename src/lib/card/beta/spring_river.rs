@@ -43,6 +43,7 @@ impl SpringRiver {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for SpringRiver {}
 
 #[async_trait::async_trait]

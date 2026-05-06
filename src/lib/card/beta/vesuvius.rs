@@ -45,6 +45,7 @@ impl ActivatedAbility for UseAbility {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for Vesuvius {}
 
 #[derive(Debug, Clone)]

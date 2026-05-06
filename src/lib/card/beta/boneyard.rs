@@ -42,6 +42,7 @@ impl Boneyard {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for Boneyard {}
 
 #[async_trait::async_trait]

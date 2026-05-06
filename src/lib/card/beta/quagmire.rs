@@ -44,6 +44,7 @@ impl Quagmire {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for Quagmire {}
 
 #[async_trait::async_trait]

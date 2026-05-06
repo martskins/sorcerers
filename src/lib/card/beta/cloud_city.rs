@@ -119,6 +119,7 @@ impl CloudCity {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for CloudCity {}
 
 #[async_trait::async_trait]
@@ -169,7 +170,10 @@ impl Card for CloudCity {
         Ok(vec![Box::new(FlyToVoid)])
     }
 
-    fn set_data(&mut self, data: &std::sync::Arc<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
+    fn set_data(
+        &mut self,
+        data: &std::sync::Arc<dyn std::any::Any + Send + Sync>,
+    ) -> anyhow::Result<()> {
         if let Some(moved) = data.downcast_ref::<bool>() {
             self.moved_this_turn = *moved;
         }

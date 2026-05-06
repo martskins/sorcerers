@@ -40,6 +40,7 @@ impl DomeOfOsiros {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for DomeOfOsiros {}
 
 #[async_trait::async_trait]

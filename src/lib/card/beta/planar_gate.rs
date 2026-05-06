@@ -44,6 +44,7 @@ impl PlanarGate {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for PlanarGate {
     fn on_card_enter(&self, state: &State, card_id: &uuid::Uuid) -> Vec<Effect> {
         let card = state.get_card(card_id);

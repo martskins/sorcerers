@@ -1326,10 +1326,10 @@ impl ActivatedAbility for UnitAction {
             }
             UnitAction::Move => {
                 let card = state.get_card(card_id);
-                let zones = card.get_valid_move_zones(state)?;
+                let zones = card.get_valid_move_zones(state).await?;
                 let prompt = "Pick a zone to move to";
                 let zone = pick_zone(player_id, &zones, state, false, prompt).await?;
-                let paths = card.get_valid_move_paths(state, &zone)?;
+                let paths = card.get_valid_move_paths(state, &zone).await?;
                 let path = if paths.len() > 1 {
                     let prompt = "Pick a path to move along";
                     pick_path(player_id, &paths, state, prompt).await?

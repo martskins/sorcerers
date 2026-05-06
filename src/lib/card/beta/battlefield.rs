@@ -41,6 +41,7 @@ impl Battlefield {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for Battlefield {}
 
 #[async_trait::async_trait]

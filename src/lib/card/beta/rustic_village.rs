@@ -43,6 +43,7 @@ impl RusticVillage {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for RusticVillage {}
 
 #[async_trait::async_trait]

@@ -1,18 +1,13 @@
 use crate::{
     card::{
-        Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs, Edition,
-        Rarity, Region, Zone,
+        Ability, Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs,
+        Edition, Rarity, Region, Zone,
     },
     effect::Effect,
     game::PlayerId,
-    state::{CardQuery, State},
+    state::{CardQuery, ContinuousEffect, State},
 };
 
-/// **Scarecrow** — Ordinary Artifact (Relic, 2 cost, no threshold)
-///
-/// Genesis → Return each Airborne minion here to its owner's hand.
-/// Airborne minions can't enter this location.
-/// TODO: Implement prevention of Airborne minions entering this zone.
 #[derive(Debug, Clone)]
 pub struct Scarecrow {
     artifact_base: ArtifactBase,
@@ -99,6 +94,16 @@ impl Card for Scarecrow {
                 zone: Zone::Hand,
             })
             .collect())
+    }
+
+    async fn get_continuous_effects(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<ContinuousEffect>> {
+        Ok(vec![ContinuousEffect::MakeZonesUnvisitable {
+            affected_zone: self.get_zone().into(),
+            affected_cards: CardQuery::new().minions().with_ability(&Ability::Airborne),
+        }])
     }
 }
 

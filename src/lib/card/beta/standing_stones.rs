@@ -40,6 +40,7 @@ impl StandingStones {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for StandingStones {}
 
 #[async_trait::async_trait]

@@ -43,6 +43,7 @@ impl Maelström {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for Maelström {}
 
 #[async_trait::async_trait]

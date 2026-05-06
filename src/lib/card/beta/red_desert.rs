@@ -43,6 +43,7 @@ impl RedDesert {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for RedDesert {}
 
 #[async_trait::async_trait]

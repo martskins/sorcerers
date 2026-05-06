@@ -45,6 +45,7 @@ impl PrimordialSpring {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for PrimordialSpring {}
 
 #[async_trait::async_trait]

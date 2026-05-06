@@ -108,21 +108,27 @@ impl Card for WindSylph {
         )
         .await?;
         let unit = state.get_card(&unit_id);
-        let mut valid_zones: Vec<Zone> = PUSH_DIRECTIONS
-            .iter()
-            .filter_map(|direction| unit.get_zone().zone_in_direction(direction, 1))
-            .filter(|zone| {
-                unit.has_ability(state, &Ability::Voidwalk)
-                    || zone.get_site(state).is_some_and(|site| {
-                        site.can_be_entered_by(
-                            &unit_id,
-                            unit.get_zone(),
-                            unit.get_region(state),
-                            state,
-                        )
-                    })
-            })
-            .collect();
+        let mut valid_zones = vec![];
+        for dir in &PUSH_DIRECTIONS {
+            let Some(zone) = unit.get_zone().zone_in_direction(dir, 1) else {
+                continue;
+            };
+
+            let can_enter = match zone.get_site(state) {
+                Some(site) => {
+                    site.can_be_entered_by(&unit_id, unit.get_zone(), unit.get_region(state), state)
+                        .await?
+                }
+                None => {
+                    unit.has_ability(state, &Ability::Voidwalk)
+                        && zone.can_be_entered_by(state, &unit_id).await?
+                }
+            };
+
+            if can_enter {
+                valid_zones.push(zone);
+            }
+        }
         valid_zones.sort();
         valid_zones.dedup();
         if valid_zones.is_empty() {

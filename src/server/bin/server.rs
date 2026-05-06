@@ -194,7 +194,7 @@ impl Server {
 
         let player_two = game.state.players[1].id;
         game.state.cards.push(sorcerers::card::from_name_and_zone(
-            "Chain Lightning",
+            "Scarecrow",
             &player_one,
             sorcerers::card::Zone::Hand,
         ));
@@ -251,7 +251,7 @@ impl Server {
             sorcerers::card::Zone::Realm(18),
         ));
         game.state.cards.push(sorcerers::card::from_name_and_zone(
-            "Albespine Pikemen",
+            "Ultimate Horror",
             &player_two,
             sorcerers::card::Zone::Realm(3),
         ));

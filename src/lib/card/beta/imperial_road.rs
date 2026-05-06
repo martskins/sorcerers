@@ -43,6 +43,7 @@ impl ImperialRoad {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for ImperialRoad {}
 
 #[async_trait::async_trait]

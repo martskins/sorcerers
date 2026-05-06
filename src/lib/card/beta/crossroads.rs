@@ -42,6 +42,7 @@ impl Crossroads {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for Crossroads {}
 
 #[async_trait::async_trait]

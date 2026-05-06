@@ -40,6 +40,7 @@ impl Cornerstone {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for Cornerstone {}
 
 impl Card for Cornerstone {

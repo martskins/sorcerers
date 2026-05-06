@@ -42,6 +42,7 @@ impl HolyGround {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for HolyGround {}
 
 #[async_trait::async_trait]

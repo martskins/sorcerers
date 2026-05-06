@@ -118,6 +118,7 @@ impl FreeCity {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for FreeCity {}
 
 #[async_trait::async_trait]
@@ -154,7 +155,10 @@ impl Card for FreeCity {
         Some(self)
     }
 
-    fn set_data(&mut self, data: &std::sync::Arc<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
+    fn set_data(
+        &mut self,
+        data: &std::sync::Arc<dyn std::any::Any + Send + Sync>,
+    ) -> anyhow::Result<()> {
         if let Some(site_data) = data.downcast_ref::<bool>() {
             self.used_ability = *site_data;
             Ok(())

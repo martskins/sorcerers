@@ -886,6 +886,10 @@ pub enum ContinuousEffect {
     DroughtSites {
         affected_sites: CardQuery,
     },
+    MakeZonesUnvisitable {
+        affected_zone: ZoneQuery,
+        affected_cards: CardQuery,
+    },
     DoubleDamageTaken {
         affected_cards: CardQuery,
         except_strikes: bool,

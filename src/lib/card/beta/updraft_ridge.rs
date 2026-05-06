@@ -41,6 +41,7 @@ impl UpdraftRidge {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for UpdraftRidge {}
 
 #[async_trait::async_trait]

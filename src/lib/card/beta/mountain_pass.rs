@@ -42,14 +42,15 @@ impl MountainPass {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for MountainPass {
-    fn can_be_entered_by(
+    async fn can_be_entered_by(
         &self,
         card_id: &uuid::Uuid,
         _from: &Zone,
         region: &Region,
         state: &State,
-    ) -> bool {
+    ) -> anyhow::Result<bool> {
         let minions_atop = CardQuery::new()
             .minions()
             .in_zone(self.get_zone())
@@ -59,7 +60,8 @@ impl Site for MountainPass {
         let card = state.get_card(card_id);
         let ground_movement =
             card.get_region(state) == &Region::Surface && region == &Region::Surface;
-        !ground_movement || minions_atop == 0
+
+        Ok(!ground_movement || minions_atop == 0)
     }
 }
 

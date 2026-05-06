@@ -42,6 +42,7 @@ impl AridDesert {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for AridDesert {}
 
 #[async_trait::async_trait]

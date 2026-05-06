@@ -42,6 +42,7 @@ impl PristineParadise {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for PristineParadise {}
 
 #[async_trait::async_trait]

@@ -43,6 +43,7 @@ impl DarkTower {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for DarkTower {}
 
 #[async_trait::async_trait]

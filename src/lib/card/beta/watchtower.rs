@@ -41,6 +41,7 @@ impl Watchtower {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for Watchtower {}
 
 #[async_trait::async_trait]

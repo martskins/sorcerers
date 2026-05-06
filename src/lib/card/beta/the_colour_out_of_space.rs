@@ -50,6 +50,7 @@ impl TheColourOutOfSpace {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for TheColourOutOfSpace {}
 
 #[async_trait::async_trait]

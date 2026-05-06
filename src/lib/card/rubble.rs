@@ -35,6 +35,7 @@ impl Rubble {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for Rubble {}
 
 impl Card for Rubble {

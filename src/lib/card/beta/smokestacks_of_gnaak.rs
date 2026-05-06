@@ -41,6 +41,7 @@ impl SmokestacksOfGnaak {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for SmokestacksOfGnaak {}
 
 #[async_trait::async_trait]

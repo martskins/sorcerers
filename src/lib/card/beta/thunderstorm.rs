@@ -81,7 +81,7 @@ impl Card for Thunderstorm {
             return Ok(vec![]);
         }
 
-        let zones = self.get_valid_move_zones(state)?;
+        let zones = self.get_valid_move_zones(state).await?;
         let affected_zones = self.get_affected_zones(state);
         // Add DealDamageToTarget after MoveCard, so that the damage effect is processed before the
         // move effect.

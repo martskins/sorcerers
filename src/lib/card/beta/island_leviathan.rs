@@ -97,6 +97,7 @@ impl IslandLeviathan {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for IslandLeviathan {}
 
 #[async_trait::async_trait]
@@ -148,7 +149,10 @@ impl Card for IslandLeviathan {
         Ok(vec![Box::new(TransformIntoAMonster)])
     }
 
-    fn set_data(&mut self, data: &std::sync::Arc<dyn std::any::Any + Send + Sync>) -> anyhow::Result<()> {
+    fn set_data(
+        &mut self,
+        data: &std::sync::Arc<dyn std::any::Any + Send + Sync>,
+    ) -> anyhow::Result<()> {
         if let Some(unit_base) = data.downcast_ref::<UnitBase>() {
             self.unit_base = Some(unit_base.clone());
             self.site_base = None;

@@ -42,6 +42,7 @@ impl AstralAlcazar {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for AstralAlcazar {}
 
 #[async_trait::async_trait]

@@ -43,6 +43,7 @@ impl RiverOfFlame {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for RiverOfFlame {}
 
 #[async_trait::async_trait]

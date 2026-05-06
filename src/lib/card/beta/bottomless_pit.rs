@@ -72,6 +72,7 @@ impl BottomlessPit {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for BottomlessPit {}
 
 #[async_trait::async_trait]

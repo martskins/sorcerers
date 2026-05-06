@@ -44,6 +44,7 @@ impl Undertow {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for Undertow {}
 
 #[async_trait::async_trait]

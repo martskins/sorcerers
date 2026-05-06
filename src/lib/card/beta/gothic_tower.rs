@@ -43,6 +43,7 @@ impl GothicTower {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for GothicTower {}
 
 #[async_trait::async_trait]

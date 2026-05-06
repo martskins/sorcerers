@@ -38,6 +38,7 @@ impl GnomeHollows {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for GnomeHollows {}
 
 #[async_trait::async_trait]

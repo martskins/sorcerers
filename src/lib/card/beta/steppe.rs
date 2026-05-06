@@ -39,6 +39,7 @@ impl Steppe {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for Steppe {}
 
 #[async_trait::async_trait]

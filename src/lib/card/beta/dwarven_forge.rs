@@ -41,6 +41,7 @@ impl DwarvenForge {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for DwarvenForge {}
 
 #[async_trait::async_trait]

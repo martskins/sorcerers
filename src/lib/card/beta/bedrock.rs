@@ -40,6 +40,7 @@ impl Bedrock {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for Bedrock {}
 
 #[async_trait::async_trait]

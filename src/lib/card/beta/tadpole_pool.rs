@@ -43,6 +43,7 @@ impl TadpolePool {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for TadpolePool {}
 
 #[async_trait::async_trait]

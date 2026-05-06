@@ -39,6 +39,7 @@ impl Lighthouse {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for Lighthouse {}
 
 #[async_trait::async_trait]

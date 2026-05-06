@@ -43,6 +43,7 @@ impl AutumnRiver {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for AutumnRiver {}
 
 #[async_trait::async_trait]

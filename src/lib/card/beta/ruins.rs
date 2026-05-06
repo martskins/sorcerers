@@ -39,6 +39,7 @@ impl Ruins {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for Ruins {}
 
 #[async_trait::async_trait]

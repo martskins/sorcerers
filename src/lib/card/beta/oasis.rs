@@ -39,6 +39,7 @@ impl Oasis {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for Oasis {}
 
 #[async_trait::async_trait]

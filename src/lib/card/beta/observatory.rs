@@ -43,6 +43,7 @@ impl Observatory {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for Observatory {}
 
 #[async_trait::async_trait]

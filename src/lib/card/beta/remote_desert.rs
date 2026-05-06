@@ -43,6 +43,7 @@ impl RemoteDesert {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for RemoteDesert {}
 
 #[async_trait::async_trait]

@@ -38,6 +38,7 @@ impl Aqueduct {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for Aqueduct {}
 
 #[async_trait::async_trait]

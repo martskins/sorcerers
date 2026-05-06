@@ -43,6 +43,7 @@ impl ShiftingSands {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for ShiftingSands {}
 
 #[async_trait::async_trait]

@@ -41,6 +41,7 @@ impl Iceberg {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for Iceberg {}
 
 #[async_trait::async_trait]

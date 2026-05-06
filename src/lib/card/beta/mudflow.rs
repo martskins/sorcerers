@@ -43,6 +43,7 @@ impl Mudflow {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for Mudflow {}
 
 #[async_trait::async_trait]

@@ -69,8 +69,8 @@ impl Card for DalceanPhalanx {
         Some(&mut self.unit_base)
     }
 
-    fn get_valid_move_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {
-        let zones = self.base_valid_move_zones(state)?;
+    async fn get_valid_move_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {
+        let zones = self.base_valid_move_zones(state).await?;
         let mut valid_zones = vec![self.get_zone().clone()];
         while let Some(zone) = valid_zones
             .last()

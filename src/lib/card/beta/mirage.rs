@@ -43,6 +43,7 @@ impl Mirage {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for Mirage {}
 
 #[async_trait::async_trait]

@@ -41,6 +41,7 @@ impl DonnybrookInn {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for DonnybrookInn {}
 
 #[async_trait::async_trait]

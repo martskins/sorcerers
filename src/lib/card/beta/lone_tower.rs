@@ -43,6 +43,7 @@ impl LoneTower {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for LoneTower {}
 
 #[async_trait::async_trait]

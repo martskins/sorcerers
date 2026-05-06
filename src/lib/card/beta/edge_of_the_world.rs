@@ -39,6 +39,7 @@ impl EdgeOfTheWorld {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for EdgeOfTheWorld {}
 
 #[async_trait::async_trait]

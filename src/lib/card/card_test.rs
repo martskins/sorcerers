@@ -86,8 +86,8 @@ fn test_additional_cost_two_taps() {
     assert!(!can_afford, "only one untapped unit in the zone");
 }
 
-#[test]
-fn test_get_valid_move_paths_movement_plus_1() {
+#[tokio::test]
+async fn test_get_valid_move_paths_movement_plus_1() {
     let mut state = State::new_mock_state(Zone::all_realm());
     let player_id = state.players[0].id;
     let mut card = RimlandNomads::new(player_id);
@@ -96,14 +96,15 @@ fn test_get_valid_move_paths_movement_plus_1() {
 
     let paths = card
         .get_valid_move_paths(&state, &Zone::Realm(14))
+        .await
         .expect("paths to be computed");
     assert_eq!(paths.len(), 2, "Expected 2 paths, got {:?}", paths);
     assert!(paths.contains(&vec![Zone::Realm(8), Zone::Realm(9), Zone::Realm(14)]));
     assert!(paths.contains(&vec![Zone::Realm(8), Zone::Realm(13), Zone::Realm(14)]));
 }
 
-#[test]
-fn test_get_valid_move_paths_movement_plus_1_airborne() {
+#[tokio::test]
+async fn test_get_valid_move_paths_movement_plus_1_airborne() {
     let mut state = State::new_mock_state(Zone::all_realm());
     let player_id = state.players[0].id;
     let mut card = RimlandNomads::new(player_id);
@@ -113,6 +114,7 @@ fn test_get_valid_move_paths_movement_plus_1_airborne() {
 
     let paths = card
         .get_valid_move_paths(&state, &Zone::Realm(14))
+        .await
         .expect("paths to be computed");
     assert_eq!(paths.len(), 3, "Expected 3 valid paths, got {:?}", paths);
     assert!(paths.contains(&vec![Zone::Realm(8), Zone::Realm(9), Zone::Realm(14)]));
@@ -120,8 +122,8 @@ fn test_get_valid_move_paths_movement_plus_1_airborne() {
     assert!(paths.contains(&vec![Zone::Realm(8), Zone::Realm(13), Zone::Realm(14)]));
 }
 
-#[test]
-fn test_get_valid_move_paths_movement_plus_2() {
+#[tokio::test]
+async fn test_get_valid_move_paths_movement_plus_2() {
     let mut state = State::new_mock_state(Zone::all_realm());
     let player_id = state.players[0].id;
     let mut card = RimlandNomads::new(player_id);
@@ -131,6 +133,7 @@ fn test_get_valid_move_paths_movement_plus_2() {
 
     let paths = card
         .get_valid_move_paths(&state, &Zone::Realm(15))
+        .await
         .expect("paths to be computed");
     assert_eq!(paths.len(), 3, "Expected 2 paths, got {:?}", paths);
     assert!(paths.contains(&vec![
@@ -153,8 +156,8 @@ fn test_get_valid_move_paths_movement_plus_2() {
     ]));
 }
 
-#[test]
-fn test_get_valid_move_zones_basic_movement() {
+#[tokio::test]
+async fn test_get_valid_move_zones_basic_movement() {
     let mut state = State::new_mock_state(Zone::all_realm());
     let player_id = state.players[0].id;
     let mut card = ApprenticeWizard::new(player_id);
@@ -163,6 +166,7 @@ fn test_get_valid_move_zones_basic_movement() {
 
     let mut zones = card
         .get_valid_move_zones(&state)
+        .await
         .expect("zones to be computed");
     zones.sort();
     let mut expected = vec![
@@ -176,8 +180,8 @@ fn test_get_valid_move_zones_basic_movement() {
     assert_eq!(zones, expected);
 }
 
-#[test]
-fn test_get_valid_move_zones_movement_plus_1() {
+#[tokio::test]
+async fn test_get_valid_move_zones_movement_plus_1() {
     let mut state = State::new_mock_state(Zone::all_realm());
     let player_id = state.players[0].id;
     let mut card = ApprenticeWizard::new(player_id);
@@ -187,6 +191,7 @@ fn test_get_valid_move_zones_movement_plus_1() {
 
     let mut zones = card
         .get_valid_move_zones(&state)
+        .await
         .expect("zones to be computed");
     zones.sort();
     let mut expected = vec![
@@ -207,8 +212,8 @@ fn test_get_valid_move_zones_movement_plus_1() {
     assert_eq!(zones, expected);
 }
 
-#[test]
-fn test_get_valid_move_zones_basic_movement_with_voids() {
+#[tokio::test]
+async fn test_get_valid_move_zones_basic_movement_with_voids() {
     let zones_with_sites = vec![Zone::Realm(3), Zone::Realm(8), Zone::Realm(9)];
     let mut state = State::new_mock_state(zones_with_sites);
     let player_id = state.players[0].id;
@@ -218,6 +223,7 @@ fn test_get_valid_move_zones_basic_movement_with_voids() {
 
     let mut zones = card
         .get_valid_move_zones(&state)
+        .await
         .expect("zones to be computed");
     zones.sort();
     let mut expected = vec![Zone::Realm(8), Zone::Realm(9), Zone::Realm(3)];
@@ -225,8 +231,8 @@ fn test_get_valid_move_zones_basic_movement_with_voids() {
     assert_eq!(zones, expected);
 }
 
-#[test]
-fn test_get_valid_move_zones_movement_plus_1_with_voids() {
+#[tokio::test]
+async fn test_get_valid_move_zones_movement_plus_1_with_voids() {
     let zones_with_sites = vec![
         Zone::Realm(2),
         Zone::Realm(3),
@@ -245,6 +251,7 @@ fn test_get_valid_move_zones_movement_plus_1_with_voids() {
 
     let mut zones = card
         .get_valid_move_zones(&state)
+        .await
         .expect("zones to be computed");
     zones.sort();
     let mut expected = vec![
@@ -260,8 +267,8 @@ fn test_get_valid_move_zones_movement_plus_1_with_voids() {
     assert_eq!(zones, expected);
 }
 
-#[test]
-fn test_get_valid_move_zones_basic_movement_with_voidwalk() {
+#[tokio::test]
+async fn test_get_valid_move_zones_basic_movement_with_voidwalk() {
     let zones_with_sites = vec![Zone::Realm(3), Zone::Realm(8), Zone::Realm(9)];
     let mut state = State::new_mock_state(zones_with_sites);
     let player_id = state.players[0].id;
@@ -272,6 +279,7 @@ fn test_get_valid_move_zones_basic_movement_with_voidwalk() {
 
     let mut zones = card
         .get_valid_move_zones(&state)
+        .await
         .expect("zones to be computed");
     zones.sort();
     let mut expected = vec![
@@ -285,8 +293,8 @@ fn test_get_valid_move_zones_basic_movement_with_voidwalk() {
     assert_eq!(zones, expected);
 }
 
-#[test]
-fn test_get_valid_move_zones_airborne() {
+#[tokio::test]
+async fn test_get_valid_move_zones_airborne() {
     let mut state = State::new_mock_state(Zone::all_realm());
     let player_id = state.players[0].id;
     let mut card = ApprenticeWizard::new(player_id);
@@ -296,6 +304,7 @@ fn test_get_valid_move_zones_airborne() {
 
     let mut zones = card
         .get_valid_move_zones(&state)
+        .await
         .expect("zones to be computed");
     zones.sort();
     let mut expected = vec![
@@ -313,8 +322,8 @@ fn test_get_valid_move_zones_airborne() {
     assert_eq!(zones, expected);
 }
 
-#[test]
-fn test_get_valid_move_zones_airborne_with_voids() {
+#[tokio::test]
+async fn test_get_valid_move_zones_airborne_with_voids() {
     let zones_with_sites = vec![
         Zone::Realm(2),
         Zone::Realm(3),
@@ -333,6 +342,7 @@ fn test_get_valid_move_zones_airborne_with_voids() {
 
     let mut zones = card
         .get_valid_move_zones(&state)
+        .await
         .expect("zones to be computed");
     zones.sort();
 
@@ -349,8 +359,8 @@ fn test_get_valid_move_zones_airborne_with_voids() {
     assert_eq!(zones, expected);
 }
 
-#[test]
-fn test_get_valid_move_zones_airborne_and_voidwalk() {
+#[tokio::test]
+async fn test_get_valid_move_zones_airborne_and_voidwalk() {
     let zones_with_sites = vec![
         Zone::Realm(2),
         Zone::Realm(3),
@@ -372,6 +382,7 @@ fn test_get_valid_move_zones_airborne_and_voidwalk() {
 
     let mut zones = card
         .get_valid_move_zones(&state)
+        .await
         .expect("zones to be computed");
     zones.sort();
     let mut expected = vec![

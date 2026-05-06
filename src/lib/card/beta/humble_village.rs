@@ -43,6 +43,7 @@ impl HumbleVillage {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for HumbleVillage {}
 
 #[async_trait::async_trait]

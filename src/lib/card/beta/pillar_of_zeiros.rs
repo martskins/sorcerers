@@ -45,6 +45,7 @@ impl PillarOfZeiros {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for PillarOfZeiros {}
 
 #[async_trait::async_trait]

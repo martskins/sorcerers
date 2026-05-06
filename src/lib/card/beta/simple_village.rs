@@ -43,6 +43,7 @@ impl SimpleVillage {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for SimpleVillage {}
 
 #[async_trait::async_trait]

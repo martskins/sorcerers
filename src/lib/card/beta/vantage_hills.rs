@@ -41,6 +41,7 @@ impl VantageHills {
     }
 }
 
+#[async_trait::async_trait]
 impl Site for VantageHills {}
 
 #[async_trait::async_trait]
