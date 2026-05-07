@@ -97,7 +97,6 @@ impl Card for BlackObelisk {
             return Ok(vec![]);
         }
 
-        // TODO: Sites cannot have abilities yet, but once they do, this check should work.
         if site.has_ability(state, &Ability::Disabled) {
             return Ok(vec![]);
         }

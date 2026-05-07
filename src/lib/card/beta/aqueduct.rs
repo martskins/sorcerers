@@ -22,6 +22,7 @@ impl Aqueduct {
                 provided_thresholds: Thresholds::parse("EW"),
                 types: vec![],
                 tapped: false,
+                ..Default::default()
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),

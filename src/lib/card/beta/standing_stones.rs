@@ -24,6 +24,7 @@ impl StandingStones {
                 provided_thresholds: Thresholds::ZERO,
                 types: vec![],
                 tapped: false,
+                ..Default::default()
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),

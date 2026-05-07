@@ -25,6 +25,7 @@ impl Watchtower {
                 provided_thresholds: Thresholds::parse("A"),
                 types: vec![SiteType::Tower],
                 tapped: false,
+                ..Default::default()
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),

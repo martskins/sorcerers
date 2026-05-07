@@ -1899,8 +1899,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(false)
     }
 
-    async fn on_move(&self, _state: &State, _path: &[Zone]) -> anyhow::Result<Vec<Effect>> {
-        Ok(vec![])
+    async fn on_move(&self, state: &State, _path: &[Zone]) -> anyhow::Result<Vec<Effect>> {
+        self.base_on_move(state)
     }
 
     async fn on_visit_zone(
@@ -2204,6 +2204,7 @@ pub struct SiteBase {
     pub provided_thresholds: Thresholds,
     pub types: Vec<SiteType>,
     pub tapped: bool,
+    pub abilities: Vec<Ability>,
 }
 
 trait ResourceProviderBaseMethods: Card {
@@ -2674,6 +2675,7 @@ pub(crate) trait CardBaseMethods: Card {
         from: &uuid::Uuid,
         damage: Damage,
     ) -> anyhow::Result<Vec<Effect>>;
+    fn base_on_move(&self, state: &State) -> anyhow::Result<Vec<Effect>>;
     fn base_site_on_summon(&self, state: &State) -> anyhow::Result<Vec<Effect>>;
     async fn base_valid_move_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>>;
     fn base_avatar_activated_abilities(
@@ -2700,6 +2702,12 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
             }
             _ => vec![],
         }
+    }
+
+    fn base_on_move(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+        // TODO: If the card is moving independently or teleporting to a location that the bearer is
+        // not in, force the bearer to None.
+        Ok(vec![])
     }
 
     fn base_get_power(&self, state: &State) -> Option<u16> {
@@ -2740,17 +2748,17 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
     }
 
     fn base_get_abilities(&self, state: &State) -> Vec<Ability> {
-        match self.get_unit_base() {
-            Some(base) => {
+        match self.get_card_type() {
+            CardType::Minion | CardType::Avatar => {
+                let base = self
+                    .get_unit_base()
+                    .expect("minions and avatars to have a unit base");
                 let mut modifiers = base.abilities.clone();
                 for counter in &base.ability_counters {
                     modifiers.push(counter.ability.clone());
                 }
 
                 for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
-                    if card.is_flooded_site(state) {
-                        continue;
-                    }
                     let mods = card.area_modifiers(state);
                     if let Some(mods) = mods.grants_abilities.get(self.get_id()) {
                         modifiers.extend(mods.clone());
@@ -2772,9 +2780,6 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
                 }
 
                 for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
-                    if card.is_flooded_site(state) {
-                        continue;
-                    }
                     let mods = card.area_modifiers(state);
                     if let Some(mods) = mods.removes_abilities.get(self.get_id()) {
                         for modif in mods {
@@ -2797,7 +2802,39 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
 
                 modifiers
             }
-            None => vec![],
+            CardType::Site => {
+                let base = self.get_site_base().expect("site to have a site base");
+                let mut modifiers = base.abilities.clone();
+                for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
+                    let mods = card.area_modifiers(state);
+                    if let Some(mods) = mods.grants_abilities.get(self.get_id()) {
+                        modifiers.extend(mods.clone());
+                    }
+                }
+
+                for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
+                    let mods = card.area_modifiers(state);
+                    if let Some(mods) = mods.removes_abilities.get(self.get_id()) {
+                        for modif in mods {
+                            modifiers.retain(|m| m != modif);
+                        }
+                    }
+                }
+                for ce in &state.continuous_effects {
+                    match ce {
+                        ContinuousEffect::GrantAbility {
+                            ability,
+                            affected_cards,
+                        } if affected_cards.matches(self.get_id(), state) => {
+                            modifiers.push(ability.clone())
+                        }
+                        _ => {}
+                    }
+                }
+
+                modifiers
+            }
+            _ => vec![],
         }
     }
 

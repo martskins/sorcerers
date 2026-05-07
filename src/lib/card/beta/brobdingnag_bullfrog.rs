@@ -73,6 +73,17 @@ impl Card for BrobdingnagBullfrog {
         Some(&mut self.unit_base)
     }
 
+    fn deathrite(&self, _state: &State, _from: &Zone) -> Vec<Effect> {
+        if let Some(swallowed_minion_id) = self.swallowed_minion {
+            return vec![Effect::SetBearer {
+                card_id: swallowed_minion_id,
+                bearer_id: None,
+            }];
+        }
+
+        vec![]
+    }
+
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let minions = CardQuery::new()
             .minions()
@@ -129,10 +140,14 @@ impl Card for BrobdingnagBullfrog {
         &self,
         _state: &State,
     ) -> anyhow::Result<Vec<ContinuousEffect>> {
-        Ok(vec![ContinuousEffect::GrantAbility {
-            ability: Ability::Disabled,
-            affected_cards: self.swallowed_minion.unwrap_or(uuid::Uuid::nil()).into(),
-        }])
+        if let Some(swallowed_minion) = self.swallowed_minion {
+            Ok(vec![ContinuousEffect::GrantAbility {
+                ability: Ability::Disabled,
+                affected_cards: swallowed_minion.into(),
+            }])
+        } else {
+            Ok(vec![])
+        }
     }
 }
 
