@@ -987,6 +987,9 @@ impl Effect {
                     return Ok(());
                 }
 
+                // If this card was being carried, it no longer is.
+                state.get_card_mut(card_id).set_bearer_id(None);
+
                 match through_path {
                     Some(path) => {
                         for zone in path {
@@ -1001,13 +1004,11 @@ impl Effect {
                                 card.set_tapped(true);
                             }
 
+                            // Move carried minions along with the carrier
                             let carried_cards = CardQuery::new().carried_by(card_id).all(state);
                             for cid in carried_cards {
                                 let carried_card = state.get_card_mut(&cid);
                                 carried_card.set_zone(zone.clone());
-                                if *tap {
-                                    carried_card.set_tapped(true);
-                                }
                             }
 
                             let card = state.get_card(card_id);
@@ -1030,13 +1031,11 @@ impl Effect {
                             card.set_tapped(true);
                         }
 
+                        // Move carried minions along with the carrier
                         let carried_cards = CardQuery::new().carried_by(card_id).all(state);
                         for cid in carried_cards {
                             let carried_card = state.get_card_mut(&cid);
                             carried_card.set_zone(zone.clone());
-                            if *tap {
-                                carried_card.set_tapped(true);
-                            }
                         }
 
                         let card = state.get_card(card_id);

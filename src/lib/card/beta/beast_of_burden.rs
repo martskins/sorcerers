@@ -3,9 +3,7 @@ use crate::{
         Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region,
         UnitBase, Zone,
     },
-    effect::Effect,
     game::PlayerId,
-    state::State,
 };
 
 #[derive(Debug, Clone)]
@@ -68,48 +66,6 @@ impl Card for BeastOfBurden {
 
     fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
         Some(&mut self.unit_base)
-    }
-
-    async fn on_move(&self, state: &State, path: &[Zone]) -> anyhow::Result<Vec<Effect>> {
-        if path.is_empty() {
-            return Ok(vec![]);
-        }
-
-        let to_zone = self.get_zone().clone();
-        let from_zone = path
-            .windows(2)
-            .find_map(|pair| {
-                if pair[1] == to_zone {
-                    Some(pair[0].clone())
-                } else {
-                    None
-                }
-            })
-            .unwrap_or_else(|| {
-                path.first()
-                    .cloned()
-                    .unwrap_or_else(|| self.get_zone().clone())
-            });
-        let controller_id = self.get_controller_id(state);
-
-        Ok(state
-            .cards
-            .iter()
-            .filter(|card| card.is_minion())
-            .filter(|card| card.get_controller_id(state) == controller_id)
-            .filter(|card| card.get_zone() == &from_zone)
-            .filter(|card| card.get_bearer_id().unwrap_or_default() == Some(*self.get_id()))
-            .filter(|card| card.get_id() != self.get_id())
-            .map(|card| Effect::MoveCard {
-                player_id: controller_id,
-                card_id: *card.get_id(),
-                from: from_zone.clone(),
-                to: to_zone.clone().into(),
-                tap: false,
-                region: self.get_region(state).clone(),
-                through_path: None,
-            })
-            .collect())
     }
 }
 
