@@ -1,7 +1,8 @@
 use crate::{
     card::{
-        AridDesert, BeastOfBurden, Card, CauldronCrones, DonnybrookInn, Enchantress, FootSoldier,
-        HeadlessHaunt, KiteArcher, NimbusJinn, RimlandNomads, Zone, from_name_and_zone,
+        Ability, AridDesert, BeastOfBurden, Card, CauldronCrones, DonnybrookInn, Enchantress,
+        FootSoldier, HeadlessHaunt, KiteArcher, NimbusJinn, RimlandNomads, Zone,
+        from_name_and_zone,
     },
     deck::Deck,
     effect::Effect,
@@ -181,6 +182,48 @@ async fn test_carried_minion_moves_independently_through_path_and_clears_bearer(
         None,
         "Passenger should no longer be carried after moving independently through path"
     );
+}
+
+#[tokio::test]
+async fn test_conferred_abilities() {
+    let (mut state, _rx) = setup_carrying_state();
+    let player_id = state.players[0].id;
+
+    let mut carrier = BeastOfBurden::new(player_id);
+    let carrier_id = *carrier.get_id();
+    carrier.set_zone(Zone::Realm(1));
+    carrier.add_ability(Ability::Airborne);
+    carrier.add_ability(Ability::Voidwalk);
+    state.cards.push(Box::new(carrier));
+
+    let mut passenger = FootSoldier::new(player_id);
+    let passenger_id = *passenger.get_id();
+    passenger.set_zone(Zone::Realm(1));
+    passenger.set_bearer_id(Some(carrier_id));
+    state.cards.push(Box::new(passenger));
+
+    let passenger_abilities = state.get_card(&passenger_id).get_abilities(&state).unwrap();
+    assert!(passenger_abilities.contains(&Ability::Airborne));
+    assert!(passenger_abilities.contains(&Ability::Voidwalk));
+    assert!(!passenger_abilities.contains(&Ability::Burrowing));
+    assert!(!passenger_abilities.contains(&Ability::Submerge));
+
+    // Move passenger away, abilities should be lost
+    let move_effect = Effect::MoveCard {
+        player_id,
+        card_id: passenger_id,
+        from: Zone::Realm(1),
+        to: ZoneQuery::from_zone(Zone::Realm(2)),
+        tap: false,
+        region: crate::card::Region::Surface,
+        through_path: None,
+    };
+
+    move_effect.apply(&mut state).await.unwrap();
+
+    let passenger_abilities_after = state.get_card(&passenger_id).get_abilities(&state).unwrap();
+    assert!(!passenger_abilities_after.contains(&Ability::Airborne));
+    assert!(!passenger_abilities_after.contains(&Ability::Voidwalk));
 }
 
 #[test]

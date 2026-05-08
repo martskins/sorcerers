@@ -2765,6 +2765,8 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
                     }
                 }
 
+                // Units that can carry other units confer Airborne, Burrowing, Submerge, and/or
+                // Voidwalk to the carried units while they're carried.
                 if let Some(bearer_id) = self.get_bearer_id().ok().flatten() {
                     let bearer = state.get_card(&bearer_id);
                     for ability in [
