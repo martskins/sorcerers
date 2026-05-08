@@ -1899,8 +1899,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(false)
     }
 
-    async fn on_move(&self, state: &State, _path: &[Zone]) -> anyhow::Result<Vec<Effect>> {
-        self.base_on_move(state)
+    async fn on_move(&self, _state: &State, _path: &[Zone]) -> anyhow::Result<Vec<Effect>> {
+        Ok(vec![])
     }
 
     async fn on_visit_zone(
@@ -2675,7 +2675,6 @@ pub(crate) trait CardBaseMethods: Card {
         from: &uuid::Uuid,
         damage: Damage,
     ) -> anyhow::Result<Vec<Effect>>;
-    fn base_on_move(&self, state: &State) -> anyhow::Result<Vec<Effect>>;
     fn base_site_on_summon(&self, state: &State) -> anyhow::Result<Vec<Effect>>;
     async fn base_valid_move_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>>;
     fn base_avatar_activated_abilities(
@@ -2702,12 +2701,6 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
             }
             _ => vec![],
         }
-    }
-
-    fn base_on_move(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        // TODO: If the card is moving independently or teleporting to a location that the bearer is
-        // not in, force the bearer to None.
-        Ok(vec![])
     }
 
     fn base_get_power(&self, state: &State) -> Option<u16> {
