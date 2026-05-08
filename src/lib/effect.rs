@@ -998,6 +998,7 @@ impl Effect {
                                 .pick(player_id, state)
                                 .await?;
                             let card = state.get_card_mut(card_id);
+                            let region = card.get_region(&snapshot).clone();
                             let from_zone = card.get_zone().clone();
                             card.set_zone(zone.clone());
                             if *tap {
@@ -1009,6 +1010,7 @@ impl Effect {
                             for cid in carried_cards {
                                 let carried_card = state.get_card_mut(&cid);
                                 carried_card.set_zone(zone.clone());
+                                carried_card.set_region(region.clone());
                             }
 
                             let card = state.get_card(card_id);
@@ -1025,6 +1027,7 @@ impl Effect {
                         let snapshot = state.clone();
                         let zone = to.pick(player_id, state).await?;
                         let card = state.get_card_mut(card_id);
+                        let region = card.get_region(&snapshot).clone();
                         let from_zone = card.get_zone().clone();
                         card.set_zone(zone.clone());
                         if *tap {
@@ -1036,6 +1039,7 @@ impl Effect {
                         for cid in carried_cards {
                             let carried_card = state.get_card_mut(&cid);
                             carried_card.set_zone(zone.clone());
+                            carried_card.set_region(region.clone());
                         }
 
                         let card = state.get_card(card_id);
