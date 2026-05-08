@@ -950,6 +950,13 @@ pub trait ActivatedAbility: std::fmt::Debug + Send + Sync + CloneBoxedAction {
     fn get_cost(&self, _card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
         Ok(Cost::ZERO.clone())
     }
+
+    /// Returns true if activating this ability counts as a "special ability interaction"
+    /// for purposes of rules such as Stealth (which is lost when a special ability is used).
+    /// Basic unit actions (Move, Attack, Burrow, etc.) and Cancel are not special abilities.
+    fn is_special_ability(&self) -> bool {
+        true
+    }
 }
 
 impl Clone for Box<dyn ActivatedAbility> {
@@ -1028,6 +1035,10 @@ impl ActivatedAbility for CancelAction {
         _state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![])
+    }
+
+    fn is_special_ability(&self) -> bool {
+        false
     }
 }
 
@@ -1196,6 +1207,7 @@ impl ActivatedAbility for UnitAction {
             }
             UnitAction::Attack => {
                 let attacker = state.get_card(card_id);
+                let attacker_has_stealth = attacker.has_ability(state, &Ability::Stealth);
                 let cards = attacker.get_valid_attack_targets(state, false);
                 let prompt = "Pick a unit to attack";
                 let picked_card_id = pick_card(player_id, &cards, state, prompt).await?;
@@ -1206,7 +1218,12 @@ impl ActivatedAbility for UnitAction {
                     .iter()
                     .find(|p| &p.id != player_id)
                     .ok_or(anyhow::anyhow!("opponent not found"))?;
-                let possible_defenders = state.get_defenders_for_attack(&picked_card_id);
+                // Stealth attackers cannot be defended against (codex).
+                let possible_defenders = if attacker_has_stealth {
+                    vec![]
+                } else {
+                    state.get_defenders_for_attack(&picked_card_id)
+                };
                 if !possible_defenders.is_empty() {
                     wait_for_opponent(
                         player_id,
@@ -1502,6 +1519,11 @@ impl ActivatedAbility for UnitAction {
             }
         }
     }
+
+    fn is_special_ability(&self) -> bool {
+        // All UnitAction variants are basic unit actions, not special card abilities.
+        false
+    }
 }
 
 pub struct Game {
@@ -1616,10 +1638,6 @@ impl Game {
             } => {
                 let snapshot = self.state.clone();
                 let card = snapshot.get_card(card_id);
-                // if &card.get_controller_id(&self.state) != player_id {
-                //     return Ok(());
-                // }
-
                 if player_id != &self.state.current_player {
                     return Ok(());
                 }
@@ -1697,6 +1715,12 @@ impl Game {
                     // cards, which would result in no valid targets, as the card would already
                     // be in the cemetery at the point of execution the action.
                     cost.pay(&mut self.state, player_id).await?;
+                    // Activating a special ability is an interaction: the card loses Stealth.
+                    if action.is_special_ability() {
+                        self.state
+                            .get_card_mut(card_id)
+                            .remove_modifier(&Ability::Stealth);
+                    }
                     self.state.queue(effects);
                 }
             }

@@ -1826,9 +1826,20 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     fn can_be_targetted_by_player(&self, state: &State, player_id: &PlayerId) -> bool {
+        // A card with Stealth cannot be targeted by opponents.
         if self.has_ability(state, &Ability::Stealth) && &self.get_controller_id(state) != player_id
         {
             return false;
+        }
+
+        // Carriable artifacts carried by a Stealthed minion also cannot be targeted by opponents.
+        if let Ok(Some(bearer_id)) = self.get_bearer_id() {
+            let bearer = state.get_card(&bearer_id);
+            if bearer.has_ability(state, &Ability::Stealth)
+                && &bearer.get_controller_id(state) != player_id
+            {
+                return false;
+            }
         }
 
         true
@@ -2652,6 +2663,16 @@ impl Damage {
             is_strike: true,
         }
     }
+
+    pub fn lethal(amount: u16) -> Self {
+        Self {
+            amount,
+            is_attack: false,
+            is_ranged: false,
+            is_lethal: true,
+            is_strike: false,
+        }
+    }
 }
 
 /// CardBaseMethods are the default implementations of certain card behaviours, like calculating
@@ -2909,6 +2930,7 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
                 // when actual damage was dealt.
                 if reduced_damage > 0
                     && (ub.damage >= self.get_toughness(state).unwrap_or(0)
+                        || damage.is_lethal
                         || dealer.has_ability(state, &Ability::Lethal)
                         || has_lethal_target)
                 {
