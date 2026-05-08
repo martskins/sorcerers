@@ -415,6 +415,66 @@ impl DeckBuilder {
             vec2(rect.width() - pad * 2.0, filter_h),
         );
 
+        let search_lower = unidecode(&self.search).to_lowercase();
+        let elem_filter = self.elem_filter.clone();
+        let type_filter = self.type_filter.clone();
+
+        // Collect filtered cards
+        let filtered: Vec<CardEntry> = self
+            .all_cards
+            .iter()
+            .filter(|c| {
+                if !search_lower.is_empty()
+                    && !unidecode(&c.name).to_lowercase().contains(&search_lower)
+                {
+                    return false;
+                }
+                match &elem_filter {
+                    ElemFilter::All => {}
+                    ElemFilter::Fire => {
+                        if c.thresholds.fire == 0 {
+                            return false;
+                        }
+                    }
+                    ElemFilter::Air => {
+                        if c.thresholds.air == 0 {
+                            return false;
+                        }
+                    }
+                    ElemFilter::Earth => {
+                        if c.thresholds.earth == 0 {
+                            return false;
+                        }
+                    }
+                    ElemFilter::Water => {
+                        if c.thresholds.water == 0 {
+                            return false;
+                        }
+                    }
+                }
+                match &type_filter {
+                    TypeFilter::All => {}
+                    TypeFilter::Minion => {
+                        if c.card_type != CardType::Minion {
+                            return false;
+                        }
+                    }
+                    TypeFilter::Site => {
+                        if !matches!(c.zone, Zone::Atlasbook) {
+                            return false;
+                        }
+                    }
+                    TypeFilter::Spell => {
+                        if matches!(c.zone, Zone::Atlasbook) || c.card_type == CardType::Minion {
+                            return false;
+                        }
+                    }
+                }
+                true
+            })
+            .cloned()
+            .collect();
+
         let mut filter_ui = ui.new_child(egui::UiBuilder::new().max_rect(filter_rect));
         filter_ui.horizontal(|ui| {
             // Search field
@@ -480,6 +540,11 @@ impl DeckBuilder {
                     self.type_filter = filter;
                 }
             }
+
+            let filtered_count = filtered.len();
+            let label = egui::Label::new(format!("{} card(s)", filtered_count));
+            ui.add_space(8.0);
+            ui.add(label);
         });
 
         // Card list
@@ -490,66 +555,6 @@ impl DeckBuilder {
         );
 
         let mut list_ui = ui.new_child(egui::UiBuilder::new().max_rect(list_rect));
-
-        let search_lower = unidecode(&self.search).to_lowercase();
-        let elem_filter = self.elem_filter.clone();
-        let type_filter = self.type_filter.clone();
-
-        // Collect filtered cards
-        let filtered: Vec<CardEntry> = self
-            .all_cards
-            .iter()
-            .filter(|c| {
-                if !search_lower.is_empty()
-                    && !unidecode(&c.name).to_lowercase().contains(&search_lower)
-                {
-                    return false;
-                }
-                match &elem_filter {
-                    ElemFilter::All => {}
-                    ElemFilter::Fire => {
-                        if c.thresholds.fire == 0 {
-                            return false;
-                        }
-                    }
-                    ElemFilter::Air => {
-                        if c.thresholds.air == 0 {
-                            return false;
-                        }
-                    }
-                    ElemFilter::Earth => {
-                        if c.thresholds.earth == 0 {
-                            return false;
-                        }
-                    }
-                    ElemFilter::Water => {
-                        if c.thresholds.water == 0 {
-                            return false;
-                        }
-                    }
-                }
-                match &type_filter {
-                    TypeFilter::All => {}
-                    TypeFilter::Minion => {
-                        if c.card_type != CardType::Minion {
-                            return false;
-                        }
-                    }
-                    TypeFilter::Site => {
-                        if !matches!(c.zone, Zone::Atlasbook) {
-                            return false;
-                        }
-                    }
-                    TypeFilter::Spell => {
-                        if matches!(c.zone, Zone::Atlasbook) || c.card_type == CardType::Minion {
-                            return false;
-                        }
-                    }
-                }
-                true
-            })
-            .cloned()
-            .collect();
 
         ScrollArea::vertical()
             .id_salt("card_list")

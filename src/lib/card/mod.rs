@@ -1133,6 +1133,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             .to_string()
             .to_lowercase()
             .replace("'", "")
+            .replace("!", "")
             .replace(" ", "_")
             .replace("-", "_");
         let mut folder = "cards";
