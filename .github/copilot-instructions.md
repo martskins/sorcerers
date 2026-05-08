@@ -60,7 +60,7 @@ This repo contains 4 crates under `src/`:
 Build everything:
 
 ```sh
-cargo build --release
+cargo build
 ```
 
 Build client:
@@ -86,13 +86,13 @@ cargo build --bin sorcerers-cli
 Run client:
 
 ```sh
-cargo run --bin client --release
+cargo run --bin client
 ```
 
 Run server:
 
 ```sh
-cargo run --bin server --release
+cargo run --bin server
 ```
 
 ## Test
