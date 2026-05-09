@@ -1,7 +1,7 @@
 use crate::{
     card::{
         Ability, AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Damage, Edition,
-        MinionType, Rarity, Region, UnitBase, Zone,
+        MinionType, Rarity, UnitBase, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_zone_near},
@@ -73,7 +73,6 @@ impl AncientDragon {
                 abilities: vec![Ability::Airborne],
                 types: vec![MinionType::Dragon],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

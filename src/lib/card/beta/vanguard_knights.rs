@@ -1,7 +1,6 @@
 use crate::{
     card::{
-        Card, CardBase, CardBaseMethods, CardConstructor, Costs, Edition, MinionType, Rarity,
-        Region, UnitBase, Zone,
+        Card, CardBase, CardBaseMethods, CardConstructor, Costs, Edition, MinionType, Rarity, UnitBase, Zone,
     },
     game::PlayerId,
     state::{CardQuery, State},
@@ -25,7 +24,6 @@ impl VanguardKnights {
                 toughness: 2,
                 types: vec![MinionType::Mortal],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {
@@ -44,8 +42,8 @@ impl VanguardKnights {
 
     fn front_score(card: &dyn Card, state: &State) -> Option<u8> {
         match card.get_zone() {
-            Zone::Realm(square) => Some(*square),
-            Zone::Intersection(squares) => {
+            Zone::Realm(square, _) => Some(*square),
+            Zone::Intersection(squares, _) => {
                 if card.get_controller_id(state) == state.player_one {
                     squares.iter().copied().max()
                 } else {

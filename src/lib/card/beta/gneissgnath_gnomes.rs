@@ -27,7 +27,6 @@ impl GneissgnathGnomes {
                 abilities: vec![Ability::Burrowing],
                 types: vec![MinionType::Gnome],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Card, CardBase, CardConstructor, Costs, Damage, Edition, MinionType, Rarity, Region,
+        Card, CardBase, CardConstructor, Costs, Damage, Edition, MinionType, Rarity,
         UnitBase, Zone,
     },
     effect::Effect,
@@ -27,7 +27,6 @@ impl InfernalLegion {
                 abilities: vec![],
                 types: vec![MinionType::Undead],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

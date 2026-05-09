@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region,
+        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity,
         UnitBase, Zone,
     },
     game::PlayerId,
@@ -24,7 +24,6 @@ impl SeaSerpent {
                 abilities: vec![Ability::Submerge, Ability::Waterbound],
                 types: vec![MinionType::Beast],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

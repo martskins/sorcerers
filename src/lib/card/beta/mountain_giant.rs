@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region,
+        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity,
         UnitBase, Zone,
     },
     game::PlayerId,
@@ -24,7 +24,6 @@ impl MountainGiant {
                 abilities: vec![Ability::Oversized],
                 types: vec![MinionType::Giant],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

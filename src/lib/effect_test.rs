@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        Ability, ApprenticeWizard, AridDesert, CaptainBaldassare, Card, Enchantress, FootSoldier,
-        OgreGoons, Zone, from_name_and_zone,
+        Ability, ApprenticeWizard, AridDesert, Card, Enchantress, FootSoldier, OgreGoons, Region,
+        SeaRaider, Zone, from_name_and_zone,
     },
     deck::Deck,
     effect::{Effect, TokenType},
@@ -81,7 +81,7 @@ async fn drain_effects(state: &mut State) {
 
 #[tokio::test]
 async fn test_summon_card_puts_minion_in_target_zone() {
-    let (mut state, _rx) = make_state(vec![Zone::Realm(1)]);
+    let (mut state, _rx) = make_state(vec![Zone::Realm(1, Region::Surface)]);
     let player_id = state.players[0].id;
 
     let minion = OgreGoons::new(player_id);
@@ -91,18 +91,21 @@ async fn test_summon_card_puts_minion_in_target_zone() {
     Effect::SummonCard {
         player_id,
         card_id: id,
-        zone: Zone::Realm(1),
+        zone: Zone::Realm(1, Region::Surface),
     }
     .apply(&mut state)
     .await
     .unwrap();
 
-    assert_eq!(state.get_card(&id).get_zone(), &Zone::Realm(1));
+    assert_eq!(
+        state.get_card(&id).get_zone(),
+        &Zone::Realm(1, Region::Surface)
+    );
 }
 
 #[tokio::test]
 async fn test_summon_card_adds_summoning_sickness_to_minion() {
-    let (mut state, _rx) = make_state(vec![Zone::Realm(1)]);
+    let (mut state, _rx) = make_state(vec![Zone::Realm(1, Region::Surface)]);
     let player_id = state.players[0].id;
 
     let minion = OgreGoons::new(player_id);
@@ -112,7 +115,7 @@ async fn test_summon_card_adds_summoning_sickness_to_minion() {
     Effect::SummonCard {
         player_id,
         card_id: id,
-        zone: Zone::Realm(1),
+        zone: Zone::Realm(1, Region::Surface),
     }
     .apply(&mut state)
     .await
@@ -128,7 +131,7 @@ async fn test_summon_card_adds_summoning_sickness_to_minion() {
 
 #[tokio::test]
 async fn test_summon_card_no_summoning_sickness_with_charge() {
-    let (mut state, _rx) = make_state(vec![Zone::Realm(1)]);
+    let (mut state, _rx) = make_state(vec![Zone::Realm(1, Region::Surface)]);
     let player_id = state.players[0].id;
 
     let mut minion = OgreGoons::new(player_id);
@@ -139,7 +142,7 @@ async fn test_summon_card_no_summoning_sickness_with_charge() {
     Effect::SummonCard {
         player_id,
         card_id: id,
-        zone: Zone::Realm(1),
+        zone: Zone::Realm(1, Region::Surface),
     }
     .apply(&mut state)
     .await
@@ -156,7 +159,7 @@ async fn test_summon_card_no_summoning_sickness_with_charge() {
 #[tokio::test]
 async fn test_summon_card_queues_genesis_effects() {
     // ApprenticeWizard genesis → DrawSpell
-    let (mut state, _rx) = make_state(vec![Zone::Realm(1)]);
+    let (mut state, _rx) = make_state(vec![Zone::Realm(1, Region::Surface)]);
     let player_id = state.players[0].id;
 
     let wizard = ApprenticeWizard::new(player_id);
@@ -166,7 +169,7 @@ async fn test_summon_card_queues_genesis_effects() {
     Effect::SummonCard {
         player_id,
         card_id: id,
-        zone: Zone::Realm(1),
+        zone: Zone::Realm(1, Region::Surface),
     }
     .apply(&mut state)
     .await
@@ -184,18 +187,18 @@ async fn test_summon_card_queues_genesis_effects() {
 
 #[tokio::test]
 async fn test_summon_card_applies_on_summon_effects() {
-    // CaptainBaldassare on_summon → AddDeferredEffect
-    let (mut state, _rx) = make_state(vec![Zone::Realm(1)]);
+    // Sea Raider on_summon → AddDeferredEffect
+    let (mut state, _rx) = make_state(vec![Zone::Realm(1, Region::Surface)]);
     let player_id = state.players[0].id;
 
-    let baldassare = CaptainBaldassare::new(player_id);
-    let id = *baldassare.get_id();
-    state.cards.insert(id, Box::new(baldassare));
+    let sea_raider = SeaRaider::new(player_id);
+    let id = *sea_raider.get_id();
+    state.cards.insert(id, Box::new(sea_raider));
 
     Effect::SummonCard {
         player_id,
         card_id: id,
-        zone: Zone::Realm(1),
+        zone: Zone::Realm(1, Region::Surface),
     }
     .apply(&mut state)
     .await
@@ -204,7 +207,7 @@ async fn test_summon_card_applies_on_summon_effects() {
 
     assert!(
         !state.deferred_effects.is_empty(),
-        "on_summon should have registered a deferred effect for CaptainBaldassare"
+        "on_summon should have registered a deferred effect for Sea Raider"
     );
 }
 
@@ -215,7 +218,7 @@ async fn test_summon_card_applies_on_summon_effects() {
 #[tokio::test]
 async fn test_play_card_minion_ends_in_target_zone() {
     // OgreGoons costs 3F; AridDesert in Realm(1) provides fire threshold.
-    let (mut state, _rx) = make_state(vec![Zone::Realm(1)]);
+    let (mut state, _rx) = make_state(vec![Zone::Realm(1, Region::Surface)]);
     let player_id = state.players[0].id;
     *state.get_player_mana_mut(&player_id) = 3;
     state.compute_world_effects().await.unwrap();
@@ -228,7 +231,7 @@ async fn test_play_card_minion_ends_in_target_zone() {
     Effect::PlayCard {
         player_id,
         card_id: ogre_id,
-        zone: ZoneQuery::from_zone(Zone::Realm(1)),
+        zone: ZoneQuery::from_zone(Zone::Realm(1, Region::Surface)),
     }
     .apply(&mut state)
     .await
@@ -237,14 +240,14 @@ async fn test_play_card_minion_ends_in_target_zone() {
 
     assert_eq!(
         state.get_card(&ogre_id).get_zone(),
-        &Zone::Realm(1),
+        &Zone::Realm(1, Region::Surface),
         "minion should end in the chosen zone"
     );
 }
 
 #[tokio::test]
 async fn test_play_card_minion_has_summoning_sickness() {
-    let (mut state, _rx) = make_state(vec![Zone::Realm(1)]);
+    let (mut state, _rx) = make_state(vec![Zone::Realm(1, Region::Surface)]);
     let player_id = state.players[0].id;
     *state.get_player_mana_mut(&player_id) = 3;
     state.compute_world_effects().await.unwrap();
@@ -257,7 +260,7 @@ async fn test_play_card_minion_has_summoning_sickness() {
     Effect::PlayCard {
         player_id,
         card_id: ogre_id,
-        zone: ZoneQuery::from_zone(Zone::Realm(1)),
+        zone: ZoneQuery::from_zone(Zone::Realm(1, Region::Surface)),
     }
     .apply(&mut state)
     .await
@@ -274,13 +277,13 @@ async fn test_play_card_minion_has_summoning_sickness() {
 
 #[tokio::test]
 async fn test_summon_token_unit_placed_in_target_zone() {
-    let (mut state, _rx) = make_state(vec![Zone::Realm(1)]);
+    let (mut state, _rx) = make_state(vec![Zone::Realm(1, Region::Surface)]);
     let player_id = state.players[0].id;
 
     Effect::SummonToken {
         player_id,
         token_type: TokenType::FootSoldier,
-        zone: Zone::Realm(1),
+        zone: Zone::Realm(1, Region::Surface),
     }
     .apply(&mut state)
     .await
@@ -295,20 +298,20 @@ async fn test_summon_token_unit_placed_in_target_zone() {
     assert_eq!(soldiers.len(), 1, "one FootSoldier token should exist");
     assert_eq!(
         soldiers[0].get_zone(),
-        &Zone::Realm(1),
+        &Zone::Realm(1, Region::Surface),
         "FootSoldier should be in the target zone"
     );
 }
 
 #[tokio::test]
 async fn test_summon_token_unit_has_summoning_sickness() {
-    let (mut state, _rx) = make_state(vec![Zone::Realm(1)]);
+    let (mut state, _rx) = make_state(vec![Zone::Realm(1, Region::Surface)]);
     let player_id = state.players[0].id;
 
     Effect::SummonToken {
         player_id,
         token_type: TokenType::FootSoldier,
-        zone: Zone::Realm(1),
+        zone: Zone::Realm(1, Region::Surface),
     }
     .apply(&mut state)
     .await

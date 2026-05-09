@@ -1,7 +1,7 @@
 use crate::{
     card::{
         AdditionalCost, Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor,
-        Cost, Costs, Edition, Rarity, Region, Zone,
+        Cost, Costs, Edition, Rarity, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId},
@@ -74,7 +74,6 @@ impl SpearOfDestiny {
             artifact_base: ArtifactBase {
                 types: vec![ArtifactType::Weapon],
                 tapped: false,
-                region: Region::Surface,
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),

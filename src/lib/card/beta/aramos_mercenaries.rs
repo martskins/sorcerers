@@ -1,7 +1,6 @@
 use crate::{
     card::{
-        AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Edition, MinionType, Rarity,
-        Region, UnitBase, Zone,
+        AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Edition, MinionType, Rarity, UnitBase, Zone,
     },
     game::PlayerId,
     state::CardQuery,
@@ -26,7 +25,6 @@ impl AramosMercenaries {
                 abilities: vec![],
                 types: vec![MinionType::Mortal],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

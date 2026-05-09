@@ -1,5 +1,5 @@
 use crate::{
-    card::{Aura, AuraBase, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, Zone},
+    card::{Aura, AuraBase, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Zone},
     game::PlayerId,
     state::{CardQuery, ContinuousEffect, State},
 };
@@ -28,10 +28,7 @@ impl Drought {
                 is_token: false,
                 ..Default::default()
             },
-            aura_base: AuraBase {
-                tapped: false,
-                region: Region::Surface,
-            },
+            aura_base: AuraBase { tapped: false },
         }
     }
 }

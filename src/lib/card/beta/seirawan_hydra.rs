@@ -1,7 +1,7 @@
 use crate::{
     card::{
         Card, CardBase, CardBaseMethods, CardConstructor, Costs, Damage, Edition, MinionType,
-        Rarity, Region, UnitBase, Zone,
+        Rarity, UnitBase, Zone,
     },
     effect::Effect,
     game::PlayerId,
@@ -25,7 +25,6 @@ impl SeirawanHydra {
                 toughness: 6,
                 types: vec![MinionType::Monster],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

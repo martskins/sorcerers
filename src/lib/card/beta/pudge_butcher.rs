@@ -1,7 +1,7 @@
 use crate::{
     card::{
         Ability, AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Edition, MinionType,
-        Rarity, Region, UnitBase, Zone,
+        Rarity, UnitBase, Zone,
     },
     effect::Effect,
     game::{
@@ -120,7 +120,6 @@ impl PudgeButcher {
                 abilities: vec![Ability::Immobile],
                 types: vec![MinionType::Demon],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

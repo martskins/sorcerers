@@ -1,7 +1,7 @@
 use crate::{
     card::{
         AdditionalCost, Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor,
-        Cost, Costs, Damage, Edition, Rarity, Region, Zone,
+        Cost, Costs, Damage, Edition, Rarity, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, reveal_cards},
@@ -84,7 +84,6 @@ impl PnakoticManuscript {
             artifact_base: ArtifactBase {
                 types: vec![ArtifactType::Relic],
                 tapped: false,
-                region: Region::Surface,
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),

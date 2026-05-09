@@ -26,7 +26,6 @@ impl FeyChangeling {
                 abilities: vec![],
                 types: vec![MinionType::Fairy],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
+        Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, UnitBase, Zone,
     },
     game::PlayerId,
 };
@@ -23,7 +23,6 @@ impl BoskTroll {
                 abilities: vec![],
                 types: vec![MinionType::Troll],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

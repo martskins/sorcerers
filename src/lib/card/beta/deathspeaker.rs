@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        AvatarBase, Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Region,
+        AvatarBase, Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity,
         UnitBase, Zone,
     },
     effect::Effect,
@@ -145,7 +145,6 @@ impl Deathspeaker {
                 power: 1,
                 toughness: 20,
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region,
-        UnitBase, Zone,
+        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, UnitBase,
+        Zone,
     },
     effect::Effect,
     game::PlayerId,
@@ -27,7 +27,6 @@ impl HeadlessHaunt {
                 abilities: vec![Ability::Voidwalk],
                 types: vec![MinionType::Spirit],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {
@@ -85,7 +84,7 @@ impl Card for HeadlessHaunt {
             player_id: *self.get_owner_id(),
             card_id: *self.get_id(),
             from: self.get_zone().clone(),
-            to: ZoneQuery::random(Zone::all_realm()),
+            to: ZoneQuery::random(Zone::all_in_surface()),
             tap: false,
             region: self.get_region(_state).clone(),
             through_path: None,

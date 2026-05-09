@@ -1,6 +1,6 @@
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use sorcerers::{
-    card::{ApprenticeWizard, Card, Zone},
+    card::{ApprenticeWizard, Card, Region, Zone},
     state::{CardQuery, State},
 };
 
@@ -13,19 +13,21 @@ fn bench_card_query(c: &mut Criterion) {
     // Fill state with many cards
     for i in 0..num_cards {
         let mut card = ApprenticeWizard::new(player_id);
-        card.set_zone(Zone::Realm((i % 25) as u8));
+        card.set_zone(Zone::Realm((i % 25) as u8, Region::Surface));
         state.cards.insert(*card.get_id(), Box::new(card));
     }
 
     let mut card = ApprenticeWizard::new(player_id);
-    card.set_zone(Zone::Realm(8));
+    card.set_zone(Zone::Realm(8, Region::Surface));
     state.cards.insert(*card.get_id(), Box::new(card.clone()));
 
     let mut group = c.benchmark_group("CardQuery");
 
     group.bench_function("Zone + Untapped", |b| {
         b.iter(|| {
-            let query = CardQuery::new().in_zone(&Zone::Realm(10)).untapped();
+            let query = CardQuery::new()
+                .in_zone(&Zone::Realm(10, Region::Surface))
+                .untapped();
             let _ = black_box(query.all(&state));
         })
     });

@@ -1,7 +1,7 @@
 use crate::{
     card::{
         Ability, AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Edition, MinionType,
-        Rarity, Region, UnitBase, Zone,
+        Rarity, UnitBase, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId},
@@ -74,7 +74,6 @@ impl DiluvianKraken {
                 abilities: vec![Ability::Submerge],
                 types: vec![MinionType::Monster],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

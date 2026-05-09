@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region,
+        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity,
         UnitBase, Zone,
     },
     effect::Effect,
@@ -77,7 +77,6 @@ Tap → Search your hand, cemetery, or spellbook for another Adept Illusionist a
                 abilities: vec![Ability::Spellcaster(None)],
                 types: vec![MinionType::Mortal],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

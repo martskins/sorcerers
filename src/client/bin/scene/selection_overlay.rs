@@ -54,7 +54,7 @@ fn zone_order_and_label(zone: &Zone, is_mine: bool) -> (u32, String) {
                 "Opponent's Hand".into()
             },
         ),
-        Zone::Realm(_) | Zone::Intersection(_) => (2, "In Play".into()),
+        Zone::Realm(_, _) | Zone::Intersection(_, _) => (2, "In Play".into()),
         Zone::Cemetery => (
             if is_mine { 3 } else { 4 },
             if is_mine {

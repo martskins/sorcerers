@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Card, CardBase, CardConstructor, Costs, Damage, Edition, MinionType, Rarity, Region,
+        Card, CardBase, CardConstructor, Costs, Damage, Edition, MinionType, Rarity,
         UnitBase, Zone,
     },
     effect::Effect,
@@ -26,7 +26,6 @@ impl KarkemishChimera {
                 toughness: 6,
                 types: vec![MinionType::Beast],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

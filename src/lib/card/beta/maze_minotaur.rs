@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
+        Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, UnitBase, Zone,
     },
     game::PlayerId,
     state::{CardQuery, ContinuousEffect, State},
@@ -24,7 +24,6 @@ impl MazeMinotaur {
                 toughness: 4,
                 types: vec![MinionType::Monster],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

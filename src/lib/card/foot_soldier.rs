@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Card, CardBase, Costs, Edition, MinionType, Rarity, UnitBase, Zone},
     game::PlayerId,
 };
 use rand::seq::IndexedRandom;
@@ -20,7 +20,6 @@ impl FootSoldier {
                 toughness: 1,
                 types: vec![MinionType::Mortal],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

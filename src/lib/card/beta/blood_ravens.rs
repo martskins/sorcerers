@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region,
+        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity,
         UnitBase, Zone,
     },
     game::PlayerId,
@@ -29,7 +29,6 @@ impl BloodRavens {
                 abilities: vec![Ability::Airborne, Ability::Lifesteal],
                 types: vec![MinionType::Beast],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

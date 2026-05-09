@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region,
+        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity,
         SiteType, UnitBase, Zone,
     },
     effect::Effect,
@@ -26,7 +26,6 @@ impl FenvaleMuse {
                 abilities: vec![Ability::Spellcaster(None)],
                 types: vec![MinionType::Mortal],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

@@ -169,6 +169,7 @@ impl Component for ActionOverlay {
         let button_height = 40.0;
         let button_y = card_row_y + 40.0;
 
+        let mut should_close = false;
         if self.action.is_some() {
             let total_width = button_width * 2.0 + 40.0;
             let button_x = (sw - total_width) / 2.0;
@@ -209,6 +210,7 @@ impl Component for ActionOverlay {
                                 })
                                 .ok();
                             set_invisible = true;
+                            should_close = true;
                         }
                     });
                 });
@@ -234,6 +236,9 @@ impl Component for ActionOverlay {
             }
         }
 
+        if should_close {
+            return Ok(Some(ComponentCommand::CloseOverlay));
+        }
         Ok(None)
     }
 }

@@ -23,10 +23,7 @@ impl RestInPeace {
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
-            aura_base: AuraBase {
-                tapped: false,
-                region: Region::Surface,
-            },
+            aura_base: AuraBase { tapped: false },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,

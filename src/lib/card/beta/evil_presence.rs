@@ -34,10 +34,7 @@ impl EvilPresence {
                 is_token: false,
                 ..Default::default()
             },
-            aura_base: AuraBase {
-                tapped: false,
-                region: Region::Surface,
-            },
+            aura_base: AuraBase { tapped: false },
         }
     }
 }

@@ -1,7 +1,7 @@
 use crate::{
     card::{
         Ability, Card, CardBase, CardBaseMethods, CardConstructor, Costs, Damage, Edition,
-        MinionType, Rarity, Region, UnitBase, Zone,
+        MinionType, Rarity, UnitBase, Zone,
     },
     effect::Effect,
     game::PlayerId,
@@ -28,7 +28,6 @@ When a unit kills Accursed Albatross, kill that unit's other allied minions it's
                 abilities: vec![Ability::Airborne],
                 types: vec![MinionType::Beast],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

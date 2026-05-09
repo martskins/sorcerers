@@ -144,7 +144,7 @@ impl RealmComponent {
         let intersection_rects = Zone::all_intersections()
             .into_iter()
             .filter_map(|z| match z {
-                Zone::Intersection(locs) => {
+                Zone::Intersection(locs, _) => {
                     intersection_rect(&rect, &locs, mirrored).map(|r| IntersectionRect {
                         locations: locs,
                         rect: r,
@@ -245,7 +245,7 @@ impl RealmComponent {
             }
 
             match &card.zone {
-                Zone::Realm(square) => {
+                Zone::Realm(square, _) => {
                     if let Some(cell) = self.cell_rects.iter().find(|c| &c.id == square) {
                         let existing = self.card_rects.iter().find(|c| c.card.id == card.id);
                         let rect = cell.rect;
@@ -293,7 +293,7 @@ impl RealmComponent {
                         });
                     }
                 }
-                Zone::Intersection(locs) => {
+                Zone::Intersection(locs, _) => {
                     if let Some(intersection) = self
                         .intersection_rects
                         .iter()
@@ -365,7 +365,7 @@ impl RealmComponent {
         for path in paths {
             let mut points = Vec::new();
             for zone in path {
-                if let Zone::Realm(id) = zone
+                if let Zone::Realm(id, _) = zone
                     && let Some(cell_r) = self.cell_rects.iter().find(|c| c.id == *id)
                 {
                     points.push(cell_r.rect.center());
@@ -460,7 +460,7 @@ impl RealmComponent {
             .iter()
             .filter(|c| c.card.card_type == CardType::Site)
             .filter_map(|c| match &c.card.zone {
-                Zone::Realm(loc) => Some(*loc),
+                Zone::Realm(loc, _) => Some(*loc),
                 _ => None,
             })
             .collect();
@@ -493,10 +493,13 @@ impl RealmComponent {
 
             match &data.status {
                 Status::SelectingZone { zones, .. } => {
-                    if zones.iter().any(|i| i == &Zone::Realm(cell.id)) {
+                    if let Some(zone) = zones
+                        .iter()
+                        .find(|zone| matches!(zone, Zone::Realm(id, _) if *id == cell.id))
+                    {
                         let resp = ui.allocate_rect(rect, Sense::click());
                         if resp.clicked() {
-                            clicked_zone = Some(Zone::Realm(cell.id));
+                            clicked_zone = Some(zone.clone());
                         }
 
                         painter.rect_stroke(
@@ -528,7 +531,7 @@ impl RealmComponent {
                 Status::SelectingZone { zones, .. } => {
                     let rect = intersection.rect;
                     let can_pick = zones.iter().any(|z| match z {
-                        Zone::Intersection(locations) => locations == &intersection.locations,
+                        Zone::Intersection(locations, _) => locations == &intersection.locations,
                         _ => false,
                     });
                     if can_pick {
@@ -567,9 +570,11 @@ impl RealmComponent {
                 if !cell_rect.rect.contains(mouse) {
                     return None;
                 }
-                groups
-                    .iter()
-                    .position(|group| group.contains(&Zone::Realm(cell_rect.id)))
+                groups.iter().position(|group| {
+                    group
+                        .iter()
+                        .any(|zone| matches!(zone, Zone::Realm(id, _) if *id == cell_rect.id))
+                })
             });
 
             for (group_idx, group) in groups.iter().enumerate() {
@@ -580,7 +585,7 @@ impl RealmComponent {
                 };
                 let color = Color32::from_rgba_unmultiplied(51, 153, 255, base_alpha);
                 for zone in group {
-                    if let Zone::Realm(cell_id) = zone
+                    if let Zone::Realm(cell_id, _) = zone
                         && let Some(cell) = self.cell_rects.iter().find(|c| c.id == *cell_id)
                     {
                         let resp = ui.allocate_rect(cell.rect, Sense::click());
@@ -839,7 +844,7 @@ impl Component for RealmComponent {
             }
 
             let cell = match &card_rect.card.zone {
-                Zone::Realm(cell_id) => self.cell_rects.iter().find(|c| c.id == *cell_id),
+                Zone::Realm(cell_id, _) => self.cell_rects.iter().find(|c| c.id == *cell_id),
                 _ => None,
             };
 

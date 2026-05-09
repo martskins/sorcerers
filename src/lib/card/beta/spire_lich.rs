@@ -1,7 +1,7 @@
 use crate::{
     card::{
         Ability, Card, CardBase, CardBaseMethods, CardConstructor, Costs, Edition, MinionType,
-        Rarity, Region, SiteType, UnitBase, Zone,
+        Rarity, SiteType, UnitBase, Zone,
     },
     game::PlayerId,
     state::State,
@@ -26,7 +26,6 @@ impl SpireLich {
                 abilities: vec![],
                 types: vec![MinionType::Undead],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

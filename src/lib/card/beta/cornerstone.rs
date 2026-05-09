@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase,
-        Zone,
+        Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, ResourceProvider, Site,
+        SiteBase, Zone,
     },
     game::{PlayerId, Thresholds},
     state::State,
@@ -77,10 +77,10 @@ impl Card for Cornerstone {
     ) -> anyhow::Result<Vec<Zone>> {
         let mut valid_zones = self.default_get_valid_play_zones(state, player_id)?;
         let corners: [Zone; 4] = [
-            Zone::Realm(1),
-            Zone::Realm(5),
-            Zone::Realm(16),
-            Zone::Realm(20),
+            Zone::Realm(1, Region::Surface),
+            Zone::Realm(5, Region::Surface),
+            Zone::Realm(16, Region::Surface),
+            Zone::Realm(20, Region::Surface),
         ];
         let valid_corners: Vec<Zone> = corners
             .into_iter()

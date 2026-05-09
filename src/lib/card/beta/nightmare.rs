@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
+        Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, UnitBase, Zone,
     },
     effect::Effect,
     game::{PlayerId, pick_zone, yes_or_no},
@@ -25,7 +25,6 @@ impl Nightmare {
                 toughness: 6,
                 types: vec![MinionType::Undead],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

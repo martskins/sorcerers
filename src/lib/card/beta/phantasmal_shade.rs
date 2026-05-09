@@ -1,7 +1,6 @@
 use crate::{
     card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Damage, Edition, MinionType, Rarity,
-        Region, UnitBase, Zone,
+        Ability, Card, CardBase, CardConstructor, Costs, Damage, Edition, MinionType, Rarity, UnitBase, Zone,
     },
     effect::Effect,
     game::PlayerId,
@@ -26,7 +25,6 @@ impl PhantasmalShade {
                 abilities: vec![Ability::Voidwalk, Ability::Stealth],
                 types: vec![MinionType::Spirit],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

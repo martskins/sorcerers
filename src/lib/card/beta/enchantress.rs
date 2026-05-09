@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        AvatarBase, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, UnitBase, Zone,
+        AvatarBase, Card, CardBase, CardConstructor, Costs, Edition, Rarity, UnitBase, Zone,
     },
     game::PlayerId,
     state::{ContinuousEffect, State},
@@ -23,7 +23,6 @@ impl Enchantress {
                 power: 1,
                 toughness: 20,
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

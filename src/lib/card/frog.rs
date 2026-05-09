@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone},
+    card::{Ability, Card, CardBase, Costs, Edition, MinionType, Rarity, UnitBase, Zone},
     game::PlayerId,
 };
 use rand::seq::IndexedRandom;
@@ -21,7 +21,6 @@ impl Frog {
                 types: vec![MinionType::Beast],
                 abilities: vec![Ability::Submerge],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

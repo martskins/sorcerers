@@ -1,7 +1,7 @@
 use crate::{
     card::{
         AdditionalCost, AreaModifiers, Artifact, ArtifactBase, ArtifactType, Card, CardBase,
-        CardConstructor, Cost, Costs, Damage, Edition, Rarity, Region, Zone,
+        CardConstructor, Cost, Costs, Damage, Edition, Rarity, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, CARDINAL_DIRECTIONS, PlayerId, pick_direction},
@@ -95,7 +95,6 @@ impl RollingBoulder {
             artifact_base: ArtifactBase {
                 types: vec![ArtifactType::Relic],
                 tapped: false,
-                region: Region::Surface,
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),

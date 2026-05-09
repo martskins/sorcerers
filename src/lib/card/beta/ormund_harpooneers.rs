@@ -93,7 +93,6 @@ impl OrmundHarpooneers {
                 toughness: 2,
                 types: vec![MinionType::Mortal],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

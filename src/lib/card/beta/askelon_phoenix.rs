@@ -1,7 +1,7 @@
 use crate::{
     card::{
         Ability, Card, CardBase, CardBaseMethods, CardConstructor, Costs, Damage, Edition,
-        MinionType, Rarity, Region, UnitBase, Zone,
+        MinionType, Rarity, UnitBase, Zone,
     },
     effect::{Counter, Effect},
     game::{Element, PlayerId},
@@ -27,7 +27,6 @@ impl AskelonPhoenix {
                 abilities: vec![Ability::Airborne],
                 types: vec![MinionType::Beast],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

@@ -29,7 +29,6 @@ impl AwakenedMummies {
                 abilities: vec![Ability::Burrowing],
                 types: vec![MinionType::Undead],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

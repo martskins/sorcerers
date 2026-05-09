@@ -27,7 +27,6 @@ impl UnlandAngler {
                 abilities: vec![Ability::Submerge],
                 types: vec![MinionType::Beast],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

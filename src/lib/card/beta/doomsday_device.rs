@@ -1,7 +1,7 @@
 use crate::{
     card::{
         Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs, Damage,
-        Edition, Rarity, Region, Zone,
+        Edition, Rarity, Zone,
     },
     effect::Effect,
     game::PlayerId,
@@ -24,7 +24,6 @@ impl DoomsdayDevice {
             artifact_base: ArtifactBase {
                 types: vec![ArtifactType::Device],
                 tapped: false,
-                region: Region::Surface,
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),

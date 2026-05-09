@@ -1,7 +1,7 @@
 use crate::{
     card::{
         Ability, Aura, AuraBase, Card, CardBase, CardBaseMethods, CardConstructor, Costs, Edition,
-        Rarity, Region, Zone,
+        Rarity, Zone,
     },
     effect::Effect,
     game::PlayerId,
@@ -34,10 +34,7 @@ At the start of your turn, dispel Sandstorm.";
                 is_token: false,
                 ..Default::default()
             },
-            aura_base: AuraBase {
-                tapped: false,
-                region: Region::Surface,
-            },
+            aura_base: AuraBase { tapped: false },
         }
     }
 }

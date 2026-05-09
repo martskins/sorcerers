@@ -1,7 +1,7 @@
 use crate::{
     card::{
         Ability, AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Edition, MinionType,
-        Rarity, Region, UnitBase, Zone,
+        Rarity, UnitBase, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, UnitAction, pick_cards},
@@ -75,7 +75,6 @@ impl HaastEagle {
                 abilities: vec![Ability::Airborne],
                 types: vec![MinionType::Beast],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

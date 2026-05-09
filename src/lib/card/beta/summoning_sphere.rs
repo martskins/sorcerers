@@ -1,5 +1,5 @@
 use crate::{
-    card::{Aura, AuraBase, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, Zone},
+    card::{Aura, AuraBase, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Zone},
     game::PlayerId,
     state::{CardQuery, ContinuousEffect, State},
 };
@@ -16,10 +16,7 @@ impl SummoningSphere {
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
-            aura_base: AuraBase {
-                tapped: false,
-                region: Region::Surface,
-            },
+            aura_base: AuraBase { tapped: false },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,

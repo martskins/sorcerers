@@ -1,7 +1,6 @@
 use crate::{
     card::{
-        AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Edition, MinionType, Rarity,
-        Region, UnitBase, Zone,
+        AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Edition, MinionType, Rarity, UnitBase, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId},
@@ -83,7 +82,6 @@ impl GrossePoltergeist {
                 toughness: 1,
                 types: vec![MinionType::Spirit],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

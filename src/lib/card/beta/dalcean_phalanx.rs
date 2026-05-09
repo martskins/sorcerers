@@ -1,7 +1,6 @@
 use crate::{
     card::{
-        Card, CardBase, CardBaseMethods, CardConstructor, Costs, Edition, MinionType, Rarity,
-        Region, UnitBase, Zone,
+        Card, CardBase, CardBaseMethods, CardConstructor, Costs, Edition, MinionType, Rarity, UnitBase, Zone,
     },
     game::{Direction, PlayerId},
     state::State,
@@ -25,7 +24,6 @@ impl DalceanPhalanx {
                 abilities: vec![],
                 types: vec![MinionType::Mortal],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

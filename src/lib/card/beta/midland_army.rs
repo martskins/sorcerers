@@ -1,7 +1,7 @@
 use crate::{
     card::{
         AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Damage, Edition, MinionType,
-        Rarity, Region, UnitBase, Zone,
+        Rarity, UnitBase, Zone,
     },
     effect::{Effect, TokenType},
     game::{ActivatedAbility, PlayerId, pick_zone},
@@ -72,7 +72,6 @@ impl MidlandArmy {
                 toughness: 8,
                 types: vec![MinionType::Mortal],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

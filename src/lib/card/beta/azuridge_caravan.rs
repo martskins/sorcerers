@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region, UnitBase, Zone,
+        Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, UnitBase, Zone,
     },
     game::{Element, PlayerId},
     state::State,
@@ -25,7 +25,6 @@ impl AzuridgeCaravan {
                 abilities: vec![],
                 types: MinionType::iter().collect::<Vec<_>>(),
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

@@ -21,6 +21,7 @@ const TOAST_PAD: f32 = 8.0;
 pub const TOAST_MARGIN: f32 = 14.0;
 const TOAST_FONT_SIZE: f32 = 10.5;
 
+#[allow(clippy::large_enum_variant)]
 enum ToastKind {
     /// A card was played — show the card image plus a description.
     Card {

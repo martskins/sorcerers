@@ -122,10 +122,10 @@ pub enum Zone {
     Hand,
     Spellbook,
     Atlasbook,
-    Realm(u8),
+    Realm(u8, Region),
     Cemetery,
     Banish,
-    Intersection(Vec<u8>),
+    Intersection(Vec<u8>, Region),
 }
 
 impl std::fmt::Display for Zone {
@@ -135,16 +135,17 @@ impl std::fmt::Display for Zone {
             Zone::Hand => write!(f, "Hand"),
             Zone::Spellbook => write!(f, "Spellbook"),
             Zone::Atlasbook => write!(f, "Atlasbook"),
-            Zone::Realm(sq) => write!(f, "{}", sq),
+            Zone::Realm(sq, region) => write!(f, "{} ({})", sq, region),
             Zone::Cemetery => write!(f, "Cemetery"),
             Zone::Banish => write!(f, "Banish"),
-            Zone::Intersection(locs) => write!(
+            Zone::Intersection(locs, region) => write!(
                 f,
-                "Intersection of ({})",
+                "Intersection of ({}) ({})",
                 locs.iter()
                     .map(|c| c.to_string())
                     .collect::<Vec<String>>()
-                    .join(",")
+                    .join(","),
+                region
             ),
         }
     }
@@ -152,7 +153,7 @@ impl std::fmt::Display for Zone {
 
 impl Zone {
     pub fn is_in_play(&self) -> bool {
-        matches!(self, Zone::Realm(_) | Zone::Intersection(_))
+        matches!(self, Zone::Realm(_, _) | Zone::Intersection(_, _))
     }
 
     pub fn can_be_entered_by(&self, state: &State, card_id: &uuid::Uuid) -> anyhow::Result<bool> {
@@ -201,7 +202,7 @@ impl Zone {
         }
 
         match self {
-            Zone::Realm(_) => {
+            Zone::Realm(_, _) => {
                 let site_in_zone = self.get_site(state);
                 if let Some(site) = site_in_zone {
                     return site.is_valid_play_zone_for(state, card_id, player_id);
@@ -258,7 +259,7 @@ impl Zone {
                     _ => Ok(card.has_ability(state, &Ability::Voidwalk)),
                 }
             }
-            Zone::Intersection(sqs) => {
+            Zone::Intersection(sqs, _) => {
                 let card = state.get_card(card_id);
                 match card.get_card_type() {
                     CardType::Minion => {
@@ -321,23 +322,31 @@ impl Zone {
 
     pub fn all_intersections() -> Vec<Zone> {
         vec![
-            Zone::Intersection(vec![1, 2, 6, 7]),
-            Zone::Intersection(vec![2, 3, 7, 8]),
-            Zone::Intersection(vec![3, 4, 8, 9]),
-            Zone::Intersection(vec![4, 5, 9, 10]),
-            Zone::Intersection(vec![6, 7, 11, 12]),
-            Zone::Intersection(vec![7, 8, 12, 13]),
-            Zone::Intersection(vec![8, 9, 13, 14]),
-            Zone::Intersection(vec![9, 10, 14, 15]),
-            Zone::Intersection(vec![11, 12, 16, 17]),
-            Zone::Intersection(vec![12, 13, 17, 18]),
-            Zone::Intersection(vec![13, 14, 18, 19]),
-            Zone::Intersection(vec![14, 15, 19, 20]),
+            Zone::Intersection(vec![1, 2, 6, 7], Region::Surface),
+            Zone::Intersection(vec![2, 3, 7, 8], Region::Surface),
+            Zone::Intersection(vec![3, 4, 8, 9], Region::Surface),
+            Zone::Intersection(vec![4, 5, 9, 10], Region::Surface),
+            Zone::Intersection(vec![6, 7, 11, 12], Region::Surface),
+            Zone::Intersection(vec![7, 8, 12, 13], Region::Surface),
+            Zone::Intersection(vec![8, 9, 13, 14], Region::Surface),
+            Zone::Intersection(vec![9, 10, 14, 15], Region::Surface),
+            Zone::Intersection(vec![11, 12, 16, 17], Region::Surface),
+            Zone::Intersection(vec![12, 13, 17, 18], Region::Surface),
+            Zone::Intersection(vec![13, 14, 18, 19], Region::Surface),
+            Zone::Intersection(vec![14, 15, 19, 20], Region::Surface),
         ]
     }
 
+    pub fn all_in_surface() -> Vec<Zone> {
+        (1..=20)
+            .map(|sq| Zone::Realm(sq, Region::Surface))
+            .collect()
+    }
+
     pub fn all_realm() -> Vec<Zone> {
-        (1..=20).map(Zone::Realm).collect()
+        (1..=20)
+            .map(|sq| Zone::Realm(sq, Region::Surface))
+            .collect()
     }
 
     pub fn all_board() -> Vec<Zone> {
@@ -348,7 +357,7 @@ impl Zone {
 
     pub fn get_square(&self) -> Option<u8> {
         match self {
-            Zone::Realm(sq) => Some(*sq),
+            Zone::Realm(sq, _) => Some(*sq),
             _ => None,
         }
     }
@@ -386,16 +395,16 @@ impl Zone {
 
     fn step_in_direction(&self, direction: &Direction) -> Option<Self> {
         match self {
-            Zone::Realm(square) => {
+            Zone::Realm(square, region) => {
                 let zone = match direction {
-                    Direction::Up => Zone::Realm(square.saturating_add(5)),
-                    Direction::Down => Zone::Realm(square.saturating_sub(5)),
-                    Direction::Left => Zone::Realm(square.saturating_sub(1)),
-                    Direction::Right => Zone::Realm(square.saturating_add(1)),
-                    Direction::TopLeft => Zone::Realm(square.saturating_add(4)),
-                    Direction::TopRight => Zone::Realm(square.saturating_add(6)),
-                    Direction::BottomLeft => Zone::Realm(square.saturating_sub(6)),
-                    Direction::BottomRight => Zone::Realm(square.saturating_sub(4)),
+                    Direction::Up => Zone::Realm(square.saturating_add(5), region.clone()),
+                    Direction::Down => Zone::Realm(square.saturating_sub(5), region.clone()),
+                    Direction::Left => Zone::Realm(square.saturating_sub(1), region.clone()),
+                    Direction::Right => Zone::Realm(square.saturating_add(1), region.clone()),
+                    Direction::TopLeft => Zone::Realm(square.saturating_add(4), region.clone()),
+                    Direction::TopRight => Zone::Realm(square.saturating_add(6), region.clone()),
+                    Direction::BottomLeft => Zone::Realm(square.saturating_sub(6), region.clone()),
+                    Direction::BottomRight => Zone::Realm(square.saturating_sub(4), region.clone()),
                 };
 
                 match direction {
@@ -409,20 +418,20 @@ impl Zone {
                     _ => Some(zone),
                 }
             }
-            Zone::Intersection(locs) => {
+            Zone::Intersection(locs, region) => {
                 let new_squares: Vec<u8> = locs
                     .iter()
                     .filter_map(|sq| {
-                        let realm_zone = Zone::Realm(*sq);
+                        let realm_zone = Zone::Realm(*sq, region.clone());
                         realm_zone.zone_in_direction(direction, 1)?.get_square()
                     })
                     .collect();
 
                 for intersection in Zone::all_intersections() {
-                    if let Zone::Intersection(locs) = &intersection
-                        && locs == &new_squares
+                    if let Zone::Intersection(ilocs, _) = &intersection
+                        && ilocs == &new_squares
                     {
-                        return Some(intersection);
+                        return Some(Zone::Intersection(new_squares, region.clone()));
                     }
                 }
 
@@ -1108,16 +1117,17 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     fn set_region(&mut self, region: Region) {
-        if let Some(ub) = self.get_unit_base_mut() {
-            ub.region = region;
-            return;
-        }
-        if let Some(ab) = self.get_artifact_base_mut() {
-            ab.region = region;
-            return;
-        }
-        if let Some(aura_b) = self.get_aura_base_mut() {
-            aura_b.region = region;
+        let base = self.get_base_mut();
+        match &base.zone {
+            Zone::Realm(sq, _) => {
+                let sq = *sq;
+                base.zone = Zone::Realm(sq, region);
+            }
+            Zone::Intersection(sqs, _) => {
+                let sqs = sqs.clone();
+                base.zone = Zone::Intersection(sqs, region);
+            }
+            _ => {}
         }
     }
 
@@ -1293,8 +1303,12 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     fn get_zones_within_steps_of(&self, state: &State, steps: u8, zone: &Zone) -> Vec<Zone> {
         fn wrapped_neighbours(zone: &Zone) -> Vec<Zone> {
             match zone {
-                Zone::Realm(id) if *id >= 1 && *id <= 5 => vec![Zone::Realm(id + 15)],
-                Zone::Realm(id) if *id >= 16 && *id <= 20 => vec![Zone::Realm(id - 15)],
+                Zone::Realm(id, region) if *id >= 1 && *id <= 5 => {
+                    vec![Zone::Realm(id + 15, region.clone())]
+                }
+                Zone::Realm(id, region) if *id >= 16 && *id <= 20 => {
+                    vec![Zone::Realm(id - 15, region.clone())]
+                }
                 _ => vec![],
             }
         }
@@ -1375,21 +1389,15 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     // Retuns the region the card is currently on. If the card is not in a zone with a site, it is
     // in the void.
-    fn get_region(&self, state: &State) -> &Region {
-        if self.get_zone().get_site(state).is_none() {
-            return &Region::Void;
-        }
+    fn get_region(&self, _state: &State) -> &Region {
+        static VOID: Region = Region::Void;
 
-        if let Some(ub) = self.get_unit_base() {
-            return &ub.region;
+        let zone = &self.get_base().zone;
+        match zone {
+            Zone::Realm(_, region) => region,
+            Zone::Intersection(_, region) => region,
+            _ => &VOID,
         }
-        if let Some(ab) = self.get_artifact_base() {
-            return &ab.region;
-        }
-        if let Some(aura_b) = self.get_aura_base() {
-            return &aura_b.region;
-        }
-        &Region::Void
     }
 
     fn is_flooded_site(&self, state: &State) -> bool {
@@ -1496,8 +1504,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             return true;
         }
         if self.is_oversized(state)
-            && let Zone::Intersection(sub_zones) = self.get_zone()
-            && let Zone::Realm(sq) = zone
+            && let Zone::Intersection(sub_zones, _) = self.get_zone()
+            && let Zone::Realm(sq, _) = zone
         {
             return sub_zones.contains(sq);
         }
@@ -2434,7 +2442,7 @@ pub enum Ability {
     SplashDamage,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct UnitBase {
     pub power: u16,
     pub toughness: u16,
@@ -2445,24 +2453,6 @@ pub struct UnitBase {
     pub types: Vec<MinionType>,
     pub carried_by: Option<uuid::Uuid>,
     pub tapped: bool,
-    pub region: Region,
-}
-
-impl Default for UnitBase {
-    fn default() -> Self {
-        Self {
-            power: 0,
-            toughness: 0,
-            abilities: vec![],
-            damage: 0,
-            power_counters: vec![],
-            ability_counters: vec![],
-            types: vec![],
-            carried_by: None,
-            tapped: false,
-            region: Region::Surface,
-        }
-    }
 }
 
 #[derive(Debug, Default, PartialEq, Serialize, Deserialize, Clone)]
@@ -2496,21 +2486,10 @@ pub enum ArtifactType {
     Instrument,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct ArtifactBase {
     pub types: Vec<ArtifactType>,
     pub tapped: bool,
-    pub region: Region,
-}
-
-impl Default for ArtifactBase {
-    fn default() -> Self {
-        Self {
-            types: vec![],
-            tapped: false,
-            region: Region::Surface,
-        }
-    }
 }
 
 pub trait Artifact: Card {
@@ -2572,19 +2551,9 @@ impl Default for CardBase {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct AuraBase {
     pub tapped: bool,
-    pub region: Region,
-}
-
-impl Default for AuraBase {
-    fn default() -> Self {
-        Self {
-            tapped: false,
-            region: Region::Surface,
-        }
-    }
 }
 
 pub trait Aura: Card {
@@ -2713,11 +2682,11 @@ pub(crate) trait CardBaseMethods: Card {
 impl<T: Card + ?Sized> CardBaseMethods for T {
     fn base_get_affected_zones(&self, _state: &State) -> Vec<Zone> {
         match self.get_zone() {
-            z @ Zone::Realm(_) => vec![z.clone()],
-            Zone::Intersection(locs) => {
+            z @ Zone::Realm(_, _) => vec![z.clone()],
+            Zone::Intersection(locs, region) => {
                 let mut zones = Vec::new();
                 for sq in locs {
-                    zones.push(Zone::Realm(*sq));
+                    zones.push(Zone::Realm(*sq, region.clone()));
                 }
                 zones
             }
@@ -3039,16 +3008,19 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
                 continue;
             }
 
-            if zone.get_site(state).is_none() && !self.has_ability(state, &Ability::Voidwalk) {
+            if zone.get_site(state).is_none() {
+                if self.has_ability(state, &Ability::Voidwalk) {
+                    zones.push(zone.clone());
+                }
                 continue;
             }
 
             // Oversized units may only move to intersection zones where all 4 sub-zones have sites.
             if self.is_oversized(state)
-                && let Zone::Intersection(sqs) = zone
+                && let Zone::Intersection(sqs, region) = zone
                 && sqs
                     .iter()
-                    .all(|sq| Zone::Realm(*sq).get_site(state).is_some())
+                    .all(|sq| Zone::Realm(*sq, region.clone()).get_site(state).is_some())
             {
                 zones.push(zone.clone());
                 continue;

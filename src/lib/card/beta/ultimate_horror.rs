@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region,
+        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity,
         UnitBase, Zone,
     },
     effect::Effect,
@@ -26,7 +26,6 @@ impl UltimateHorror {
                 abilities: vec![Ability::Airborne, Ability::Voidwalk],
                 types: vec![MinionType::Spirit],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

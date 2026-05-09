@@ -1,7 +1,7 @@
 use crate::{
     card::{
         Ability, Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs,
-        Edition, Rarity, Region, Zone,
+        Edition, Rarity, Zone,
     },
     game::PlayerId,
     state::{ContinuousEffect, State},
@@ -22,7 +22,6 @@ impl TruesightCrossbow {
             artifact_base: ArtifactBase {
                 types: vec![ArtifactType::Weapon],
                 tapped: false,
-                region: Region::Surface,
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),

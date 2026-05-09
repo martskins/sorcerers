@@ -1,7 +1,7 @@
 use crate::{
     card::{
         Ability, AreaModifiers, Card, CardBase, CardConstructor, Costs, Edition, MinionType,
-        Rarity, Region, UnitBase, Zone,
+        Rarity, UnitBase, Zone,
     },
     game::{Direction, PlayerId},
     state::{CardQuery, State},
@@ -27,7 +27,6 @@ impl HillockBasilisk {
                 abilities: vec![],
                 types: vec![MinionType::Beast],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

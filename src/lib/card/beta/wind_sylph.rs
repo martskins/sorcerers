@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region,
+        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity,
         UnitBase, Zone,
     },
     effect::Effect,
@@ -38,7 +38,6 @@ impl WindSylph {
                 abilities: vec![Ability::Airborne, Ability::Spellcaster(Some(Element::Air))],
                 types: vec![MinionType::Spirit],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

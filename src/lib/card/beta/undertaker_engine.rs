@@ -26,7 +26,6 @@ impl UndertakerEngine {
                 toughness: 4,
                 types: vec![MinionType::Automaton],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

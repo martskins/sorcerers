@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region,
+        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity,
         UnitBase, Zone,
     },
     game::PlayerId,
@@ -26,7 +26,6 @@ impl PolarBears {
                 abilities: vec![],
                 types: vec![MinionType::Beast],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {
@@ -46,8 +45,12 @@ impl PolarBears {
     fn wrapped_neighbours(zone: &Zone) -> Vec<Zone> {
         // Polar Bears can wrap between top row (16-20) and bottom row (1-5)
         match zone {
-            Zone::Realm(id) if *id >= 1 && *id <= 5 => vec![Zone::Realm(id + 15)],
-            Zone::Realm(id) if *id >= 16 && *id <= 20 => vec![Zone::Realm(id - 15)],
+            Zone::Realm(id, region) if *id >= 1 && *id <= 5 => {
+                vec![Zone::Realm(id + 15, region.clone())]
+            }
+            Zone::Realm(id, region) if *id >= 16 && *id <= 20 => {
+                vec![Zone::Realm(id - 15, region.clone())]
+            }
             _ => vec![],
         }
     }

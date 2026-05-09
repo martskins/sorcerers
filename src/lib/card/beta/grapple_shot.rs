@@ -79,8 +79,8 @@ impl Card for GrappleShot {
         let mut hit_unit_id = None;
         loop {
             match cur_zone.zone_in_direction(&direction, 1) {
-                Some(Zone::Realm(next_sq)) if (1..=20).contains(&next_sq) => {
-                    cur_zone = Zone::Realm(next_sq);
+                Some(Zone::Realm(next_sq, region)) if (1..=20).contains(&next_sq) => {
+                    cur_zone = Zone::Realm(next_sq, region);
                     let units = CardQuery::new().units().in_zone(&cur_zone).all(state);
                     if let Some(unit_id) = units.first() {
                         hit_unit_id = Some(*unit_id);

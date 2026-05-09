@@ -1,7 +1,7 @@
 use crate::{
     card::{
         Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs, Edition,
-        Rarity, Region, Zone,
+        Rarity, Zone,
     },
     game::PlayerId,
     state::{CardQuery, State},
@@ -22,7 +22,6 @@ impl BlastedOak {
             artifact_base: ArtifactBase {
                 types: vec![ArtifactType::Monument],
                 tapped: false,
-                region: Region::Surface,
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),

@@ -1,7 +1,6 @@
 use crate::{
     card::{
-        AdditionalCost, AvatarBase, Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity,
-        Region, UnitBase, Zone,
+        AdditionalCost, AvatarBase, Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, UnitBase, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, CARDINAL_DIRECTIONS, Element, PlayerId, Thresholds, pick_direction},
@@ -89,7 +88,6 @@ impl Flamecaller {
                 power: 1,
                 toughness: 20,
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

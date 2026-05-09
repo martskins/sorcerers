@@ -1,7 +1,7 @@
 use crate::{
     card::{
         Ability, Card, CardBase, CardBaseMethods, CardConstructor, Costs, Damage, Edition,
-        MinionType, Rarity, Region, UnitBase, Zone,
+        MinionType, Rarity, UnitBase, Zone,
     },
     effect::Effect,
     game::PlayerId,
@@ -27,7 +27,6 @@ impl SlingPixies {
                 abilities: vec![Ability::Airborne, Ability::Ranged(1)],
                 types: vec![MinionType::Fairy],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

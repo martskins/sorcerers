@@ -1,7 +1,7 @@
 use crate::{
     card::{
         AdditionalCost, Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor,
-        Cost, Costs, Damage, Edition, Rarity, Region, Zone,
+        Cost, Costs, Damage, Edition, Rarity, Zone,
     },
     effect::Effect,
     game::{ActivatedAbility, PlayerId, pick_zone},
@@ -109,7 +109,6 @@ impl PayloadTrebuchet {
             artifact_base: ArtifactBase {
                 types: vec![ArtifactType::Weapon],
                 tapped: false,
-                region: Region::Surface,
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),

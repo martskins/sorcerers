@@ -25,7 +25,6 @@ impl EastWestDragon {
                 abilities: vec![Ability::Airborne],
                 types: vec![MinionType::Dragon],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {
@@ -81,7 +80,7 @@ impl Card for EastWestDragon {
         let self_zone = self.get_zone().clone();
 
         let same_row_zones: Vec<Zone> = (row_start..=row_end)
-            .map(Zone::Realm)
+            .map(|sq| Zone::Realm(sq, Region::Surface))
             .filter(|z| z != &self_zone)
             .filter(|z| z.get_site(state).is_some())
             .collect();

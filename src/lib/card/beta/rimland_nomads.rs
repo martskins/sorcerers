@@ -1,7 +1,7 @@
 use crate::{
     card::{
         Ability, Card, CardBase, CardBaseMethods, CardConstructor, Costs, Damage, Edition,
-        MinionType, Rarity, Region, SiteBase, SiteType, UnitBase, Zone,
+        MinionType, Rarity, SiteBase, SiteType, UnitBase, Zone,
     },
     effect::Effect,
     game::PlayerId,
@@ -26,7 +26,6 @@ impl RimlandNomads {
                 abilities: vec![Ability::Movement(1)],
                 types: vec![MinionType::Mortal],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

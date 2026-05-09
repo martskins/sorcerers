@@ -23,7 +23,6 @@ impl SunkenTreasure {
             artifact_base: ArtifactBase {
                 types: vec![ArtifactType::Relic],
                 tapped: false,
-                region: Region::Surface,
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),

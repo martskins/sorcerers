@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{
     card::{
         Ability, AreaModifiers, Card, CardBase, CardConstructor, Costs, Edition, MinionType,
-        Rarity, Region, UnitBase, Zone,
+        Rarity, UnitBase, Zone,
     },
     game::PlayerId,
     state::State,
@@ -30,7 +30,6 @@ impl SkyBaron {
                 abilities: vec![Ability::Airborne],
                 types: vec![MinionType::Spirit],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

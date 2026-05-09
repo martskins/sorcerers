@@ -1,7 +1,7 @@
 use crate::{
     card::{
         Ability, AreaModifiers, Artifact, ArtifactBase, ArtifactType, Card, CardBase,
-        CardConstructor, Costs, Edition, Rarity, Region, Zone,
+        CardConstructor, Costs, Edition, Rarity, Zone,
     },
     game::{Element, PlayerId},
     state::{CardQuery, State},
@@ -22,7 +22,6 @@ impl WickerManikin {
             artifact_base: ArtifactBase {
                 types: vec![ArtifactType::Automaton],
                 tapped: false,
-                region: Region::Surface,
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),

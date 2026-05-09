@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, UnitBase, Zone},
+    card::{Card, CardBase, CardConstructor, Costs, Edition, Rarity, UnitBase, Zone},
     game::PlayerId,
 };
 
@@ -21,7 +21,6 @@ impl MoonClanWerewolf {
                 abilities: vec![],
                 types: vec![],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

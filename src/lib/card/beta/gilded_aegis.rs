@@ -1,7 +1,7 @@
 use crate::{
     card::{
         Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs, Edition,
-        Rarity, Region, Zone,
+        Rarity, Zone,
     },
     effect::Effect,
     game::PlayerId,
@@ -24,7 +24,6 @@ impl GildedAegis {
             artifact_base: ArtifactBase {
                 types: vec![ArtifactType::Armor],
                 tapped: false,
-                region: Region::Surface,
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),

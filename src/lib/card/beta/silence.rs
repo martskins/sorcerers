@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::{
     card::{
         Ability, AreaModifiers, Aura, AuraBase, Card, CardBase, CardConstructor, Costs, Edition,
-        Rarity, Region, Zone,
+        Rarity, Zone,
     },
     game::{Element, PlayerId},
     state::State,
@@ -21,10 +21,7 @@ impl Silence {
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
-            aura_base: AuraBase {
-                tapped: false,
-                region: Region::Surface,
-            },
+            aura_base: AuraBase { tapped: false },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),
                 owner_id,

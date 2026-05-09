@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Aura, AuraBase, Card, CardBase, CardConstructor, Costs, Damage, Edition, Rarity, Region,
+        Aura, AuraBase, Card, CardBase, CardConstructor, Costs, Damage, Edition, Rarity,
         Zone,
     },
     effect::Effect,
@@ -33,10 +33,7 @@ impl Wildfire {
                 is_token: false,
                 ..Default::default()
             },
-            aura_base: AuraBase {
-                tapped: false,
-                region: Region::Surface,
-            },
+            aura_base: AuraBase { tapped: false },
             sites_visited: vec![],
         }
     }

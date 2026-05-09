@@ -27,7 +27,6 @@ impl DeepSeaMermaids {
                 abilities: vec![Ability::Submerge],
                 types: vec![MinionType::Merfolk],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {

@@ -1,7 +1,7 @@
 use crate::{
     card::{
         Ability, Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs,
-        Edition, Rarity, Region, Zone,
+        Edition, Rarity, Zone,
     },
     game::{Element, PlayerId},
     state::{CardQuery, ContinuousEffect, State},
@@ -23,7 +23,6 @@ impl MaddeningBells {
             artifact_base: ArtifactBase {
                 types: vec![ArtifactType::Relic],
                 tapped: false,
-                region: Region::Surface,
             },
             card_base: CardBase {
                 id: uuid::Uuid::new_v4(),

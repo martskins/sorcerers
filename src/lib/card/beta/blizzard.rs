@@ -1,7 +1,7 @@
 use crate::{
     card::{
         Ability, AreaModifiers, Aura, AuraBase, Card, CardBase, CardBaseMethods, CardConstructor,
-        Costs, Edition, Rarity, Region, Zone,
+        Costs, Edition, Rarity, Zone,
     },
     effect::Effect,
     game::PlayerId,
@@ -31,10 +31,7 @@ impl Blizzard {
                 is_token: false,
                 ..Default::default()
             },
-            aura_base: AuraBase {
-                tapped: false,
-                region: Region::Surface,
-            },
+            aura_base: AuraBase { tapped: false },
         }
     }
 }

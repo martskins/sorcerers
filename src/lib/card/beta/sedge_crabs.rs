@@ -1,7 +1,6 @@
 use crate::{
     card::{
-        Card, CardBase, CardBaseMethods, CardConstructor, Costs, Edition, MinionType, Rarity,
-        Region, UnitBase, Zone,
+        Card, CardBase, CardBaseMethods, CardConstructor, Costs, Edition, MinionType, Rarity, UnitBase, Zone,
     },
     game::PlayerId,
     state::State,
@@ -25,7 +24,6 @@ impl SedgeCrabs {
                 abilities: vec![],
                 types: vec![MinionType::Beast],
                 tapped: false,
-                region: Region::Surface,
                 ..Default::default()
             },
             card_base: CardBase {
