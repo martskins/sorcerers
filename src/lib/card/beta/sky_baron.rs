@@ -79,7 +79,7 @@ impl Card for SkyBaron {
         }
         let removes: HashMap<uuid::Uuid, Vec<Ability>> = state
             .cards
-            .iter()
+            .values()
             .filter(|c| c.get_zone().is_in_play() && c.is_unit())
             .filter(|c| c.get_id() != self.get_id())
             .map(|c| (*c.get_id(), vec![Ability::Airborne]))

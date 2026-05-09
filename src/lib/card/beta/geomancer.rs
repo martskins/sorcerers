@@ -57,7 +57,7 @@ impl ActivatedAbility for GeomancerAbility {
             GeomancerAbility::PlaySite => {
                 let cards: Vec<uuid::Uuid> = state
                     .cards
-                    .iter()
+                    .values()
                     .filter(|c| c.is_site())
                     .filter(|c| c.get_zone() == &Zone::Hand)
                     .filter(|c| c.get_owner_id() == player_id)
@@ -122,7 +122,7 @@ impl ActivatedAbility for GeomancerAbility {
                 let adjacent_zones = card.get_zone().get_adjacent();
                 let cards = state
                     .cards
-                    .iter()
+                    .values()
                     .filter(|c| c.get_name() == Rubble::NAME)
                     .filter(|c| adjacent_zones.contains(c.get_zone()))
                     .map(|c| *c.get_id())

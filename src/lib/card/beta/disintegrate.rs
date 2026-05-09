@@ -75,7 +75,7 @@ impl Card for Disintegrate {
 
         let carried: Vec<uuid::Uuid> = state
             .cards
-            .iter()
+            .values()
             .filter(|c| c.is_artifact())
             .filter(|c| c.get_base().bearer == Some(target_id))
             .map(|c| *c.get_id())

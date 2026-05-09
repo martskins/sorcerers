@@ -74,7 +74,7 @@ impl Card for MasterTracker {
         let controller_id = self.get_controller_id(state);
         let removes: HashMap<uuid::Uuid, Vec<Ability>> = state
             .cards
-            .iter()
+            .values()
             .filter(|c| c.get_zone().is_in_play())
             .filter(|c| c.get_controller_id(state) != controller_id)
             .map(|c| (*c.get_id(), vec![Ability::Stealth]))

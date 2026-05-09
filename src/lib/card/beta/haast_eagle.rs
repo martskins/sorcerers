@@ -36,7 +36,7 @@ impl ActivatedAbility for PickUpWeakerMinion {
 
         let weaker_minions: Vec<uuid::Uuid> = state
             .cards
-            .iter()
+            .values()
             .filter(|c| c.is_minion())
             .filter(|c| c.get_controller_id(state) == controller_id)
             .filter(|c| c.get_zone() == card.get_zone())
@@ -135,7 +135,7 @@ impl Card for HaastEagle {
 
         let can_pick_up = state
             .cards
-            .iter()
+            .values()
             .filter(|c| c.is_minion())
             .filter(|c| c.get_controller_id(state) == controller_id)
             .filter(|c| c.get_zone() == self.get_zone())
@@ -145,7 +145,7 @@ impl Card for HaastEagle {
 
         let can_drop = state
             .cards
-            .iter()
+            .values()
             .any(|c| c.get_bearer_id().unwrap_or_default() == Some(*self.get_id()));
 
         let mut abilities: Vec<Box<dyn ActivatedAbility>> = vec![];

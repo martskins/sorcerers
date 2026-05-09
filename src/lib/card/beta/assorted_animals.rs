@@ -78,11 +78,7 @@ impl Card for AssortedAnimals {
             .all(state)
             .into_iter()
             .map(|id| {
-                let card = state
-                    .cards
-                    .iter()
-                    .find(|c| c.get_id() == &id)
-                    .expect("card id to be valid");
+                let card = state.get_card(&id);
                 (
                     card.get_name().to_string(),
                     *card.get_id(),

@@ -24,7 +24,7 @@ async fn reveal_enemy_hands_in_range(
     let range = scout.get_steps_per_movement(state).unwrap_or(0);
     let zones = scout.get_zones_within_steps(state, range);
 
-    for avatar_id in CardQuery::from_ids(state.cards.iter().map(|card| *card.get_id()).collect())
+    for avatar_id in CardQuery::from_ids(state.cards.values().map(|card| *card.get_id()).collect())
         .in_zones(&zones)
         .all(state)
         .into_iter()
@@ -36,7 +36,7 @@ async fn reveal_enemy_hands_in_range(
         let avatar = state.get_card(&avatar_id);
         let hand: Vec<uuid::Uuid> = state
             .cards
-            .iter()
+            .values()
             .filter(|card| card.get_zone() == &Zone::Hand)
             .filter(|card| card.get_owner_id() == avatar.get_owner_id())
             .map(|card| *card.get_id())

@@ -93,7 +93,7 @@ impl Card for BlastedOak {
             .filter(|id| {
                 state
                     .cards
-                    .iter()
+                    .values()
                     .any(|c| c.get_id() == *id && c.is_site() && c.get_zone() == oak_zone)
             })
             .cloned()
@@ -110,7 +110,7 @@ impl Card for BlastedOak {
                 *id != oak_id
                     && state
                         .cards
-                        .iter()
+                        .values()
                         .any(|c| c.get_id() == *id && c.get_zone() == oak_zone)
             })
             .cloned()

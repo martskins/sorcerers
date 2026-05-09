@@ -58,7 +58,7 @@ impl Card for Bury {
     ) -> anyhow::Result<Vec<Effect>> {
         let valid_targets = state
             .cards
-            .iter()
+            .values()
             .filter(|c| c.is_minion() || c.is_artifact())
             .filter(|c| c.get_region(state) >= &Region::Surface)
             .map(|c| c.get_id())

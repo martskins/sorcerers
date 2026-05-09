@@ -78,7 +78,7 @@ impl Card for OldSaltAnchorman {
 
         let grants: HashMap<uuid::Uuid, Vec<Ability>> = state
             .cards
-            .iter()
+            .values()
             .filter(|c| c.get_zone().is_in_play())
             .filter(|c| c.get_controller_id(state) == controller_id)
             .filter(|c| c.get_id() != self.get_id())

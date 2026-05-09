@@ -73,7 +73,7 @@ impl Card for Silence {
         let affected_zones = self.get_affected_zones(state);
         let removes: HashMap<uuid::Uuid, Vec<Ability>> = state
             .cards
-            .iter()
+            .values()
             .filter(|c| c.get_unit_base().is_some())
             .filter(|c| affected_zones.contains(c.get_zone()))
             .map(|c| {

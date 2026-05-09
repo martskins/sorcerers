@@ -111,7 +111,7 @@ impl Card for ClamorOfHarpies {
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let valid_cards: Vec<uuid::Uuid> = state
             .cards
-            .iter()
+            .values()
             .filter(|c| c.is_unit())
             .filter(|c| c.can_be_targetted_by_player(state, &self.get_controller_id(state)))
             .filter(|c| c.get_zone().is_in_play())

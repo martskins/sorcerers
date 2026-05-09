@@ -101,7 +101,7 @@ impl Card for ImperialRoad {
         for player_id in [opponent_id, controller_id] {
             let sites_in_atlasbook: Vec<uuid::Uuid> = state
                 .cards
-                .iter()
+                .values()
                 .filter(|c| c.is_site())
                 .filter(|c| c.get_zone() == &Zone::Atlasbook)
                 .filter(|c| c.get_controller_id(state) == player_id)

@@ -90,7 +90,7 @@ impl QueryCache {
             zone.clone()
         } else if qry.random {
             let options = qry.options.as_deref().unwrap_or(&[]);
-            for card in &state.cards {
+            for card in state.cards.values() {
                 if let Some(query) = card.zone_query_override(state, qry)? {
                     return Box::pin(query.pick(player_id, state)).await;
                 }
@@ -104,7 +104,7 @@ impl QueryCache {
         } else if qry.sites_only {
             let mut sites: Vec<Zone> = state
                 .cards
-                .iter()
+                .values()
                 .filter(|c| c.is_site())
                 .filter(|c| c.get_zone().is_in_play())
                 .filter(|c| {
@@ -286,7 +286,7 @@ impl ZoneQuery {
         if self.sites_only {
             let mut sites: Vec<Zone> = state
                 .cards
-                .iter()
+                .values()
                 .filter(|c| c.is_site())
                 .filter(|c| c.get_zone().is_in_play())
                 .filter(|c| {

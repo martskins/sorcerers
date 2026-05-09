@@ -61,7 +61,7 @@ impl Card for Incinerate {
         let caster = state.get_card(caster_id);
         let mut zones: Vec<Zone> = state
             .cards
-            .iter()
+            .values()
             .filter(|c| c.get_zone().is_in_play())
             .filter(|c| c.get_owner_id() == self.get_owner_id())
             .filter(|c| c.is_unit())

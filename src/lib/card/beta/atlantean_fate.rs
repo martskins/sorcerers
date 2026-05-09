@@ -42,7 +42,7 @@ impl AtlanteanFate {
         let affected_zones = self.get_affected_zones(state);
         state
             .cards
-            .iter()
+            .values()
             .filter(|c| affected_zones.contains(c.get_zone()))
             .filter(|c| c.is_site())
             .filter(|c| c.get_zone().is_in_play())

@@ -80,7 +80,7 @@ impl Card for MaddeningBells {
         // Collect all players who have a Spellcaster nearby.
         let spellcaster_player_ids: Vec<PlayerId> = state
             .cards
-            .iter()
+            .values()
             .filter(|c| c.is_minion())
             .filter(|c| c.get_zone().is_nearby(self.get_zone()))
             .filter(|c| {
@@ -106,7 +106,7 @@ impl Card for MaddeningBells {
         // Collect all spell cards (Magic type) for those players in hand or spellbook.
         let affected_spell_ids: Vec<uuid::Uuid> = state
             .cards
-            .iter()
+            .values()
             .filter(|c| {
                 !c.is_site() && !c.is_avatar() && !c.is_unit() && !c.is_artifact() && !c.is_aura()
             })

@@ -83,7 +83,7 @@ impl Card for MageSlayer {
 
         let enemy_spellcasters: Vec<uuid::Uuid> = state
             .cards
-            .iter()
+            .values()
             .filter(|c| c.is_minion())
             .filter(|c| c.get_controller_id(state) != controller_id)
             .filter(|c| c.get_zone().is_nearby(&my_zone))

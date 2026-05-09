@@ -75,7 +75,7 @@ impl Card for WickedWitch {
         let nearby_zones = self.get_zone().get_nearby();
         let counters: HashMap<uuid::Uuid, Vec<Counter>> = state
             .cards
-            .iter()
+            .values()
             .filter(|c| *c.get_id() != self_id)
             .filter(|c| c.get_unit_base().is_some())
             .filter(|c| nearby_zones.contains(c.get_zone()))

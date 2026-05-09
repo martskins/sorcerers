@@ -147,7 +147,7 @@ impl CardQuery {
         }
 
         // Apply must-target restrictions from cards in play (e.g. Blasted Oak)
-        for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
+        for card in state.cards.values().filter(|c| c.get_zone().is_in_play()) {
             if let Some(restricted) = card.restrict_card_query_targets(state, self, &card_ids) {
                 card_ids = restricted;
                 break;
@@ -158,7 +158,7 @@ impl CardQuery {
         }
 
         let output = if let Some(true) = self.randomise {
-            for card in &state.cards {
+            for card in state.cards.values() {
                 if &card.get_controller_id(state) != player_id {
                     continue;
                 }
@@ -196,18 +196,21 @@ impl CardQuery {
     pub fn iter<'b>(&'b self, state: &'b State) -> impl Iterator<Item = &'b Box<dyn Card>> {
         state
             .cards
-            .iter()
+            .values()
             .filter(|c| self.matches(c.get_id(), state))
     }
 
     pub fn any(&self, state: &State) -> bool {
-        state.cards.iter().any(|c| self.matches(c.get_id(), state))
+        state
+            .cards
+            .values()
+            .any(|c| self.matches(c.get_id(), state))
     }
 
     pub fn first(&self, state: &State) -> Option<uuid::Uuid> {
         state
             .cards
-            .iter()
+            .values()
             .find(|c| self.matches(c.get_id(), state))
             .map(|c| *c.get_id())
     }
@@ -215,7 +218,7 @@ impl CardQuery {
     pub fn all(&self, state: &State) -> Vec<uuid::Uuid> {
         state
             .cards
-            .iter()
+            .values()
             .filter(|c| self.matches(c.get_id(), state))
             .map(|c| *c.get_id())
             .collect()
@@ -960,7 +963,7 @@ pub struct State {
     pub game_id: uuid::Uuid,
     pub players: Vec<Player>,
     pub turns: usize,
-    pub cards: Vec<Box<dyn Card>>,
+    pub cards: HashMap<uuid::Uuid, Box<dyn Card>>,
     pub decks: HashMap<PlayerId, Deck>,
     pub input_status: InputStatus,
     pub phase: Phase,
@@ -1005,7 +1008,7 @@ impl State {
         State {
             game_id,
             players,
-            cards,
+            cards: cards.into_iter().map(|c| (*c.get_id(), c)).collect(),
             decks,
             turns: 0,
             input_status: InputStatus::None,
@@ -1175,7 +1178,7 @@ impl State {
 
     pub fn get_thresholds_for_player(&self, player_id: &PlayerId) -> Thresholds {
         self.cards
-            .iter()
+            .values()
             .filter(|c| c.get_zone().is_in_play())
             .filter(|c| &c.get_controller_id(self) == player_id)
             .filter_map(|c| c.get_resource_provider())
@@ -1215,7 +1218,7 @@ impl State {
 
         for card in self
             .cards
-            .iter()
+            .values()
             .filter(|c| c.get_card_type() == CardType::Site)
         {
             let zone = card.get_zone();
@@ -1269,7 +1272,7 @@ impl State {
     pub async fn compute_world_effects(&mut self) -> anyhow::Result<()> {
         self.continuous_effects.clear();
 
-        for card in &self.cards {
+        for card in self.cards.values() {
             if !card.get_zone().is_in_play() {
                 continue;
             }
@@ -1318,7 +1321,7 @@ impl State {
     ) -> Vec<(uuid::Uuid, Zone)> {
         let mut interceptors = Vec::new();
 
-        for card in &self.cards {
+        for card in self.cards.values() {
             if &card.get_controller_id(self) != controller_id {
                 continue;
             }
@@ -1376,7 +1379,7 @@ impl State {
 
     pub fn data_from_cards(&self) -> Vec<CardData> {
         self.cards
-            .iter()
+            .values()
             .map(|c| CardData {
                 id: *c.get_id(),
                 name: c.get_name().to_string(),
@@ -1436,19 +1439,11 @@ impl State {
     }
 
     pub fn get_card_mut(&mut self, card_id: &uuid::Uuid) -> &mut dyn Card {
-        self.cards
-            .iter_mut()
-            .find(|c| c.get_id() == card_id)
-            .expect("failed to get card")
-            .as_mut()
+        &mut **self.cards.get_mut(card_id).expect("card to exist")
     }
 
     pub fn get_card(&self, card_id: &uuid::Uuid) -> &dyn Card {
-        self.cards
-            .iter()
-            .find(|c| c.get_id() == card_id)
-            .expect("failed to get card")
-            .as_ref()
+        &**self.cards.get(card_id).expect("card to exist")
     }
 
     pub fn get_player(&self, player_id: &PlayerId) -> anyhow::Result<&Player> {

@@ -41,7 +41,7 @@ impl ActivatedAbility for ArtilleryBarrage {
 
         let effects = state
             .cards
-            .iter()
+            .values()
             .filter(|c| c.is_unit())
             .filter(|c| c.get_zone() == &target_zone)
             .map(|c| Effect::TakeDamage {

@@ -118,7 +118,7 @@ pub fn evaluate(state: &State) -> Evaluation {
         // --- Sites in play ---
         let sites_in_play = state
             .cards
-            .iter()
+            .values()
             .filter(|c| c.get_owner_id() == &pid && c.is_site() && c.get_zone().is_in_play())
             .count() as f32
             * SITE_WEIGHT;
@@ -128,7 +128,7 @@ pub fn evaluate(state: &State) -> Evaluation {
         let mut minion_toughness = 0.0f32;
         let mut board_advancement = 0.0f32;
 
-        for card in state.cards.iter().filter(|c| {
+        for card in state.cards.values().filter(|c| {
             c.get_owner_id() == &pid
                 && c.get_card_type() == CardType::Minion
                 && c.get_zone().is_in_play()
@@ -153,7 +153,7 @@ pub fn evaluate(state: &State) -> Evaluation {
         // --- Hand size ---
         let hand_size = state
             .cards
-            .iter()
+            .values()
             .filter(|c| c.get_owner_id() == &pid && c.get_zone() == &Zone::Hand)
             .count() as f32
             * HAND_CARD_WEIGHT;

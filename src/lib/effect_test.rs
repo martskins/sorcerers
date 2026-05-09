@@ -86,7 +86,7 @@ async fn test_summon_card_puts_minion_in_target_zone() {
 
     let minion = OgreGoons::new(player_id);
     let id = *minion.get_id();
-    state.cards.push(Box::new(minion));
+    state.cards.insert(id, Box::new(minion));
 
     Effect::SummonCard {
         player_id,
@@ -107,7 +107,7 @@ async fn test_summon_card_adds_summoning_sickness_to_minion() {
 
     let minion = OgreGoons::new(player_id);
     let id = *minion.get_id();
-    state.cards.push(Box::new(minion));
+    state.cards.insert(id, Box::new(minion));
 
     Effect::SummonCard {
         player_id,
@@ -134,7 +134,7 @@ async fn test_summon_card_no_summoning_sickness_with_charge() {
     let mut minion = OgreGoons::new(player_id);
     let id = *minion.get_id();
     minion.add_ability(Ability::Charge);
-    state.cards.push(Box::new(minion));
+    state.cards.insert(id, Box::new(minion));
 
     Effect::SummonCard {
         player_id,
@@ -161,7 +161,7 @@ async fn test_summon_card_queues_genesis_effects() {
 
     let wizard = ApprenticeWizard::new(player_id);
     let id = *wizard.get_id();
-    state.cards.push(Box::new(wizard));
+    state.cards.insert(id, Box::new(wizard));
 
     Effect::SummonCard {
         player_id,
@@ -190,7 +190,7 @@ async fn test_summon_card_applies_on_summon_effects() {
 
     let baldassare = CaptainBaldassare::new(player_id);
     let id = *baldassare.get_id();
-    state.cards.push(Box::new(baldassare));
+    state.cards.insert(id, Box::new(baldassare));
 
     Effect::SummonCard {
         player_id,
@@ -223,7 +223,7 @@ async fn test_play_card_minion_ends_in_target_zone() {
     let mut ogre = OgreGoons::new(player_id);
     let ogre_id = *ogre.get_id();
     ogre.set_zone(Zone::Hand);
-    state.cards.push(Box::new(ogre));
+    state.cards.insert(ogre_id, Box::new(ogre));
 
     Effect::PlayCard {
         player_id,
@@ -252,7 +252,7 @@ async fn test_play_card_minion_has_summoning_sickness() {
     let mut ogre = OgreGoons::new(player_id);
     let ogre_id = *ogre.get_id();
     ogre.set_zone(Zone::Hand);
-    state.cards.push(Box::new(ogre));
+    state.cards.insert(ogre_id, Box::new(ogre));
 
     Effect::PlayCard {
         player_id,
@@ -289,7 +289,7 @@ async fn test_summon_token_unit_placed_in_target_zone() {
 
     let soldiers: Vec<_> = state
         .cards
-        .iter()
+        .values()
         .filter(|c| c.get_name() == FootSoldier::NAME)
         .collect();
     assert_eq!(soldiers.len(), 1, "one FootSoldier token should exist");
@@ -317,7 +317,7 @@ async fn test_summon_token_unit_has_summoning_sickness() {
 
     let soldier = state
         .cards
-        .iter()
+        .values()
         .find(|c| c.get_name() == FootSoldier::NAME)
         .expect("FootSoldier should exist after SummonToken");
     assert!(

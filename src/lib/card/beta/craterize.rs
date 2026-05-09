@@ -65,7 +65,7 @@ impl Card for Craterize {
     ) -> anyhow::Result<Vec<Effect>> {
         let sites = state
             .cards
-            .iter()
+            .values()
             .filter(|c| c.is_site())
             .filter(|c| c.get_zone().is_in_play())
             .map(|c| c.get_id())

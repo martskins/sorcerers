@@ -1614,7 +1614,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
         state
             .cards
-            .iter()
+            .values()
             .filter(|target| {
                 // Only enemy units or sites
                 target.get_controller_id(state) != self.get_controller_id(state)
@@ -1688,7 +1688,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
                 let counters: i16 = state
                     .cards
-                    .iter()
+                    .values()
                     .filter(|c| c.get_zone().is_in_play())
                     .filter(|c| !c.is_flooded_site(state))
                     .map(|c| c.area_modifiers(state))
@@ -1710,7 +1710,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     fn has_attachments(&self, state: &State) -> anyhow::Result<bool> {
-        for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
+        for card in state.cards.values().filter(|c| c.get_zone().is_in_play()) {
             if card.get_bearer_id()? == Some(*self.get_id()) {
                 return Ok(true);
             }
@@ -2746,7 +2746,7 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
 
                 let power_counters: i16 = state
                     .cards
-                    .iter()
+                    .values()
                     .filter(|c| c.get_zone().is_in_play())
                     .filter(|c| !c.is_flooded_site(state))
                     .map(|c| c.area_modifiers(state))
@@ -2773,7 +2773,7 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
                     modifiers.push(counter.ability.clone());
                 }
 
-                for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
+                for card in state.cards.values().filter(|c| c.get_zone().is_in_play()) {
                     let mods = card.area_modifiers(state);
                     if let Some(mods) = mods.grants_abilities.get(self.get_id()) {
                         modifiers.extend(mods.clone());
@@ -2796,7 +2796,7 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
                     }
                 }
 
-                for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
+                for card in state.cards.values().filter(|c| c.get_zone().is_in_play()) {
                     let mods = card.area_modifiers(state);
                     if let Some(mods) = mods.removes_abilities.get(self.get_id()) {
                         for modif in mods {
@@ -2822,14 +2822,14 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
             CardType::Site => {
                 let base = self.get_site_base().expect("site to have a site base");
                 let mut modifiers = base.abilities.clone();
-                for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
+                for card in state.cards.values().filter(|c| c.get_zone().is_in_play()) {
                     let mods = card.area_modifiers(state);
                     if let Some(mods) = mods.grants_abilities.get(self.get_id()) {
                         modifiers.extend(mods.clone());
                     }
                 }
 
-                for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
+                for card in state.cards.values().filter(|c| c.get_zone().is_in_play()) {
                     let mods = card.area_modifiers(state);
                     if let Some(mods) = mods.removes_abilities.get(self.get_id()) {
                         for modif in mods {
@@ -3091,7 +3091,7 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
         activated_abilities.push(Box::new(AvatarAction::DrawSite));
         if state
             .cards
-            .iter()
+            .values()
             .filter(|c| c.get_controller_id(state) == self.get_controller_id(state))
             .filter(|c| c.is_site())
             .filter(|c| matches!(c.get_zone(), Zone::Hand))
@@ -3101,7 +3101,7 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
             activated_abilities.push(Box::new(AvatarAction::PlaySite));
         }
 
-        for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
+        for card in state.cards.values().filter(|c| c.get_zone().is_in_play()) {
             let mods = card.area_modifiers(state);
             if card.is_flooded_site(state) {
                 continue;
@@ -3142,7 +3142,7 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
             }
         }
 
-        for card in state.cards.iter().filter(|c| c.get_zone().is_in_play()) {
+        for card in state.cards.values().filter(|c| c.get_zone().is_in_play()) {
             let mods = card.area_modifiers(state);
             if card.is_flooded_site(state) {
                 continue;

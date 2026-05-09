@@ -29,7 +29,7 @@ impl ActivatedAbility for ShootProjectile {
     ) -> anyhow::Result<Vec<Effect>> {
         let fire_minions = state
             .cards
-            .iter()
+            .values()
             .filter(|c| c.get_zone() == &Zone::Cemetery)
             .filter(|c| {
                 c.get_elements(state)
@@ -40,7 +40,7 @@ impl ActivatedAbility for ShootProjectile {
             .collect::<Vec<_>>();
         let damage = state
             .cards
-            .iter()
+            .values()
             .filter(|c| c.get_zone() == &Zone::Cemetery)
             .filter(|c| {
                 c.get_elements(state)

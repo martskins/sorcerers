@@ -58,7 +58,7 @@ impl Card for BorderMilitia {
     ) -> anyhow::Result<Vec<Effect>> {
         let mut sites: Vec<&dyn Card> = state
             .cards
-            .iter()
+            .values()
             .filter(|c| c.is_site())
             .filter(|c| c.get_controller_id(state) == self.get_controller_id(state))
             .filter(|c| {

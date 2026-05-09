@@ -110,7 +110,7 @@ impl Card for GrimReaper {
                         // Find all copies of that card (by name) in any zone belonging to its owner.
                         let copies: Vec<uuid::Uuid> = state
                             .cards
-                            .iter()
+                            .values()
                             .filter(|c| c.get_name().eq_ignore_ascii_case(&buried_name))
                             .filter(|c| c.get_id() != &buried_card_id)
                             .filter(|c| c.get_controller_id(state) == buried_owner_id)

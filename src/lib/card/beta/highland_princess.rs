@@ -74,7 +74,7 @@ impl Card for HighlandPrincess {
         let deck = state.decks.get(&controller_id).unwrap();
         let targets: Vec<uuid::Uuid> = state
             .cards
-            .iter()
+            .values()
             .filter(|c| c.is_artifact())
             .filter(|c| c.get_zone() == &Zone::Spellbook)
             .filter(|c| c.get_controller_id(state) == controller_id)

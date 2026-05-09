@@ -73,7 +73,7 @@ impl Card for UndertakerEngine {
 
         let cards_here: Vec<uuid::Uuid> = state
             .cards
-            .iter()
+            .values()
             .filter(|card| card.get_zone() == self.get_zone())
             .filter(|card| card.is_minion() || card.is_artifact())
             .filter(|card| {

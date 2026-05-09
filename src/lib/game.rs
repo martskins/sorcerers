@@ -1106,7 +1106,7 @@ impl ActivatedAbility for AvatarAction {
             AvatarAction::PlaySite => {
                 let cards: Vec<uuid::Uuid> = state
                     .cards
-                    .iter()
+                    .values()
                     .filter(|c| c.is_site())
                     .filter(|c| c.get_zone() == &Zone::Hand)
                     .filter(|c| c.get_owner_id() == player_id)
@@ -1498,7 +1498,7 @@ impl ActivatedAbility for UnitAction {
             UnitAction::DropMinion => {
                 let minions = state
                     .cards
-                    .iter()
+                    .values()
                     .filter(|minion| minion.is_minion())
                     .filter(|minion| minion.get_bearer_id().unwrap_or_default() == Some(*card_id))
                     .collect::<Vec<_>>();
@@ -1823,7 +1823,7 @@ impl Game {
         let attached_artifacts: Vec<(uuid::Uuid, uuid::Uuid)> = self
             .state
             .cards
-            .iter()
+            .values()
             .filter(|c| c.is_artifact())
             .filter_map(|c| {
                 c.get_base()
@@ -1903,7 +1903,7 @@ impl Game {
     }
 
     async fn dispell_auras(state: &mut State) -> anyhow::Result<()> {
-        let auras: Vec<&dyn Aura> = state.cards.iter().filter_map(|c| c.get_aura()).collect();
+        let auras: Vec<&dyn Aura> = state.cards.values().filter_map(|c| c.get_aura()).collect();
         let mut auras_to_dispell = vec![];
         for aura in auras {
             if aura.should_dispell(state)? {

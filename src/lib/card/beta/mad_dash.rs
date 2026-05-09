@@ -62,7 +62,7 @@ impl Card for MadDash {
         }];
         let cards = state
             .cards
-            .iter()
+            .values()
             .filter(|c| c.is_unit())
             .filter(|c| c.get_controller_id(state) == self.get_controller_id(state))
             .map(|c| *c.get_id())

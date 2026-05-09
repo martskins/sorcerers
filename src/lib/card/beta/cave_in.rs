@@ -59,7 +59,7 @@ impl Card for CaveIn {
     ) -> anyhow::Result<Vec<Effect>> {
         let valid_targets = state
             .cards
-            .iter()
+            .values()
             .filter(|c| c.is_site())
             .filter(|c| {
                 c.get_site()
@@ -83,7 +83,7 @@ impl Card for CaveIn {
         let picked_site = state.get_card(&picked_site_id);
         let minions_and_artifacts: Vec<uuid::Uuid> = state
             .cards
-            .iter()
+            .values()
             .filter(|c| c.get_zone() == picked_site.get_zone())
             .filter(|c| c.is_minion() || c.is_artifact())
             .map(|c| c.get_id())

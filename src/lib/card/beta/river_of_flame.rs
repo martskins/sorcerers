@@ -81,7 +81,7 @@ impl Card for RiverOfFlame {
         }
         let grants: HashMap<uuid::Uuid, Vec<Ability>> = state
             .cards
-            .iter()
+            .values()
             .filter(|c| c.get_unit_base().is_some())
             .filter(|c| c.get_zone() == self.get_zone())
             .map(|c| (*c.get_id(), vec![Ability::Spellcaster(Some(Element::Fire))]))

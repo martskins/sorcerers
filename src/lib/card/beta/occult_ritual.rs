@@ -71,7 +71,7 @@ impl Card for OccultRitual {
 
         let count = state
             .cards
-            .iter()
+            .values()
             .filter(|c| c.get_zone() == &caster_zone)
             .filter(|c| c.get_controller_id(state) == controller_id)
             .filter(|c| {

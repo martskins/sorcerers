@@ -30,7 +30,7 @@ impl ActivatedAbility for ThrowArtifactAbility {
     ) -> anyhow::Result<bool> {
         let carried = state
             .cards
-            .iter()
+            .values()
             .filter(|c| c.is_artifact())
             .filter(|c| c.get_bearer_id().ok().flatten().as_ref() == Some(card_id))
             .count();
@@ -47,7 +47,7 @@ impl ActivatedAbility for ThrowArtifactAbility {
 
         let carried: Vec<uuid::Uuid> = state
             .cards
-            .iter()
+            .values()
             .filter(|c| c.is_artifact())
             .filter(|c| c.get_bearer_id().ok().flatten().as_ref() == Some(card_id))
             .map(|c| *c.get_id())
