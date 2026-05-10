@@ -1,12 +1,4 @@
-use crate::{
-    card::{
-        Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, UnitBase, Zone,
-    },
-    effect::Effect,
-    game::PlayerId,
-    query::EffectQuery,
-    state::{CardQuery, State, TemporaryEffect},
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct CaptainBaldassare {

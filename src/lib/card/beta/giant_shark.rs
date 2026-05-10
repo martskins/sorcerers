@@ -1,13 +1,4 @@
-use crate::{
-    card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity,
-        UnitBase, Zone,
-    },
-    effect::Effect,
-    game::PlayerId,
-    query::EffectQuery,
-    state::{CardQuery, ContinuousEffect, State},
-};
+use crate::prelude::*;
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]

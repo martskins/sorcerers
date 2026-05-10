@@ -1,9 +1,4 @@
-use crate::{
-    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
-    effect::Effect,
-    game::{PlayerId, get_knight_move_zones, pick_card, pick_zone},
-    state::{CardQuery, State},
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct FlankingManeuver {

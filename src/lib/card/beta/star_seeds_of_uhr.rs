@@ -1,9 +1,4 @@
-use crate::{
-    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
-    effect::{Effect, TokenType},
-    game::{PlayerId, pick_zone, yes_or_no},
-    state::State,
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct StarSeedsOfUhr {

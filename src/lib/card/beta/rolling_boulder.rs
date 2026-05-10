@@ -1,13 +1,4 @@
-use crate::{
-    card::{
-        AdditionalCost, AreaModifiers, Artifact, ArtifactBase, ArtifactType, Card, CardBase,
-        CardConstructor, Cost, Costs, Damage, Edition, Rarity, Zone,
-    },
-    effect::Effect,
-    game::{ActivatedAbility, CARDINAL_DIRECTIONS, PlayerId, pick_direction},
-    query::ZoneQuery,
-    state::{CardQuery, State},
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 struct RollBoulder(uuid::Uuid);

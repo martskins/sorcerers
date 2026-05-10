@@ -2,11 +2,12 @@ pub mod beta;
 pub mod foot_soldier;
 pub mod frog;
 pub mod rubble;
-pub use crate::zone::Zone;
 pub use beta::*;
 pub use foot_soldier::*;
 pub use frog::*;
 pub use rubble::*;
+
+use crate::prelude::*;
 
 #[cfg(test)]
 mod card_test;
@@ -1900,7 +1901,7 @@ pub struct SiteBase {
     pub abilities: Vec<Ability>,
 }
 
-trait ResourceProviderBaseMethods: Card {
+pub trait ResourceProviderBaseMethods: Card {
     fn base_provided_mana(&self, state: &State) -> anyhow::Result<u8>;
     fn base_provided_affinity(&self, state: &State) -> anyhow::Result<Thresholds>;
 }
@@ -2329,7 +2330,7 @@ impl Damage {
 /// behaviour for all cards. Instead, specific card types should override the public methods defined
 /// in the `Card` trait, and can call these base methods to get the default behaviour when needed.
 #[async_trait::async_trait]
-pub(crate) trait CardBaseMethods: Card {
+pub trait CardBaseMethods: Card {
     fn base_get_affected_zones(&self, state: &State) -> Vec<Zone>;
     fn base_get_power(&self, state: &State) -> Option<u16>;
     fn base_get_abilities(&self, state: &State) -> Vec<Ability>;

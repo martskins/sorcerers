@@ -1,11 +1,4 @@
-use crate::{
-    card::{
-        AdditionalCost, AvatarBase, Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, UnitBase, Zone,
-    },
-    effect::Effect,
-    game::{ActivatedAbility, PlayerId, yes_or_no},
-    state::{CardQuery, ContinuousEffect, State},
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 struct FloodSite;

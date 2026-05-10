@@ -1,13 +1,4 @@
-use crate::{
-    card::{
-        Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, ResourceProvider, Site,
-        SiteBase, Zone,
-    },
-    effect::Effect,
-    game::{ActivatedAbility, PlayerId, Thresholds, pick_zone},
-    query::ZoneQuery,
-    state::{CardQuery, State},
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 struct FlyToVoid;

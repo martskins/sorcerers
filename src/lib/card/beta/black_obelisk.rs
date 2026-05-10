@@ -1,12 +1,4 @@
-use crate::{
-    card::{
-        Ability, Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs,
-        Damage, Edition, Rarity, Zone,
-    },
-    effect::Effect,
-    game::PlayerId,
-    state::{CardQuery, ContinuousEffect, State},
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct BlackObelisk {
@@ -87,7 +79,7 @@ impl Card for BlackObelisk {
     }
 
     async fn on_turn_start(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        let Some(site) = self.get_zone().get_site(state) else {
+        let Some(site): Option<&dyn Site> = self.get_zone().get_site(state) else {
             return Ok(vec![]);
         };
 

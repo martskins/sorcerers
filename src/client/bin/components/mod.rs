@@ -1,6 +1,6 @@
 use crate::scene::game::GameData;
 use egui::Rect;
-use sorcerers::{card::Zone, game::PlayerId};
+use sorcerers::{game::PlayerId, zone::Zone};
 
 pub mod card_viewer;
 pub mod event_log;

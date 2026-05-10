@@ -7,9 +7,10 @@ use crate::{
 };
 use egui::{Color32, Context, Painter, Rect, Sense, Ui, pos2, vec2};
 use sorcerers::{
-    card::{CardData, Zone},
+    card::CardData,
     game::PlayerId,
     networking::{self, message::ClientMessage},
+    zone::Zone,
 };
 
 #[derive(Debug)]

@@ -1,9 +1,4 @@
-use crate::{
-    card::{Card, CardBase, CardConstructor, Cost, Costs, Damage, Edition, Rarity, Zone},
-    effect::Effect,
-    game::PlayerId,
-    state::{CardQuery, State},
-};
+use crate::prelude::*;
 
 /// **Psionic Blast** — Exceptional Magic (2 cost, A threshold)
 ///
@@ -59,7 +54,6 @@ impl Card for PsionicBlast {
         caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
-        use crate::{card::Ability, effect::AbilityCounter, query::EffectQuery};
 
         let controller_id = self.get_controller_id(state);
         let caster_zone = state.get_card(caster_id).get_zone().clone();

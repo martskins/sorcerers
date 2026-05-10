@@ -1,12 +1,4 @@
-use crate::{
-    card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity,
-        UnitBase, Zone,
-    },
-    effect::Effect,
-    game::{PlayerId, take_action},
-    state::State,
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct RiddleSphinx {

@@ -1,12 +1,4 @@
-use crate::{
-    card::{
-        Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, ResourceProvider, Site,
-        SiteBase, Zone,
-    },
-    effect::Effect,
-    game::{PlayerId, Thresholds},
-    state::{CardQuery, State},
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct Mudflow {

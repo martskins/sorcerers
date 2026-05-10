@@ -1,13 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{
-    card::{
-        Ability, AreaModifiers, Card, CardBase, CardConstructor, Costs, Edition, Rarity,
-        ResourceProvider, Site, SiteBase, SiteType, Zone,
-    },
-    game::{Element, PlayerId, Thresholds},
-    state::State,
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct RiverOfFlame {

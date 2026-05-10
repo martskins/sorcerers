@@ -1,11 +1,4 @@
-use crate::{
-    card::{
-        AdditionalCost, AvatarBase, Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, UnitBase, Zone,
-    },
-    effect::Effect,
-    game::{ActivatedAbility, CARDINAL_DIRECTIONS, Element, PlayerId, Thresholds, pick_direction},
-    state::State,
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 struct ShootProjectile;

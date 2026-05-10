@@ -1,11 +1,4 @@
-use crate::{
-    card::{
-        Ability, Card, CardBase, CardBaseMethods, CardConstructor, Costs, Edition, MinionType,
-        Rarity, SiteType, UnitBase, Zone,
-    },
-    game::PlayerId,
-    state::State,
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct SpireLich {

@@ -1,12 +1,4 @@
-use crate::{
-    card::{
-        AdditionalCost, Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor,
-        Cost, Costs, Damage, Edition, Rarity, Zone,
-    },
-    effect::Effect,
-    game::{ActivatedAbility, PlayerId, pick_card},
-    state::{CardQuery, State},
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 struct TapToDealDamage;

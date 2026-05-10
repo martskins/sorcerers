@@ -1,14 +1,4 @@
-use crate::card::CardType;
-use crate::{
-    card::{
-        Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs, Edition,
-        Rarity, Zone,
-    },
-    effect::Effect,
-    game::{ActivatedAbility, Element, PlayerId},
-    query::EffectQuery,
-    state::{CardQuery, State, TemporaryEffect},
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 struct SacrificeForAirSpell;

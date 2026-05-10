@@ -1,9 +1,4 @@
-use crate::{
-    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
-    effect::Effect,
-    game::{Element, PlayerId},
-    state::State,
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct OccultRitual {
@@ -55,7 +50,6 @@ impl Card for OccultRitual {
         caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
-        use crate::card::Ability;
 
         let controller_id = self.get_controller_id(state);
         let caster = state.get_card(caster_id);

@@ -1,10 +1,4 @@
-use crate::{
-    card::{
-        Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs, Edition,
-        Rarity, Zone,
-    },
-    game::PlayerId,
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct PhilosophersStone {

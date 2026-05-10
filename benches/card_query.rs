@@ -1,7 +1,8 @@
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use sorcerers::{
-    card::{ApprenticeWizard, Card, Region, Zone},
+    card::{ApprenticeWizard, Card, Region},
     state::{CardQuery, State},
+    zone::Zone,
 };
 
 fn bench_card_query(c: &mut Criterion) {

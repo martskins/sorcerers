@@ -1,11 +1,4 @@
-use crate::{
-    card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site,
-        SiteBase, Zone,
-    },
-    game::{PlayerId, Thresholds},
-    state::{CardQuery, State},
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct AstralAlcazar {

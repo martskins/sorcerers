@@ -1,7 +1,7 @@
 use crate::{
     card::{
         Ability, AridDesert, BeastOfBurden, Card, CauldronCrones, DonnybrookInn, Enchantress,
-        FootSoldier, HeadlessHaunt, KiteArcher, NimbusJinn, Region, RimlandNomads, Zone,
+        FootSoldier, HeadlessHaunt, KiteArcher, NimbusJinn, Region, RimlandNomads,
         from_name_and_zone,
     },
     deck::Deck,
@@ -10,6 +10,7 @@ use crate::{
     networking::message::ServerMessage,
     query::{EffectQuery, QueryCache, ZoneQuery},
     state::{CardQuery, Player, PlayerWithDeck, State, TemporaryEffect},
+    zone::Zone,
 };
 
 fn setup_carrying_state() -> (State, async_channel::Receiver<ServerMessage>) {

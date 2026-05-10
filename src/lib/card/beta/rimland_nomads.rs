@@ -1,12 +1,4 @@
-use crate::{
-    card::{
-        Ability, Card, CardBase, CardBaseMethods, CardConstructor, Costs, Damage, Edition,
-        MinionType, Rarity, SiteBase, SiteType, UnitBase, Zone,
-    },
-    effect::Effect,
-    game::PlayerId,
-    state::State,
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct RimlandNomads {

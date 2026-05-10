@@ -1,10 +1,4 @@
-use crate::{
-    card::{Ability, Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
-    effect::{AbilityCounter, Effect},
-    game::{PlayerId, pick_card},
-    query::EffectQuery,
-    state::State,
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct MadDash {

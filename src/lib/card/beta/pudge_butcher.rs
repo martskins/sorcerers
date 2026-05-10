@@ -1,15 +1,4 @@
-use crate::{
-    card::{
-        Ability, AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Edition, MinionType,
-        Rarity, UnitBase, Zone,
-    },
-    effect::Effect,
-    game::{
-        ActivatedAbility, BaseOption, CARDINAL_DIRECTIONS, PlayerId, pick_direction, pick_option,
-    },
-    query::ZoneQuery,
-    state::State,
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 struct ShootProjectile;

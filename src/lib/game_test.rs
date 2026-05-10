@@ -1,4 +1,5 @@
-use crate::card::{Region, Zone};
+use crate::card::Region;
+use crate::zone::Zone;
 
 #[test]
 fn test_are_adjacent() {

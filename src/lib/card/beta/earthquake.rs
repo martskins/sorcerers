@@ -1,9 +1,4 @@
-use crate::{
-    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
-    effect::Effect,
-    game::PlayerId,
-    state::State,
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct Earthquake {

@@ -1,12 +1,4 @@
-use crate::{
-    card::{
-        AdditionalCost, AvatarBase, Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, UnitBase, Zone,
-    },
-    effect::Effect,
-    game::{ActivatedAbility, Element, PlayerId},
-    query::ZoneQuery,
-    state::{CardQuery, State},
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 struct DealDamageAction;

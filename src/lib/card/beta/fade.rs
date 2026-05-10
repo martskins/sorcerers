@@ -1,9 +1,4 @@
-use crate::{
-    card::{Ability, Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
-    effect::{AbilityCounter, Effect},
-    game::PlayerId,
-    state::{CardQuery, State},
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct Fade {

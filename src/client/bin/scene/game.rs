@@ -19,12 +19,13 @@ use crate::{
 use egui::{Color32, Context, FontId, Painter, Rect, RichText, Ui, pos2, vec2};
 use kira::{AudioManager, DefaultBackend, sound::static_sound::StaticSoundData};
 use sorcerers::{
-    card::{CardData, CardType, Region, Zone},
+    card::{CardData, CardType, Region},
     game::{PlayerId, Resources},
     networking::{
         self,
         message::{ClientMessage, ServerMessage},
     },
+    zone::Zone,
 };
 use std::collections::HashMap;
 

@@ -1,13 +1,4 @@
-use crate::{
-    card::{
-        Aura, AuraBase, Card, CardBase, CardConstructor, Costs, Damage, Edition, Rarity,
-        Zone,
-    },
-    effect::Effect,
-    game::{PlayerId, pick_zone},
-    query::ZoneQuery,
-    state::{CardQuery, State},
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct Wildfire {

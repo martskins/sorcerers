@@ -1,11 +1,4 @@
-use crate::{
-    card::{
-        Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, UnitBase, Zone,
-    },
-    effect::Effect,
-    game::PlayerId,
-    state::State,
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct LandSurveyor {

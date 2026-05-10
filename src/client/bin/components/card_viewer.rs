@@ -7,8 +7,9 @@ use crate::{
 };
 use egui::{Color32, Context, Painter, Rect, Sense, Stroke, Ui, pos2, vec2};
 use sorcerers::{
-    card::{CardData, Zone},
+    card::CardData,
     networking::{client::Client, message::ClientMessage},
+    zone::Zone,
 };
 
 const THUMB_W: f32 = 80.0;

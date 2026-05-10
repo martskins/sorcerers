@@ -1,7 +1,4 @@
-use crate::{
-    card::{Region, Zone},
-    state::State,
-};
+use crate::{card::Region, state::State, zone::Zone};
 
 #[tokio::test]
 async fn test_get_nearby_locations() {

@@ -1,10 +1,4 @@
-use crate::{
-    card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity,
-        UnitBase, Zone,
-    },
-    game::PlayerId,
-};
+use crate::prelude::*;
 
 /// **Daperyll Vampire** — Exceptional Minion (5 cost, 4/4)
 ///

@@ -1,12 +1,4 @@
-use crate::{
-    card::{
-        Ability, AreaModifiers, Aura, AuraBase, Card, CardBase, CardConstructor, Costs, Edition,
-        Rarity, Zone,
-    },
-    effect::Effect,
-    game::PlayerId,
-    state::{CardQuery, State},
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct EntangleTerrain {

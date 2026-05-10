@@ -1,8 +1,9 @@
 use crate::{
-    card::{Card, CardData, CardType, Zone},
+    card::{Card, CardData, CardType},
     deck::{Deck, DeckList, precon::PreconDeck},
     evaluation::Evaluation,
     game::{Direction, PlayerId, Resources, SoundEffect},
+    zone::Zone,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

@@ -1,12 +1,4 @@
-use crate::{
-    card::{
-        Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase,
-        SiteType, Zone,
-    },
-    effect::Effect,
-    game::{PlayerId, Thresholds, pick_card_with_preview},
-    state::State,
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct Observatory {

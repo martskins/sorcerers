@@ -1,9 +1,4 @@
-use crate::{
-    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
-    effect::{Effect, TokenType},
-    game::PlayerId,
-    state::State,
-};
+use crate::prelude::*;
 
 /// **Plague of Frogs** — Unique Magic (1 cost, WWW threshold)
 ///

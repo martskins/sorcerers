@@ -1,15 +1,6 @@
 use std::sync::Arc;
 
-use crate::{
-    card::{
-        Card, CardBase, CardConstructor, Costs, Damage, Edition, MinionType, Rarity,
-        UnitBase, Zone,
-    },
-    effect::Effect,
-    game::PlayerId,
-    query::EffectQuery,
-    state::{DeferredEffect, State},
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct BridgeTroll {

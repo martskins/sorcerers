@@ -179,19 +179,19 @@ impl Server {
         let card = sorcerers::card::from_name_and_zone(
             AramosMercenaries::NAME,
             &player_one,
-            sorcerers::card::Zone::Cemetery,
+            sorcerers::zone::Zone::Cemetery,
         );
         game.state.cards.insert(*card.get_id(), card);
         let card = sorcerers::card::from_name_and_zone(
             ApprenticeWizard::NAME,
             &player_one,
-            sorcerers::card::Zone::Cemetery,
+            sorcerers::zone::Zone::Cemetery,
         );
         game.state.cards.insert(*card.get_id(), card);
         let card = sorcerers::card::from_name_and_zone(
             CaptainBaldassare::NAME,
             &player_one,
-            sorcerers::card::Zone::Realm(8, sorcerers::card::Region::Surface),
+            sorcerers::zone::Zone::Realm(8, sorcerers::card::Region::Surface),
         );
         game.state.cards.insert(*card.get_id(), card);
 
@@ -199,80 +199,80 @@ impl Server {
         let card = sorcerers::card::from_name_and_zone(
             "Scarecrow",
             &player_one,
-            sorcerers::card::Zone::Hand,
+            sorcerers::zone::Zone::Hand,
         );
         game.state.cards.insert(*card.get_id(), card);
         let card = sorcerers::card::from_name_and_zone(
             SummerRiver::NAME,
             &player_one,
-            sorcerers::card::Zone::Realm(3, sorcerers::card::Region::Surface),
+            sorcerers::zone::Zone::Realm(3, sorcerers::card::Region::Surface),
         );
         game.state.cards.insert(*card.get_id(), card);
         let card = sorcerers::card::from_name_and_zone(
             SummerRiver::NAME,
             &player_one,
-            sorcerers::card::Zone::Realm(9, sorcerers::card::Region::Surface),
+            sorcerers::zone::Zone::Realm(9, sorcerers::card::Region::Surface),
         );
         game.state.cards.insert(*card.get_id(), card);
         let card = sorcerers::card::from_name_and_zone(
             SummerRiver::NAME,
             &player_one,
-            sorcerers::card::Zone::Realm(4, sorcerers::card::Region::Surface),
+            sorcerers::zone::Zone::Realm(4, sorcerers::card::Region::Surface),
         );
         game.state.cards.insert(*card.get_id(), card);
         let card = sorcerers::card::from_name_and_zone(
             SummerRiver::NAME,
             &player_one,
-            sorcerers::card::Zone::Realm(6, sorcerers::card::Region::Surface),
+            sorcerers::zone::Zone::Realm(6, sorcerers::card::Region::Surface),
         );
         game.state.cards.insert(*card.get_id(), card);
         let card = sorcerers::card::from_name_and_zone(
             SummerRiver::NAME,
             &player_one,
-            sorcerers::card::Zone::Realm(7, sorcerers::card::Region::Surface),
+            sorcerers::zone::Zone::Realm(7, sorcerers::card::Region::Surface),
         );
         game.state.cards.insert(*card.get_id(), card);
         let card = sorcerers::card::from_name_and_zone(
             SummerRiver::NAME,
             &player_one,
-            sorcerers::card::Zone::Realm(2, sorcerers::card::Region::Surface),
+            sorcerers::zone::Zone::Realm(2, sorcerers::card::Region::Surface),
         );
         game.state.cards.insert(*card.get_id(), card);
         let card = sorcerers::card::from_name_and_zone(
             AridDesert::NAME,
             &player_one,
-            sorcerers::card::Zone::Realm(8, sorcerers::card::Region::Surface),
+            sorcerers::zone::Zone::Realm(8, sorcerers::card::Region::Surface),
         );
         game.state.cards.insert(*card.get_id(), card);
 
         let kite_archer = sorcerers::card::from_name_and_zone(
             "Kite Archer",
             &player_one,
-            sorcerers::card::Zone::Realm(8, sorcerers::card::Region::Surface),
+            sorcerers::zone::Zone::Realm(8, sorcerers::card::Region::Surface),
         );
         game.state.cards.insert(*kite_archer.get_id(), kite_archer);
         let card = sorcerers::card::from_name_and_zone(
             AridDesert::NAME,
             &player_two,
-            sorcerers::card::Zone::Realm(13, sorcerers::card::Region::Surface),
+            sorcerers::zone::Zone::Realm(13, sorcerers::card::Region::Surface),
         );
         game.state.cards.insert(*card.get_id(), card);
         let card = sorcerers::card::from_name_and_zone(
             AridDesert::NAME,
             &player_two,
-            sorcerers::card::Zone::Realm(18, sorcerers::card::Region::Surface),
+            sorcerers::zone::Zone::Realm(18, sorcerers::card::Region::Surface),
         );
         game.state.cards.insert(*card.get_id(), card);
         let card = sorcerers::card::from_name_and_zone(
             "Ultimate Horror",
             &player_two,
-            sorcerers::card::Zone::Realm(3, sorcerers::card::Region::Surface),
+            sorcerers::zone::Zone::Realm(3, sorcerers::card::Region::Surface),
         );
         game.state.cards.insert(*card.get_id(), card);
         let card = sorcerers::card::from_name_and_zone(
             FelbogFrogMen::NAME,
             &player_one,
-            sorcerers::card::Zone::Realm(13, sorcerers::card::Region::Surface),
+            sorcerers::zone::Zone::Realm(13, sorcerers::card::Region::Surface),
         );
         game.state.cards.insert(*card.get_id(), card);
         let player_mana = game.state.get_player_mana_mut(&player_one);

@@ -1,9 +1,10 @@
 use crate::{
     card::{
         Ability, AdditionalCost, ApprenticeWizard, AridDesert, Card, Cost, OgreGoons, Region,
-        RimlandNomads, Zone,
+        RimlandNomads,
     },
     state::{CardQuery, State},
+    zone::Zone,
 };
 
 #[test]

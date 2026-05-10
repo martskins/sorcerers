@@ -11,9 +11,10 @@ use egui::{
 };
 use rand::SeedableRng;
 use sorcerers::{
-    card::{CardData, CardType, Zone},
+    card::{CardData, CardType},
     game::PlayerId,
     networking::{self, message::ClientMessage},
+    zone::Zone,
 };
 
 static OCCUPIED_ZONE_BACKGROUND_COLOR: Color32 =

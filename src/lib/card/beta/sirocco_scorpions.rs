@@ -1,10 +1,4 @@
-use crate::{
-    card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity,
-        UnitBase, Zone,
-    },
-    game::PlayerId,
-};
+use crate::prelude::*;
 
 /// **Sirocco Scorpions** — Ordinary Minion (2 cost, 2/2)
 ///

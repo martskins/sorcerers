@@ -1,8 +1,9 @@
 use crate::{
-    card::{Region, Zone},
+    card::Region,
     effect::Effect,
     game::{PlayerId, pick_zone},
     state::{CardQuery, State},
+    zone::Zone,
 };
 use rand::seq::IndexedRandom;
 use std::{

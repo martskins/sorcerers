@@ -1,13 +1,4 @@
-use crate::{
-    card::{
-        Ability, AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Damage, Edition,
-        MinionType, Rarity, UnitBase, Zone,
-    },
-    effect::Effect,
-    game::{ActivatedAbility, PlayerId, pick_card},
-    query::ZoneQuery,
-    state::{CardQuery, State},
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 struct ThrowArtifactAbility;

@@ -1,10 +1,4 @@
-use crate::{
-    card::{
-        Card, CardBase, CardBaseMethods, CardConstructor, Costs, Edition, MinionType, Rarity, UnitBase, Zone,
-    },
-    game::{Direction, PlayerId},
-    state::State,
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct DalceanPhalanx {

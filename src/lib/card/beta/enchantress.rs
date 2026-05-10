@@ -1,10 +1,4 @@
-use crate::{
-    card::{
-        AvatarBase, Card, CardBase, CardConstructor, Costs, Edition, Rarity, UnitBase, Zone,
-    },
-    game::PlayerId,
-    state::{ContinuousEffect, State},
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct Enchantress {

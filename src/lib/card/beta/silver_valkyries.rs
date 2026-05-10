@@ -1,12 +1,4 @@
-use crate::{
-    card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity,
-        UnitBase, Zone,
-    },
-    effect::Effect,
-    game::PlayerId,
-    state::{CardQuery, State},
-};
+use crate::prelude::*;
 
 /// **Silver Valkyries** — Elite Minion (6 cost, 4/4)
 ///

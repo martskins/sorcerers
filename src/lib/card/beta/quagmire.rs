@@ -1,13 +1,4 @@
-use crate::{
-    card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site,
-        SiteBase, Zone,
-    },
-    effect::{AbilityCounter, Effect},
-    game::{PlayerId, Thresholds},
-    query::EffectQuery,
-    state::{CardQuery, State},
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct Quagmire {

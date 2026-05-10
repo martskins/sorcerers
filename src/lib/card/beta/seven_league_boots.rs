@@ -1,11 +1,4 @@
-use crate::{
-    card::{
-        Ability, Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs,
-        Edition, Rarity, Zone,
-    },
-    game::PlayerId,
-    state::{ContinuousEffect, State},
-};
+use crate::prelude::*;
 
 /// **Seven-League Boots** — Unique Artifact (Armor, 3 cost)
 ///

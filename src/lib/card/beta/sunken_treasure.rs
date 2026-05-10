@@ -1,12 +1,4 @@
-use crate::{
-    card::{
-        Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs, Edition,
-        Rarity, Region, Zone,
-    },
-    effect::Effect,
-    game::PlayerId,
-    state::{CardQuery, State},
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct SunkenTreasure {

@@ -1,11 +1,4 @@
-use crate::{
-    card::{
-        Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, UnitBase, Zone,
-    },
-    effect::Effect,
-    game::PlayerId,
-    state::{CardQuery, ContinuousEffect, State},
-};
+use crate::prelude::*;
 
 /// Tracks how many more turns the controller-swap effect is active.
 #[derive(Debug, Clone, Default)]

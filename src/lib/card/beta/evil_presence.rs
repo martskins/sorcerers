@@ -1,15 +1,6 @@
 use std::sync::Arc;
 
-use crate::{
-    card::{
-        Ability, Aura, AuraBase, Card, CardBase, CardConstructor, Costs, Edition, MinionType,
-        Rarity, Region, Zone,
-    },
-    effect::{AbilityCounter, Effect},
-    game::PlayerId,
-    query::{EffectQuery, ZoneQuery},
-    state::{CardQuery, ContinuousEffect, DeferredEffect, State},
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct EvilPresence {

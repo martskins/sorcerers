@@ -1,13 +1,4 @@
-use crate::{
-    card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region,
-        UnitBase, Zone,
-    },
-    effect::Effect,
-    game::{PlayerId, yes_or_no},
-    query::ZoneQuery,
-    state::{CardQuery, State},
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct LordOfTheVoid {

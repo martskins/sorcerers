@@ -1,12 +1,4 @@
-use crate::{
-    card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity,
-        UnitBase, Zone,
-    },
-    effect::Effect,
-    game::{ActivatedAbility, PlayerId, pick_zone_near},
-    state::{CardQuery, State},
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 struct AdeptIllusionistAction;
@@ -35,7 +27,7 @@ impl ActivatedAbility for AdeptIllusionistAction {
         };
 
         let card = state.get_card(card_id);
-        let zone = pick_zone_near(
+        let zone: Zone = pick_zone_near(
             player_id,
             card.get_zone(),
             state,

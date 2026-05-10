@@ -1,12 +1,4 @@
-use crate::{
-    card::{
-        AdditionalCost, Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor,
-        Cost, Costs, Edition, Rarity, Zone,
-    },
-    effect::Effect,
-    game::{ActivatedAbility, PlayerId},
-    state::{CardQuery, State},
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 struct SpearStrike;

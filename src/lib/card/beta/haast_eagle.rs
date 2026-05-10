@@ -1,12 +1,4 @@
-use crate::{
-    card::{
-        Ability, AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Edition, MinionType,
-        Rarity, UnitBase, Zone,
-    },
-    effect::Effect,
-    game::{ActivatedAbility, PlayerId, UnitAction, pick_cards},
-    state::State,
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 struct PickUpWeakerMinion;

@@ -1,9 +1,4 @@
-use crate::{
-    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
-    effect::Effect,
-    game::PlayerId,
-    state::{CardQuery, State},
-};
+use crate::prelude::*;
 
 /// **Disintegrate** — Elite Fire Magic (3 cost, FF threshold)
 ///

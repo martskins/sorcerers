@@ -1,11 +1,4 @@
-use crate::{
-    card::{
-        Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs, Edition,
-        Rarity, ResourceProvider, Zone,
-    },
-    game::{PlayerId, Thresholds},
-    state::State,
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct RubyCore {

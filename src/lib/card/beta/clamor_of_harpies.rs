@@ -1,13 +1,4 @@
-use crate::{
-    card::{
-        Card, CardBase, CardConstructor, Costs, Damage, Edition, MinionType, Rarity,
-        UnitBase, Zone,
-    },
-    effect::Effect,
-    game::{ActivatedAbility, PlayerId, pick_action, pick_card},
-    query::ZoneQuery,
-    state::State,
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone, PartialEq)]
 enum ClamorOfHarpiesAction {

@@ -1,9 +1,4 @@
-use crate::{
-    card::{Card, CardBase, CardConstructor, Cost, Costs, Damage, Edition, Rarity, Zone},
-    effect::Effect,
-    game::PlayerId,
-    state::State,
-};
+use crate::prelude::*;
 
 /// **Pact with the Devil** — Unique Magic (4 cost, FF threshold)
 ///

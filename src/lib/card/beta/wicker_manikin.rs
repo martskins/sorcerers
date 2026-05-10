@@ -1,11 +1,4 @@
-use crate::{
-    card::{
-        Ability, AreaModifiers, Artifact, ArtifactBase, ArtifactType, Card, CardBase,
-        CardConstructor, Costs, Edition, Rarity, Zone,
-    },
-    game::{Element, PlayerId},
-    state::{CardQuery, State},
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct WickerManikin {

@@ -1,12 +1,4 @@
-use crate::{
-    card::{
-        Card, CardBase, CardConstructor, Costs, Damage, Edition, Rarity, ResourceProvider, Site,
-        SiteBase, SiteType, Zone,
-    },
-    effect::Effect,
-    game::{PlayerId, Thresholds},
-    state::{CardQuery, State},
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct RedDesert {

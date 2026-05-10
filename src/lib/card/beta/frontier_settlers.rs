@@ -1,12 +1,4 @@
-use crate::{
-    card::{
-        AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Edition, MinionType, Rarity,
-        Region, Rubble, UnitBase, Zone,
-    },
-    effect::Effect,
-    game::{ActivatedAbility, PlayerId, pick_zone},
-    state::State,
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 struct SettleAction;

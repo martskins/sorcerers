@@ -1,13 +1,4 @@
-use crate::{
-    card::{
-        Ability, Card, CardBase, CardConstructor, Cost, Costs, Edition, MinionType, Rarity,
-        UnitBase, Zone,
-    },
-    effect::{Counter, Effect},
-    game::{ActivatedAbility, PlayerId},
-    query::EffectQuery,
-    state::State,
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 struct VrilRevenantAbility;

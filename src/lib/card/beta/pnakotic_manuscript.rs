@@ -1,12 +1,4 @@
-use crate::{
-    card::{
-        AdditionalCost, Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor,
-        Cost, Costs, Damage, Edition, Rarity, Zone,
-    },
-    effect::Effect,
-    game::{ActivatedAbility, PlayerId, reveal_cards},
-    state::State,
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 struct ReadManuscript;

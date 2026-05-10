@@ -1,12 +1,4 @@
-use crate::{
-    card::{
-        Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site, SiteBase,
-        Zone,
-    },
-    effect::Effect,
-    game::{ActivatedAbility, PlayerId, Thresholds},
-    state::{CardQuery, State},
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 struct DestroyNearbySite;

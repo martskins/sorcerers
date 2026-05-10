@@ -1,15 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{
-    card::{
-        Ability, AreaModifiers, Artifact, ArtifactBase, ArtifactType, Card, CardBase,
-        CardConstructor, Costs, Edition, Rarity, Zone,
-    },
-    effect::Effect,
-    game::{Element, PlayerId, pick_card},
-    query::ZoneQuery,
-    state::{CardQuery, State},
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct MagneticMuzzle {

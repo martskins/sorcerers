@@ -1,11 +1,4 @@
-use crate::{
-    card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Damage, Edition, MinionType, Rarity, UnitBase, Zone,
-    },
-    effect::Effect,
-    game::PlayerId,
-    state::State,
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct SacredScarabs {

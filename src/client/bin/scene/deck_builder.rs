@@ -3,13 +3,15 @@ use egui::{
     Color32, Context, CornerRadius, Frame, Rect, ScrollArea, Sense, Stroke, StrokeKind, Ui, pos2,
     vec2,
 };
+use sorcerers::card::{CardData, Edition, Region};
 use sorcerers::deck::precon::PreconDeck;
 use sorcerers::deck::{CardNameWithCount, DeckList};
 use sorcerers::game::PlayerId;
 use sorcerers::{
-    card::{ALL_CARDS, CardType, Rarity, Zone},
+    card::{ALL_CARDS, CardType, Rarity},
     game::{Element, Thresholds},
     networking,
+    zone::Zone,
 };
 use std::collections::HashMap;
 use unidecode::unidecode;
@@ -74,7 +76,6 @@ impl CardEntry {
 
     /// Fake CardData just for texture key + path.
     fn as_card_data(&self) -> sorcerers::card::CardData {
-        use sorcerers::card::{CardData, Edition, Region, Zone};
         CardData {
             id: uuid::Uuid::nil(),
             name: self.name.clone(),

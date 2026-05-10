@@ -2,8 +2,8 @@ use egui::epaint::CornerRadius;
 use egui::{Color32, Context, Painter, Rect, Stroke, Ui, pos2, vec2};
 use sorcerers::game::PlayerId;
 use sorcerers::{
-    card::Zone,
     game::{Element, Resources, Thresholds},
+    zone::Zone,
 };
 
 use crate::{

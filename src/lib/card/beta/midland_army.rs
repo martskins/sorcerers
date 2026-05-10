@@ -1,12 +1,4 @@
-use crate::{
-    card::{
-        AdditionalCost, Card, CardBase, CardConstructor, Cost, Costs, Damage, Edition, MinionType,
-        Rarity, UnitBase, Zone,
-    },
-    effect::{Effect, TokenType},
-    game::{ActivatedAbility, PlayerId, pick_zone},
-    state::State,
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 struct ArtilleryBarrage;

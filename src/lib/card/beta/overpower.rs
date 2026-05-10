@@ -1,10 +1,4 @@
-use crate::{
-    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
-    effect::{Counter, Effect},
-    game::{PlayerId, pick_card},
-    query::EffectQuery,
-    state::State,
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct Overpower {

@@ -1,12 +1,4 @@
-use crate::{
-    card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, UnitBase,
-        Zone,
-    },
-    effect::Effect,
-    game::{PlayerId, pick_zone},
-    state::{CardQuery, State},
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct UltimateHorror {

@@ -4,11 +4,7 @@
 //! player's perspective so that AI agents (and debug displays) can tell who is
 //! ahead and by how much.
 
-use crate::{
-    card::{CardType, Zone},
-    game::PlayerId,
-    state::State,
-};
+use crate::{card::CardType, game::PlayerId, state::State, zone::Zone};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

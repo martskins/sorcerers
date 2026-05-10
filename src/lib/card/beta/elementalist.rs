@@ -1,11 +1,4 @@
-use crate::{
-    card::{
-        AvatarBase, Card, CardBase, CardConstructor, Costs, Edition, Rarity,
-        ResourceProvider, UnitBase, Zone,
-    },
-    game::{PlayerId, Thresholds},
-    state::State,
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct Elementalist {

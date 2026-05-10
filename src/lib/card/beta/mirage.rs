@@ -1,13 +1,4 @@
-use crate::{
-    card::{
-        Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, ResourceProvider, Site,
-        SiteBase, Zone,
-    },
-    effect::Effect,
-    game::{PlayerId, Thresholds, pick_card, pick_zone, yes_or_no},
-    query::ZoneQuery,
-    state::{CardQuery, State},
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct Mirage {

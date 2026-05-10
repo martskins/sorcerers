@@ -1,12 +1,4 @@
-use crate::{
-    card::{
-        Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs, Edition,
-        Rarity, Zone,
-    },
-    effect::Effect,
-    game::PlayerId,
-    state::State,
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct AngelsEgg {
@@ -67,7 +59,7 @@ impl Card for AngelsEgg {
     }
 
     async fn on_turn_end(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        let site = match self.get_zone().get_site(state) {
+        let site: &dyn Site = match self.get_zone().get_site(state) {
             Some(site) => site,
             None => return Ok(vec![]),
         };

@@ -1,13 +1,4 @@
-use crate::{
-    card::{
-        Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, ResourceProvider, Site,
-        SiteBase, Zone,
-    },
-    effect::Effect,
-    game::{ActivatedAbility, PlayerId, Thresholds},
-    query::EffectQuery,
-    state::{CardQuery, State, TemporaryEffect},
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 struct FloodAdjacentSite;

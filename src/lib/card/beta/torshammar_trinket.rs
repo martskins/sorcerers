@@ -1,13 +1,4 @@
-use crate::{
-    card::{
-        Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs, Edition,
-        Rarity, Region, Zone,
-    },
-    effect::Effect,
-    game::PlayerId,
-    query::ZoneQuery,
-    state::{ContinuousEffect, State},
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct TorshammarTrinket {

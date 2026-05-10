@@ -1,10 +1,4 @@
-use crate::{
-    card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity,
-        UnitBase, Zone,
-    },
-    game::{Element, PlayerId},
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct LavaSalamander {

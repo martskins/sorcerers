@@ -1,10 +1,4 @@
-use crate::{
-    card::{Card, CardBase, CardConstructor, CardType, Cost, Costs, Edition, Rarity, Region, Zone},
-    effect::Effect,
-    game::{PlayerId, pick_zone_group},
-    query::EffectQuery,
-    state::{CardQuery, State, TemporaryEffect},
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct WrathOfTheSea {

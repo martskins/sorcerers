@@ -1,11 +1,4 @@
-use crate::{
-    card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, Region,
-        UnitBase, Zone,
-    },
-    game::PlayerId,
-    state::{CardQuery, ContinuousEffect, State},
-};
+use crate::prelude::*;
 
 /// **Root Spider** — Exceptional Minion (3 cost, 2/1)
 ///

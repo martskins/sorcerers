@@ -1,12 +1,4 @@
-use crate::{
-    card::{
-        Ability, Artifact, ArtifactBase, ArtifactType, Card, CardBase, CardConstructor, Costs,
-        Edition, Rarity, Zone,
-    },
-    effect::Effect,
-    game::PlayerId,
-    state::{CardQuery, ContinuousEffect, State},
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct Scarecrow {
@@ -72,7 +64,6 @@ impl Card for Scarecrow {
     }
 
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        use crate::card::Ability;
 
         let zone = self.get_zone();
         if !zone.is_in_play() {

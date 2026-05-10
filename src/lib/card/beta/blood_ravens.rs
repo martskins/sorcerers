@@ -1,15 +1,5 @@
-use crate::{
-    card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity,
-        UnitBase, Zone,
-    },
-    game::PlayerId,
-};
+use crate::prelude::*;
 
-/// **Blood Ravens** — Ordinary Air Minion (1 cost, 1/1)
-///
-/// Airborne
-/// Blood Ravens' strike damage against units heals you.
 #[derive(Debug, Clone)]
 pub struct BloodRavens {
     unit_base: UnitBase,

@@ -1,13 +1,14 @@
 use crate::{
     card::{
         Ability, ApprenticeWizard, AridDesert, Card, Enchantress, FootSoldier, OgreGoons, Region,
-        SeaRaider, Zone, from_name_and_zone,
+        SeaRaider, from_name_and_zone,
     },
     deck::Deck,
     effect::{Effect, TokenType},
     networking::message::ServerMessage,
     query::{QueryCache, ZoneQuery},
     state::{Player, PlayerWithDeck, State},
+    zone::Zone,
 };
 
 /// Creates a test state with proper avatar cards and a live server-message receiver so

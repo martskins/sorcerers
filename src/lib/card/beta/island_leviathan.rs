@@ -1,12 +1,4 @@
-use crate::{
-    card::{
-        Card, CardBase, CardConstructor, Cost, Costs, Edition, MinionType, Rarity,
-        ResourceProvider, Site, SiteBase, UnitBase, Zone,
-    },
-    effect::{Effect, TokenType},
-    game::{ActivatedAbility, PlayerId, Thresholds},
-    state::State,
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 struct TransformIntoAMonster;

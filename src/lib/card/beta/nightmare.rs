@@ -1,12 +1,4 @@
-use crate::{
-    card::{
-        Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, UnitBase, Zone,
-    },
-    effect::Effect,
-    game::{PlayerId, pick_zone, yes_or_no},
-    query::ZoneQuery,
-    state::{CardQuery, State},
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct Nightmare {
