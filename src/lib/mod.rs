@@ -8,6 +8,7 @@ pub mod game;
 pub mod networking;
 pub mod query;
 pub mod state;
+pub mod zone;
 
 #[cfg(test)]
 mod effect_test;
