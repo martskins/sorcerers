@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardConstructor, Cost, Costs, Damage, Edition, Rarity, Region, Zone},
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Damage, Edition, Rarity, Zone},
     effect::Effect,
     game::PlayerId,
     state::{CardQuery, State},
@@ -57,7 +57,7 @@ impl Card for RainOfArrows {
     ) -> anyhow::Result<Vec<Effect>> {
         let effects = CardQuery::new()
             .minions()
-            .in_region(&Region::Surface)
+            .in_zones(&Zone::all_in_surface())
             .all(state)
             .into_iter()
             .map(|minion_id| Effect::TakeDamage {

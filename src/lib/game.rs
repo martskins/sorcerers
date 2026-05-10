@@ -796,7 +796,9 @@ pub fn get_nearby_zones(zone: &Zone) -> Vec<Zone> {
                 ],
             };
             adjacent.extend(diagonals);
+            adjacent.retain(|s| s.get_square().unwrap_or(0) > 0);
             adjacent.retain(|s| s.get_square().unwrap_or(0) <= 20);
+            adjacent.dedup();
             adjacent
         }
         Zone::Intersection(sqs, _) => {

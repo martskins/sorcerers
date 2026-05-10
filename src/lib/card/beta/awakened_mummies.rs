@@ -53,11 +53,8 @@ impl AwakenedMummies {
 
         Ok(DeferredEffect {
             trigger_on_effect: EffectQuery::EnterZone {
-                card: CardQuery::new()
-                    .units()
-                    .in_region(&Region::Surface)
-                    .controlled_by(&opponent_id),
-                zone: ZoneQuery::from_zone(zone),
+                card: CardQuery::new().units().controlled_by(&opponent_id),
+                zone: ZoneQuery::from_zone(zone.with_region(Region::Surface)),
             },
             expires_on_effect: Some(EffectQuery::BuryCard {
                 card: self.get_id().into(),

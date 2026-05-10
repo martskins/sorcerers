@@ -54,7 +54,6 @@ impl Site for MountainPass {
         let minions_atop = CardQuery::new()
             .minions()
             .in_zone(self.get_zone())
-            .in_region(&Region::Surface)
             .all(state)
             .len();
         let card = state.get_card(card_id);

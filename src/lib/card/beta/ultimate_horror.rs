@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity,
-        UnitBase, Zone,
+        Ability, Card, CardBase, CardConstructor, Costs, Edition, MinionType, Rarity, UnitBase,
+        Zone,
     },
     effect::Effect,
     game::{PlayerId, pick_zone},
@@ -66,7 +66,8 @@ impl Card for UltimateHorror {
 
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        let nearby_zones = self.get_zone().get_nearby();
+        let mut nearby_zones = self.get_zone().get_nearby_sites(state);
+        nearby_zones.extend(self.get_zone().get_nearby_voids(state));
         let dead_voidwalkers = CardQuery::new()
             .minions()
             .dead()

@@ -250,7 +250,7 @@ async fn test_conferred_abilities() {
 
 #[test]
 fn test_inteceptors() {
-    let mut state = State::new_mock_state(Zone::all_realm());
+    let mut state = State::new_mock_state(Vec::from_iter(1..=20));
     let player_id = state.players[0].id;
     let mut rimland_nomads = RimlandNomads::new(player_id);
     rimland_nomads.set_zone(Zone::Realm(8, Region::Surface));
@@ -277,7 +277,7 @@ fn test_inteceptors() {
 
 #[test]
 fn test_no_inteceptors() {
-    let mut state = State::new_mock_state(Zone::all_realm());
+    let mut state = State::new_mock_state(Vec::from_iter(1..=20));
     let player_id = state.players[0].id;
     let mut rimland_nomads = RimlandNomads::new(player_id);
     rimland_nomads.set_zone(Zone::Realm(8, Region::Surface));
@@ -303,11 +303,7 @@ fn test_no_inteceptors() {
 
 #[test]
 fn test_voidwalking_interceptor() {
-    let mut state = State::new_mock_state(vec![
-        Zone::Realm(8, Region::Surface),
-        Zone::Realm(13, Region::Surface),
-        Zone::Realm(18, Region::Surface),
-    ]);
+    let mut state = State::new_mock_state(vec![8, 13, 18]);
     let player_id = state.players[0].id;
     let mut rimland_nomads = RimlandNomads::new(player_id);
     rimland_nomads.set_zone(Zone::Realm(8, Region::Surface));
@@ -333,7 +329,7 @@ fn test_voidwalking_interceptor() {
 
 #[test]
 fn test_airborne_interceptor() {
-    let mut state = State::new_mock_state(Zone::all_realm());
+    let mut state = State::new_mock_state(Vec::from_iter(1..=20));
     let player_id = state.players[0].id;
     let mut rimland_nomads = RimlandNomads::new(player_id);
     rimland_nomads.set_zone(Zone::Realm(8, Region::Surface));
@@ -359,7 +355,7 @@ fn test_airborne_interceptor() {
 
 #[tokio::test]
 async fn test_get_effective_costs_donnybrook_inn() {
-    let mut state = State::new_mock_state(vec![Zone::Realm(8, Region::Surface)]);
+    let mut state = State::new_mock_state(vec![8]);
     let player_id = state.players[0].id;
     let mut donnybrook_inn = DonnybrookInn::new(player_id);
     donnybrook_inn.set_zone(Zone::Realm(3, Region::Surface));
@@ -391,7 +387,7 @@ async fn test_get_effective_costs_donnybrook_inn() {
 
 #[tokio::test]
 async fn test_get_effective_costs_ignoring_thresholds() {
-    let mut state = State::new_mock_state(vec![Zone::Realm(8, Region::Surface)]);
+    let mut state = State::new_mock_state(vec![8]);
     let player_id = state.players[0].id;
 
     let mut cauldron_crones = CauldronCrones::new(player_id);
@@ -420,4 +416,65 @@ async fn test_get_effective_costs_ignoring_thresholds() {
         .unwrap();
     assert_eq!(costs.mana_value(), 3);
     assert_eq!(costs.thresholds_cost(), &Thresholds::ZERO);
+}
+
+#[test]
+fn test_state_aware_nearby_locations_do_not_create_surface_void_locations() {
+    let state = State::new_mock_state(vec![8, 9]);
+
+    let source = Zone::Realm(8, Region::Surface);
+
+    assert!(
+        source
+            .get_adjacent_locations(&state)
+            .contains(&Zone::Realm(9, Region::Surface))
+    );
+    assert!(
+        !source
+            .get_adjacent_locations(&state)
+            .contains(&Zone::Realm(13, Region::Surface))
+    );
+    assert!(
+        source
+            .get_adjacent_voids(&state)
+            .contains(&Zone::Realm(13, Region::Void))
+    );
+    assert!(
+        !source
+            .get_adjacent_voids(&state)
+            .contains(&Zone::Realm(9, Region::Void))
+    );
+}
+
+#[test]
+fn test_adjacent_sites_cross_region_boundaries() {
+    let state = State::new_mock_state(vec![8]);
+
+    let source = Zone::Realm(13, Region::Void);
+
+    assert!(
+        !source
+            .get_adjacent_locations(&state)
+            .contains(&Zone::Realm(8, Region::Surface))
+    );
+    assert!(
+        source
+            .get_adjacent_sites(&state)
+            .contains(&Zone::Realm(8, Region::Surface))
+    );
+}
+
+#[test]
+fn test_card_query_spatial_filters_resolve_with_current_state() {
+    let mut state = State::new_mock_state(vec![]);
+    let player_id = state.players[0].id;
+    let source = Zone::Realm(13, Region::Void);
+    let query = CardQuery::new().sites().adjacent_sites_to(&source);
+
+    let mut site = AridDesert::new(player_id);
+    site.set_zone(Zone::Realm(8, Region::Surface));
+    let site_id = *site.get_id();
+    state.cards.insert(site_id, Box::new(site));
+
+    assert!(query.matches(&site_id, &state));
 }

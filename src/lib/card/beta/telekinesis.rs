@@ -59,12 +59,10 @@ impl Card for Telekinesis {
         let controller_id = self.get_controller_id(state);
         let caster = state.get_card(caster_id);
         let caster_zone = caster.get_zone().clone();
-        let caster_region = caster.get_region(state).clone();
 
         let carryable_artifacts: Vec<uuid::Uuid> = crate::state::CardQuery::new()
             .artifacts()
             .near_to(&caster_zone)
-            .in_region(&caster_region)
             .all(state)
             .into_iter()
             .filter(|artifact_id| {

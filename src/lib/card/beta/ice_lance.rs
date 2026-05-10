@@ -73,7 +73,6 @@ impl Card for IceLance {
                     .in_zone(&zone)
                     .units()
                     .id_not_in(vec![*caster_id])
-                    .in_region(caster.get_region(state))
                     .with_prompt("Pick a unit to damage with Ice Lance");
 
                 if let Some(card_id) = qry.pick(&controller_id, state, false).await? {

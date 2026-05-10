@@ -83,7 +83,7 @@ impl Card for LordOfTheVoid {
         let my_zone = self.get_zone().clone();
         let candidate_sites: Vec<uuid::Uuid> = CardQuery::new()
             .sites()
-            .near_to(&my_zone)
+            .adjacent_sites_to(&my_zone)
             .all(state)
             .into_iter()
             .filter(|site_id| {

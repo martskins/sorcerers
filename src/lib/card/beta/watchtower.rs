@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        Ability, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region, ResourceProvider,
-        Site, SiteBase, SiteType, Zone,
+        Ability, Card, CardBase, CardConstructor, Costs, Edition, Rarity, ResourceProvider, Site,
+        SiteBase, SiteType, Zone,
     },
     effect::Effect,
     game::{PlayerId, Thresholds},
@@ -87,12 +87,11 @@ impl Card for Watchtower {
         }
 
         let controller_id = self.get_controller_id(state);
-        let nearby_zones = self.get_zone().get_nearby();
+        let nearby_zones = self.get_zone().get_nearby_sites(state);
 
         Ok(CardQuery::new()
             .units()
             .in_zones(&nearby_zones)
-            .in_regions(vec![Region::Surface])
             .with_abilities(vec![Ability::Stealth])
             .all(state)
             .into_iter()

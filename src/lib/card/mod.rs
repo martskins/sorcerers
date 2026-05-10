@@ -343,6 +343,12 @@ impl Zone {
             .collect()
     }
 
+    pub fn all_in_region(region: Region) -> Vec<Zone> {
+        (1..=20)
+            .map(|sq| Zone::Realm(sq, region.clone()))
+            .collect()
+    }
+
     pub fn all_realm() -> Vec<Zone> {
         (1..=20)
             .map(|sq| Zone::Realm(sq, Region::Surface))
@@ -359,6 +365,14 @@ impl Zone {
         match self {
             Zone::Realm(sq, _) => Some(*sq),
             _ => None,
+        }
+    }
+
+    pub fn with_region(&self, region: Region) -> Zone {
+        match self {
+            Zone::Realm(square, _) => Zone::Realm(*square, region),
+            Zone::Intersection(squares, _) => Zone::Intersection(squares.clone(), region),
+            zone => zone.clone(),
         }
     }
 
@@ -380,6 +394,98 @@ impl Zone {
             .in_zone(self)
             .first(state)
             .and_then(|site_id| state.get_card(&site_id).get_site())
+    }
+
+    pub fn get_site_at_square<'a>(&self, state: &'a State) -> Option<&'a dyn Site> {
+        let square = self.get_square()?;
+        state
+            .cards
+            .values()
+            .find(|card| {
+                card.is_site()
+                    && card.get_zone().is_in_play()
+                    && card.get_zone().get_square() == Some(square)
+            })
+            .and_then(|card| card.get_site())
+    }
+
+    pub fn get_nearby_locations(&self, state: &State) -> Vec<Zone> {
+        self.get_nearby()
+            .into_iter()
+            .filter(|zone| zone.is_location(state))
+            .collect()
+    }
+
+    pub fn get_adjacent_locations(&self, state: &State) -> Vec<Zone> {
+        self.get_adjacent()
+            .into_iter()
+            .filter(|zone| zone.is_location(state))
+            .collect()
+    }
+
+    pub fn get_nearby_sites(&self, state: &State) -> Vec<Zone> {
+        self.cross_region_nearby_zones(true)
+            .into_iter()
+            .filter(|zone| zone.get_site(state).is_some())
+            .collect()
+    }
+
+    pub fn get_adjacent_sites(&self, state: &State) -> Vec<Zone> {
+        self.cross_region_nearby_zones(false)
+            .into_iter()
+            .filter(|zone| zone.get_site(state).is_some())
+            .collect()
+    }
+
+    pub fn get_nearby_voids(&self, state: &State) -> Vec<Zone> {
+        self.cross_region_nearby_zones(true)
+            .into_iter()
+            .filter_map(|zone| {
+                let square = zone.get_square()?;
+                let void = Zone::Realm(square, Region::Void);
+                void.is_location(state).then_some(void)
+            })
+            .collect()
+    }
+
+    pub fn get_adjacent_voids(&self, state: &State) -> Vec<Zone> {
+        self.cross_region_nearby_zones(false)
+            .into_iter()
+            .filter_map(|zone| {
+                let square = zone.get_square()?;
+                let void = Zone::Realm(square, Region::Void);
+                void.is_location(state).then_some(void)
+            })
+            .collect()
+    }
+
+    fn cross_region_nearby_zones(&self, include_diagonals: bool) -> Vec<Zone> {
+        let Some(square) = self.get_square() else {
+            return vec![];
+        };
+        let zone = Zone::Realm(square, Region::Surface);
+        if include_diagonals {
+            zone.get_nearby()
+        } else {
+            zone.get_adjacent()
+        }
+    }
+
+    fn is_location(&self, state: &State) -> bool {
+        match self {
+            Zone::Realm(_, Region::Surface) => self.get_site_at_square(state).is_some(),
+            Zone::Realm(_, Region::Void) => self.get_site_at_square(state).is_none(),
+            Zone::Realm(_, Region::Underground) => self
+                .get_site_at_square(state)
+                .is_some_and(|site| site.is_land_site(state).unwrap_or_default()),
+            Zone::Realm(_, Region::Underwater) => self
+                .get_site_at_square(state)
+                .is_some_and(|site| site.is_water_site(state).unwrap_or_default()),
+            Zone::Intersection(squares, region) => squares
+                .iter()
+                .all(|square| Zone::Realm(*square, region.clone()).is_location(state)),
+            _ => false,
+        }
     }
 
     pub fn zone_in_direction(&self, direction: &Direction, steps: u8) -> Option<Self> {
@@ -613,7 +719,9 @@ impl CostType {
                         CostAction::Discard => query = query.in_zone(&Zone::Hand),
                         CostAction::Sacrifice => query = query.in_zones(&Zone::all_realm()),
                         CostAction::Surface => {
-                            query = query.in_regions(vec![Region::Underwater, Region::Underground])
+                            let mut subsurface_zones = Zone::all_in_region(Region::Underwater);
+                            subsurface_zones.extend(Zone::all_in_region(Region::Underground));
+                            query = query.in_zones(&subsurface_zones)
                         }
                     }
 
@@ -703,7 +811,9 @@ impl CostType {
                         CostAction::Discard => query = query.in_zone(&Zone::Hand),
                         CostAction::Sacrifice => query = query.in_zones(&Zone::all_realm()),
                         CostAction::Surface => {
-                            query = query.in_regions(vec![Region::Underwater, Region::Underground])
+                            let mut subsurface_zones = Zone::all_in_region(Region::Underwater);
+                            subsurface_zones.extend(Zone::all_in_region(Region::Underground));
+                            query = query.in_zones(&subsurface_zones)
                         }
                     }
 
@@ -3127,7 +3237,6 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
         let unborne_artifacts: Vec<(uuid::Uuid, String)> = CardQuery::new()
             .artifacts()
             .in_zone(self.get_zone())
-            .in_region(self.get_region(state))
             .iter(state)
             .filter_map(|c| c.get_artifact())
             .filter(|c| c.get_bearer().unwrap_or_default().is_none())
@@ -3153,7 +3262,6 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
                 .minions()
                 .controlled_by(&self.get_controller_id(state))
                 .in_zone(self.get_zone())
-                .in_region(self.get_region(state))
                 .not_carried()
                 .all(state);
             let can_carry_more = carried_minions.len() < n || n == 0;

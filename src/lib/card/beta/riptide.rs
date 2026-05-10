@@ -1,5 +1,5 @@
 use crate::{
-    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Region, Zone},
+    card::{Card, CardBase, CardConstructor, Cost, Costs, Edition, Rarity, Zone},
     effect::Effect,
     game::{Element, PlayerId},
     query::ZoneQuery,
@@ -71,7 +71,6 @@ impl Card for Riptide {
         let Some(picked_unit_id) = CardQuery::new()
             .minions()
             .adjacent_to(site.get_zone())
-            .in_regions(vec![Region::Surface])
             .with_prompt("Riptide: Pick a unit to pull")
             .pick(&controller_id, state, false)
             .await?

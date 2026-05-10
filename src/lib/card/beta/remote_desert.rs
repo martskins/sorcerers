@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        Card, CardBase, CardConstructor, Costs, Damage, Edition, Rarity, Region, ResourceProvider,
-        Site, SiteBase, SiteType, Zone,
+        Card, CardBase, CardConstructor, Costs, Damage, Edition, Rarity, ResourceProvider, Site,
+        SiteBase, SiteType, Zone,
     },
     effect::Effect,
     game::{PlayerId, Thresholds},
@@ -81,7 +81,6 @@ impl Card for RemoteDesert {
         let minions = CardQuery::new()
             .minions()
             .in_zone(site.get_zone())
-            .in_region(&Region::Surface)
             .all(state);
         let mut effects = vec![];
         for minion in minions {

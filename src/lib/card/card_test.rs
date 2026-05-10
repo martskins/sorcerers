@@ -8,7 +8,7 @@ use crate::{
 
 #[test]
 fn test_additional_cost_tap() {
-    let mut state = State::new_mock_state(Zone::all_realm());
+    let mut state = State::new_mock_state(Vec::from_iter(1..=20));
     let player_id = state.players[0].id;
     let cost = Cost::additional_only(AdditionalCost::tap(
         CardQuery::new()
@@ -40,7 +40,7 @@ fn test_additional_cost_tap() {
 
 #[test]
 fn test_additional_cost_two_taps() {
-    let mut state = State::new_mock_state(Zone::all_realm());
+    let mut state = State::new_mock_state(Vec::from_iter(1..=20));
     let player_id = state.players[0].id;
     let cost = Cost::ZERO
         .clone()
@@ -88,7 +88,7 @@ fn test_additional_cost_two_taps() {
 
 #[tokio::test]
 async fn test_get_valid_move_paths_movement_plus_1() {
-    let mut state = State::new_mock_state(Zone::all_realm());
+    let mut state = State::new_mock_state(Vec::from_iter(1..=20));
     let player_id = state.players[0].id;
     let mut card = RimlandNomads::new(player_id);
     card.set_zone(Zone::Realm(8, Region::Surface));
@@ -113,7 +113,7 @@ async fn test_get_valid_move_paths_movement_plus_1() {
 
 #[tokio::test]
 async fn test_get_valid_move_paths_movement_plus_1_airborne() {
-    let mut state = State::new_mock_state(Zone::all_realm());
+    let mut state = State::new_mock_state(Vec::from_iter(1..=20));
     let player_id = state.players[0].id;
     let mut card = RimlandNomads::new(player_id);
     card.set_zone(Zone::Realm(8, Region::Surface));
@@ -143,7 +143,7 @@ async fn test_get_valid_move_paths_movement_plus_1_airborne() {
 
 #[tokio::test]
 async fn test_get_valid_move_paths_movement_plus_2() {
-    let mut state = State::new_mock_state(Zone::all_realm());
+    let mut state = State::new_mock_state(Vec::from_iter(1..=20));
     let player_id = state.players[0].id;
     let mut card = RimlandNomads::new(player_id);
     card.set_zone(Zone::Realm(8, Region::Surface));
@@ -177,7 +177,7 @@ async fn test_get_valid_move_paths_movement_plus_2() {
 
 #[tokio::test]
 async fn test_get_valid_move_zones_basic_movement() {
-    let mut state = State::new_mock_state(Zone::all_realm());
+    let mut state = State::new_mock_state(Vec::from_iter(1..=20));
     let player_id = state.players[0].id;
     let mut card = ApprenticeWizard::new(player_id);
     card.set_zone(Zone::Realm(8, Region::Surface));
@@ -201,7 +201,7 @@ async fn test_get_valid_move_zones_basic_movement() {
 
 #[tokio::test]
 async fn test_get_valid_move_zones_movement_plus_1() {
-    let mut state = State::new_mock_state(Zone::all_realm());
+    let mut state = State::new_mock_state(Vec::from_iter(1..=20));
     let player_id = state.players[0].id;
     let mut card = ApprenticeWizard::new(player_id);
     card.set_zone(Zone::Realm(8, Region::Surface));
@@ -233,12 +233,7 @@ async fn test_get_valid_move_zones_movement_plus_1() {
 
 #[tokio::test]
 async fn test_get_valid_move_zones_basic_movement_with_voids() {
-    let zones_with_sites = vec![
-        Zone::Realm(3, Region::Surface),
-        Zone::Realm(8, Region::Surface),
-        Zone::Realm(9, Region::Surface),
-    ];
-    let mut state = State::new_mock_state(zones_with_sites);
+    let mut state = State::new_mock_state(vec![3, 8, 9]);
     let player_id = state.players[0].id;
     let mut card = ApprenticeWizard::new(player_id);
     card.set_zone(Zone::Realm(8, Region::Surface));
@@ -260,15 +255,7 @@ async fn test_get_valid_move_zones_basic_movement_with_voids() {
 
 #[tokio::test]
 async fn test_get_valid_move_zones_movement_plus_1_with_voids() {
-    let zones_with_sites = vec![
-        Zone::Realm(2, Region::Surface),
-        Zone::Realm(3, Region::Surface),
-        Zone::Realm(4, Region::Surface),
-        Zone::Realm(8, Region::Surface),
-        Zone::Realm(9, Region::Surface),
-        Zone::Realm(12, Region::Surface),
-        Zone::Realm(13, Region::Surface),
-    ];
+    let zones_with_sites = vec![2, 3, 4, 8, 9, 12, 13];
     let mut state = State::new_mock_state(zones_with_sites);
     let player_id = state.players[0].id;
     let mut card = ApprenticeWizard::new(player_id);
@@ -296,11 +283,7 @@ async fn test_get_valid_move_zones_movement_plus_1_with_voids() {
 
 #[tokio::test]
 async fn test_get_valid_move_zones_basic_movement_with_voidwalk() {
-    let zones_with_sites = vec![
-        Zone::Realm(3, Region::Surface),
-        Zone::Realm(8, Region::Surface),
-        Zone::Realm(9, Region::Surface),
-    ];
+    let zones_with_sites = vec![3, 8, 9];
     let mut state = State::new_mock_state(zones_with_sites);
     let player_id = state.players[0].id;
     let mut card = ApprenticeWizard::new(player_id);
@@ -326,7 +309,7 @@ async fn test_get_valid_move_zones_basic_movement_with_voidwalk() {
 
 #[tokio::test]
 async fn test_get_valid_move_zones_airborne() {
-    let mut state = State::new_mock_state(Zone::all_realm());
+    let mut state = State::new_mock_state(Vec::from_iter(1..=20));
     let player_id = state.players[0].id;
     let mut card = ApprenticeWizard::new(player_id);
     card.set_zone(Zone::Realm(8, Region::Surface));
@@ -355,15 +338,7 @@ async fn test_get_valid_move_zones_airborne() {
 
 #[tokio::test]
 async fn test_get_valid_move_zones_airborne_with_voids() {
-    let zones_with_sites = vec![
-        Zone::Realm(2, Region::Surface),
-        Zone::Realm(3, Region::Surface),
-        Zone::Realm(4, Region::Surface),
-        Zone::Realm(8, Region::Surface),
-        Zone::Realm(9, Region::Surface),
-        Zone::Realm(12, Region::Surface),
-        Zone::Realm(13, Region::Surface),
-    ];
+    let zones_with_sites = vec![2, 3, 4, 8, 9, 12, 13];
     let mut state = State::new_mock_state(zones_with_sites);
     let player_id = state.players[0].id;
     let mut card = ApprenticeWizard::new(player_id);
@@ -392,17 +367,7 @@ async fn test_get_valid_move_zones_airborne_with_voids() {
 
 #[tokio::test]
 async fn test_get_valid_move_zones_airborne_and_voidwalk() {
-    let zones_with_sites = vec![
-        Zone::Realm(2, Region::Surface),
-        Zone::Realm(3, Region::Surface),
-        Zone::Realm(4, Region::Surface),
-        Zone::Realm(7, Region::Surface),
-        Zone::Realm(8, Region::Surface),
-        Zone::Realm(9, Region::Surface),
-        Zone::Realm(12, Region::Surface),
-        Zone::Realm(13, Region::Surface),
-        Zone::Realm(14, Region::Surface),
-    ];
+    let zones_with_sites = vec![2, 3, 4, 7, 8, 9, 12, 13, 14];
     let mut state = State::new_mock_state(zones_with_sites);
     let player_id = state.players[0].id;
     let mut card = ApprenticeWizard::new(player_id);
@@ -433,7 +398,7 @@ async fn test_get_valid_move_zones_airborne_and_voidwalk() {
 
 #[test]
 fn test_get_valid_play_zones_site_second_site() {
-    let zones_with_sites = vec![Zone::Realm(3, Region::Surface)];
+    let zones_with_sites = vec![3];
     let mut state = State::new_mock_state(zones_with_sites);
     let player_id = state.players[0].id;
     let mut card = AridDesert::new(player_id);

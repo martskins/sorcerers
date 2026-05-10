@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        Card, CardBase, CardConstructor, Costs, Damage, Edition, Rarity, Region, ResourceProvider,
-        Site, SiteBase, SiteType, Zone,
+        Card, CardBase, CardConstructor, Costs, Damage, Edition, Rarity, ResourceProvider, Site,
+        SiteBase, SiteType, Zone,
     },
     effect::Effect,
     game::{PlayerId, Thresholds},
@@ -70,7 +70,7 @@ impl Card for RedDesert {
         let controller_id = self.get_controller_id(state);
         let Some(picked_site_id) = CardQuery::new()
             .sites()
-            .near_to(self.get_zone())
+            .nearby_sites_to(self.get_zone())
             .with_prompt("Red Desert: Pick a site to deal 1 damage to all atop units")
             .pick(&controller_id, state, false)
             .await?
@@ -81,7 +81,6 @@ impl Card for RedDesert {
         let minions = CardQuery::new()
             .minions()
             .in_zone(site.get_zone())
-            .in_region(&Region::Surface)
             .all(state);
         let mut effects = vec![];
         for minion in minions {

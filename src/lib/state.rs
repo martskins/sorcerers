@@ -1,7 +1,7 @@
 use crate::{
     card::{
         Ability, ArtifactType, Card, CardData, CardType, Costs, DodgeRoll, MinionType, Rarity,
-        Region, SiteType, Zone,
+        SiteType, Zone,
     },
     deck::Deck,
     effect::Effect,
@@ -65,13 +65,23 @@ pub struct CardQuery {
     in_zones: Option<Vec<Zone>>,
     within_range_of: Option<uuid::Uuid>,
     can_be_attacked_by: Option<uuid::Uuid>,
-    in_regions: Option<Vec<Region>>,
     tapped: Option<bool>,
     oversized: Option<bool>,
     include_not_in_play: Option<bool>,
     can_be_targeted_by_player: Option<uuid::Uuid>,
     elements: Option<Vec<Element>>,
+    spatial_filters: Vec<SpatialFilter>,
     prompt: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+enum SpatialFilter {
+    AdjacentLocations(Zone),
+    NearbyLocations(Zone),
+    AdjacentSites(Zone),
+    NearbySites(Zone),
+    AdjacentVoids(Zone),
+    NearbyVoids(Zone),
 }
 
 impl CardQuery {
@@ -356,23 +366,45 @@ impl CardQuery {
         }
     }
 
+    pub fn adjacent_locations_to(mut self, zone: &Zone) -> Self {
+        self.spatial_filters
+            .push(SpatialFilter::AdjacentLocations(zone.clone()));
+        self
+    }
+
+    pub fn nearby_locations_to(mut self, zone: &Zone) -> Self {
+        self.spatial_filters
+            .push(SpatialFilter::NearbyLocations(zone.clone()));
+        self
+    }
+
+    pub fn adjacent_sites_to(mut self, zone: &Zone) -> Self {
+        self.spatial_filters
+            .push(SpatialFilter::AdjacentSites(zone.clone()));
+        self
+    }
+
+    pub fn nearby_sites_to(mut self, zone: &Zone) -> Self {
+        self.spatial_filters
+            .push(SpatialFilter::NearbySites(zone.clone()));
+        self
+    }
+
+    pub fn adjacent_voids_to(mut self, zone: &Zone) -> Self {
+        self.spatial_filters
+            .push(SpatialFilter::AdjacentVoids(zone.clone()));
+        self
+    }
+
+    pub fn nearby_voids_to(mut self, zone: &Zone) -> Self {
+        self.spatial_filters
+            .push(SpatialFilter::NearbyVoids(zone.clone()));
+        self
+    }
+
     pub fn with_element(self, element: Element) -> Self {
         Self {
             elements: Some(vec![element]),
-            ..self
-        }
-    }
-
-    pub fn in_regions(self, region: Vec<Region>) -> Self {
-        Self {
-            in_regions: Some(region),
-            ..self
-        }
-    }
-
-    pub fn in_region(self, region: &Region) -> Self {
-        Self {
-            in_regions: Some(vec![region.clone()]),
             ..self
         }
     }
@@ -594,6 +626,20 @@ impl CardQuery {
             return false;
         }
 
+        if self.spatial_filters.iter().any(|filter| {
+            let zones = match filter {
+                SpatialFilter::AdjacentLocations(zone) => zone.get_adjacent_locations(state),
+                SpatialFilter::NearbyLocations(zone) => zone.get_nearby_locations(state),
+                SpatialFilter::AdjacentSites(zone) => zone.get_adjacent_sites(state),
+                SpatialFilter::NearbySites(zone) => zone.get_nearby_sites(state),
+                SpatialFilter::AdjacentVoids(zone) => zone.get_adjacent_voids(state),
+                SpatialFilter::NearbyVoids(zone) => zone.get_nearby_voids(state),
+            };
+            !zones.iter().any(|zone| card.occupies_zone(state, zone))
+        }) {
+            return false;
+        }
+
         // Simple property filters
         if let Some(controller_id) = &self.controller_id
             && &card.get_controller_id(state) != controller_id
@@ -627,12 +673,6 @@ impl CardQuery {
 
         if let Some(carrier_id) = &self.carried_by
             && card.get_base().bearer != *carrier_id
-        {
-            return false;
-        }
-
-        if let Some(regions) = &self.in_regions
-            && !regions.contains(card.get_region(state))
         {
             return false;
         }
@@ -1473,7 +1513,7 @@ impl State {
     }
 
     #[cfg(any(test, feature = "benchmark"))]
-    pub fn new_mock_state(zones_with_sites: impl AsRef<[Zone]>) -> State {
+    pub fn new_mock_state(zones_with_sites: impl AsRef<[u8]>) -> State {
         use crate::card::{AridDesert, from_name_and_zone};
 
         let player_one_id = uuid::Uuid::new_v4();
@@ -1481,7 +1521,15 @@ impl State {
         let cards: Vec<Box<dyn Card>> = zones_with_sites
             .as_ref()
             .iter()
-            .map(|z| from_name_and_zone(AridDesert::NAME, &player_one_id, z.clone()))
+            .map(|z| {
+                use crate::card::Region;
+
+                from_name_and_zone(
+                    AridDesert::NAME,
+                    &player_one_id,
+                    Zone::Realm(*z, Region::Surface),
+                )
+            })
             .collect();
 
         let player1 = PlayerWithDeck {

@@ -41,11 +41,16 @@ impl ActivatedAbility for HarpoonPull {
                     .unwrap_or(false)
             })
             .collect();
+        let mut target_zones = adjacent_water_zones.clone();
+        target_zones.extend(
+            adjacent_water_zones
+                .iter()
+                .map(|zone| zone.with_region(Region::Underwater)),
+        );
 
         let Some(target_id) = CardQuery::new()
             .minions()
-            .in_zones(&adjacent_water_zones)
-            .in_regions(vec![Region::Surface, Region::Underwater])
+            .in_zones(&target_zones)
             .with_prompt("Ormund Harpooneers: Pick a minion to harpoon")
             .pick(player_id, state, false)
             .await?

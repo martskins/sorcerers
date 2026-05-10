@@ -15,3 +15,5 @@ mod effect_test;
 mod game_test;
 #[cfg(test)]
 mod state_test;
+#[cfg(test)]
+mod zone_test;

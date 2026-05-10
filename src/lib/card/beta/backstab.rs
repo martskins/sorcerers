@@ -59,7 +59,7 @@ impl Card for Backstab {
         let caster_region = state.get_card(caster_id).get_region(state).clone();
         let Some(mover_id) = CardQuery::new()
             .card_types(vec![CardType::Minion])
-            .in_region(&caster_region)
+            .in_zones(&Zone::all_in_region(caster_region))
             .with_prompt("Backstab: Pick a minion to move")
             .pick(&controller_id, state, false)
             .await?
@@ -70,7 +70,6 @@ impl Card for Backstab {
         let mover = state.get_card(&mover_id);
         let Some(target_id) = CardQuery::new()
             .card_types(vec![CardType::Minion])
-            .in_region(&caster_region)
             .tapped()
             .in_zones(&mover.get_zone().get_adjacent())
             .id_not_in(vec![mover_id])

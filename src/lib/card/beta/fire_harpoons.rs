@@ -68,17 +68,18 @@ impl Card for FireHarpoons {
             .into_iter()
             .map(|cid| state.get_card(&cid).get_zone().clone())
             .collect();
+        let mut target_zones = adjacent_water_sites.clone();
+        target_zones.extend(
+            adjacent_water_sites
+                .iter()
+                .map(|zone| zone.with_region(Region::Underwater)),
+        );
 
         // Find enemy minions at those zones.
         let targets = CardQuery::new()
             .minions()
-            .in_regions(vec![
-                Region::Underwater,
-                Region::Surface,
-                Region::Underground,
-            ])
             .id_not_in(vec![*caster_id])
-            .in_zones(&adjacent_water_sites)
+            .in_zones(&target_zones)
             .all(state);
 
         if targets.is_empty() {

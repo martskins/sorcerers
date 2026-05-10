@@ -80,8 +80,7 @@ impl Card for RootSpider {
         }
         let surface_minions = CardQuery::new()
             .units()
-            .in_zone(self.get_zone())
-            .in_region(&Region::Surface);
+            .in_zone(&self.get_zone().with_region(Region::Surface));
         Ok(vec![ContinuousEffect::GrantAbility {
             ability: Ability::Disabled,
             affected_cards: surface_minions,

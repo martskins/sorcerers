@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Ability, AreaModifiers, Card, CardBase, CardConstructor, Costs, Edition, Rarity, Region,
+        Ability, AreaModifiers, Card, CardBase, CardConstructor, Costs, Edition, Rarity,
         ResourceProvider, Site, SiteBase, Zone,
     },
     game::{PlayerId, Thresholds},
@@ -80,7 +80,6 @@ impl Card for VantageHills {
         let grants_abilities = CardQuery::new()
             .units()
             .in_zone(self.get_zone())
-            .in_region(&Region::Surface)
             .all(state)
             .into_iter()
             .map(|c| (c, vec![Ability::Ranged(1)]))
