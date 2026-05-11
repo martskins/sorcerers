@@ -3,7 +3,8 @@ use crate::{
         Ability, AdditionalCost, ApprenticeWizard, AridDesert, Card, Cost, OgreGoons, Region,
         RimlandNomads,
     },
-    state::{CardQuery, State},
+    query::CardQuery,
+    state::State,
     zone::Zone,
 };
 

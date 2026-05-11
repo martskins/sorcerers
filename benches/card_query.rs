@@ -1,7 +1,8 @@
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
 use sorcerers::{
     card::{ApprenticeWizard, Card, Region},
-    state::{CardQuery, State},
+    query::CardQuery,
+    state::State,
     zone::Zone,
 };
 

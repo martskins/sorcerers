@@ -18,8 +18,8 @@ use crate::{
         ActivatedAbility, AvatarAction, Element, PlayerId, Thresholds, ThresholdsDiff, UnitAction,
         pick_amount, pick_card, pick_option, pick_zone,
     },
-    query::ZoneQuery,
-    state::{CardQuery, ContinuousEffect, LoggedEffect, State, TemporaryEffect},
+    query::{CardQuery, ZoneQuery},
+    state::{ContinuousEffect, LoggedEffect, State, TemporaryEffect},
 };
 use linkme::distributed_slice;
 use serde::{Deserialize, Serialize};

@@ -8,8 +8,8 @@ use crate::{
     effect::Effect,
     game::Thresholds,
     networking::message::ServerMessage,
-    query::{EffectQuery, QueryCache, ZoneQuery},
-    state::{CardQuery, Player, PlayerWithDeck, State, TemporaryEffect},
+    query::{CardQuery, EffectQuery, QueryCache, ZoneQuery},
+    state::{Player, PlayerWithDeck, State, TemporaryEffect},
     zone::Zone,
 };
 

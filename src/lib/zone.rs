@@ -1,7 +1,8 @@
 use crate::{
     card::{Ability, CardType, Region, Rubble, Site},
     game::{Direction, PlayerId, are_adjacent, are_nearby, get_adjacent_zones, get_nearby_zones},
-    state::{CardQuery, ContinuousEffect, State},
+    query::CardQuery,
+    state::{ContinuousEffect, State},
 };
 use serde::{Deserialize, Serialize};
 

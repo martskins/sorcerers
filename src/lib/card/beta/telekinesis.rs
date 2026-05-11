@@ -55,7 +55,7 @@ impl Card for Telekinesis {
         let caster = state.get_card(caster_id);
         let caster_zone = caster.get_zone().clone();
 
-        let carryable_artifacts: Vec<uuid::Uuid> = crate::state::CardQuery::new()
+        let carryable_artifacts: Vec<uuid::Uuid> = CardQuery::new()
             .artifacts()
             .near_to(&caster_zone)
             .all(state)
