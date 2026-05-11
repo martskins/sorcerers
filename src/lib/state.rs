@@ -78,6 +78,7 @@ pub struct CardQuery {
 #[derive(Debug, Clone)]
 enum SpatialFilter {
     AdjacentLocations(Zone),
+    AdjacentLocationsToAny(Vec<Zone>),
     NearbyLocations(Zone),
     AdjacentSites(Zone),
     NearbySites(Zone),
@@ -330,11 +331,7 @@ impl CardQuery {
     }
 
     pub fn adjacent_to_zones(self, zones: &[Zone]) -> Self {
-        let zones = zones.iter().flat_map(|z| z.get_adjacent()).collect();
-        Self {
-            in_zones: Some(zones),
-            ..self
-        }
+        self.adjacent_locations_to_any(zones)
     }
 
     pub fn can_be_attacked_by(self, attacker_id: &uuid::Uuid) -> Self {
@@ -352,24 +349,22 @@ impl CardQuery {
     }
 
     pub fn adjacent_to(self, zone: &Zone) -> Self {
-        let zones = zone.get_adjacent();
-        Self {
-            in_zones: Some(zones),
-            ..self
-        }
+        self.adjacent_locations_to(zone)
     }
 
     pub fn near_to(self, zone: &Zone) -> Self {
-        let zones = zone.get_nearby();
-        Self {
-            in_zones: Some(zones),
-            ..self
-        }
+        self.nearby_locations_to(zone)
     }
 
     pub fn adjacent_locations_to(mut self, zone: &Zone) -> Self {
         self.spatial_filters
             .push(SpatialFilter::AdjacentLocations(zone.clone()));
+        self
+    }
+
+    pub fn adjacent_locations_to_any(mut self, zones: &[Zone]) -> Self {
+        self.spatial_filters
+            .push(SpatialFilter::AdjacentLocationsToAny(zones.to_vec()));
         self
     }
 
@@ -630,6 +625,10 @@ impl CardQuery {
         if self.spatial_filters.iter().any(|filter| {
             let zones = match filter {
                 SpatialFilter::AdjacentLocations(zone) => zone.get_adjacent_locations(state),
+                SpatialFilter::AdjacentLocationsToAny(zones) => zones
+                    .iter()
+                    .flat_map(|zone| zone.get_adjacent_locations(state))
+                    .collect(),
                 SpatialFilter::NearbyLocations(zone) => zone.get_nearby_locations(state),
                 SpatialFilter::AdjacentSites(zone) => zone.get_adjacent_sites(state),
                 SpatialFilter::NearbySites(zone) => zone.get_nearby_sites(state),

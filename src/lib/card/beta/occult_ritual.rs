@@ -50,7 +50,6 @@ impl Card for OccultRitual {
         caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
-
         let controller_id = self.get_controller_id(state);
         let caster = state.get_card(caster_id);
         let caster_zone = caster.get_zone().clone();

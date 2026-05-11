@@ -64,7 +64,6 @@ impl Card for Scarecrow {
     }
 
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-
         let zone = self.get_zone();
         if !zone.is_in_play() {
             return Ok(vec![]);

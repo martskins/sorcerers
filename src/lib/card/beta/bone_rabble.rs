@@ -1,5 +1,5 @@
-use std::{future::Future, pin::Pin, sync::Arc};
 use crate::prelude::*;
+use std::{future::Future, pin::Pin, sync::Arc};
 
 #[derive(Debug, Clone)]
 pub struct BoneRabble {

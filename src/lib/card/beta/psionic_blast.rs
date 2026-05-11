@@ -54,7 +54,6 @@ impl Card for PsionicBlast {
         caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
-
         let controller_id = self.get_controller_id(state);
         let caster_zone = state.get_card(caster_id).get_zone().clone();
 

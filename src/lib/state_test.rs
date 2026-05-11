@@ -448,6 +448,36 @@ fn test_state_aware_nearby_locations_do_not_create_surface_void_locations() {
 }
 
 #[test]
+fn test_zone_query_adjacent_to_uses_state_aware_locations() {
+    let state = State::new_mock_state(vec![8, 9]);
+    let source = Zone::Realm(13, Region::Void);
+
+    let options = ZoneQuery::new().adjacent_to(&source).options(&state);
+
+    assert!(options.contains(&Zone::Realm(13, Region::Void)));
+    assert!(!options.contains(&Zone::Realm(8, Region::Surface)));
+}
+
+#[test]
+fn test_card_query_adjacent_to_uses_state_aware_locations() {
+    let mut state = State::new_mock_state(vec![8, 9]);
+    let player_id = state.players[0].id;
+    let source = Zone::Realm(8, Region::Surface);
+
+    let mut foot_soldier = FootSoldier::new(player_id);
+    foot_soldier.set_zone(Zone::Realm(13, Region::Surface));
+    let foot_soldier_id = *foot_soldier.get_id();
+    state.cards.insert(foot_soldier_id, Box::new(foot_soldier));
+
+    assert!(
+        !CardQuery::new()
+            .minions()
+            .adjacent_to(&source)
+            .matches(&foot_soldier_id, &state)
+    );
+}
+
+#[test]
 fn test_adjacent_sites_cross_region_boundaries() {
     let state = State::new_mock_state(vec![8]);
 

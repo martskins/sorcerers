@@ -164,6 +164,13 @@ pub struct ZoneQuery {
     /// Optionally filter `sites_only` results to zones controlled by this player.
     controlled_by: Option<PlayerId>,
     prompt: Option<String>,
+    spatial_filters: Vec<ZoneSpatialFilter>,
+}
+
+#[derive(Debug, Clone)]
+enum ZoneSpatialFilter {
+    AdjacentLocations(Zone),
+    NearbyLocations(Zone),
 }
 
 impl Default for ZoneQuery {
@@ -176,6 +183,7 @@ impl Default for ZoneQuery {
             sites_only: false,
             controlled_by: None,
             prompt: None,
+            spatial_filters: vec![],
         }
     }
 }
@@ -209,20 +217,16 @@ impl ZoneQuery {
         }
     }
 
-    pub fn adjacent_to(self, zone: &Zone) -> Self {
-        let zones = zone.get_adjacent();
-        Self {
-            options: Some(zones),
-            ..self
-        }
+    pub fn adjacent_to(mut self, zone: &Zone) -> Self {
+        self.spatial_filters
+            .push(ZoneSpatialFilter::AdjacentLocations(zone.clone()));
+        self
     }
 
-    pub fn near(self, zone: &Zone) -> Self {
-        let zones = zone.get_nearby();
-        Self {
-            options: Some(zones),
-            ..self
-        }
+    pub fn near(mut self, zone: &Zone) -> Self {
+        self.spatial_filters
+            .push(ZoneSpatialFilter::NearbyLocations(zone.clone()));
+        self
     }
 
     /// Player picks from in-play site zones, optionally filtered by controller.
@@ -273,18 +277,19 @@ impl ZoneQuery {
         if let Some(zone) = &self.zone {
             return vec![zone.clone()];
         }
-        if self.random {
-            let opts = self.options.as_deref().unwrap_or(&[]);
-            return vec![
-                opts.choose(&mut rand::rng())
-                    .expect("failed to get random zone")
-                    .clone(),
-            ];
-        }
-        if let Some(opts) = &self.options {
-            return opts.clone();
-        }
-        if self.sites_only {
+
+        let filter_zones = |filter: &ZoneSpatialFilter| match filter {
+            ZoneSpatialFilter::AdjacentLocations(zone) => zone.get_adjacent_locations(state),
+            ZoneSpatialFilter::NearbyLocations(zone) => zone.get_nearby_locations(state),
+        };
+
+        let (mut zones, filters_to_apply) = if let Some(opts) = &self.options {
+            (opts.clone(), self.spatial_filters.as_slice())
+        } else if let Some(first_filter) = self.spatial_filters.first()
+            && !self.sites_only
+        {
+            (filter_zones(first_filter), &self.spatial_filters[1..])
+        } else if self.sites_only {
             let mut sites: Vec<Zone> = state
                 .cards
                 .values()
@@ -298,9 +303,26 @@ impl ZoneQuery {
                 .map(|c| c.get_zone().clone())
                 .collect();
             sites.dedup();
-            return sites;
+            (sites, self.spatial_filters.as_slice())
+        } else {
+            (Zone::all_realm(), self.spatial_filters.as_slice())
+        };
+
+        for filter in filters_to_apply {
+            let allowed_zones = filter_zones(filter);
+            zones.retain(|zone| allowed_zones.contains(zone));
         }
-        Zone::all_realm()
+
+        if self.random {
+            return vec![
+                zones
+                    .choose(&mut rand::rng())
+                    .expect("failed to get random zone")
+                    .clone(),
+            ];
+        }
+
+        zones
     }
 
     /// Resolves the query, prompting the player if needed. Caches the result.
