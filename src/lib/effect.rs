@@ -128,6 +128,7 @@ pub enum Effect {
         player_id: PlayerId,
         card_id: uuid::Uuid,
         zone: ZoneQuery,
+        spellcaster: uuid::Uuid,
     },
     SummonCards {
         cards: Vec<(PlayerId, uuid::Uuid, Zone)>,
@@ -1165,7 +1166,7 @@ impl Effect {
                         && let Some(site) = zone.get_site(&snapshot)
                         && site.get_name() == Rubble::NAME
                     {
-                        state.effects.push_back(Effect::BanishCard {
+                        state.effects.push_back(Effect::RemoveCardFromGame {
                             card_id: *site.get_id(),
                         });
                     }

@@ -229,10 +229,14 @@ async fn test_play_card_minion_ends_in_target_zone() {
     ogre.set_zone(Zone::Hand);
     state.cards.insert(ogre_id, Box::new(ogre));
 
+    let avatar_id = state
+        .get_player_avatar_id(&player_id)
+        .expect("avatar id to be some");
     Effect::PlayCard {
         player_id,
         card_id: ogre_id,
         zone: ZoneQuery::from_zone(Zone::Realm(1, Region::Surface)),
+        spellcaster: avatar_id,
     }
     .apply(&mut state)
     .await
@@ -258,10 +262,14 @@ async fn test_play_card_minion_has_summoning_sickness() {
     ogre.set_zone(Zone::Hand);
     state.cards.insert(ogre_id, Box::new(ogre));
 
+    let avatar_id = state
+        .get_player_avatar_id(&player_id)
+        .expect("avatar id to be some");
     Effect::PlayCard {
         player_id,
         card_id: ogre_id,
         zone: ZoneQuery::from_zone(Zone::Realm(1, Region::Surface)),
+        spellcaster: avatar_id,
     }
     .apply(&mut state)
     .await

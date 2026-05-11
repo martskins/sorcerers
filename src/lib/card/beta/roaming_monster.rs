@@ -65,6 +65,7 @@ impl Card for RoamingMonster {
         &self,
         state: &State,
         _player_id: &PlayerId,
+        _caster_id: &uuid::Uuid,
     ) -> anyhow::Result<Vec<Zone>> {
         Ok(CardQuery::new()
             .sites()

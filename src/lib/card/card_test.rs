@@ -407,8 +407,11 @@ fn test_get_valid_play_zones_site_second_site() {
     card.set_zone(Zone::Hand);
     state.cards.insert(*card.get_id(), Box::new(card.clone()));
 
+    let avatar_id = state
+        .get_player_avatar_id(&player_id)
+        .expect("avatar id to be some");
     let mut zones = card
-        .get_valid_play_zones(&state, &player_id)
+        .get_valid_play_zones(&state, &player_id, &avatar_id)
         .expect("zones to be computed");
     zones.sort();
     let mut expected = vec![

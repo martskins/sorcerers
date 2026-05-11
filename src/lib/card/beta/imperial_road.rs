@@ -131,10 +131,14 @@ impl Card for ImperialRoad {
             )
             .await?;
 
+            let avatar_id = state.get_player_avatar_id(&player_id)?;
             effects.push(Effect::PlayCard {
                 player_id,
                 card_id: chosen_site,
                 zone: zone.into(),
+                // we pass avatar_id as the caster just to comply with the required parameters, but
+                // no caster_id is actually needed here, since sites don't need one.
+                spellcaster: avatar_id,
             });
         }
 

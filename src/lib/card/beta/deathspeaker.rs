@@ -74,7 +74,7 @@ impl ActivatedAbility for DeathspeakerAbility {
         }
 
         // Step 4: Pick a zone to summon the copy.
-        let valid_zones = chosen.get_valid_play_zones(state, player_id)?;
+        let valid_zones = chosen.get_valid_play_zones(state, player_id, card_id)?;
         if valid_zones.is_empty() {
             return Ok(vec![]);
         }

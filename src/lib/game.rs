@@ -1134,13 +1134,17 @@ impl ActivatedAbility for AvatarAction {
                 let prompt = "Pick a site to play";
                 let picked_card_id = pick_card(player_id, &cards, state, prompt).await?;
                 let picked_card = state.get_card(&picked_card_id);
-                let zones = picked_card.get_valid_play_zones(state, player_id)?;
+                let avatar_id = state.get_player_avatar_id(player_id)?;
+                // we pass avatar_id as the caster just to comply with the required parameters, but
+                // no caster_id is actually needed here, since sites don't need one.
+                let zones = picked_card.get_valid_play_zones(state, player_id, &avatar_id)?;
                 let prompt = "Pick a zone to play the site";
                 let zone = pick_zone(player_id, &zones, state, false, prompt).await?;
                 Ok(vec![Effect::PlayCard {
                     player_id: *player_id,
                     card_id: picked_card_id,
                     zone: zone.clone().into(),
+                    spellcaster: avatar_id,
                 }])
             }
             AvatarAction::DrawSite => Ok(vec![Effect::DrawSite {
@@ -1661,42 +1665,66 @@ impl Game {
                     return Ok(());
                 }
 
-                if card.is_playable(&self.state, player_id)?
-                    && card.is_affordable(&self.state, player_id)?
-                {
-                    match card.get_card_type() {
-                        CardType::Artifact | CardType::Minion | CardType::Aura => {
-                            let effects = card.play_mechanic(&self.state, player_id).await?;
-                            self.state.queue(effects);
-                        }
-                        CardType::Magic => {
-                            let spellcasters = CardQuery::new().units().in_play().all(&self.state);
-                            let spellcasters = spellcasters
-                                .into_iter()
-                                .filter(|c| {
-                                    self.state
-                                        .get_card(c)
-                                        .can_cast_spell_with_id(&self.state, card_id, player_id)
-                                        .unwrap_or_default()
-                                })
-                                .collect::<Vec<_>>();
+                if !card.is_playable(&self.state, player_id)? {
+                    return Ok(());
+                }
+
+                let avatar_id = self.state.get_player_avatar_id(player_id)?;
+                let spellcasters = CardQuery::new().units().in_play().all(&self.state);
+                let spellcasters = spellcasters
+                    .into_iter()
+                    .filter(|c| {
+                        let can_cast = self
+                            .state
+                            .get_card(c)
+                            .can_cast_spell_with_id(&self.state, card_id, player_id)
+                            .unwrap_or_default();
+                        let can_afford = card
+                            .is_affordable(&self.state, player_id, &avatar_id)
+                            .unwrap_or_default();
+                        can_cast && can_afford
+                    })
+                    .collect::<Vec<_>>();
+
+                if spellcasters.is_empty() {
+                    return Ok(());
+                }
+
+                match card.get_card_type() {
+                    CardType::Artifact | CardType::Minion | CardType::Aura => {
+                        let mut caster_id = avatar_id;
+                        if card.get_base().needs_explicit_spellcaster && spellcasters.len() > 1 {
                             let prompt = "Pick a spellcaster to cast the spell";
-                            let caster_id =
+                            caster_id =
                                 pick_card(player_id, &spellcasters, &self.state, prompt).await?;
-                            let caster = self.state.get_card(&caster_id);
-                            self.state.queue_one(Effect::PlayMagic {
-                                player_id: *player_id,
-                                card_id: *card_id,
-                                caster_id,
-                                from: caster.get_zone().clone(),
-                            });
                         }
-                        // Sites are not playable by clicking, they have to be played through avatar
-                        // actions, so ignore clicks on them in the hand.
-                        CardType::Site => {}
-                        // Avatars should not even be playable from any zone.
-                        CardType::Avatar => {}
+
+                        let effects = card
+                            .play_mechanic(&self.state, player_id, &caster_id)
+                            .await?;
+                        self.state.queue(effects);
                     }
+                    CardType::Magic => {
+                        let mut caster_id = avatar_id;
+                        if spellcasters.len() > 1 {
+                            let prompt = "Pick a spellcaster to cast the spell";
+                            caster_id =
+                                pick_card(player_id, &spellcasters, &self.state, prompt).await?;
+                        }
+
+                        let caster = self.state.get_card(&caster_id);
+                        self.state.queue_one(Effect::PlayMagic {
+                            player_id: *player_id,
+                            card_id: *card_id,
+                            caster_id,
+                            from: caster.get_zone().clone(),
+                        });
+                    }
+                    // Sites are not playable by clicking, they have to be played through avatar
+                    // actions, so ignore clicks on them in the hand.
+                    CardType::Site => {}
+                    // Avatars should not even be playable from any zone.
+                    CardType::Avatar => {}
                 }
 
                 if matches!(card.get_zone(), Zone::Realm(_, _)) {

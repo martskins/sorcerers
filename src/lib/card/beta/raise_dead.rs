@@ -61,7 +61,7 @@ impl Card for RaiseDead {
             .expect("Raise Dead: No valid targets in cemetery");
         let minion = state.get_card(&minion_id);
         let player_id = state.get_card(caster_id).get_controller_id(state);
-        let zones = minion.get_valid_play_zones(state, &player_id)?;
+        let zones = minion.get_valid_play_zones(state, &player_id, caster_id)?;
         let picked_zone = pick_zone(self.get_owner_id(), &zones, state, false, &prompt).await?;
         Ok(vec![Effect::SummonCard {
             player_id: *self.get_owner_id(),

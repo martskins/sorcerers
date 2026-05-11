@@ -57,7 +57,10 @@ impl ActivatedAbility for GeomancerAbility {
                 let prompt = "Pick a site to play";
                 let picked_card_id = pick_card(player_id, &cards, state, prompt).await?;
                 let picked_card = state.get_card(&picked_card_id);
-                let zones = picked_card.get_valid_play_zones(state, player_id)?;
+                let avatar_id = state.get_player_avatar_id(player_id)?;
+                // we pass avatar_id as the caster just to comply with the required parameters, but
+                // no caster_id is actually needed here, since sites don't need one.
+                let zones = picked_card.get_valid_play_zones(state, player_id, &avatar_id)?;
                 let prompt = "Pick a zone to play the site";
                 let zone = pick_zone(player_id, &zones, state, false, prompt).await?;
                 let mut effects: Vec<Effect> = vec![
@@ -65,6 +68,7 @@ impl ActivatedAbility for GeomancerAbility {
                         player_id: *player_id,
                         card_id: picked_card_id,
                         zone: zone.clone().into(),
+                        spellcaster: avatar_id,
                     },
                     Effect::TapCard { card_id: *card_id },
                 ];

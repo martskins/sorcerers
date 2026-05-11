@@ -22,6 +22,7 @@ impl Wildfire {
                 edition: Edition::Beta,
                 controller_id: owner_id,
                 is_token: false,
+                needs_explicit_spellcaster: true,
                 ..Default::default()
             },
             aura_base: AuraBase { tapped: false },
@@ -129,10 +130,11 @@ impl Card for Wildfire {
 
     fn get_valid_play_zones(
         &self,
-        _state: &State,
+        state: &State,
         _player_id: &PlayerId,
+        caster_id: &uuid::Uuid,
     ) -> anyhow::Result<Vec<Zone>> {
-        Ok(Zone::all_realm())
+        Ok(state.get_card(caster_id).get_zone().get_nearby_sites(state))
     }
 
     fn get_aura(&self) -> Option<&dyn Aura> {

@@ -65,6 +65,7 @@ impl Card for FeyChangeling {
         &self,
         state: &State,
         _player_id: &PlayerId,
+        _caster_id: &uuid::Uuid,
     ) -> anyhow::Result<Vec<Zone>> {
         Ok(CardQuery::new()
             .sites()

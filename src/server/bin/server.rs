@@ -197,7 +197,7 @@ impl Server {
 
         let player_two = game.state.players[1].id;
         let card = sorcerers::card::from_name_and_zone(
-            "Scarecrow",
+            "Wildfire",
             &player_one,
             sorcerers::zone::Zone::Hand,
         );

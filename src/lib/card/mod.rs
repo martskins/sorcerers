@@ -714,11 +714,16 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         self.get_base().is_token
     }
 
-    fn is_affordable(&self, state: &State, player_id: &PlayerId) -> anyhow::Result<bool> {
+    fn is_affordable(
+        &self,
+        state: &State,
+        player_id: &PlayerId,
+        caster_id: &uuid::Uuid,
+    ) -> anyhow::Result<bool> {
         // A card is playable if affordable at ANY of its valid target zones
         // (accounting for zone-specific cost reductions like Donnybrook Inn).
         let card_id = self.get_id();
-        let valid_zones = self.get_valid_play_zones(state, player_id)?;
+        let valid_zones = self.get_valid_play_zones(state, player_id, caster_id)?;
         let affordable = if valid_zones.is_empty() {
             state
                 .get_effective_costs(card_id, None, player_id)?
@@ -1039,28 +1044,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         self.get_zones_within_steps_of(state, steps, self.get_zone())
     }
 
-    fn default_get_valid_play_zones(
-        &self,
-        state: &State,
-        player_id: &PlayerId,
-    ) -> anyhow::Result<Vec<Zone>> {
-        Ok(Zone::all_board()
-            .into_iter()
-            .filter(|z| {
-                let costs = state
-                    .get_effective_costs(self.get_id(), Some(z), player_id)
-                    .unwrap_or_default();
-                let can_afford = costs.can_afford(state, player_id).unwrap_or_default();
-                if !can_afford {
-                    return false;
-                }
-
-                z.is_valid_play_zone_for(state, self.get_id(), player_id)
-                    .unwrap_or_default()
-            })
-            .collect::<Vec<Zone>>())
-    }
-
     // Retuns the region the card is currently on. If the card is not in a zone with a site, it is
     // in the void.
     fn get_region(&self, _state: &State) -> &Region {
@@ -1118,8 +1101,9 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         &self,
         state: &State,
         player_id: &PlayerId,
+        caster_id: &uuid::Uuid,
     ) -> anyhow::Result<Vec<Zone>> {
-        self.default_get_valid_play_zones(state, player_id)
+        self.base_get_valid_play_zones(state, player_id, caster_id)
     }
 
     fn is_ranged(&self, state: &State) -> anyhow::Result<bool> {
@@ -1668,17 +1652,19 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         &self,
         state: &State,
         player_id: &PlayerId,
+        caster_id: &uuid::Uuid,
     ) -> anyhow::Result<Vec<Effect>> {
         let card_id = self.get_id();
         match self.get_card_type() {
             CardType::Minion => {
-                let zones = self.get_valid_play_zones(state, player_id)?;
+                let zones = self.get_valid_play_zones(state, player_id, caster_id)?;
                 let prompt = "Pick a zone to play the card";
                 let zone = pick_zone(player_id, &zones, state, false, prompt).await?;
                 Ok(vec![Effect::PlayCard {
                     player_id: *player_id,
                     card_id: *self.get_id(),
                     zone: zone.clone().into(),
+                    spellcaster: *caster_id,
                 }])
             }
             CardType::Artifact => {
@@ -1687,7 +1673,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     .ok_or(anyhow::anyhow!("artifact card does not implement artifact"))?
                     .get_valid_attach_targets(state);
                 let valid_play_zones: Vec<uuid::Uuid> = self
-                    .get_valid_play_zones(state, player_id)?
+                    .get_valid_play_zones(state, player_id, caster_id)?
                     .into_iter()
                     .filter_map(|z| z.get_site(state))
                     .map(|s| s.get_id())
@@ -1748,6 +1734,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                                         player_id: *player_id,
                                         card_id: *card_id,
                                         zone: picked_card.get_zone().clone().into(),
+                                        spellcaster: *caster_id,
                                     },
                                 ])
                             }
@@ -1765,6 +1752,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                                     player_id: *player_id,
                                     card_id: *card_id,
                                     zone: picked_site.get_zone().clone().into(),
+                                    spellcaster: *caster_id,
                                 }])
                             }
                             _ => unreachable!(),
@@ -1773,7 +1761,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     false => {
                         let picked_zone = pick_zone(
                             player_id,
-                            &self.get_valid_play_zones(state, player_id)?,
+                            &self.get_valid_play_zones(state, player_id, caster_id)?,
                             state,
                             false,
                             "Pick a zone to play the artifact",
@@ -1783,9 +1771,21 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                             player_id: *player_id,
                             card_id: *card_id,
                             zone: picked_zone.clone().into(),
+                            spellcaster: *caster_id,
                         }])
                     }
                 }
+            }
+            CardType::Aura => {
+                let zones = self.get_valid_play_zones(state, player_id, caster_id)?;
+                let prompt = "Pick a zone to play the aura";
+                let zone = pick_zone(player_id, &zones, state, false, prompt).await?;
+                Ok(vec![Effect::PlayCard {
+                    player_id: *player_id,
+                    card_id: *self.get_id(),
+                    zone: zone.clone().into(),
+                    spellcaster: *caster_id,
+                }])
             }
             _ => Ok(vec![]),
         }
@@ -2207,6 +2207,7 @@ pub struct CardBase {
     pub rarity: Rarity,
     pub edition: Edition,
     pub is_token: bool,
+    pub needs_explicit_spellcaster: bool,
 }
 
 impl Default for CardBase {
@@ -2221,6 +2222,7 @@ impl Default for CardBase {
             rarity: Rarity::default(),
             edition: Edition::default(),
             is_token: false,
+            needs_explicit_spellcaster: false,
         }
     }
 }
@@ -2350,10 +2352,39 @@ pub trait CardBaseMethods: Card {
         &self,
         state: &State,
     ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>>;
+    fn base_get_valid_play_zones(
+        &self,
+        state: &State,
+        player_id: &PlayerId,
+        caster_id: &uuid::Uuid,
+    ) -> anyhow::Result<Vec<Zone>>;
 }
 
 #[async_trait::async_trait]
 impl<T: Card + ?Sized> CardBaseMethods for T {
+    fn base_get_valid_play_zones(
+        &self,
+        state: &State,
+        player_id: &PlayerId,
+        _caster_id: &uuid::Uuid,
+    ) -> anyhow::Result<Vec<Zone>> {
+        Ok(Zone::all_board()
+            .into_iter()
+            .filter(|z| {
+                let costs = state
+                    .get_effective_costs(self.get_id(), Some(z), player_id)
+                    .unwrap_or_default();
+                let can_afford = costs.can_afford(state, player_id).unwrap_or_default();
+                if !can_afford {
+                    return false;
+                }
+
+                z.is_valid_play_zone_for(state, self.get_id(), player_id)
+                    .unwrap_or_default()
+            })
+            .collect::<Vec<Zone>>())
+    }
+
     fn base_get_affected_zones(&self, _state: &State) -> Vec<Zone> {
         match self.get_zone() {
             z @ Zone::Realm(_, _) => vec![z.clone()],

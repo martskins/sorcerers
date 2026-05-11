@@ -68,6 +68,7 @@ impl Card for CerberusInChains {
         &self,
         state: &State,
         player_id: &PlayerId,
+        _caster_id: &uuid::Uuid,
     ) -> anyhow::Result<Vec<Zone>> {
         let avatar_id = state.get_player_avatar_id(player_id)?;
         let avatar_zone = state.get_card(&avatar_id).get_zone().clone();

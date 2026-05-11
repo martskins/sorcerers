@@ -67,6 +67,7 @@ impl Card for BuriedTreasure {
         &self,
         state: &State,
         player_id: &PlayerId,
+        caster_id: &uuid::Uuid,
     ) -> anyhow::Result<Vec<Effect>> {
         let opponent_id = state.get_opponent_id(player_id)?;
         let Some(picked_card_id) = CardQuery::new()
@@ -90,6 +91,7 @@ impl Card for BuriedTreasure {
                 player_id: *player_id,
                 card_id: *self.get_id(),
                 zone: picked_zone.into(),
+                spellcaster: *caster_id,
             },
         ])
     }

@@ -77,6 +77,7 @@ impl Card for Mirage {
         &self,
         state: &State,
         player_id: &PlayerId,
+        caster_id: &uuid::Uuid,
     ) -> anyhow::Result<Vec<Effect>> {
         let other_sites = CardQuery::new()
             .sites()
@@ -115,11 +116,12 @@ impl Card for Mirage {
                     player_id: *player_id,
                     card_id: *self.get_id(),
                     zone: ZoneQuery::from_zone(other_zone),
+                    spellcaster: *caster_id,
                 },
             ]);
         }
 
-        let zones = self.default_get_valid_play_zones(state, player_id)?;
+        let zones = self.base_get_valid_play_zones(state, player_id, caster_id)?;
         let zone = pick_zone(
             player_id,
             &zones,
@@ -132,6 +134,7 @@ impl Card for Mirage {
             player_id: *player_id,
             card_id: *self.get_id(),
             zone: zone.into(),
+            spellcaster: *caster_id,
         }])
     }
 }
