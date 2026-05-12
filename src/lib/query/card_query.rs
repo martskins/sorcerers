@@ -19,8 +19,8 @@ pub struct CardQuery {
     not_named: Option<Vec<String>>,
     controller_id: Option<PlayerId>,
     not_in_ids: Option<Vec<uuid::Uuid>>,
-    abilities: Option<Vec<Ability>>,
     without_abilities: Option<Vec<Ability>>,
+    with_abilities: Option<Vec<Ability>>,
     card_types: Option<Vec<CardType>>,
     minion_types: Option<Vec<MinionType>>,
     artifact_types: Option<Vec<ArtifactType>>,
@@ -47,6 +47,7 @@ enum SpatialFilter {
     AdjacentLocations(Zone),
     AdjacentLocationsToAny(Vec<Zone>),
     NearbyLocations(Zone),
+    NearbyLocationsToCard(uuid::Uuid),
     AdjacentSites(Zone),
     NearbySites(Zone),
     AdjacentVoids(Zone),
@@ -138,7 +139,7 @@ impl CardQuery {
 
         let output = if let Some(true) = self.randomise {
             for card in state.cards.values() {
-                if &card.get_controller_id(state) != player_id {
+                if card.get_controller_id(state) != *player_id {
                     continue;
                 }
 
@@ -341,6 +342,12 @@ impl CardQuery {
         self
     }
 
+    pub fn nearby_locations_to_card(mut self, card_id: &uuid::Uuid) -> Self {
+        self.spatial_filters
+            .push(SpatialFilter::NearbyLocationsToCard(*card_id));
+        self
+    }
+
     pub fn adjacent_sites_to(mut self, zone: &Zone) -> Self {
         self.spatial_filters
             .push(SpatialFilter::AdjacentSites(zone.clone()));
@@ -400,16 +407,23 @@ impl CardQuery {
         }
     }
 
+    pub fn without_abilities(self, abilities: Vec<Ability>) -> Self {
+        Self {
+            without_abilities: Some(abilities),
+            ..self
+        }
+    }
+
     pub fn with_ability(self, ability: &Ability) -> Self {
         Self {
-            abilities: Some(vec![ability.clone()]),
+            with_abilities: Some(vec![ability.clone()]),
             ..self
         }
     }
 
     pub fn with_abilities(self, abilities: Vec<Ability>) -> Self {
         Self {
-            abilities: Some(abilities),
+            with_abilities: Some(abilities),
             ..self
         }
     }
@@ -597,6 +611,11 @@ impl CardQuery {
                     .flat_map(|zone| zone.get_adjacent_locations(state))
                     .collect(),
                 SpatialFilter::NearbyLocations(zone) => zone.get_nearby_locations(state),
+                SpatialFilter::NearbyLocationsToCard(card_id) => state
+                    .cards
+                    .get(card_id)
+                    .map(|card| card.get_zone().get_nearby_locations(state))
+                    .unwrap_or_default(),
                 SpatialFilter::AdjacentSites(zone) => zone.get_adjacent_sites(state),
                 SpatialFilter::NearbySites(zone) => zone.get_nearby_sites(state),
                 SpatialFilter::AdjacentVoids(zone) => zone.get_adjacent_voids(state),
@@ -700,7 +719,7 @@ impl CardQuery {
             }
         }
 
-        if let Some(abilities) = &self.abilities {
+        if let Some(abilities) = &self.with_abilities {
             for ability in abilities {
                 if !card.has_ability(state, ability) {
                     return false;

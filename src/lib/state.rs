@@ -2,7 +2,10 @@ use crate::{
     card::{Ability, Card, CardData, CardType, Costs, DodgeRoll, SiteType},
     deck::Deck,
     effect::Effect,
-    game::{InputStatus, PlayerId, Resources, Thresholds, ThresholdsDiff, pick_zone, yes_or_no},
+    game::{
+        ActivatedAbility, InputStatus, PlayerId, Resources, Thresholds, ThresholdsDiff, pick_zone,
+        yes_or_no,
+    },
     networking::message::{ClientMessage, ServerMessage},
     query::{CardQuery, EffectQuery, ZoneQuery},
     zone::Zone,
@@ -33,6 +36,15 @@ pub struct PlayerWithDeck {
     pub cards: Vec<Box<dyn Card>>,
 }
 
+pub type EffectReplacementCallback = Arc<
+    dyn Sync
+        + Send
+        + for<'a> Fn(
+            &'a State,
+            &'a mut Effect,
+        ) -> Pin<Box<dyn Future<Output = anyhow::Result<()>> + Send + 'a>>,
+>;
+
 pub type EffectCallback = Arc<
     dyn Sync
         + Send
@@ -61,7 +73,8 @@ impl std::fmt::Debug for DeferredEffect {
     }
 }
 
-#[derive(Debug, Clone)]
+#[allow(clippy::large_enum_variant)]
+#[derive(Clone)]
 pub enum TemporaryEffect {
     FloodSites {
         affected_sites: CardQuery,
@@ -77,20 +90,45 @@ pub enum TemporaryEffect {
         expires_on_effect: EffectQuery,
         for_player: PlayerId,
     },
+    ModifyEffect {
+        trigger_on_effect: EffectQuery,
+        expires_on_effect: EffectQuery,
+        on_effect: EffectReplacementCallback,
+    },
+    ConnectSites {
+        sites: Vec<Zone>,
+        expires_on_effect: EffectQuery,
+    },
+}
+
+impl std::fmt::Debug for TemporaryEffect {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::ModifyEffect {
+                trigger_on_effect, ..
+            } => f
+                .debug_struct("ModifyEffect")
+                .field("trigger_on_effect", trigger_on_effect)
+                .finish(),
+            _ => std::fmt::Debug::fmt(self, f),
+        }
+    }
 }
 
 impl TemporaryEffect {
     pub fn affected_cards(&self, state: &State) -> Vec<uuid::Uuid> {
         match self {
             TemporaryEffect::FloodSites { affected_sites, .. } => affected_sites.all(state),
-            // MakePlayable should always include cards not in play, so we need to add those to the
-            // results of all().
             TemporaryEffect::MakePlayable { affected_cards, .. } => {
+                // MakePlayable should always include cards not in play, so we need to add those to the
+                // results of all().
                 affected_cards.clone().including_not_in_play().all(state)
             }
             TemporaryEffect::IgnoreCostThresholds { affected_cards, .. } => {
                 affected_cards.all(state)
             }
+            TemporaryEffect::ModifyEffect { .. } => vec![],
+            TemporaryEffect::ConnectSites { .. } => vec![],
         }
     }
 
@@ -103,6 +141,12 @@ impl TemporaryEffect {
                 expires_on_effect, ..
             } => Some(expires_on_effect),
             TemporaryEffect::IgnoreCostThresholds {
+                expires_on_effect, ..
+            } => Some(expires_on_effect),
+            TemporaryEffect::ModifyEffect {
+                expires_on_effect, ..
+            } => Some(expires_on_effect),
+            TemporaryEffect::ConnectSites {
                 expires_on_effect, ..
             } => Some(expires_on_effect),
         }
@@ -145,7 +189,14 @@ pub enum ContinuousEffect {
         affected_cards: CardQuery,
         allowed_zones: Vec<Zone>,
     },
+    BlockMovementThrough {
+        border: Zone,
+        affected_cards: CardQuery,
+    },
     ConnectTopBottomEdges {
+        affected_cards: CardQuery,
+    },
+    ConnectLeftRightEdges {
         affected_cards: CardQuery,
     },
     ChangeSiteType {
@@ -154,6 +205,10 @@ pub enum ContinuousEffect {
     },
     GrantAbility {
         ability: Ability,
+        affected_cards: CardQuery,
+    },
+    GrantActivatedAbility {
+        ability: Box<dyn ActivatedAbility>,
         affected_cards: CardQuery,
     },
     ModifyProvidedAffinities {
@@ -226,6 +281,7 @@ pub struct State {
     pub deferred_effects: Vec<DeferredEffect>,
     pub player_mana: HashMap<PlayerId, u8>,
     pub loosers: HashSet<PlayerId>,
+    pub players_skipping_turns: HashSet<PlayerId>,
     pub players_with_accepted_hands: HashSet<PlayerId>,
 }
 
@@ -272,6 +328,7 @@ impl State {
             deferred_effects: Vec::new(),
             player_mana,
             loosers: HashSet::new(),
+            players_skipping_turns: HashSet::new(),
             players_with_accepted_hands: HashSet::new(),
         }
     }
@@ -555,6 +612,7 @@ impl State {
         CardQuery::new()
             .units()
             .near_to(defender.get_zone())
+            .without_ability(&Ability::CannotDefend)
             .untapped()
             .id_not(defender_id)
             .controlled_by(&defender.get_controller_id(self))
@@ -721,11 +779,15 @@ impl State {
 
     #[cfg(any(test, feature = "benchmark"))]
     pub fn new_mock_state(zones_with_sites: impl AsRef<[u8]>) -> State {
-        use crate::card::{AridDesert, from_name_and_zone};
+        use crate::card::{AridDesert, Sorcerer, from_name_and_zone};
 
         let player_one_id = uuid::Uuid::new_v4();
         let player_two_id = uuid::Uuid::new_v4();
-        let cards: Vec<Box<dyn Card>> = zones_with_sites
+        let avatar_one = Sorcerer::new(player_one_id);
+        let avatar_one_id = *avatar_one.get_id();
+        let avatar_two = Sorcerer::new(player_two_id);
+        let avatar_two_id = *avatar_two.get_id();
+        let mut cards: Vec<Box<dyn Card>> = zones_with_sites
             .as_ref()
             .iter()
             .map(|z| {
@@ -738,6 +800,8 @@ impl State {
                 )
             })
             .collect();
+        cards.push(Box::new(avatar_one));
+        cards.push(Box::new(avatar_two));
 
         let player1 = PlayerWithDeck {
             player: Player {
@@ -749,7 +813,7 @@ impl State {
                 "Test Deck".to_string(),
                 vec![],
                 vec![],
-                uuid::Uuid::nil(),
+                avatar_one_id,
             ),
             cards,
         };
@@ -763,7 +827,7 @@ impl State {
                 "Test Deck".to_string(),
                 vec![],
                 vec![],
-                uuid::Uuid::nil(),
+                avatar_two_id,
             ),
             cards: vec![],
         };

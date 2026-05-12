@@ -24,6 +24,9 @@ pub enum EffectQuery {
     TurnStart {
         player_id: Option<PlayerId>,
     },
+    UntapCard {
+        card: CardQuery,
+    },
     MoveCard {
         card: CardQuery,
     },
@@ -82,6 +85,9 @@ impl EffectQuery {
                     ..
                 },
             ) => Ok(optional_player_matches(query_player_id, effect_player_id)),
+            (EffectQuery::UntapCard { card }, Effect::UntapCard { card_id }) => {
+                Ok(card.matches(card_id, state))
+            }
             (
                 EffectQuery::DamageDealt { source, target },
                 Effect::TakeDamage { card_id, from, .. },

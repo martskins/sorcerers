@@ -90,13 +90,14 @@ impl QueryCache {
         let zone = if let Some(zone) = &qry.zone {
             zone.clone()
         } else if qry.random {
-            let options = qry.options.as_deref().unwrap_or(&[]);
+            let options = qry.options(state);
             for card in state.cards.values() {
                 if let Some(query) = card.zone_query_override(state, qry)? {
                     return Box::pin(query.pick(player_id, state)).await;
                 }
             }
             options
+                .as_slice()
                 .choose(&mut rand::rng())
                 .expect("failed to get random zone")
                 .clone()

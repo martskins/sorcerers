@@ -1,5 +1,4 @@
 use crate::{game::PlayerId, query::QueryCache, state::State, zone::Zone};
-use rand::seq::IndexedRandom;
 
 #[derive(Debug, Clone)]
 pub(super) enum ZoneSpatialFilter {
@@ -162,15 +161,6 @@ impl ZoneQuery {
         for filter in filters_to_apply {
             let allowed_zones = filter_zones(filter);
             zones.retain(|zone| allowed_zones.contains(zone));
-        }
-
-        if self.random {
-            return vec![
-                zones
-                    .choose(&mut rand::rng())
-                    .expect("failed to get random zone")
-                    .clone(),
-            ];
         }
 
         zones

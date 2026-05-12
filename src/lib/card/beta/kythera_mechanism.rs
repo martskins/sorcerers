@@ -1,16 +1,14 @@
-use rand::seq::IndexedRandom;
-
 use crate::prelude::*;
 
 #[derive(Debug, Clone)]
-pub struct LuckyCharm {
+pub struct KytheraMechanism {
     artifact_base: ArtifactBase,
     card_base: CardBase,
 }
 
-impl LuckyCharm {
-    pub const NAME: &'static str = "Lucky Charm";
-    pub const DESCRIPTION: &'static str = "Bearer's controller has “Whenever you would determine an outcome at random, determine it an extra time and choose one.”";
+impl KytheraMechanism {
+    pub const NAME: &'static str = "Kythera Mechanism";
+    pub const DESCRIPTION: &'static str = "Bearer's controller determines all random outcomes.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -23,7 +21,7 @@ impl LuckyCharm {
                 owner_id,
                 zone: Zone::Spellbook,
                 costs: Costs::mana_only(1),
-                rarity: Rarity::Exceptional,
+                rarity: Rarity::Unique,
                 edition: Edition::Beta,
                 controller_id: owner_id,
                 is_token: false,
@@ -33,10 +31,10 @@ impl LuckyCharm {
     }
 }
 
-impl Artifact for LuckyCharm {}
+impl Artifact for KytheraMechanism {}
 
 #[async_trait::async_trait]
-impl Card for LuckyCharm {
+impl Card for KytheraMechanism {
     fn get_name(&self) -> &str {
         Self::NAME
     }
@@ -65,26 +63,6 @@ impl Card for LuckyCharm {
         Some(self)
     }
 
-    fn zone_query_override(
-        &self,
-        state: &State,
-        query: &ZoneQuery,
-    ) -> anyhow::Result<Option<ZoneQuery>> {
-        if !query.is_randomised() {
-            return Ok(None);
-        }
-
-        let zones = query
-            .options(state)
-            .choose_multiple(&mut rand::rng(), 2)
-            .cloned()
-            .collect();
-        Ok(Some(ZoneQuery::from_options(
-            zones,
-            Some("Lucky Charm: Choose a zone".to_string()),
-        )))
-    }
-
     async fn card_query_override(
         &self,
         state: &State,
@@ -95,18 +73,31 @@ impl Card for LuckyCharm {
         }
 
         let query = query.clone();
-        let options = query
-            .all(state)
-            .choose_multiple(&mut rand::rng(), 2)
-            .cloned()
-            .collect();
+        let options = query.all(state);
         Ok(Some(CardQuery::from_ids(options).with_prompt(
-            "Lucky Charm: Choose a card to override random decision",
+            "Kythera Mechanism: Choose a card to override random decision",
+        )))
+    }
+
+    fn zone_query_override(
+        &self,
+        state: &State,
+        query: &ZoneQuery,
+    ) -> anyhow::Result<Option<ZoneQuery>> {
+        if !query.is_randomised() {
+            return Ok(None);
+        }
+
+        let options = query.options(state);
+        Ok(Some(ZoneQuery::from_options(
+            options,
+            Some("Kythera Mechanism: Choose a zone to override random decision".to_string()),
         )))
     }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
-static CONSTRUCTOR: (&'static str, CardConstructor) = (LuckyCharm::NAME, |owner_id: PlayerId| {
-    Box::new(LuckyCharm::new(owner_id))
-});
+static CONSTRUCTOR: (&'static str, CardConstructor) =
+    (KytheraMechanism::NAME, |owner_id: PlayerId| {
+        Box::new(KytheraMechanism::new(owner_id))
+    });

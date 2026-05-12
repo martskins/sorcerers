@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        Ability, AdditionalCost, ApprenticeWizard, AridDesert, Card, Cost, OgreGoons, Region,
-        RimlandNomads,
+        Ability, AdditionalCost, ApprenticeWizard, AridDesert, Card, Cost, GreatWall, OgreGoons,
+        Region, RimlandNomads,
     },
     query::CardQuery,
     state::State,
@@ -38,6 +38,104 @@ fn test_additional_cost_tap() {
         .can_afford(&state, player_id)
         .expect("should not error");
     assert!(!can_afford, "only unit in zone is tapped");
+}
+
+#[tokio::test]
+async fn test_great_wall_blocks_enemy_ground_movement_through_top_border() {
+    let mut state = State::new_mock_state(vec![3, 7, 9, 13]);
+    let wall_owner = state.players[0].id;
+    let enemy_id = state.players[1].id;
+
+    let mut wall = GreatWall::new(wall_owner);
+    wall.set_zone(Zone::Realm(8, Region::Surface));
+    state.cards.insert(*wall.get_id(), Box::new(wall));
+
+    let mut enemy = ApprenticeWizard::new(enemy_id);
+    enemy.set_zone(Zone::Realm(13, Region::Surface));
+    state.cards.insert(*enemy.get_id(), Box::new(enemy.clone()));
+
+    let zones = enemy
+        .get_valid_move_zones(&state)
+        .await
+        .expect("zones to be computed");
+    assert!(!zones.contains(&Zone::Realm(8, Region::Surface)));
+}
+
+#[tokio::test]
+async fn test_great_wall_blocks_enemy_ground_movement_out_through_top_border() {
+    let mut state = State::new_mock_state(vec![3, 7, 9, 13]);
+    let wall_owner = state.players[0].id;
+    let enemy_id = state.players[1].id;
+
+    let mut wall = GreatWall::new(wall_owner);
+    wall.set_zone(Zone::Realm(8, Region::Surface));
+    state.cards.insert(*wall.get_id(), Box::new(wall));
+
+    let mut enemy = ApprenticeWizard::new(enemy_id);
+    enemy.set_zone(Zone::Realm(8, Region::Surface));
+    state.cards.insert(*enemy.get_id(), Box::new(enemy.clone()));
+
+    let zones = enemy
+        .get_valid_move_zones(&state)
+        .await
+        .expect("zones to be computed");
+    assert!(!zones.contains(&Zone::Realm(13, Region::Surface)));
+}
+
+#[tokio::test]
+async fn test_great_wall_allows_allied_and_airborne_movement_through_top_border() {
+    let mut state = State::new_mock_state(vec![3, 7, 9, 13]);
+    let wall_owner = state.players[0].id;
+    let enemy_id = state.players[1].id;
+
+    let mut wall = GreatWall::new(wall_owner);
+    wall.set_zone(Zone::Realm(8, Region::Surface));
+    state.cards.insert(*wall.get_id(), Box::new(wall));
+
+    let mut ally = ApprenticeWizard::new(wall_owner);
+    ally.set_zone(Zone::Realm(13, Region::Surface));
+    state.cards.insert(*ally.get_id(), Box::new(ally.clone()));
+
+    let ally_zones = ally
+        .get_valid_move_zones(&state)
+        .await
+        .expect("zones to be computed");
+    assert!(ally_zones.contains(&Zone::Realm(8, Region::Surface)));
+
+    let mut airborne_enemy = ApprenticeWizard::new(enemy_id);
+    airborne_enemy.set_zone(Zone::Realm(13, Region::Surface));
+    airborne_enemy.add_ability(Ability::Airborne);
+    state
+        .cards
+        .insert(*airborne_enemy.get_id(), Box::new(airborne_enemy.clone()));
+
+    let airborne_enemy_zones = airborne_enemy
+        .get_valid_move_zones(&state)
+        .await
+        .expect("zones to be computed");
+    assert!(airborne_enemy_zones.contains(&Zone::Realm(8, Region::Surface)));
+}
+
+#[tokio::test]
+async fn test_great_wall_blocks_paths_through_top_border() {
+    let mut state = State::new_mock_state(vec![3, 7, 9, 13]);
+    let wall_owner = state.players[0].id;
+    let enemy_id = state.players[1].id;
+
+    let mut wall = GreatWall::new(wall_owner);
+    wall.set_zone(Zone::Realm(8, Region::Surface));
+    state.cards.insert(*wall.get_id(), Box::new(wall));
+
+    let mut enemy = ApprenticeWizard::new(enemy_id);
+    enemy.set_zone(Zone::Realm(13, Region::Surface));
+    enemy.add_ability(Ability::Movement(1));
+    state.cards.insert(*enemy.get_id(), Box::new(enemy.clone()));
+
+    let paths = enemy
+        .get_valid_move_paths(&state, &Zone::Realm(3, Region::Surface))
+        .await
+        .expect("paths to be computed");
+    assert!(paths.is_empty());
 }
 
 #[test]

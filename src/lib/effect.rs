@@ -1,6 +1,6 @@
 use crate::zone::Zone;
 use crate::{
-    card::{Ability, Card, Damage, FootSoldier, Frog, Region, Rubble, UnitBase},
+    card::{Ability, Card, Cost, Damage, FootSoldier, Frog, Region, Rubble, UnitBase},
     game::{BaseAction, Direction, PlayerAction, PlayerId, SoundEffect, pick_card, pick_option},
     networking::message::ServerMessage,
     query::{CardQuery, EffectQuery, QueryCache, ZoneQuery},
@@ -44,8 +44,16 @@ pub enum TokenType {
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum Effect {
+    Noop,
     PlayerLost {
         player_id: PlayerId,
+    },
+    SkipNextTurn {
+        player_id: PlayerId,
+    },
+    SetAvatarLife {
+        player_id: PlayerId,
+        life: u16,
     },
     SummonToken {
         player_id: PlayerId,
@@ -228,6 +236,22 @@ pub enum Effect {
         card_id: uuid::Uuid,
         player_id: PlayerId,
     },
+    MakeCardCopyOf {
+        card_id: uuid::Uuid,
+        copy_source_id: uuid::Uuid,
+    },
+    CopyMagic {
+        source_id: uuid::Uuid,
+        player_id: PlayerId,
+        card_id: uuid::Uuid,
+        caster_id: uuid::Uuid,
+    },
+    CopyArtifact {
+        player_id: PlayerId,
+        artifact_id: uuid::Uuid,
+        bearer_id: Option<uuid::Uuid>,
+        caster_id: uuid::Uuid,
+    },
     /// Creates a token copy of the named card for the given player and summons it in the target
     /// zone. The copy triggers its Genesis, then is automatically banished afterwards.
     SummonCopy {
@@ -263,7 +287,10 @@ impl Effect {
 
     pub fn source_id(&self) -> Option<&uuid::Uuid> {
         match self {
+            Effect::Noop => None,
             Effect::PlayerLost { player_id } => Some(player_id),
+            Effect::SkipNextTurn { player_id } => Some(player_id),
+            Effect::SetAvatarLife { player_id, .. } => Some(player_id),
             Effect::SummonToken { player_id, .. } => Some(player_id),
             Effect::Heal { card_id, .. } => Some(card_id),
             Effect::ShootProjectile { player_id, .. } => Some(player_id),
@@ -305,6 +332,9 @@ impl Effect {
             Effect::SetBearer { card_id, .. } => Some(card_id),
             Effect::ShuffleDeck { .. } => None,
             Effect::SetController { card_id, .. } => Some(card_id),
+            Effect::MakeCardCopyOf { card_id, .. } => Some(card_id),
+            Effect::CopyMagic { card_id, .. } => Some(card_id),
+            Effect::CopyArtifact { artifact_id, .. } => Some(artifact_id),
             Effect::SummonCopy { player_id, .. } => Some(player_id),
         }
     }
@@ -321,9 +351,19 @@ impl Effect {
 
     pub async fn description(&self, state: &State) -> anyhow::Result<Option<String>> {
         let desc = match self {
+            Effect::Noop => None,
             Effect::PlayerLost { player_id } => Some(format!(
                 "{} has lost the game",
                 player_name(player_id, state)
+            )),
+            Effect::SkipNextTurn { player_id } => Some(format!(
+                "{} skips their next turn",
+                player_name(player_id, state)
+            )),
+            Effect::SetAvatarLife { player_id, life } => Some(format!(
+                "{}'s Avatar life becomes {}",
+                player_name(player_id, state),
+                life
             )),
             Effect::SetCardRegion {
                 card_id, region, ..
@@ -660,6 +700,30 @@ impl Effect {
                     card_name
                 ))
             }
+            Effect::MakeCardCopyOf {
+                card_id,
+                copy_source_id,
+            } => Some(format!(
+                "{} becomes a copy of {}",
+                state.get_card(card_id).get_name(),
+                state.get_card(copy_source_id).get_name()
+            )),
+            Effect::CopyMagic {
+                player_id, card_id, ..
+            } => Some(format!(
+                "{} copies {}",
+                player_name(player_id, state),
+                state.get_card(card_id).get_name()
+            )),
+            Effect::CopyArtifact {
+                player_id,
+                artifact_id,
+                ..
+            } => Some(format!(
+                "{} creates a copy of {}",
+                player_name(player_id, state),
+                state.get_card(artifact_id).get_name(),
+            )),
             Effect::SummonCopy {
                 card_name,
                 player_id,
@@ -833,9 +897,36 @@ impl Effect {
             return Ok(());
         }
 
-        match self {
+        // Check for any modifications to this effect from temporary effects.
+        let mut effect = self.clone();
+        for te in &state.temporary_effects {
+            match te {
+                TemporaryEffect::ModifyEffect {
+                    trigger_on_effect,
+                    on_effect,
+                    ..
+                } if trigger_on_effect.matches(&effect, state).await? => {
+                    on_effect(state, &mut effect).await?;
+                }
+                _ => {}
+            }
+        }
+
+        match &effect {
+            Effect::Noop => {}
             Effect::PlayerLost { player_id } => {
                 state.loosers.insert(*player_id);
+            }
+            Effect::SkipNextTurn { player_id } => {
+                state.players_skipping_turns.insert(*player_id);
+            }
+            Effect::SetAvatarLife { player_id, life } => {
+                let avatar_id = state.get_player_avatar_id(player_id)?;
+                let avatar = state.get_card_mut(&avatar_id);
+                let unit_base = avatar
+                    .get_unit_base_mut()
+                    .ok_or(anyhow::anyhow!("avatar has no unit base component"))?;
+                unit_base.damage = unit_base.toughness.saturating_sub(*life);
             }
             Effect::AddDeferredEffect { effect, .. } => {
                 state.deferred_effects.push(effect.clone());
@@ -1288,6 +1379,13 @@ impl Effect {
                     .await?;
 
                 state.current_player = *player_id;
+                if state.players_skipping_turns.remove(player_id) {
+                    state.queue_front(Effect::EndTurn {
+                        player_id: *player_id,
+                    });
+                    return Ok(());
+                }
+
                 // Snapshot for controller checks (get_controller_id needs &State).
                 let ctrl_snapshot = state.clone();
                 // Untap cards controlled by the current player (not merely owned — control can
@@ -1628,21 +1726,41 @@ impl Effect {
                 state.queue_one(Effect::BuryCard { card_id: *card_id });
             }
             Effect::BuryCard { card_id, .. } => {
-                let card = state.get_card_mut(card_id);
-                let is_token = card.is_token();
-                let original_zone = card.get_zone().clone();
-                card.set_bearer_id(None);
-
                 // Deathrite fires BEFORE the card moves to the cemetery so that triggers
                 // which care about the card's current zone (e.g. summoning a token in its
                 // place) see it still in the realm.
-                let snapshot = state.clone();
-                let card = state.get_card_mut(card_id);
-                let effects = card.deathrite(&snapshot, &original_zone);
+                let card = state.get_card(card_id);
+                let original_zone = card.get_zone().clone();
+                let is_token = card.is_token();
+                let is_site = card.is_site();
+                let controller_id = card.get_controller_id(state);
+                let effects = card.deathrite(state, &original_zone);
                 state.queue(effects);
+                state.queue_one(Effect::SetBearer {
+                    card_id: *card_id,
+                    bearer_id: None,
+                });
+
+                // All destroyed sites get replaced by a rubble, even other rubbles.
+                if is_site && original_zone.is_in_play() {
+                    state.queue_one(Effect::SummonToken {
+                        player_id: controller_id,
+                        token_type: TokenType::Rubble,
+                        zone: original_zone.clone(),
+                    });
+                    // TODO: I don't think this effect is needed. Mana was already generated at the
+                    // beginning of the turn, so presumably you don't loose it when the site is
+                    // destroyed after the fact.
+                    // state.queue_one(Effect::ConsumeMana {
+                    //     player_id: controller_id,
+                    //     mana: 1,
+                    // });
+                }
 
                 state.get_card_mut(card_id).set_zone(Zone::Cemetery);
 
+                // TODO: Replace with CardQuery and also add a benchmark to compare this approach
+                // with CardQuery.
                 let borne_cards: Vec<uuid::Uuid> = state
                     .cards
                     .values()
@@ -1843,6 +1961,80 @@ impl Effect {
                 let card = state.get_card_mut(card_id);
                 card.get_base_mut().controller_id = *player_id;
             }
+            Effect::MakeCardCopyOf {
+                card_id,
+                copy_source_id,
+            } => {
+                let original_base = state.get_card(card_id).get_base().clone();
+                let mut replacement = state
+                    .cards
+                    .get(copy_source_id)
+                    .ok_or(anyhow::anyhow!("copy source card not found"))?
+                    .clone();
+                let replacement_base = replacement.get_base_mut();
+                replacement_base.id = original_base.id;
+                replacement_base.owner_id = original_base.owner_id;
+                replacement_base.controller_id = original_base.controller_id;
+                replacement_base.zone = original_base.zone;
+                replacement_base.bearer = original_base.bearer;
+                replacement_base.is_token = original_base.is_token;
+                state.cards.insert(*card_id, replacement);
+            }
+            Effect::CopyMagic {
+                source_id: _,
+                player_id,
+                card_id,
+                caster_id,
+            } => {
+                let mut copy = state
+                    .cards
+                    .get(card_id)
+                    .ok_or(anyhow::anyhow!("magic card to copy not found"))?
+                    .clone();
+                copy.get_base_mut().id = uuid::Uuid::new_v4();
+                copy.get_base_mut().owner_id = *player_id;
+                copy.get_base_mut().controller_id = *player_id;
+                copy.get_base_mut().is_token = true;
+                let effects = copy.on_cast(state, caster_id, Cost::ZERO.clone()).await?;
+                state.queue(effects);
+            }
+            Effect::CopyArtifact {
+                player_id,
+                artifact_id,
+                bearer_id,
+                caster_id,
+            } => {
+                let mut copy = state
+                    .cards
+                    .get(artifact_id)
+                    .ok_or(anyhow::anyhow!("artifact card to copy not found"))?
+                    .clone();
+                let copy_base = copy.get_base_mut();
+                copy_base.id = uuid::Uuid::new_v4();
+                copy_base.owner_id = *player_id;
+                copy_base.controller_id = *player_id;
+                copy_base.is_token = true;
+                copy.set_bearer_id(*bearer_id);
+                let copy_id = *copy.get_id();
+                state.cards.insert(*copy.get_id(), copy);
+
+                if bearer_id.is_none() {
+                    let copy = state.get_card(&copy_id);
+                    let effects = copy.play_mechanic(state, player_id, caster_id).await?;
+                    state.queue(effects);
+                } else {
+                    let copy = state.get_card(&copy_id);
+                    let bearer_id = copy.get_bearer_id()?.unwrap();
+                    let bearer = state.get_card(&bearer_id);
+                    let mut effects = copy.on_summon(state)?;
+                    effects.extend(copy.genesis(state).await?);
+                    effects.extend(
+                        copy.on_visit_zone(state, &Zone::Spellbook, bearer.get_zone())
+                            .await?,
+                    );
+                    state.queue(effects);
+                }
+            }
             Effect::SummonCopy {
                 card_name,
                 player_id,
@@ -1884,6 +2076,11 @@ impl Effect {
             .flatten()
             .collect();
         state.queue(area_effects);
+
+        for card in state.cards.values() {
+            let replace_effects = card.on_effect(state, self).await?;
+            effects.extend(replace_effects);
+        }
 
         self.expire_counters(state).await?;
         self.process_deferred_effects(state, self).await?;

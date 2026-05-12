@@ -13,7 +13,7 @@ use crate::prelude::*;
 mod card_test;
 
 use crate::{
-    effect::{AbilityCounter, Counter, Effect, TokenType},
+    effect::{AbilityCounter, Counter, Effect},
     game::{
         ActivatedAbility, AvatarAction, Element, PlayerId, Thresholds, ThresholdsDiff, UnitAction,
         pick_amount, pick_card, pick_option, pick_zone,
@@ -980,7 +980,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     // Returns the zones that are within the given steps of the specified zone, using this card as
     // the reference for movement capabilities.
     fn get_zones_within_steps_of(&self, state: &State, steps: u8, zone: &Zone) -> Vec<Zone> {
-        fn wrapped_neighbours(zone: &Zone) -> Vec<Zone> {
+        fn top_bottom_wrapped_neighbours(zone: &Zone) -> Vec<Zone> {
             match zone {
                 Zone::Realm(id, region) if *id >= 1 && *id <= 5 => {
                     vec![Zone::Realm(id + 15, region.clone())]
@@ -992,8 +992,27 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             }
         }
 
+        fn left_right_wrapped_neighbours(zone: &Zone) -> Vec<Zone> {
+            match zone {
+                Zone::Realm(id, region) if (*id - 1) % 5 == 0 => {
+                    vec![Zone::Realm(id + 4, region.clone())]
+                }
+                Zone::Realm(id, region) if *id % 5 == 0 => {
+                    vec![Zone::Realm(id - 4, region.clone())]
+                }
+                _ => vec![],
+            }
+        }
+
         let wraps_top_and_bottom = state.continuous_effects.iter().any(|ce| match ce {
             ContinuousEffect::ConnectTopBottomEdges { affected_cards } => {
+                affected_cards.matches(self.get_id(), state)
+            }
+            _ => false,
+        });
+
+        let wraps_left_and_right = state.continuous_effects.iter().any(|ce| match ce {
+            ContinuousEffect::ConnectLeftRightEdges { affected_cards } => {
                 affected_cards.matches(self.get_id(), state)
             }
             _ => false,
@@ -1012,17 +1031,52 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
                 if self.has_ability(state, &Ability::Airborne) {
                     for nearby in current_zone.get_nearby() {
-                        to_visit.push((nearby, current_step + 1));
+                        if self
+                            .can_move_between_zones(state, &current_zone, &nearby)
+                            .unwrap_or(false)
+                        {
+                            to_visit.push((nearby, current_step + 1));
+                        }
                     }
                 } else {
                     for adjacent in current_zone.get_adjacent() {
-                        to_visit.push((adjacent, current_step + 1));
+                        if self
+                            .can_move_between_zones(state, &current_zone, &adjacent)
+                            .unwrap_or(false)
+                        {
+                            to_visit.push((adjacent, current_step + 1));
+                        }
                     }
 
                     if wraps_top_and_bottom {
-                        for wrapped in wrapped_neighbours(&current_zone) {
-                            to_visit.push((wrapped, current_step + 1));
+                        for wrapped in top_bottom_wrapped_neighbours(&current_zone) {
+                            if self
+                                .can_move_between_zones(state, &current_zone, &wrapped)
+                                .unwrap_or(false)
+                            {
+                                to_visit.push((wrapped, current_step + 1));
+                            }
                         }
+                    }
+
+                    if wraps_left_and_right {
+                        for wrapped in left_right_wrapped_neighbours(&current_zone) {
+                            if self
+                                .can_move_between_zones(state, &current_zone, &wrapped)
+                                .unwrap_or(false)
+                            {
+                                to_visit.push((wrapped, current_step + 1));
+                            }
+                        }
+                    }
+                }
+
+                for connected in temporarily_connected_sites(state, &current_zone) {
+                    if self
+                        .can_move_between_zones(state, &current_zone, &connected)
+                        .unwrap_or(false)
+                    {
+                        to_visit.push((connected, current_step + 1));
                     }
                 }
             }
@@ -1042,6 +1096,43 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     // Returns the zones that are within the given steps of this card's current zone.
     fn get_zones_within_steps(&self, state: &State, steps: u8) -> Vec<Zone> {
         self.get_zones_within_steps_of(state, steps, self.get_zone())
+    }
+
+    fn can_move_between_zones(
+        &self,
+        state: &State,
+        from: &Zone,
+        to: &Zone,
+    ) -> anyhow::Result<bool> {
+        if !self.is_unit() {
+            return Ok(true);
+        }
+
+        for ce in &state.continuous_effects {
+            if let ContinuousEffect::BlockMovementThrough {
+                border,
+                affected_cards,
+            } = ce
+                && affected_cards.matches(self.get_id(), state)
+                && zones_cross_border(from, to, border)
+            {
+                return Ok(false);
+            }
+        }
+
+        if let Some(site) = from.get_site(state)
+            && !site.can_be_exited_by(self.get_id(), to, self.get_region(state), state)?
+        {
+            return Ok(false);
+        }
+
+        if let Some(site) = to.get_site(state)
+            && !site.can_be_entered_by(self.get_id(), from, self.get_region(state), state)?
+        {
+            return Ok(false);
+        }
+
+        to.can_be_entered_by(state, self.get_id())
     }
 
     // Retuns the region the card is currently on. If the card is not in a zone with a site, it is
@@ -1215,9 +1306,11 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         }
 
         let max_steps = self.get_steps_per_movement(state)?;
-        let is_traversable = |current: &Zone, next: &Zone| {
-            self.get_zones_within_steps_of(state, 1, current)
+        let is_traversable = |current: &Zone, next: &Zone| -> anyhow::Result<bool> {
+            Ok(self
+                .get_zones_within_steps_of(state, 1, current)
                 .contains(next)
+                && self.can_move_between_zones(state, current, next)?)
         };
 
         let mut paths = Vec::new();
@@ -1236,7 +1329,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 if path.contains(next) || &current == next {
                     continue;
                 }
-                if is_traversable(&current, next) {
+                if is_traversable(&current, next)? {
                     let mut new_path = path.clone();
                     new_path.push(next.clone());
                     queue.push((new_path, next.clone()));
@@ -1474,21 +1567,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(vec![])
     }
 
-    fn deathrite(&self, state: &State, from: &Zone) -> Vec<Effect> {
-        if self.is_site() && from.is_in_play() {
-            return vec![
-                Effect::SummonToken {
-                    player_id: self.get_controller_id(state),
-                    token_type: TokenType::Rubble,
-                    zone: from.clone(),
-                },
-                Effect::ConsumeMana {
-                    player_id: self.get_controller_id(state),
-                    mana: 0,
-                },
-            ];
-        }
-
+    fn deathrite(&self, _state: &State, _from: &Zone) -> Vec<Effect> {
         vec![]
     }
 
@@ -1645,6 +1724,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         _state: &State,
         _spell_id: &uuid::Uuid,
     ) -> anyhow::Result<Vec<Effect>> {
+        Ok(vec![])
+    }
+
+    async fn on_effect(&self, _state: &State, _effect: &Effect) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![])
     }
 
@@ -1813,18 +1896,30 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             return Ok(vec![]);
         }
 
-        if self.is_avatar() {
+        let mut abilities = if self.is_avatar() {
             let mut abilities = self.base_avatar_activated_abilities(state)?;
             abilities.extend(self.get_additional_activated_abilities(state)?);
-            Ok(abilities)
+            abilities
         } else if self.is_unit() {
             let mut abilities = self.base_unit_activated_abilities(state)?;
             abilities.extend(self.get_additional_activated_abilities(state)?);
-            Ok(abilities)
+            abilities
         } else {
-            let abilities = self.get_additional_activated_abilities(state)?;
-            Ok(abilities)
+            self.get_additional_activated_abilities(state)?
+        };
+
+        for ce in &state.continuous_effects {
+            if let ContinuousEffect::GrantActivatedAbility {
+                ability,
+                affected_cards,
+            } = ce
+                && affected_cards.matches(self.get_id(), state)
+            {
+                abilities.push(ability.clone())
+            }
         }
+
+        Ok(abilities)
     }
 
     // Returns a list of additional activated abilities for this card. The base abilities, like
@@ -2047,6 +2142,16 @@ pub trait Site: Card + ResourceProvider {
         self.base_can_be_entered_by(card, from, region, state)
     }
 
+    fn can_be_exited_by(
+        &self,
+        _card: &uuid::Uuid,
+        _to: &Zone,
+        _region: &Region,
+        _state: &State,
+    ) -> anyhow::Result<bool> {
+        Ok(true)
+    }
+
     fn is_flooded(&self, state: &State) -> anyhow::Result<bool> {
         let temporarily_flooded = state
             .temporary_effects
@@ -2114,6 +2219,7 @@ pub enum Ability {
     /// many minions it can carry.
     CarryMinions(usize),
     SplashDamage,
+    CannotDefend,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -2731,18 +2837,11 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
                 continue;
             };
 
-            let Some(site) = zone.get_site(state) else {
+            if zone.get_site(state).is_none() {
                 continue;
             };
 
-            if site.can_be_entered_by(
-                self.get_id(),
-                self.get_zone(),
-                self.get_region(state),
-                state,
-            )? {
-                zones.push(zone.clone());
-            }
+            zones.push(zone.clone());
         }
 
         for ce in &state.continuous_effects {
@@ -2886,4 +2985,31 @@ pub fn from_name_and_zone(name: &str, player_id: &PlayerId, zone: Zone) -> Box<d
     let mut card = from_name(name, player_id);
     card.set_zone(zone);
     card
+}
+
+fn zones_cross_border(from: &Zone, to: &Zone, border: &Zone) -> bool {
+    let (Some(from_square), Some(to_square)) = (from.get_square(), to.get_square()) else {
+        return false;
+    };
+
+    match border {
+        Zone::Intersection(squares, _) => {
+            squares.contains(&from_square) && squares.contains(&to_square)
+        }
+        _ => false,
+    }
+}
+
+fn temporarily_connected_sites(state: &State, zone: &Zone) -> Vec<Zone> {
+    state
+        .temporary_effects
+        .iter()
+        .filter_map(|effect| match effect {
+            TemporaryEffect::ConnectSites { sites, .. } if sites.contains(zone) => {
+                Some(sites.iter().filter(move |site| *site != zone).cloned())
+            }
+            _ => None,
+        })
+        .flatten()
+        .collect()
 }
