@@ -129,7 +129,7 @@ impl Card for Floodplain {
             return Ok(vec![]);
         }
 
-        if state.current_player != self.card_base.controller_id {
+        if state.current_player() != self.card_base.controller_id {
             return Ok(vec![]);
         }
 

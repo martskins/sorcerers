@@ -66,7 +66,7 @@ impl Card for SilverValkyries {
     }
 
     async fn on_turn_end(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        if self.get_controller_id(state) != state.current_player {
+        if self.get_controller_id(state) != state.current_player() {
             return Ok(vec![]);
         }
 

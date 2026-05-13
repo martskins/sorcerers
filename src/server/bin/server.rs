@@ -1,8 +1,8 @@
 use async_channel::Sender;
 use sorcerers::{
     card::{
-        ApprenticeWizard, AramosMercenaries, AridDesert, CaptainBaldassare, FelbogFrogMen,
-        SummerRiver,
+        ApprenticeWizard, AramosMercenaries, AridDesert, CaptainBaldassare, CourtesanThais,
+        FelbogFrogMen, SummerRiver,
     },
     deck::precon::ALL_PRECONS,
     game::Game,
@@ -197,7 +197,7 @@ impl Server {
 
         let player_two = game.state.players[1].id;
         let card = sorcerers::card::from_name_and_zone(
-            "Wildfire",
+            CourtesanThais::NAME,
             &player_one,
             sorcerers::zone::Zone::Hand,
         );

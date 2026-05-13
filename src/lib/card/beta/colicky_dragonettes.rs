@@ -63,7 +63,7 @@ impl Card for ColickyDragonettes {
     }
 
     async fn on_turn_end(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        let is_current_player = &state.current_player == self.get_owner_id();
+        let is_current_player = &state.current_player() == self.get_owner_id();
         if !is_current_player {
             return Ok(vec![]);
         }

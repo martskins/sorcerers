@@ -67,7 +67,7 @@ impl Card for HeadlessHaunt {
         }
 
         // Only fires on the owner's turn.
-        if _state.current_player != *self.get_owner_id() {
+        if _state.current_player() != *self.get_owner_id() {
             return Ok(vec![]);
         }
 

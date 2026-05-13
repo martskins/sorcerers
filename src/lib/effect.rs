@@ -4,7 +4,7 @@ use crate::{
     game::{BaseAction, Direction, PlayerAction, PlayerId, SoundEffect, pick_card, pick_option},
     networking::message::ServerMessage,
     query::{CardQuery, EffectQuery, QueryCache, ZoneQuery},
-    state::{ContinuousEffect, DeferredEffect, Phase, State, TemporaryEffect},
+    state::{ContinuousEffect, DeferredEffect, Phase, State, TemporaryEffect, Turn},
 };
 use std::fmt::Debug;
 
@@ -50,6 +50,9 @@ pub enum Effect {
     },
     SkipNextTurn {
         player_id: PlayerId,
+    },
+    OverrideNextTurn {
+        turn: Turn,
     },
     SetAvatarLife {
         player_id: PlayerId,
@@ -290,6 +293,7 @@ impl Effect {
             Effect::Noop => None,
             Effect::PlayerLost { player_id } => Some(player_id),
             Effect::SkipNextTurn { player_id } => Some(player_id),
+            Effect::OverrideNextTurn { .. } => None,
             Effect::SetAvatarLife { player_id, .. } => Some(player_id),
             Effect::SummonToken { player_id, .. } => Some(player_id),
             Effect::Heal { card_id, .. } => Some(card_id),
@@ -360,6 +364,17 @@ impl Effect {
                 "{} skips their next turn",
                 player_name(player_id, state)
             )),
+            Effect::OverrideNextTurn { turn } => match turn.controller_override() {
+                Some(controller_id) => Some(format!(
+                    "{} will control {}'s next turn",
+                    player_name(&controller_id, state),
+                    player_name(&turn.player_id(), state),
+                )),
+                None => Some(format!(
+                    "{} will control their next turn",
+                    player_name(&turn.player_id(), state),
+                )),
+            },
             Effect::SetAvatarLife { player_id, life } => Some(format!(
                 "{}'s Avatar life becomes {}",
                 player_name(player_id, state),
@@ -920,6 +935,9 @@ impl Effect {
             Effect::SkipNextTurn { player_id } => {
                 state.players_skipping_turns.insert(*player_id);
             }
+            Effect::OverrideNextTurn { turn } => {
+                state.override_next_turn(turn.clone());
+            }
             Effect::SetAvatarLife { player_id, life } => {
                 let avatar_id = state.get_player_avatar_id(player_id)?;
                 let avatar = state.get_card_mut(&avatar_id);
@@ -1369,16 +1387,17 @@ impl Effect {
                 }
             }
             Effect::StartTurn { player_id, .. } => {
-                let previous_player = state.current_player;
+                let previous_controller = state.current_turn_controller();
+                let turn = state.advance_to_turn(player_id)?;
+                let turn_controller = turn.controller_id();
                 state
                     .get_sender()
                     .send(ServerMessage::Wait {
-                        player_id: previous_player,
+                        player_id: previous_controller,
                         prompt: "Waiting for other player".to_string(),
                     })
                     .await?;
 
-                state.current_player = *player_id;
                 if state.players_skipping_turns.remove(player_id) {
                     state.queue_front(Effect::EndTurn {
                         player_id: *player_id,
@@ -1433,7 +1452,7 @@ impl Effect {
                         options.iter().map(|a| a.get_name().to_string()).collect();
                     let prompt = "Start Turn: Pick card to draw";
                     let picked_option_idx =
-                        pick_option(player_id, &option_labels, state, prompt, false).await?;
+                        pick_option(turn_controller, &option_labels, state, prompt, false).await?;
                     let effects = options[picked_option_idx]
                         .on_select(player_id, state)
                         .await?;
@@ -1444,7 +1463,7 @@ impl Effect {
                 state
                     .get_sender()
                     .send(ServerMessage::Resume {
-                        player_id: previous_player,
+                        player_id: previous_controller,
                     })
                     .await?;
             }
@@ -1485,22 +1504,10 @@ impl Effect {
                         .damage = 0;
                 }
 
-                let current_index = state
-                    .players
-                    .iter()
-                    .position(|p| p.id == state.current_player)
-                    .unwrap_or_default();
-                let next_player = state
-                    .players
-                    .iter()
-                    .cycle()
-                    .nth(current_index + 1)
-                    .ok_or(anyhow::anyhow!("No next player found"))?;
-
                 // Push StartTurn to the front of the queue so all end of turn effects are resolved
                 // first.
                 state.queue_front(Effect::StartTurn {
-                    player_id: next_player.id,
+                    player_id: state.next_turn().player_id(),
                 });
             }
             Effect::AddMana {
@@ -1875,9 +1882,10 @@ impl Effect {
                 state.queue(effects);
             }
             Effect::RearrangeDeck { spells, sites, .. } => {
+                let current_player = state.current_player();
                 let deck = state
                     .decks
-                    .get_mut(&state.current_player)
+                    .get_mut(&current_player)
                     .ok_or(anyhow::anyhow!("failed to find player deck"))?;
                 deck.spells = spells.clone();
                 deck.sites = sites.clone();

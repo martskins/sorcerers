@@ -261,6 +261,99 @@ impl LoggedEffect {
 }
 
 #[derive(Debug, Clone)]
+pub struct Turn {
+    pub(crate) player_id: PlayerId,
+    pub(crate) controller_override: Option<PlayerId>,
+}
+
+impl Turn {
+    pub fn new(player_id: PlayerId) -> Self {
+        Self {
+            player_id,
+            controller_override: None,
+        }
+    }
+
+    pub fn controlled_by(player_id: PlayerId, controller_id: PlayerId) -> Self {
+        Self {
+            player_id,
+            controller_override: (player_id != controller_id).then_some(controller_id),
+        }
+    }
+
+    pub fn player_id(&self) -> PlayerId {
+        self.player_id
+    }
+
+    pub fn controller_override(&self) -> Option<PlayerId> {
+        self.controller_override
+    }
+
+    pub fn controller_id(&self) -> PlayerId {
+        self.controller_override.unwrap_or(self.player_id)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct TurnIterator {
+    current: Turn,
+    normal: Vec<Turn>,
+    index: usize,
+    overrides: VecDeque<Turn>,
+}
+
+impl TurnIterator {
+    pub fn new(normal: Vec<PlayerId>) -> Self {
+        assert!(!normal.is_empty());
+
+        let normal: Vec<Turn> = normal.into_iter().map(Turn::new).collect();
+        Self {
+            current: normal[0].clone(),
+            normal,
+            index: 1,
+            overrides: VecDeque::new(),
+        }
+    }
+
+    pub fn current(&self) -> &Turn {
+        &self.current
+    }
+
+    pub fn next_turn(&self) -> &Turn {
+        self.overrides
+            .front()
+            .unwrap_or_else(|| &self.normal[self.index])
+    }
+
+    pub fn override_next(&mut self, value: Turn) {
+        self.overrides.push_front(value);
+    }
+
+    pub fn override_upcoming<I>(&mut self, values: I)
+    where
+        I: IntoIterator<Item = Turn>,
+    {
+        self.overrides.extend(values);
+    }
+}
+
+impl Iterator for TurnIterator {
+    type Item = Turn;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(value) = self.overrides.pop_front() {
+            self.current = value;
+            return Some(self.current.clone());
+        }
+
+        let value = self.normal[self.index].clone();
+        self.index = (self.index + 1) % self.normal.len();
+        self.current = value;
+        Some(self.current.clone())
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct State {
     pub game_id: uuid::Uuid,
     pub players: Vec<Player>,
@@ -270,7 +363,7 @@ pub struct State {
     pub input_status: InputStatus,
     pub phase: Phase,
     pub waiting_for_input: bool,
-    pub current_player: PlayerId,
+    pub curr_turn: TurnIterator,
     pub effects: VecDeque<Effect>,
     pub effect_log: Vec<LoggedEffect>,
     pub player_one: PlayerId,
@@ -303,9 +396,11 @@ impl State {
             .map(|p| (p.player.id, 0))
             .collect();
         let player_one = players_with_decks[0].player.id;
+        let mut player_ids = vec![];
         for player in players_with_decks {
             cards.extend(player.cards);
             decks.insert(player.player.id, player.deck);
+            player_ids.push(player.player.id);
         }
 
         State {
@@ -316,7 +411,7 @@ impl State {
             turns: 0,
             input_status: InputStatus::None,
             phase: Phase::Mulligan,
-            current_player: player_one,
+            curr_turn: TurnIterator::new(player_ids),
             waiting_for_input: false,
             effects: VecDeque::new(),
             effect_log: Vec::new(),
@@ -340,6 +435,55 @@ impl State {
             } if card_id == *spell_id => Some(caster_id),
             _ => None,
         })
+    }
+
+    pub fn current_turn(&self) -> &Turn {
+        self.curr_turn.current()
+    }
+
+    pub fn current_player(&self) -> PlayerId {
+        self.current_turn().player_id()
+    }
+
+    pub fn current_turn_controller(&self) -> PlayerId {
+        self.current_turn().controller_id()
+    }
+
+    pub fn decision_player(&self, player_id: impl AsRef<PlayerId>) -> PlayerId {
+        if player_id.as_ref() == &self.current_player() {
+            self.current_turn_controller()
+        } else {
+            *player_id.as_ref()
+        }
+    }
+
+    pub fn advance_turn(&mut self) -> Turn {
+        self.curr_turn
+            .next()
+            .expect("turn iterator should produce turns forever")
+    }
+
+    pub fn advance_to_turn(&mut self, player_id: &PlayerId) -> anyhow::Result<Turn> {
+        if &self.current_player() != player_id {
+            let turn = self.advance_turn();
+            if &turn.player_id() != player_id {
+                return Err(anyhow::anyhow!(
+                    "expected next turn for player {}, got {}",
+                    player_id,
+                    turn.player_id()
+                ));
+            }
+        }
+
+        Ok(self.current_turn().clone())
+    }
+
+    pub fn next_turn(&self) -> &Turn {
+        self.curr_turn.next_turn()
+    }
+
+    pub fn override_next_turn(&mut self, turn: Turn) {
+        self.curr_turn.override_next(turn);
     }
 
     pub async fn replace_effect(&self, effect: &Effect) -> anyhow::Result<Option<Vec<Effect>>> {
@@ -729,7 +873,8 @@ impl State {
                 .iter()
                 .map(|p| (p.id, self.get_player_resources(&p.id).unwrap().clone()))
                 .collect(),
-            current_player: self.current_player,
+            current_player: self.current_turn_controller(),
+            turn_player: self.current_player(),
             health,
             evaluation: None,
         })

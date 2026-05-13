@@ -115,6 +115,7 @@ pub async fn pick_card_with_options(
     state: &State,
     prompt: &str,
 ) -> anyhow::Result<uuid::Uuid> {
+    let decision_player = state.decision_player(player_id.as_ref());
     let opponent_id = state.get_opponent_id(player_id.as_ref())?;
     if block_opponent {
         wait_for_opponent(&opponent_id, state, "Wait for opponent...").await?;
@@ -124,7 +125,7 @@ pub async fn pick_card_with_options(
         .get_sender()
         .send(ServerMessage::PickCard {
             prompt: prompt.to_string(),
-            player_id: *player_id.as_ref(),
+            player_id: decision_player,
             cards: card_ids.to_vec(),
             pickable_cards: pickable_card_ids.to_vec(),
             preview: true,
@@ -154,10 +155,11 @@ pub async fn distribute_damage(
     defenders: &[uuid::Uuid],
     state: &State,
 ) -> anyhow::Result<HashMap<uuid::Uuid, u16>> {
+    let decision_player = state.decision_player(player_id.as_ref());
     state
         .get_sender()
         .send(ServerMessage::DistributeDamage {
-            player_id: *player_id.as_ref(),
+            player_id: decision_player,
             attacker: *attacker,
             defenders: defenders.to_vec(),
             damage: amount,
@@ -182,11 +184,12 @@ pub async fn pick_cards(
     state: &State,
     prompt: &str,
 ) -> anyhow::Result<Vec<uuid::Uuid>> {
+    let decision_player = state.decision_player(player_id.as_ref());
     state
         .get_sender()
         .send(ServerMessage::PickCards {
             prompt: prompt.to_string(),
-            player_id: *player_id.as_ref(),
+            player_id: decision_player,
             cards: card_ids.to_vec(),
             preview: false,
         })
@@ -208,11 +211,12 @@ pub async fn reveal_cards(
     state: &State,
     prompt: &str,
 ) -> anyhow::Result<()> {
+    let decision_player = state.decision_player(player_id.as_ref());
     state
         .get_sender()
         .send(ServerMessage::RevealCards {
             prompt: prompt.to_string(),
-            player_id: *player_id.as_ref(),
+            player_id: decision_player,
             cards: preview_cards.to_vec(),
             action: None,
         })
@@ -228,11 +232,12 @@ pub async fn take_action(
     prompt: &str,
     action: &str,
 ) -> anyhow::Result<bool> {
+    let decision_player = state.decision_player(player_id.as_ref());
     state
         .get_sender()
         .send(ServerMessage::RevealCards {
             prompt: prompt.to_string(),
-            player_id: *player_id.as_ref(),
+            player_id: decision_player,
             cards: preview_cards.to_vec(),
             action: Some(action.to_string()),
         })
@@ -253,13 +258,14 @@ pub async fn pick_card(
     state: &State,
     prompt: &str,
 ) -> anyhow::Result<uuid::Uuid> {
+    let decision_player = state.decision_player(player_id.as_ref());
     let opponent_id = state.get_opponent_id(player_id.as_ref())?;
     wait_for_opponent(&opponent_id, state, "Wait for opponent...").await?;
     state
         .get_sender()
         .send(ServerMessage::PickCard {
             prompt: prompt.to_string(),
-            player_id: *player_id.as_ref(),
+            player_id: decision_player,
             cards: card_ids.to_vec(),
             pickable_cards: card_ids.to_vec(),
             preview: false,
@@ -286,11 +292,12 @@ pub async fn pick_action<'a>(
     prompt: &str,
     anchor_on_cursor: bool,
 ) -> anyhow::Result<&'a Box<dyn ActivatedAbility>> {
+    let decision_player = state.decision_player(player_id.as_ref());
     state
         .get_sender()
         .send(ServerMessage::PickAction {
             prompt: prompt.to_string(),
-            player_id: *player_id.as_ref(),
+            player_id: decision_player,
             actions: actions.iter().map(|c| c.get_name().to_string()).collect(),
             anchor_on_cursor,
         })
@@ -307,10 +314,11 @@ pub async fn pick_action<'a>(
 }
 
 pub async fn resume(player_id: &PlayerId, state: &State) -> anyhow::Result<()> {
+    let decision_player = state.decision_player(player_id);
     state
         .get_sender()
         .send(ServerMessage::Resume {
-            player_id: *player_id,
+            player_id: decision_player,
         })
         .await?;
 
@@ -322,10 +330,11 @@ pub async fn wait_for_opponent(
     state: &State,
     prompt: impl AsRef<str>,
 ) -> anyhow::Result<()> {
+    let decision_player = state.decision_player(player_id);
     state
         .get_sender()
         .send(ServerMessage::Wait {
-            player_id: *player_id,
+            player_id: decision_player,
             prompt: prompt.as_ref().to_string(),
         })
         .await?;
@@ -359,11 +368,12 @@ pub async fn pick_amount(
     state: &State,
     prompt: impl AsRef<str>,
 ) -> anyhow::Result<u8> {
+    let decision_player = state.decision_player(player_id.as_ref());
     state
         .get_sender()
         .send(ServerMessage::PickAmount {
             prompt: prompt.as_ref().to_string(),
-            player_id: *player_id.as_ref(),
+            player_id: decision_player,
             min_amount,
             max_amount,
         })
@@ -386,11 +396,12 @@ pub async fn pick_option(
     prompt: impl AsRef<str>,
     anchor_on_cursor: bool,
 ) -> anyhow::Result<usize> {
+    let decision_player = state.decision_player(player_id.as_ref());
     state
         .get_sender()
         .send(ServerMessage::PickAction {
             prompt: prompt.as_ref().to_string(),
-            player_id: *player_id.as_ref(),
+            player_id: decision_player,
             actions: options.to_vec(),
             anchor_on_cursor,
         })
@@ -412,11 +423,12 @@ pub async fn pick_path(
     state: &State,
     prompt: &str,
 ) -> anyhow::Result<Vec<Zone>> {
+    let decision_player = state.decision_player(player_id.as_ref());
     state
         .get_sender()
         .send(ServerMessage::PickPath {
             prompt: prompt.to_string(),
-            player_id: *player_id.as_ref(),
+            player_id: decision_player,
             paths: paths.to_vec(),
         })
         .await?;
@@ -438,6 +450,7 @@ pub async fn pick_zone_group(
     block_opponent: bool,
     prompt: &str,
 ) -> anyhow::Result<Vec<Zone>> {
+    let decision_player = state.decision_player(player_id.as_ref());
     let opponent_id = state.get_opponent_id(player_id.as_ref())?;
     if block_opponent {
         wait_for_opponent(&opponent_id, state, "Wait for opponent...").await?;
@@ -447,7 +460,7 @@ pub async fn pick_zone_group(
         .get_sender()
         .send(ServerMessage::PickZoneGroup {
             prompt: prompt.to_string(),
-            player_id: *player_id.as_ref(),
+            player_id: decision_player,
             groups: groups.to_vec(),
         })
         .await?;
@@ -475,6 +488,7 @@ pub async fn pick_zone_near(
     block_opponent: bool,
     prompt: &str,
 ) -> anyhow::Result<Zone> {
+    let decision_player = state.decision_player(player_id.as_ref());
     let opponent_id = state.get_opponent_id(player_id.as_ref())?;
     if block_opponent {
         wait_for_opponent(&opponent_id, state, "Wait for opponent...").await?;
@@ -484,7 +498,7 @@ pub async fn pick_zone_near(
         .get_sender()
         .send(ServerMessage::PickZone {
             prompt: prompt.to_string(),
-            player_id: *player_id.as_ref(),
+            player_id: decision_player,
             zones: zone.get_nearby(),
         })
         .await?;
@@ -512,6 +526,7 @@ pub async fn pick_zone(
     block_opponent: bool,
     prompt: &str,
 ) -> anyhow::Result<Zone> {
+    let decision_player = state.decision_player(player_id.as_ref());
     let opponent_id = state.get_opponent_id(player_id.as_ref())?;
     if block_opponent {
         wait_for_opponent(&opponent_id, state, "Wait for opponent...").await?;
@@ -521,7 +536,7 @@ pub async fn pick_zone(
         .get_sender()
         .send(ServerMessage::PickZone {
             prompt: prompt.to_string(),
-            player_id: *player_id.as_ref(),
+            player_id: decision_player,
             zones: zones.to_vec(),
         })
         .await?;
@@ -560,6 +575,7 @@ pub async fn force_sync(player_id: impl AsRef<PlayerId>, state: &State) -> anyho
             cards,
             resources,
             current_player,
+            turn_player,
             health,
             ..
         } => {
@@ -570,6 +586,7 @@ pub async fn force_sync(player_id: impl AsRef<PlayerId>, state: &State) -> anyho
                     cards,
                     resources,
                     current_player,
+                    turn_player,
                     health,
                 })
                 .await?;
@@ -586,11 +603,12 @@ pub async fn pick_direction(
     state: &State,
     prompt: &str,
 ) -> anyhow::Result<Direction> {
+    let decision_player = state.decision_player(player_id.as_ref());
     state
         .get_sender()
         .send(ServerMessage::PickAction {
             prompt: prompt.to_string(),
-            player_id: *player_id.as_ref(),
+            player_id: decision_player,
             actions: directions.iter().map(|c| c.get_name()).collect(),
             anchor_on_cursor: false,
         })
@@ -1661,15 +1679,65 @@ impl Game {
             } => {
                 let snapshot = self.state.clone();
                 let card = snapshot.get_card(card_id);
-                if player_id != &self.state.current_player {
+                if player_id != &self.state.current_turn_controller() {
                     return Ok(());
                 }
 
-                if !card.is_playable(&self.state, player_id)? {
+                let acting_player = self.state.current_player();
+                if matches!(card.get_zone(), Zone::Realm(_, _)) {
+                    if card.get_controller_id(&self.state) != acting_player {
+                        return Ok(());
+                    }
+
+                    let unit_disabled = card.has_ability(&self.state, &Ability::SummoningSickness);
+                    if card.is_unit() && unit_disabled {
+                        return Ok(());
+                    }
+
+                    let mut actions = card.get_activated_abilities(&self.state)?;
+                    actions.retain(|action| {
+                        let can_afford = action
+                            .get_cost(card_id, &self.state)
+                            .and_then(|cost| cost.can_afford(&self.state, &acting_player))
+                            .unwrap_or_default();
+                        let can_activate = action
+                            .can_activate(card_id, &acting_player, &self.state)
+                            .unwrap_or_default();
+                        can_afford && can_activate
+                    });
+
+                    if actions.is_empty() {
+                        return Ok(());
+                    }
+
+                    actions.push(Box::new(CancelAction));
+                    let prompt = format!("{}: Pick action", card.get_name());
+                    let action =
+                        pick_action(&acting_player, &actions, &self.state, &prompt, true).await?;
+                    let cost = action.get_cost(card_id, &self.state)?.clone();
+                    let effects = action
+                        .on_select(card.get_id(), &acting_player, &self.state)
+                        .await?;
+                    // Pay costs after selecting the action to work around scenarios where
+                    // the cost includes sacricing the card and the effects involve nearby
+                    // cards, which would result in no valid targets, as the card would already
+                    // be in the cemetery at the point of execution the action.
+                    cost.pay(&mut self.state, &acting_player).await?;
+                    // Activating a special ability is an interaction: the card loses Stealth.
+                    if action.is_special_ability() {
+                        self.state
+                            .get_card_mut(card_id)
+                            .remove_modifier(&Ability::Stealth);
+                    }
+                    self.state.queue(effects);
                     return Ok(());
                 }
 
-                let avatar_id = self.state.get_player_avatar_id(player_id)?;
+                if !card.is_playable(&self.state, &acting_player)? {
+                    return Ok(());
+                }
+
+                let avatar_id = self.state.get_player_avatar_id(&acting_player)?;
                 let spellcasters = CardQuery::new().units().in_play().all(&self.state);
                 let spellcasters = spellcasters
                     .into_iter()
@@ -1677,10 +1745,10 @@ impl Game {
                         let can_cast = self
                             .state
                             .get_card(c)
-                            .can_cast_spell_with_id(&self.state, card_id, player_id)
+                            .can_cast_spell_with_id(&self.state, card_id, &acting_player)
                             .unwrap_or_default();
                         let can_afford = card
-                            .is_affordable(&self.state, player_id, &avatar_id)
+                            .is_affordable(&self.state, &acting_player, &avatar_id)
                             .unwrap_or_default();
                         can_cast && can_afford
                     })
@@ -1696,11 +1764,12 @@ impl Game {
                         if card.get_base().needs_explicit_spellcaster && spellcasters.len() > 1 {
                             let prompt = "Pick a spellcaster to cast the spell";
                             caster_id =
-                                pick_card(player_id, &spellcasters, &self.state, prompt).await?;
+                                pick_card(&acting_player, &spellcasters, &self.state, prompt)
+                                    .await?;
                         }
 
                         let effects = card
-                            .play_mechanic(&self.state, player_id, &caster_id)
+                            .play_mechanic(&self.state, &acting_player, &caster_id)
                             .await?;
                         self.state.queue(effects);
                     }
@@ -1709,12 +1778,13 @@ impl Game {
                         if spellcasters.len() > 1 {
                             let prompt = "Pick a spellcaster to cast the spell";
                             caster_id =
-                                pick_card(player_id, &spellcasters, &self.state, prompt).await?;
+                                pick_card(&acting_player, &spellcasters, &self.state, prompt)
+                                    .await?;
                         }
 
                         let caster = self.state.get_card(&caster_id);
                         self.state.queue_one(Effect::PlayMagic {
-                            player_id: *player_id,
+                            player_id: acting_player,
                             card_id: *card_id,
                             caster_id,
                             from: caster.get_zone().clone(),
@@ -1726,54 +1796,14 @@ impl Game {
                     // Avatars should not even be playable from any zone.
                     CardType::Avatar => {}
                 }
-
-                if matches!(card.get_zone(), Zone::Realm(_, _)) {
-                    let unit_disabled = card.has_ability(&self.state, &Ability::SummoningSickness);
-                    if card.is_unit() && unit_disabled {
-                        return Ok(());
-                    }
-
-                    let mut actions = card.get_activated_abilities(&self.state)?;
-                    actions.retain(|action| {
-                        let can_afford = action
-                            .get_cost(card_id, &self.state)
-                            .and_then(|cost| cost.can_afford(&self.state, player_id))
-                            .unwrap_or_default();
-                        let can_activate = action
-                            .can_activate(card_id, player_id, &self.state)
-                            .unwrap_or_default();
-                        can_afford && can_activate
-                    });
-
-                    if actions.is_empty() {
-                        return Ok(());
-                    }
-
-                    actions.push(Box::new(CancelAction));
-                    let prompt = format!("{}: Pick action", card.get_name());
-                    let action =
-                        pick_action(player_id, &actions, &self.state, &prompt, true).await?;
-                    let cost = action.get_cost(card_id, &self.state)?.clone();
-                    let effects = action
-                        .on_select(card.get_id(), player_id, &self.state)
-                        .await?;
-                    // Pay costs after selecting the action to work around scenarios where
-                    // the cost includes sacricing the card and the effects involve nearby
-                    // cards, which would result in no valid targets, as the card would already
-                    // be in the cemetery at the point of execution the action.
-                    cost.pay(&mut self.state, player_id).await?;
-                    // Activating a special ability is an interaction: the card loses Stealth.
-                    if action.is_special_ability() {
-                        self.state
-                            .get_card_mut(card_id)
-                            .remove_modifier(&Ability::Stealth);
-                    }
-                    self.state.queue(effects);
-                }
             }
             ClientMessage::EndTurn { player_id, .. } => {
+                if player_id != &self.state.current_turn_controller() {
+                    return Ok(());
+                }
+
                 self.state.queue_one(Effect::EndTurn {
-                    player_id: *player_id,
+                    player_id: self.state.current_player(),
                 });
             }
             ClientMessage::PickCards {

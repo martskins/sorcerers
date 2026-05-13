@@ -35,6 +35,7 @@ pub enum ComponentCommand {
         title: String,
         zone: Zone,
         controller_id: Option<PlayerId>,
+        open_only: bool,
     },
     CloseOverlay,
 }

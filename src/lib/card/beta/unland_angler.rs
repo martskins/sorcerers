@@ -63,7 +63,7 @@ impl Card for UnlandAngler {
 
     async fn on_turn_start(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        if state.current_player != controller_id {
+        if state.current_player() != controller_id {
             return Ok(vec![]);
         }
 

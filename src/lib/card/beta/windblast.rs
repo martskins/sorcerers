@@ -64,7 +64,8 @@ impl Card for Windblast {
         let units = CardQuery::new().units().in_play().all(state);
         for unit_id in units {
             let unit = state.get_card(&unit_id);
-            if unit.get_region(state) != &Region::Surface || unit.get_zone().get_site(state).is_none()
+            if unit.get_region(state) != &Region::Surface
+                || unit.get_zone().get_site(state).is_none()
             {
                 continue;
             }

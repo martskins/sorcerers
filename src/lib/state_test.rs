@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        Ability, AridDesert, BeastOfBurden, Card, CauldronCrones, DonnybrookInn, Enchantress,
-        FootSoldier, HeadlessHaunt, KiteArcher, NimbusJinn, Region, RimlandNomads,
+        Ability, AridDesert, BeastOfBurden, Card, CauldronCrones, CourtesanThais, DonnybrookInn,
+        Enchantress, FootSoldier, HeadlessHaunt, KiteArcher, NimbusJinn, Region, RimlandNomads,
         from_name_and_zone,
     },
     deck::Deck,
@@ -9,7 +9,7 @@ use crate::{
     game::Thresholds,
     networking::message::ServerMessage,
     query::{CardQuery, EffectQuery, QueryCache, ZoneQuery},
-    state::{Player, PlayerWithDeck, State, TemporaryEffect},
+    state::{Player, PlayerWithDeck, State, TemporaryEffect, Turn, TurnIterator},
     zone::Zone,
 };
 
@@ -508,4 +508,60 @@ fn test_card_query_spatial_filters_resolve_with_current_state() {
     state.cards.insert(site_id, Box::new(site));
 
     assert!(query.matches(&site_id, &state));
+}
+
+#[test]
+fn test_turn_iterator() {
+    let player_one = uuid::Uuid::new_v4();
+    let player_two = uuid::Uuid::new_v4();
+    let mut it = TurnIterator::new(vec![player_one, player_two]);
+
+    assert_eq!(it.current().player_id, player_one);
+
+    let curr = it.next();
+    assert!(curr.is_some());
+    assert_eq!(curr.unwrap().player_id, player_two);
+
+    it.override_next(Turn::controlled_by(player_two, player_one));
+
+    let curr = it.next();
+    assert!(curr.is_some());
+    let curr = curr.unwrap();
+    assert_eq!(curr.player_id, player_two);
+    assert_eq!(curr.controller_override, Some(player_one));
+
+    let curr = it.next();
+    assert!(curr.is_some());
+    assert_eq!(curr.unwrap().player_id, player_one);
+}
+
+#[tokio::test]
+async fn test_courtesan_thais_genesis_overrides_next_turns() {
+    let (mut state, _rx) = setup_carrying_state();
+    let player_one = state.players[0].id;
+    let player_two = state.players[1].id;
+    let thais = CourtesanThais::new(player_one);
+
+    let effects = thais.genesis(&state).await.unwrap();
+    state.queue(effects);
+    state.apply_effects_without_log().await.unwrap();
+
+    let next_turn = state.next_turn();
+    assert_eq!(next_turn.player_id(), player_two);
+    assert_eq!(next_turn.controller_override(), Some(player_one));
+
+    state.advance_turn();
+    assert_eq!(state.current_player(), player_two);
+    assert_eq!(state.current_turn_controller(), player_one);
+
+    match state.into_sync().unwrap() {
+        ServerMessage::Sync { current_player, .. } => {
+            assert_eq!(current_player, player_one);
+        }
+        _ => unreachable!(),
+    }
+
+    let next_turn = state.next_turn();
+    assert_eq!(next_turn.player_id(), player_one);
+    assert_eq!(next_turn.controller_override(), Some(player_two));
 }

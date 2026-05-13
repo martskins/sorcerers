@@ -65,7 +65,7 @@ impl Card for CourtJester {
         let controller_id = self.get_controller_id(state);
 
         // Only trigger at the end of the controller's turn.
-        if state.current_player != controller_id {
+        if state.current_player() != controller_id {
             return Ok(vec![]);
         }
 

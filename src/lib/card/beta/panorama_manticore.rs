@@ -63,7 +63,7 @@ impl Card for PanoramaManticore {
 
     async fn on_turn_end(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        if controller_id != state.current_player {
+        if controller_id != state.current_player() {
             return Ok(vec![]);
         }
 

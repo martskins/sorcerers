@@ -69,7 +69,7 @@ impl Card for PendulumOfPeril {
             return Ok(vec![]);
         }
 
-        let current_player = state.current_player;
+        let current_player = state.current_player();
         let adjacent_zones: Vec<Zone> = zone
             .get_adjacent()
             .into_iter()

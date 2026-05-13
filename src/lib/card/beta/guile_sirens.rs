@@ -63,7 +63,7 @@ impl Card for GuileSirens {
     }
 
     async fn on_turn_start(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        if state.current_player != self.get_controller_id(state) {
+        if state.current_player() != self.get_controller_id(state) {
             return Ok(vec![]);
         }
 

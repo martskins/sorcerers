@@ -69,10 +69,7 @@ impl Card for WallOfIce {
         Ok(border_zones_of_controlled_sites(state, player_id))
     }
 
-    async fn get_continuous_effects(
-        &self,
-        state: &State,
-    ) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
         let affected_minions = CardQuery::new()
             .minions()
             .in_play()

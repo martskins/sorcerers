@@ -1,16 +1,10 @@
 use crate::prelude::*;
-
-/// Tracks how many more turns the controller-swap effect is active.
-#[derive(Debug, Clone, Default)]
-struct ThaisData {
-    turns_remaining: u8,
-}
+use crate::state::Turn;
 
 #[derive(Debug, Clone)]
 pub struct CourtesanThais {
     unit_base: UnitBase,
     card_base: CardBase,
-    data: ThaisData,
 }
 
 impl CourtesanThais {
@@ -38,7 +32,6 @@ impl CourtesanThais {
                 is_token: false,
                 ..Default::default()
             },
-            data: ThaisData::default(),
         }
     }
 }
@@ -69,60 +62,16 @@ impl Card for CourtesanThais {
         Some(&mut self.unit_base)
     }
 
-    fn set_data(
-        &mut self,
-        data: &std::sync::Arc<dyn std::any::Any + Send + Sync>,
-    ) -> anyhow::Result<()> {
-        if let Some(d) = data.downcast_ref::<ThaisData>() {
-            self.data = d.clone();
-        }
-        Ok(())
-    }
+    async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+        let current_player = state.current_player();
+        let next_player = state.next_turn().player_id();
 
-    /// Genesis: activate the controller-swap for the next 2 player turns (one round).
-    async fn genesis(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
-        Ok(vec![Effect::SetCardData {
-            card_id: *self.get_id(),
-            data: std::sync::Arc::new(ThaisData { turns_remaining: 2 }),
-        }])
-    }
-
-    /// At the end of each turn, decrement the counter. The override lasts for 2 player turns.
-    async fn on_turn_end(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
-        if self.data.turns_remaining == 0 {
-            return Ok(vec![]);
-        }
-
-        Ok(vec![Effect::SetCardData {
-            card_id: *self.get_id(),
-            data: std::sync::Arc::new(ThaisData {
-                turns_remaining: self.data.turns_remaining.saturating_sub(1),
-            }),
-        }])
-    }
-
-    /// While turns_remaining > 0, each player's minions are controlled by their opponent.
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
-        if self.data.turns_remaining == 0 || !self.get_zone().is_in_play() {
-            return Ok(vec![]);
-        }
-
-        let controller_id = self.get_controller_id(state);
-        let Ok(opponent_id) = state.get_opponent_id(&controller_id) else {
-            return Ok(vec![]);
-        };
-
-        // TODO: This card should make the player conrol the opponents turn, not just change the
-        // controller of their cards.
-        // Each player's minions and avatars are controlled by the opponent.
         Ok(vec![
-            ContinuousEffect::ControllerOverride {
-                controller_id: opponent_id,
-                affected_cards: CardQuery::new().units().controlled_by(&controller_id),
+            Effect::OverrideNextTurn {
+                turn: Turn::controlled_by(next_player, current_player),
             },
-            ContinuousEffect::ControllerOverride {
-                controller_id,
-                affected_cards: CardQuery::new().units().controlled_by(&opponent_id),
+            Effect::OverrideNextTurn {
+                turn: Turn::controlled_by(current_player, next_player),
             },
         ])
     }

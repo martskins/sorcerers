@@ -57,7 +57,7 @@ impl Card for UndertakerEngine {
 
     async fn on_turn_end(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        if state.current_player != controller_id || !self.get_zone().is_in_play() {
+        if state.current_player() != controller_id || !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }
 

@@ -148,8 +148,11 @@ impl Component for PlayerStatusComponent {
 
         let area_id = if self.player { "ps_self" } else { "ps_opp" };
         let mut open_log = false;
+        let mut open_hand = false;
         let mut open_cemetery = false;
         let mut open_banish = false;
+        let can_view_controlled_hand =
+            data.current_player == data.player_id && data.turn_player == self.player_id && !is_self;
 
         egui::Area::new(egui::Id::new(area_id))
             .fixed_pos(pos2(4.0, panel_y))
@@ -226,13 +229,32 @@ impl Component for PlayerStatusComponent {
                                 &ctx,
                             );
                             ui.add_space(5.0);
-                            stat_cell(
-                                ui,
-                                "assets/icons/cards.png",
-                                hand_count,
-                                Color32::from_rgb(230, 210, 100),
-                                &ctx,
-                            );
+                            let hand_scope = ui.scope(|ui| {
+                                stat_cell(
+                                    ui,
+                                    "assets/icons/cards.png",
+                                    hand_count,
+                                    Color32::from_rgb(230, 210, 100),
+                                    &ctx,
+                                );
+                            });
+                            if can_view_controlled_hand {
+                                let hand_response = ui.interact(
+                                    hand_scope.response.rect,
+                                    egui::Id::new(if self.player {
+                                        "hand_click_self"
+                                    } else {
+                                        "hand_click_opp"
+                                    }),
+                                    egui::Sense::click(),
+                                );
+                                if hand_response.hovered() {
+                                    ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
+                                }
+                                if hand_response.clicked() {
+                                    open_hand = true;
+                                }
+                            }
                             ui.add_space(5.0);
                             let tomb_scope = ui.scope(|ui| {
                                 stat_cell(
@@ -315,6 +337,16 @@ impl Component for PlayerStatusComponent {
                 title,
                 zone: Zone::Cemetery,
                 controller_id: Some(self.player_id),
+                open_only: false,
+            }));
+        }
+
+        if open_hand {
+            return Ok(Some(ComponentCommand::OpenCardViewer {
+                title: "Controlled Player's Hand".to_string(),
+                zone: Zone::Hand,
+                controller_id: Some(self.player_id),
+                open_only: true,
             }));
         }
 
@@ -328,6 +360,7 @@ impl Component for PlayerStatusComponent {
                 title,
                 zone: Zone::Banish,
                 controller_id: Some(self.player_id),
+                open_only: false,
             }));
         }
 

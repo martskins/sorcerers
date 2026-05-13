@@ -94,7 +94,7 @@ impl Card for MagneticMuzzle {
             return Ok(vec![]);
         }
 
-        let player_id = state.current_player;
+        let player_id = state.current_player();
         let target_id = pick_card(
             &player_id,
             &nearby_minions,

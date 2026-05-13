@@ -84,7 +84,7 @@ impl Card for BlackObelisk {
         };
 
         let controller_id = site.get_controller_id(state);
-        if controller_id != state.current_player {
+        if controller_id != state.current_player() {
             return Ok(vec![]);
         }
 

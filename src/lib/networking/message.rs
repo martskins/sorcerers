@@ -93,6 +93,7 @@ pub enum ServerMessage {
         resources: HashMap<PlayerId, Resources>,
         health: HashMap<PlayerId, u16>,
         current_player: PlayerId,
+        turn_player: PlayerId,
         /// Present only when the server's debug-eval flag is enabled.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         evaluation: Option<Evaluation>,
@@ -147,6 +148,7 @@ pub enum ServerMessage {
         cards: Vec<CardData>,
         resources: HashMap<PlayerId, Resources>,
         current_player: PlayerId,
+        turn_player: PlayerId,
         health: HashMap<PlayerId, u16>,
     },
     MulligansEnded,

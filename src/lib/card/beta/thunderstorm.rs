@@ -68,7 +68,7 @@ impl Card for Thunderstorm {
     }
 
     async fn on_turn_end(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        if state.current_player != self.get_controller_id(state) {
+        if state.current_player() != self.get_controller_id(state) {
             return Ok(vec![]);
         }
 

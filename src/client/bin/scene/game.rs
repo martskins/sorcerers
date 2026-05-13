@@ -122,6 +122,8 @@ pub struct GameData {
     pub cards: Vec<CardData>,
     pub events: Vec<Event>,
     pub status: Status,
+    pub current_player: PlayerId,
+    pub turn_player: PlayerId,
     pub unseen_events: usize,
     pub resources: HashMap<PlayerId, Resources>,
     pub avatar_health: HashMap<PlayerId, u16>,
@@ -138,6 +140,8 @@ impl GameData {
             cards,
             events: Vec::new(),
             status: Status::Mulligan,
+            current_player: uuid::Uuid::nil(),
+            turn_player: uuid::Uuid::nil(),
             unseen_events: 0,
             resources: HashMap::new(),
             avatar_health: HashMap::new(),
@@ -181,6 +185,7 @@ pub struct Game {
     audio_manager: AudioManager<DefaultBackend>,
     selected_value: Option<Box<dyn std::any::Any>>,
     card_toast: Vec<CardToast>,
+    controlled_hand_opened_for: Option<PlayerId>,
 }
 
 impl Game {
@@ -240,6 +245,7 @@ impl Game {
             audio_manager,
             selected_value: None,
             card_toast: Vec::new(),
+            controlled_hand_opened_for: None,
         }
     }
 
@@ -389,6 +395,7 @@ impl Game {
                 title: "Your Cemetery".to_string(),
                 zone: Zone::Cemetery,
                 controller_id: Some(self.player_id),
+                open_only: false,
             };
             for cmp in self.components.iter_mut() {
                 cmp.process_command(&command, &mut self.data).unwrap();
@@ -400,6 +407,7 @@ impl Game {
                 title: "Opponent's Cemetery".to_string(),
                 zone: Zone::Cemetery,
                 controller_id: Some(self.opponent_id),
+                open_only: false,
             };
             for cmp in self.components.iter_mut() {
                 cmp.process_command(&command, &mut self.data)?;
@@ -407,6 +415,27 @@ impl Game {
         }
 
         Ok(())
+    }
+
+    fn open_controlled_hand_viewer(&mut self) {
+        if self.current_player != self.player_id || self.data.turn_player == self.player_id {
+            self.controlled_hand_opened_for = None;
+            return;
+        }
+        if self.controlled_hand_opened_for == Some(self.data.turn_player) {
+            return;
+        }
+
+        let command = ComponentCommand::OpenCardViewer {
+            title: "Controlled Player's Hand".to_string(),
+            zone: Zone::Hand,
+            controller_id: Some(self.data.turn_player),
+            open_only: true,
+        };
+        for cmp in self.components.iter_mut() {
+            let _ = cmp.process_command(&command, &mut self.data);
+        }
+        self.controlled_hand_opened_for = Some(self.data.turn_player);
     }
 
     fn render_gui(&mut self, ui: &mut Ui, painter: &Painter) -> Option<Scene> {
@@ -880,27 +909,35 @@ impl Game {
             ServerMessage::Sync {
                 cards,
                 current_player,
+                turn_player,
                 resources,
                 health,
                 ..
             } => {
                 self.data.cards = sort_cards(cards);
                 self.current_player = *current_player;
+                self.data.current_player = *current_player;
+                self.data.turn_player = *turn_player;
                 self.data.resources = resources.clone();
                 self.data.avatar_health = health.clone();
+                self.open_controlled_hand_viewer();
                 None
             }
             ServerMessage::ForceSync {
                 cards,
                 current_player,
+                turn_player,
                 resources,
                 health,
                 ..
             } => {
                 self.data.cards = sort_cards(cards);
                 self.current_player = *current_player;
+                self.data.current_player = *current_player;
+                self.data.turn_player = *turn_player;
                 self.data.resources = resources.clone();
                 self.data.avatar_health = health.clone();
+                self.open_controlled_hand_viewer();
                 None
             }
             _ => None,
