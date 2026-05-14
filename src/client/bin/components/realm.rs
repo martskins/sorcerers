@@ -1,8 +1,8 @@
 use crate::{
     components::{Component, ComponentCommand, ComponentType},
-    config::CARD_ASPECT_RATIO,
     render::{self, CardRect, CellRect, IntersectionRect},
     scene::game::{GameData, Status},
+    theme,
     texture_cache::TextureCache,
 };
 use egui::{
@@ -17,72 +17,12 @@ use sorcerers::{
     zone::Zone,
 };
 
+mod geometry;
+
+use geometry::{card_rotation, cell_rect, intersection_rect, site_dimensions, spell_dimensions};
+
 static OCCUPIED_ZONE_BACKGROUND_COLOR: Color32 =
     Color32::from_rgba_unmultiplied_const(20, 31, 46, 255);
-
-fn cell_rect(realm_rect: &Rect, id: u8, mirror: bool) -> Rect {
-    let idx = id - 1;
-    let mut col = idx % 5;
-    let mut row = 3 - (idx / 5);
-    if mirror {
-        col = 4 - col;
-    }
-    if mirror {
-        row = 3 - row;
-    }
-    let cell_width = realm_rect.width() / 5.0;
-    let cell_height = realm_rect.height() / 4.0;
-    Rect::from_min_size(
-        pos2(
-            realm_rect.min.x + col as f32 * cell_width,
-            realm_rect.min.y + row as f32 * cell_height,
-        ),
-        vec2(cell_width, cell_height),
-    )
-}
-
-fn intersection_rect(realm_rect: &Rect, locations: &[u8], mirror: bool) -> Option<Rect> {
-    let base_rect = cell_rect(realm_rect, 1, mirror);
-    let width = spell_dimensions(&base_rect).x;
-    let height = spell_dimensions(&base_rect).y;
-    let cell_width = realm_rect.width() / 5.0;
-    let start_rect = if mirror {
-        cell_rect(realm_rect, locations[locations.len() - 1], mirror)
-    } else {
-        cell_rect(realm_rect, locations[0], mirror)
-    };
-    Some(Rect::from_min_size(
-        pos2(
-            start_rect.min.x + cell_width - width / 2.0,
-            start_rect.min.y - height / 2.0,
-        ),
-        vec2(width, height),
-    ))
-}
-
-fn card_width(cell_rect: &Rect) -> f32 {
-    cell_rect.width() / 3.5
-}
-
-fn card_height(cell_rect: &Rect) -> f32 {
-    card_width(cell_rect) / CARD_ASPECT_RATIO
-}
-
-fn spell_dimensions(cell_rect: &Rect) -> Vec2 {
-    vec2(card_width(cell_rect), card_height(cell_rect))
-}
-
-pub fn site_dimensions(cell_rect: &Rect) -> Vec2 {
-    vec2(card_height(cell_rect), card_width(cell_rect))
-}
-
-fn card_rotation(card: &CardData) -> f32 {
-    if card.tapped {
-        std::f32::consts::FRAC_PI_2
-    } else {
-        0.0
-    }
-}
 
 const CARD_FLIGHT_DURATION: f64 = 0.28;
 
@@ -453,7 +393,7 @@ impl RealmComponent {
         data: &mut GameData,
         painter: &Painter,
     ) -> anyhow::Result<()> {
-        let grid_color = Color32::from_rgb(70, 92, 112);
+        let grid_color = theme::GRID_LINE;
         let grid_thickness = 1.0;
 
         let occupied_zones: Vec<u8> = self
@@ -506,7 +446,7 @@ impl RealmComponent {
                         painter.rect_stroke(
                             rect.shrink(3.0),
                             5.0,
-                            Stroke::new(2.5, Color32::from_rgb(130, 226, 144)),
+                            Stroke::new(2.5, theme::PICKABLE),
                             egui::StrokeKind::Inside,
                         );
                     }
@@ -539,7 +479,7 @@ impl RealmComponent {
                         painter.rect_stroke(
                             rect,
                             4.0,
-                            Stroke::new(3.0, Color32::from_rgb(130, 226, 144)),
+                            Stroke::new(3.0, theme::PICKABLE),
                             egui::StrokeKind::Outside,
                         );
                     }
@@ -678,12 +618,10 @@ impl RealmComponent {
                 multiple: true,
                 ..
             } if cards.contains(card_id) => {
-                let card_rect = self
-                    .card_rects
-                    .iter_mut()
-                    .find(|c| c.card.id == *card_id)
-                    .unwrap();
-                card_rect.is_selected = !card_rect.is_selected;
+                if let Some(card_rect) = self.card_rects.iter_mut().find(|c| c.card.id == *card_id)
+                {
+                    card_rect.is_selected = !card_rect.is_selected;
+                }
             }
             _ => {}
         }

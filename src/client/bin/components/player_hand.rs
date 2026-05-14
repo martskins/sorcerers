@@ -1,11 +1,12 @@
 use crate::{
+    card_layout::{self, CardDims, HandLayout},
     components::{Component, ComponentCommand, ComponentType},
-    config::CARD_ASPECT_RATIO,
     render::{self, CardRect},
     scene::game::{GameData, Status},
+    theme,
     texture_cache::TextureCache,
 };
-use egui::{Color32, Context, Painter, Rect, Sense, Stroke, Ui, pos2, vec2};
+use egui::{Color32, Context, Painter, Rect, Sense, Stroke, Ui, vec2};
 use sorcerers::{
     card::CardData,
     game::PlayerId,
@@ -44,20 +45,12 @@ impl PlayerHandComponent {
         }
     }
 
-    fn card_width(&self) -> f32 {
-        self.card_height() * CARD_ASPECT_RATIO
-    }
-
     fn card_height(&self) -> f32 {
         self.rect.height() * 0.8
     }
 
-    fn spell_dimensions(&self) -> egui::Vec2 {
-        vec2(self.card_width(), self.card_height())
-    }
-
-    pub fn site_dimensions(&self) -> egui::Vec2 {
-        vec2(self.card_height(), self.card_width())
+    fn card_dimensions(&self) -> CardDims {
+        CardDims::from_spell_height(self.card_height())
     }
 
     fn compute_rects(&mut self, cards: &[CardData], ctx: &Context) -> anyhow::Result<()> {
@@ -103,51 +96,14 @@ impl PlayerHandComponent {
 
         let spell_count = spells.len();
         let site_count = sites.len();
-        let spell_dim = self.spell_dimensions();
-        let site_dim = self.site_dimensions();
-
-        let min_visible_width = spell_dim.x * 0.25;
-        let max_hand_width = self.rect.width() * 0.95;
-        let spell_spacing = if spell_count > 1 {
-            ((max_hand_width - spell_dim.x) / (spell_count as f32 - 1.0))
-                .min(spell_dim.x - min_visible_width)
-                .max(10.0)
-        } else {
-            0.0
-        };
-
-        let spells_width = if spell_count > 0 {
-            spell_dim.x + (spell_count as f32 - 1.0) * spell_spacing
-        } else {
-            0.0
-        };
-
-        let sites_per_column = 4;
-        let site_columns = site_count.div_ceil(sites_per_column).max(1);
-        let site_spacing_y = (site_dim.y * 0.15).max(20.0);
-        let site_spacing_x = 20.0;
-
-        let sites_width = if site_count > 0 {
-            site_columns as f32 * site_dim.x + (site_columns as f32 - 1.0) * site_spacing_x
-        } else {
-            0.0
-        };
-
-        let total_width = spells_width
-            + if site_count > 0 {
-                site_spacing_x + sites_width
-            } else {
-                0.0
-            };
-        let start_x = self.rect.min.x + (self.rect.width() - total_width) / 2.0;
-        let spells_y = self.rect.min.y + self.rect.height() / 2.0 - spell_dim.y / 2.0;
+        let dims = self.card_dimensions();
+        let layout = HandLayout::new(spell_count, site_count, dims, self.rect.width() * 0.95);
 
         let mut rects: Vec<CardRect> = Vec::new();
 
         for (idx, card) in spells.iter().enumerate() {
             let existing_card = self.card_rects.iter().find(|c| c.card.id == card.id);
-            let x = start_x + idx as f32 * spell_spacing;
-            let rect = Rect::from_min_size(pos2(x, spells_y), spell_dim);
+            let rect = card_layout::spell_rect(self.rect, &layout, dims, idx);
             rects.push(CardRect {
                 rect,
                 is_selected: existing_card.is_some_and(|c| c.is_selected),
@@ -159,15 +115,9 @@ impl PlayerHandComponent {
         }
 
         if site_count > 0 {
-            let sites_x = start_x + spells_width + site_spacing_x;
-            let sites_start_y = self.rect.min.y + self.rect.height() / 2.0 - spell_dim.y / 2.0;
             for (idx, card) in sites.iter().enumerate() {
                 let existing_card = self.card_rects.iter().find(|c| c.card.id == card.id);
-                let col = idx / sites_per_column;
-                let row = idx % sites_per_column;
-                let x = sites_x + col as f32 * (site_dim.x + site_spacing_x);
-                let y = sites_start_y + row as f32 * site_spacing_y;
-                let rect = Rect::from_min_size(pos2(x, y), site_dim);
+                let rect = card_layout::site_rect(self.rect, &layout, dims, idx);
                 rects.push(CardRect {
                     rect,
                     is_selected: existing_card.is_some_and(|c| c.is_selected),
@@ -264,8 +214,16 @@ impl Component for PlayerHandComponent {
         ui: &mut Ui,
         painter: &Painter,
     ) -> anyhow::Result<Option<ComponentCommand>> {
-        let bg_color = Color32::from_rgba_unmultiplied(16, 18, 26, 235);
-        painter.rect_filled(self.rect, 0.0, bg_color);
+        painter.rect_filled(self.rect, 0.0, theme::HAND_BG);
+        painter.rect_filled(
+            self.rect.shrink2(vec2(10.0, 8.0)),
+            8.0,
+            Color32::from_rgba_unmultiplied(26, 32, 43, 190),
+        );
+        painter.line_segment(
+            [self.rect.left_top(), self.rect.right_top()],
+            Stroke::new(1.0, Color32::from_rgb(70, 84, 110)),
+        );
 
         let mut clicked_card: Option<(uuid::Uuid, egui::Pos2)> = None;
         for card_rect in &self.card_rects {

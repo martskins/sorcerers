@@ -3,18 +3,21 @@ use egui::{
     Color32, Context, CornerRadius, Frame, Rect, ScrollArea, Sense, Stroke, StrokeKind, Ui, pos2,
     vec2,
 };
-use sorcerers::card::{CardData, Edition, Region};
 use sorcerers::deck::precon::PreconDeck;
-use sorcerers::deck::{CardNameWithCount, DeckList};
 use sorcerers::game::PlayerId;
 use sorcerers::{
     card::{ALL_CARDS, CardType, Rarity},
-    game::{Element, Thresholds},
+    game::Element,
     networking,
     zone::Zone,
 };
 use std::collections::HashMap;
 use unidecode::unidecode;
+
+mod types;
+mod save;
+
+use types::{CardEntry, ElemFilter, TypeFilter};
 
 // ── Colors ──────────────────────────────────────────────────────────────────
 const BG: Color32 = Color32::from_rgb(8, 8, 14);
@@ -31,72 +34,6 @@ const CARD_THUMB_W: f32 = 44.0;
 const CARD_THUMB_H: f32 = 62.0;
 const ROW_H: f32 = 68.0;
 const THRESH_SZ: f32 = 10.0;
-
-// ── Element / type filter state ──────────────────────────────────────────────
-#[derive(Clone, PartialEq)]
-enum ElemFilter {
-    All,
-    Fire,
-    Air,
-    Earth,
-    Water,
-}
-
-#[derive(Clone, PartialEq)]
-enum TypeFilter {
-    All,
-    Minion,
-    Site,
-    Spell,
-}
-
-// ── Card metadata captured from ALL_CARDS ────────────────────────────────────
-#[derive(Clone)]
-pub struct CardEntry {
-    pub name: String,
-    pub card_type: CardType,
-    pub zone: Zone, // Spellbook or Atlasbook
-    pub rarity: Rarity,
-    pub mana: u8,
-    pub thresholds: Thresholds,
-    pub image_path: String,
-    pub power: Option<u16>,
-    pub toughness: Option<u16>,
-}
-
-impl CardEntry {
-    pub fn max_copies(&self) -> u8 {
-        match self.rarity {
-            Rarity::Ordinary => 4,
-            Rarity::Exceptional => 3,
-            Rarity::Elite => 2,
-            Rarity::Unique => 1,
-        }
-    }
-
-    /// Fake CardData just for texture key + path.
-    fn as_card_data(&self) -> sorcerers::card::CardData {
-        CardData {
-            id: uuid::Uuid::nil(),
-            name: self.name.clone(),
-            owner_id: PlayerId::nil(),
-            controller_id: PlayerId::nil(),
-            tapped: false,
-            edition: Edition::Beta,
-            zone: Zone::Spellbook,
-            region: Region::Surface,
-            card_type: self.card_type.clone(),
-            abilities: vec![],
-            damage_taken: 0,
-            bearer: None,
-            rarity: self.rarity.clone(),
-            power: self.power.unwrap_or(0),
-            has_attachments: false,
-            image_path: self.image_path.clone(),
-            is_token: false,
-        }
-    }
-}
 
 // ── DeckBuilder scene ────────────────────────────────────────────────────────
 pub struct DeckBuilder {
@@ -1035,58 +972,6 @@ impl DeckBuilder {
                     self.deck_spells.remove(&rm);
                 }
             });
-    }
-
-    fn back_to_menu(&self) -> Scene {
-        Scene::Menu(crate::scene::menu::Menu::restore(
-            self.client.clone(),
-            self.player_id,
-            self.player_name.clone(),
-            self.prev_available_decks.clone(),
-        ))
-    }
-
-    fn try_save_deck(&mut self) -> Result<Scene, String> {
-        let avatar = self.selected_avatar.clone().unwrap_or_default();
-        let name = self.deck_name.trim().to_string();
-
-        // Flatten deck_spells/sites into lists (with repetition)
-        let mut spells: Vec<CardNameWithCount> = Vec::new();
-        for (card_name, &count) in &self.deck_spells {
-            spells.push(CardNameWithCount {
-                count,
-                name: card_name.clone(),
-            });
-        }
-        let mut sites: Vec<CardNameWithCount> = Vec::new();
-        for (card_name, &count) in &self.deck_sites {
-            sites.push(CardNameWithCount {
-                count,
-                name: card_name.clone(),
-            });
-        }
-
-        let deck_list = DeckList {
-            name,
-            avatar,
-            spells,
-            sites,
-        };
-
-        // Validate before saving
-        deck_list.validate()?;
-
-        // Save to disk
-        deck_list
-            .save()
-            .map_err(|e| format!("Failed to save: {e}"))?;
-
-        Ok(Scene::Menu(crate::scene::menu::Menu::restore(
-            self.client.clone(),
-            self.player_id,
-            self.player_name.clone(),
-            self.prev_available_decks.clone(),
-        )))
     }
 
     /// Draw a large card preview floating near `anchor`, flipping left/up to stay on screen.

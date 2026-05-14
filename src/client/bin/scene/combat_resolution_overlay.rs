@@ -230,14 +230,14 @@ impl Component for CombatResolutionOverlay {
                     if assigned != current_damage {
                         set_shake = true;
                     } else {
-                        client
-                            .send(ClientMessage::ResolveCombat {
-                                game_id,
-                                player_id,
-                                damage_assignment: defender_damage,
-                            })
-                            .unwrap();
-                        close_component = true;
+                        match client.send(ClientMessage::ResolveCombat {
+                            game_id,
+                            player_id,
+                            damage_assignment: defender_damage,
+                        }) {
+                            Ok(()) => close_component = true,
+                            Err(e) => eprintln!("Error resolving combat: {}", e),
+                        }
                     }
                 }
             });

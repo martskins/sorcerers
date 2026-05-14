@@ -1,6 +1,7 @@
 use crate::config::SCREEN_RECT;
 use crate::scene::Scene;
 use crate::scene::menu::Menu;
+use crate::theme;
 use crate::texture_cache::TextureCache;
 use eframe::egui;
 use sorcerers::networking;
@@ -87,14 +88,11 @@ impl SorcerersApp {
         visuals.panel_fill = Color32::TRANSPARENT;
         visuals.extreme_bg_color = Color32::from_rgb(9, 10, 16);
 
-        let action = Color32::from_rgb(55, 112, 155);
-        let action_hovered = Color32::from_rgb(77, 145, 190);
-        let action_active = Color32::from_rgb(35, 78, 118);
         let btn_text = Stroke::new(1.0, Color32::WHITE);
         let cr = CornerRadius::same(4);
 
         visuals.widgets.inactive = WidgetVisuals {
-            bg_fill: action,
+            bg_fill: theme::ACTION,
             weak_bg_fill: Color32::from_rgb(35, 46, 66),
             bg_stroke: Stroke::NONE,
             fg_stroke: btn_text,
@@ -102,7 +100,7 @@ impl SorcerersApp {
             expansion: 0.0,
         };
         visuals.widgets.hovered = WidgetVisuals {
-            bg_fill: action_hovered,
+            bg_fill: theme::ACTION_HOVERED,
             weak_bg_fill: Color32::from_rgb(55, 72, 98),
             bg_stroke: Stroke::new(1.0, Color32::from_rgb(150, 180, 205)),
             fg_stroke: btn_text,
@@ -110,7 +108,7 @@ impl SorcerersApp {
             expansion: 1.0,
         };
         visuals.widgets.active = WidgetVisuals {
-            bg_fill: action_active,
+            bg_fill: theme::ACTION_ACTIVE,
             weak_bg_fill: Color32::from_rgb(30, 40, 60),
             bg_stroke: Stroke::NONE,
             fg_stroke: btn_text,
@@ -134,7 +132,7 @@ impl SorcerersApp {
             corner_radius: cr,
             expansion: 0.0,
         };
-        visuals.selection.bg_fill = Color32::from_rgb(78, 150, 190);
+        visuals.selection.bg_fill = theme::SELECTION;
 
         ctx.set_visuals(visuals);
 
@@ -196,7 +194,7 @@ impl eframe::App for SorcerersApp {
 
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default()
-            .frame(egui::Frame::NONE.fill(egui::Color32::BLACK))
+            .frame(egui::Frame::NONE.fill(theme::APP_BG))
             .show_inside(ui, |ui| {
                 if let Some(new_scene) = self.scene.render(ui) {
                     self.scene = new_scene;

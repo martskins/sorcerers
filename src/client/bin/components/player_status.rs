@@ -10,6 +10,7 @@ use crate::{
     components::{Component, ComponentCommand, ComponentType},
     element_icon,
     scene::game::GameData,
+    theme,
     texture_cache::TextureCache,
 };
 
@@ -22,8 +23,8 @@ const PAD_H: i8 = 8; // horizontal inner margin (i8 for egui::Margin)
 const PAD_V: i8 = 6; // vertical   inner margin
 
 // Panel background / border
-const BG: Color32 = Color32::from_rgba_premultiplied(18, 23, 35, 242);
-const BORDER: Color32 = Color32::from_rgb(73, 88, 122);
+const BG: Color32 = theme::PANEL_BG;
+const BORDER: Color32 = theme::PANEL_BORDER;
 
 #[derive(Debug)]
 pub struct PlayerStatusComponent {
