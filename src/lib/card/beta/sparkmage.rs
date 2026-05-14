@@ -41,7 +41,7 @@ impl ActivatedAbility for DealDamageAction {
             .pick(player_id, state)
             .await?;
         let damage = state
-            .effect_log
+            .effect_log()
             .iter()
             .rev()
             .filter(|le| le.turn == state.turns)

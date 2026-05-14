@@ -1,7 +1,7 @@
 use crate::{
     card::{Ability, Card, CardData, CardType, Costs, DodgeRoll, SiteType},
     deck::Deck,
-    effect::Effect,
+    effect::{Effect, EffectCallback, EffectEngine, EffectState},
     game::{
         ActivatedAbility, InputStatus, PlayerId, Resources, Thresholds, ThresholdsDiff, pick_zone,
         yes_or_no,
@@ -11,12 +11,9 @@ use crate::{
     zone::Zone,
 };
 use async_channel::{Receiver, Sender};
-use std::{
-    collections::{HashMap, HashSet, VecDeque},
-    future::Future,
-    pin::Pin,
-    sync::Arc,
-};
+use std::collections::{HashMap, HashSet, VecDeque};
+
+pub use crate::effect::{DeferredEffect, LoggedEffect, TemporaryEffect};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Phase {
@@ -34,123 +31,6 @@ pub struct PlayerWithDeck {
     pub player: Player,
     pub deck: Deck,
     pub cards: Vec<Box<dyn Card>>,
-}
-
-pub type EffectReplacementCallback = Arc<
-    dyn Sync
-        + Send
-        + for<'a> Fn(
-            &'a State,
-            &'a mut Effect,
-        ) -> Pin<Box<dyn Future<Output = anyhow::Result<()>> + Send + 'a>>,
->;
-
-pub type EffectCallback = Arc<
-    dyn Sync
-        + Send
-        + for<'a> Fn(
-            &'a State,
-            &'a uuid::Uuid,
-            &'a Effect,
-        )
-            -> Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + 'a>>,
->;
-
-#[derive(Clone)]
-pub struct DeferredEffect {
-    pub trigger_on_effect: EffectQuery,
-    pub expires_on_effect: Option<EffectQuery>,
-    pub on_effect: EffectCallback,
-    pub multitrigger: bool,
-}
-
-impl std::fmt::Debug for DeferredEffect {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("DeferredEffect")
-            .field("trigger_on_effect", &self.trigger_on_effect)
-            .field("expires_on_effect", &self.expires_on_effect)
-            .finish()
-    }
-}
-
-#[allow(clippy::large_enum_variant)]
-#[derive(Clone)]
-pub enum TemporaryEffect {
-    FloodSites {
-        affected_sites: CardQuery,
-        expires_on_effect: EffectQuery,
-    },
-    MakePlayable {
-        affected_cards: CardQuery,
-        expires_on_effect: EffectQuery,
-        by_player: PlayerId,
-    },
-    IgnoreCostThresholds {
-        affected_cards: CardQuery,
-        expires_on_effect: EffectQuery,
-        for_player: PlayerId,
-    },
-    ModifyEffect {
-        trigger_on_effect: EffectQuery,
-        expires_on_effect: EffectQuery,
-        on_effect: EffectReplacementCallback,
-    },
-    ConnectSites {
-        sites: Vec<Zone>,
-        expires_on_effect: EffectQuery,
-    },
-}
-
-impl std::fmt::Debug for TemporaryEffect {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::ModifyEffect {
-                trigger_on_effect, ..
-            } => f
-                .debug_struct("ModifyEffect")
-                .field("trigger_on_effect", trigger_on_effect)
-                .finish(),
-            _ => std::fmt::Debug::fmt(self, f),
-        }
-    }
-}
-
-impl TemporaryEffect {
-    pub fn affected_cards(&self, state: &State) -> Vec<uuid::Uuid> {
-        match self {
-            TemporaryEffect::FloodSites { affected_sites, .. } => affected_sites.all(state),
-            TemporaryEffect::MakePlayable { affected_cards, .. } => {
-                // MakePlayable should always include cards not in play, so we need to add those to the
-                // results of all().
-                affected_cards.clone().including_not_in_play().all(state)
-            }
-            TemporaryEffect::IgnoreCostThresholds { affected_cards, .. } => {
-                affected_cards.all(state)
-            }
-            TemporaryEffect::ModifyEffect { .. } => vec![],
-            TemporaryEffect::ConnectSites { .. } => vec![],
-        }
-    }
-
-    pub fn expires_on_effect(&self) -> Option<&EffectQuery> {
-        match self {
-            TemporaryEffect::FloodSites {
-                expires_on_effect, ..
-            } => Some(expires_on_effect),
-            TemporaryEffect::MakePlayable {
-                expires_on_effect, ..
-            } => Some(expires_on_effect),
-            TemporaryEffect::IgnoreCostThresholds {
-                expires_on_effect, ..
-            } => Some(expires_on_effect),
-            TemporaryEffect::ModifyEffect {
-                expires_on_effect, ..
-            } => Some(expires_on_effect),
-            TemporaryEffect::ConnectSites {
-                expires_on_effect, ..
-            } => Some(expires_on_effect),
-        }
-    }
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -245,18 +125,6 @@ impl std::fmt::Debug for ContinuousEffect {
                 .finish(),
             _ => std::fmt::Debug::fmt(self, f),
         }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct LoggedEffect {
-    pub effect: Effect,
-    pub turn: usize,
-}
-
-impl LoggedEffect {
-    pub fn new(effect: Effect, turn: usize) -> Self {
-        Self { effect, turn }
     }
 }
 
@@ -364,14 +232,11 @@ pub struct State {
     pub phase: Phase,
     pub waiting_for_input: bool,
     pub curr_turn: TurnIterator,
-    pub effects: VecDeque<Effect>,
-    pub effect_log: Vec<LoggedEffect>,
+    pub effects: EffectState,
     pub player_one: PlayerId,
     pub server_tx: Sender<ServerMessage>,
     pub client_rx: Receiver<ClientMessage>,
     pub continuous_effects: Vec<ContinuousEffect>,
-    pub temporary_effects: Vec<TemporaryEffect>,
-    pub deferred_effects: Vec<DeferredEffect>,
     pub player_mana: HashMap<PlayerId, u8>,
     pub loosers: HashSet<PlayerId>,
     pub players_skipping_turns: HashSet<PlayerId>,
@@ -413,14 +278,11 @@ impl State {
             phase: Phase::Mulligan,
             curr_turn: TurnIterator::new(player_ids),
             waiting_for_input: false,
-            effects: VecDeque::new(),
-            effect_log: Vec::new(),
+            effects: EffectState::default(),
             player_one,
             server_tx,
             client_rx,
             continuous_effects: Vec::new(),
-            temporary_effects: Vec::new(),
-            deferred_effects: Vec::new(),
             player_mana,
             loosers: HashSet::new(),
             players_skipping_turns: HashSet::new(),
@@ -429,7 +291,7 @@ impl State {
     }
 
     pub fn find_caster(&self, spell_id: &uuid::Uuid) -> Option<uuid::Uuid> {
-        self.effect_log.iter().find_map(|e| match e.effect {
+        self.effect_log().iter().find_map(|e| match e.effect {
             Effect::PlayMagic {
                 card_id, caster_id, ..
             } if card_id == *spell_id => Some(caster_id),
@@ -596,7 +458,8 @@ impl State {
             })
             .sum();
 
-        let ignore_thresholds = self.temporary_effects
+        let ignore_thresholds = self
+            .temporary_effects()
             .iter()
             .find(|te| matches!(te, TemporaryEffect::IgnoreCostThresholds { affected_cards, for_player, .. } if affected_cards.matches(card.get_id(), self) && for_player == player_id))
             .is_some();
@@ -622,6 +485,30 @@ impl State {
 
     pub fn queue_front(&mut self, effect: Effect) {
         self.effects.push_front(effect);
+    }
+
+    pub fn effect_log(&self) -> &[LoggedEffect] {
+        self.effects.log()
+    }
+
+    pub fn effect_log_mut(&mut self) -> &mut Vec<LoggedEffect> {
+        self.effects.log_mut()
+    }
+
+    pub fn temporary_effects(&self) -> &[TemporaryEffect] {
+        self.effects.temporary()
+    }
+
+    pub fn temporary_effects_mut(&mut self) -> &mut Vec<TemporaryEffect> {
+        self.effects.temporary_mut()
+    }
+
+    pub fn deferred_effects(&self) -> &[DeferredEffect] {
+        self.effects.deferred()
+    }
+
+    pub fn deferred_effects_mut(&mut self) -> &mut Vec<DeferredEffect> {
+        self.effects.deferred_mut()
     }
 
     pub fn get_thresholds_for_player(&self, player_id: &PlayerId) -> Thresholds {
@@ -812,18 +699,7 @@ impl State {
     }
 
     pub async fn apply_effects_without_log(&mut self) -> anyhow::Result<()> {
-        while !self.effects.is_empty() {
-            if self.waiting_for_input {
-                return Ok(());
-            }
-
-            let effect = self.effects.pop_back();
-            if let Some(effect) = effect {
-                effect.apply(self).await?;
-            }
-        }
-
-        Ok(())
+        EffectEngine::drain_without_log(self).await
     }
 
     pub fn data_from_cards(&self) -> Vec<CardData> {

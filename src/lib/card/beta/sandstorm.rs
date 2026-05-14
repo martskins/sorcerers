@@ -35,7 +35,7 @@ impl Aura for Sandstorm {
     fn should_dispell(&self, state: &State) -> anyhow::Result<bool> {
         let controller_id = self.get_controller_id(state);
         let turns_in_play = state
-            .effect_log
+            .effect_log()
             .iter()
             .skip_while(|e| {
                 !matches!(e.effect, Effect::PlayCard { ref card_id, .. } if card_id == self.get_id())

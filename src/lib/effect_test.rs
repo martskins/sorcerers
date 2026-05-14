@@ -4,12 +4,13 @@ use crate::{
         SeaRaider, from_name_and_zone,
     },
     deck::Deck,
-    effect::{Effect, TokenType},
+    effect::{DeferredEffect, Effect, EffectCallback, EffectReplacementCallback, TemporaryEffect, TokenType},
     networking::message::ServerMessage,
-    query::{QueryCache, ZoneQuery},
+    query::{CardQuery, EffectQuery, QueryCache, ZoneQuery},
     state::{Player, PlayerWithDeck, State},
     zone::Zone,
 };
+use std::sync::Arc;
 
 /// Creates a test state with proper avatar cards and a live server-message receiver so
 /// that `force_sync` calls inside effects do not fail.
@@ -72,12 +73,169 @@ fn make_state(zones: Vec<Zone>) -> (State, async_channel::Receiver<ServerMessage
 
 /// Pops and applies all queued effects (mirrors the game loop's `pop_back` order).
 async fn drain_effects(state: &mut State) {
-    while let Some(effect) = state.effects.pop_back() {
-        effect
-            .apply(state)
-            .await
-            .expect("effect should apply without error during drain");
-    }
+    state
+        .apply_effects_without_log()
+        .await
+        .expect("effect queue should drain without error");
+}
+
+#[tokio::test]
+async fn test_temporary_modify_effect_runs_before_handler_and_expires() {
+    let (mut state, _rx) = make_state(vec![Zone::Realm(1, Region::Surface)]);
+    let player_id = state.players[0].id;
+
+    let draw_query = EffectQuery::DrawCard { player_id: None };
+    let convert_draw_to_mana: EffectReplacementCallback = Arc::new(|_state, effect| {
+        Box::pin(async move {
+            if let Effect::DrawCard { player_id, .. } = effect {
+                *effect = Effect::AddMana {
+                    player_id: *player_id,
+                    mana: 3,
+                };
+            }
+            Ok(())
+        })
+    });
+    state
+        .temporary_effects_mut()
+        .push(TemporaryEffect::ModifyEffect {
+            trigger_on_effect: draw_query.clone(),
+            expires_on_effect: draw_query,
+            on_effect: convert_draw_to_mana,
+        });
+
+    state.queue_one(Effect::DrawCard {
+        player_id,
+        count: 1,
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(*state.get_player_mana_mut(&player_id), 3);
+    assert!(
+        state.temporary_effects().is_empty(),
+        "temporary modifier should expire after the matching resolved effect"
+    );
+}
+
+#[tokio::test]
+async fn test_deferred_one_shot_removes_itself_after_trigger() {
+    let (mut state, _rx) = make_state(vec![Zone::Realm(1, Region::Surface)]);
+    let player_id = state.players[0].id;
+    let grant_mana: EffectCallback = Arc::new(|_state, source_id, _effect| {
+        Box::pin(async move {
+            Ok(vec![Effect::AddMana {
+                player_id: *source_id,
+                mana: 1,
+            }])
+        })
+    });
+
+    state.deferred_effects_mut().push(DeferredEffect {
+        trigger_on_effect: EffectQuery::DrawCard { player_id: None },
+        expires_on_effect: None,
+        on_effect: grant_mana,
+        multitrigger: false,
+    });
+
+    state.queue_one(Effect::DrawCard {
+        player_id,
+        count: 0,
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(*state.get_player_mana_mut(&player_id), 1);
+    assert!(state.deferred_effects().is_empty());
+}
+
+#[tokio::test]
+async fn test_deferred_multitrigger_remains_after_trigger() {
+    let (mut state, _rx) = make_state(vec![Zone::Realm(1, Region::Surface)]);
+    let player_id = state.players[0].id;
+    let grant_mana: EffectCallback = Arc::new(|_state, source_id, _effect| {
+        Box::pin(async move {
+            Ok(vec![Effect::AddMana {
+                player_id: *source_id,
+                mana: 1,
+            }])
+        })
+    });
+
+    state.deferred_effects_mut().push(DeferredEffect {
+        trigger_on_effect: EffectQuery::DrawCard { player_id: None },
+        expires_on_effect: None,
+        on_effect: grant_mana,
+        multitrigger: true,
+    });
+
+    state.queue_one(Effect::DrawCard {
+        player_id,
+        count: 0,
+    });
+    state.queue_one(Effect::DrawCard {
+        player_id,
+        count: 0,
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(*state.get_player_mana_mut(&player_id), 2);
+    assert_eq!(state.deferred_effects().len(), 1);
+}
+
+#[tokio::test]
+async fn test_deferred_expiry_removes_without_triggering() {
+    let (mut state, _rx) = make_state(vec![Zone::Realm(1, Region::Surface)]);
+    let player_id = state.players[0].id;
+    let grant_mana: EffectCallback = Arc::new(|_state, source_id, _effect| {
+        Box::pin(async move {
+            Ok(vec![Effect::AddMana {
+                player_id: *source_id,
+                mana: 1,
+            }])
+        })
+    });
+
+    state.deferred_effects_mut().push(DeferredEffect {
+        trigger_on_effect: EffectQuery::TurnStart { player_id: None },
+        expires_on_effect: Some(EffectQuery::DrawCard { player_id: None }),
+        on_effect: grant_mana,
+        multitrigger: false,
+    });
+
+    state.queue_one(Effect::DrawCard {
+        player_id,
+        count: 0,
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(*state.get_player_mana_mut(&player_id), 0);
+    assert!(state.deferred_effects().is_empty());
+}
+
+#[tokio::test]
+async fn test_temporary_expiry_removes_after_matching_resolved_effect() {
+    let (mut state, _rx) = make_state(vec![Zone::Realm(1, Region::Surface)]);
+    let player_id = state.players[0].id;
+    let site_id = *state
+        .cards
+        .values()
+        .find(|card| card.is_site())
+        .expect("test state should have a site")
+        .get_id();
+
+    state
+        .temporary_effects_mut()
+        .push(TemporaryEffect::FloodSites {
+            affected_sites: CardQuery::from_id(site_id),
+            expires_on_effect: EffectQuery::DrawCard { player_id: None },
+        });
+
+    state.queue_one(Effect::DrawCard {
+        player_id,
+        count: 0,
+    });
+    drain_effects(&mut state).await;
+
+    assert!(state.temporary_effects().is_empty());
 }
 
 #[tokio::test]
@@ -207,7 +365,7 @@ async fn test_summon_card_applies_on_summon_effects() {
     drain_effects(&mut state).await;
 
     assert!(
-        !state.deferred_effects.is_empty(),
+        !state.deferred_effects().is_empty(),
         "on_summon should have registered a deferred effect for Sea Raider"
     );
 }

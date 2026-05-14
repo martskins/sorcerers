@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use crate::{
     card::{Ability, AdditionalCost, Aura, CardType, Cost, Damage, Region},
-    effect::Effect,
+    effect::{Effect, EffectEngine},
     error::GameError,
     evaluation,
     networking::{
@@ -9,10 +9,9 @@ use crate::{
         message::{ClientMessage, ServerMessage},
     },
     query::{CardQuery, QueryCache, ZoneQuery},
-    state::{LoggedEffect, Phase, PlayerWithDeck, State},
+    state::{Phase, PlayerWithDeck, State},
 };
 use async_channel::{Receiver, Sender};
-use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, iter::Sum, sync::Arc};
 use tokio::{net::tcp::OwnedWriteHalf, sync::Mutex};
@@ -1603,10 +1602,8 @@ impl Game {
     }
 
     pub async fn start(&mut self) -> anyhow::Result<()> {
-        self.state.effects.extend(self.place_avatars().into_iter());
-        self.state
-            .effects
-            .extend(self.draw_initial_six().into_iter());
+        self.state.queue(self.place_avatars());
+        self.state.queue(self.draw_initial_six());
 
         // Process effects before starting the game so players don't see the initial setup in the event log
         self.process_effects().await?;
@@ -1928,7 +1925,7 @@ impl Game {
 
     /// Build a `Sync` message for the current state.  When `debug_eval` is
     /// enabled the message also carries a full board evaluation.
-    fn make_sync(&self) -> anyhow::Result<ServerMessage> {
+    pub(crate) fn make_sync(&self) -> anyhow::Result<ServerMessage> {
         let mut sync = self.state.into_sync()?;
         if self.debug_eval
             && let ServerMessage::Sync {
@@ -1979,7 +1976,7 @@ impl Game {
         effects
     }
 
-    async fn dispell_auras(state: &mut State) -> anyhow::Result<()> {
+    pub(crate) async fn dispell_auras(state: &mut State) -> anyhow::Result<()> {
         let auras: Vec<&dyn Aura> = state.cards.values().filter_map(|c| c.get_aura()).collect();
         let mut auras_to_dispell = vec![];
         for aura in auras {
@@ -2003,59 +2000,6 @@ impl Game {
     }
 
     pub async fn process_effects(&mut self) -> anyhow::Result<()> {
-        while !self.state.effects.is_empty() {
-            let effect = self.state.effects.pop_back();
-            if let Some(effect) = effect {
-                match effect.apply(&mut self.state).await {
-                    Ok(_) => {}
-                    Err(e) => {
-                        println!("Error applying effect {:?}: {:?}", effect, e);
-                    }
-                }
-
-                let description = effect.description(&self.state).await.ok().flatten();
-
-                // Show the card face to all players when a card is played from hand.
-                // When CardPlayed is sent, skip the LogEvent to avoid showing the
-                // same description twice on the client.
-                let is_card_played = effect.played_card_id().is_some();
-                if let Some(card_id) = effect.played_card_id() {
-                    self.broadcast(&ServerMessage::CardPlayed {
-                        card_id,
-                        description: description.clone().unwrap_or_default(),
-                    })
-                    .await?;
-                }
-
-                if !is_card_played && let Some(desc) = description {
-                    self.broadcast(&ServerMessage::LogEvent {
-                        id: uuid::Uuid::new_v4(),
-                        description: desc,
-                        datetime: Utc::now(),
-                    })
-                    .await?;
-                }
-
-                if let Ok(Some(sound_effect)) = effect.sound_effect().await {
-                    self.broadcast(&ServerMessage::PlaySoundEffect {
-                        player_id: None,
-                        sound_effect,
-                    })
-                    .await?;
-                }
-
-                // Move the effect to the effect log so we can keep track of what has happened in
-                // the game.
-                self.state
-                    .effect_log
-                    .push(LoggedEffect::new(effect, self.state.turns));
-                self.state.compute_world_effects().await?;
-
-                Self::dispell_auras(&mut self.state).await?;
-                self.broadcast(&self.make_sync()?).await?;
-            }
-        }
-
-        Ok(())
+        EffectEngine::drain_with_log(self).await
     }
 }

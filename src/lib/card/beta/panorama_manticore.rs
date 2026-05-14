@@ -73,7 +73,7 @@ impl Card for PanoramaManticore {
         }
 
         let turn_effects: Vec<&LoggedEffect> = state
-            .effect_log
+            .effect_log()
             .iter()
             .take_while(|e| e.turn == state.turns)
             .collect();

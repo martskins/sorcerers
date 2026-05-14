@@ -88,7 +88,7 @@ impl Card for SeaRaider {
                             }
 
                             let attacked_with_raider =
-                                state.effect_log.iter().rev().any(|logged| {
+                                state.effect_log().iter().rev().any(|logged| {
                                     matches!(logged.effect, Effect::Attack { attacker_id, .. }
                                     if attacker_id == self_id)
                                 });

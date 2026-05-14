@@ -26,7 +26,7 @@ impl ActivatedAbility for ShootPayload {
         .await?;
         let units = CardQuery::new().units().in_zone(&picked_zone).all(state);
         let mana_cost = state
-            .effect_log
+            .effect_log()
             .iter()
             .find_map(|e| {
                 if e.turn != state.turns {

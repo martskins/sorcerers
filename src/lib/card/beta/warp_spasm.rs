@@ -91,7 +91,7 @@ impl Card for WarpSpasm {
                                 return Ok(vec![]);
                             };
 
-                            let killed_by_target_attack = state.effect_log.iter().any(|logged| {
+                            let killed_by_target_attack = state.effect_log().iter().any(|logged| {
                                 matches!(logged.effect, Effect::KillMinion {
                                     card_id: killed_id,
                                     killer_id,

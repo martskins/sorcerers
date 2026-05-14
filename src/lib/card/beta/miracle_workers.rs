@@ -72,7 +72,7 @@ impl Card for MiracleWorkers {
             .filter(|c| c.is_minion() && c.get_zone() == &Zone::Cemetery)
             .filter(|c| c.get_owner_id() == &controller_id)
             .filter(|c| {
-                state.effect_log.iter().any(|le| {
+                state.effect_log().iter().any(|le| {
                     le.turn == current_turn
                         && matches!(le.effect, Effect::BuryCard { card_id } if card_id == *c.get_id())
                 })

@@ -405,7 +405,7 @@ async fn test_get_effective_costs_ignoring_thresholds() {
     assert_eq!(regular_costs.thresholds_cost(), &Thresholds::parse("F"));
 
     state
-        .temporary_effects
+        .temporary_effects_mut()
         .push(TemporaryEffect::IgnoreCostThresholds {
             affected_cards: std::convert::Into::<CardQuery>::into(cauldron_crones.get_id())
                 .including_not_in_play(),

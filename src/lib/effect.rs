@@ -4,9 +4,20 @@ use crate::{
     game::{BaseAction, Direction, PlayerAction, PlayerId, SoundEffect, pick_card, pick_option},
     networking::message::ServerMessage,
     query::{CardQuery, EffectQuery, QueryCache, ZoneQuery},
-    state::{ContinuousEffect, DeferredEffect, Phase, State, TemporaryEffect, Turn},
+    state::{ContinuousEffect, Phase, State, Turn},
 };
 use std::fmt::Debug;
+
+pub mod lifecycle;
+pub mod log;
+pub mod runtime;
+
+pub use lifecycle::{
+    DeferredEffect, EffectCallback, EffectLifecycle, EffectReplacementCallback, EffectState,
+    TemporaryEffect,
+};
+pub use log::{EffectLogEmitter, LoggedEffect};
+pub use runtime::EffectEngine;
 
 #[derive(Debug, Clone)]
 pub struct AbilityCounter {
@@ -755,65 +766,6 @@ impl Effect {
         Ok(desc)
     }
 
-    async fn process_deferred_effects(
-        &self,
-        state: &mut State,
-        effect: &Effect,
-    ) -> anyhow::Result<()> {
-        let mut effects_to_remove = vec![];
-        for (idx, de) in state.deferred_effects.iter().enumerate() {
-            if de.trigger_on_effect.matches(effect, state).await? {
-                if let Some(source_id) = effect.source_id() {
-                    let effects = (de.on_effect)(state, source_id, effect).await?;
-                    state.effects.extend(effects.into_iter());
-                }
-
-                if !de.multitrigger {
-                    effects_to_remove.push(idx);
-                }
-            } else {
-                // If the effect was not triggered, check whether it needs to expire.
-                if let Some(expires_on_effect) = &de.expires_on_effect
-                    && expires_on_effect.matches(effect, state).await?
-                {
-                    effects_to_remove.push(idx);
-                }
-            }
-        }
-
-        // Reverse the list of processed effects indexes so that we remove them from the deferred
-        // effects list starting from the end, to avoid messing up the indexes of unprocessed
-        // effects.
-        effects_to_remove.reverse();
-        for idx in effects_to_remove {
-            state.deferred_effects.remove(idx);
-        }
-
-        Ok(())
-    }
-
-    async fn expire_temporary_effects(
-        &self,
-        state: &mut State,
-        effect: &Effect,
-    ) -> anyhow::Result<()> {
-        let snapshot = state.clone();
-        let mut retained_effects = vec![];
-        for te in &state.temporary_effects {
-            let should_retain = match te.expires_on_effect() {
-                Some(expiry_effect) => !expiry_effect.matches(effect, &snapshot).await?,
-                None => true,
-            };
-
-            if should_retain {
-                retained_effects.push(te.clone());
-            }
-        }
-
-        state.temporary_effects = retained_effects;
-        Ok(())
-    }
-
     async fn expire_counters(&self, state: &mut State) -> anyhow::Result<()> {
         let modified_cards: Vec<&dyn Card> = state
             .cards
@@ -912,20 +864,8 @@ impl Effect {
             return Ok(());
         }
 
-        // Check for any modifications to this effect from temporary effects.
         let mut effect = self.clone();
-        for te in &state.temporary_effects {
-            match te {
-                TemporaryEffect::ModifyEffect {
-                    trigger_on_effect,
-                    on_effect,
-                    ..
-                } if trigger_on_effect.matches(&effect, state).await? => {
-                    on_effect(state, &mut effect).await?;
-                }
-                _ => {}
-            }
-        }
+        EffectLifecycle::modify_effect(state, &mut effect).await?;
 
         match &effect {
             Effect::Noop => {}
@@ -947,10 +887,10 @@ impl Effect {
                 unit_base.damage = unit_base.toughness.saturating_sub(*life);
             }
             Effect::AddDeferredEffect { effect, .. } => {
-                state.deferred_effects.push(effect.clone());
+                state.deferred_effects_mut().push(effect.clone());
             }
             Effect::AddTemporaryEffect { effect } => {
-                state.temporary_effects.push(effect.clone());
+                state.temporary_effects_mut().push(effect.clone());
             }
             Effect::SetCardZone { card_id, zone } => {
                 let was_in_play = state.get_card(card_id).get_zone().is_in_play();
@@ -1086,7 +1026,7 @@ impl Effect {
                 }
 
                 for effect in effects {
-                    state.effects.push_back(effect);
+                    state.queue_one(effect);
                 }
             }
             Effect::MoveCard {
@@ -1275,7 +1215,7 @@ impl Effect {
                         && let Some(site) = zone.get_site(&snapshot)
                         && site.get_name() == Rubble::NAME
                     {
-                        state.effects.push_back(Effect::RemoveCardFromGame {
+                        state.queue_one(Effect::RemoveCardFromGame {
                             card_id: *site.get_id(),
                         });
                     }
@@ -2091,8 +2031,7 @@ impl Effect {
         }
 
         self.expire_counters(state).await?;
-        self.process_deferred_effects(state, self).await?;
-        self.expire_temporary_effects(state, self).await?;
+        EffectLifecycle::after_resolved_effect(state, self).await?;
 
         crate::game::force_sync_all(state).await?;
 

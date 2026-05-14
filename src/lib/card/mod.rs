@@ -335,9 +335,8 @@ impl CostType {
                     };
 
                     effect.apply(state).await?;
-                    state
-                        .effect_log
-                        .push(LoggedEffect::new(effect, state.turns));
+                    let turn = state.turns;
+                    state.effect_log_mut().push(LoggedEffect::new(effect, turn));
                     crate::game::force_sync(player_id, state).await?;
                 }
 
@@ -745,7 +744,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     fn is_playable(&self, state: &State, player_id: &PlayerId) -> anyhow::Result<bool> {
         if state
-            .temporary_effects
+            .temporary_effects()
             .iter()
             .find(|e| match e {
                 te @ TemporaryEffect::MakePlayable { by_player, .. } => {
@@ -2154,7 +2153,7 @@ pub trait Site: Card + ResourceProvider {
 
     fn is_flooded(&self, state: &State) -> anyhow::Result<bool> {
         let temporarily_flooded = state
-            .temporary_effects
+            .temporary_effects()
             .iter()
             .filter(|te| te.affected_cards(state).contains(self.get_id()))
             .find(|te| matches!(te, TemporaryEffect::FloodSites { .. }))
@@ -3002,7 +3001,7 @@ fn zones_cross_border(from: &Zone, to: &Zone, border: &Zone) -> bool {
 
 fn temporarily_connected_sites(state: &State, zone: &Zone) -> Vec<Zone> {
     state
-        .temporary_effects
+        .temporary_effects()
         .iter()
         .filter_map(|effect| match effect {
             TemporaryEffect::ConnectSites { sites, .. } if sites.contains(zone) => {

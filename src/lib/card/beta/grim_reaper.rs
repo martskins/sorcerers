@@ -78,7 +78,7 @@ impl Card for GrimReaper {
                     let buried_card_id = *buried_card_id;
                     Box::pin(async move {
                         // Check if Grim Reaper was the killer.
-                        let was_killed_by_reaper = state.effect_log.iter().rev().any(|le| {
+                        let was_killed_by_reaper = state.effect_log().iter().rev().any(|le| {
                             matches!(le.effect, Effect::KillMinion { ref card_id, ref killer_id, .. }
                                 if card_id == &buried_card_id && killer_id == &grim_reaper_id)
                         });
