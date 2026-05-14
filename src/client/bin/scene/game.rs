@@ -16,7 +16,7 @@ use crate::{
         selection_overlay::SelectionOverlay,
     },
 };
-use egui::{Color32, Context, FontId, Painter, Rect, RichText, Ui, pos2, vec2};
+use egui::{Color32, Context, FontId, Painter, Rect, RichText, Stroke, Ui, pos2, vec2};
 use kira::{AudioManager, DefaultBackend, sound::static_sound::StaticSoundData};
 use sorcerers::{
     card::{CardData, CardType, Region},
@@ -446,15 +446,34 @@ impl Game {
 
         // Turn indicator
         let (turn_label, turn_color) = if is_in_turn {
-            ("YOUR TURN", Color32::from_rgb(89, 242, 102))
+            ("YOUR TURN", Color32::from_rgb(125, 226, 146))
         } else {
-            ("THEIR TURN", Color32::from_rgb(153, 153, 166))
+            ("THEIR TURN", Color32::from_rgb(172, 176, 190))
         };
+        let turn_rect = Rect::from_center_size(pos2(sidebar_w / 2.0, 128.0), vec2(150.0, 34.0));
+        painter.rect_filled(
+            turn_rect,
+            17.0,
+            Color32::from_rgba_unmultiplied(13, 18, 28, 220),
+        );
+        painter.rect_stroke(
+            turn_rect,
+            17.0,
+            Stroke::new(
+                1.0,
+                if is_in_turn {
+                    Color32::from_rgb(72, 155, 95)
+                } else {
+                    Color32::from_rgb(78, 86, 110)
+                },
+            ),
+            egui::StrokeKind::Outside,
+        );
         painter.text(
-            pos2(sidebar_w / 2.0, 120.0),
-            egui::Align2::CENTER_TOP,
+            turn_rect.center(),
+            egui::Align2::CENTER_CENTER,
             turn_label,
-            FontId::proportional(18.0),
+            FontId::proportional(16.0),
             turn_color,
         );
 

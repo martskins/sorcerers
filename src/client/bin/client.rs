@@ -82,36 +82,36 @@ impl SorcerersApp {
         // Overall background / window chrome
         visuals.window_corner_radius = CornerRadius::same(8);
         visuals.window_shadow = egui::Shadow::NONE;
-        visuals.window_fill = Color32::from_rgb(18, 18, 24);
-        visuals.window_stroke = Stroke::new(1.0, Color32::from_rgb(60, 60, 80));
+        visuals.window_fill = Color32::from_rgb(18, 20, 28);
+        visuals.window_stroke = Stroke::new(1.0, Color32::from_rgb(72, 84, 116));
         visuals.panel_fill = Color32::TRANSPARENT;
-        visuals.extreme_bg_color = Color32::from_rgb(12, 12, 18);
+        visuals.extreme_bg_color = Color32::from_rgb(9, 10, 16);
 
-        let blue = Color32::from_rgb(30, 144, 255); // dodger blue
-        let blue_hovered = Color32::from_rgb(65, 105, 225); // royal blue
-        let blue_active = Color32::from_rgb(25, 25, 112); // midnight blue
+        let action = Color32::from_rgb(55, 112, 155);
+        let action_hovered = Color32::from_rgb(77, 145, 190);
+        let action_active = Color32::from_rgb(35, 78, 118);
         let btn_text = Stroke::new(1.0, Color32::WHITE);
-        let cr = CornerRadius::same(1);
+        let cr = CornerRadius::same(4);
 
         visuals.widgets.inactive = WidgetVisuals {
-            bg_fill: blue,
-            weak_bg_fill: blue,
+            bg_fill: action,
+            weak_bg_fill: Color32::from_rgb(35, 46, 66),
             bg_stroke: Stroke::NONE,
             fg_stroke: btn_text,
             corner_radius: cr,
             expansion: 0.0,
         };
         visuals.widgets.hovered = WidgetVisuals {
-            bg_fill: blue_hovered,
-            weak_bg_fill: blue_hovered,
-            bg_stroke: Stroke::NONE,
+            bg_fill: action_hovered,
+            weak_bg_fill: Color32::from_rgb(55, 72, 98),
+            bg_stroke: Stroke::new(1.0, Color32::from_rgb(150, 180, 205)),
             fg_stroke: btn_text,
             corner_radius: cr,
             expansion: 1.0,
         };
         visuals.widgets.active = WidgetVisuals {
-            bg_fill: blue_active,
-            weak_bg_fill: blue_active,
+            bg_fill: action_active,
+            weak_bg_fill: Color32::from_rgb(30, 40, 60),
             bg_stroke: Stroke::NONE,
             fg_stroke: btn_text,
             corner_radius: cr,
@@ -119,22 +119,22 @@ impl SorcerersApp {
         };
         // Open (non-interactive) widgets — used for text inputs, labels inside frames
         visuals.widgets.open = WidgetVisuals {
-            bg_fill: Color32::from_rgb(30, 30, 42),
-            weak_bg_fill: Color32::from_rgb(30, 30, 42),
-            bg_stroke: Stroke::new(1.0, Color32::from_rgb(80, 80, 110)),
+            bg_fill: Color32::from_rgb(26, 30, 42),
+            weak_bg_fill: Color32::from_rgb(26, 30, 42),
+            bg_stroke: Stroke::new(1.0, Color32::from_rgb(88, 98, 130)),
             fg_stroke: Stroke::new(1.0, Color32::WHITE),
             corner_radius: cr,
             expansion: 0.0,
         };
         visuals.widgets.noninteractive = WidgetVisuals {
-            bg_fill: Color32::from_rgb(30, 30, 42),
-            weak_bg_fill: Color32::from_rgb(22, 22, 32),
-            bg_stroke: Stroke::new(1.0, Color32::from_rgb(60, 60, 80)),
-            fg_stroke: Stroke::new(1.0, Color32::from_rgb(200, 200, 220)),
+            bg_fill: Color32::from_rgb(24, 27, 38),
+            weak_bg_fill: Color32::from_rgb(17, 20, 30),
+            bg_stroke: Stroke::new(1.0, Color32::from_rgb(62, 72, 100)),
+            fg_stroke: Stroke::new(1.0, Color32::from_rgb(212, 218, 232)),
             corner_radius: cr,
             expansion: 0.0,
         };
-        visuals.selection.bg_fill = blue;
+        visuals.selection.bg_fill = Color32::from_rgb(78, 150, 190);
 
         ctx.set_visuals(visuals);
 

@@ -22,8 +22,8 @@ const PAD_H: i8 = 8; // horizontal inner margin (i8 for egui::Margin)
 const PAD_V: i8 = 6; // vertical   inner margin
 
 // Panel background / border
-const BG: Color32 = Color32::from_rgba_premultiplied(15, 20, 38, 235);
-const BORDER: Color32 = Color32::from_rgb(55, 70, 110);
+const BG: Color32 = Color32::from_rgba_premultiplied(18, 23, 35, 242);
+const BORDER: Color32 = Color32::from_rgb(73, 88, 122);
 
 #[derive(Debug)]
 pub struct PlayerStatusComponent {

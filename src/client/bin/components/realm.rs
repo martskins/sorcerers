@@ -453,7 +453,7 @@ impl RealmComponent {
         data: &mut GameData,
         painter: &Painter,
     ) -> anyhow::Result<()> {
-        let grid_color = Color32::WHITE;
+        let grid_color = Color32::from_rgb(70, 92, 112);
         let grid_thickness = 1.0;
 
         let occupied_zones: Vec<u8> = self
@@ -472,13 +472,13 @@ impl RealmComponent {
             let bg_color = if occupied_zones.contains(&cell.id) {
                 OCCUPIED_ZONE_BACKGROUND_COLOR
             } else {
-                Color32::from_rgba_unmultiplied(20, 31, 46, 102)
+                Color32::from_rgba_unmultiplied(18, 29, 41, 150)
             };
 
-            painter.rect_filled(rect, 0.0, bg_color);
+            painter.rect_filled(rect.shrink(1.0), 3.0, bg_color);
             painter.rect_stroke(
-                rect,
-                0.0,
+                rect.shrink(0.5),
+                3.0,
                 Stroke::new(grid_thickness, grid_color),
                 egui::StrokeKind::Outside,
             );
@@ -489,7 +489,7 @@ impl RealmComponent {
                 egui::Align2::CENTER_TOP,
                 (idx + 1).to_string(),
                 egui::FontId::proportional(10.0),
-                Color32::WHITE,
+                Color32::from_rgba_unmultiplied(190, 205, 220, 120),
             );
 
             match &data.status {
@@ -504,9 +504,9 @@ impl RealmComponent {
                         }
 
                         painter.rect_stroke(
-                            rect,
-                            0.0,
-                            Stroke::new(2.5, Color32::GREEN),
+                            rect.shrink(3.0),
+                            5.0,
+                            Stroke::new(2.5, Color32::from_rgb(130, 226, 144)),
                             egui::StrokeKind::Inside,
                         );
                     }
@@ -538,8 +538,8 @@ impl RealmComponent {
                     if can_pick {
                         painter.rect_stroke(
                             rect,
-                            0.0,
-                            Stroke::new(5.0, Color32::GREEN),
+                            4.0,
+                            Stroke::new(3.0, Color32::from_rgb(130, 226, 144)),
                             egui::StrokeKind::Outside,
                         );
                     }
@@ -584,7 +584,7 @@ impl RealmComponent {
                 } else {
                     77u8
                 };
-                let color = Color32::from_rgba_unmultiplied(51, 153, 255, base_alpha);
+                let color = Color32::from_rgba_unmultiplied(72, 150, 195, base_alpha);
                 for zone in group {
                     if let Zone::Realm(cell_id, _) = zone
                         && let Some(cell) = self.cell_rects.iter().find(|c| c.id == *cell_id)

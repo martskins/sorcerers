@@ -5,7 +5,7 @@ use crate::{
     scene::game::{GameData, Status},
     texture_cache::TextureCache,
 };
-use egui::{Color32, Context, Painter, Rect, Sense, Ui, pos2, vec2};
+use egui::{Color32, Context, Painter, Rect, Sense, Stroke, Ui, pos2, vec2};
 use sorcerers::{
     card::CardData,
     game::PlayerId,
@@ -264,7 +264,7 @@ impl Component for PlayerHandComponent {
         ui: &mut Ui,
         painter: &Painter,
     ) -> anyhow::Result<Option<ComponentCommand>> {
-        let bg_color = Color32::from_rgba_unmultiplied(38, 46, 56, 217);
+        let bg_color = Color32::from_rgba_unmultiplied(16, 18, 26, 235);
         painter.rect_filled(self.rect, 0.0, bg_color);
 
         let mut clicked_card: Option<(uuid::Uuid, egui::Pos2)> = None;
