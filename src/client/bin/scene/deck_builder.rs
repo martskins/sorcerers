@@ -14,8 +14,8 @@ use sorcerers::{
 use std::collections::HashMap;
 use unidecode::unidecode;
 
-mod types;
 mod save;
+mod types;
 
 use types::{CardEntry, ElemFilter, TypeFilter};
 

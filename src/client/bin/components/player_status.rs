@@ -10,8 +10,8 @@ use crate::{
     components::{Component, ComponentCommand, ComponentType},
     element_icon,
     scene::game::GameData,
-    theme,
     texture_cache::TextureCache,
+    theme,
 };
 
 // ── Layout ─────────────────────────────────────────────────────────────────────

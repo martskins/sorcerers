@@ -1,12 +1,12 @@
-mod client;
 mod card_layout;
+mod client;
 pub mod components;
 mod config;
 pub mod element_icon;
 mod render;
 mod scene;
-mod theme;
 mod texture_cache;
+mod theme;
 
 use eframe::egui;
 

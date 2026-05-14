@@ -92,7 +92,9 @@ impl TemporaryEffect {
             TemporaryEffect::MakePlayable { affected_cards, .. } => {
                 affected_cards.clone().including_not_in_play().all(state)
             }
-            TemporaryEffect::IgnoreCostThresholds { affected_cards, .. } => affected_cards.all(state),
+            TemporaryEffect::IgnoreCostThresholds { affected_cards, .. } => {
+                affected_cards.all(state)
+            }
             TemporaryEffect::ModifyEffect { .. } => vec![],
             TemporaryEffect::ConnectSites { .. } => vec![],
         }
@@ -146,10 +148,7 @@ impl EffectLifecycle {
         Ok(())
     }
 
-    async fn process_deferred_effects(
-        state: &mut State,
-        effect: &Effect,
-    ) -> anyhow::Result<()> {
+    async fn process_deferred_effects(state: &mut State, effect: &Effect) -> anyhow::Result<()> {
         let mut effects_to_remove = vec![];
         let deferred_effects = state.deferred_effects().to_vec();
         for (idx, de) in deferred_effects.iter().enumerate() {
@@ -177,10 +176,7 @@ impl EffectLifecycle {
         Ok(())
     }
 
-    async fn expire_temporary_effects(
-        state: &mut State,
-        effect: &Effect,
-    ) -> anyhow::Result<()> {
+    async fn expire_temporary_effects(state: &mut State, effect: &Effect) -> anyhow::Result<()> {
         let snapshot = state.clone();
         let mut retained_effects = vec![];
         for te in state.temporary_effects() {

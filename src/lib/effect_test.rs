@@ -4,7 +4,10 @@ use crate::{
         SeaRaider, from_name_and_zone,
     },
     deck::Deck,
-    effect::{DeferredEffect, Effect, EffectCallback, EffectReplacementCallback, TemporaryEffect, TokenType},
+    effect::{
+        DeferredEffect, Effect, EffectCallback, EffectReplacementCallback, TemporaryEffect,
+        TokenType,
+    },
     networking::message::ServerMessage,
     query::{CardQuery, EffectQuery, QueryCache, ZoneQuery},
     state::{Player, PlayerWithDeck, State},

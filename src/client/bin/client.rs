@@ -1,8 +1,8 @@
 use crate::config::SCREEN_RECT;
 use crate::scene::Scene;
 use crate::scene::menu::Menu;
-use crate::theme;
 use crate::texture_cache::TextureCache;
+use crate::theme;
 use eframe::egui;
 use sorcerers::networking;
 use sorcerers::networking::message::{Message, ServerMessage};

@@ -1695,7 +1695,7 @@ impl Game {
                     actions.retain(|action| {
                         let can_afford = action
                             .get_cost(card_id, &self.state)
-                            .and_then(|cost| cost.can_afford(&self.state, &acting_player))
+                            .and_then(|cost| cost.can_afford(&self.state, acting_player))
                             .unwrap_or_default();
                         let can_activate = action
                             .can_activate(card_id, &acting_player, &self.state)

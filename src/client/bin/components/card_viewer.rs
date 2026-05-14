@@ -35,10 +35,10 @@ fn draw_card_thumb(
             Color32::WHITE,
         );
 
-        if resp.clicked() {
-            if let Err(e) = handle_card_click(data, card, client, game_id, player_id) {
-                eprintln!("Error handling card click: {}", e);
-            }
+        if resp.clicked()
+            && let Err(e) = handle_card_click(data, card, client, game_id, player_id)
+        {
+            eprintln!("Error handling card click: {}", e);
         }
 
         let border_color = if resp.hovered() {
@@ -58,10 +58,10 @@ fn draw_card_thumb(
         );
     } else {
         let resp = ui.allocate_rect(card_rect, Sense::CLICK | Sense::HOVER);
-        if resp.clicked() {
-            if let Err(e) = handle_card_click(data, card, client, game_id, player_id) {
-                eprintln!("Error handling card click: {}", e);
-            }
+        if resp.clicked()
+            && let Err(e) = handle_card_click(data, card, client, game_id, player_id)
+        {
+            eprintln!("Error handling card click: {}", e);
         }
 
         let painter = ui.painter();
@@ -263,8 +263,7 @@ fn render_viewer(
                             // before it, leaving only the STACK_STRIP strip visible.
                             for local_i in 0..n {
                                 let gi = start + local_i;
-                                let y =
-                                    col_rect.min.y + local_i as f32 * card_layout::STACK_STRIP;
+                                let y = col_rect.min.y + local_i as f32 * card_layout::STACK_STRIP;
                                 let size = thumb_size(&cards[gi]);
                                 let x = col_rect.min.x + (col_w - size.x) / 2.0;
                                 let card_rect = Rect::from_min_size(pos2(x, y), size);

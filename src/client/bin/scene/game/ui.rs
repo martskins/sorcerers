@@ -165,8 +165,8 @@ impl Game {
         let mut submitted = false;
         let menu_w = 260.0;
         let menu_h = 170.0;
-        let screen = screen_rect()
-            .unwrap_or(Rect::from_min_size(pos2(0.0, 0.0), vec2(1280.0, 720.0)));
+        let screen =
+            screen_rect().unwrap_or(Rect::from_min_size(pos2(0.0, 0.0), vec2(1280.0, 720.0)));
         let origin = pos2(
             (screen.width() - menu_w) / 2.0,
             (screen.height() - menu_h) / 2.0,
@@ -178,11 +178,7 @@ impl Game {
                 ui.vertical_centered(|ui| {
                     ui.horizontal(|ui| {
                         ui.add_space(16.0);
-                        ui.label(
-                            RichText::new(prompt)
-                                .size(16.0)
-                                .color(theme::TEXT_BRIGHT),
-                        );
+                        ui.label(RichText::new(prompt).size(16.0).color(theme::TEXT_BRIGHT));
                         ui.add_space(18.0);
                         if ui
                             .add_enabled(

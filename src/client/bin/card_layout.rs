@@ -52,7 +52,12 @@ pub struct HandLayout {
 }
 
 impl HandLayout {
-    pub fn new(spell_count: usize, site_count: usize, dims: CardDims, available_width: f32) -> Self {
+    pub fn new(
+        spell_count: usize,
+        site_count: usize,
+        dims: CardDims,
+        available_width: f32,
+    ) -> Self {
         let min_visible_width = dims.spell.x * 0.25;
         let spell_spacing = if spell_count > 1 {
             ((available_width - dims.spell.x) / (spell_count as f32 - 1.0))
@@ -112,7 +117,10 @@ pub fn hand_content_size(layout: &HandLayout, dims: CardDims, available_width: f
 pub fn spell_rect(container: Rect, layout: &HandLayout, dims: CardDims, index: usize) -> Rect {
     let start_x = container.min.x + (container.width() - layout.total_width) / 2.0;
     let y = container.center().y - dims.spell.y / 2.0;
-    Rect::from_min_size(pos2(start_x + index as f32 * layout.spell_spacing, y), dims.spell)
+    Rect::from_min_size(
+        pos2(start_x + index as f32 * layout.spell_spacing, y),
+        dims.spell,
+    )
 }
 
 pub fn site_rect(container: Rect, layout: &HandLayout, dims: CardDims, index: usize) -> Rect {
