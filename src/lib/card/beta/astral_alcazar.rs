@@ -74,21 +74,18 @@ impl Card for AstralAlcazar {
         Some(self)
     }
 
-    fn area_modifiers(&self, state: &State) -> crate::card::AreaModifiers {
-        // TODO: This ability is not quite right. It should grant the ability of moving to any void
-        // as if it were adjacent to this site.
-        let grants_abilities = CardQuery::new()
-            .units()
-            .in_zone(self.get_zone())
-            .all(state)
-            .into_iter()
-            .map(|unit| (unit, vec![Ability::Voidwalk]))
-            .collect();
+    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+        let mut zones = vec![self.get_zone().clone()];
+        zones.extend(
+            Zone::all_in_region(Region::Void)
+                .into_iter()
+                .filter(|zone| zone.get_site_at_square(state).is_none()),
+        );
 
-        crate::card::AreaModifiers {
-            grants_abilities,
-            ..Default::default()
-        }
+        Ok(vec![ContinuousEffect::ConnectZones {
+            connected_zones: zones,
+            affected_cards: CardQuery::new().units().in_zone(self.get_zone()),
+        }])
     }
 }
 

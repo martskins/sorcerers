@@ -1078,13 +1078,25 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                         to_visit.push((connected, current_step + 1));
                     }
                 }
+
+                for connected in continuously_connected_zones(state, self.get_id()) {
+                    if self
+                        .can_move_between_zones(state, &current_zone, &connected)
+                        .unwrap_or(false)
+                    {
+                        to_visit.push((connected, current_step + 1));
+                    }
+                }
             }
         }
 
         if self.is_unit() && !self.has_ability(state, &Ability::Voidwalk) {
             visited = visited
                 .iter()
-                .filter(|z| z.get_site(state).is_some())
+                .filter(|z| {
+                    z.get_site(state).is_some()
+                        || is_continuously_connected_zone(state, self.get_id(), z)
+                })
                 .cloned()
                 .collect();
         }
@@ -2819,7 +2831,9 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
             }
 
             if zone.get_site(state).is_none() {
-                if self.has_ability(state, &Ability::Voidwalk) {
+                if self.has_ability(state, &Ability::Voidwalk)
+                    || is_continuously_connected_zone(state, self.get_id(), zone)
+                {
                     zones.push(zone.clone());
                 }
                 continue;
@@ -3011,4 +3025,29 @@ fn temporarily_connected_sites(state: &State, zone: &Zone) -> Vec<Zone> {
         })
         .flatten()
         .collect()
+}
+
+fn continuously_connected_zones(state: &State, card_id: &uuid::Uuid) -> Vec<Zone> {
+    state
+        .continuous_effects
+        .iter()
+        .filter_map(|effect| match effect {
+            ContinuousEffect::ConnectZones {
+                connected_zones,
+                affected_cards,
+            } if affected_cards.matches(card_id, state) => Some(connected_zones.clone()),
+            _ => None,
+        })
+        .flatten()
+        .collect()
+}
+
+fn is_continuously_connected_zone(state: &State, card_id: &uuid::Uuid, zone: &Zone) -> bool {
+    state.continuous_effects.iter().any(|effect| match effect {
+        ContinuousEffect::ConnectZones {
+            connected_zones,
+            affected_cards,
+        } => affected_cards.matches(card_id, state) && connected_zones.contains(zone),
+        _ => false,
+    })
 }

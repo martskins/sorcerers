@@ -79,6 +79,10 @@ pub enum ContinuousEffect {
     ConnectLeftRightEdges {
         affected_cards: CardQuery,
     },
+    ConnectZones {
+        connected_zones: Vec<Zone>,
+        affected_cards: CardQuery,
+    },
     ChangeSiteType {
         site_type: SiteType,
         affected_sites: CardQuery,

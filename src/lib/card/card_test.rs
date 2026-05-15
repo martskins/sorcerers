@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        Ability, AdditionalCost, ApprenticeWizard, AridDesert, Card, Cost, GreatWall, OgreGoons,
-        Region, RimlandNomads,
+        Ability, AdditionalCost, ApprenticeWizard, AridDesert, AstralAlcazar, Card, Cost,
+        GreatWall, OgreGoons, Region, RimlandNomads,
     },
     query::CardQuery,
     state::State,
@@ -38,6 +38,53 @@ fn test_additional_cost_tap() {
         .can_afford(&state, player_id)
         .expect("should not error");
     assert!(!can_afford, "only unit in zone is tapped");
+}
+
+#[tokio::test]
+async fn test_astral_alcazar_connects_site_to_any_void() {
+    let mut state = State::new_mock_state(vec![8]);
+    let player_id = state.players[0].id;
+
+    let mut alcazar = AstralAlcazar::new(player_id);
+    alcazar.set_zone(Zone::Realm(8, Region::Surface));
+    state.cards.insert(*alcazar.get_id(), Box::new(alcazar));
+
+    let mut unit = ApprenticeWizard::new(player_id);
+    unit.set_zone(Zone::Realm(8, Region::Surface));
+    state.cards.insert(*unit.get_id(), Box::new(unit.clone()));
+
+    state.compute_world_effects().await.unwrap();
+
+    let zones = unit
+        .get_valid_move_zones(&state)
+        .await
+        .expect("zones to be computed");
+    assert!(zones.contains(&Zone::Realm(1, Region::Void)));
+    assert!(zones.contains(&Zone::Realm(20, Region::Void)));
+    assert!(!zones.contains(&Zone::Realm(8, Region::Void)));
+}
+
+#[tokio::test]
+async fn test_astral_alcazar_connects_any_void_to_site() {
+    let mut state = State::new_mock_state(vec![8]);
+    let player_id = state.players[0].id;
+
+    let mut alcazar = AstralAlcazar::new(player_id);
+    alcazar.set_zone(Zone::Realm(8, Region::Surface));
+    state.cards.insert(*alcazar.get_id(), Box::new(alcazar));
+
+    let mut unit = ApprenticeWizard::new(player_id);
+    unit.set_zone(Zone::Realm(20, Region::Void));
+    state.cards.insert(*unit.get_id(), Box::new(unit.clone()));
+
+    state.compute_world_effects().await.unwrap();
+
+    let zones = unit
+        .get_valid_move_zones(&state)
+        .await
+        .expect("zones to be computed");
+    assert!(zones.contains(&Zone::Realm(8, Region::Surface)));
+    assert!(!zones.contains(&Zone::Realm(1, Region::Void)));
 }
 
 #[tokio::test]
