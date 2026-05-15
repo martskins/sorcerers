@@ -1695,31 +1695,11 @@ impl Effect {
                         token_type: TokenType::Rubble,
                         zone: original_zone.clone(),
                     });
-                    // TODO: I don't think this effect is needed. Mana was already generated at the
-                    // beginning of the turn, so presumably you don't loose it when the site is
-                    // destroyed after the fact.
-                    // state.queue_one(Effect::ConsumeMana {
-                    //     player_id: controller_id,
-                    //     mana: 1,
-                    // });
                 }
 
                 state.get_card_mut(card_id).set_zone(Zone::Cemetery);
 
-                // TODO: Replace with CardQuery and also add a benchmark to compare this approach
-                // with CardQuery.
-                let borne_cards: Vec<uuid::Uuid> = state
-                    .cards
-                    .values()
-                    .filter(|c| c.get_zone().is_in_play())
-                    .filter_map(|c| {
-                        c.get_bearer_id()
-                            .ok()
-                            .flatten()
-                            .filter(|bearer_id| bearer_id == card_id)
-                            .map(|_| *c.get_id())
-                    })
-                    .collect();
+                let borne_cards = CardQuery::new().carried_by(card_id).all(state);
                 for borne_card_id in borne_cards {
                     state.get_card_mut(&borne_card_id).set_bearer_id(None);
                 }
