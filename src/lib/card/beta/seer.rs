@@ -71,9 +71,57 @@ impl Card for Seer {
         Some(&mut self.avatar_base)
     }
 
-    async fn on_turn_start(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
-        // TODO: prompt to inspect topmost site or spell and optionally bottom it.
-        Ok(vec![])
+    async fn on_turn_start(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+        let controller_id = self.get_controller_id(state);
+        let original_deck = state.get_player_deck(&controller_id)?.clone();
+        let mut choices = vec![];
+        if let Some(site_id) = original_deck.peek_site() {
+            choices.push(("site", *site_id));
+        }
+        if let Some(spell_id) = original_deck.peek_spell() {
+            choices.push(("spell", *spell_id));
+        }
+
+        let Some((deck_kind, card_id)) = (match choices.len() {
+            0 => None,
+            1 => Some(choices[0]),
+            _ => {
+                let options = vec![
+                    "Look at your topmost site".to_string(),
+                    "Look at your topmost spell".to_string(),
+                ];
+                let picked_option =
+                    pick_option(&controller_id, &options, state, "Seer: Pick a deck to inspect", false)
+                        .await?;
+                Some(choices[picked_option])
+            }
+        }) else {
+            return Ok(vec![]);
+        };
+
+        let put_on_bottom = take_action(
+            &controller_id,
+            &[card_id],
+            state,
+            &format!("Seer: Viewing the top card of your {deck_kind} deck"),
+            "Put it on the bottom of its deck?",
+        )
+        .await?;
+        if !put_on_bottom {
+            return Ok(vec![]);
+        }
+
+        let mut deck = original_deck;
+        match deck_kind {
+            "site" => deck.rotate_sites(1),
+            "spell" => deck.rotate_spells(1),
+            _ => unreachable!(),
+        }
+
+        Ok(vec![Effect::RearrangeDeck {
+            spells: deck.spells,
+            sites: deck.sites,
+        }])
     }
 }
 
