@@ -19,10 +19,13 @@ use sorcerers::{
 
 mod geometry;
 
-use geometry::{card_rotation, cell_rect, intersection_rect, site_dimensions, spell_dimensions};
+use geometry::{
+    board_corners, card_rotation, cell_corners, cell_inner_rect, cell_rect, intersection_rect,
+    project_rect_in_cell, projected_card_dimensions, site_dimensions, spell_dimensions,
+};
 
 static OCCUPIED_ZONE_BACKGROUND_COLOR: Color32 =
-    Color32::from_rgba_unmultiplied_const(20, 31, 46, 255);
+    Color32::from_rgba_unmultiplied_const(255, 255, 255, 22);
 
 const CARD_FLIGHT_DURATION: f64 = 0.28;
 
@@ -187,13 +190,15 @@ impl RealmComponent {
 
             match &card.zone {
                 Zone::Realm(square, _) => {
-                    if let Some(cell) = self.cell_rects.iter().find(|c| &c.id == square) {
+                    if self.cell_rects.iter().any(|c| &c.id == square) {
                         let existing = self.card_rects.iter().find(|c| c.card.id == card.id);
-                        let rect = cell.rect;
-                        let mut dimensions = spell_dimensions(&rect);
-                        if card.card_type == CardType::Site {
-                            dimensions = site_dimensions(&rect);
-                        }
+                        let rect = cell_inner_rect(&self.rect, *square, self.mirrored, 18.0);
+                        let mut dimensions = projected_card_dimensions(
+                            &self.rect,
+                            *square,
+                            self.mirrored,
+                            card.card_type == CardType::Site,
+                        );
                         if card.is_token {
                             dimensions *= 0.7;
                         }
@@ -201,14 +206,19 @@ impl RealmComponent {
                         let mut pos_x = rect.min.x + (rect.width() - dimensions.x) / 2.0;
                         let mut pos_y = rect.min.y + (rect.height() - dimensions.y) / 2.0;
                         if card.card_type == CardType::Site {
-                            pos_x = rect.min.x;
                             pos_y = rect.min.y + rect.height() - dimensions.y;
                         } else {
-                            let jitter_x: f32 = rng.random_range(-12.0..12.0);
-                            let jitter_y: f32 = rng.random_range(-12.0..12.0);
+                            let jitter_x: f32 = rng.random_range(
+                                -(rect.width() * 0.025)..(rect.width() * 0.025),
+                            );
+                            let jitter_y: f32 = rng.random_range(
+                                -(rect.height() * 0.025)..(rect.height() * 0.025),
+                            );
                             pos_x += jitter_x;
                             pos_y += jitter_y;
                         }
+                        pos_x = pos_x.clamp(rect.min.x, rect.max.x - dimensions.x);
+                        pos_y = pos_y.clamp(rect.min.y, rect.max.y - dimensions.y);
 
                         let selected = existing.is_some_and(|c| c.is_selected);
                         let image = existing
@@ -387,15 +397,46 @@ impl RealmComponent {
         }
     }
 
+    fn draw_playmat(&self, painter: &Painter) {
+        let corners = board_corners(&self.rect).to_vec();
+        painter.add(Shape::convex_polygon(
+            corners.clone(),
+            Color32::from_rgb(25, 27, 25),
+            Stroke::new(1.0, Color32::from_rgba_unmultiplied(210, 195, 160, 65)),
+        ));
+    }
+
+    fn draw_zone_guide(&self, painter: &Painter, cell_id: u8, occupied: bool) {
+        let guide = cell_corners(&self.rect, cell_id, self.mirrored, 1.5);
+        if occupied {
+            painter.add(Shape::convex_polygon(
+                guide.to_vec(),
+                OCCUPIED_ZONE_BACKGROUND_COLOR,
+                Stroke::NONE,
+            ));
+        }
+
+        painter.add(Shape::closed_line(
+            guide.to_vec(),
+            Stroke::new(1.0, Color32::from_rgba_unmultiplied(235, 235, 220, 42)),
+        ));
+
+        let number_pos = guide[0] + (guide[1] - guide[0]) * 0.08 + (guide[3] - guide[0]) * 0.16;
+        painter.text(
+            number_pos,
+            egui::Align2::LEFT_TOP,
+            cell_id.to_string(),
+            egui::FontId::proportional(11.0),
+            Color32::from_rgba_unmultiplied(235, 235, 220, 100),
+        );
+    }
+
     fn render_grid(
         &mut self,
         ui: &mut egui::Ui,
         data: &mut GameData,
         painter: &Painter,
     ) -> anyhow::Result<()> {
-        let grid_color = theme::GRID_LINE;
-        let grid_thickness = 1.0;
-
         let occupied_zones: Vec<u8> = self
             .card_rects
             .iter()
@@ -406,31 +447,13 @@ impl RealmComponent {
             })
             .collect();
 
+        self.draw_playmat(painter);
+
         let mut clicked_zone = None;
-        for (idx, cell) in self.cell_rects.iter().enumerate() {
+        for cell in &self.cell_rects {
             let rect = cell.rect;
-            let bg_color = if occupied_zones.contains(&cell.id) {
-                OCCUPIED_ZONE_BACKGROUND_COLOR
-            } else {
-                Color32::from_rgba_unmultiplied(18, 29, 41, 150)
-            };
 
-            painter.rect_filled(rect.shrink(1.0), 3.0, bg_color);
-            painter.rect_stroke(
-                rect.shrink(0.5),
-                3.0,
-                Stroke::new(grid_thickness, grid_color),
-                egui::StrokeKind::Outside,
-            );
-
-            // Draw grid number
-            painter.text(
-                rect.min + vec2(10.0, 5.0),
-                egui::Align2::CENTER_TOP,
-                (idx + 1).to_string(),
-                egui::FontId::proportional(10.0),
-                Color32::from_rgba_unmultiplied(190, 205, 220, 120),
-            );
+            self.draw_zone_guide(painter, cell.id, occupied_zones.contains(&cell.id));
 
             match &data.status {
                 Status::SelectingZone { zones, .. } => {
@@ -443,12 +466,10 @@ impl RealmComponent {
                             clicked_zone = Some(zone.clone());
                         }
 
-                        painter.rect_stroke(
-                            rect.shrink(3.0),
-                            5.0,
-                            Stroke::new(2.5, theme::PICKABLE),
-                            egui::StrokeKind::Inside,
-                        );
+                        painter.add(Shape::closed_line(
+                            cell_corners(&self.rect, cell.id, self.mirrored, 5.0).to_vec(),
+                            Stroke::new(3.0, theme::PICKABLE),
+                        ));
                     }
                 }
                 Status::DistributingDamage { .. }
@@ -524,13 +545,17 @@ impl RealmComponent {
                 } else {
                     77u8
                 };
-                let color = Color32::from_rgba_unmultiplied(72, 150, 195, base_alpha);
+                let color = Color32::from_rgba_unmultiplied(80, 200, 190, base_alpha);
                 for zone in group {
                     if let Zone::Realm(cell_id, _) = zone
                         && let Some(cell) = self.cell_rects.iter().find(|c| c.id == *cell_id)
                     {
                         let resp = ui.allocate_rect(cell.rect, Sense::click());
-                        painter.rect_filled(cell.rect, 0.0, color);
+                        painter.add(Shape::convex_polygon(
+                            cell_corners(&self.rect, cell.id, self.mirrored, 5.0).to_vec(),
+                            color,
+                            Stroke::NONE,
+                        ));
 
                         if resp.clicked() {
                             clicked_group_idx = Some(group_idx);
@@ -741,6 +766,8 @@ impl Component for RealmComponent {
         let mut clicked_card = None;
         let mut move_delta = Vec2::default();
         let mut moved_card_id = None;
+        let realm_rect = self.rect;
+        let mirrored = self.mirrored;
         for card_rect in &mut self.card_rects {
             if !card_rect.card.zone.is_in_play() {
                 continue;
@@ -755,12 +782,30 @@ impl Component for RealmComponent {
             }
 
             let resp = ui.allocate_rect(card_rect.rect, Sense::HOVER | Sense::CLICK | Sense::DRAG);
-            render::draw_card(
-                card_rect,
-                card_rect.card.controller_id == self.player_id,
-                true,
-                painter,
-            );
+            if let Zone::Realm(cell_id, _) = card_rect.card.zone {
+                let corners = project_rect_in_cell(
+                    &realm_rect,
+                    cell_id,
+                    mirrored,
+                    card_rect.rect,
+                    18.0,
+                    card_rotation(&card_rect.card),
+                );
+                render::draw_projected_card(
+                    card_rect,
+                    card_rect.card.controller_id == self.player_id,
+                    true,
+                    painter,
+                    corners,
+                );
+            } else {
+                render::draw_card(
+                    card_rect,
+                    card_rect.card.controller_id == self.player_id,
+                    true,
+                    painter,
+                );
+            }
 
             if resp.clicked() {
                 clicked_card = Some(card_rect.card.id);
@@ -791,10 +836,14 @@ impl Component for RealmComponent {
                 && let Some(cell) = cell
             {
                 let card_id = card_rect.card.id;
-                let min_x = cell.rect.min.x;
-                let max_x = cell.rect.max.x - card_rect.rect.width();
-                let min_y = cell.rect.min.y;
-                let max_y = cell.rect.max.y - card_rect.rect.height();
+                let bounds = match card_rect.card.zone {
+                    Zone::Realm(cell_id, _) => cell_inner_rect(&realm_rect, cell_id, mirrored, 18.0),
+                    _ => cell.rect,
+                };
+                let min_x = bounds.min.x;
+                let max_x = bounds.max.x - card_rect.rect.width();
+                let min_y = bounds.min.y;
+                let max_y = bounds.max.y - card_rect.rect.height();
                 let delta = resp.drag_delta();
                 let mut new_min = card_rect.rect.min + delta;
                 new_min.x = new_min.x.clamp(min_x, max_x);
@@ -811,12 +860,24 @@ impl Component for RealmComponent {
             } = &data.status
                 && !cards.contains(&card_rect.card.id)
             {
-                // Draw greying overlay
-                painter.rect_filled(
-                    card_rect.rect,
-                    0.0,
-                    Color32::from_rgba_unmultiplied(100, 100, 100, 153),
-                );
+                let overlay_color = Color32::from_rgba_unmultiplied(100, 100, 100, 153);
+                if let Zone::Realm(cell_id, _) = card_rect.card.zone {
+                    painter.add(Shape::convex_polygon(
+                        project_rect_in_cell(
+                            &realm_rect,
+                            cell_id,
+                            mirrored,
+                            card_rect.rect,
+                            18.0,
+                            card_rotation(&card_rect.card),
+                        )
+                        .to_vec(),
+                        overlay_color,
+                        Stroke::NONE,
+                    ));
+                } else {
+                    painter.rect_filled(card_rect.rect, 0.0, overlay_color);
+                }
             }
         }
 
@@ -868,13 +929,30 @@ impl Component for RealmComponent {
                 image: flight.image.clone(),
                 is_selected: false,
             };
-            render::draw_card_with_rotation(
-                &card_rect,
-                card_rect.card.controller_id == self.player_id,
-                true,
-                painter,
-                rotation,
-            );
+            if let Zone::Realm(cell_id, _) = card_rect.card.zone {
+                render::draw_projected_card(
+                    &card_rect,
+                    card_rect.card.controller_id == self.player_id,
+                    true,
+                    painter,
+                    project_rect_in_cell(
+                        &self.rect,
+                        cell_id,
+                        self.mirrored,
+                        card_rect.rect,
+                        18.0,
+                        rotation,
+                    ),
+                );
+            } else {
+                render::draw_card_with_rotation(
+                    &card_rect,
+                    card_rect.card.controller_id == self.player_id,
+                    true,
+                    painter,
+                    rotation,
+                );
+            }
             if progress < 1.0 {
                 ui.ctx().request_repaint();
                 true

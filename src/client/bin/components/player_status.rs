@@ -1,8 +1,8 @@
 use egui::epaint::CornerRadius;
 use egui::{Color32, Context, Painter, Rect, Stroke, Ui, pos2, vec2};
-use sorcerers::game::PlayerId;
 use sorcerers::{
     game::{Element, Resources, Thresholds},
+    game::PlayerId,
     zone::Zone,
 };
 
@@ -100,19 +100,22 @@ impl Component for PlayerStatusComponent {
             return Ok(None);
         }
 
-        let sidebar_w = crate::config::realm_rect()
-            .map(|r| r.min.x)
-            .unwrap_or(220.0);
         let sr = crate::config::screen_rect()?;
         let ctx = ui.ctx().clone();
-
-        // Panel sits at the very bottom (player) or very top (opponent) of the sidebar.
+        let panel_w = 238.0;
         let panel_y = if self.player {
-            sr.height() - crate::config::SIDEBAR_PANEL_RESERVED - 4.0
+            sr.height() - 98.0
         } else {
-            4.0
+            74.0
         };
-        let panel_w = sidebar_w - 18.0;
+        let panel_pos = pos2(12.0, panel_y);
+        let panel_hit_rect = Rect::from_min_size(panel_pos, vec2(panel_w, 92.0)).expand(28.0);
+        if !ctx
+            .pointer_latest_pos()
+            .is_some_and(|pos| panel_hit_rect.contains(pos))
+        {
+            return Ok(None);
+        }
 
         // Gather data
         let resources = data
@@ -156,8 +159,8 @@ impl Component for PlayerStatusComponent {
             data.current_player == data.player_id && data.turn_player == self.player_id && !is_self;
 
         egui::Area::new(egui::Id::new(area_id))
-            .fixed_pos(pos2(4.0, panel_y))
-            .order(egui::Order::Background)
+            .fixed_pos(panel_pos)
+            .order(egui::Order::Foreground)
             .show(&ctx, |ui| {
                 egui::Frame::new()
                     .fill(BG)

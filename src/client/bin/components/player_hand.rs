@@ -4,9 +4,8 @@ use crate::{
     render::{self, CardRect},
     scene::game::{GameData, Status},
     texture_cache::TextureCache,
-    theme,
 };
-use egui::{Color32, Context, Painter, Rect, Sense, Stroke, Ui, vec2};
+use egui::{Context, Painter, Rect, Sense, Ui, pos2};
 use sorcerers::{
     card::CardData,
     game::PlayerId,
@@ -21,6 +20,8 @@ pub struct PlayerHandComponent {
     card_rects: Vec<CardRect>,
     client: networking::client::Client,
     visible: bool,
+    expanded: bool,
+    expansion: f32,
     rect: Rect,
     spells_in_hand: Vec<uuid::Uuid>,
     sites_in_hand: Vec<uuid::Uuid>,
@@ -39,6 +40,8 @@ impl PlayerHandComponent {
             card_rects: Vec::new(),
             client,
             visible: true,
+            expanded: false,
+            expansion: 0.0,
             rect,
             spells_in_hand: Vec::new(),
             sites_in_hand: Vec::new(),
@@ -51,6 +54,38 @@ impl PlayerHandComponent {
 
     fn card_dimensions(&self) -> CardDims {
         CardDims::from_spell_height(self.card_height())
+    }
+
+    fn fan_rect_and_rotation(
+        &self,
+        card_rect: &CardRect,
+        index: usize,
+        count: usize,
+        expansion: f32,
+    ) -> (Rect, f32) {
+        let count = count.max(1);
+        let mid = (count as f32 - 1.0) / 2.0;
+        let t = if count == 1 {
+            0.0
+        } else {
+            (index as f32 - mid) / mid.max(1.0)
+        };
+        let spacing = (card_rect.rect.width() * 0.44)
+            .min(self.rect.width() / (count as f32 + 1.2))
+            .max(24.0);
+        let rotation = t * 0.24;
+        let arc = t.abs() * t.abs() * (10.0 + 24.0 * expansion);
+        let center_x = self.rect.center().x + (index as f32 - mid) * spacing;
+        let collapsed_top = self.rect.max.y - 42.0;
+        let expanded_top = self.rect.max.y - card_rect.rect.height() - 12.0;
+        let eased = expansion * expansion * (3.0 - 2.0 * expansion);
+        let top_y = collapsed_top + (expanded_top - collapsed_top) * eased + arc;
+        let rect = Rect::from_min_size(
+            pos2(center_x - card_rect.rect.width() / 2.0, top_y),
+            card_rect.rect.size(),
+        );
+
+        (rect, rotation)
     }
 
     fn compute_rects(&mut self, cards: &[CardData], ctx: &Context) -> anyhow::Result<()> {
@@ -117,7 +152,8 @@ impl PlayerHandComponent {
         if site_count > 0 {
             for (idx, card) in sites.iter().enumerate() {
                 let existing_card = self.card_rects.iter().find(|c| c.card.id == card.id);
-                let rect = card_layout::site_rect(self.rect, &layout, dims, idx);
+                let site_rect = card_layout::site_rect(self.rect, &layout, dims, idx);
+                let rect = Rect::from_min_size(site_rect.min, dims.spell);
                 rects.push(CardRect {
                     rect,
                     is_selected: existing_card.is_some_and(|c| c.is_selected),
@@ -214,31 +250,91 @@ impl Component for PlayerHandComponent {
         ui: &mut Ui,
         painter: &Painter,
     ) -> anyhow::Result<Option<ComponentCommand>> {
-        painter.rect_filled(self.rect, 0.0, theme::HAND_BG);
-        painter.rect_filled(
-            self.rect.shrink2(vec2(10.0, 8.0)),
-            8.0,
-            Color32::from_rgba_unmultiplied(26, 32, 43, 190),
+        let pointer = ui.ctx().pointer_latest_pos();
+        let collapsed_height = 46.0;
+        let collapsed_strip = Rect::from_min_max(
+            pos2(self.rect.min.x, self.rect.max.y - collapsed_height),
+            self.rect.max,
         );
-        painter.line_segment(
-            [self.rect.left_top(), self.rect.right_top()],
-            Stroke::new(1.0, Color32::from_rgb(70, 84, 110)),
-        );
+        let hand_cards: Vec<&CardRect> = self
+            .card_rects
+            .iter()
+            .filter(|card| card.card.zone == Zone::Hand)
+            .collect();
+        let hover_card = pointer.is_some_and(|pos| {
+            hand_cards.iter().enumerate().any(|(idx, card_rect)| {
+                let (rect, _) = self.fan_rect_and_rotation(
+                    card_rect,
+                    idx,
+                    hand_cards.len(),
+                    self.expansion,
+                );
+                let visible_rect = if self.expansion < 0.05 {
+                    rect.intersect(collapsed_strip)
+                } else {
+                    rect
+                };
+                visible_rect.contains(pos)
+            })
+        });
+
+        if hover_card {
+            self.expanded = true;
+        } else {
+            self.expanded = false;
+        }
+
+        let target = if self.expanded { 1.0 } else { 0.0 };
+        let step = ui.ctx().input(|i| i.stable_dt).max(1.0 / 120.0) * 9.0;
+        if self.expansion < target {
+            self.expansion = (self.expansion + step).min(target);
+            ui.ctx().request_repaint();
+        } else if self.expansion > target {
+            self.expansion = (self.expansion - step).max(target);
+            ui.ctx().request_repaint();
+        }
+
+        if self.expansion <= 0.01 {
+            let clipped = painter.with_clip_rect(collapsed_strip);
+            for (idx, card_rect) in hand_cards.iter().enumerate() {
+                let mut collapsed_card = (*card_rect).clone();
+                let (rect, rotation) =
+                    self.fan_rect_and_rotation(&collapsed_card, idx, hand_cards.len(), 0.0);
+                collapsed_card.rect = rect;
+                render::draw_card_with_texture_rotation(
+                    &collapsed_card,
+                    true,
+                    false,
+                    &clipped,
+                    rotation,
+                    collapsed_card.card.is_site(),
+                );
+            }
+            return Ok(None);
+        }
 
         let mut clicked_card: Option<(uuid::Uuid, egui::Pos2)> = None;
-        for card_rect in &self.card_rects {
-            if card_rect.card.zone != Zone::Hand {
-                continue;
-            }
+        for (idx, card_rect) in hand_cards.iter().enumerate() {
+            let (rect, rotation) =
+                self.fan_rect_and_rotation(card_rect, idx, hand_cards.len(), self.expansion);
+            let mut fan_card = (*card_rect).clone();
+            fan_card.rect = rect;
 
-            let resp = ui.allocate_rect(card_rect.rect, Sense::HOVER | Sense::CLICK);
-            render::draw_card(card_rect, true, false, painter);
+            let resp = ui.allocate_rect(fan_card.rect, Sense::HOVER | Sense::CLICK);
+            render::draw_card_with_texture_rotation(
+                &fan_card,
+                true,
+                false,
+                painter,
+                rotation,
+                fan_card.card.is_site(),
+            );
             if resp.clicked() {
-                clicked_card = Some((card_rect.card.id, card_rect.rect.center()));
+                clicked_card = Some((fan_card.card.id, fan_card.rect.center()));
             }
 
             if resp.hovered() {
-                render::draw_card_preview(ui, card_rect.image.as_ref())?;
+                render::draw_card_preview(ui, fan_card.image.as_ref())?;
             }
         }
 

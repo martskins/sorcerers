@@ -97,6 +97,45 @@ fn draw_rotated_image(
     painter.add(Shape::mesh(mesh));
 }
 
+fn draw_image_quad(
+    painter: &Painter,
+    tex_handle: &TextureHandle,
+    corners: [Pos2; 4],
+    tint: Color32,
+) {
+    draw_image_quad_with_uvs(
+        painter,
+        tex_handle,
+        corners,
+        [
+            pos2(0.0, 0.0),
+            pos2(1.0, 0.0),
+            pos2(1.0, 1.0),
+            pos2(0.0, 1.0),
+        ],
+        tint,
+    );
+}
+
+fn draw_image_quad_with_uvs(
+    painter: &Painter,
+    tex_handle: &TextureHandle,
+    corners: [Pos2; 4],
+    uvs: [Pos2; 4],
+    tint: Color32,
+) {
+    let mut mesh = Mesh::with_texture(tex_handle.id());
+    for (pos, uv) in corners.iter().zip(uvs.iter()) {
+        mesh.vertices.push(Vertex {
+            pos: *pos,
+            uv: *uv,
+            color: tint,
+        });
+    }
+    mesh.indices = vec![0, 1, 2, 0, 2, 3];
+    painter.add(Shape::mesh(mesh));
+}
+
 fn draw_card_internal(
     card_rect: &CardRect,
     is_ally: bool,
@@ -112,6 +151,28 @@ fn draw_card_internal(
     };
     let scaled_size = vec2(rect.width() * scale, rect.height() * scale);
     let scaled_rect = Rect::from_min_size(rect.min, scaled_size);
+    let shadow_center = scaled_rect.center() + vec2(4.0, 6.0);
+    let shadow_half = scaled_rect.size() * 0.5;
+    let (shadow_sin, shadow_cos) = rotation.sin_cos();
+    let shadow_corners = [
+        vec2(-shadow_half.x, -shadow_half.y),
+        vec2(shadow_half.x, -shadow_half.y),
+        vec2(shadow_half.x, shadow_half.y),
+        vec2(-shadow_half.x, shadow_half.y),
+    ]
+    .into_iter()
+    .map(|v| {
+        pos2(
+            shadow_cos * v.x - shadow_sin * v.y + shadow_center.x,
+            shadow_sin * v.x + shadow_cos * v.y + shadow_center.y,
+        )
+    })
+    .collect::<Vec<Pos2>>();
+    painter.add(Shape::convex_polygon(
+        shadow_corners,
+        Color32::from_rgba_unmultiplied(0, 0, 0, 62),
+        Stroke::NONE,
+    ));
 
     if let Some(ref tex) = card_rect.image {
         let tint = if card_rect.card.abilities.contains(&Ability::Stealth) {
@@ -139,9 +200,9 @@ fn draw_card_internal(
     let sleeve_color = if card_rect.is_selected {
         Color32::WHITE
     } else if is_ally {
-        Color32::DARK_GREEN
+        Color32::from_rgb(72, 190, 220)
     } else {
-        Color32::RED
+        Color32::from_rgb(224, 66, 72)
     };
 
     if card_rect.card.has_attachments {
@@ -288,6 +349,164 @@ pub fn draw_card_with_rotation(
     rotation: f32,
 ) {
     draw_card_internal(card_rect, is_ally, draw_accessories, painter, rotation);
+}
+
+pub fn draw_card_with_texture_rotation(
+    card_rect: &CardRect,
+    is_ally: bool,
+    draw_accessories: bool,
+    painter: &Painter,
+    rotation: f32,
+    rotate_texture: bool,
+) {
+    let rect = card_rect.rect;
+    let scale = if card_rect.is_selected { 1.1f32 } else { 1.0f32 };
+    let scaled_size = vec2(rect.width() * scale, rect.height() * scale);
+    let scaled_rect = Rect::from_min_size(rect.min, scaled_size);
+    let cx = scaled_rect.center().x;
+    let cy = scaled_rect.center().y;
+    let half = scaled_rect.size() * 0.5;
+    let (sin, cos) = rotation.sin_cos();
+    let rotate = |v: Vec2| -> Pos2 {
+        pos2(cos * v.x - sin * v.y + cx, sin * v.x + cos * v.y + cy)
+    };
+    let corners = [
+        rotate(vec2(-half.x, -half.y)),
+        rotate(vec2(half.x, -half.y)),
+        rotate(vec2(half.x, half.y)),
+        rotate(vec2(-half.x, half.y)),
+    ];
+
+    let shadow = corners
+        .iter()
+        .map(|corner| *corner + vec2(4.0, 6.0))
+        .collect::<Vec<Pos2>>();
+    painter.add(Shape::convex_polygon(
+        shadow,
+        Color32::from_rgba_unmultiplied(0, 0, 0, 62),
+        Stroke::NONE,
+    ));
+
+    if let Some(ref tex) = card_rect.image {
+        let tint = if card_rect.card.abilities.contains(&Ability::Stealth) {
+            Color32::from_rgba_unmultiplied(255, 255, 255, 217)
+        } else {
+            Color32::WHITE
+        };
+        let uvs = if rotate_texture {
+            [
+                pos2(0.0, 1.0),
+                pos2(0.0, 0.0),
+                pos2(1.0, 0.0),
+                pos2(1.0, 1.0),
+            ]
+        } else {
+            [
+                pos2(0.0, 0.0),
+                pos2(1.0, 0.0),
+                pos2(1.0, 1.0),
+                pos2(0.0, 1.0),
+            ]
+        };
+        draw_image_quad_with_uvs(painter, tex, corners, uvs, tint);
+    } else {
+        painter.add(Shape::convex_polygon(
+            corners.to_vec(),
+            Color32::DARK_GRAY,
+            Stroke::NONE,
+        ));
+    }
+
+    let sleeve_color = if card_rect.is_selected {
+        Color32::WHITE
+    } else if is_ally {
+        Color32::from_rgb(72, 190, 220)
+    } else {
+        Color32::from_rgb(224, 66, 72)
+    };
+    painter.add(Shape::closed_line(corners.to_vec(), Stroke::new(2.0, sleeve_color)));
+
+    if draw_accessories && card_rect.is_selected {
+        painter.add(Shape::closed_line(
+            corners.to_vec(),
+            Stroke::new(2.0, Color32::WHITE),
+        ));
+    }
+}
+
+pub fn draw_projected_card(
+    card_rect: &CardRect,
+    is_ally: bool,
+    draw_accessories: bool,
+    painter: &Painter,
+    corners: [Pos2; 4],
+) {
+    let shadow = corners
+        .iter()
+        .map(|corner| *corner + vec2(4.0, 6.0))
+        .collect::<Vec<Pos2>>();
+    painter.add(Shape::convex_polygon(
+        shadow,
+        Color32::from_rgba_unmultiplied(0, 0, 0, 55),
+        Stroke::NONE,
+    ));
+
+    if let Some(ref tex) = card_rect.image {
+        let tint = if card_rect.card.abilities.contains(&Ability::Stealth) {
+            Color32::from_rgba_unmultiplied(255, 255, 255, 217)
+        } else {
+            Color32::WHITE
+        };
+        draw_image_quad(painter, tex, corners, tint);
+    } else {
+        painter.add(Shape::convex_polygon(
+            corners.to_vec(),
+            Color32::DARK_GRAY,
+            Stroke::NONE,
+        ));
+    }
+
+    let sleeve_color = if card_rect.is_selected {
+        Color32::WHITE
+    } else if is_ally {
+        Color32::from_rgb(72, 190, 220)
+    } else {
+        Color32::from_rgb(224, 66, 72)
+    };
+    painter.add(Shape::closed_line(corners.to_vec(), Stroke::new(2.0, sleeve_color)));
+
+    if card_rect.card.zone.is_in_play() {
+        if card_rect.card.card_type != CardType::Avatar && card_rect.card.damage_taken > 0 {
+            let circle_pos = corners[0] + vec2(6.0, 6.0);
+            painter.circle_filled(circle_pos, 6.0, Color32::RED);
+            painter.text(
+                circle_pos,
+                egui::Align2::CENTER_CENTER,
+                card_rect.card.damage_taken.to_string(),
+                FontId::proportional(9.0),
+                Color32::WHITE,
+            );
+        }
+
+        if card_rect.card.card_type.is_unit() {
+            let circle_pos = corners[1] + vec2(-6.0, 6.0);
+            painter.circle_filled(circle_pos, 6.0, Color32::BLUE);
+            painter.text(
+                circle_pos,
+                egui::Align2::CENTER_CENTER,
+                card_rect.card.power.to_string(),
+                FontId::proportional(9.0),
+                Color32::WHITE,
+            );
+        }
+    }
+
+    if draw_accessories && card_rect.is_selected {
+        painter.add(Shape::closed_line(
+            corners.to_vec(),
+            Stroke::new(2.0, Color32::WHITE),
+        ));
+    }
 }
 
 fn translate_if_out_of_bounds(rect: Rect) -> anyhow::Result<Rect> {

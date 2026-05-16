@@ -3,7 +3,6 @@ use super::*;
 impl Game {
     pub(super) fn render_gui(&mut self, ui: &mut Ui, painter: &Painter) -> Option<Scene> {
         let sr = screen_rect().unwrap_or(Rect::ZERO);
-        let sidebar_w = realm_rect().map(|r| r.min.x).unwrap_or(220.0);
         let is_in_turn = self.current_player == self.data.player_id;
         let is_idle = matches!(self.data.status, Status::Idle);
 
@@ -12,7 +11,7 @@ impl Game {
         } else {
             ("THEIR TURN", theme::TURN_WAITING)
         };
-        let turn_rect = Rect::from_center_size(pos2(sidebar_w / 2.0, 128.0), vec2(150.0, 34.0));
+        let turn_rect = Rect::from_center_size(pos2(sr.center().x, 28.0), vec2(150.0, 34.0));
         painter.rect_filled(
             turn_rect,
             17.0,
@@ -39,8 +38,7 @@ impl Game {
             turn_color,
         );
 
-        let btn_y = sr.height() - SIDEBAR_PANEL_RESERVED - theme::BUTTON_HEIGHT - 12.0;
-        let btn_pos = pos2(10.0, btn_y);
+        let btn_pos = pos2(sr.max.x - 178.0, sr.max.y - theme::BUTTON_HEIGHT - 12.0);
 
         if is_in_turn && is_idle {
             let client = self.client.clone();

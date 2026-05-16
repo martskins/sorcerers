@@ -4,10 +4,6 @@ use std::sync::{OnceLock, RwLock};
 pub static SCREEN_RECT: OnceLock<RwLock<Rect>> = OnceLock::new();
 pub const CARD_ASPECT_RATIO: f32 = 384.0 / 537.0;
 
-/// Pixels reserved at the bottom of the left sidebar for the player status
-/// panel (panel height 96 + 4 px bottom margin + 4 px gap = 104).
-pub const SIDEBAR_PANEL_RESERVED: f32 = 104.0;
-
 pub fn screen_rect() -> anyhow::Result<Rect> {
     Ok(*SCREEN_RECT
         .get_or_init(|| {
@@ -21,18 +17,11 @@ pub fn screen_rect() -> anyhow::Result<Rect> {
 }
 
 pub fn card_width() -> anyhow::Result<f32> {
-    Ok(realm_rect()?.width() / 10.0)
+    Ok(screen_rect()?.width() / 11.5)
 }
 
 pub fn card_height() -> anyhow::Result<f32> {
-    // Use the same realm-width base as card_width() so both functions produce
-    // values with the correct CARD_ASPECT_RATIO.  We inline the realm-width
-    // formula here rather than calling realm_rect() to avoid the circular
-    // dependency: realm_rect → hand_space_height → card_height → realm_rect.
-    let sr = screen_rect()?;
-    let sidebar_x = (sr.width() * 0.2).clamp(200.0, 250.0);
-    let realm_width = sr.width() - sidebar_x;
-    let height = realm_width / 10.0 / CARD_ASPECT_RATIO;
+    let height = card_width()? / CARD_ASPECT_RATIO;
     Ok(height.clamp(0.0, 200.0))
 }
 
@@ -50,19 +39,14 @@ pub fn event_log_rect() -> Rect {
 }
 
 pub fn hand_rect() -> anyhow::Result<Rect> {
-    let rr = realm_rect()?;
+    let sr = screen_rect()?;
+    let hand_height = hand_space_height()?;
     Ok(Rect::from_min_size(
-        pos2(rr.min.x, rr.max.y),
-        Vec2::new(rr.width(), hand_space_height()?),
+        pos2(0.0, sr.max.y - hand_height),
+        Vec2::new(sr.width(), hand_height),
     ))
 }
 
 pub fn realm_rect() -> anyhow::Result<Rect> {
-    let sr = screen_rect()?;
-    let x = (sr.width() * 0.2).clamp(200.0, 250.0);
-    let hsh = hand_space_height()?;
-    Ok(Rect::from_min_max(
-        pos2(x, 0.0),
-        pos2(sr.width(), sr.height() - hsh),
-    ))
+    screen_rect()
 }

@@ -1,10 +1,8 @@
 use egui::Color32;
 
 pub const APP_BG: Color32 = Color32::from_rgb(8, 9, 13);
-pub const HAND_BG: Color32 = Color32::from_rgba_unmultiplied_const(16, 18, 26, 235);
 pub const PANEL_BG: Color32 = Color32::from_rgba_premultiplied(18, 23, 35, 242);
 pub const PANEL_BORDER: Color32 = Color32::from_rgb(73, 88, 122);
-pub const GRID_LINE: Color32 = Color32::from_rgb(70, 92, 112);
 pub const TEXT_BRIGHT: Color32 = Color32::from_rgb(220, 225, 255);
 pub const OVERLAY_SCRIM: Color32 = Color32::from_rgba_unmultiplied_const(0, 0, 0, 204);
 pub const ACTION: Color32 = Color32::from_rgb(55, 112, 155);
