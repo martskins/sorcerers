@@ -455,15 +455,21 @@ impl RealmComponent {
 
             self.draw_zone_guide(painter, cell.id, occupied_zones.contains(&cell.id));
 
-            match &data.status {
-                Status::SelectingZone { zones, .. } => {
+            let playable_preview_zones = match &data.status {
+                Status::SelectingZone { zones, .. }
+                | Status::PreviewingPlayableZones { zones, .. } => Some(zones),
+                _ => None,
+            };
+            if let Some(zones) = playable_preview_zones {
                     if let Some(zone) = zones
                         .iter()
                         .find(|zone| matches!(zone, Zone::Realm(id, _) if *id == cell.id))
                     {
-                        let resp = ui.allocate_rect(rect, Sense::click());
-                        if resp.clicked() {
-                            clicked_zone = Some(zone.clone());
+                        if matches!(data.status, Status::SelectingZone { .. }) {
+                            let resp = ui.allocate_rect(rect, Sense::click());
+                            if resp.clicked() {
+                                clicked_zone = Some(zone.clone());
+                            }
                         }
 
                         painter.add(Shape::closed_line(
@@ -471,8 +477,9 @@ impl RealmComponent {
                             Stroke::new(3.0, theme::PICKABLE),
                         ));
                     }
-                }
-                Status::DistributingDamage { .. }
+            } else {
+                match &data.status {
+                    Status::DistributingDamage { .. }
                 | Status::SelectingZoneGroup { .. }
                 | Status::SelectingCard { preview: true, .. }
                 | Status::GameAborted { .. }
@@ -484,13 +491,19 @@ impl RealmComponent {
                 | Status::ViewingCards { .. } => {
                     continue;
                 }
-                Status::SelectingCard { preview: false, .. } | Status::Idle => {}
+                    Status::SelectingCard { preview: false, .. } | Status::Idle => {}
+                    Status::SelectingZone { .. } | Status::PreviewingPlayableZones { .. } => {}
+                }
             }
         }
 
         for intersection in &self.intersection_rects {
-            match &data.status {
-                Status::SelectingZone { zones, .. } => {
+            let playable_preview_zones = match &data.status {
+                Status::SelectingZone { zones, .. }
+                | Status::PreviewingPlayableZones { zones, .. } => Some(zones),
+                _ => None,
+            };
+            if let Some(zones) = playable_preview_zones {
                     let rect = intersection.rect;
                     let can_pick = zones.iter().any(|z| match z {
                         Zone::Intersection(locations, _) => locations == &intersection.locations,
@@ -504,8 +517,9 @@ impl RealmComponent {
                             egui::StrokeKind::Outside,
                         );
                     }
-                }
-                Status::SelectingCard { preview: true, .. }
+            } else {
+                match &data.status {
+                    Status::SelectingCard { preview: true, .. }
                 | Status::SelectingZoneGroup { .. }
                 | Status::DistributingDamage { .. }
                 | Status::Waiting { .. }
@@ -517,7 +531,9 @@ impl RealmComponent {
                 | Status::ViewingCards { .. } => {
                     continue;
                 }
-                Status::SelectingCard { preview: false, .. } | Status::Idle => {}
+                    Status::SelectingCard { preview: false, .. } | Status::Idle => {}
+                    Status::SelectingZone { .. } | Status::PreviewingPlayableZones { .. } => {}
+                }
             }
         }
 
@@ -1004,6 +1020,48 @@ impl Component for RealmComponent {
                 rect,
             } => {
                 self.rect = *rect;
+            }
+            ComponentCommand::DropHandCard { card_id, pos } => {
+                if let Status::PreviewingPlayableZones {
+                    card_id: preview_card_id,
+                    zones,
+                } = &data.status.clone()
+                    && preview_card_id == card_id
+                {
+                    let dropped_zone = self
+                        .cell_rects
+                        .iter()
+                        .find(|cell| cell.rect.contains(*pos))
+                        .and_then(|cell| {
+                            zones
+                                .iter()
+                                .find(|zone| matches!(zone, Zone::Realm(id, _) if *id == cell.id))
+                        })
+                        .or_else(|| {
+                            self.intersection_rects
+                                .iter()
+                                .find(|intersection| intersection.rect.contains(*pos))
+                                .and_then(|intersection| {
+                                    zones.iter().find(|zone| {
+                                        matches!(
+                                            zone,
+                                            Zone::Intersection(locations, _)
+                                                if locations == &intersection.locations
+                                        )
+                                    })
+                                })
+                        });
+
+                    if let Some(zone) = dropped_zone {
+                        self.client.send(ClientMessage::PlayCardAtZone {
+                            player_id: self.player_id,
+                            game_id: self.game_id,
+                            card_id: *card_id,
+                            zone: zone.clone(),
+                        })?;
+                    }
+                    data.status = Status::Idle;
+                }
             }
             _ => {}
         }

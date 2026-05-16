@@ -70,6 +70,10 @@ pub enum Status {
         zones: Vec<Zone>,
         prompt: String,
     },
+    PreviewingPlayableZones {
+        card_id: uuid::Uuid,
+        zones: Vec<Zone>,
+    },
     ViewingCards {
         cards: Vec<uuid::Uuid>,
         prompt: String,

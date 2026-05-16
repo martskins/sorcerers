@@ -60,6 +60,13 @@ impl Game {
                 };
                 None
             }
+            ServerMessage::PlayableZones { card_id, zones, .. } => {
+                self.data.status = Status::PreviewingPlayableZones {
+                    card_id: *card_id,
+                    zones: zones.clone(),
+                };
+                None
+            }
             ServerMessage::PickAmount {
                 prompt,
                 min_amount,

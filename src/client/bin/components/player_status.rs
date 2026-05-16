@@ -29,6 +29,7 @@ const BORDER: Color32 = theme::PANEL_BORDER;
 #[derive(Debug)]
 pub struct PlayerStatusComponent {
     visible: bool,
+    expanded: bool,
     player_id: PlayerId,
     /// `true` = local player (bottom of sidebar), `false` = opponent (top).
     player: bool,
@@ -39,6 +40,7 @@ impl PlayerStatusComponent {
     pub fn new(rect: Rect, player_id: PlayerId, player: bool) -> Self {
         Self {
             visible: true,
+            expanded: false,
             player_id,
             rect,
             player,
@@ -103,17 +105,18 @@ impl Component for PlayerStatusComponent {
         let sr = crate::config::screen_rect()?;
         let ctx = ui.ctx().clone();
         let panel_w = 238.0;
+        let panel_h = 92.0;
         let panel_y = if self.player {
             sr.height() - 98.0
         } else {
             74.0
         };
-        let panel_pos = pos2(12.0, panel_y);
-        let panel_hit_rect = Rect::from_min_size(panel_pos, vec2(panel_w, 92.0)).expand(28.0);
-        if !ctx
-            .pointer_latest_pos()
-            .is_some_and(|pos| panel_hit_rect.contains(pos))
-        {
+        let panel_pos = pos2(26.0, panel_y);
+        let panel_rect = Rect::from_min_size(panel_pos, vec2(panel_w, panel_h));
+        let pointer = ctx.pointer_latest_pos();
+        self.expanded = pointer.is_some_and(|pos| panel_rect.expand(10.0).contains(pos));
+
+        if !self.expanded {
             return Ok(None);
         }
 

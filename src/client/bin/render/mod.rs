@@ -97,26 +97,6 @@ fn draw_rotated_image(
     painter.add(Shape::mesh(mesh));
 }
 
-fn draw_image_quad(
-    painter: &Painter,
-    tex_handle: &TextureHandle,
-    corners: [Pos2; 4],
-    tint: Color32,
-) {
-    draw_image_quad_with_uvs(
-        painter,
-        tex_handle,
-        corners,
-        [
-            pos2(0.0, 0.0),
-            pos2(1.0, 0.0),
-            pos2(1.0, 1.0),
-            pos2(0.0, 1.0),
-        ],
-        tint,
-    );
-}
-
 fn draw_image_quad_with_uvs(
     painter: &Painter,
     tex_handle: &TextureHandle,
@@ -441,6 +421,24 @@ pub fn draw_projected_card(
     painter: &Painter,
     corners: [Pos2; 4],
 ) {
+    draw_projected_card_with_texture_rotation(
+        card_rect,
+        is_ally,
+        draw_accessories,
+        painter,
+        corners,
+        false,
+    );
+}
+
+pub fn draw_projected_card_with_texture_rotation(
+    card_rect: &CardRect,
+    is_ally: bool,
+    draw_accessories: bool,
+    painter: &Painter,
+    corners: [Pos2; 4],
+    rotate_texture: bool,
+) {
     let shadow = corners
         .iter()
         .map(|corner| *corner + vec2(4.0, 6.0))
@@ -457,7 +455,22 @@ pub fn draw_projected_card(
         } else {
             Color32::WHITE
         };
-        draw_image_quad(painter, tex, corners, tint);
+        let uvs = if rotate_texture {
+            [
+                pos2(0.0, 1.0),
+                pos2(0.0, 0.0),
+                pos2(1.0, 0.0),
+                pos2(1.0, 1.0),
+            ]
+        } else {
+            [
+                pos2(0.0, 0.0),
+                pos2(1.0, 0.0),
+                pos2(1.0, 1.0),
+                pos2(0.0, 1.0),
+            ]
+        };
+        draw_image_quad_with_uvs(painter, tex, corners, uvs, tint);
     } else {
         painter.add(Shape::convex_polygon(
             corners.to_vec(),

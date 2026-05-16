@@ -1671,6 +1671,121 @@ impl Game {
             ClientMessage::PlayerDisconnected { player_id, .. } => {
                 self.player_disconnected(player_id).await?;
             }
+            ClientMessage::RequestPlayableZones {
+                player_id, card_id, ..
+            } => {
+                if player_id != &self.state.current_turn_controller() {
+                    return Ok(());
+                }
+
+                let acting_player = self.state.current_player();
+                let card = self.state.get_card(card_id);
+                if !card.is_playable(&self.state, &acting_player)? {
+                    return Ok(());
+                }
+
+                let avatar_id = self.state.get_player_avatar_id(&acting_player)?;
+                let zones = match card.get_card_type() {
+                    CardType::Site => {
+                        let action = AvatarAction::PlaySite;
+                        let cost = action.get_cost(&avatar_id, &self.state)?;
+                        if !cost.can_afford(&self.state, acting_player)? {
+                            return Ok(());
+                        }
+                        card.get_valid_play_zones(&self.state, &acting_player, &avatar_id)?
+                    }
+                    CardType::Artifact | CardType::Minion | CardType::Aura => {
+                        let avatar = self.state.get_card(&avatar_id);
+                        if !avatar
+                            .can_cast_spell_with_id(&self.state, card_id, &acting_player)
+                            .unwrap_or_default()
+                        {
+                            return Ok(());
+                        }
+                        card.get_valid_play_zones(&self.state, &acting_player, &avatar_id)?
+                            .into_iter()
+                            .filter(|zone| {
+                                self.state
+                                    .get_effective_costs(card_id, Some(zone), &acting_player)
+                                    .and_then(|cost| cost.can_afford(&self.state, acting_player))
+                                    .unwrap_or(false)
+                            })
+                            .collect()
+                    }
+                    CardType::Magic | CardType::Avatar => Vec::new(),
+                };
+
+                if !zones.is_empty() {
+                    self.state
+                        .get_sender()
+                        .send(ServerMessage::PlayableZones {
+                            player_id: acting_player,
+                            card_id: *card_id,
+                            zones,
+                        })
+                        .await?;
+                }
+            }
+            ClientMessage::PlayCardAtZone {
+                player_id,
+                card_id,
+                zone,
+                ..
+            } => {
+                if player_id != &self.state.current_turn_controller() {
+                    return Ok(());
+                }
+
+                let acting_player = self.state.current_player();
+                let card = self.state.get_card(card_id);
+                if !card.is_playable(&self.state, &acting_player)? {
+                    return Ok(());
+                }
+
+                let avatar_id = self.state.get_player_avatar_id(&acting_player)?;
+                match card.get_card_type() {
+                    CardType::Site => {
+                        let action = AvatarAction::PlaySite;
+                        let cost = action.get_cost(&avatar_id, &self.state)?;
+                        if !cost.can_afford(&self.state, acting_player)? {
+                            return Ok(());
+                        }
+                        let zones = card.get_valid_play_zones(&self.state, &acting_player, &avatar_id)?;
+                        if !zones.contains(zone) {
+                            return Ok(());
+                        }
+                        cost.pay(&mut self.state, &acting_player).await?;
+                    }
+                    CardType::Artifact | CardType::Minion | CardType::Aura => {
+                        let avatar = self.state.get_card(&avatar_id);
+                        if !avatar
+                            .can_cast_spell_with_id(&self.state, card_id, &acting_player)
+                            .unwrap_or_default()
+                        {
+                            return Ok(());
+                        }
+                        let zones = card.get_valid_play_zones(&self.state, &acting_player, &avatar_id)?;
+                        if !zones.contains(zone) {
+                            return Ok(());
+                        }
+                        let can_afford = self
+                            .state
+                            .get_effective_costs(card_id, Some(zone), &acting_player)?
+                            .can_afford(&self.state, acting_player)?;
+                        if !can_afford {
+                            return Ok(());
+                        }
+                    }
+                    CardType::Magic | CardType::Avatar => return Ok(()),
+                }
+
+                self.state.queue_one(Effect::PlayCard {
+                    player_id: acting_player,
+                    card_id: *card_id,
+                    zone: zone.clone().into(),
+                    spellcaster: avatar_id,
+                });
+            }
             ClientMessage::ClickCard {
                 player_id, card_id, ..
             } => {
@@ -1735,6 +1850,30 @@ impl Game {
                 }
 
                 let avatar_id = self.state.get_player_avatar_id(&acting_player)?;
+                if card.get_card_type() == CardType::Site {
+                    let action = AvatarAction::PlaySite;
+                    let cost = action.get_cost(&avatar_id, &self.state)?;
+                    if !cost.can_afford(&self.state, acting_player)? {
+                        return Ok(());
+                    }
+
+                    let zones = card.get_valid_play_zones(&self.state, &acting_player, &avatar_id)?;
+                    if zones.is_empty() {
+                        return Ok(());
+                    }
+
+                    let prompt = "Pick a zone to play the site";
+                    let zone = pick_zone(&acting_player, &zones, &self.state, false, prompt).await?;
+                    cost.pay(&mut self.state, &acting_player).await?;
+                    self.state.queue_one(Effect::PlayCard {
+                        player_id: acting_player,
+                        card_id: *card_id,
+                        zone: zone.into(),
+                        spellcaster: avatar_id,
+                    });
+                    return Ok(());
+                }
+
                 let spellcasters = CardQuery::new().units().in_play().all(&self.state);
                 let spellcasters = spellcasters
                     .into_iter()

@@ -60,7 +60,7 @@ async fn main() -> anyhow::Result<()> {
                     break;
                 }
 
-                let msg: Message = rmp_serde::from_slice(&buf).expect("valid message");
+                let msg: Message = rmp_serde::from_slice(&buf).expect("invalid message received");
                 let mut server = server_clone.lock().await;
                 server
                     .process_message(&msg, Arc::clone(&writer), &addr)

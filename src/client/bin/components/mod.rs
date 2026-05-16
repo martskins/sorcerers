@@ -37,6 +37,10 @@ pub enum ComponentCommand {
         controller_id: Option<PlayerId>,
         open_only: bool,
     },
+    DropHandCard {
+        card_id: uuid::Uuid,
+        pos: egui::Pos2,
+    },
     CloseOverlay,
 }
 

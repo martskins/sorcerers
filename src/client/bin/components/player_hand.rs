@@ -5,7 +5,7 @@ use crate::{
     scene::game::{GameData, Status},
     texture_cache::TextureCache,
 };
-use egui::{Context, Painter, Rect, Sense, Ui, pos2};
+use egui::{Context, Painter, Pos2, Rect, Sense, Ui, Vec2, pos2};
 use sorcerers::{
     card::CardData,
     game::PlayerId,
@@ -22,6 +22,8 @@ pub struct PlayerHandComponent {
     visible: bool,
     expanded: bool,
     expansion: f32,
+    dragging_card: Option<uuid::Uuid>,
+    drag_visual_pos: Option<Pos2>,
     rect: Rect,
     spells_in_hand: Vec<uuid::Uuid>,
     sites_in_hand: Vec<uuid::Uuid>,
@@ -42,6 +44,8 @@ impl PlayerHandComponent {
             visible: true,
             expanded: false,
             expansion: 0.0,
+            dragging_card: None,
+            drag_visual_pos: None,
             rect,
             spells_in_hand: Vec::new(),
             sites_in_hand: Vec::new(),
@@ -86,6 +90,19 @@ impl PlayerHandComponent {
         );
 
         (rect, rotation)
+    }
+
+    fn floating_card_corners(&self, center: Pos2, size: Vec2) -> [Pos2; 4] {
+        let y = ((center.y - self.rect.min.y) / self.rect.height()).clamp(0.0, 1.0);
+        let top_width = size.x * (0.82 + y * 0.08);
+        let bottom_width = size.x * (0.96 + y * 0.04);
+        let height = size.y * (0.64 + y * 0.08);
+        [
+            pos2(center.x - top_width / 2.0, center.y - height / 2.0),
+            pos2(center.x + top_width / 2.0, center.y - height / 2.0),
+            pos2(center.x + bottom_width / 2.0, center.y + height / 2.0),
+            pos2(center.x - bottom_width / 2.0, center.y + height / 2.0),
+        ]
     }
 
     fn compute_rects(&mut self, cards: &[CardData], ctx: &Context) -> anyhow::Result<()> {
@@ -261,6 +278,7 @@ impl Component for PlayerHandComponent {
             .iter()
             .filter(|card| card.card.zone == Zone::Hand)
             .collect();
+        let dragging = self.dragging_card.is_some();
         let hover_card = pointer.is_some_and(|pos| {
             hand_cards.iter().enumerate().any(|(idx, card_rect)| {
                 let (rect, _) = self.fan_rect_and_rotation(
@@ -278,7 +296,7 @@ impl Component for PlayerHandComponent {
             })
         });
 
-        if hover_card {
+        if hover_card || dragging {
             self.expanded = true;
         } else {
             self.expanded = false;
@@ -294,7 +312,7 @@ impl Component for PlayerHandComponent {
             ui.ctx().request_repaint();
         }
 
-        if self.expansion <= 0.01 {
+        if self.expansion <= 0.01 && !dragging {
             let clipped = painter.with_clip_rect(collapsed_strip);
             for (idx, card_rect) in hand_cards.iter().enumerate() {
                 let mut collapsed_card = (*card_rect).clone();
@@ -314,28 +332,89 @@ impl Component for PlayerHandComponent {
         }
 
         let mut clicked_card: Option<(uuid::Uuid, egui::Pos2)> = None;
+        let mut dropped_card: Option<(uuid::Uuid, egui::Pos2)> = None;
+        let drag_painter = ui.ctx().layer_painter(egui::LayerId::new(
+            egui::Order::Tooltip,
+            egui::Id::new("dragged_hand_card"),
+        ));
         for (idx, card_rect) in hand_cards.iter().enumerate() {
             let (rect, rotation) =
                 self.fan_rect_and_rotation(card_rect, idx, hand_cards.len(), self.expansion);
             let mut fan_card = (*card_rect).clone();
             fan_card.rect = rect;
 
-            let resp = ui.allocate_rect(fan_card.rect, Sense::HOVER | Sense::CLICK);
-            render::draw_card_with_texture_rotation(
-                &fan_card,
-                true,
-                false,
-                painter,
-                rotation,
-                fan_card.card.is_site(),
-            );
+            let resp = ui.allocate_rect(fan_card.rect, Sense::HOVER | Sense::CLICK | Sense::DRAG);
+            let is_dragging_this_card = self.dragging_card == Some(fan_card.card.id);
+            let draw_rect = if is_dragging_this_card {
+                pointer
+                    .map(|pos| Rect::from_center_size(pos, fan_card.rect.size()))
+                    .unwrap_or(fan_card.rect)
+            } else if resp.dragged() {
+                fan_card.rect.translate(resp.drag_delta())
+            } else {
+                fan_card.rect
+            };
+            if !is_dragging_this_card {
+                fan_card.rect = draw_rect;
+                render::draw_card_with_texture_rotation(
+                    &fan_card,
+                    true,
+                    false,
+                    painter,
+                    rotation,
+                    fan_card.card.is_site(),
+                );
+            }
             if resp.clicked() {
                 clicked_card = Some((fan_card.card.id, fan_card.rect.center()));
             }
 
-            if resp.hovered() {
+            if resp.drag_started() {
+                self.dragging_card = Some(fan_card.card.id);
+                self.drag_visual_pos = pointer;
+                self.client.send(ClientMessage::RequestPlayableZones {
+                    card_id: fan_card.card.id,
+                    player_id: self.player_id,
+                    game_id: self.game_id,
+                })?;
+            }
+
+            if resp.drag_stopped() && self.dragging_card == Some(fan_card.card.id) {
+                if let Some(pos) = ui.ctx().pointer_latest_pos() {
+                    dropped_card = Some((fan_card.card.id, pos));
+                }
+                self.dragging_card = None;
+                self.drag_visual_pos = None;
+            }
+
+            if is_dragging_this_card {
+                if let Some(target) = pointer {
+                    let dt = ui.ctx().input(|i| i.stable_dt).max(1.0 / 120.0);
+                    let current = self.drag_visual_pos.unwrap_or(target);
+                    let alpha = (dt * 18.0).clamp(0.0, 1.0);
+                    self.drag_visual_pos = Some(current + (target - current) * alpha);
+                }
+                let center = self
+                    .drag_visual_pos
+                    .or(pointer)
+                    .unwrap_or(draw_rect.center());
+                fan_card.rect = Rect::from_center_size(center, draw_rect.size() * 1.04);
+                render::draw_projected_card_with_texture_rotation(
+                    &fan_card,
+                    true,
+                    false,
+                    &drag_painter,
+                    self.floating_card_corners(center, fan_card.rect.size()),
+                    fan_card.card.is_site(),
+                );
+                ui.ctx().request_repaint();
+            } else if resp.hovered() {
                 render::draw_card_preview(ui, fan_card.image.as_ref())?;
             }
+        }
+
+        if let Some((card_id, pos)) = dropped_card {
+            return Ok(Some(ComponentCommand::DropHandCard { card_id, pos }));
         }
 
         if let Some((card_id, card_center)) = clicked_card {
