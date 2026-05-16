@@ -398,14 +398,20 @@ impl Component for PlayerHandComponent {
                     .drag_visual_pos
                     .or(pointer)
                     .unwrap_or(draw_rect.center());
-                fan_card.rect = Rect::from_center_size(center, draw_rect.size() * 1.04);
+                let floating_size = if fan_card.card.is_site() {
+                    let size = draw_rect.size();
+                    egui::vec2(size.y, size.x) * 1.04
+                } else {
+                    draw_rect.size() * 1.04
+                };
+                fan_card.rect = Rect::from_center_size(center, floating_size);
                 render::draw_projected_card_with_texture_rotation(
                     &fan_card,
                     true,
                     false,
                     &drag_painter,
                     self.floating_card_corners(center, fan_card.rect.size()),
-                    fan_card.card.is_site(),
+                    false,
                 );
                 ui.ctx().request_repaint();
             } else if resp.hovered() {
