@@ -15,13 +15,7 @@ impl FelbogFrogMen {
             unit_base: UnitBase {
                 power: 2,
                 toughness: 2,
-                // TODO: This should use a new Leap ability. Leap is different to Movement in that
-                // it will ignore effects of entering the region it jumps over. For example, if a
-                // site that is one step away from Felbog Frog Men doesn't allow minions entering
-                // it, it can still leap over it, because it doesn't actually enter that site. A
-                // card with Movement(2) would not be able to traverse that site, because it would
-                // have to enter it to get to the next site.
-                abilities: vec![Ability::Movement(2)],
+                abilities: vec![Ability::Leap],
                 types: vec![MinionType::Beast],
                 tapped: false,
                 ..Default::default()

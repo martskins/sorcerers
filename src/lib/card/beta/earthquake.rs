@@ -46,11 +46,41 @@ impl Card for Earthquake {
 
     async fn on_cast(
         &mut self,
-        _state: &State,
+        state: &State,
         _caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
-        unimplemented!();
+        let controller_id = self.get_controller_id(state);
+        let areas = Zone::all_intersections();
+        let area = pick_zone(
+            &controller_id,
+            &areas,
+            state,
+            false,
+            "Earthquake: Pick a two-by-two area",
+        )
+        .await?;
+        let Zone::Intersection(squares, _) = area else {
+            return Ok(vec![]);
+        };
+        let affected_zones = squares
+            .into_iter()
+            .map(|square| Zone::Realm(square, Region::Surface))
+            .collect::<Vec<Zone>>();
+        let affected_cards = CardQuery::new()
+            .card_types(vec![CardType::Minion, CardType::Artifact])
+            .in_zones(&affected_zones)
+            .normal_sized()
+            .all(state);
+
+        Ok(affected_cards
+            .into_iter()
+            .map(|card_id| Effect::SetCardRegion {
+                card_id,
+                region: Region::Underground,
+                tap: false,
+            })
+            .collect())
     }
 }
 

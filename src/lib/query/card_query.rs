@@ -1,7 +1,7 @@
 use rand::seq::IndexedRandom;
 
 use crate::{
-    card::{Ability, ArtifactType, Card, CardType, MinionType, Rarity, SiteType},
+    card::{Ability, ArtifactType, Card, CardType, MinionType, Rarity, Region, SiteType},
     game::{Element, PlayerId, pick_card, pick_card_with_options},
     state::State,
     zone::Zone,
@@ -31,6 +31,7 @@ pub struct CardQuery {
     with_affinity: Option<Vec<Element>>,
     with_affinity_in: Option<Vec<Element>>,
     in_zones: Option<Vec<Zone>>,
+    regions: Option<Vec<Region>>,
     within_range_of: Option<uuid::Uuid>,
     can_be_attacked_by: Option<uuid::Uuid>,
     tapped: Option<bool>,
@@ -258,6 +259,13 @@ impl CardQuery {
         Self {
             in_zones: Some(zones.to_vec()),
             include_not_in_play: Some(true),
+            ..self
+        }
+    }
+
+    pub fn in_region(self, region: Region) -> Self {
+        Self {
+            regions: Some(vec![region]),
             ..self
         }
     }
@@ -599,6 +607,12 @@ impl CardQuery {
 
         if let Some(in_zones) = &self.in_zones
             && !in_zones.iter().any(|z| card.occupies_zone(state, z))
+        {
+            return false;
+        }
+
+        if let Some(regions) = &self.regions
+            && !regions.contains(card.get_region(state))
         {
             return false;
         }

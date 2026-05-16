@@ -1068,9 +1068,20 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                             }
                         }
                     }
+
+                    if self.has_ability(state, &Ability::Leap) {
+                        for landing in leap_destinations(state, &current_zone) {
+                            if self
+                                .can_move_between_zones(state, &current_zone, &landing)
+                                .unwrap_or(false)
+                            {
+                                to_visit.push((landing, current_step + 1));
+                            }
+                        }
+                    }
                 }
 
-                for connected in temporarily_connected_sites(state, &current_zone) {
+                for connected in temporarily_connected_sites(state, self.get_id(), &current_zone) {
                     if self
                         .can_move_between_zones(state, &current_zone, &connected)
                         .unwrap_or(false)
@@ -2206,6 +2217,7 @@ pub enum Ability {
     CanSeeStealthed,
     Lethal,
     Movement(u8),
+    Leap,
     Burrowing,
     Landbound,
     Submerge,
@@ -3013,12 +3025,16 @@ fn zones_cross_border(from: &Zone, to: &Zone, border: &Zone) -> bool {
     }
 }
 
-fn temporarily_connected_sites(state: &State, zone: &Zone) -> Vec<Zone> {
+fn temporarily_connected_sites(state: &State, card_id: &uuid::Uuid, zone: &Zone) -> Vec<Zone> {
     state
         .temporary_effects()
         .iter()
         .filter_map(|effect| match effect {
-            TemporaryEffect::ConnectSites { sites, .. } if sites.contains(zone) => {
+            TemporaryEffect::ConnectSites {
+                sites,
+                affected_cards,
+                ..
+            } if affected_cards.matches(card_id, state) && sites.contains(zone) => {
                 Some(sites.iter().filter(move |site| *site != zone).cloned())
             }
             _ => None,
@@ -3050,4 +3066,37 @@ fn is_continuously_connected_zone(state: &State, card_id: &uuid::Uuid, zone: &Zo
         } => affected_cards.matches(card_id, state) && connected_zones.contains(zone),
         _ => false,
     })
+}
+
+fn leap_destinations(state: &State, zone: &Zone) -> Vec<Zone> {
+    let Some(square) = zone.get_square() else {
+        return vec![];
+    };
+    let Zone::Realm(_, region) = zone else {
+        return vec![];
+    };
+    let col = ((square - 1) % 5) as i8;
+    let row = ((square - 1) / 5) as i8;
+
+    [(0, -1), (0, 1), (-1, 0), (1, 0)]
+        .into_iter()
+        .filter_map(|(dc, dr)| {
+            let middle_col = col + dc;
+            let middle_row = row + dr;
+            let landing_col = col + (dc * 2);
+            let landing_row = row + (dr * 2);
+            if !(0..5).contains(&middle_col)
+                || !(0..4).contains(&middle_row)
+                || !(0..5).contains(&landing_col)
+                || !(0..4).contains(&landing_row)
+            {
+                return None;
+            }
+            let middle_square = (middle_row * 5 + middle_col + 1) as u8;
+            let middle = Zone::Realm(middle_square, region.clone());
+            middle.get_site(state)?;
+            let landing_square = (landing_row * 5 + landing_col + 1) as u8;
+            Some(Zone::Realm(landing_square, region.clone()))
+        })
+        .collect()
 }

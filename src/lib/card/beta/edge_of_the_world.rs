@@ -72,9 +72,18 @@ impl Card for EdgeOfTheWorld {
         Some(self)
     }
 
-    // TODO: implement this method to enforce the "Must always be adjacent to the void" requirement.
-    // fn get_valid_play_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {
-    // }
+    fn get_valid_play_zones(
+        &self,
+        state: &State,
+        player_id: &PlayerId,
+        caster_id: &uuid::Uuid,
+    ) -> anyhow::Result<Vec<Zone>> {
+        Ok(self
+            .base_get_valid_play_zones(state, player_id, caster_id)?
+            .into_iter()
+            .filter(|zone| !zone.get_adjacent_voids(state).is_empty())
+            .collect())
+    }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]

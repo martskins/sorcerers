@@ -71,12 +71,6 @@ impl Card for Enchantress {
         Some(&mut self.avatar_base)
     }
 
-    async fn get_continuous_effects(
-        &self,
-        _state: &State,
-    ) -> anyhow::Result<Vec<ContinuousEffect>> {
-        unimplemented!();
-    }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]

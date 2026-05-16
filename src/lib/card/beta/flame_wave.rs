@@ -51,23 +51,42 @@ impl Card for FlameWave {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let spell_id = *self.get_id();
-        let all_units = CardQuery::new().units().in_play().all(state);
-        // TODO: This is incorrect, it should deal damage to units based on their position in the
-        // realm, according to the following pattern:
-        // 7|5|3|1
-        // 7|5|3|1
-        // 7|5|3|1
-        // 7|5|3|1
-        //
-        // The player picks whether where the wave starts and whether to deal damage from left to
-        // right or right to left. That is, damage always starts with a 7, and it can decrease to
-        // the right or the left.
+        let controller_id = self.get_controller_id(state);
+        let options = vec![
+            "Start at the left edge".to_string(),
+            "Start at the right edge".to_string(),
+        ];
+        let from_left = pick_option(
+            &controller_id,
+            &options,
+            state,
+            "Flame Wave: Pick where the wave starts",
+            false,
+        )
+        .await?
+            == 0;
+        let damage_by_distance = [7, 5, 3, 1, 1];
+        let all_units = CardQuery::new()
+            .units()
+            .in_play()
+            .all(state)
+            .into_iter()
+            .filter(|unit_id| {
+                let unit = state.get_card(unit_id);
+                unit.get_region(state) == &Region::Surface && unit.get_zone().get_site(state).is_some()
+            })
+            .collect::<Vec<uuid::Uuid>>();
         let effects = all_units
             .into_iter()
-            .map(|unit_id| Effect::TakeDamage {
-                card_id: unit_id,
-                from: spell_id,
-                damage: Damage::basic(3),
+            .filter_map(|unit_id| {
+                let square = state.get_card(&unit_id).get_zone().get_square()?;
+                let col = ((square - 1) % 5) as usize;
+                let distance = if from_left { col } else { 4 - col };
+                Some(Effect::TakeDamage {
+                    card_id: unit_id,
+                    from: spell_id,
+                    damage: Damage::basic(damage_by_distance[distance]),
+                })
             })
             .collect();
         Ok(effects)

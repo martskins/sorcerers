@@ -35,9 +35,7 @@ impl SecretTunnel {
 }
 
 #[async_trait::async_trait]
-impl Site for SecretTunnel {
-    // TODO: Temporary adjacency from this site to all other allied sites needs movement graph support.
-}
+impl Site for SecretTunnel {}
 
 impl ResourceProvider for SecretTunnel {}
 
@@ -66,6 +64,28 @@ impl Card for SecretTunnel {
     }
     fn get_resource_provider(&self) -> Option<&dyn ResourceProvider> {
         Some(self)
+    }
+
+    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+        let controller_id = self.get_controller_id(state);
+        let connected_zones = CardQuery::new()
+            .sites()
+            .controlled_by(&controller_id)
+            .id_not(self.get_id())
+            .in_play()
+            .all(state)
+            .into_iter()
+            .map(|site_id| state.get_card(&site_id).get_zone().clone())
+            .collect();
+
+        Ok(vec![ContinuousEffect::ConnectZones {
+            connected_zones,
+            affected_cards: CardQuery::new()
+                .units()
+                .in_zone(self.get_zone())
+                .controlled_by(&controller_id)
+                .in_region(Region::Underground),
+        }])
     }
 }
 

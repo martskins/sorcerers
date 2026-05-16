@@ -34,9 +34,7 @@ impl TheGeistwood {
 }
 
 #[async_trait::async_trait]
-impl Site for TheGeistwood {
-    // TODO: Deathrite is not modeled as an ability trigger yet.
-}
+impl Site for TheGeistwood {}
 
 impl ResourceProvider for TheGeistwood {}
 
@@ -65,6 +63,18 @@ impl Card for TheGeistwood {
     }
     fn get_resource_provider(&self) -> Option<&dyn ResourceProvider> {
         Some(self)
+    }
+
+    async fn on_effect(&self, state: &State, effect: &Effect) -> anyhow::Result<Vec<Effect>> {
+        let Effect::BuryCard { card_id } = effect else {
+            return Ok(vec![]);
+        };
+        let card = state.get_card(card_id);
+        if card_id == self.get_id() || card.get_zone() != self.get_zone() {
+            return Ok(vec![]);
+        }
+
+        card.genesis(state).await
     }
 }
 

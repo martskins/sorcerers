@@ -71,8 +71,6 @@ impl ActivatedAbility for FreeCityAttack {
     }
 }
 
-// TODO: This implementation is not really correct. The site is not able to defend now, but
-// we cannot add a unit base to it, as it would become a unit if we did.
 #[derive(Debug, Clone)]
 pub struct FreeCity {
     site_base: SiteBase,
@@ -147,6 +145,24 @@ impl Card for FreeCity {
 
     fn get_resource_provider(&self) -> Option<&dyn ResourceProvider> {
         Some(self)
+    }
+
+    fn on_defend(&self, state: &State, attacker_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
+        if self.used_ability || state.get_card(attacker_id).get_zone() != self.get_zone() {
+            return Ok(vec![]);
+        }
+
+        Ok(vec![
+            Effect::TakeDamage {
+                card_id: *attacker_id,
+                from: *self.get_id(),
+                damage: Damage::attack(3),
+            },
+            Effect::SetCardData {
+                card_id: *self.get_id(),
+                data: std::sync::Arc::new(true),
+            },
+        ])
     }
 
     fn set_data(

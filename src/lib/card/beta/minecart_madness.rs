@@ -46,12 +46,34 @@ impl Card for MinecartMadness {
 
     async fn on_cast(
         &mut self,
-        _state: &State,
+        state: &State,
         _caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
-        // TODO: add temporary movement adjacency for a chosen span of land.
-        Ok(vec![])
+        let controller_id = self.get_controller_id(state);
+        let spans_of_land = state.get_spans_of_land();
+        if spans_of_land.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let span = pick_zone_group(
+            controller_id,
+            &spans_of_land,
+            state,
+            false,
+            "Minecart Madness: Pick a span of land",
+        )
+        .await?;
+
+        Ok(vec![Effect::AddTemporaryEffect {
+            effect: TemporaryEffect::ConnectSites {
+                sites: span,
+                affected_cards: CardQuery::new().units().controlled_by(&controller_id),
+                expires_on_effect: EffectQuery::TurnEnd {
+                    player_id: Some(controller_id),
+                },
+            },
+        }])
     }
 }
 

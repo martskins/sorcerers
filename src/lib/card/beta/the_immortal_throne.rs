@@ -79,8 +79,12 @@ impl Card for TheImmortalThrone {
         }
     }
 
-    // TODO: Implement game winning effect at 8 or more level counters.
     async fn on_effect(&self, state: &State, effect: &Effect) -> anyhow::Result<Vec<Effect>> {
+        let winning_effects = self.winning_effects(state);
+        if !winning_effects.is_empty() {
+            return Ok(winning_effects);
+        }
+
         match effect {
             Effect::PlayCard {
                 player_id, card_id, ..
@@ -123,7 +127,37 @@ impl Card for TheImmortalThrone {
             _ => Ok(vec![]),
         }
     }
-    // TODO: Add named level counters and an alternate win condition effect.
+}
+
+impl TheImmortalThrone {
+    fn winning_effects(&self, state: &State) -> Vec<Effect> {
+        if self.level_counters < 8 || !self.get_zone().is_in_play() {
+            return vec![];
+        }
+
+        let avatars_here = CardQuery::new().avatars().in_zone(self.get_zone()).all(state);
+        let other_units_here = CardQuery::new()
+            .units()
+            .in_zone(self.get_zone())
+            .all(state)
+            .into_iter()
+            .filter(|card_id| !avatars_here.contains(card_id))
+            .collect::<Vec<uuid::Uuid>>();
+
+        if avatars_here.len() != 1 || !other_units_here.is_empty() {
+            return vec![];
+        }
+
+        let winner = state.get_card(&avatars_here[0]).get_controller_id(state);
+        state
+            .players
+            .iter()
+            .filter(|player| player.id != winner)
+            .map(|player| Effect::PlayerLost {
+                player_id: player.id,
+            })
+            .collect()
+    }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]

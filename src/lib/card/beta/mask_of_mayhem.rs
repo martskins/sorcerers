@@ -56,7 +56,18 @@ impl Card for MaskOfMayhem {
     fn get_artifact(&self) -> Option<&dyn Artifact> {
         Some(self)
     }
-    // TODO: Forced attacks and source-filtered strike damage need new combat targeting hooks.
+
+    async fn get_continuous_effects(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<ContinuousEffect>> {
+        Ok(vec![ContinuousEffect::DoubleDamageTaken {
+            affected_cards: CardQuery::new()
+                .units()
+                .nearby_locations_to(self.get_zone()),
+            except_strikes: false,
+        }])
+    }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]

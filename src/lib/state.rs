@@ -580,6 +580,54 @@ impl State {
         bodies_of_water
     }
 
+    pub fn get_spans_of_land(&self) -> Vec<Vec<Zone>> {
+        let mut visited: Vec<Zone> = Vec::new();
+        let mut spans_of_land: Vec<Vec<Zone>> = Vec::new();
+
+        fn dfs(state: &State, zone: &Zone, visited: &mut Vec<Zone>, span: &mut Vec<Zone>) {
+            if visited.iter().any(|z| z == zone) {
+                return;
+            }
+            visited.push(zone.clone());
+
+            if let Some(site) = zone.get_site(state) {
+                let is_land = site.provided_affinity(state).unwrap_or_default().water == 0;
+                if is_land {
+                    if !span.iter().any(|z| z == zone) {
+                        span.push(zone.clone());
+                    }
+                    for adj in zone.get_adjacent() {
+                        dfs(state, &adj, visited, span);
+                    }
+                }
+            }
+        }
+
+        for card in self
+            .cards
+            .values()
+            .filter(|c| c.get_card_type() == CardType::Site)
+        {
+            let zone = card.get_zone();
+            if !zone.is_in_play() {
+                continue;
+            }
+
+            if let Some(site) = zone.get_site(self) {
+                let is_land = site.provided_affinity(self).unwrap_or_default().water == 0;
+                if is_land && !visited.iter().any(|z| z == zone) {
+                    let mut span: Vec<Zone> = Vec::new();
+                    dfs(self, zone, &mut visited, &mut span);
+                    if !span.is_empty() {
+                        spans_of_land.push(span);
+                    }
+                }
+            }
+        }
+
+        spans_of_land
+    }
+
     pub fn get_body_of_water_size(&self, zone: &Zone) -> u16 {
         let mut visited: Vec<Zone> = Vec::new();
         let mut water_zones: Vec<Zone> = Vec::new();

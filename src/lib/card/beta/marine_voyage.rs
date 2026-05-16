@@ -55,9 +55,16 @@ impl Card for MarineVoyage {
         let prompt = "Marine Voyage: Pick a body of water";
         let body_of_water =
             pick_zone_group(controller_id, &bodies_of_water, state, false, prompt).await?;
-        println!("Picked body of water: {:?}", body_of_water);
-        // TODO: Implement the actual effect of Marine Voyage
-        Ok(vec![])
+
+        Ok(vec![Effect::AddTemporaryEffect {
+            effect: TemporaryEffect::ConnectSites {
+                sites: body_of_water,
+                affected_cards: CardQuery::new().units().controlled_by(&controller_id),
+                expires_on_effect: EffectQuery::TurnEnd {
+                    player_id: Some(controller_id),
+                },
+            },
+        }])
     }
 }
 

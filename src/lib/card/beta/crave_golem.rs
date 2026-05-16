@@ -66,14 +66,10 @@ impl Card for CraveGolem {
             return Ok(vec![]);
         }
 
-        // TODO: This implementation needs reviewing. The possible targets for the strike are not
-        // quite right in that it currently incldes minions that are not attackable or are airborne,
-        // etc.
         let controller_id = self.get_controller_id(state);
         let target_id = CardQuery::new()
             .minions()
-            .within_range_of(self.get_id())
-            .id_not_in(vec![*self.get_id()])
+            .can_be_attacked_by(self.get_id())
             .randomised()
             .count(1)
             .pick(&controller_id, state, false)

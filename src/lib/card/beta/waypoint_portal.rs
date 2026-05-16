@@ -76,6 +76,7 @@ impl Card for WaypointPortal {
         Ok(vec![Effect::AddTemporaryEffect {
             effect: TemporaryEffect::ConnectSites {
                 sites: vec![first_zone, second_zone],
+                affected_cards: CardQuery::new().units(),
                 expires_on_effect: EffectQuery::TurnEnd { player_id: None },
             },
         }])

@@ -1,6 +1,94 @@
 use crate::prelude::*;
 
 #[derive(Debug, Clone)]
+struct PathfinderSitewalk;
+
+#[async_trait::async_trait]
+impl ActivatedAbility for PathfinderSitewalk {
+    fn get_name(&self) -> String {
+        "Play top site and move there".to_string()
+    }
+
+    fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
+        Ok(Cost::additional_only(AdditionalCost::tap(card_id)))
+    }
+
+    fn can_activate(
+        &self,
+        card_id: &uuid::Uuid,
+        player_id: &PlayerId,
+        state: &State,
+    ) -> anyhow::Result<bool> {
+        let Some(site_id) = state.get_player_deck(player_id)?.peek_site() else {
+            return Ok(false);
+        };
+        let pathfinder = state.get_card(card_id);
+        let site = state.get_card(site_id);
+        let valid_play_zones = site.get_valid_play_zones(state, player_id, card_id)?;
+        Ok(pathfinder
+            .get_zone()
+            .get_adjacent_locations(state)
+            .into_iter()
+            .any(|zone| valid_play_zones.contains(&zone)))
+    }
+
+    async fn on_select(
+        &self,
+        card_id: &uuid::Uuid,
+        player_id: &PlayerId,
+        state: &State,
+    ) -> anyhow::Result<Vec<Effect>> {
+        let mut deck = state.get_player_deck(player_id)?.clone();
+        let Some(site_id) = deck.sites.pop() else {
+            return Ok(vec![]);
+        };
+        let pathfinder = state.get_card(card_id);
+        let site = state.get_card(&site_id);
+        let valid_play_zones = site.get_valid_play_zones(state, player_id, card_id)?;
+        let zones = pathfinder
+            .get_zone()
+            .get_adjacent_locations(state)
+            .into_iter()
+            .filter(|zone| valid_play_zones.contains(zone))
+            .collect::<Vec<Zone>>();
+        if zones.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let zone = pick_zone(
+            player_id,
+            &zones,
+            state,
+            false,
+            "Pathfinder: Pick an adjacent location for your top site",
+        )
+        .await?;
+
+        Ok(vec![
+            Effect::RearrangeDeck {
+                spells: deck.spells,
+                sites: deck.sites,
+            },
+            Effect::PlayCard {
+                player_id: *player_id,
+                card_id: site_id,
+                zone: ZoneQuery::from_zone(zone.clone()),
+                spellcaster: *card_id,
+            },
+            Effect::MoveCard {
+                player_id: *player_id,
+                card_id: *card_id,
+                from: pathfinder.get_zone().clone(),
+                to: ZoneQuery::from_zone(zone),
+                tap: false,
+                region: pathfinder.get_region(state).clone(),
+                through_path: None,
+            },
+        ])
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct Pathfinder {
     card_base: CardBase,
     unit_base: UnitBase,
@@ -75,8 +163,7 @@ impl Card for Pathfinder {
         &self,
         _state: &State,
     ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
-        // TODO: add Pathfinder's atlas setup restriction and topmost-site play/move action.
-        Ok(vec![])
+        Ok(vec![Box::new(PathfinderSitewalk)])
     }
 }
 

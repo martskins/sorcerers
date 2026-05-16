@@ -67,6 +67,7 @@ pub enum TemporaryEffect {
     },
     ConnectSites {
         sites: Vec<Zone>,
+        affected_cards: CardQuery,
         expires_on_effect: EffectQuery,
     },
 }
