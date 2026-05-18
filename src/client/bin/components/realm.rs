@@ -6,12 +6,12 @@ use crate::{
     theme,
 };
 use egui::{
-    Color32, Context, CursorIcon, Painter, Pos2, Rect, Sense, Stroke, Ui, Vec2, epaint::Shape,
-    pos2, vec2,
+    Color32, Context, CursorIcon, Painter, Pos2, Rect, RichText, Sense, Stroke, Ui, Vec2,
+    epaint::Shape, pos2, vec2,
 };
 use rand::SeedableRng;
 use sorcerers::{
-    card::{CardData, CardType},
+    card::{CardData, CardType, Region},
     game::PlayerId,
     networking::{self, message::ClientMessage},
     zone::Zone,
@@ -21,13 +21,55 @@ mod geometry;
 
 use geometry::{
     board_corners, card_rotation, cell_corners, cell_inner_rect, cell_rect, intersection_rect,
-    project_rect_in_cell, projected_card_dimensions, site_dimensions, spell_dimensions,
+    project_rect_in_cell, projected_card_dimensions, realm_view_mode, set_realm_view_mode,
+    site_dimensions, spell_dimensions, RealmViewMode,
 };
 
 static OCCUPIED_ZONE_BACKGROUND_COLOR: Color32 =
     Color32::from_rgba_unmultiplied_const(255, 255, 255, 22);
 
 const CARD_FLIGHT_DURATION: f64 = 0.28;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum RealmCardFilter {
+    All,
+    Surface,
+    Underground,
+    Underwater,
+}
+
+impl RealmCardFilter {
+    fn label(self) -> &'static str {
+        match self {
+            RealmCardFilter::All => "All",
+            RealmCardFilter::Surface => "Surface",
+            RealmCardFilter::Underground => "Underground",
+            RealmCardFilter::Underwater => "Underwater",
+        }
+    }
+
+    fn includes(self, card: &CardData) -> bool {
+        match self {
+            RealmCardFilter::All => true,
+            RealmCardFilter::Surface => matches!(card.zone_region(), Some(Region::Surface | Region::Void)),
+            RealmCardFilter::Underground => card.zone_region() == Some(Region::Underground),
+            RealmCardFilter::Underwater => card.zone_region() == Some(Region::Underwater),
+        }
+    }
+}
+
+trait RealmCardRegion {
+    fn zone_region(&self) -> Option<Region>;
+}
+
+impl RealmCardRegion for CardData {
+    fn zone_region(&self) -> Option<Region> {
+        match &self.zone {
+            Zone::Realm(_, region) | Zone::Intersection(_, region) => Some(region.clone()),
+            _ => None,
+        }
+    }
+}
 
 #[derive(Clone)]
 struct CardFlight {
@@ -69,6 +111,7 @@ pub struct RealmComponent {
     rect: Rect,
     last_mouse_pos: Pos2,
     card_flights: Vec<CardFlight>,
+    card_filter: RealmCardFilter,
 }
 
 impl RealmComponent {
@@ -110,7 +153,29 @@ impl RealmComponent {
             rect,
             last_mouse_pos: pos2(0.0, 0.0),
             card_flights: Vec::new(),
+            card_filter: RealmCardFilter::All,
         }
+    }
+
+    fn refresh_geometry(&mut self) {
+        for cell in &mut self.cell_rects {
+            cell.rect = cell_rect(&self.rect, cell.id, self.mirrored);
+        }
+
+        self.intersection_rects = Zone::all_intersections()
+            .into_iter()
+            .filter_map(|z| match z {
+                Zone::Intersection(locs, _) => {
+                    intersection_rect(&self.rect, &locs, self.mirrored).map(|r| {
+                        IntersectionRect {
+                            locations: locs,
+                            rect: r,
+                        }
+                    })
+                }
+                _ => None,
+            })
+            .collect();
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -436,8 +501,7 @@ impl RealmComponent {
         painter: &Painter,
     ) -> anyhow::Result<()> {
         let occupied_zones: Vec<u8> = self
-            .card_rects
-            .iter()
+            .filtered_card_rects()
             .filter(|c| c.card.card_type == CardType::Site)
             .filter_map(|c| match &c.card.zone {
                 Zone::Realm(loc, _) => Some(*loc),
@@ -624,6 +688,75 @@ impl RealmComponent {
         Ok(())
     }
 
+    fn render_view_controls(&mut self, ui: &mut Ui) {
+        let button_pos = pos2(self.rect.min.x + 18.0, self.rect.min.y + 18.0);
+        egui::Area::new(egui::Id::new("realm_view_controls"))
+            .fixed_pos(button_pos)
+            .order(egui::Order::Foreground)
+            .show(ui.ctx(), |ui| {
+                ui.horizontal(|ui| {
+                    let mode = realm_view_mode();
+                    let next_mode = match mode {
+                        RealmViewMode::Perspective3d => RealmViewMode::TopDown2d,
+                        RealmViewMode::TopDown2d => RealmViewMode::Perspective3d,
+                    };
+                    let button_label = match mode {
+                        RealmViewMode::Perspective3d => "3D View",
+                        RealmViewMode::TopDown2d => "2D View",
+                    };
+
+                    if ui
+                        .add(
+                            egui::Button::new(
+                                RichText::new(button_label).size(14.0).color(theme::TEXT_BRIGHT),
+                            )
+                            .min_size(vec2(84.0, 30.0)),
+                        )
+                        .on_hover_text("Switch realm view")
+                        .clicked()
+                    {
+                        set_realm_view_mode(next_mode);
+                        self.refresh_geometry();
+                        self.card_rects.clear();
+                    }
+
+                    ui.add_space(8.0);
+
+                    for filter in [
+                        RealmCardFilter::All,
+                        RealmCardFilter::Surface,
+                        RealmCardFilter::Underground,
+                        RealmCardFilter::Underwater,
+                    ] {
+                        let selected = self.card_filter == filter;
+                        if ui
+                            .selectable_label(selected, filter.label())
+                            .on_hover_text("Filter cards shown on the realm")
+                            .clicked()
+                        {
+                            self.card_filter = filter;
+                        }
+                    }
+                });
+            });
+    }
+
+    fn card_visible_in_filter(&self, card: &CardData) -> bool {
+        self.card_filter.includes(card)
+    }
+
+    fn filtered_card_rects(&self) -> impl Iterator<Item = &CardRect> {
+        self.card_rects
+            .iter()
+            .filter(|card_rect| self.card_visible_in_filter(&card_rect.card))
+    }
+
+    fn clear_flights_hidden_by_filter(&mut self) {
+        let card_filter = self.card_filter;
+        self.card_flights
+            .retain(|flight| card_filter.includes(&flight.card));
+    }
+
     fn card_clicked(&mut self, card_id: &uuid::Uuid, data: &mut GameData) -> anyhow::Result<()> {
         let mut reset_status = false;
         match data.status.clone() {
@@ -721,10 +854,8 @@ impl RealmComponent {
 
 impl Component for RealmComponent {
     fn update(&mut self, data: &mut GameData, ctx: &Context) -> anyhow::Result<()> {
+        self.refresh_geometry();
         self.compute_rects(&data.cards, ctx)?;
-        for cell in &mut self.cell_rects {
-            cell.rect = cell_rect(&self.rect, cell.id, self.mirrored);
-        }
 
         // If a card was clicked within the last 3 seconds, find it and animate it flying to its new
         // position.
@@ -782,8 +913,13 @@ impl Component for RealmComponent {
         let mut moved_card_id = None;
         let realm_rect = self.rect;
         let mirrored = self.mirrored;
+        let card_filter = self.card_filter;
         for card_rect in &mut self.card_rects {
             if !card_rect.card.zone.is_in_play() {
+                continue;
+            }
+
+            if !card_filter.includes(&card_rect.card) {
                 continue;
             }
 
@@ -919,6 +1055,7 @@ impl Component for RealmComponent {
             self.card_clicked(&card_id, data)?;
         }
 
+        self.clear_flights_hidden_by_filter();
         self.card_flights.retain_mut(|flight| {
             let elapsed = now - flight.started_at;
             let progress = (elapsed / CARD_FLIGHT_DURATION).clamp(0.0, 1.0) as f32;
@@ -979,6 +1116,7 @@ impl Component for RealmComponent {
 
         self.render_paths(ui, data, painter);
         self.render_prompt(data, painter)?;
+        self.render_view_controls(ui);
 
         Ok(None)
     }
@@ -1020,6 +1158,7 @@ impl Component for RealmComponent {
                 rect,
             } => {
                 self.rect = *rect;
+                self.refresh_geometry();
             }
             ComponentCommand::DropHandCard { card_id, pos } => {
                 if let Status::PreviewingPlayableZones {

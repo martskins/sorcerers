@@ -6,32 +6,17 @@ impl Game {
         let is_in_turn = self.current_player == self.data.player_id;
         let is_idle = matches!(self.data.status, Status::Idle);
 
-        let (turn_label, turn_color) = if is_in_turn {
+        let (turn_label, turn_color) = if self.data.status == Status::Mulligan {
+            ("SELECT CARDS TO MULLIGAN", theme::TURN_READY)
+        } else if is_in_turn {
             ("YOUR TURN", theme::TURN_READY)
         } else {
             ("THEIR TURN", theme::TURN_WAITING)
         };
-        let turn_rect = Rect::from_center_size(pos2(sr.center().x, 28.0), vec2(150.0, 34.0));
-        painter.rect_filled(
-            turn_rect,
-            17.0,
-            Color32::from_rgba_unmultiplied(13, 18, 28, 220),
-        );
-        painter.rect_stroke(
-            turn_rect,
-            17.0,
-            Stroke::new(
-                1.0,
-                if is_in_turn {
-                    Color32::from_rgb(72, 155, 95)
-                } else {
-                    Color32::from_rgb(78, 86, 110)
-                },
-            ),
-            egui::StrokeKind::Outside,
-        );
+
+        let turn_label_pos = pos2(sr.center().x, 28.0);
         painter.text(
-            turn_rect.center(),
+            turn_label_pos,
             egui::Align2::CENTER_CENTER,
             turn_label,
             FontId::proportional(16.0),
