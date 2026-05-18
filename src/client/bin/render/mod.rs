@@ -340,16 +340,18 @@ pub fn draw_card_with_texture_rotation(
     rotate_texture: bool,
 ) {
     let rect = card_rect.rect;
-    let scale = if card_rect.is_selected { 1.1f32 } else { 1.0f32 };
+    let scale = if card_rect.is_selected {
+        1.1f32
+    } else {
+        1.0f32
+    };
     let scaled_size = vec2(rect.width() * scale, rect.height() * scale);
     let scaled_rect = Rect::from_min_size(rect.min, scaled_size);
     let cx = scaled_rect.center().x;
     let cy = scaled_rect.center().y;
     let half = scaled_rect.size() * 0.5;
     let (sin, cos) = rotation.sin_cos();
-    let rotate = |v: Vec2| -> Pos2 {
-        pos2(cos * v.x - sin * v.y + cx, sin * v.x + cos * v.y + cy)
-    };
+    let rotate = |v: Vec2| -> Pos2 { pos2(cos * v.x - sin * v.y + cx, sin * v.x + cos * v.y + cy) };
     let corners = [
         rotate(vec2(-half.x, -half.y)),
         rotate(vec2(half.x, -half.y)),
@@ -404,7 +406,10 @@ pub fn draw_card_with_texture_rotation(
     } else {
         Color32::from_rgb(224, 66, 72)
     };
-    painter.add(Shape::closed_line(corners.to_vec(), Stroke::new(2.0, sleeve_color)));
+    painter.add(Shape::closed_line(
+        corners.to_vec(),
+        Stroke::new(2.0, sleeve_color),
+    ));
 
     if draw_accessories && card_rect.is_selected {
         painter.add(Shape::closed_line(
@@ -486,7 +491,10 @@ pub fn draw_projected_card_with_texture_rotation(
     } else {
         Color32::from_rgb(224, 66, 72)
     };
-    painter.add(Shape::closed_line(corners.to_vec(), Stroke::new(2.0, sleeve_color)));
+    painter.add(Shape::closed_line(
+        corners.to_vec(),
+        Stroke::new(2.0, sleeve_color),
+    ));
 
     if card_rect.card.zone.is_in_play() {
         if card_rect.card.card_type != CardType::Avatar && card_rect.card.damage_taken > 0 {

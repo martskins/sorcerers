@@ -70,7 +70,6 @@ impl Card for Enchantress {
     fn get_avatar_base_mut(&mut self) -> Option<&mut AvatarBase> {
         Some(&mut self.avatar_base)
     }
-
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]

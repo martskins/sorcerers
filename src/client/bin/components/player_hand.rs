@@ -281,12 +281,8 @@ impl Component for PlayerHandComponent {
         let dragging = self.dragging_card.is_some();
         let hover_card = pointer.is_some_and(|pos| {
             hand_cards.iter().enumerate().any(|(idx, card_rect)| {
-                let (rect, _) = self.fan_rect_and_rotation(
-                    card_rect,
-                    idx,
-                    hand_cards.len(),
-                    self.expansion,
-                );
+                let (rect, _) =
+                    self.fan_rect_and_rotation(card_rect, idx, hand_cards.len(), self.expansion);
                 let visible_rect = if self.expansion < 0.05 {
                     rect.intersect(collapsed_strip)
                 } else {

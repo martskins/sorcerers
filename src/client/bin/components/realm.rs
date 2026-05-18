@@ -208,12 +208,10 @@ impl RealmComponent {
                         if card.card_type == CardType::Site {
                             pos_y = rect.min.y + rect.height() - dimensions.y;
                         } else {
-                            let jitter_x: f32 = rng.random_range(
-                                -(rect.width() * 0.025)..(rect.width() * 0.025),
-                            );
-                            let jitter_y: f32 = rng.random_range(
-                                -(rect.height() * 0.025)..(rect.height() * 0.025),
-                            );
+                            let jitter_x: f32 =
+                                rng.random_range(-(rect.width() * 0.025)..(rect.width() * 0.025));
+                            let jitter_y: f32 =
+                                rng.random_range(-(rect.height() * 0.025)..(rect.height() * 0.025));
                             pos_x += jitter_x;
                             pos_y += jitter_y;
                         }
@@ -461,36 +459,36 @@ impl RealmComponent {
                 _ => None,
             };
             if let Some(zones) = playable_preview_zones {
-                    if let Some(zone) = zones
-                        .iter()
-                        .find(|zone| matches!(zone, Zone::Realm(id, _) if *id == cell.id))
-                    {
-                        if matches!(data.status, Status::SelectingZone { .. }) {
-                            let resp = ui.allocate_rect(rect, Sense::click());
-                            if resp.clicked() {
-                                clicked_zone = Some(zone.clone());
-                            }
+                if let Some(zone) = zones
+                    .iter()
+                    .find(|zone| matches!(zone, Zone::Realm(id, _) if *id == cell.id))
+                {
+                    if matches!(data.status, Status::SelectingZone { .. }) {
+                        let resp = ui.allocate_rect(rect, Sense::click());
+                        if resp.clicked() {
+                            clicked_zone = Some(zone.clone());
                         }
-
-                        painter.add(Shape::closed_line(
-                            cell_corners(&self.rect, cell.id, self.mirrored, 5.0).to_vec(),
-                            Stroke::new(3.0, theme::PICKABLE),
-                        ));
                     }
+
+                    painter.add(Shape::closed_line(
+                        cell_corners(&self.rect, cell.id, self.mirrored, 5.0).to_vec(),
+                        Stroke::new(3.0, theme::PICKABLE),
+                    ));
+                }
             } else {
                 match &data.status {
                     Status::DistributingDamage { .. }
-                | Status::SelectingZoneGroup { .. }
-                | Status::SelectingCard { preview: true, .. }
-                | Status::GameAborted { .. }
-                | Status::SelectingAction { .. }
-                | Status::Waiting { .. }
-                | Status::SelectingPath { .. }
-                | Status::SelectingAmount { .. }
-                | Status::Mulligan
-                | Status::ViewingCards { .. } => {
-                    continue;
-                }
+                    | Status::SelectingZoneGroup { .. }
+                    | Status::SelectingCard { preview: true, .. }
+                    | Status::GameAborted { .. }
+                    | Status::SelectingAction { .. }
+                    | Status::Waiting { .. }
+                    | Status::SelectingPath { .. }
+                    | Status::SelectingAmount { .. }
+                    | Status::Mulligan
+                    | Status::ViewingCards { .. } => {
+                        continue;
+                    }
                     Status::SelectingCard { preview: false, .. } | Status::Idle => {}
                     Status::SelectingZone { .. } | Status::PreviewingPlayableZones { .. } => {}
                 }
@@ -504,33 +502,33 @@ impl RealmComponent {
                 _ => None,
             };
             if let Some(zones) = playable_preview_zones {
-                    let rect = intersection.rect;
-                    let can_pick = zones.iter().any(|z| match z {
-                        Zone::Intersection(locations, _) => locations == &intersection.locations,
-                        _ => false,
-                    });
-                    if can_pick {
-                        painter.rect_stroke(
-                            rect,
-                            4.0,
-                            Stroke::new(3.0, theme::PICKABLE),
-                            egui::StrokeKind::Outside,
-                        );
-                    }
+                let rect = intersection.rect;
+                let can_pick = zones.iter().any(|z| match z {
+                    Zone::Intersection(locations, _) => locations == &intersection.locations,
+                    _ => false,
+                });
+                if can_pick {
+                    painter.rect_stroke(
+                        rect,
+                        4.0,
+                        Stroke::new(3.0, theme::PICKABLE),
+                        egui::StrokeKind::Outside,
+                    );
+                }
             } else {
                 match &data.status {
                     Status::SelectingCard { preview: true, .. }
-                | Status::SelectingZoneGroup { .. }
-                | Status::DistributingDamage { .. }
-                | Status::Waiting { .. }
-                | Status::SelectingAction { .. }
-                | Status::SelectingAmount { .. }
-                | Status::Mulligan
-                | Status::GameAborted { .. }
-                | Status::SelectingPath { .. }
-                | Status::ViewingCards { .. } => {
-                    continue;
-                }
+                    | Status::SelectingZoneGroup { .. }
+                    | Status::DistributingDamage { .. }
+                    | Status::Waiting { .. }
+                    | Status::SelectingAction { .. }
+                    | Status::SelectingAmount { .. }
+                    | Status::Mulligan
+                    | Status::GameAborted { .. }
+                    | Status::SelectingPath { .. }
+                    | Status::ViewingCards { .. } => {
+                        continue;
+                    }
                     Status::SelectingCard { preview: false, .. } | Status::Idle => {}
                     Status::SelectingZone { .. } | Status::PreviewingPlayableZones { .. } => {}
                 }
@@ -853,7 +851,9 @@ impl Component for RealmComponent {
             {
                 let card_id = card_rect.card.id;
                 let bounds = match card_rect.card.zone {
-                    Zone::Realm(cell_id, _) => cell_inner_rect(&realm_rect, cell_id, mirrored, 18.0),
+                    Zone::Realm(cell_id, _) => {
+                        cell_inner_rect(&realm_rect, cell_id, mirrored, 18.0)
+                    }
                     _ => cell.rect,
                 };
                 let min_x = bounds.min.x;

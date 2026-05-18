@@ -135,7 +135,10 @@ impl TheImmortalThrone {
             return vec![];
         }
 
-        let avatars_here = CardQuery::new().avatars().in_zone(self.get_zone()).all(state);
+        let avatars_here = CardQuery::new()
+            .avatars()
+            .in_zone(self.get_zone())
+            .all(state);
         let other_units_here = CardQuery::new()
             .units()
             .in_zone(self.get_zone())

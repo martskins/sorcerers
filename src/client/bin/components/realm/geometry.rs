@@ -88,7 +88,10 @@ pub(super) fn projected_card_dimensions(
     let height_fraction =
         ((width_fraction * horizontal) / (target_aspect * vertical)).clamp(0.12, 0.72);
 
-    vec2(cell.width() * width_fraction, cell.height() * height_fraction)
+    vec2(
+        cell.width() * width_fraction,
+        cell.height() * height_fraction,
+    )
 }
 
 pub(super) fn project_rect_in_cell(
@@ -127,8 +130,14 @@ pub(super) fn project_rect_in_cell(
 fn bounding_rect(corners: &[Pos2; 4]) -> Rect {
     let min_x = corners.iter().map(|p| p.x).fold(f32::INFINITY, f32::min);
     let min_y = corners.iter().map(|p| p.y).fold(f32::INFINITY, f32::min);
-    let max_x = corners.iter().map(|p| p.x).fold(f32::NEG_INFINITY, f32::max);
-    let max_y = corners.iter().map(|p| p.y).fold(f32::NEG_INFINITY, f32::max);
+    let max_x = corners
+        .iter()
+        .map(|p| p.x)
+        .fold(f32::NEG_INFINITY, f32::max);
+    let max_y = corners
+        .iter()
+        .map(|p| p.y)
+        .fold(f32::NEG_INFINITY, f32::max);
 
     Rect::from_min_max(pos2(min_x, min_y), pos2(max_x, max_y))
 }

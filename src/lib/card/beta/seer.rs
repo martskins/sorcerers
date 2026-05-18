@@ -90,9 +90,14 @@ impl Card for Seer {
                     "Look at your topmost site".to_string(),
                     "Look at your topmost spell".to_string(),
                 ];
-                let picked_option =
-                    pick_option(&controller_id, &options, state, "Seer: Pick a deck to inspect", false)
-                        .await?;
+                let picked_option = pick_option(
+                    &controller_id,
+                    &options,
+                    state,
+                    "Seer: Pick a deck to inspect",
+                    false,
+                )
+                .await?;
                 Some(choices[picked_option])
             }
         }) else {
