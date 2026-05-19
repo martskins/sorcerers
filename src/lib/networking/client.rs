@@ -1,7 +1,10 @@
 use tokio::io::AsyncWriteExt;
 use tokio::net::tcp::OwnedWriteHalf;
 
-use crate::networking::message::{Message, ServerMessage, ToMessage};
+use crate::networking::{
+    MAX_MESSAGE_SIZE,
+    message::{Message, ServerMessage, ToMessage},
+};
 use std::net::TcpStream;
 use std::{
     io::{Read, Write},
@@ -48,6 +51,9 @@ impl Client {
     pub fn send<T: ToMessage>(&self, message: T) -> anyhow::Result<()> {
         let bytes = rmp_serde::to_vec(&message.to_message())?;
         let len = bytes.len();
+        if len > MAX_MESSAGE_SIZE {
+            return Err(anyhow::anyhow!("message too large: {} bytes", len));
+        }
         let mut stream = self
             .writer
             .lock()
@@ -65,7 +71,12 @@ impl Client {
         let mut len: [u8; std::mem::size_of::<usize>()] = [0; std::mem::size_of::<usize>()];
         stream.read_exact(&mut len)?;
 
-        let mut res = vec![0; usize::from_be_bytes(len)];
+        let len = usize::from_be_bytes(len);
+        if len > MAX_MESSAGE_SIZE {
+            return Err(anyhow::anyhow!("message too large: {} bytes", len));
+        }
+
+        let mut res = vec![0; len];
         stream.read_exact(&mut res)?;
         let response: Message = rmp_serde::from_slice(&res)?;
         Ok(Some(response))
@@ -77,6 +88,9 @@ impl Client {
     ) -> anyhow::Result<()> {
         let bytes = rmp_serde::to_vec(&message.to_message())?;
         let len = bytes.len();
+        if len > MAX_MESSAGE_SIZE {
+            return Err(anyhow::anyhow!("message too large: {} bytes", len));
+        }
         let mut stream = stream.lock().await;
         stream.write_all(&len.to_be_bytes()).await?;
         stream.write_all(&bytes).await?;

@@ -2,7 +2,10 @@ mod server;
 
 use crate::server::Server;
 use sorcerers::{
-    networking::message::{ClientMessage, Message},
+    networking::{
+        MAX_MESSAGE_SIZE,
+        message::{ClientMessage, Message},
+    },
     query::QueryCache,
 };
 use std::{net::SocketAddr, sync::Arc};
@@ -50,8 +53,28 @@ async fn main() -> anyhow::Result<()> {
                     break;
                 }
 
-                let mut buf = vec![0; usize::from_be_bytes(len)];
-                let read_bytes = reader.read_exact(&mut buf).await.expect("read from socket");
+                let len = usize::from_be_bytes(len);
+                if len > MAX_MESSAGE_SIZE {
+                    eprintln!("closing connection from {addr}: message too large ({len} bytes)");
+                    break;
+                }
+
+                let mut buf = vec![0; len];
+                let read_bytes = match reader.read_exact(&mut buf).await {
+                    Ok(read_bytes) => read_bytes,
+                    Err(_) => {
+                        let mut server = server_clone.lock().await;
+                        server
+                            .process_message(
+                                &Message::ClientMessage(ClientMessage::Disconnect),
+                                Arc::clone(&writer),
+                                &addr,
+                            )
+                            .await
+                            .expect("message to be processed");
+                        break;
+                    }
+                };
                 if read_bytes == 0 {
                     let mut server = server_clone.lock().await;
                     server
@@ -65,12 +88,18 @@ async fn main() -> anyhow::Result<()> {
                     break;
                 }
 
-                let msg: Message = rmp_serde::from_slice(&buf).expect("invalid message received");
+                let msg: Message = match rmp_serde::from_slice(&buf) {
+                    Ok(msg) => msg,
+                    Err(err) => {
+                        eprintln!("closing connection from {addr}: invalid message: {err}");
+                        break;
+                    }
+                };
                 let mut server = server_clone.lock().await;
-                server
-                    .process_message(&msg, Arc::clone(&writer), &addr)
-                    .await
-                    .expect("message to be processed");
+                if let Err(err) = server.process_message(&msg, Arc::clone(&writer), &addr).await {
+                    eprintln!("closing connection from {addr}: {err}");
+                    break;
+                }
             }
         });
     }

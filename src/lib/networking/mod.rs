@@ -6,6 +6,8 @@ use tokio_util::codec::{FramedRead, FramedWrite, LengthDelimitedCodec};
 pub mod client;
 pub mod message;
 
+pub const MAX_MESSAGE_SIZE: usize = 16 * 1024 * 1024;
+
 pub type FramedReader = tokio_serde::Framed<
     FramedRead<OwnedReadHalf, LengthDelimitedCodec>,
     Message,

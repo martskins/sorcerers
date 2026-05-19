@@ -2,7 +2,7 @@ use async_channel::Sender;
 use sorcerers::{
     card::{
         ApprenticeWizard, AramosMercenaries, AridDesert, AstralAlcazar, CaptainBaldassare,
-        FelbogFrogMen, SummerRiver, WillsOTheWisp,
+        CourtesanThais, FelbogFrogMen, SummerRiver, WillsOTheWisp,
     },
     deck::precon::ALL_PRECONS,
     game::Game,
@@ -70,13 +70,20 @@ impl Server {
                 player_name,
                 deck,
             }) => {
+                let Some(&registered_player_id) = self.addr_to_player.get(addr) else {
+                    return Ok(());
+                };
+                if player_id != &registered_player_id {
+                    return Ok(());
+                }
+
                 let player = Player {
-                    id: *player_id,
+                    id: registered_player_id,
                     name: player_name.clone(),
                 };
                 self.looking_for_match
-                    .push((*player_id, (player, deck.clone())));
-                self.streams.insert(*player_id, stream);
+                    .push((registered_player_id, (player, deck.clone())));
+                self.streams.insert(registered_player_id, stream);
 
                 if let Some((player1, player2)) = self.find_match() {
                     self.create_game(&player1.0, player1.1, &player2.0, player2.1)
@@ -109,7 +116,22 @@ impl Server {
                 }
             }
             Message::ClientMessage(msg) => {
+                let Some(&registered_player_id) = self.addr_to_player.get(addr) else {
+                    return Ok(());
+                };
+                if msg.player_id() != &registered_player_id {
+                    return Ok(());
+                }
+
                 let game_id = msg.game_id();
+                let is_player_in_game = self
+                    .game_players
+                    .get(&game_id)
+                    .is_some_and(|players| players.iter().any(|p| p.id == registered_player_id));
+                if !is_player_in_game {
+                    return Ok(());
+                }
+
                 self.games
                     .get_mut(&game_id)
                     .ok_or(anyhow::anyhow!("failed to get game by game id"))?
@@ -203,7 +225,7 @@ impl Server {
 
         let player_two = game.state.players[1].id;
         let card = sorcerers::card::from_name_and_zone(
-            AstralAlcazar::NAME,
+            CourtesanThais::NAME,
             &player_one,
             sorcerers::zone::Zone::Hand,
         );
