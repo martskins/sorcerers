@@ -11,6 +11,7 @@ use sorcerers::networking::{
     self,
     message::{ClientMessage, DeckChoice},
 };
+use std::collections::BTreeMap;
 
 #[derive(Debug)]
 pub struct Menu {
@@ -66,6 +67,331 @@ impl Menu {
     }
 
     pub fn update(&mut self, _ctx: &Context) {}
+
+    fn precon_parts(deck: &PreconDeck) -> (&'static str, &'static str) {
+        deck.name()
+            .split_once(" - ")
+            .unwrap_or(("Precon", deck.name()))
+    }
+
+    fn play_precon(&mut self, deck: PreconDeck) {
+        self.deck_error = None;
+        self.client
+            .send(ClientMessage::JoinQueue {
+                player_name: self.player_name.clone(),
+                player_id: self.player_id.expect("player id should be set"),
+                deck: DeckChoice::Precon(deck),
+            })
+            .ok();
+        self.looking_for_match = true;
+    }
+
+    fn play_custom_deck(&mut self, deck_list: DeckList) {
+        match deck_list.validate() {
+            Ok(()) => {
+                self.deck_error = None;
+                self.client
+                    .send(ClientMessage::JoinQueue {
+                        player_name: self.player_name.clone(),
+                        player_id: self.player_id.expect("player id should be set"),
+                        deck: DeckChoice::Custom(deck_list),
+                    })
+                    .ok();
+                self.looking_for_match = true;
+            }
+            Err(msg) => {
+                self.deck_error = Some(msg);
+            }
+        }
+    }
+
+    fn render_deck_selection(&mut self, ui: &mut Ui, next_scene: &mut Option<Scene>) {
+        ui.label(
+            egui::RichText::new("Choose a deck")
+                .color(Color32::from_rgb(220, 222, 245))
+                .size(28.0),
+        );
+        ui.add_space(6.0);
+        ui.label(
+            egui::RichText::new("Pick a precon for a quick game, or play and edit saved decks.")
+                .color(Color32::from_rgb(130, 145, 180))
+                .size(15.0),
+        );
+        ui.add_space(18.0);
+
+        let content_w = ui.available_width().min(860.0);
+        let left_pad = ((ui.available_width() - content_w) / 2.0).max(0.0);
+        ui.horizontal(|ui| {
+            ui.add_space(left_pad);
+            ui.vertical(|ui| {
+                ui.set_width(content_w);
+
+                let precon_h = 330.0;
+                self.render_precon_section(ui, content_w, precon_h);
+                ui.add_space(14.0);
+                // The precon section uses a 10 pixel margin between each button column, so we give
+                // it 10 pixels more width to make sure both have the same total width.
+                self.render_custom_section(ui, next_scene, content_w + 10.0, 330.0);
+
+                if let Some(ref err) = self.deck_error.clone() {
+                    ui.add_space(10.0);
+                    ui.label(
+                        egui::RichText::new(format!("⚠ {err}"))
+                            .color(Color32::from_rgb(220, 80, 60))
+                            .size(14.0),
+                    );
+                }
+            });
+        });
+    }
+
+    fn render_precon_section(&mut self, ui: &mut Ui, width: f32, height: f32) {
+        egui::Frame::new()
+            .fill(Color32::from_rgb(15, 18, 30))
+            .stroke(egui::Stroke::new(1.0, Color32::from_rgb(42, 52, 76)))
+            .corner_radius(6.0)
+            .inner_margin(egui::Margin::same(14))
+            .show(ui, |ui| {
+                ui.set_width(width - 28.0);
+                ui.set_min_height(height - 28.0);
+                ui.horizontal(|ui| {
+                    ui.label(
+                        egui::RichText::new("Preconstructed")
+                            .color(Color32::from_rgb(235, 238, 255))
+                            .size(18.0)
+                            .strong(),
+                    );
+                    ui.add_space(8.0);
+                    ui.label(
+                        egui::RichText::new(format!("{} decks", self.available_decks.len()))
+                            .color(Color32::from_rgb(125, 145, 180))
+                            .size(13.0),
+                    );
+                });
+                ui.add_space(10.0);
+
+                let mut grouped: BTreeMap<&'static str, Vec<PreconDeck>> = BTreeMap::new();
+                for deck in self.available_decks.clone() {
+                    let (set, _) = Self::precon_parts(&deck);
+                    grouped.entry(set).or_default().push(deck);
+                }
+
+                egui::ScrollArea::vertical()
+                    .id_salt("precon_decks")
+                    .max_height(height - 56.0)
+                    .auto_shrink([false, false])
+                    .show(ui, |ui| {
+                        for (set, decks) in grouped {
+                            ui.label(
+                                egui::RichText::new(set)
+                                    .color(Color32::from_rgb(255, 200, 80))
+                                    .size(14.0)
+                                    .strong(),
+                            );
+                            ui.add_space(6.0);
+
+                            let gap = 10.0;
+                            let card_w = ((ui.available_width() - gap) / 2.0).max(180.0);
+                            for row in decks.chunks(2) {
+                                ui.horizontal(|ui| {
+                                    for (idx, deck) in row.iter().enumerate() {
+                                        self.render_precon_button(ui, deck.clone(), card_w);
+                                        if idx + 1 < row.len() {
+                                            ui.add_space(gap);
+                                        }
+                                    }
+                                });
+                                ui.add_space(8.0);
+                            }
+                        }
+                    });
+            });
+    }
+
+    fn render_precon_button(&mut self, ui: &mut Ui, deck: PreconDeck, width: f32) {
+        let (_, element) = Self::precon_parts(&deck);
+        let accent = match element {
+            "Earth" => Color32::from_rgb(117, 176, 96),
+            "Water" => Color32::from_rgb(74, 154, 210),
+            "Air" => Color32::from_rgb(180, 195, 230),
+            "Fire" => Color32::from_rgb(224, 107, 72),
+            _ => Color32::from_rgb(180, 160, 220),
+        };
+
+        let button = egui::Button::new(
+            egui::RichText::new(element)
+                .size(19.0)
+                .color(Color32::WHITE)
+                .strong(),
+        )
+        .fill(Color32::from_rgb(35, 44, 65))
+        .stroke(egui::Stroke::new(1.5, accent))
+        .min_size(vec2(width, 48.0));
+
+        if ui.add(button).on_hover_text(deck.name()).clicked() {
+            self.play_precon(deck);
+        }
+    }
+
+    fn render_custom_section(
+        &mut self,
+        ui: &mut Ui,
+        next_scene: &mut Option<Scene>,
+        width: f32,
+        height: f32,
+    ) {
+        egui::Frame::new()
+            .fill(Color32::from_rgb(13, 16, 27))
+            .stroke(egui::Stroke::new(1.0, Color32::from_rgb(42, 52, 76)))
+            .corner_radius(6.0)
+            .inner_margin(egui::Margin::same(14))
+            .show(ui, |ui| {
+                ui.set_width(width - 28.0);
+                ui.set_min_height(height - 28.0);
+                ui.horizontal(|ui| {
+                    ui.label(
+                        egui::RichText::new("Custom Decks")
+                            .color(Color32::from_rgb(235, 238, 255))
+                            .size(18.0)
+                            .strong(),
+                    );
+                    ui.add_space(8.0);
+                    ui.label(
+                        egui::RichText::new(format!("{} saved", self.saved_decks.len()))
+                            .color(Color32::from_rgb(125, 145, 180))
+                            .size(13.0),
+                    );
+
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        let build_btn = egui::Button::new(
+                            egui::RichText::new("🔨 Deck Builder")
+                                .size(15.0)
+                                .color(Color32::from_rgb(215, 228, 255)),
+                        )
+                        .min_size(vec2(154.0, 34.0));
+                        if ui.add(build_btn).clicked() {
+                            *next_scene = Some(Scene::DeckBuilder(
+                                crate::scene::deck_builder::DeckBuilder::from_menu(
+                                    self.client.clone(),
+                                    self.player_id,
+                                    self.player_name.clone(),
+                                    self.available_decks.clone(),
+                                ),
+                            ));
+                        }
+                    });
+                });
+                ui.add_space(10.0);
+
+                let saved = self.saved_decks.clone();
+                if saved.is_empty() {
+                    egui::Frame::new()
+                        .fill(Color32::from_rgb(20, 24, 38))
+                        .corner_radius(4.0)
+                        .inner_margin(egui::Margin::same(18))
+                        .show(ui, |ui| {
+                            ui.label(
+                                egui::RichText::new(
+                                    "No saved custom decks yet. Build one when you want to tune your own list.",
+                                )
+                                .color(Color32::from_rgb(150, 165, 195))
+                                .size(14.0),
+                            );
+                        });
+                    return;
+                }
+
+                egui::ScrollArea::vertical()
+                    .id_salt("saved_decks")
+                    .max_height(height - 76.0)
+                    .auto_shrink([false, false])
+                    .show(ui, |ui| {
+                        for (idx, deck_list) in saved.iter().enumerate() {
+                            self.render_saved_deck_row(ui, idx, deck_list.clone(), next_scene);
+                            ui.add_space(6.0);
+                        }
+                    });
+            });
+    }
+
+    fn render_saved_deck_row(
+        &mut self,
+        ui: &mut Ui,
+        idx: usize,
+        deck_list: DeckList,
+        next_scene: &mut Option<Scene>,
+    ) {
+        let selected = self.selected_saved_deck == Some(idx);
+        let fill = if selected {
+            Color32::from_rgb(36, 45, 66)
+        } else {
+            Color32::from_rgb(20, 24, 38)
+        };
+        egui::Frame::new()
+            .fill(fill)
+            .stroke(egui::Stroke::new(1.0, Color32::from_rgb(42, 52, 76)))
+            .corner_radius(4.0)
+            .inner_margin(egui::Margin::same(10))
+            .show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    let name_w = (ui.available_width() - 210.0).max(220.0);
+                    ui.vertical(|ui| {
+                        ui.set_width(name_w);
+                        let name_response = ui.selectable_label(
+                            selected,
+                            egui::RichText::new(&deck_list.name)
+                                .color(Color32::from_rgb(225, 235, 255))
+                                .size(16.0)
+                                .strong(),
+                        );
+                        if name_response.clicked() {
+                            self.selected_saved_deck = Some(idx);
+                        }
+                        let site_count: u32 = deck_list.sites.iter().map(|c| c.count as u32).sum();
+                        let spell_count: u32 =
+                            deck_list.spells.iter().map(|c| c.count as u32).sum();
+                        ui.label(
+                            egui::RichText::new(format!(
+                                "{} · {} spells · {} sites",
+                                deck_list.avatar, spell_count, site_count
+                            ))
+                            .color(Color32::from_rgb(130, 145, 180))
+                            .size(12.0),
+                        );
+                    });
+
+                    let play_btn = egui::Button::new(
+                        egui::RichText::new("▶ Play")
+                            .size(14.0)
+                            .color(Color32::WHITE),
+                    )
+                    .min_size(vec2(92.0, 34.0));
+                    if ui.add(play_btn).clicked() {
+                        self.selected_saved_deck = Some(idx);
+                        self.play_custom_deck(deck_list.clone());
+                    }
+
+                    let edit_btn = egui::Button::new(
+                        egui::RichText::new("✏ Edit")
+                            .size(14.0)
+                            .color(Color32::from_rgb(210, 225, 255)),
+                    )
+                    .min_size(vec2(92.0, 34.0));
+                    if ui.add(edit_btn).clicked() {
+                        self.selected_saved_deck = Some(idx);
+                        *next_scene = Some(Scene::DeckBuilder(
+                            crate::scene::deck_builder::DeckBuilder::from_deck_list(
+                                self.client.clone(),
+                                self.player_id,
+                                self.player_name.clone(),
+                                self.available_decks.clone(),
+                                deck_list,
+                            ),
+                        ));
+                    }
+                });
+            });
+    }
 
     pub fn process_message(&mut self, msg: &ServerMessage) -> Option<Scene> {
         match msg {
@@ -139,6 +465,39 @@ impl Menu {
             .frame(egui::Frame::NONE.fill(Color32::from_rgb(8, 8, 14)))
             .show_inside(ui, |ui| {
                 let panel_h = ui.available_height();
+                let deck_selection_visible =
+                    !self.available_decks.is_empty() && !self.looking_for_match;
+                if deck_selection_visible {
+                    egui::ScrollArea::vertical()
+                        .id_salt("deck_selection_screen")
+                        .auto_shrink([false, false])
+                        .show(ui, |ui| {
+                            ui.add_space(24.0);
+                            ui.vertical_centered(|ui| {
+                                ui.label(
+                                    egui::RichText::new("✦  Sorcerers  ✦")
+                                        .color(Color32::from_rgb(255, 200, 60))
+                                        .size(44.0)
+                                        .strong(),
+                                );
+                                ui.add_space(14.0);
+
+                                if self.client.is_in_local_mode() {
+                                    ui.label(
+                                        egui::RichText::new("⚠  Running in local mode")
+                                            .color(Color32::from_rgb(255, 165, 0))
+                                            .size(16.0),
+                                    );
+                                    ui.add_space(12.0);
+                                }
+
+                                self.render_deck_selection(ui, &mut next_scene);
+                            });
+                            ui.add_space(24.0);
+                        });
+                    return;
+                }
+
                 ui.add_space(panel_h * 0.18);
 
                 ui.vertical_centered(|ui| {
@@ -236,185 +595,7 @@ impl Menu {
                             }
                         }
                     } else {
-                        // ── Deck selection ────────────────────────────────────
-                        ui.label(
-                            egui::RichText::new("Choose a deck")
-                                .color(Color32::from_rgb(180, 180, 220))
-                                .size(26.0),
-                        );
-                        ui.add_space(16.0);
-
-                        // Precon decks
-                        for deck in self.available_decks.clone() {
-                            let btn = egui::Button::new(
-                                egui::RichText::new(deck.name())
-                                    .size(22.0)
-                                    .color(Color32::WHITE),
-                            )
-                            .min_size(vec2(280.0, 50.0));
-                            if ui.add(btn).clicked() {
-                                self.deck_error = None;
-                                self.client
-                                    .send(ClientMessage::JoinQueue {
-                                        player_name: self.player_name.clone(),
-                                        player_id: self.player_id.expect("player id should be set"),
-                                        deck: DeckChoice::Precon(deck),
-                                    })
-                                    .ok();
-                                self.looking_for_match = true;
-                            }
-                            ui.add_space(10.0);
-                        }
-
-                        // Saved custom decks — dropdown + play button
-                        let saved = self.saved_decks.clone();
-                        if !saved.is_empty() {
-                            ui.add_space(16.0);
-                            ui.label(
-                                egui::RichText::new("Custom Deck")
-                                    .color(Color32::from_rgb(140, 160, 200))
-                                    .size(16.0),
-                            );
-                            ui.add_space(6.0);
-
-                            let selected_label = self
-                                .selected_saved_deck
-                                .and_then(|i| saved.get(i))
-                                .map(|d| d.name.as_str())
-                                .unwrap_or("— select a deck —");
-
-                            // ComboBox doesn't respond to vertical_centered, so center manually
-                            let combo_w = 280.0_f32;
-                            let avail_w = ui.available_width();
-                            let padding = ((avail_w - combo_w) / 2.0).max(0.0);
-                            ui.horizontal(|ui| {
-                                ui.add_space(padding);
-                                egui::ComboBox::from_id_salt("saved_deck_combo")
-                                    .selected_text(
-                                        egui::RichText::new(selected_label)
-                                            .color(Color32::from_rgb(200, 230, 255))
-                                            .size(16.0),
-                                    )
-                                    .width(combo_w)
-                                    .show_ui(ui, |ui| {
-                                        for (i, deck_list) in saved.iter().enumerate() {
-                                            let is_sel = self.selected_saved_deck == Some(i);
-                                            ui.selectable_value(
-                                                &mut self.selected_saved_deck,
-                                                Some(i),
-                                                egui::RichText::new(&deck_list.name)
-                                                    .color(if is_sel {
-                                                        Color32::from_rgb(255, 210, 80)
-                                                    } else {
-                                                        Color32::from_rgb(200, 230, 255)
-                                                    })
-                                                    .size(15.0),
-                                            );
-                                        }
-                                    });
-                            });
-
-                            ui.add_space(8.0);
-
-                            let can_play = self.selected_saved_deck.is_some();
-
-                            // Play + Edit on the same row
-                            let btn_w = 136.0_f32;
-                            let gap = 8.0_f32;
-                            let total_w = btn_w * 2.0 + gap;
-                            let avail_w2 = ui.available_width();
-                            let left_pad = ((avail_w2 - total_w) / 2.0).max(0.0);
-
-                            ui.horizontal(|ui| {
-                                ui.add_space(left_pad);
-
-                                let play_btn = egui::Button::new(
-                                    egui::RichText::new("▶ Play").size(17.0).color(if can_play {
-                                        Color32::WHITE
-                                    } else {
-                                        Color32::from_rgb(100, 110, 140)
-                                    }),
-                                )
-                                .min_size(vec2(btn_w, 42.0));
-                                if ui.add_enabled(can_play, play_btn).clicked()
-                                    && let Some(idx) = self.selected_saved_deck
-                                    && let Some(deck_list) = saved.get(idx).cloned()
-                                {
-                                    match deck_list.validate() {
-                                        Ok(()) => {
-                                            self.deck_error = None;
-                                            self.client
-                                                .send(ClientMessage::JoinQueue {
-                                                    player_name: self.player_name.clone(),
-                                                    player_id: self
-                                                        .player_id
-                                                        .expect("player id should be set"),
-                                                    deck: DeckChoice::Custom(deck_list),
-                                                })
-                                                .ok();
-                                            self.looking_for_match = true;
-                                        }
-                                        Err(msg) => {
-                                            self.deck_error = Some(msg);
-                                        }
-                                    }
-                                }
-
-                                ui.add_space(gap);
-
-                                let edit_btn = egui::Button::new(
-                                    egui::RichText::new("✏ Edit").size(17.0).color(if can_play {
-                                        Color32::from_rgb(200, 220, 255)
-                                    } else {
-                                        Color32::from_rgb(100, 110, 140)
-                                    }),
-                                )
-                                .min_size(vec2(btn_w, 42.0));
-                                if ui.add_enabled(can_play, edit_btn).clicked()
-                                    && let Some(idx) = self.selected_saved_deck
-                                    && let Some(deck_list) = saved.get(idx).cloned()
-                                {
-                                    next_scene = Some(Scene::DeckBuilder(
-                                        crate::scene::deck_builder::DeckBuilder::from_deck_list(
-                                            self.client.clone(),
-                                            self.player_id,
-                                            self.player_name.clone(),
-                                            self.available_decks.clone(),
-                                            deck_list,
-                                        ),
-                                    ));
-                                }
-                            });
-                        }
-
-                        // Deck error message
-                        if let Some(ref err) = self.deck_error.clone() {
-                            ui.add_space(4.0);
-                            ui.label(
-                                egui::RichText::new(format!("⚠ {err}"))
-                                    .color(Color32::from_rgb(220, 80, 60))
-                                    .size(14.0),
-                            );
-                            ui.add_space(4.0);
-                        }
-
-                        ui.add_space(8.0);
-                        let build_btn = egui::Button::new(
-                            egui::RichText::new("🔨 Deck Builder")
-                                .size(20.0)
-                                .color(Color32::from_rgb(200, 220, 255)),
-                        )
-                        .min_size(vec2(280.0, 46.0));
-                        if ui.add(build_btn).clicked() {
-                            next_scene = Some(Scene::DeckBuilder(
-                                crate::scene::deck_builder::DeckBuilder::from_menu(
-                                    self.client.clone(),
-                                    self.player_id,
-                                    self.player_name.clone(),
-                                    self.available_decks.clone(),
-                                ),
-                            ));
-                        }
+                        self.render_deck_selection(ui, &mut next_scene);
                     }
                 });
             });

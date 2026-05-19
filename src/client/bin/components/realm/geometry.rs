@@ -14,7 +14,7 @@ pub(super) enum RealmViewMode {
 
 pub(super) fn realm_view_mode() -> RealmViewMode {
     REALM_VIEW_MODE
-        .get_or_init(|| RwLock::new(RealmViewMode::Perspective3d))
+        .get_or_init(|| RwLock::new(RealmViewMode::TopDown2d))
         .read()
         .map(|mode| *mode)
         .unwrap_or(RealmViewMode::Perspective3d)
