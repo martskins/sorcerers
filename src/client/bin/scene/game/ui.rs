@@ -23,12 +23,12 @@ impl Game {
             turn_color,
         );
 
-        let btn_pos = pos2(sr.max.x - 178.0, sr.max.y - theme::BUTTON_HEIGHT - 12.0);
-
         if is_in_turn && is_idle {
             let client = self.client.clone();
             let player_id = self.data.player_id;
             let game_id = self.game_id;
+            let btn_size = vec2(160.0, theme::BUTTON_HEIGHT);
+            let btn_pos = pos2(sr.max.x - btn_size.x - 18.0, 18.0);
             egui::Area::new(egui::Id::new("pass_turn_btn"))
                 .fixed_pos(btn_pos)
                 .show(ui, |ui| {
@@ -37,7 +37,7 @@ impl Game {
                             .size(18.0)
                             .color(Color32::WHITE),
                     )
-                    .min_size(vec2(160.0, theme::BUTTON_HEIGHT));
+                    .min_size(btn_size);
                     if ui.add(btn).clicked() {
                         client
                             .send(ClientMessage::EndTurn { player_id, game_id })
@@ -50,6 +50,8 @@ impl Game {
         ) || self.data.status == Status::Mulligan
         {
             let mut done = false;
+            let btn_size = vec2(180.0, theme::BUTTON_HEIGHT);
+            let btn_pos = pos2(sr.max.x - btn_size.x - 18.0, 18.0);
             egui::Area::new(egui::Id::new("done_selecting_btn"))
                 .fixed_pos(btn_pos)
                 .show(ui, |ui| {
@@ -58,7 +60,7 @@ impl Game {
                             .size(18.0)
                             .color(Color32::WHITE),
                     )
-                    .min_size(vec2(180.0, theme::BUTTON_HEIGHT));
+                    .min_size(btn_size);
                     if ui.add(btn).clicked() {
                         done = true;
                     }

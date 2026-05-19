@@ -1,5 +1,5 @@
 use crate::scene::{Scene, game::Game};
-use egui::{Color32, Context, Frame, Ui, vec2};
+use egui::{Color32, Context, Ui, vec2};
 use kira::{
     AudioManager, AudioManagerSettings, DefaultBackend, sound::static_sound::StaticSoundData,
 };
@@ -23,6 +23,8 @@ pub struct Menu {
     deck_error: Option<String>,
     looking_for_match: bool,
     player_name: String,
+    connect_requested: bool,
+    #[cfg(feature = "name-entry")]
     /// Time (seconds, from `ctx.input`) when the shake was triggered.
     shake_start: Option<f64>,
     /// True while the name field is empty after a failed submit attempt.
@@ -40,6 +42,8 @@ impl Menu {
             deck_error: None,
             looking_for_match: false,
             player_name: String::new(),
+            connect_requested: false,
+            #[cfg(feature = "name-entry")]
             shake_start: None,
             show_name_error: false,
         }
@@ -61,6 +65,8 @@ impl Menu {
             deck_error: None,
             looking_for_match: false,
             player_name,
+            connect_requested: false,
+            #[cfg(feature = "name-entry")]
             shake_start: None,
             show_name_error: false,
         }
@@ -401,6 +407,7 @@ impl Menu {
             } => {
                 self.available_decks = available_decks.clone();
                 self.player_id = Some(*player_id);
+                self.connect_requested = false;
                 None
             }
             ServerMessage::GameStarted {
@@ -439,7 +446,7 @@ impl Menu {
     pub fn render(&mut self, ui: &mut Ui) -> Option<Scene> {
         let time = ui.ctx().input(|i| i.time);
 
-        // ── Shake calculation (decaying sine, 0.45 s duration) ───────────────
+        #[cfg(feature = "name-entry")]
         let shake_x: f32 = if let Some(start) = self.shake_start {
             let elapsed = (time - start) as f32;
             if elapsed < 0.45 {
@@ -457,6 +464,12 @@ impl Menu {
         // Clear error state once the user has typed something
         if !self.player_name.is_empty() {
             self.show_name_error = false;
+        }
+
+        #[cfg(not(feature = "name-entry"))]
+        if self.player_id.is_none() && !self.connect_requested {
+            self.client.send(ClientMessage::Connect).ok();
+            self.connect_requested = true;
         }
 
         let mut next_scene: Option<Scene> = None;
@@ -528,6 +541,8 @@ impl Menu {
                                 .size(28.0),
                         );
                     } else if self.available_decks.is_empty() {
+                        #[cfg(feature = "name-entry")]
+                        {
                         // ── Name entry ────────────────────────────────────────
                         ui.label(
                             egui::RichText::new("Enter your name")
@@ -549,7 +564,7 @@ impl Menu {
                             .text_color(Color32::DARK_GRAY)
                             .hint_text("Your name…")
                             .frame(
-                                Frame::new()
+                                egui::Frame::new()
                                     .corner_radius(2.5)
                                     .stroke(egui::Stroke::new(2.0, Color32::GRAY)),
                             );
@@ -593,6 +608,16 @@ impl Menu {
                             } else {
                                 self.client.send(ClientMessage::Connect).ok();
                             }
+                        }
+                        }
+
+                        #[cfg(not(feature = "name-entry"))]
+                        {
+                            ui.label(
+                                egui::RichText::new("Connecting...")
+                                    .color(Color32::WHITE)
+                                    .size(28.0),
+                            );
                         }
                     } else {
                         self.render_deck_selection(ui, &mut next_scene);

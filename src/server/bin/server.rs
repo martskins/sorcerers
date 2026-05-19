@@ -24,10 +24,13 @@ pub struct Server {
     /// When `true` every `Sync` message sent to clients carries a board
     /// evaluation.  Enable with the `--eval` flag or `SORCERERS_DEBUG_EVAL=1`.
     pub debug_eval: bool,
+    /// When `true`, seed newly-created games with the local development test board.
+    /// Enable with `--test-state` or `SORCERERS_TEST_STATE=1`.
+    pub test_state: bool,
 }
 
 impl Server {
-    pub fn new(debug_eval: bool) -> Self {
+    pub fn new(debug_eval: bool, test_state: bool) -> Self {
         Self {
             looking_for_match: Vec::new(),
             streams: HashMap::new(),
@@ -35,6 +38,7 @@ impl Server {
             game_players: HashMap::new(),
             addr_to_player: HashMap::new(),
             debug_eval,
+            test_state,
         }
     }
 
@@ -166,7 +170,9 @@ impl Server {
         self.game_players
             .insert(game.id, vec![player1.clone(), player2.clone()]);
 
-        self.setup_test_state(&mut game);
+        if self.test_state {
+            self.setup_test_state(&mut game);
+        }
         tokio::spawn(async move {
             game.start().await.expect("game to start");
         });

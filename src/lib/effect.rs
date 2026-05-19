@@ -276,8 +276,15 @@ pub enum Effect {
 }
 
 fn player_name<'a>(player_id: &PlayerId, state: &'a State) -> &'a str {
-    match state.players.iter().find(|p| &p.id == player_id) {
-        Some(player) => &player.name,
+    match state
+        .players
+        .iter()
+        .enumerate()
+        .find(|(_, p)| &p.id == player_id)
+    {
+        Some((idx, player)) if player.name.trim().is_empty() && idx == 0 => "Player 1",
+        Some((_, player)) if player.name.trim().is_empty() => "Player 2",
+        Some((_, player)) => &player.name,
         None => "Unknown Player",
     }
 }
