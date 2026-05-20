@@ -56,11 +56,26 @@ pub struct DeckList {
 
 impl DeckList {
     pub fn save(&self) -> anyhow::Result<()> {
-        let filepath = format!("decks/{}.json", self.name);
+        let filepath = std::path::Path::new("decks").join(self.safe_filename()?);
         std::fs::create_dir_all("decks")?;
         let file = std::fs::File::create(filepath)?;
         serde_json::to_writer_pretty(file, self)?;
         Ok(())
+    }
+
+    fn safe_filename(&self) -> anyhow::Result<String> {
+        let name = self.name.trim();
+        if name.is_empty()
+            || name == "."
+            || name == ".."
+            || name.contains('/')
+            || name.contains('\\')
+            || name.chars().any(char::is_control)
+        {
+            return Err(anyhow::anyhow!("Invalid deck name: \"{}\".", self.name));
+        }
+
+        Ok(format!("{name}.json"))
     }
 
     /// Load all deck lists from the `decks/` directory.
@@ -89,6 +104,9 @@ impl DeckList {
 
         if self.name.is_empty() {
             return Err("Deck name cannot be empty.".to_string());
+        }
+        if let Err(err) = self.safe_filename() {
+            return Err(err.to_string());
         }
         if self.avatar.is_empty() {
             return Err("Please select an avatar.".to_string());
