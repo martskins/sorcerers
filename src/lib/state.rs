@@ -294,6 +294,56 @@ impl State {
         }
     }
 
+    /// validate_client_message checks that the message contains valid references to game entities
+    /// (e.g. card ids). It should be called before processing a message from the client, and can be
+    /// used to catch client bugs or malicious messages.
+    pub(super) fn validate_client_message(&self, msg: &ClientMessage) -> anyhow::Result<()> {
+        // Validate that the message is for the correct game.
+        if self.game_id != msg.game_id() {
+            return Err(anyhow::anyhow!(
+                "message game id {} does not match state game id {}",
+                msg.game_id(),
+                self.game_id
+            ));
+        }
+
+        // Validate that the player is in the game.
+        if self
+            .players
+            .iter()
+            .find(|p| &p.id == msg.player_id())
+            .is_none()
+        {
+            return Err(anyhow::anyhow!(
+                "message player id {} does not match any player in state",
+                msg.player_id()
+            ));
+        }
+
+        // Validate that all cards mentioned in the message exist in the game.
+        match msg {
+            ClientMessage::ClickCard { card_id, .. }
+            | ClientMessage::RequestPlayableZones { card_id, .. }
+            | ClientMessage::PlayCardAtZone { card_id, .. }
+            | ClientMessage::PickCard { card_id, .. } => {
+                self.cards
+                    .get(card_id)
+                    .ok_or(anyhow::anyhow!("invalid card id"))?;
+                Ok(())
+            }
+            ClientMessage::PickCards { card_ids, .. } => {
+                for card_id in card_ids {
+                    self.cards
+                        .get(card_id)
+                        .ok_or(anyhow::anyhow!("invalid card id"))?;
+                }
+
+                Ok(())
+            }
+            _ => Ok(()),
+        }
+    }
+
     pub fn find_caster(&self, spell_id: &uuid::Uuid) -> Option<uuid::Uuid> {
         self.effect_log().iter().find_map(|e| match e.effect {
             Effect::PlayMagic {

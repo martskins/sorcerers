@@ -1,7 +1,7 @@
 use crate::{
     card::{
         Ability, ApprenticeWizard, AridDesert, Card, Enchantress, FootSoldier, OgreGoons, Region,
-        SeaRaider, from_name_and_zone,
+        SeaRaider, VaultsOfZul, from_name_and_zone,
     },
     deck::Deck,
     effect::{
@@ -80,6 +80,73 @@ async fn drain_effects(state: &mut State) {
         .apply_effects_without_log()
         .await
         .expect("effect queue should drain without error");
+}
+
+#[tokio::test]
+async fn test_vaults_of_zul_triggers_on_stop_not_intermediate_enter() {
+    let (mut state, _rx) = make_state(vec![]);
+    let player_id = state.players[0].id;
+    let avatar_id = state.get_player_avatar_id(&player_id).unwrap();
+    state
+        .get_card_mut(&avatar_id)
+        .set_zone(Zone::Realm(1, Region::Surface));
+
+    let mut vaults = VaultsOfZul::new(player_id);
+    let vaults_id = *vaults.get_id();
+    vaults.set_zone(Zone::Realm(2, Region::Surface));
+    state.cards.insert(vaults_id, Box::new(vaults));
+
+    Effect::MoveCard {
+        player_id,
+        card_id: avatar_id,
+        from: Zone::Realm(1, Region::Surface),
+        to: ZoneQuery::from_zone(Zone::Realm(3, Region::Surface)),
+        tap: false,
+        region: Region::Surface,
+        through_path: Some(vec![
+            Zone::Realm(2, Region::Surface),
+            Zone::Realm(3, Region::Surface),
+        ]),
+    }
+    .apply(&mut state)
+    .await
+    .unwrap();
+
+    assert!(
+        !state
+            .effects
+            .iter()
+            .any(|effect| matches!(effect, Effect::SkipNextTurn { player_id: skipped } if skipped == &player_id)),
+        "Vaults of Zul should not trigger when an Avatar only enters it mid-movement"
+    );
+
+    state.get_card_mut(&vaults_id).set_zone(Zone::Realm(3, Region::Surface));
+    state
+        .get_card_mut(&avatar_id)
+        .set_zone(Zone::Realm(1, Region::Surface));
+    Effect::MoveCard {
+        player_id,
+        card_id: avatar_id,
+        from: Zone::Realm(1, Region::Surface),
+        to: ZoneQuery::from_zone(Zone::Realm(3, Region::Surface)),
+        tap: false,
+        region: Region::Surface,
+        through_path: Some(vec![
+            Zone::Realm(2, Region::Surface),
+            Zone::Realm(3, Region::Surface),
+        ]),
+    }
+    .apply(&mut state)
+    .await
+    .unwrap();
+
+    assert!(
+        state
+            .effects
+            .iter()
+            .any(|effect| matches!(effect, Effect::SkipNextTurn { player_id: skipped } if skipped == &player_id)),
+        "Vaults of Zul should trigger when an Avatar stops there"
+    );
 }
 
 #[tokio::test]

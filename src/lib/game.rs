@@ -1765,6 +1765,7 @@ impl Game {
     }
 
     async fn handle_message(&mut self, message: &ClientMessage) -> anyhow::Result<()> {
+        self.state.validate_client_message(message)?;
         self.maybe_unblock_effects(message);
         match message {
             ClientMessage::PlayerDisconnected { player_id, .. } => {

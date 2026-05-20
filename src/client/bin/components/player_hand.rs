@@ -292,11 +292,7 @@ impl Component for PlayerHandComponent {
             })
         });
 
-        if hover_card || dragging {
-            self.expanded = true;
-        } else {
-            self.expanded = false;
-        }
+        self.expanded = hover_card || dragging;
 
         let target = if self.expanded { 1.0 } else { 0.0 };
         let step = ui.ctx().input(|i| i.stable_dt).max(1.0 / 120.0) * 9.0;
