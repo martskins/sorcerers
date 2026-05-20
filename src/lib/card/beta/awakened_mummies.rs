@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::{prelude::*, query::entered_zones};
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]
@@ -42,19 +42,32 @@ impl AwakenedMummies {
         let zone = self.get_zone().clone();
 
         Ok(DeferredEffect {
-            trigger_on_effect: EffectQuery::EnterZone {
+            trigger_on_effect: EffectQuery::EnterSite {
                 card: CardQuery::new().units().controlled_by(&opponent_id),
-                zone: ZoneQuery::from_zone(zone.with_region(Region::Surface)),
+                site: self.get_zone().into(),
             },
             expires_on_effect: Some(EffectQuery::BuryCard {
                 card: self.get_id().into(),
             }),
             on_effect: Arc::new(
-                move |state: &State, card_id: &uuid::Uuid, _effect: &Effect| {
+                move |state: &State, card_id: &uuid::Uuid, effect: &Effect| {
                     let mummy_id = mummy_id;
+                    let zone = zone.clone();
                     Box::pin(async move {
                         let mummy = state.get_card(&mummy_id);
                         if mummy.get_region(state) != &Region::Underground {
+                            return Ok(vec![]);
+                        }
+
+                        let entered_ground_above = entered_zones(effect, state)
+                            .await?
+                            .into_iter()
+                            .any(|(entered_card_id, entered_zone)| {
+                                entered_card_id == *card_id
+                                    && entered_zone == zone.with_region(Region::Surface)
+                            });
+
+                        if !entered_ground_above {
                             return Ok(vec![]);
                         }
 

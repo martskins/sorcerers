@@ -48,9 +48,9 @@ impl Site for PlanarGate {
             counter: AbilityCounter {
                 id: uuid::Uuid::new_v4(),
                 ability: Ability::Voidwalk,
-                expires_on_effect: Some(EffectQuery::EnterZone {
+                expires_on_effect: Some(EffectQuery::EnterSite {
                     card: card_id.into(),
-                    zone: ZoneQuery::any_site(None, None),
+                    site: ZoneQuery::any_site(None, None),
                 }),
             },
         }]

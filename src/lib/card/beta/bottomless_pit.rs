@@ -1,5 +1,4 @@
 use crate::prelude::*;
-use std::{future::Future, pin::Pin, sync::Arc};
 
 #[derive(Debug, Clone)]
 pub struct BottomlessPit {
@@ -34,37 +33,23 @@ impl BottomlessPit {
             },
         }
     }
-
-    fn kill_non_airborne_trigger(&self) -> DeferredEffect {
-        let my_zone = self.get_zone().clone();
-        DeferredEffect {
-            trigger_on_effect: EffectQuery::EnterZone {
-                card: CardQuery::new().minions(),
-                zone: ZoneQuery::from_zone(my_zone),
-            },
-            expires_on_effect: Some(EffectQuery::BuryCard {
-                card: self.get_id().into(),
-            }),
-            on_effect: Arc::new(
-                move |state: &State, card_id: &uuid::Uuid, _effect: &Effect| {
-                    let card_id = *card_id;
-                    Box::pin(async move {
-                        let card = state.get_card(&card_id);
-                        if card.has_ability(state, &Ability::Airborne) {
-                            return Ok(vec![]);
-                        }
-                        Ok(vec![Effect::BuryCard { card_id }])
-                    })
-                        as Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>>
-                },
-            ),
-            multitrigger: true,
-        }
-    }
 }
 
 #[async_trait::async_trait]
-impl Site for BottomlessPit {}
+impl Site for BottomlessPit {
+    fn on_card_enter(&self, state: &State, card_id: &uuid::Uuid) -> Vec<Effect> {
+        let card = state.get_card(card_id);
+        if !card.is_minion() || card.has_ability(state, &Ability::Airborne) {
+            return vec![];
+        }
+
+        vec![Effect::KillMinion {
+            card_id: *card_id,
+            killer_id: *self.get_id(),
+            from_attack: false,
+        }]
+    }
+}
 
 impl ResourceProvider for BottomlessPit {}
 
@@ -92,12 +77,6 @@ impl Card for BottomlessPit {
 
     fn get_site_base_mut(&mut self) -> Option<&mut SiteBase> {
         Some(&mut self.site_base)
-    }
-
-    async fn genesis(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
-        Ok(vec![Effect::AddDeferredEffect {
-            effect: self.kill_non_airborne_trigger(),
-        }])
     }
 
     fn get_site(&self) -> Option<&dyn Site> {

@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        Ability, ApprenticeWizard, AridDesert, Card, Enchantress, FootSoldier, OgreGoons, Region,
-        SeaRaider, VaultsOfZul, from_name_and_zone,
+        Ability, ApprenticeWizard, AridDesert, BottomlessPit, Card, Enchantress, FootSoldier,
+        OgreGoons, PhaseAssassin, Region, SeaRaider, VaultsOfZul, from_name_and_zone,
     },
     deck::Deck,
     effect::{
@@ -9,7 +9,7 @@ use crate::{
         TokenType,
     },
     networking::message::ServerMessage,
-    query::{CardQuery, EffectQuery, QueryCache, ZoneQuery},
+    query::{CardQuery, EffectQuery, QueryCache, ZoneQuery, entered_sites, entered_zones},
     state::{Player, PlayerWithDeck, State},
     zone::Zone,
 };
@@ -146,6 +146,111 @@ async fn test_vaults_of_zul_triggers_on_stop_not_intermediate_enter() {
             .iter()
             .any(|effect| matches!(effect, Effect::SkipNextTurn { player_id: skipped } if skipped == &player_id)),
         "Vaults of Zul should trigger when an Avatar stops there"
+    );
+}
+
+#[tokio::test]
+async fn test_enter_site_triggers_when_card_is_summoned_there() {
+    let (mut state, _rx) = make_state(vec![]);
+    let player_id = state.players[0].id;
+
+    let mut pit = BottomlessPit::new(player_id);
+    let pit_id = *pit.get_id();
+    pit.set_zone(Zone::Realm(1, Region::Surface));
+    state.cards.insert(pit_id, Box::new(pit));
+
+    let ogre = OgreGoons::new(player_id);
+    let ogre_id = *ogre.get_id();
+    state.cards.insert(ogre_id, Box::new(ogre));
+
+    state.queue_one(Effect::SummonCard {
+        player_id,
+        card_id: ogre_id,
+        zone: Zone::Realm(1, Region::Surface),
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(
+        state.get_card(&ogre_id).get_zone(),
+        &Zone::Cemetery,
+        "Bottomless Pit should trigger when a minion is summoned into it"
+    );
+}
+
+#[tokio::test]
+async fn test_phase_assassin_keeps_stealth_after_entering_void() {
+    let (mut state, _rx) = make_state(vec![
+        Zone::Realm(1, Region::Surface),
+        Zone::Realm(3, Region::Surface),
+    ]);
+    let player_id = state.players[0].id;
+
+    let mut assassin = PhaseAssassin::new(player_id);
+    let assassin_id = *assassin.get_id();
+    assassin.set_zone(Zone::Realm(1, Region::Surface));
+    state.cards.insert(assassin_id, Box::new(assassin));
+
+    state.queue_one(Effect::MoveCard {
+        player_id,
+        card_id: assassin_id,
+        from: Zone::Realm(1, Region::Surface),
+        to: ZoneQuery::from_zone(Zone::Realm(2, Region::Surface)),
+        tap: false,
+        region: Region::Surface,
+        through_path: None,
+    });
+    drain_effects(&mut state).await;
+
+    assert!(
+        state
+            .get_card(&assassin_id)
+            .has_ability(&state, &Ability::Stealth),
+        "Phase Assassin should gain Stealth when entering the void"
+    );
+
+    state.queue_one(Effect::MoveCard {
+        player_id,
+        card_id: assassin_id,
+        from: Zone::Realm(2, Region::Surface),
+        to: ZoneQuery::from_zone(Zone::Realm(3, Region::Surface)),
+        tap: false,
+        region: Region::Surface,
+        through_path: None,
+    });
+    drain_effects(&mut state).await;
+
+    assert!(
+        state
+            .get_card(&assassin_id)
+            .has_ability(&state, &Ability::Stealth),
+        "Phase Assassin's gained Stealth should not disappear just because it leaves the void"
+    );
+}
+
+#[tokio::test]
+async fn test_region_changes_enter_location_but_not_site() {
+    let (state, _rx) = make_state(vec![Zone::Realm(1, Region::Surface)]);
+    let player_id = state.players[0].id;
+    let card_id = state.get_player_avatar_id(&player_id).unwrap();
+
+    let effect = Effect::MoveCard {
+        player_id,
+        card_id,
+        from: Zone::Realm(1, Region::Surface),
+        to: ZoneQuery::from_zone(Zone::Realm(1, Region::Underground)),
+        tap: false,
+        region: Region::Underground,
+        through_path: None,
+    };
+
+    assert_eq!(
+        entered_zones(&effect, &state).await.unwrap(),
+        vec![(card_id, Zone::Realm(1, Region::Underground))],
+        "changing regions on the same realm square should count as entering a new location"
+    );
+    assert!(
+        entered_sites(&effect, &state).await.unwrap().is_empty(),
+        "changing regions on the same realm square should not count as entering a new site"
     );
 }
 

@@ -1,6 +1,6 @@
 use std::{future::Future, pin::Pin, sync::Arc};
 
-use crate::prelude::*;
+use crate::{prelude::*, query::entered_sites};
 
 #[derive(Debug, Clone)]
 pub struct MarinersCurse {
@@ -62,33 +62,31 @@ impl Card for MarinersCurse {
         Some(self)
     }
 
-    fn on_summon(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
+    fn on_summon(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let aura_id = *self.get_id();
 
+        let affected_zones = self.get_affected_zones(state);
+        let affected_water_sites = CardQuery::new()
+            .water_sites()
+            .in_zones(&affected_zones)
+            .all(state);
+        let zones = affected_water_sites
+            .into_iter()
+            .map(|site_id| state.get_card(&site_id).get_zone().clone())
+            .collect::<Vec<_>>();
         Ok(vec![Effect::AddDeferredEffect {
             effect: DeferredEffect {
-                trigger_on_effect: EffectQuery::MoveCard {
+                trigger_on_effect: EffectQuery::EnterSite {
                     card: CardQuery::new().minions(),
+                    site: ZoneQuery::from_options(zones, None),
                 },
                 expires_on_effect: Some(EffectQuery::BuryCard {
                     card: aura_id.into(),
                 }),
                 multitrigger: false,
                 on_effect: Arc::new(
-                    move |state: &State, _minion_id: &uuid::Uuid, effect: &Effect| {
+                    move |state: &State, card_id: &uuid::Uuid, effect: &Effect| {
                         Box::pin(async move {
-                            let Effect::MoveCard {
-                                card_id,
-                                to,
-                                player_id,
-                                ..
-                            } = effect
-                            else {
-                                return Ok(vec![]);
-                            };
-
-                            let to_zone = to.pick(player_id, state).await?;
-
                             // Check if aura is still in play.
                             if !state.get_card(&aura_id).get_zone().is_in_play() {
                                 return Ok(vec![]);
@@ -102,16 +100,20 @@ impl Card for MarinersCurse {
                                 return Ok(vec![]);
                             };
 
-                            if !affected_zones.contains(&to_zone) {
-                                return Ok(vec![]);
-                            }
+                            let entered_affected_water = entered_sites(effect, state)
+                                .await?
+                                .into_iter()
+                                .filter(|(entered_card_id, _)| entered_card_id == card_id)
+                                .map(|(_, site_zone)| site_zone)
+                                .any(|site_zone| {
+                                    affected_zones.contains(&site_zone)
+                                        && site_zone
+                                            .get_site(state)
+                                            .and_then(|site| site.is_water_site(state).ok())
+                                            .unwrap_or(false)
+                                });
 
-                            // Check if destination is a water site.
-                            let is_water = to_zone
-                                .get_site(state)
-                                .and_then(|s| s.is_water_site(state).ok())
-                                .unwrap_or(false);
-                            if !is_water {
+                            if !entered_affected_water {
                                 return Ok(vec![]);
                             }
 

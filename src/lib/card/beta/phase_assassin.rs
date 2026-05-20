@@ -62,16 +62,28 @@ impl Card for PhaseAssassin {
         Some(&mut self.unit_base)
     }
 
-    /// Phase Assassin has Stealth whenever it occupies a void zone (no site).
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
-        if self.get_zone().get_site(state).is_none() && self.get_zone().is_in_play() {
-            Ok(vec![ContinuousEffect::GrantAbility {
-                ability: Ability::Stealth,
-                affected_cards: CardQuery::from_id(*self.get_id()),
-            }])
-        } else {
-            Ok(vec![])
+    async fn on_visit_zone(
+        &self,
+        state: &State,
+        from: &Zone,
+        to: &Zone,
+    ) -> anyhow::Result<Vec<Effect>> {
+        if from == to || to.get_site(state).is_some() || !to.is_in_play() {
+            return Ok(vec![]);
         }
+
+        if self.has_ability(state, &Ability::Stealth) {
+            return Ok(vec![]);
+        }
+
+        Ok(vec![Effect::AddAbilityCounter {
+            card_id: *self.get_id(),
+            counter: AbilityCounter {
+                id: uuid::Uuid::new_v4(),
+                ability: Ability::Stealth,
+                expires_on_effect: None,
+            },
+        }])
     }
 }
 

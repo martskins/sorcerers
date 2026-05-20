@@ -153,9 +153,15 @@ impl EffectLifecycle {
         let mut effects_to_remove = vec![];
         let deferred_effects = state.deferred_effects().to_vec();
         for (idx, de) in deferred_effects.iter().enumerate() {
-            if de.trigger_on_effect.matches(effect, state).await? {
-                if let Some(source_id) = effect.source_id() {
-                    let effects = (de.on_effect)(state, source_id, effect).await?;
+            let source_ids = de.trigger_on_effect.source_ids(effect, state).await?;
+            if !source_ids.is_empty() {
+                let source_ids = if de.multitrigger {
+                    source_ids
+                } else {
+                    source_ids.into_iter().take(1).collect()
+                };
+                for source_id in source_ids {
+                    let effects = (de.on_effect)(state, &source_id, effect).await?;
                     state.queue(effects);
                 }
 

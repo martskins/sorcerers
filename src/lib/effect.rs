@@ -3,7 +3,7 @@ use crate::{
     card::{Ability, Card, Cost, Damage, FootSoldier, Frog, Region, Rubble, UnitBase},
     game::{BaseAction, Direction, PlayerAction, PlayerId, SoundEffect, pick_card, pick_option},
     networking::message::ServerMessage,
-    query::{CardQuery, EffectQuery, QueryCache, ZoneQuery},
+    query::{CardQuery, EffectQuery, QueryCache, ZoneQuery, entered_site},
     state::{ContinuousEffect, Phase, State, Turn},
 };
 use std::fmt::Debug;
@@ -1072,7 +1072,7 @@ impl Effect {
                             // Move carried minions along with the carrier
                             let carried_cards = CardQuery::new().carried_by(card_id).all(state);
                             for cid in &carried_cards {
-                                let carried_card = state.get_card_mut(&cid);
+                                let carried_card = state.get_card_mut(cid);
                                 carried_card.set_zone(zone.clone());
                                 carried_card.set_region(region.clone());
                             }
@@ -1084,12 +1084,14 @@ impl Effect {
                                 effects.extend(
                                     card.on_visit_zone(&snapshot, &from_zone, &zone).await?,
                                 );
-                                if let Some(site) = zone.get_site(state) {
+                                if let Some(site_zone) = entered_site(&from_zone, &zone, state)
+                                    && let Some(site) = site_zone.get_site(state)
+                                {
                                     effects.extend(site.on_card_enter(state, card_id));
                                 }
 
                                 if idx + 1 == path.len()
-                                    && let Some(site) = zone.get_site(state)
+                                    && let Some(site) = zone.get_site_at_square(state)
                                 {
                                     effects.extend(site.on_card_stop(state, card_id));
                                     for cid in &carried_cards {
@@ -1115,7 +1117,7 @@ impl Effect {
                         // Move carried minions along with the carrier
                         let carried_cards = CardQuery::new().carried_by(card_id).all(state);
                         for cid in &carried_cards {
-                            let carried_card = state.get_card_mut(&cid);
+                            let carried_card = state.get_card_mut(cid);
                             carried_card.set_zone(zone.clone());
                             carried_card.set_region(region.clone());
                         }
@@ -1125,8 +1127,12 @@ impl Effect {
                         let mut effects = card.on_move(&snapshot, &path).await?;
                         if from_zone != zone {
                             effects.extend(card.on_visit_zone(&snapshot, &from_zone, &zone).await?);
-                            if let Some(site) = zone.get_site(state) {
+                            if let Some(site_zone) = entered_site(&from_zone, &zone, state)
+                                && let Some(site) = site_zone.get_site(state)
+                            {
                                 effects.extend(site.on_card_enter(state, card_id));
+                            }
+                            if let Some(site) = zone.get_site_at_square(state) {
                                 effects.extend(site.on_card_stop(state, card_id));
                                 for cid in &carried_cards {
                                     effects.extend(site.on_card_stop(state, cid));
@@ -1296,6 +1302,9 @@ impl Effect {
                     effects.extend(card.on_summon(state)?);
                     effects.extend(card.genesis(state).await?);
                     effects.extend(card.on_visit_zone(state, &from_zone, zone).await?);
+                    if let Some(site) = zone.get_site_at_square(state) {
+                        effects.extend(site.on_card_enter(state, card_id));
+                    }
                 }
 
                 state.queue(effects);
@@ -1324,6 +1333,9 @@ impl Effect {
                 effects.extend(card.on_summon(state)?);
                 effects.extend(card.genesis(state).await?);
                 effects.extend(card.on_visit_zone(state, &from_zone, zone).await?);
+                if let Some(site) = zone.get_site_at_square(state) {
+                    effects.extend(site.on_card_enter(state, card_id));
+                }
 
                 state.queue(effects);
             }

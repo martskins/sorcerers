@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::{prelude::*, query::entered_sites};
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]
@@ -69,28 +69,49 @@ impl Card for GiantShark {
         };
 
         Ok(vec![ContinuousEffect::TriggeredEffect {
-            trigger_on_effect: EffectQuery::MoveCard {
+            trigger_on_effect: EffectQuery::EnterSite {
                 card: CardQuery::new().units(),
+                site: ZoneQuery::from_options(body_of_water.clone(), None),
             },
             on_effect: Arc::new(
                 move |state: &State, card_id: &uuid::Uuid, effect: &Effect| {
-                    let player_id = state.get_card(card_id).get_controller_id(state);
                     let body_of_water = body_of_water.clone();
                     Box::pin(async move {
-                        match effect {
-                            Effect::MoveCard { to, .. } => {
-                                let moved_to = to.pick(&player_id, state).await.unwrap_or_default();
-                                if !body_of_water.contains(&moved_to) {
-                                    return Ok(vec![]);
-                                }
-
-                                Ok(vec![Effect::Attack {
-                                    attacker_id: shark_id,
-                                    defender_id: *card_id,
-                                }])
-                            }
-                            _ => Ok(vec![]),
+                        if card_id == &shark_id {
+                            return Ok(vec![]);
                         }
+
+                        let entered_this_body = entered_sites(effect, state)
+                            .await?
+                            .into_iter()
+                            .filter(|(entered_card_id, _)| entered_card_id == card_id)
+                            .any(|(_, site_zone)| body_of_water.contains(&site_zone));
+
+                        if !entered_this_body {
+                            return Ok(vec![]);
+                        }
+
+                        let shark = state.get_card(&shark_id);
+                        let shark_zone = shark.get_zone().clone();
+                        let target_zone = state.get_card(card_id).get_zone().clone();
+                        let mut effects = vec![Effect::Attack {
+                            attacker_id: shark_id,
+                            defender_id: *card_id,
+                        }];
+
+                        if shark_zone != target_zone {
+                            effects.push(Effect::MoveCard {
+                                player_id: shark.get_controller_id(state),
+                                card_id: shark_id,
+                                from: shark_zone,
+                                to: ZoneQuery::from_zone(target_zone),
+                                tap: false,
+                                region: Region::Underwater,
+                                through_path: None,
+                            });
+                        }
+
+                        Ok(effects)
                     })
                 },
             ),
