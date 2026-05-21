@@ -36,7 +36,7 @@ impl VanguardKnights {
 
     fn front_score(card: &dyn Card, state: &State) -> Option<u8> {
         match card.get_zone() {
-            Zone::Realm(square, _) => Some(*square),
+            Zone::Location(square, _) => Some(*square),
             Zone::Intersection(squares, _) => {
                 if card.get_controller_id(state) == state.player_one {
                     squares.iter().copied().max()

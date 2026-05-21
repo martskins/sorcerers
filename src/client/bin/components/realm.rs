@@ -20,9 +20,9 @@ use sorcerers::{
 mod geometry;
 
 use geometry::{
-    board_corners, card_rotation, cell_corners, cell_inner_rect, cell_rect, intersection_rect,
-    project_rect_in_cell, projected_card_dimensions, realm_view_mode, set_realm_view_mode,
-    site_dimensions, spell_dimensions, RealmViewMode,
+    RealmViewMode, board_corners, card_rotation, cell_corners, cell_inner_rect, cell_rect,
+    intersection_rect, project_rect_in_cell, projected_card_dimensions, realm_view_mode,
+    set_realm_view_mode, site_dimensions, spell_dimensions,
 };
 
 static OCCUPIED_ZONE_BACKGROUND_COLOR: Color32 =
@@ -51,7 +51,9 @@ impl RealmCardFilter {
     fn includes(self, card: &CardData) -> bool {
         match self {
             RealmCardFilter::All => true,
-            RealmCardFilter::Surface => matches!(card.zone_region(), Some(Region::Surface | Region::Void)),
+            RealmCardFilter::Surface => {
+                matches!(card.zone_region(), Some(Region::Surface | Region::Void))
+            }
             RealmCardFilter::Underground => card.zone_region() == Some(Region::Underground),
             RealmCardFilter::Underwater => card.zone_region() == Some(Region::Underwater),
         }
@@ -65,7 +67,7 @@ trait RealmCardRegion {
 impl RealmCardRegion for CardData {
     fn zone_region(&self) -> Option<Region> {
         match &self.zone {
-            Zone::Realm(_, region) | Zone::Intersection(_, region) => Some(region.clone()),
+            Zone::Location(_, region) | Zone::Intersection(_, region) => Some(region.clone()),
             _ => None,
         }
     }
@@ -165,14 +167,11 @@ impl RealmComponent {
         self.intersection_rects = Zone::all_intersections()
             .into_iter()
             .filter_map(|z| match z {
-                Zone::Intersection(locs, _) => {
-                    intersection_rect(&self.rect, &locs, self.mirrored).map(|r| {
-                        IntersectionRect {
-                            locations: locs,
-                            rect: r,
-                        }
-                    })
-                }
+                Zone::Intersection(locs, _) => intersection_rect(&self.rect, &locs, self.mirrored)
+                    .map(|r| IntersectionRect {
+                        locations: locs,
+                        rect: r,
+                    }),
                 _ => None,
             })
             .collect();
@@ -254,7 +253,7 @@ impl RealmComponent {
             }
 
             match &card.zone {
-                Zone::Realm(square, _) => {
+                Zone::Location(square, _) => {
                     if self.cell_rects.iter().any(|c| &c.id == square) {
                         let existing = self.card_rects.iter().find(|c| c.card.id == card.id);
                         let rect = cell_inner_rect(&self.rect, *square, self.mirrored, 18.0);
@@ -379,7 +378,7 @@ impl RealmComponent {
         for path in paths {
             let mut points = Vec::new();
             for zone in path {
-                if let Zone::Realm(id, _) = zone
+                if let Zone::Location(id, _) = zone
                     && let Some(cell_r) = self.cell_rects.iter().find(|c| c.id == *id)
                 {
                     points.push(cell_r.rect.center());
@@ -504,7 +503,7 @@ impl RealmComponent {
             .filtered_card_rects()
             .filter(|c| c.card.card_type == CardType::Site)
             .filter_map(|c| match &c.card.zone {
-                Zone::Realm(loc, _) => Some(*loc),
+                Zone::Location(loc, _) => Some(*loc),
                 _ => None,
             })
             .collect();
@@ -525,7 +524,7 @@ impl RealmComponent {
             if let Some(zones) = playable_preview_zones {
                 if let Some(zone) = zones
                     .iter()
-                    .find(|zone| matches!(zone, Zone::Realm(id, _) if *id == cell.id))
+                    .find(|zone| matches!(zone, Zone::Location(id, _) if *id == cell.id))
                 {
                     if matches!(data.status, Status::SelectingZone { .. }) {
                         let resp = ui.allocate_rect(rect, Sense::click());
@@ -613,7 +612,7 @@ impl RealmComponent {
                 groups.iter().position(|group| {
                     group
                         .iter()
-                        .any(|zone| matches!(zone, Zone::Realm(id, _) if *id == cell_rect.id))
+                        .any(|zone| matches!(zone, Zone::Location(id, _) if *id == cell_rect.id))
                 })
             });
 
@@ -625,7 +624,7 @@ impl RealmComponent {
                 };
                 let color = Color32::from_rgba_unmultiplied(80, 200, 190, base_alpha);
                 for zone in group {
-                    if let Zone::Realm(cell_id, _) = zone
+                    if let Zone::Location(cell_id, _) = zone
                         && let Some(cell) = self.cell_rects.iter().find(|c| c.id == *cell_id)
                     {
                         let resp = ui.allocate_rect(cell.rect, Sense::click());
@@ -708,7 +707,9 @@ impl RealmComponent {
                     if ui
                         .add(
                             egui::Button::new(
-                                RichText::new(button_label).size(14.0).color(theme::TEXT_BRIGHT),
+                                RichText::new(button_label)
+                                    .size(14.0)
+                                    .color(theme::TEXT_BRIGHT),
                             )
                             .min_size(vec2(84.0, 30.0)),
                         )
@@ -932,7 +933,7 @@ impl Component for RealmComponent {
             }
 
             let resp = ui.allocate_rect(card_rect.rect, Sense::HOVER | Sense::CLICK | Sense::DRAG);
-            if let Zone::Realm(cell_id, _) = card_rect.card.zone {
+            if let Zone::Location(cell_id, _) = card_rect.card.zone {
                 let corners = project_rect_in_cell(
                     &realm_rect,
                     cell_id,
@@ -978,7 +979,7 @@ impl Component for RealmComponent {
             }
 
             let cell = match &card_rect.card.zone {
-                Zone::Realm(cell_id, _) => self.cell_rects.iter().find(|c| c.id == *cell_id),
+                Zone::Location(cell_id, _) => self.cell_rects.iter().find(|c| c.id == *cell_id),
                 _ => None,
             };
 
@@ -987,7 +988,7 @@ impl Component for RealmComponent {
             {
                 let card_id = card_rect.card.id;
                 let bounds = match card_rect.card.zone {
-                    Zone::Realm(cell_id, _) => {
+                    Zone::Location(cell_id, _) => {
                         cell_inner_rect(&realm_rect, cell_id, mirrored, 18.0)
                     }
                     _ => cell.rect,
@@ -1013,7 +1014,7 @@ impl Component for RealmComponent {
                 && !cards.contains(&card_rect.card.id)
             {
                 let overlay_color = Color32::from_rgba_unmultiplied(100, 100, 100, 153);
-                if let Zone::Realm(cell_id, _) = card_rect.card.zone {
+                if let Zone::Location(cell_id, _) = card_rect.card.zone {
                     painter.add(Shape::convex_polygon(
                         project_rect_in_cell(
                             &realm_rect,
@@ -1082,7 +1083,7 @@ impl Component for RealmComponent {
                 image: flight.image.clone(),
                 is_selected: false,
             };
-            if let Zone::Realm(cell_id, _) = card_rect.card.zone {
+            if let Zone::Location(cell_id, _) = card_rect.card.zone {
                 render::draw_projected_card(
                     &card_rect,
                     card_rect.card.controller_id == self.player_id,
@@ -1172,9 +1173,9 @@ impl Component for RealmComponent {
                         .iter()
                         .find(|cell| cell.rect.contains(*pos))
                         .and_then(|cell| {
-                            zones
-                                .iter()
-                                .find(|zone| matches!(zone, Zone::Realm(id, _) if *id == cell.id))
+                            zones.iter().find(
+                                |zone| matches!(zone, Zone::Location(id, _) if *id == cell.id),
+                            )
                         })
                         .or_else(|| {
                             self.intersection_rects

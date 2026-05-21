@@ -73,7 +73,7 @@ impl Card for EastWestDragon {
         let self_zone = self.get_zone().clone();
 
         let same_row_zones: Vec<Zone> = (row_start..=row_end)
-            .map(|sq| Zone::Realm(sq, Region::Surface))
+            .map(|sq| Zone::Location(sq, Region::Surface))
             .filter(|z| z != &self_zone)
             .filter(|z| z.get_site(state).is_some())
             .collect();

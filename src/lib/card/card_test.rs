@@ -16,7 +16,7 @@ fn test_additional_cost_tap() {
         CardQuery::new()
             .untapped()
             .units()
-            .in_zone(&Zone::Realm(10, Region::Surface)),
+            .in_zone(&Zone::Location(10, Region::Surface)),
     ));
     let can_afford = cost
         .can_afford(&state, player_id)
@@ -25,7 +25,7 @@ fn test_additional_cost_tap() {
 
     let mut unit = ApprenticeWizard::new(player_id);
     let unit_id = *unit.get_id();
-    unit.set_zone(Zone::Realm(10, Region::Surface));
+    unit.set_zone(Zone::Location(10, Region::Surface));
     state.cards.insert(*unit.get_id(), Box::new(unit));
     let can_afford = cost
         .can_afford(&state, player_id)
@@ -46,11 +46,11 @@ async fn test_astral_alcazar_connects_site_to_any_void() {
     let player_id = state.players[0].id;
 
     let mut alcazar = AstralAlcazar::new(player_id);
-    alcazar.set_zone(Zone::Realm(8, Region::Surface));
+    alcazar.set_zone(Zone::Location(8, Region::Surface));
     state.cards.insert(*alcazar.get_id(), Box::new(alcazar));
 
     let mut unit = ApprenticeWizard::new(player_id);
-    unit.set_zone(Zone::Realm(8, Region::Surface));
+    unit.set_zone(Zone::Location(8, Region::Surface));
     state.cards.insert(*unit.get_id(), Box::new(unit.clone()));
 
     state.compute_world_effects().await.unwrap();
@@ -59,9 +59,9 @@ async fn test_astral_alcazar_connects_site_to_any_void() {
         .get_valid_move_zones(&state)
         .await
         .expect("zones to be computed");
-    assert!(zones.contains(&Zone::Realm(1, Region::Void)));
-    assert!(zones.contains(&Zone::Realm(20, Region::Void)));
-    assert!(!zones.contains(&Zone::Realm(8, Region::Void)));
+    assert!(zones.contains(&Zone::Location(1, Region::Void)));
+    assert!(zones.contains(&Zone::Location(20, Region::Void)));
+    assert!(!zones.contains(&Zone::Location(8, Region::Void)));
 }
 
 #[tokio::test]
@@ -70,11 +70,11 @@ async fn test_astral_alcazar_connects_any_void_to_site() {
     let player_id = state.players[0].id;
 
     let mut alcazar = AstralAlcazar::new(player_id);
-    alcazar.set_zone(Zone::Realm(8, Region::Surface));
+    alcazar.set_zone(Zone::Location(8, Region::Surface));
     state.cards.insert(*alcazar.get_id(), Box::new(alcazar));
 
     let mut unit = ApprenticeWizard::new(player_id);
-    unit.set_zone(Zone::Realm(20, Region::Void));
+    unit.set_zone(Zone::Location(20, Region::Void));
     state.cards.insert(*unit.get_id(), Box::new(unit.clone()));
 
     state.compute_world_effects().await.unwrap();
@@ -83,8 +83,8 @@ async fn test_astral_alcazar_connects_any_void_to_site() {
         .get_valid_move_zones(&state)
         .await
         .expect("zones to be computed");
-    assert!(zones.contains(&Zone::Realm(8, Region::Surface)));
-    assert!(!zones.contains(&Zone::Realm(1, Region::Void)));
+    assert!(zones.contains(&Zone::Location(8, Region::Surface)));
+    assert!(!zones.contains(&Zone::Location(1, Region::Void)));
 }
 
 #[tokio::test]
@@ -94,18 +94,18 @@ async fn test_great_wall_blocks_enemy_ground_movement_through_top_border() {
     let enemy_id = state.players[1].id;
 
     let mut wall = GreatWall::new(wall_owner);
-    wall.set_zone(Zone::Realm(8, Region::Surface));
+    wall.set_zone(Zone::Location(8, Region::Surface));
     state.cards.insert(*wall.get_id(), Box::new(wall));
 
     let mut enemy = ApprenticeWizard::new(enemy_id);
-    enemy.set_zone(Zone::Realm(13, Region::Surface));
+    enemy.set_zone(Zone::Location(13, Region::Surface));
     state.cards.insert(*enemy.get_id(), Box::new(enemy.clone()));
 
     let zones = enemy
         .get_valid_move_zones(&state)
         .await
         .expect("zones to be computed");
-    assert!(!zones.contains(&Zone::Realm(8, Region::Surface)));
+    assert!(!zones.contains(&Zone::Location(8, Region::Surface)));
 }
 
 #[tokio::test]
@@ -115,18 +115,18 @@ async fn test_great_wall_blocks_enemy_ground_movement_out_through_top_border() {
     let enemy_id = state.players[1].id;
 
     let mut wall = GreatWall::new(wall_owner);
-    wall.set_zone(Zone::Realm(8, Region::Surface));
+    wall.set_zone(Zone::Location(8, Region::Surface));
     state.cards.insert(*wall.get_id(), Box::new(wall));
 
     let mut enemy = ApprenticeWizard::new(enemy_id);
-    enemy.set_zone(Zone::Realm(8, Region::Surface));
+    enemy.set_zone(Zone::Location(8, Region::Surface));
     state.cards.insert(*enemy.get_id(), Box::new(enemy.clone()));
 
     let zones = enemy
         .get_valid_move_zones(&state)
         .await
         .expect("zones to be computed");
-    assert!(!zones.contains(&Zone::Realm(13, Region::Surface)));
+    assert!(!zones.contains(&Zone::Location(13, Region::Surface)));
 }
 
 #[tokio::test]
@@ -136,21 +136,21 @@ async fn test_great_wall_allows_allied_and_airborne_movement_through_top_border(
     let enemy_id = state.players[1].id;
 
     let mut wall = GreatWall::new(wall_owner);
-    wall.set_zone(Zone::Realm(8, Region::Surface));
+    wall.set_zone(Zone::Location(8, Region::Surface));
     state.cards.insert(*wall.get_id(), Box::new(wall));
 
     let mut ally = ApprenticeWizard::new(wall_owner);
-    ally.set_zone(Zone::Realm(13, Region::Surface));
+    ally.set_zone(Zone::Location(13, Region::Surface));
     state.cards.insert(*ally.get_id(), Box::new(ally.clone()));
 
     let ally_zones = ally
         .get_valid_move_zones(&state)
         .await
         .expect("zones to be computed");
-    assert!(ally_zones.contains(&Zone::Realm(8, Region::Surface)));
+    assert!(ally_zones.contains(&Zone::Location(8, Region::Surface)));
 
     let mut airborne_enemy = ApprenticeWizard::new(enemy_id);
-    airborne_enemy.set_zone(Zone::Realm(13, Region::Surface));
+    airborne_enemy.set_zone(Zone::Location(13, Region::Surface));
     airborne_enemy.add_ability(Ability::Airborne);
     state
         .cards
@@ -160,7 +160,7 @@ async fn test_great_wall_allows_allied_and_airborne_movement_through_top_border(
         .get_valid_move_zones(&state)
         .await
         .expect("zones to be computed");
-    assert!(airborne_enemy_zones.contains(&Zone::Realm(8, Region::Surface)));
+    assert!(airborne_enemy_zones.contains(&Zone::Location(8, Region::Surface)));
 }
 
 #[tokio::test]
@@ -170,16 +170,16 @@ async fn test_great_wall_blocks_paths_through_top_border() {
     let enemy_id = state.players[1].id;
 
     let mut wall = GreatWall::new(wall_owner);
-    wall.set_zone(Zone::Realm(8, Region::Surface));
+    wall.set_zone(Zone::Location(8, Region::Surface));
     state.cards.insert(*wall.get_id(), Box::new(wall));
 
     let mut enemy = ApprenticeWizard::new(enemy_id);
-    enemy.set_zone(Zone::Realm(13, Region::Surface));
+    enemy.set_zone(Zone::Location(13, Region::Surface));
     enemy.add_ability(Ability::Movement(1));
     state.cards.insert(*enemy.get_id(), Box::new(enemy.clone()));
 
     let paths = enemy
-        .get_valid_move_paths(&state, &Zone::Realm(3, Region::Surface))
+        .get_valid_move_paths(&state, &Zone::Location(3, Region::Surface))
         .await
         .expect("paths to be computed");
     assert!(paths.is_empty());
@@ -195,13 +195,13 @@ fn test_additional_cost_two_taps() {
             CardQuery::new()
                 .untapped()
                 .units()
-                .in_zone(&Zone::Realm(10, Region::Surface)),
+                .in_zone(&Zone::Location(10, Region::Surface)),
         ))
         .with_additional(AdditionalCost::tap(
             CardQuery::new()
                 .untapped()
                 .units()
-                .in_zone(&Zone::Realm(10, Region::Surface)),
+                .in_zone(&Zone::Location(10, Region::Surface)),
         ));
     let can_afford = cost
         .can_afford(&state, player_id)
@@ -210,7 +210,7 @@ fn test_additional_cost_two_taps() {
 
     let mut unit = ApprenticeWizard::new(player_id);
     let unit_id = *unit.get_id();
-    unit.set_zone(Zone::Realm(10, Region::Surface));
+    unit.set_zone(Zone::Location(10, Region::Surface));
     state.cards.insert(*unit.get_id(), Box::new(unit));
     let can_afford = cost
         .can_afford(&state, player_id)
@@ -218,7 +218,7 @@ fn test_additional_cost_two_taps() {
     assert!(!can_afford, "only one unit in the zone, two are required");
 
     let mut unit = ApprenticeWizard::new(player_id);
-    unit.set_zone(Zone::Realm(10, Region::Surface));
+    unit.set_zone(Zone::Location(10, Region::Surface));
     state.cards.insert(*unit.get_id(), Box::new(unit));
     let can_afford = cost
         .can_afford(&state, player_id)
@@ -238,23 +238,23 @@ async fn test_get_valid_move_paths_movement_plus_1() {
     let mut state = State::new_mock_state(Vec::from_iter(1..=20));
     let player_id = state.players[0].id;
     let mut card = RimlandNomads::new(player_id);
-    card.set_zone(Zone::Realm(8, Region::Surface));
+    card.set_zone(Zone::Location(8, Region::Surface));
     state.cards.insert(*card.get_id(), Box::new(card.clone()));
 
     let paths = card
-        .get_valid_move_paths(&state, &Zone::Realm(14, Region::Surface))
+        .get_valid_move_paths(&state, &Zone::Location(14, Region::Surface))
         .await
         .expect("paths to be computed");
     assert_eq!(paths.len(), 2, "Expected 2 paths, got {:?}", paths);
     assert!(paths.contains(&vec![
-        Zone::Realm(8, Region::Surface),
-        Zone::Realm(9, Region::Surface),
-        Zone::Realm(14, Region::Surface)
+        Zone::Location(8, Region::Surface),
+        Zone::Location(9, Region::Surface),
+        Zone::Location(14, Region::Surface)
     ]));
     assert!(paths.contains(&vec![
-        Zone::Realm(8, Region::Surface),
-        Zone::Realm(13, Region::Surface),
-        Zone::Realm(14, Region::Surface)
+        Zone::Location(8, Region::Surface),
+        Zone::Location(13, Region::Surface),
+        Zone::Location(14, Region::Surface)
     ]));
 }
 
@@ -263,28 +263,28 @@ async fn test_get_valid_move_paths_movement_plus_1_airborne() {
     let mut state = State::new_mock_state(Vec::from_iter(1..=20));
     let player_id = state.players[0].id;
     let mut card = RimlandNomads::new(player_id);
-    card.set_zone(Zone::Realm(8, Region::Surface));
+    card.set_zone(Zone::Location(8, Region::Surface));
     card.add_ability(Ability::Airborne);
     state.cards.insert(*card.get_id(), Box::new(card.clone()));
 
     let paths = card
-        .get_valid_move_paths(&state, &Zone::Realm(14, Region::Surface))
+        .get_valid_move_paths(&state, &Zone::Location(14, Region::Surface))
         .await
         .expect("paths to be computed");
     assert_eq!(paths.len(), 3, "Expected 3 valid paths, got {:?}", paths);
     assert!(paths.contains(&vec![
-        Zone::Realm(8, Region::Surface),
-        Zone::Realm(9, Region::Surface),
-        Zone::Realm(14, Region::Surface)
+        Zone::Location(8, Region::Surface),
+        Zone::Location(9, Region::Surface),
+        Zone::Location(14, Region::Surface)
     ]));
     assert!(paths.contains(&vec![
-        Zone::Realm(8, Region::Surface),
-        Zone::Realm(14, Region::Surface)
+        Zone::Location(8, Region::Surface),
+        Zone::Location(14, Region::Surface)
     ]));
     assert!(paths.contains(&vec![
-        Zone::Realm(8, Region::Surface),
-        Zone::Realm(13, Region::Surface),
-        Zone::Realm(14, Region::Surface)
+        Zone::Location(8, Region::Surface),
+        Zone::Location(13, Region::Surface),
+        Zone::Location(14, Region::Surface)
     ]));
 }
 
@@ -293,32 +293,32 @@ async fn test_get_valid_move_paths_movement_plus_2() {
     let mut state = State::new_mock_state(Vec::from_iter(1..=20));
     let player_id = state.players[0].id;
     let mut card = RimlandNomads::new(player_id);
-    card.set_zone(Zone::Realm(8, Region::Surface));
+    card.set_zone(Zone::Location(8, Region::Surface));
     card.add_ability(Ability::Movement(2));
     state.cards.insert(*card.get_id(), Box::new(card.clone()));
 
     let paths = card
-        .get_valid_move_paths(&state, &Zone::Realm(15, Region::Surface))
+        .get_valid_move_paths(&state, &Zone::Location(15, Region::Surface))
         .await
         .expect("paths to be computed");
     assert_eq!(paths.len(), 3, "Expected 2 paths, got {:?}", paths);
     assert!(paths.contains(&vec![
-        Zone::Realm(8, Region::Surface),
-        Zone::Realm(9, Region::Surface),
-        Zone::Realm(10, Region::Surface),
-        Zone::Realm(15, Region::Surface)
+        Zone::Location(8, Region::Surface),
+        Zone::Location(9, Region::Surface),
+        Zone::Location(10, Region::Surface),
+        Zone::Location(15, Region::Surface)
     ]));
     assert!(paths.contains(&vec![
-        Zone::Realm(8, Region::Surface),
-        Zone::Realm(9, Region::Surface),
-        Zone::Realm(14, Region::Surface),
-        Zone::Realm(15, Region::Surface)
+        Zone::Location(8, Region::Surface),
+        Zone::Location(9, Region::Surface),
+        Zone::Location(14, Region::Surface),
+        Zone::Location(15, Region::Surface)
     ]));
     assert!(paths.contains(&vec![
-        Zone::Realm(8, Region::Surface),
-        Zone::Realm(13, Region::Surface),
-        Zone::Realm(14, Region::Surface),
-        Zone::Realm(15, Region::Surface)
+        Zone::Location(8, Region::Surface),
+        Zone::Location(13, Region::Surface),
+        Zone::Location(14, Region::Surface),
+        Zone::Location(15, Region::Surface)
     ]));
 }
 
@@ -327,7 +327,7 @@ async fn test_get_valid_move_zones_basic_movement() {
     let mut state = State::new_mock_state(Vec::from_iter(1..=20));
     let player_id = state.players[0].id;
     let mut card = ApprenticeWizard::new(player_id);
-    card.set_zone(Zone::Realm(8, Region::Surface));
+    card.set_zone(Zone::Location(8, Region::Surface));
     state.cards.insert(*card.get_id(), Box::new(card.clone()));
 
     let mut zones = card
@@ -336,11 +336,11 @@ async fn test_get_valid_move_zones_basic_movement() {
         .expect("zones to be computed");
     zones.sort();
     let mut expected = vec![
-        Zone::Realm(8, Region::Surface),
-        Zone::Realm(7, Region::Surface),
-        Zone::Realm(9, Region::Surface),
-        Zone::Realm(3, Region::Surface),
-        Zone::Realm(13, Region::Surface),
+        Zone::Location(8, Region::Surface),
+        Zone::Location(7, Region::Surface),
+        Zone::Location(9, Region::Surface),
+        Zone::Location(3, Region::Surface),
+        Zone::Location(13, Region::Surface),
     ];
     expected.sort();
     assert_eq!(zones, expected);
@@ -351,7 +351,7 @@ async fn test_get_valid_move_zones_movement_plus_1() {
     let mut state = State::new_mock_state(Vec::from_iter(1..=20));
     let player_id = state.players[0].id;
     let mut card = ApprenticeWizard::new(player_id);
-    card.set_zone(Zone::Realm(8, Region::Surface));
+    card.set_zone(Zone::Location(8, Region::Surface));
     card.add_ability(Ability::Movement(1));
     state.cards.insert(*card.get_id(), Box::new(card.clone()));
 
@@ -361,18 +361,18 @@ async fn test_get_valid_move_zones_movement_plus_1() {
         .expect("zones to be computed");
     zones.sort();
     let mut expected = vec![
-        Zone::Realm(8, Region::Surface),
-        Zone::Realm(7, Region::Surface),
-        Zone::Realm(9, Region::Surface),
-        Zone::Realm(3, Region::Surface),
-        Zone::Realm(13, Region::Surface),
-        Zone::Realm(18, Region::Surface),
-        Zone::Realm(6, Region::Surface),
-        Zone::Realm(10, Region::Surface),
-        Zone::Realm(12, Region::Surface),
-        Zone::Realm(14, Region::Surface),
-        Zone::Realm(2, Region::Surface),
-        Zone::Realm(4, Region::Surface),
+        Zone::Location(8, Region::Surface),
+        Zone::Location(7, Region::Surface),
+        Zone::Location(9, Region::Surface),
+        Zone::Location(3, Region::Surface),
+        Zone::Location(13, Region::Surface),
+        Zone::Location(18, Region::Surface),
+        Zone::Location(6, Region::Surface),
+        Zone::Location(10, Region::Surface),
+        Zone::Location(12, Region::Surface),
+        Zone::Location(14, Region::Surface),
+        Zone::Location(2, Region::Surface),
+        Zone::Location(4, Region::Surface),
     ];
     expected.sort();
     assert_eq!(zones, expected);
@@ -383,7 +383,7 @@ async fn test_get_valid_move_zones_basic_movement_with_voids() {
     let mut state = State::new_mock_state(vec![3, 8, 9]);
     let player_id = state.players[0].id;
     let mut card = ApprenticeWizard::new(player_id);
-    card.set_zone(Zone::Realm(8, Region::Surface));
+    card.set_zone(Zone::Location(8, Region::Surface));
     state.cards.insert(*card.get_id(), Box::new(card.clone()));
 
     let mut zones = card
@@ -392,9 +392,9 @@ async fn test_get_valid_move_zones_basic_movement_with_voids() {
         .expect("zones to be computed");
     zones.sort();
     let mut expected = vec![
-        Zone::Realm(8, Region::Surface),
-        Zone::Realm(9, Region::Surface),
-        Zone::Realm(3, Region::Surface),
+        Zone::Location(8, Region::Surface),
+        Zone::Location(9, Region::Surface),
+        Zone::Location(3, Region::Surface),
     ];
     expected.sort();
     assert_eq!(zones, expected);
@@ -406,7 +406,7 @@ async fn test_get_valid_move_zones_movement_plus_1_with_voids() {
     let mut state = State::new_mock_state(zones_with_sites);
     let player_id = state.players[0].id;
     let mut card = ApprenticeWizard::new(player_id);
-    card.set_zone(Zone::Realm(8, Region::Surface));
+    card.set_zone(Zone::Location(8, Region::Surface));
     card.add_ability(Ability::Movement(1));
     state.cards.insert(*card.get_id(), Box::new(card.clone()));
 
@@ -416,13 +416,13 @@ async fn test_get_valid_move_zones_movement_plus_1_with_voids() {
         .expect("zones to be computed");
     zones.sort();
     let mut expected = vec![
-        Zone::Realm(2, Region::Surface),
-        Zone::Realm(3, Region::Surface),
-        Zone::Realm(4, Region::Surface),
-        Zone::Realm(8, Region::Surface),
-        Zone::Realm(9, Region::Surface),
-        Zone::Realm(12, Region::Surface),
-        Zone::Realm(13, Region::Surface),
+        Zone::Location(2, Region::Surface),
+        Zone::Location(3, Region::Surface),
+        Zone::Location(4, Region::Surface),
+        Zone::Location(8, Region::Surface),
+        Zone::Location(9, Region::Surface),
+        Zone::Location(12, Region::Surface),
+        Zone::Location(13, Region::Surface),
     ];
     expected.sort();
     assert_eq!(zones, expected);
@@ -434,7 +434,7 @@ async fn test_get_valid_move_zones_basic_movement_with_voidwalk() {
     let mut state = State::new_mock_state(zones_with_sites);
     let player_id = state.players[0].id;
     let mut card = ApprenticeWizard::new(player_id);
-    card.set_zone(Zone::Realm(8, Region::Surface));
+    card.set_zone(Zone::Location(8, Region::Surface));
     card.add_ability(Ability::Voidwalk);
     state.cards.insert(*card.get_id(), Box::new(card.clone()));
 
@@ -444,11 +444,11 @@ async fn test_get_valid_move_zones_basic_movement_with_voidwalk() {
         .expect("zones to be computed");
     zones.sort();
     let mut expected = vec![
-        Zone::Realm(8, Region::Surface),
-        Zone::Realm(7, Region::Surface),
-        Zone::Realm(9, Region::Surface),
-        Zone::Realm(3, Region::Surface),
-        Zone::Realm(13, Region::Surface),
+        Zone::Location(8, Region::Surface),
+        Zone::Location(7, Region::Surface),
+        Zone::Location(9, Region::Surface),
+        Zone::Location(3, Region::Surface),
+        Zone::Location(13, Region::Surface),
     ];
     expected.sort();
     assert_eq!(zones, expected);
@@ -459,7 +459,7 @@ async fn test_get_valid_move_zones_airborne() {
     let mut state = State::new_mock_state(Vec::from_iter(1..=20));
     let player_id = state.players[0].id;
     let mut card = ApprenticeWizard::new(player_id);
-    card.set_zone(Zone::Realm(8, Region::Surface));
+    card.set_zone(Zone::Location(8, Region::Surface));
     card.add_ability(Ability::Airborne);
     state.cards.insert(*card.get_id(), Box::new(card.clone()));
 
@@ -469,15 +469,15 @@ async fn test_get_valid_move_zones_airborne() {
         .expect("zones to be computed");
     zones.sort();
     let mut expected = vec![
-        Zone::Realm(8, Region::Surface),
-        Zone::Realm(7, Region::Surface),
-        Zone::Realm(9, Region::Surface),
-        Zone::Realm(3, Region::Surface),
-        Zone::Realm(13, Region::Surface),
-        Zone::Realm(12, Region::Surface),
-        Zone::Realm(14, Region::Surface),
-        Zone::Realm(2, Region::Surface),
-        Zone::Realm(4, Region::Surface),
+        Zone::Location(8, Region::Surface),
+        Zone::Location(7, Region::Surface),
+        Zone::Location(9, Region::Surface),
+        Zone::Location(3, Region::Surface),
+        Zone::Location(13, Region::Surface),
+        Zone::Location(12, Region::Surface),
+        Zone::Location(14, Region::Surface),
+        Zone::Location(2, Region::Surface),
+        Zone::Location(4, Region::Surface),
     ];
     expected.sort();
     assert_eq!(zones, expected);
@@ -489,7 +489,7 @@ async fn test_get_valid_move_zones_airborne_with_voids() {
     let mut state = State::new_mock_state(zones_with_sites);
     let player_id = state.players[0].id;
     let mut card = ApprenticeWizard::new(player_id);
-    card.set_zone(Zone::Realm(8, Region::Surface));
+    card.set_zone(Zone::Location(8, Region::Surface));
     card.add_ability(Ability::Airborne);
     state.cards.insert(*card.get_id(), Box::new(card.clone()));
 
@@ -500,13 +500,13 @@ async fn test_get_valid_move_zones_airborne_with_voids() {
     zones.sort();
 
     let mut expected = vec![
-        Zone::Realm(2, Region::Surface),
-        Zone::Realm(3, Region::Surface),
-        Zone::Realm(4, Region::Surface),
-        Zone::Realm(8, Region::Surface),
-        Zone::Realm(9, Region::Surface),
-        Zone::Realm(12, Region::Surface),
-        Zone::Realm(13, Region::Surface),
+        Zone::Location(2, Region::Surface),
+        Zone::Location(3, Region::Surface),
+        Zone::Location(4, Region::Surface),
+        Zone::Location(8, Region::Surface),
+        Zone::Location(9, Region::Surface),
+        Zone::Location(12, Region::Surface),
+        Zone::Location(13, Region::Surface),
     ];
     expected.sort();
     assert_eq!(zones, expected);
@@ -518,7 +518,7 @@ async fn test_get_valid_move_zones_airborne_and_voidwalk() {
     let mut state = State::new_mock_state(zones_with_sites);
     let player_id = state.players[0].id;
     let mut card = ApprenticeWizard::new(player_id);
-    card.set_zone(Zone::Realm(8, Region::Surface));
+    card.set_zone(Zone::Location(8, Region::Surface));
     card.add_ability(Ability::Airborne);
     card.add_ability(Ability::Voidwalk);
     state.cards.insert(*card.get_id(), Box::new(card.clone()));
@@ -529,15 +529,15 @@ async fn test_get_valid_move_zones_airborne_and_voidwalk() {
         .expect("zones to be computed");
     zones.sort();
     let mut expected = vec![
-        Zone::Realm(8, Region::Surface),
-        Zone::Realm(7, Region::Surface),
-        Zone::Realm(9, Region::Surface),
-        Zone::Realm(3, Region::Surface),
-        Zone::Realm(13, Region::Surface),
-        Zone::Realm(12, Region::Surface),
-        Zone::Realm(14, Region::Surface),
-        Zone::Realm(2, Region::Surface),
-        Zone::Realm(4, Region::Surface),
+        Zone::Location(8, Region::Surface),
+        Zone::Location(7, Region::Surface),
+        Zone::Location(9, Region::Surface),
+        Zone::Location(3, Region::Surface),
+        Zone::Location(13, Region::Surface),
+        Zone::Location(12, Region::Surface),
+        Zone::Location(14, Region::Surface),
+        Zone::Location(2, Region::Surface),
+        Zone::Location(4, Region::Surface),
     ];
     expected.sort();
     assert_eq!(zones, expected);
@@ -560,9 +560,9 @@ fn test_get_valid_play_zones_site_second_site() {
         .expect("zones to be computed");
     zones.sort();
     let mut expected = vec![
-        Zone::Realm(8, Region::Surface),
-        Zone::Realm(4, Region::Surface),
-        Zone::Realm(2, Region::Surface),
+        Zone::Location(8, Region::Surface),
+        Zone::Location(4, Region::Surface),
+        Zone::Location(2, Region::Surface),
     ];
     expected.sort();
     assert_eq!(zones, expected);
@@ -594,7 +594,7 @@ fn test_can_afford_cost() {
     assert!(!can_afford);
 
     let mut arid_desert = AridDesert::new(player_id);
-    arid_desert.set_zone(Zone::Realm(3, Region::Surface));
+    arid_desert.set_zone(Zone::Location(3, Region::Surface));
     state
         .cards
         .insert(*arid_desert.get_id(), Box::new(arid_desert));

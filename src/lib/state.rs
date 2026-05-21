@@ -919,7 +919,7 @@ impl State {
                 from_name_and_zone(
                     AridDesert::NAME,
                     &player_one_id,
-                    Zone::Realm(*z, Region::Surface),
+                    Zone::Location(*z, Region::Surface),
                 )
             })
             .collect();

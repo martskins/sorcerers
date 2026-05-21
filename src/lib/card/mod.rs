@@ -797,9 +797,9 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     fn set_region(&mut self, region: Region) {
         let base = self.get_base_mut();
         match &base.zone {
-            Zone::Realm(sq, _) => {
+            Zone::Location(sq, _) => {
                 let sq = *sq;
-                base.zone = Zone::Realm(sq, region);
+                base.zone = Zone::Location(sq, region);
             }
             Zone::Intersection(sqs, _) => {
                 let sqs = sqs.clone();
@@ -981,11 +981,11 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     fn get_zones_within_steps_of(&self, state: &State, steps: u8, zone: &Zone) -> Vec<Zone> {
         fn top_bottom_wrapped_neighbours(zone: &Zone) -> Vec<Zone> {
             match zone {
-                Zone::Realm(id, region) if *id >= 1 && *id <= 5 => {
-                    vec![Zone::Realm(id + 15, region.clone())]
+                Zone::Location(id, region) if *id >= 1 && *id <= 5 => {
+                    vec![Zone::Location(id + 15, region.clone())]
                 }
-                Zone::Realm(id, region) if *id >= 16 && *id <= 20 => {
-                    vec![Zone::Realm(id - 15, region.clone())]
+                Zone::Location(id, region) if *id >= 16 && *id <= 20 => {
+                    vec![Zone::Location(id - 15, region.clone())]
                 }
                 _ => vec![],
             }
@@ -993,11 +993,11 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
         fn left_right_wrapped_neighbours(zone: &Zone) -> Vec<Zone> {
             match zone {
-                Zone::Realm(id, region) if (*id - 1) % 5 == 0 => {
-                    vec![Zone::Realm(id + 4, region.clone())]
+                Zone::Location(id, region) if (*id - 1) % 5 == 0 => {
+                    vec![Zone::Location(id + 4, region.clone())]
                 }
-                Zone::Realm(id, region) if *id % 5 == 0 => {
-                    vec![Zone::Realm(id - 4, region.clone())]
+                Zone::Location(id, region) if *id % 5 == 0 => {
+                    vec![Zone::Location(id - 4, region.clone())]
                 }
                 _ => vec![],
             }
@@ -1164,7 +1164,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
         let zone = &self.get_base().zone;
         match zone {
-            Zone::Realm(_, region) => region,
+            Zone::Location(_, region) => region,
             Zone::Intersection(_, region) => region,
             _ => &VOID,
         }
@@ -1276,7 +1276,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         }
         if self.is_oversized(state)
             && let Zone::Intersection(sub_zones, _) = self.get_zone()
-            && let Zone::Realm(sq, _) = zone
+            && let Zone::Location(sq, _) = zone
         {
             return sub_zones.contains(sq);
         }
@@ -2520,11 +2520,11 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
 
     fn base_get_affected_zones(&self, _state: &State) -> Vec<Zone> {
         match self.get_zone() {
-            z @ Zone::Realm(_, _) => vec![z.clone()],
+            z @ Zone::Location(_, _) => vec![z.clone()],
             Zone::Intersection(locs, region) => {
                 let mut zones = Vec::new();
                 for sq in locs {
-                    zones.push(Zone::Realm(*sq, region.clone()));
+                    zones.push(Zone::Location(*sq, region.clone()));
                 }
                 zones
             }
@@ -2858,9 +2858,11 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
             // Oversized units may only move to intersection zones where all 4 sub-zones have sites.
             if self.is_oversized(state)
                 && let Zone::Intersection(sqs, region) = zone
-                && sqs
-                    .iter()
-                    .all(|sq| Zone::Realm(*sq, region.clone()).get_site(state).is_some())
+                && sqs.iter().all(|sq| {
+                    Zone::Location(*sq, region.clone())
+                        .get_site(state)
+                        .is_some()
+                })
             {
                 zones.push(zone.clone());
                 continue;
@@ -3076,7 +3078,7 @@ fn leap_destinations(state: &State, zone: &Zone) -> Vec<Zone> {
     let Some(square) = zone.get_square() else {
         return vec![];
     };
-    let Zone::Realm(_, region) = zone else {
+    let Zone::Location(_, region) = zone else {
         return vec![];
     };
     let col = ((square - 1) % 5) as i8;
@@ -3097,10 +3099,10 @@ fn leap_destinations(state: &State, zone: &Zone) -> Vec<Zone> {
                 return None;
             }
             let middle_square = (middle_row * 5 + middle_col + 1) as u8;
-            let middle = Zone::Realm(middle_square, region.clone());
+            let middle = Zone::Location(middle_square, region.clone());
             middle.get_site(state)?;
             let landing_square = (landing_row * 5 + landing_col + 1) as u8;
-            Some(Zone::Realm(landing_square, region.clone()))
+            Some(Zone::Location(landing_square, region.clone()))
         })
         .collect()
 }

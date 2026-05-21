@@ -65,7 +65,7 @@ impl Card for Earthquake {
         };
         let affected_zones = squares
             .into_iter()
-            .map(|square| Zone::Realm(square, Region::Surface))
+            .map(|square| Zone::Location(square, Region::Surface))
             .collect::<Vec<Zone>>();
         let affected_cards = CardQuery::new()
             .card_types(vec![CardType::Minion, CardType::Artifact])

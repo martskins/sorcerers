@@ -79,12 +79,12 @@ async fn test_carried_minion_follows_carrier() {
 
     let mut carrier = BeastOfBurden::new(player_id);
     let carrier_id = *carrier.get_id();
-    carrier.set_zone(Zone::Realm(1, Region::Surface));
+    carrier.set_zone(Zone::Location(1, Region::Surface));
     state.cards.insert(carrier_id, Box::new(carrier));
 
     let mut passenger = FootSoldier::new(player_id);
     let passenger_id = *passenger.get_id();
-    passenger.set_zone(Zone::Realm(1, Region::Surface));
+    passenger.set_zone(Zone::Location(1, Region::Surface));
     passenger.set_bearer_id(Some(carrier_id));
     state.cards.insert(passenger_id, Box::new(passenger));
 
@@ -92,8 +92,8 @@ async fn test_carried_minion_follows_carrier() {
     let move_effect = Effect::MoveCard {
         player_id,
         card_id: carrier_id,
-        from: Zone::Realm(1, Region::Surface),
-        to: ZoneQuery::from_zone(Zone::Realm(2, Region::Surface)),
+        from: Zone::Location(1, Region::Surface),
+        to: ZoneQuery::from_zone(Zone::Location(2, Region::Surface)),
         tap: false,
         region: crate::card::Region::Surface,
         through_path: None,
@@ -103,11 +103,11 @@ async fn test_carried_minion_follows_carrier() {
 
     assert_eq!(
         state.get_card(&carrier_id).get_zone(),
-        &Zone::Realm(2, Region::Surface)
+        &Zone::Location(2, Region::Surface)
     );
     assert_eq!(
         state.get_card(&passenger_id).get_zone(),
-        &Zone::Realm(2, Region::Surface)
+        &Zone::Location(2, Region::Surface)
     );
     assert_eq!(
         state.get_card(&passenger_id).get_bearer_id().unwrap(),
@@ -122,12 +122,12 @@ async fn test_carried_minion_moves_independently_and_clears_bearer() {
 
     let mut carrier = BeastOfBurden::new(player_id);
     let carrier_id = *carrier.get_id();
-    carrier.set_zone(Zone::Realm(1, Region::Surface));
+    carrier.set_zone(Zone::Location(1, Region::Surface));
     state.cards.insert(carrier_id, Box::new(carrier));
 
     let mut passenger = FootSoldier::new(player_id);
     let passenger_id = *passenger.get_id();
-    passenger.set_zone(Zone::Realm(1, Region::Surface));
+    passenger.set_zone(Zone::Location(1, Region::Surface));
     passenger.set_bearer_id(Some(carrier_id));
     state.cards.insert(passenger_id, Box::new(passenger));
 
@@ -135,8 +135,8 @@ async fn test_carried_minion_moves_independently_and_clears_bearer() {
     let move_effect = Effect::MoveCard {
         player_id,
         card_id: passenger_id,
-        from: Zone::Realm(1, Region::Surface),
-        to: ZoneQuery::from_zone(Zone::Realm(2, Region::Surface)),
+        from: Zone::Location(1, Region::Surface),
+        to: ZoneQuery::from_zone(Zone::Location(2, Region::Surface)),
         tap: false,
         region: crate::card::Region::Surface,
         through_path: None,
@@ -146,11 +146,11 @@ async fn test_carried_minion_moves_independently_and_clears_bearer() {
 
     assert_eq!(
         state.get_card(&carrier_id).get_zone(),
-        &Zone::Realm(1, Region::Surface)
+        &Zone::Location(1, Region::Surface)
     );
     assert_eq!(
         state.get_card(&passenger_id).get_zone(),
-        &Zone::Realm(2, Region::Surface)
+        &Zone::Location(2, Region::Surface)
     );
     assert_eq!(
         state.get_card(&passenger_id).get_bearer_id().unwrap(),
@@ -166,12 +166,12 @@ async fn test_carried_minion_moves_independently_through_path_and_clears_bearer(
 
     let mut carrier = BeastOfBurden::new(player_id);
     let carrier_id = *carrier.get_id();
-    carrier.set_zone(Zone::Realm(1, Region::Surface));
+    carrier.set_zone(Zone::Location(1, Region::Surface));
     state.cards.insert(carrier_id, Box::new(carrier));
 
     let mut passenger = FootSoldier::new(player_id);
     let passenger_id = *passenger.get_id();
-    passenger.set_zone(Zone::Realm(1, Region::Surface));
+    passenger.set_zone(Zone::Location(1, Region::Surface));
     passenger.set_bearer_id(Some(carrier_id));
     state.cards.insert(passenger_id, Box::new(passenger));
 
@@ -179,14 +179,14 @@ async fn test_carried_minion_moves_independently_through_path_and_clears_bearer(
     let move_effect = Effect::MoveCard {
         player_id,
         card_id: passenger_id,
-        from: Zone::Realm(1, Region::Surface),
-        to: ZoneQuery::from_zone(Zone::Realm(3, Region::Surface)),
+        from: Zone::Location(1, Region::Surface),
+        to: ZoneQuery::from_zone(Zone::Location(3, Region::Surface)),
         tap: false,
         region: crate::card::Region::Surface,
         through_path: Some(vec![
-            Zone::Realm(1, Region::Surface),
-            Zone::Realm(2, Region::Surface),
-            Zone::Realm(3, Region::Surface),
+            Zone::Location(1, Region::Surface),
+            Zone::Location(2, Region::Surface),
+            Zone::Location(3, Region::Surface),
         ]),
     };
 
@@ -194,11 +194,11 @@ async fn test_carried_minion_moves_independently_through_path_and_clears_bearer(
 
     assert_eq!(
         state.get_card(&carrier_id).get_zone(),
-        &Zone::Realm(1, Region::Surface)
+        &Zone::Location(1, Region::Surface)
     );
     assert_eq!(
         state.get_card(&passenger_id).get_zone(),
-        &Zone::Realm(3, Region::Surface)
+        &Zone::Location(3, Region::Surface)
     );
     assert_eq!(
         state.get_card(&passenger_id).get_bearer_id().unwrap(),
@@ -214,14 +214,14 @@ async fn test_conferred_abilities() {
 
     let mut carrier = BeastOfBurden::new(player_id);
     let carrier_id = *carrier.get_id();
-    carrier.set_zone(Zone::Realm(1, Region::Surface));
+    carrier.set_zone(Zone::Location(1, Region::Surface));
     carrier.add_ability(Ability::Airborne);
     carrier.add_ability(Ability::Voidwalk);
     state.cards.insert(carrier_id, Box::new(carrier));
 
     let mut passenger = FootSoldier::new(player_id);
     let passenger_id = *passenger.get_id();
-    passenger.set_zone(Zone::Realm(1, Region::Surface));
+    passenger.set_zone(Zone::Location(1, Region::Surface));
     passenger.set_bearer_id(Some(carrier_id));
     state.cards.insert(passenger_id, Box::new(passenger));
 
@@ -235,8 +235,8 @@ async fn test_conferred_abilities() {
     let move_effect = Effect::MoveCard {
         player_id,
         card_id: passenger_id,
-        from: Zone::Realm(1, Region::Surface),
-        to: ZoneQuery::from_zone(Zone::Realm(2, Region::Surface)),
+        from: Zone::Location(1, Region::Surface),
+        to: ZoneQuery::from_zone(Zone::Location(2, Region::Surface)),
         tap: false,
         region: crate::card::Region::Surface,
         through_path: None,
@@ -254,22 +254,22 @@ fn test_inteceptors() {
     let mut state = State::new_mock_state(Vec::from_iter(1..=20));
     let player_id = state.players[0].id;
     let mut rimland_nomads = RimlandNomads::new(player_id);
-    rimland_nomads.set_zone(Zone::Realm(8, Region::Surface));
+    rimland_nomads.set_zone(Zone::Location(8, Region::Surface));
     state
         .cards
         .insert(*rimland_nomads.get_id(), Box::new(rimland_nomads.clone()));
 
     let opponent_id = state.players[1].id;
     let mut kite_archer = KiteArcher::new(opponent_id);
-    kite_archer.set_zone(Zone::Realm(12, Region::Surface));
+    kite_archer.set_zone(Zone::Location(12, Region::Surface));
     state
         .cards
         .insert(*kite_archer.get_id(), Box::new(kite_archer.clone()));
 
     let path = vec![
-        Zone::Realm(8, Region::Surface),
-        Zone::Realm(13, Region::Surface),
-        Zone::Realm(18, Region::Surface),
+        Zone::Location(8, Region::Surface),
+        Zone::Location(13, Region::Surface),
+        Zone::Location(18, Region::Surface),
     ];
     let interceptors = state.get_interceptors_for_move(&path, &opponent_id);
     assert_eq!(interceptors.len(), 1);
@@ -281,22 +281,22 @@ fn test_no_inteceptors() {
     let mut state = State::new_mock_state(Vec::from_iter(1..=20));
     let player_id = state.players[0].id;
     let mut rimland_nomads = RimlandNomads::new(player_id);
-    rimland_nomads.set_zone(Zone::Realm(8, Region::Surface));
+    rimland_nomads.set_zone(Zone::Location(8, Region::Surface));
     state
         .cards
         .insert(*rimland_nomads.get_id(), Box::new(rimland_nomads.clone()));
 
     let opponent_id = state.players[1].id;
     let mut kite_archer = KiteArcher::new(opponent_id);
-    kite_archer.set_zone(Zone::Realm(11, Region::Surface));
+    kite_archer.set_zone(Zone::Location(11, Region::Surface));
     state
         .cards
         .insert(*kite_archer.get_id(), Box::new(kite_archer.clone()));
 
     let path = vec![
-        Zone::Realm(8, Region::Surface),
-        Zone::Realm(13, Region::Surface),
-        Zone::Realm(18, Region::Surface),
+        Zone::Location(8, Region::Surface),
+        Zone::Location(13, Region::Surface),
+        Zone::Location(18, Region::Surface),
     ];
     let interceptors = state.get_interceptors_for_move(&path, &opponent_id);
     assert_eq!(interceptors.len(), 0);
@@ -307,22 +307,22 @@ fn test_voidwalking_interceptor() {
     let mut state = State::new_mock_state(vec![8, 13, 18]);
     let player_id = state.players[0].id;
     let mut rimland_nomads = RimlandNomads::new(player_id);
-    rimland_nomads.set_zone(Zone::Realm(8, Region::Surface));
+    rimland_nomads.set_zone(Zone::Location(8, Region::Surface));
     state
         .cards
         .insert(*rimland_nomads.get_id(), Box::new(rimland_nomads.clone()));
 
     let opponent_id = state.players[1].id;
     let mut headless_haunt = HeadlessHaunt::new(opponent_id);
-    headless_haunt.set_zone(Zone::Realm(12, Region::Surface));
+    headless_haunt.set_zone(Zone::Location(12, Region::Surface));
     state
         .cards
         .insert(*headless_haunt.get_id(), Box::new(headless_haunt.clone()));
 
     let path = vec![
-        Zone::Realm(8, Region::Surface),
-        Zone::Realm(13, Region::Surface),
-        Zone::Realm(18, Region::Surface),
+        Zone::Location(8, Region::Surface),
+        Zone::Location(13, Region::Surface),
+        Zone::Location(18, Region::Surface),
     ];
     let interceptors = state.get_interceptors_for_move(&path, &opponent_id);
     assert_eq!(interceptors.len(), 1);
@@ -333,22 +333,22 @@ fn test_airborne_interceptor() {
     let mut state = State::new_mock_state(Vec::from_iter(1..=20));
     let player_id = state.players[0].id;
     let mut rimland_nomads = RimlandNomads::new(player_id);
-    rimland_nomads.set_zone(Zone::Realm(8, Region::Surface));
+    rimland_nomads.set_zone(Zone::Location(8, Region::Surface));
     state
         .cards
         .insert(*rimland_nomads.get_id(), Box::new(rimland_nomads.clone()));
 
     let opponent_id = state.players[1].id;
     let mut headless_haunt = NimbusJinn::new(opponent_id);
-    headless_haunt.set_zone(Zone::Realm(12, Region::Surface));
+    headless_haunt.set_zone(Zone::Location(12, Region::Surface));
     state
         .cards
         .insert(*headless_haunt.get_id(), Box::new(headless_haunt.clone()));
 
     let path = vec![
-        Zone::Realm(8, Region::Surface),
-        Zone::Realm(13, Region::Surface),
-        Zone::Realm(18, Region::Surface),
+        Zone::Location(8, Region::Surface),
+        Zone::Location(13, Region::Surface),
+        Zone::Location(18, Region::Surface),
     ];
     let interceptors = state.get_interceptors_for_move(&path, &opponent_id);
     assert_eq!(interceptors.len(), 3);
@@ -359,7 +359,7 @@ async fn test_get_effective_costs_donnybrook_inn() {
     let mut state = State::new_mock_state(vec![8]);
     let player_id = state.players[0].id;
     let mut donnybrook_inn = DonnybrookInn::new(player_id);
-    donnybrook_inn.set_zone(Zone::Realm(3, Region::Surface));
+    donnybrook_inn.set_zone(Zone::Location(3, Region::Surface));
     state
         .cards
         .insert(*donnybrook_inn.get_id(), Box::new(donnybrook_inn.clone()));
@@ -423,49 +423,49 @@ async fn test_get_effective_costs_ignoring_thresholds() {
 fn test_state_aware_nearby_locations_do_not_create_surface_void_locations() {
     let state = State::new_mock_state(vec![8, 9]);
 
-    let source = Zone::Realm(8, Region::Surface);
+    let source = Zone::Location(8, Region::Surface);
 
     assert!(
         source
             .get_adjacent_locations(&state)
-            .contains(&Zone::Realm(9, Region::Surface))
+            .contains(&Zone::Location(9, Region::Surface))
     );
     assert!(
         !source
             .get_adjacent_locations(&state)
-            .contains(&Zone::Realm(13, Region::Surface))
+            .contains(&Zone::Location(13, Region::Surface))
     );
     assert!(
         source
             .get_adjacent_voids(&state)
-            .contains(&Zone::Realm(13, Region::Void))
+            .contains(&Zone::Location(13, Region::Void))
     );
     assert!(
         !source
             .get_adjacent_voids(&state)
-            .contains(&Zone::Realm(9, Region::Void))
+            .contains(&Zone::Location(9, Region::Void))
     );
 }
 
 #[test]
 fn test_zone_query_adjacent_to_uses_state_aware_locations() {
     let state = State::new_mock_state(vec![8, 9]);
-    let source = Zone::Realm(13, Region::Void);
+    let source = Zone::Location(13, Region::Void);
 
     let options = ZoneQuery::new().adjacent_to(&source).options(&state);
 
-    assert!(options.contains(&Zone::Realm(13, Region::Void)));
-    assert!(!options.contains(&Zone::Realm(8, Region::Surface)));
+    assert!(options.contains(&Zone::Location(13, Region::Void)));
+    assert!(!options.contains(&Zone::Location(8, Region::Surface)));
 }
 
 #[test]
 fn test_card_query_adjacent_to_uses_state_aware_locations() {
     let mut state = State::new_mock_state(vec![8, 9]);
     let player_id = state.players[0].id;
-    let source = Zone::Realm(8, Region::Surface);
+    let source = Zone::Location(8, Region::Surface);
 
     let mut foot_soldier = FootSoldier::new(player_id);
-    foot_soldier.set_zone(Zone::Realm(13, Region::Surface));
+    foot_soldier.set_zone(Zone::Location(13, Region::Surface));
     let foot_soldier_id = *foot_soldier.get_id();
     state.cards.insert(foot_soldier_id, Box::new(foot_soldier));
 
@@ -481,17 +481,17 @@ fn test_card_query_adjacent_to_uses_state_aware_locations() {
 fn test_adjacent_sites_cross_region_boundaries() {
     let state = State::new_mock_state(vec![8]);
 
-    let source = Zone::Realm(13, Region::Void);
+    let source = Zone::Location(13, Region::Void);
 
     assert!(
         !source
             .get_adjacent_locations(&state)
-            .contains(&Zone::Realm(8, Region::Surface))
+            .contains(&Zone::Location(8, Region::Surface))
     );
     assert!(
         source
             .get_adjacent_sites(&state)
-            .contains(&Zone::Realm(8, Region::Surface))
+            .contains(&Zone::Location(8, Region::Surface))
     );
 }
 
@@ -499,11 +499,11 @@ fn test_adjacent_sites_cross_region_boundaries() {
 fn test_card_query_spatial_filters_resolve_with_current_state() {
     let mut state = State::new_mock_state(vec![]);
     let player_id = state.players[0].id;
-    let source = Zone::Realm(13, Region::Void);
+    let source = Zone::Location(13, Region::Void);
     let query = CardQuery::new().sites().adjacent_sites_to(&source);
 
     let mut site = AridDesert::new(player_id);
-    site.set_zone(Zone::Realm(8, Region::Surface));
+    site.set_zone(Zone::Location(8, Region::Surface));
     let site_id = *site.get_id();
     state.cards.insert(site_id, Box::new(site));
 

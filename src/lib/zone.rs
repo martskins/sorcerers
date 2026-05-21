@@ -13,7 +13,7 @@ pub enum Zone {
     Hand,
     Spellbook,
     Atlasbook,
-    Realm(u8, Region),
+    Location(u8, Region),
     Cemetery,
     Banish,
     Intersection(Vec<u8>, Region),
@@ -26,7 +26,7 @@ impl std::fmt::Display for Zone {
             Zone::Hand => write!(f, "Hand"),
             Zone::Spellbook => write!(f, "Spellbook"),
             Zone::Atlasbook => write!(f, "Atlasbook"),
-            Zone::Realm(sq, region) => write!(f, "{} ({})", sq, region),
+            Zone::Location(sq, region) => write!(f, "{} ({})", sq, region),
             Zone::Cemetery => write!(f, "Cemetery"),
             Zone::Banish => write!(f, "Banish"),
             Zone::Intersection(locs, region) => write!(
@@ -44,7 +44,7 @@ impl std::fmt::Display for Zone {
 
 impl Zone {
     pub fn is_in_play(&self) -> bool {
-        matches!(self, Zone::Realm(_, _) | Zone::Intersection(_, _))
+        matches!(self, Zone::Location(_, _) | Zone::Intersection(_, _))
     }
 
     pub fn can_be_entered_by(&self, state: &State, card_id: &uuid::Uuid) -> anyhow::Result<bool> {
@@ -93,7 +93,7 @@ impl Zone {
         }
 
         match self {
-            Zone::Realm(_, _) => {
+            Zone::Location(_, _) => {
                 let site_in_zone = self.get_site(state);
                 if let Some(site) = site_in_zone {
                     return site.is_valid_play_zone_for(state, card_id, player_id);
@@ -230,17 +230,19 @@ impl Zone {
 
     pub fn all_in_surface() -> Vec<Zone> {
         (1..=20)
-            .map(|sq| Zone::Realm(sq, Region::Surface))
+            .map(|sq| Zone::Location(sq, Region::Surface))
             .collect()
     }
 
     pub fn all_in_region(region: Region) -> Vec<Zone> {
-        (1..=20).map(|sq| Zone::Realm(sq, region.clone())).collect()
+        (1..=20)
+            .map(|sq| Zone::Location(sq, region.clone()))
+            .collect()
     }
 
     pub fn all_realm() -> Vec<Zone> {
         (1..=20)
-            .map(|sq| Zone::Realm(sq, Region::Surface))
+            .map(|sq| Zone::Location(sq, Region::Surface))
             .collect()
     }
 
@@ -252,14 +254,14 @@ impl Zone {
 
     pub fn get_square(&self) -> Option<u8> {
         match self {
-            Zone::Realm(sq, _) => Some(*sq),
+            Zone::Location(sq, _) => Some(*sq),
             _ => None,
         }
     }
 
     pub fn with_region(&self, region: Region) -> Zone {
         match self {
-            Zone::Realm(square, _) => Zone::Realm(*square, region),
+            Zone::Location(square, _) => Zone::Location(*square, region),
             Zone::Intersection(squares, _) => Zone::Intersection(squares.clone(), region),
             zone => zone.clone(),
         }
@@ -331,7 +333,7 @@ impl Zone {
             .into_iter()
             .filter_map(|zone| {
                 let square = zone.get_square()?;
-                let void = Zone::Realm(square, Region::Void);
+                let void = Zone::Location(square, Region::Void);
                 void.is_location(state).then_some(void)
             })
             .collect()
@@ -342,7 +344,7 @@ impl Zone {
             .into_iter()
             .filter_map(|zone| {
                 let square = zone.get_square()?;
-                let void = Zone::Realm(square, Region::Void);
+                let void = Zone::Location(square, Region::Void);
                 void.is_location(state).then_some(void)
             })
             .collect()
@@ -352,7 +354,7 @@ impl Zone {
         let Some(square) = self.get_square() else {
             return vec![];
         };
-        let zone = Zone::Realm(square, Region::Surface);
+        let zone = Zone::Location(square, Region::Surface);
         if include_diagonals {
             zone.get_nearby()
         } else {
@@ -362,17 +364,17 @@ impl Zone {
 
     fn is_location(&self, state: &State) -> bool {
         match self {
-            Zone::Realm(_, Region::Surface) => self.get_site_at_square(state).is_some(),
-            Zone::Realm(_, Region::Void) => self.get_site_at_square(state).is_none(),
-            Zone::Realm(_, Region::Underground) => self
+            Zone::Location(_, Region::Surface) => self.get_site_at_square(state).is_some(),
+            Zone::Location(_, Region::Void) => self.get_site_at_square(state).is_none(),
+            Zone::Location(_, Region::Underground) => self
                 .get_site_at_square(state)
                 .is_some_and(|site| site.is_land_site(state).unwrap_or_default()),
-            Zone::Realm(_, Region::Underwater) => self
+            Zone::Location(_, Region::Underwater) => self
                 .get_site_at_square(state)
                 .is_some_and(|site| site.is_water_site(state).unwrap_or_default()),
             Zone::Intersection(squares, region) => squares
                 .iter()
-                .all(|square| Zone::Realm(*square, region.clone()).is_location(state)),
+                .all(|square| Zone::Location(*square, region.clone()).is_location(state)),
             _ => false,
         }
     }
@@ -390,16 +392,20 @@ impl Zone {
 
     fn step_in_direction(&self, direction: &Direction) -> Option<Self> {
         match self {
-            Zone::Realm(square, region) => {
+            Zone::Location(square, region) => {
                 let zone = match direction {
-                    Direction::Up => Zone::Realm(square.saturating_add(5), region.clone()),
-                    Direction::Down => Zone::Realm(square.saturating_sub(5), region.clone()),
-                    Direction::Left => Zone::Realm(square.saturating_sub(1), region.clone()),
-                    Direction::Right => Zone::Realm(square.saturating_add(1), region.clone()),
-                    Direction::TopLeft => Zone::Realm(square.saturating_add(4), region.clone()),
-                    Direction::TopRight => Zone::Realm(square.saturating_add(6), region.clone()),
-                    Direction::BottomLeft => Zone::Realm(square.saturating_sub(6), region.clone()),
-                    Direction::BottomRight => Zone::Realm(square.saturating_sub(4), region.clone()),
+                    Direction::Up => Zone::Location(square.saturating_add(5), region.clone()),
+                    Direction::Down => Zone::Location(square.saturating_sub(5), region.clone()),
+                    Direction::Left => Zone::Location(square.saturating_sub(1), region.clone()),
+                    Direction::Right => Zone::Location(square.saturating_add(1), region.clone()),
+                    Direction::TopLeft => Zone::Location(square.saturating_add(4), region.clone()),
+                    Direction::TopRight => Zone::Location(square.saturating_add(6), region.clone()),
+                    Direction::BottomLeft => {
+                        Zone::Location(square.saturating_sub(6), region.clone())
+                    }
+                    Direction::BottomRight => {
+                        Zone::Location(square.saturating_sub(4), region.clone())
+                    }
                 };
 
                 match direction {
@@ -417,7 +423,7 @@ impl Zone {
                 let new_squares: Vec<u8> = locs
                     .iter()
                     .filter_map(|sq| {
-                        let realm_zone = Zone::Realm(*sq, region.clone());
+                        let realm_zone = Zone::Location(*sq, region.clone());
                         realm_zone.zone_in_direction(direction, 1)?.get_square()
                     })
                     .collect();

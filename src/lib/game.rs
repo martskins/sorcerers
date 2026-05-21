@@ -792,25 +792,25 @@ pub fn are_nearby(square1: &Zone, square2: &Zone) -> bool {
 pub fn get_nearby_zones(zone: &Zone) -> Vec<Zone> {
     let mut adjacent = get_adjacent_zones(zone);
     let region = match zone {
-        Zone::Realm(_, r) | Zone::Intersection(_, r) => r.clone(),
+        Zone::Location(_, r) | Zone::Intersection(_, r) => r.clone(),
         _ => Region::Surface,
     };
     match zone {
-        Zone::Realm(square, _) => {
+        Zone::Location(square, _) => {
             let diagonals = match square % 5 {
                 0 => vec![
-                    Zone::Realm(square.saturating_add(4), region.clone()),
-                    Zone::Realm(square.saturating_sub(6), region.clone()),
+                    Zone::Location(square.saturating_add(4), region.clone()),
+                    Zone::Location(square.saturating_sub(6), region.clone()),
                 ],
                 1 => vec![
-                    Zone::Realm(square.saturating_sub(4), region.clone()),
-                    Zone::Realm(square.saturating_add(6), region.clone()),
+                    Zone::Location(square.saturating_sub(4), region.clone()),
+                    Zone::Location(square.saturating_add(6), region.clone()),
                 ],
                 _ => vec![
-                    Zone::Realm(square.saturating_sub(4), region.clone()),
-                    Zone::Realm(square.saturating_add(6), region.clone()),
-                    Zone::Realm(square.saturating_add(4), region.clone()),
-                    Zone::Realm(square.saturating_sub(6), region.clone()),
+                    Zone::Location(square.saturating_sub(4), region.clone()),
+                    Zone::Location(square.saturating_add(6), region.clone()),
+                    Zone::Location(square.saturating_add(4), region.clone()),
+                    Zone::Location(square.saturating_sub(6), region.clone()),
                 ],
             };
             adjacent.extend(diagonals);
@@ -823,23 +823,23 @@ pub fn get_nearby_zones(zone: &Zone) -> Vec<Zone> {
             // Nearby zones are all adjacent zones of all squares in the intersection, plus all intersections that share at least one square
             let mut nearby = Vec::new();
             for sq in sqs {
-                let realm_zone = Zone::Realm(*sq, region.clone());
+                let realm_zone = Zone::Location(*sq, region.clone());
                 nearby.extend(get_adjacent_zones(&realm_zone));
                 // Add diagonals for each square
                 let diagonals = match sq % 5 {
                     0 => vec![
-                        Zone::Realm(sq.saturating_add(4), region.clone()),
-                        Zone::Realm(sq.saturating_sub(6), region.clone()),
+                        Zone::Location(sq.saturating_add(4), region.clone()),
+                        Zone::Location(sq.saturating_sub(6), region.clone()),
                     ],
                     1 => vec![
-                        Zone::Realm(sq.saturating_sub(4), region.clone()),
-                        Zone::Realm(sq.saturating_add(6), region.clone()),
+                        Zone::Location(sq.saturating_sub(4), region.clone()),
+                        Zone::Location(sq.saturating_add(6), region.clone()),
                     ],
                     _ => vec![
-                        Zone::Realm(sq.saturating_sub(4), region.clone()),
-                        Zone::Realm(sq.saturating_add(6), region.clone()),
-                        Zone::Realm(sq.saturating_add(4), region.clone()),
-                        Zone::Realm(sq.saturating_sub(6), region.clone()),
+                        Zone::Location(sq.saturating_sub(4), region.clone()),
+                        Zone::Location(sq.saturating_add(6), region.clone()),
+                        Zone::Location(sq.saturating_add(4), region.clone()),
+                        Zone::Location(sq.saturating_sub(6), region.clone()),
                     ],
                 };
                 nearby.extend(diagonals);
@@ -863,30 +863,30 @@ pub fn get_nearby_zones(zone: &Zone) -> Vec<Zone> {
 
 pub fn get_adjacent_zones(zone: &Zone) -> Vec<Zone> {
     let region = match zone {
-        Zone::Realm(_, r) | Zone::Intersection(_, r) => r.clone(),
+        Zone::Location(_, r) | Zone::Intersection(_, r) => r.clone(),
         _ => Region::Surface,
     };
     match zone {
-        &Zone::Realm(square, _) => {
+        &Zone::Location(square, _) => {
             let mut adjacent = match square % 5 {
                 0 => vec![
-                    Zone::Realm(square.saturating_add(5), region.clone()),
-                    Zone::Realm(square.saturating_sub(5), region.clone()),
-                    Zone::Realm(square.saturating_sub(1), region.clone()),
-                    Zone::Realm(square, region.clone()),
+                    Zone::Location(square.saturating_add(5), region.clone()),
+                    Zone::Location(square.saturating_sub(5), region.clone()),
+                    Zone::Location(square.saturating_sub(1), region.clone()),
+                    Zone::Location(square, region.clone()),
                 ],
                 1 => vec![
-                    Zone::Realm(square.saturating_add(5), region.clone()),
-                    Zone::Realm(square.saturating_sub(5), region.clone()),
-                    Zone::Realm(square.saturating_add(1), region.clone()),
-                    Zone::Realm(square, region.clone()),
+                    Zone::Location(square.saturating_add(5), region.clone()),
+                    Zone::Location(square.saturating_sub(5), region.clone()),
+                    Zone::Location(square.saturating_add(1), region.clone()),
+                    Zone::Location(square, region.clone()),
                 ],
                 _ => vec![
-                    Zone::Realm(square.saturating_add(5), region.clone()),
-                    Zone::Realm(square.saturating_sub(5), region.clone()),
-                    Zone::Realm(square.saturating_add(1), region.clone()),
-                    Zone::Realm(square.saturating_sub(1), region.clone()),
-                    Zone::Realm(square, region.clone()),
+                    Zone::Location(square.saturating_add(5), region.clone()),
+                    Zone::Location(square.saturating_sub(5), region.clone()),
+                    Zone::Location(square.saturating_add(1), region.clone()),
+                    Zone::Location(square.saturating_sub(1), region.clone()),
+                    Zone::Location(square, region.clone()),
                 ],
             };
             adjacent.retain(|s| s.get_square().unwrap_or(0) <= 20);
@@ -946,7 +946,7 @@ pub fn get_knight_move_zones(zone: &Zone) -> Vec<Zone> {
         .iter()
         .map(|(dc, dr)| (col + dc, row + dr))
         .filter(|(c, r)| *c >= 1 && *c <= 5 && *r >= 1 && *r <= 4)
-        .map(|(c, r)| Zone::Realm(((r - 1) * 5 + c) as u8, Region::Surface))
+        .map(|(c, r)| Zone::Location(((r - 1) * 5 + c) as u8, Region::Surface))
         .collect()
 }
 
@@ -1804,7 +1804,7 @@ impl Game {
                 }
 
                 let acting_player = self.state.current_player();
-                if matches!(card.get_zone(), Zone::Realm(_, _)) {
+                if matches!(card.get_zone(), Zone::Location(_, _)) {
                     if card.get_controller_id(&self.state) != acting_player {
                         return Ok(());
                     }
@@ -2111,7 +2111,7 @@ impl Game {
                 player_id: *player_id,
                 card_id: avatar_id,
                 from: Zone::Spellbook,
-                to: ZoneQuery::from_zone(Zone::Realm(square, Region::Surface)),
+                to: ZoneQuery::from_zone(Zone::Location(square, Region::Surface)),
                 tap: false,
                 region: Region::Surface,
                 through_path: None,
