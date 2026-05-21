@@ -15,6 +15,7 @@ use crate::{
         menu::Menu,
         selection_overlay::SelectionOverlay,
     },
+    texture_cache::TextureCache,
     theme,
 };
 use egui::{Color32, Context, FontId, Painter, Rect, RichText, Ui, pos2, vec2};
@@ -32,8 +33,6 @@ use std::collections::HashMap;
 
 mod messages;
 mod ui;
-
-const FONT_SIZE: f32 = 24.0;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Status {
@@ -193,6 +192,7 @@ pub struct Game {
     audio_manager: AudioManager<DefaultBackend>,
     selected_value: Option<Box<dyn std::any::Any>>,
     card_toast: Vec<CardToast>,
+    prompt_stack_pos: Option<egui::Pos2>,
     controlled_hand_opened_for: Option<PlayerId>,
 }
 
@@ -253,6 +253,7 @@ impl Game {
             audio_manager,
             selected_value: None,
             card_toast: Vec::new(),
+            prompt_stack_pos: None,
             controlled_hand_opened_for: None,
         }
     }
@@ -352,6 +353,7 @@ impl Game {
             }
         }
         let new_scene = self.render_gui(ui, &painter);
+        self.render_prompt_stack(ui);
 
         // Toasts — drawn above the board but below any blocking overlay.
         // Stack from the bottom of the realm area upward (oldest at bottom).
@@ -447,6 +449,148 @@ impl Game {
                 eprintln!("Error processing component command: {}", e);
             }
         }
+    }
+
+    fn current_prompt(&self) -> Option<&str> {
+        match &self.data.status {
+            Status::Waiting { prompt }
+            | Status::SelectingZone { prompt, .. }
+            | Status::SelectingZoneGroup { prompt, .. }
+            | Status::SelectingPath { prompt, .. }
+            | Status::SelectingAmount { prompt, .. } => Some(prompt.as_str()),
+            Status::SelectingCard {
+                prompt,
+                preview: false,
+                ..
+            } => Some(prompt.as_str()),
+            _ => None,
+        }
+    }
+
+    fn prompt_source<'a>(&'a self, prompt: &str) -> (Option<&'a CardData>, String) {
+        let Some((prefix, rest)) = prompt.split_once(':') else {
+            return (None, prompt.to_string());
+        };
+        let source_name = prefix.trim();
+        let card = self
+            .data
+            .cards
+            .iter()
+            .find(|card| card.name.eq_ignore_ascii_case(source_name));
+        let instruction = rest.trim();
+        (
+            card,
+            if instruction.is_empty() {
+                prompt.to_string()
+            } else {
+                instruction.to_string()
+            },
+        )
+    }
+
+    fn render_prompt_stack(&mut self, ui: &mut Ui) {
+        let Some(prompt) = self.current_prompt() else {
+            return;
+        };
+
+        let ctx = ui.ctx().clone();
+        let (card, instruction) = {
+            let (card, instruction) = self.prompt_source(prompt);
+            (card.cloned(), instruction)
+        };
+        const PAD: f32 = 10.0;
+        const CARD_W: f32 = 86.0;
+        let sr = screen_rect().unwrap_or(Rect::ZERO);
+        let has_card = card.is_some();
+        let panel_w = (if has_card { 380.0_f32 } else { 300.0_f32 }).min(sr.width() - 32.0);
+        let panel_h = if has_card { 138.0 } else { 92.0 };
+        let default_pos = pos2(sr.min.x + 18.0, sr.min.y + 72.0);
+        let pos = self.prompt_stack_pos.get_or_insert(default_pos);
+        pos.x = pos.x.clamp(sr.min.x + 8.0, sr.max.x - panel_w - 8.0);
+        pos.y = pos.y.clamp(sr.min.y + 8.0, sr.max.y - panel_h - 8.0);
+        let rect = Rect::from_min_size(*pos, vec2(panel_w, panel_h));
+        let painter = ctx.layer_painter(egui::LayerId::new(
+            egui::Order::Tooltip,
+            egui::Id::new("prompt_stack_window"),
+        ));
+        let response = ui.interact(
+            rect,
+            egui::Id::new("prompt_stack_drag_handle"),
+            egui::Sense::click_and_drag(),
+        );
+        if response.dragged() {
+            *pos += response.drag_delta();
+            pos.x = pos.x.clamp(sr.min.x + 8.0, sr.max.x - panel_w - 8.0);
+            pos.y = pos.y.clamp(sr.min.y + 8.0, sr.max.y - panel_h - 8.0);
+        }
+        if response.hovered() || response.dragged() {
+            ui.ctx().set_cursor_icon(egui::CursorIcon::Grab);
+        }
+
+        painter.rect_filled(rect, 7.0, Color32::from_rgba_unmultiplied(7, 9, 18, 230));
+        painter.rect_stroke(
+            rect,
+            7.0,
+            egui::Stroke::new(1.0, theme::PANEL_BORDER),
+            egui::StrokeKind::Outside,
+        );
+
+        let image_rect = Rect::from_min_size(
+            rect.min + vec2(PAD, PAD),
+            vec2(CARD_W, CARD_W / CARD_ASPECT_RATIO),
+        );
+        if let Some(card) = &card {
+            if let Some(tex) = TextureCache::get_card_texture_blocking(card, &ctx) {
+                let mut draw_rect = image_rect;
+                if tex.aspect_ratio() > 1.0 {
+                    draw_rect =
+                        Rect::from_min_size(image_rect.min, vec2(CARD_W, CARD_W * CARD_ASPECT_RATIO));
+                }
+                painter.image(
+                    tex.id(),
+                    draw_rect,
+                    Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
+                    Color32::WHITE,
+                );
+            } else {
+                painter.rect_filled(image_rect, 4.0, Color32::from_rgb(42, 48, 68));
+            }
+        }
+
+        let text_x = if has_card { image_rect.max.x + 14.0 } else { rect.min.x + PAD };
+        let text_w = rect.max.x - text_x - PAD;
+        painter.text(
+            pos2(text_x, rect.min.y + PAD),
+            egui::Align2::LEFT_TOP,
+            card.as_ref()
+                .map(|card| card.name.as_str())
+                .unwrap_or("Pending choice"),
+            FontId::proportional(16.0),
+            theme::TEXT_BRIGHT,
+        );
+        if has_card {
+            painter.text(
+                pos2(text_x, rect.min.y + PAD + 22.0),
+                egui::Align2::LEFT_TOP,
+                "Triggered ability",
+                FontId::proportional(11.0),
+                Color32::from_rgb(132, 168, 215),
+            );
+        }
+        let galley = ctx.fonts_mut(|f| {
+            f.layout(
+                instruction,
+                FontId::proportional(13.0),
+                Color32::from_rgb(214, 224, 245),
+                text_w,
+            )
+        });
+        let text_y = if has_card {
+            rect.min.y + PAD + 44.0
+        } else {
+            rect.min.y + PAD + 28.0
+        };
+        painter.galley(pos2(text_x, text_y), galley, Color32::from_rgb(214, 224, 245));
     }
 
     fn broadcast_command_result(&mut self, command: &ComponentCommand) -> anyhow::Result<()> {

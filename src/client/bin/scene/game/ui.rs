@@ -83,16 +83,7 @@ impl Game {
         }
 
         match &self.data.status.clone() {
-            Status::Waiting { prompt } => {
-                painter.text(
-                    sr.center(),
-                    egui::Align2::CENTER_CENTER,
-                    prompt,
-                    FontId::proportional(FONT_SIZE),
-                    Color32::WHITE,
-                );
-                None
-            }
+            Status::Waiting { .. } => None,
             Status::SelectingAmount {
                 prompt,
                 min_amount,
