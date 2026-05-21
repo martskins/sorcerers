@@ -45,18 +45,26 @@ impl Game {
             ServerMessage::PickZoneGroup {
                 groups: zones,
                 prompt,
+                source_card_id,
                 ..
             } => {
                 self.data.status = Status::SelectingZoneGroup {
                     groups: zones.clone(),
                     prompt: prompt.clone(),
+                    source_card_id: *source_card_id,
                 };
                 None
             }
-            ServerMessage::PickZone { zones, prompt, .. } => {
+            ServerMessage::PickZone {
+                zones,
+                prompt,
+                source_card_id,
+                ..
+            } => {
                 self.data.status = Status::SelectingZone {
                     zones: zones.clone(),
                     prompt: prompt.clone(),
+                    source_card_id: *source_card_id,
                 };
                 None
             }
@@ -69,6 +77,7 @@ impl Game {
             }
             ServerMessage::PickAmount {
                 prompt,
+                source_card_id,
                 min_amount,
                 max_amount,
                 ..
@@ -77,13 +86,20 @@ impl Game {
                     min_amount: *min_amount,
                     max_amount: *max_amount,
                     prompt: prompt.clone(),
+                    source_card_id: *source_card_id,
                 };
                 None
             }
-            ServerMessage::PickPath { paths, prompt, .. } => {
+            ServerMessage::PickPath {
+                paths,
+                prompt,
+                source_card_id,
+                ..
+            } => {
                 self.data.status = Status::SelectingPath {
                     paths: paths.clone(),
                     prompt: prompt.clone(),
+                    source_card_id: *source_card_id,
                 };
                 None
             }
@@ -122,12 +138,14 @@ impl Game {
                 cards,
                 prompt,
                 preview,
+                source_card_id,
                 ..
             } => {
                 self.data.status = Status::SelectingCard {
                     cards: cards.clone(),
                     preview: *preview,
                     prompt: prompt.clone(),
+                    source_card_id: *source_card_id,
                     multiple: true,
                 };
                 if *preview {
@@ -187,12 +205,14 @@ impl Game {
                 pickable_cards,
                 prompt,
                 preview,
+                source_card_id,
                 ..
             } => {
                 self.data.status = Status::SelectingCard {
                     cards: cards.clone(),
                     preview: *preview,
                     prompt: prompt.clone(),
+                    source_card_id: *source_card_id,
                     multiple: false,
                 };
 
@@ -222,12 +242,14 @@ impl Game {
             ServerMessage::PickAction {
                 prompt,
                 actions,
+                source_card_id,
                 anchor_on_cursor,
                 ..
             } => {
                 self.data.status = Status::SelectingAction {
                     prompt: prompt.to_string(),
                     actions: actions.clone(),
+                    source_card_id: *source_card_id,
                     anchor_on_cursor: *anchor_on_cursor,
                 };
                 None

@@ -60,7 +60,7 @@ impl Card for ChainLightning {
             let Some(picked_card_id) = CardQuery::new()
                 .units()
                 .near_to(&last_hit_zone)
-                .with_prompt("Chain Lightning: Pick a unit to deal 2 damage to")
+                .with_prompt("Pick a unit to deal 2 damage to").with_source_card(*self.get_id())
                 .pick(&controller_id, &local_state, false)
                 .await?
             else {

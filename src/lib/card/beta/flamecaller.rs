@@ -43,9 +43,15 @@ impl ActivatedAbility for ShootProjectile {
             .sum::<Thresholds>()
             .fire as u16;
         let avatar = state.get_card(card_id);
-        let prompt = "Flamecaller: Pick a direction to shoot the projectile:";
-        let direction =
-            pick_direction(avatar.get_owner_id(), &CARDINAL_DIRECTIONS, state, prompt).await?;
+        let prompt = "Pick a direction to shoot the projectile";
+        let direction = pick_direction_source(
+            avatar.get_owner_id(),
+            &CARDINAL_DIRECTIONS,
+            state,
+            prompt,
+            Some(*card_id),
+        )
+        .await?;
         let mut effects = vec![Effect::ShootProjectile {
             id: uuid::Uuid::new_v4(),
             player_id: *avatar.get_owner_id(),

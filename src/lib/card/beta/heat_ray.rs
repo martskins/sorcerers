@@ -52,9 +52,15 @@ impl Card for HeatRay {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let caster = state.get_card(caster_id);
-        let prompt = "Heat Ray: Pick a direction to cast the spell:";
-        let direction =
-            pick_direction(self.get_owner_id(), &CARDINAL_DIRECTIONS, state, prompt).await?;
+        let prompt = "Pick a direction to cast the spell";
+        let direction = pick_direction_source(
+            self.get_owner_id(),
+            &CARDINAL_DIRECTIONS,
+            state,
+            prompt,
+            Some(*self.get_id()),
+        )
+        .await?;
         Ok(vec![Effect::ShootProjectile {
             id: uuid::Uuid::new_v4(),
             player_id: *self.get_owner_id(),

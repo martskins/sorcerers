@@ -54,7 +54,7 @@ impl Card for GrappleShot {
         let Some(ally_id) = CardQuery::new()
             .units()
             .controlled_by(&controller_id)
-            .with_prompt("Grapple Shot: Pick an ally to shoot the projectile")
+            .with_prompt("Pick an ally to shoot the projectile").with_source_card(*self.get_id())
             .pick(&controller_id, state, false)
             .await?
         else {

@@ -56,11 +56,12 @@ impl Card for Pollimorph {
         let controller_id = self.get_controller_id(state);
         let caster_zone = state.get_card(caster_id).get_zone().clone();
 
-        let prompt = "Pollimorph: Pick a minion to transform into a Frog";
+        let prompt = "Pick a minion to transform into a Frog";
         let Some(target_id) = CardQuery::new()
             .minions()
             .near_to(&caster_zone)
             .with_prompt(prompt)
+            .with_source_card(*self.get_id())
             .pick(&controller_id, state, false)
             .await?
         else {

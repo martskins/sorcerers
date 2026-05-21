@@ -20,6 +20,7 @@ pub struct ZoneQuery {
     /// Optionally filter `sites_only` results to zones controlled by this player.
     pub(super) controlled_by: Option<PlayerId>,
     pub(super) prompt: Option<String>,
+    pub(super) source_card_id: Option<uuid::Uuid>,
     pub(super) spatial_filters: Vec<ZoneSpatialFilter>,
 }
 
@@ -33,6 +34,7 @@ impl Default for ZoneQuery {
             sites_only: false,
             controlled_by: None,
             prompt: None,
+            source_card_id: None,
             spatial_filters: vec![],
         }
     }
@@ -110,6 +112,13 @@ impl ZoneQuery {
     pub fn with_prompt(self, prompt: impl Into<String>) -> Self {
         Self {
             prompt: Some(prompt.into()),
+            ..self
+        }
+    }
+
+    pub fn with_source_card(self, card_id: uuid::Uuid) -> Self {
+        Self {
+            source_card_id: Some(card_id),
             ..self
         }
     }

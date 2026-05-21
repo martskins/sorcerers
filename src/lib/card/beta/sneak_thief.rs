@@ -36,7 +36,7 @@ impl ActivatedAbility for StealArtifact {
         }
 
         let target_unit_id = match CardQuery::from_ids(candidate_units)
-            .with_prompt("Sneak Thief: Choose a target unit here")
+            .with_prompt("Choose a target unit here").with_source_card(*card_id)
             .pick(player_id, state, false)
             .await?
         {

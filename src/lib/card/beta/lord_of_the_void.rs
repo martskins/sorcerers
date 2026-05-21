@@ -101,7 +101,7 @@ impl Card for LordOfTheVoid {
         }
 
         let Some(target_site_id) = CardQuery::from_ids(candidate_sites)
-            .with_prompt("Lord of the Void: Pick a site to banish")
+            .with_prompt("Pick a site to banish").with_source_card(*self.get_id())
             .pick(&controller_id, state, false)
             .await?
         else {

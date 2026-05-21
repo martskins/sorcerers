@@ -66,7 +66,7 @@ impl Card for BaneWidow {
             .minions()
             .in_zone(self.get_zone())
             .id_not_in(vec![*self.get_id()])
-            .with_prompt("Bane Widow: Pick a minion to kill")
+            .with_prompt("Pick a minion to kill").with_source_card(*self.get_id())
             .pick(&controller_id, state, false)
             .await?
         else {

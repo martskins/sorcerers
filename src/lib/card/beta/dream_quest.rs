@@ -81,7 +81,7 @@ impl Card for DreamQuest {
         }
 
         let picked_id = CardQuery::from_ids(spellcasters)
-            .with_prompt("Dream-Quest: Pick an allied Spellcaster to send on a dream quest")
+            .with_prompt("Pick an allied Spellcaster to send on a dream quest").with_source_card(*self.get_id())
             .pick(&controller_id, state, false)
             .await?;
 

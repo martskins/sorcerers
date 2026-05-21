@@ -20,7 +20,7 @@ impl ActivatedAbility for DestroyNearbySite {
         let Some(picked_card_id) = CardQuery::new()
             .sites()
             .near_to(card.get_zone())
-            .with_prompt("Sinkhole: Pick a site to destroy")
+            .with_prompt("Pick a site to destroy").with_source_card(*card_id)
             .pick(&controller_id, state, false)
             .await?
         else {

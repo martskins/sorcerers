@@ -44,30 +44,36 @@ pub enum Status {
     SelectingAction {
         actions: Vec<String>,
         prompt: String,
+        source_card_id: Option<uuid::Uuid>,
         anchor_on_cursor: bool,
     },
     SelectingCard {
         cards: Vec<uuid::Uuid>,
         preview: bool,
         prompt: String,
+        source_card_id: Option<uuid::Uuid>,
         multiple: bool,
     },
     SelectingAmount {
         prompt: String,
+        source_card_id: Option<uuid::Uuid>,
         min_amount: u8,
         max_amount: u8,
     },
     SelectingPath {
         paths: Vec<Vec<Zone>>,
         prompt: String,
+        source_card_id: Option<uuid::Uuid>,
     },
     SelectingZoneGroup {
         groups: Vec<Vec<Zone>>,
         prompt: String,
+        source_card_id: Option<uuid::Uuid>,
     },
     SelectingZone {
         zones: Vec<Zone>,
         prompt: String,
+        source_card_id: Option<uuid::Uuid>,
     },
     PreviewingPlayableZones {
         card_id: uuid::Uuid,
@@ -451,53 +457,47 @@ impl Game {
         }
     }
 
-    fn current_prompt(&self) -> Option<&str> {
+    fn current_prompt(&self) -> Option<(&str, Option<uuid::Uuid>)> {
         match &self.data.status {
-            Status::Waiting { prompt }
-            | Status::SelectingZone { prompt, .. }
-            | Status::SelectingZoneGroup { prompt, .. }
-            | Status::SelectingPath { prompt, .. }
-            | Status::SelectingAmount { prompt, .. } => Some(prompt.as_str()),
+            Status::Waiting { prompt } => Some((prompt.as_str(), None)),
+            Status::SelectingZone {
+                prompt,
+                source_card_id,
+                ..
+            }
+            | Status::SelectingZoneGroup {
+                prompt,
+                source_card_id,
+                ..
+            }
+            | Status::SelectingPath {
+                prompt,
+                source_card_id,
+                ..
+            }
+            | Status::SelectingAmount {
+                prompt,
+                source_card_id,
+                ..
+            } => Some((prompt.as_str(), *source_card_id)),
             Status::SelectingCard {
                 prompt,
                 preview: false,
+                source_card_id,
                 ..
-            } => Some(prompt.as_str()),
+            } => Some((prompt.as_str(), *source_card_id)),
             _ => None,
         }
     }
 
-    fn prompt_source<'a>(&'a self, prompt: &str) -> (Option<&'a CardData>, String) {
-        let Some((prefix, rest)) = prompt.split_once(':') else {
-            return (None, prompt.to_string());
-        };
-        let source_name = prefix.trim();
-        let card = self
-            .data
-            .cards
-            .iter()
-            .find(|card| card.name.eq_ignore_ascii_case(source_name));
-        let instruction = rest.trim();
-        (
-            card,
-            if instruction.is_empty() {
-                prompt.to_string()
-            } else {
-                instruction.to_string()
-            },
-        )
-    }
-
     fn render_prompt_stack(&mut self, ui: &mut Ui) {
-        let Some(prompt) = self.current_prompt() else {
+        let Some((prompt, source_card_id)) = self.current_prompt() else {
             return;
         };
 
         let ctx = ui.ctx().clone();
-        let (card, instruction) = {
-            let (card, instruction) = self.prompt_source(prompt);
-            (card.cloned(), instruction)
-        };
+        let card = source_card_id.and_then(|id| self.data.cards.iter().find(|c| c.id == id).cloned());
+        let instruction = prompt.to_string();
         const PAD: f32 = 10.0;
         const CARD_W: f32 = 86.0;
         let sr = screen_rect().unwrap_or(Rect::ZERO);

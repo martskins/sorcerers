@@ -56,7 +56,7 @@ impl Card for WhirlingBlades {
             .units()
             .controlled_by(&controller_id)
             .in_play()
-            .with_prompt("Whirling Blades: Pick an ally")
+            .with_prompt("Pick an ally").with_source_card(*self.get_id())
             .pick(&controller_id, state, false)
             .await?
         else {

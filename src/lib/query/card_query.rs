@@ -2,7 +2,7 @@ use rand::seq::IndexedRandom;
 
 use crate::{
     card::{Ability, ArtifactType, Card, CardType, MinionType, Rarity, Region, SiteType},
-    game::{Element, PlayerId, pick_card, pick_card_with_options},
+    game::{Element, PlayerId, pick_card_source, pick_card_with_options_source},
     state::State,
     zone::Zone,
 };
@@ -41,6 +41,7 @@ pub struct CardQuery {
     elements: Option<Vec<Element>>,
     spatial_filters: Vec<SpatialFilter>,
     prompt: Option<String>,
+    source_card_id: Option<uuid::Uuid>,
 }
 
 #[derive(Debug, Clone)]
@@ -162,10 +163,18 @@ impl CardQuery {
                 .clone()
                 .unwrap_or_else(|| "Pick a card".to_string());
             if use_preview {
-                pick_card_with_options(player_id, &card_ids, &card_ids, false, state, &prompt)
-                    .await?
+                pick_card_with_options_source(
+                    player_id,
+                    &card_ids,
+                    &card_ids,
+                    false,
+                    state,
+                    &prompt,
+                    self.source_card_id,
+                )
+                .await?
             } else {
-                pick_card(player_id, &card_ids, state, &prompt).await?
+                pick_card_source(player_id, &card_ids, state, &prompt, self.source_card_id).await?
             }
         };
 
@@ -208,6 +217,13 @@ impl CardQuery {
     pub fn with_prompt(self, prompt: &str) -> Self {
         Self {
             prompt: Some(prompt.to_string()),
+            ..self
+        }
+    }
+
+    pub fn with_source_card(self, card_id: uuid::Uuid) -> Self {
+        Self {
+            source_card_id: Some(card_id),
             ..self
         }
     }

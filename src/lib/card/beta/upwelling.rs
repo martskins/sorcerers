@@ -56,7 +56,7 @@ impl Card for Upwelling {
         let Some(site_id) = CardQuery::new()
             .sites()
             .nearby_sites_to(caster.get_zone())
-            .with_prompt("Upwelling: Pick a site")
+            .with_prompt("Pick a site").with_source_card(*self.get_id())
             .pick(&controller_id, state, false)
             .await?
         else {

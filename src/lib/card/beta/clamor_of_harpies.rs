@@ -111,20 +111,23 @@ impl Card for ClamorOfHarpies {
             })
             .map(|c| *c.get_id())
             .collect();
-        let prompt = "Clamor of Harpies: Pick a unit to bring here";
-        let card_id = pick_card(self.get_controller_id(state), &valid_cards, state, prompt).await?;
+        let prompt = "Pick a unit to bring here";
+        let card_id =
+            pick_card_source(self.get_controller_id(state), &valid_cards, state, prompt, Some(*self.get_id()))
+                .await?;
         let card = state.get_card(&card_id);
         let activated_abilities: Vec<Box<dyn ActivatedAbility>> = vec![
             Box::new(ClamorOfHarpiesAction::Strike),
             Box::new(ClamorOfHarpiesAction::DoNotStrike),
         ];
-        let prompt = "Clamor of Harpies: Strike selected unit?";
-        let action = pick_action(
+        let prompt = "Strike selected unit?";
+        let action = pick_action_source(
             self.get_controller_id(state),
             &activated_abilities,
             state,
             prompt,
             false,
+            Some(*self.get_id()),
         )
         .await?;
         let mut effects = vec![Effect::MoveCard {

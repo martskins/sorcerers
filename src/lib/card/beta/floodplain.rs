@@ -22,7 +22,7 @@ impl ActivatedAbility for FloodAdjacentSite {
                     affected_sites: CardQuery::new()
                         .sites()
                         .adjacent_to(card.get_zone())
-                        .with_prompt("Floodplain: Pick an adjacent site to flood"),
+                        .with_prompt("Pick an adjacent site to flood").with_source_card(*card_id),
                     expires_on_effect: EffectQuery::TurnEnd { player_id: None },
                 },
             },

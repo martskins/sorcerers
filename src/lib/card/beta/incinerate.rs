@@ -68,8 +68,10 @@ impl Card for Incinerate {
             .collect();
         zones.push(caster.get_zone().clone());
 
-        let prompt = "Incinerate: Pick a zone to deal 4 damage to all other units in that zone";
-        let picked_zone = pick_zone(self.get_owner_id(), &zones, state, false, prompt).await?;
+        let prompt = "Pick a zone to deal 4 damage to all other units in that zone";
+        let picked_zone =
+            pick_zone_source(self.get_owner_id(), &zones, state, false, prompt, Some(*self.get_id()))
+                .await?;
         Ok(CardQuery::new()
             .units()
             .id_not(self.get_id())

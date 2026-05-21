@@ -60,7 +60,7 @@ impl Card for ScavengingFiend {
         let Some(picked_card_id) = CardQuery::new()
             .artifacts()
             .in_zone(&Zone::Cemetery)
-            .with_prompt("Scavenging Fiend: Pick a broken artifact to conjure")
+            .with_prompt("Pick a broken artifact to conjure").with_source_card(*self.get_id())
             .pick(&controller_id, state, true)
             .await?
         else {

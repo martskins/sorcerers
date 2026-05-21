@@ -52,8 +52,10 @@ impl Card for MajorExplosion {
     ) -> anyhow::Result<Vec<Effect>> {
         let caster = state.get_card(caster_id);
         let zones = caster.get_zones_within_steps(state, 2);
-        let prompt = "Pick a zone to center Major Explosion:";
-        let zone = pick_zone(self.get_owner_id(), &zones, state, false, prompt).await?;
+        let prompt = "Pick a zone to center the explosion";
+        let zone =
+            pick_zone_source(self.get_owner_id(), &zones, state, false, prompt, Some(*self.get_id()))
+                .await?;
         let zone_dmg: Vec<(Option<Zone>, u16)> = vec![
             (Some(zone.clone()), 7),
             (zone.zone_in_direction(&Direction::Up, 1), 5),

@@ -114,6 +114,27 @@ pub async fn pick_card_with_options(
     state: &State,
     prompt: &str,
 ) -> anyhow::Result<uuid::Uuid> {
+    pick_card_with_options_source(
+        player_id,
+        card_ids,
+        pickable_card_ids,
+        block_opponent,
+        state,
+        prompt,
+        None,
+    )
+    .await
+}
+
+pub async fn pick_card_with_options_source(
+    player_id: impl AsRef<PlayerId>,
+    card_ids: &[uuid::Uuid],
+    pickable_card_ids: &[uuid::Uuid],
+    block_opponent: bool,
+    state: &State,
+    prompt: &str,
+    source_card_id: Option<uuid::Uuid>,
+) -> anyhow::Result<uuid::Uuid> {
     let decision_player = state.decision_player(player_id.as_ref());
     let opponent_id = state.get_opponent_id(player_id.as_ref())?;
     if block_opponent {
@@ -124,6 +145,7 @@ pub async fn pick_card_with_options(
         .get_sender()
         .send(ServerMessage::PickCard {
             prompt: prompt.to_string(),
+            source_card_id,
             player_id: decision_player,
             cards: card_ids.to_vec(),
             pickable_cards: pickable_card_ids.to_vec(),
@@ -183,11 +205,22 @@ pub async fn pick_cards(
     state: &State,
     prompt: &str,
 ) -> anyhow::Result<Vec<uuid::Uuid>> {
+    pick_cards_source(player_id, card_ids, state, prompt, None).await
+}
+
+pub async fn pick_cards_source(
+    player_id: impl AsRef<PlayerId>,
+    card_ids: &[uuid::Uuid],
+    state: &State,
+    prompt: &str,
+    source_card_id: Option<uuid::Uuid>,
+) -> anyhow::Result<Vec<uuid::Uuid>> {
     let decision_player = state.decision_player(player_id.as_ref());
     state
         .get_sender()
         .send(ServerMessage::PickCards {
             prompt: prompt.to_string(),
+            source_card_id,
             player_id: decision_player,
             cards: card_ids.to_vec(),
             preview: false,
@@ -257,6 +290,16 @@ pub async fn pick_card(
     state: &State,
     prompt: &str,
 ) -> anyhow::Result<uuid::Uuid> {
+    pick_card_source(player_id, card_ids, state, prompt, None).await
+}
+
+pub async fn pick_card_source(
+    player_id: impl AsRef<PlayerId>,
+    card_ids: &[uuid::Uuid],
+    state: &State,
+    prompt: &str,
+    source_card_id: Option<uuid::Uuid>,
+) -> anyhow::Result<uuid::Uuid> {
     let decision_player = state.decision_player(player_id.as_ref());
     let opponent_id = state.get_opponent_id(player_id.as_ref())?;
     wait_for_opponent(&opponent_id, state, "Wait for opponent...").await?;
@@ -264,6 +307,7 @@ pub async fn pick_card(
         .get_sender()
         .send(ServerMessage::PickCard {
             prompt: prompt.to_string(),
+            source_card_id,
             player_id: decision_player,
             cards: card_ids.to_vec(),
             pickable_cards: card_ids.to_vec(),
@@ -291,11 +335,23 @@ pub async fn pick_action<'a>(
     prompt: &str,
     anchor_on_cursor: bool,
 ) -> anyhow::Result<&'a Box<dyn ActivatedAbility>> {
+    pick_action_source(player_id, actions, state, prompt, anchor_on_cursor, None).await
+}
+
+pub async fn pick_action_source<'a>(
+    player_id: impl AsRef<PlayerId>,
+    actions: &'a [Box<dyn ActivatedAbility>],
+    state: &State,
+    prompt: &str,
+    anchor_on_cursor: bool,
+    source_card_id: Option<uuid::Uuid>,
+) -> anyhow::Result<&'a Box<dyn ActivatedAbility>> {
     let decision_player = state.decision_player(player_id.as_ref());
     state
         .get_sender()
         .send(ServerMessage::PickAction {
             prompt: prompt.to_string(),
+            source_card_id,
             player_id: decision_player,
             actions: actions.iter().map(|c| c.get_name().to_string()).collect(),
             anchor_on_cursor,
@@ -367,11 +423,23 @@ pub async fn pick_amount(
     state: &State,
     prompt: impl AsRef<str>,
 ) -> anyhow::Result<u8> {
+    pick_amount_source(player_id, min_amount, max_amount, state, prompt, None).await
+}
+
+pub async fn pick_amount_source(
+    player_id: impl AsRef<PlayerId>,
+    min_amount: u8,
+    max_amount: u8,
+    state: &State,
+    prompt: impl AsRef<str>,
+    source_card_id: Option<uuid::Uuid>,
+) -> anyhow::Result<u8> {
     let decision_player = state.decision_player(player_id.as_ref());
     state
         .get_sender()
         .send(ServerMessage::PickAmount {
             prompt: prompt.as_ref().to_string(),
+            source_card_id,
             player_id: decision_player,
             min_amount,
             max_amount,
@@ -395,11 +463,23 @@ pub async fn pick_option(
     prompt: impl AsRef<str>,
     anchor_on_cursor: bool,
 ) -> anyhow::Result<usize> {
+    pick_option_source(player_id, options, state, prompt, anchor_on_cursor, None).await
+}
+
+pub async fn pick_option_source(
+    player_id: impl AsRef<PlayerId>,
+    options: &[String],
+    state: &State,
+    prompt: impl AsRef<str>,
+    anchor_on_cursor: bool,
+    source_card_id: Option<uuid::Uuid>,
+) -> anyhow::Result<usize> {
     let decision_player = state.decision_player(player_id.as_ref());
     state
         .get_sender()
         .send(ServerMessage::PickAction {
             prompt: prompt.as_ref().to_string(),
+            source_card_id,
             player_id: decision_player,
             actions: options.to_vec(),
             anchor_on_cursor,
@@ -422,11 +502,22 @@ pub async fn pick_path(
     state: &State,
     prompt: &str,
 ) -> anyhow::Result<Vec<Zone>> {
+    pick_path_source(player_id, paths, state, prompt, None).await
+}
+
+pub async fn pick_path_source(
+    player_id: impl AsRef<PlayerId>,
+    paths: &[Vec<Zone>],
+    state: &State,
+    prompt: &str,
+    source_card_id: Option<uuid::Uuid>,
+) -> anyhow::Result<Vec<Zone>> {
     let decision_player = state.decision_player(player_id.as_ref());
     state
         .get_sender()
         .send(ServerMessage::PickPath {
             prompt: prompt.to_string(),
+            source_card_id,
             player_id: decision_player,
             paths: paths.to_vec(),
         })
@@ -449,6 +540,17 @@ pub async fn pick_zone_group(
     block_opponent: bool,
     prompt: &str,
 ) -> anyhow::Result<Vec<Zone>> {
+    pick_zone_group_source(player_id, groups, state, block_opponent, prompt, None).await
+}
+
+pub async fn pick_zone_group_source(
+    player_id: impl AsRef<PlayerId>,
+    groups: &[Vec<Zone>],
+    state: &State,
+    block_opponent: bool,
+    prompt: &str,
+    source_card_id: Option<uuid::Uuid>,
+) -> anyhow::Result<Vec<Zone>> {
     let decision_player = state.decision_player(player_id.as_ref());
     let opponent_id = state.get_opponent_id(player_id.as_ref())?;
     if block_opponent {
@@ -459,6 +561,7 @@ pub async fn pick_zone_group(
         .get_sender()
         .send(ServerMessage::PickZoneGroup {
             prompt: prompt.to_string(),
+            source_card_id,
             player_id: decision_player,
             groups: groups.to_vec(),
         })
@@ -487,6 +590,17 @@ pub async fn pick_zone_near(
     block_opponent: bool,
     prompt: &str,
 ) -> anyhow::Result<Zone> {
+    pick_zone_near_source(player_id, zone, state, block_opponent, prompt, None).await
+}
+
+pub async fn pick_zone_near_source(
+    player_id: impl AsRef<PlayerId>,
+    zone: &Zone,
+    state: &State,
+    block_opponent: bool,
+    prompt: &str,
+    source_card_id: Option<uuid::Uuid>,
+) -> anyhow::Result<Zone> {
     let decision_player = state.decision_player(player_id.as_ref());
     let opponent_id = state.get_opponent_id(player_id.as_ref())?;
     if block_opponent {
@@ -497,6 +611,7 @@ pub async fn pick_zone_near(
         .get_sender()
         .send(ServerMessage::PickZone {
             prompt: prompt.to_string(),
+            source_card_id,
             player_id: decision_player,
             zones: zone.get_nearby(),
         })
@@ -525,6 +640,17 @@ pub async fn pick_zone(
     block_opponent: bool,
     prompt: &str,
 ) -> anyhow::Result<Zone> {
+    pick_zone_source(player_id, zones, state, block_opponent, prompt, None).await
+}
+
+pub async fn pick_zone_source(
+    player_id: impl AsRef<PlayerId>,
+    zones: &[Zone],
+    state: &State,
+    block_opponent: bool,
+    prompt: &str,
+    source_card_id: Option<uuid::Uuid>,
+) -> anyhow::Result<Zone> {
     let decision_player = state.decision_player(player_id.as_ref());
     let opponent_id = state.get_opponent_id(player_id.as_ref())?;
     if block_opponent {
@@ -535,6 +661,7 @@ pub async fn pick_zone(
         .get_sender()
         .send(ServerMessage::PickZone {
             prompt: prompt.to_string(),
+            source_card_id,
             player_id: decision_player,
             zones: zones.to_vec(),
         })
@@ -602,11 +729,22 @@ pub async fn pick_direction(
     state: &State,
     prompt: &str,
 ) -> anyhow::Result<Direction> {
+    pick_direction_source(player_id, directions, state, prompt, None).await
+}
+
+pub async fn pick_direction_source(
+    player_id: impl AsRef<PlayerId>,
+    directions: &[Direction],
+    state: &State,
+    prompt: &str,
+    source_card_id: Option<uuid::Uuid>,
+) -> anyhow::Result<Direction> {
     let decision_player = state.decision_player(player_id.as_ref());
     state
         .get_sender()
         .send(ServerMessage::PickAction {
             prompt: prompt.to_string(),
+            source_card_id,
             player_id: decision_player,
             actions: directions.iter().map(|c| c.get_name()).collect(),
             anchor_on_cursor: false,

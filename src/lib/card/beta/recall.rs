@@ -76,9 +76,10 @@ impl Card for Recall {
             if remaining.is_empty() {
                 break;
             }
-            let prompt = "Recall: Pick an allied minion to teleport (or cancel)";
+            let prompt = "Pick an allied minion to teleport (or cancel)";
             let picked = CardQuery::from_ids(remaining.clone())
                 .with_prompt(prompt)
+                .with_source_card(*self.get_id())
                 .pick(&controller_id, state, false)
                 .await?;
 

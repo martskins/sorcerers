@@ -50,8 +50,15 @@ impl Card for ConeOfFlame {
         caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
-        let prompt = "Cone of Flame: Pick a direction to cast the spell:";
-        let dir = pick_direction(self.get_owner_id(), &CARDINAL_DIRECTIONS, state, prompt).await?;
+        let prompt = "Pick a direction to cast the spell";
+        let dir = pick_direction_source(
+            self.get_owner_id(),
+            &CARDINAL_DIRECTIONS,
+            state,
+            prompt,
+            Some(*self.get_id()),
+        )
+        .await?;
         let caster = state.get_card(caster_id);
         let zone = caster.get_zone();
         let zone_dmg = vec![

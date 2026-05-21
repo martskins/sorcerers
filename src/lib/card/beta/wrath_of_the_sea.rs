@@ -51,10 +51,17 @@ impl Card for WrathOfTheSea {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        let prompt = "Wrath of the Sea: Pick a body of water";
+        let prompt = "Pick a body of water";
         let bodies_of_water = state.get_bodies_of_water();
-        let picked_body =
-            pick_zone_group(controller_id, &bodies_of_water, state, false, prompt).await?;
+        let picked_body = pick_zone_group_source(
+            controller_id,
+            &bodies_of_water,
+            state,
+            false,
+            prompt,
+            Some(*self.get_id()),
+        )
+        .await?;
         let sites = CardQuery::new().adjacent_to_zones(&picked_body);
         let other_water_sites = CardQuery::new().water_sites().all(state);
         let zones: Vec<Zone> = sites

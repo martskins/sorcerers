@@ -51,8 +51,10 @@ impl Card for IceLance {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        let prompt = "Ice Lance: Pick a direction to shoot the lance";
-        let direction = pick_direction(controller_id, &CARDINAL_DIRECTIONS, state, prompt).await?;
+        let prompt = "Pick a direction to shoot the lance";
+        let direction =
+            pick_direction_source(controller_id, &CARDINAL_DIRECTIONS, state, prompt, Some(*self.get_id()))
+                .await?;
         let caster = state.get_card(caster_id);
 
         let zone_dmg = vec![
@@ -68,7 +70,8 @@ impl Card for IceLance {
                     .in_zone(&zone)
                     .units()
                     .id_not_in(vec![*caster_id])
-                    .with_prompt("Pick a unit to damage with Ice Lance");
+                    .with_prompt("Pick a unit to damage")
+                    .with_source_card(*self.get_id());
 
                 if let Some(card_id) = qry.pick(&controller_id, state, false).await? {
                     effects.push(Effect::TakeDamage {

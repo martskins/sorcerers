@@ -100,12 +100,14 @@ pub enum ServerMessage {
     },
     PickCards {
         prompt: String,
+        source_card_id: Option<uuid::Uuid>,
         player_id: PlayerId,
         cards: Vec<uuid::Uuid>,
         preview: bool,
     },
     PickCard {
         prompt: String,
+        source_card_id: Option<uuid::Uuid>,
         player_id: PlayerId,
         cards: Vec<uuid::Uuid>,
         pickable_cards: Vec<uuid::Uuid>,
@@ -113,23 +115,27 @@ pub enum ServerMessage {
     },
     PickAmount {
         prompt: String,
+        source_card_id: Option<uuid::Uuid>,
         player_id: PlayerId,
         min_amount: u8,
         max_amount: u8,
     },
     PickAction {
         prompt: String,
+        source_card_id: Option<uuid::Uuid>,
         player_id: PlayerId,
         actions: Vec<String>,
         anchor_on_cursor: bool,
     },
     PickPath {
         prompt: String,
+        source_card_id: Option<uuid::Uuid>,
         player_id: PlayerId,
         paths: Vec<Vec<Zone>>,
     },
     PickZone {
         prompt: String,
+        source_card_id: Option<uuid::Uuid>,
         player_id: PlayerId,
         zones: Vec<Zone>,
     },
@@ -140,11 +146,13 @@ pub enum ServerMessage {
     },
     PickZoneGroup {
         prompt: String,
+        source_card_id: Option<uuid::Uuid>,
         player_id: PlayerId,
         groups: Vec<Vec<Zone>>,
     },
     PickDirection {
         prompt: String,
+        source_card_id: Option<uuid::Uuid>,
         player_id: PlayerId,
         directions: Vec<Direction>,
     },

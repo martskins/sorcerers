@@ -53,8 +53,16 @@ impl Card for MinorExplosion {
     ) -> anyhow::Result<Vec<Effect>> {
         let caster = state.get_card(caster_id);
         let valid_zones = caster.get_zones_within_steps(state, 2);
-        let prompt = "Pick a zone to center Minor Explosion:";
-        let zone = pick_zone(self.get_owner_id(), &valid_zones, state, false, prompt).await?;
+        let prompt = "Pick a zone to center the explosion";
+        let zone = pick_zone_source(
+            self.get_owner_id(),
+            &valid_zones,
+            state,
+            false,
+            prompt,
+            Some(*self.get_id()),
+        )
+        .await?;
         Ok(CardQuery::new()
             .units()
             .in_zone(&zone)

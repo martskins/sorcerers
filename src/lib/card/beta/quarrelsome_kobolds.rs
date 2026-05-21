@@ -79,8 +79,10 @@ impl Card for QuarrelsomeKobolds {
             units.extend(units_in_zone);
         }
 
-        let prompt = "Quarrelsome Kobolds: Pick a unit to deal damage to";
-        let picked_unit = pick_card(self.get_controller_id(state), &units, state, prompt).await?;
+        let prompt = "Pick a unit to deal damage to";
+        let picked_unit =
+            pick_card_source(self.get_controller_id(state), &units, state, prompt, Some(*self.get_id()))
+                .await?;
         Ok(vec![Effect::TakeDamage {
             card_id: picked_unit,
             from: *self.get_id(),

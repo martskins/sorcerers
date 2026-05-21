@@ -54,7 +54,7 @@ impl Card for Riptide {
         let controller_id = self.get_controller_id(state);
         let Some(picked_site_id) = CardQuery::new()
             .with_affinity(Element::Water)
-            .with_prompt("Riptide: Pick a water site to pull a unit into")
+            .with_prompt("Pick a water site to pull a unit into").with_source_card(*self.get_id())
             .sites()
             .pick(&controller_id, state, false)
             .await?
@@ -65,7 +65,7 @@ impl Card for Riptide {
         let Some(picked_unit_id) = CardQuery::new()
             .minions()
             .adjacent_to(site.get_zone())
-            .with_prompt("Riptide: Pick a unit to pull")
+            .with_prompt("Pick a unit to pull").with_source_card(*self.get_id())
             .pick(&controller_id, state, false)
             .await?
         else {

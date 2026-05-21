@@ -25,7 +25,7 @@ impl ActivatedAbility for SpearStrike {
         let Some(target_id) = CardQuery::new()
             .minions()
             .in_play()
-            .with_prompt("Spear of Destiny: Choose a minion anywhere")
+            .with_prompt("Choose a minion anywhere").with_source_card(*card_id)
             .pick(player_id, state, false)
             .await?
         else {

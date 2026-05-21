@@ -73,7 +73,7 @@ impl Card for BuriedTreasure {
         let Some(picked_card_id) = CardQuery::new()
             .controlled_by(player_id)
             .sites()
-            .with_prompt("Buried Treasure: Pick a land site to place the treasure under")
+            .with_prompt("Pick a land site to place the treasure under").with_source_card(*self.get_id())
             .land_sites()
             .pick(&opponent_id, state, false)
             .await?

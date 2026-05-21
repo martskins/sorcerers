@@ -68,9 +68,15 @@ impl Card for ColickyDragonettes {
             return Ok(vec![]);
         }
 
-        let prompt = "Colicky Dragonettes: Choose a direction to shoot a projectile";
-        let direction =
-            pick_direction(self.get_owner_id(), &CARDINAL_DIRECTIONS, state, prompt).await?;
+        let prompt = "Choose a direction to shoot a projectile";
+        let direction = pick_direction_source(
+            self.get_owner_id(),
+            &CARDINAL_DIRECTIONS,
+            state,
+            prompt,
+            Some(*self.get_id()),
+        )
+        .await?;
         Ok(vec![Effect::ShootProjectile {
             id: uuid::Uuid::new_v4(),
             player_id: *self.get_owner_id(),

@@ -100,9 +100,11 @@ impl Card for LuckyCharm {
             .choose_multiple(&mut rand::rng(), 2)
             .cloned()
             .collect();
-        Ok(Some(CardQuery::from_ids(options).with_prompt(
-            "Lucky Charm: Choose a card to override random decision",
-        )))
+        Ok(Some(
+            CardQuery::from_ids(options)
+                .with_prompt("Choose a card to override random decision")
+                .with_source_card(*self.get_id()),
+        ))
     }
 }
 

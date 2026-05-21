@@ -33,7 +33,7 @@ impl ActivatedAbility for WaveshaperFlood {
         let Some(picked_site_id) = CardQuery::new()
             .sites()
             .in_zones(&near_body_of_water)
-            .with_prompt("Waveshaper: Pick a site to flood")
+            .with_prompt("Pick a site to flood").with_source_card(*card_id)
             .pick(&controller_id, state, false)
             .await?
         else {

@@ -53,7 +53,7 @@ impl Card for Teleport {
         let controller_id = self.get_controller_id(state);
         let card_id = CardQuery::new()
             .count(1)
-            .with_prompt("Teleport: Choose an ally to teleport")
+            .with_prompt("Choose an ally to teleport").with_source_card(*self.get_id())
             .units()
             .controlled_by(&controller_id)
             .pick(&controller_id, state, false)

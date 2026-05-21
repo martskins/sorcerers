@@ -69,7 +69,7 @@ impl Card for VileImp {
             .units()
             .adjacent_to(self.get_zone())
             .id_not_in(vec![imp_id])
-            .with_prompt("Vile Imp: Optionally deal 2 damage to a target adjacent unit")
+            .with_prompt("Optionally deal 2 damage to a target adjacent unit").with_source_card(*self.get_id())
             .pick(&controller_id, state, true)
             .await?
         else {

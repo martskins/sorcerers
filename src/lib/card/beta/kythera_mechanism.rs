@@ -74,9 +74,11 @@ impl Card for KytheraMechanism {
 
         let query = query.clone();
         let options = query.all(state);
-        Ok(Some(CardQuery::from_ids(options).with_prompt(
-            "Kythera Mechanism: Choose a card to override random decision",
-        )))
+        Ok(Some(
+            CardQuery::from_ids(options)
+                .with_prompt("Choose a card to override random decision")
+                .with_source_card(*self.get_id()),
+        ))
     }
 
     fn zone_query_override(

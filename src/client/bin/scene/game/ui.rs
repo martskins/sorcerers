@@ -88,6 +88,7 @@ impl Game {
                 prompt,
                 min_amount,
                 max_amount,
+                ..
             } => self.render_amount_picker(ui, prompt, *min_amount, *max_amount),
             Status::SelectingAction {
                 prompt,

@@ -22,7 +22,7 @@ impl ActivatedAbility for FloodSite {
                 let picked_site_id: uuid::Uuid = CardQuery::new()
                     .adjacent_to_zones(&body_of_water)
                     .sites()
-                    .with_prompt("Avatar of Water: Pick a site to flood")
+                    .with_prompt("Pick a site to flood").with_source_card(*card_id)
                     .pick(&controller_id, state, false)
                     .await?
                     .expect("Expected to pick a site");

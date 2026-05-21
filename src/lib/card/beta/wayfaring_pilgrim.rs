@@ -97,13 +97,14 @@ impl Card for WayfaringPilgrim {
         corners_visited.push(to.clone());
         let options: Vec<BaseAction> = vec![BaseAction::DrawSite, BaseAction::DrawSpell];
         let option_labels: Vec<String> = options.iter().map(|a| a.get_name().to_string()).collect();
-        let prompt = "Wayfaring Pilgrim: Draw a card";
-        let picked_option_idx = pick_option(
+        let prompt = "Draw a card";
+        let picked_option_idx = pick_option_source(
             self.get_controller_id(state),
             &option_labels,
             state,
             prompt,
             false,
+            Some(*self.get_id()),
         )
         .await?;
         let mut effects = options[picked_option_idx]

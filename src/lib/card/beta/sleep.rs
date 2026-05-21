@@ -56,7 +56,7 @@ impl Card for Sleep {
         let Some(target_id) = CardQuery::new()
             .minions()
             .in_zones(&zones)
-            .with_prompt("Sleep: Pick a target minion")
+            .with_prompt("Pick a target minion").with_source_card(*self.get_id())
             .pick(&controller_id, state, false)
             .await?
         else {
