@@ -52,9 +52,14 @@ impl Card for IceLance {
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
         let prompt = "Pick a direction to shoot the lance";
-        let direction =
-            pick_direction_source(controller_id, &CARDINAL_DIRECTIONS, state, prompt, Some(*self.get_id()))
-                .await?;
+        let direction = pick_direction_source(
+            controller_id,
+            &CARDINAL_DIRECTIONS,
+            state,
+            prompt,
+            Some(*self.get_id()),
+        )
+        .await?;
         let caster = state.get_card(caster_id);
 
         let zone_dmg = vec![

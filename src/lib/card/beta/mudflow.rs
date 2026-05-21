@@ -86,7 +86,8 @@ impl Card for Mudflow {
         let Some(target_zone_id) = CardQuery::new()
             .sites()
             .near_to(self.get_zone())
-            .with_prompt("Pick a nearby site to surface/unburrow all minions").with_source_card(*self.get_id())
+            .with_prompt("Pick a nearby site to surface/unburrow all minions")
+            .with_source_card(*self.get_id())
             .pick(&controller_id, state, false)
             .await?
         else {

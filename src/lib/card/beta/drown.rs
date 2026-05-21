@@ -54,7 +54,8 @@ impl Card for Drown {
         let Some(picked_card_id) = CardQuery::new()
             .card_types(vec![CardType::Minion, CardType::Artifact])
             .in_zones(&Zone::all_in_surface())
-            .with_prompt("Pick a minion or artifact to submerge").with_source_card(*self.get_id())
+            .with_prompt("Pick a minion or artifact to submerge")
+            .with_source_card(*self.get_id())
             .pick(&controller_id, state, false)
             .await?
         else {

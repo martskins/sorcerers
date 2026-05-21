@@ -62,9 +62,14 @@ impl Card for MadDash {
             .map(|c| *c.get_id())
             .collect::<Vec<uuid::Uuid>>();
         let prompt = "Pick a unit to gain Movement +1";
-        let picked_card_id =
-            pick_card_source(self.get_controller_id(state), &cards, state, prompt, Some(*self.get_id()))
-                .await?;
+        let picked_card_id = pick_card_source(
+            self.get_controller_id(state),
+            &cards,
+            state,
+            prompt,
+            Some(*self.get_id()),
+        )
+        .await?;
         effects.push(Effect::AddAbilityCounter {
             card_id: picked_card_id,
             counter: AbilityCounter {

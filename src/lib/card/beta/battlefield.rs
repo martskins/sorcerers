@@ -78,7 +78,8 @@ impl Card for Battlefield {
         let Some(picked_card_id) = CardQuery::new()
             .in_zone(&Zone::Cemetery)
             .artifact_types(vec![ArtifactType::Weapon, ArtifactType::Armor])
-            .with_prompt("Pick a weapon or armor to conjure").with_source_card(*self.get_id())
+            .with_prompt("Pick a weapon or armor to conjure")
+            .with_source_card(*self.get_id())
             .pick(&controller_id, state, true)
             .await?
         else {

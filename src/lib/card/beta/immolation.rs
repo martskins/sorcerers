@@ -57,7 +57,8 @@ impl Card for Immolation {
         let Some(target_id) = CardQuery::new()
             .minions()
             .near_to(&caster_zone)
-            .with_prompt("Pick target minion").with_source_card(*self.get_id())
+            .with_prompt("Pick target minion")
+            .with_source_card(*self.get_id())
             .pick(&controller_id, state, false)
             .await?
         else {

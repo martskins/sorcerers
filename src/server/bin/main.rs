@@ -96,7 +96,10 @@ async fn main() -> anyhow::Result<()> {
                     }
                 };
                 let mut server = server_clone.lock().await;
-                if let Err(err) = server.process_message(&msg, Arc::clone(&writer), &addr).await {
+                if let Err(err) = server
+                    .process_message(&msg, Arc::clone(&writer), &addr)
+                    .await
+                {
                     eprintln!("closing connection from {addr}: {err}");
                     break;
                 }

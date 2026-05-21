@@ -114,9 +114,15 @@ impl Card for Wildfire {
             .collect::<Vec<Effect>>();
 
         let prompt = "Pick a zone to move to";
-        let picked_zone =
-            pick_zone_source(self.get_owner_id(), &zones, state, false, prompt, Some(*self.get_id()))
-                .await?;
+        let picked_zone = pick_zone_source(
+            self.get_owner_id(),
+            &zones,
+            state,
+            false,
+            prompt,
+            Some(*self.get_id()),
+        )
+        .await?;
         effects.push(Effect::MoveCard {
             player_id: *self.get_owner_id(),
             card_id: *self.get_id(),

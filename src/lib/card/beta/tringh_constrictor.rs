@@ -54,7 +54,8 @@ impl ActivatedAbility for Constrict {
             .in_zone(&constrict_zone)
             .not_carried()
             .id_not(card_id)
-            .with_prompt("Pick a minion to constrict").with_source_card(*card_id)
+            .with_prompt("Pick a minion to constrict")
+            .with_source_card(*card_id)
             .pick(player_id, state, false)
             .await?
         else {

@@ -55,7 +55,8 @@ impl Card for Backstab {
         let Some(mover_id) = CardQuery::new()
             .card_types(vec![CardType::Minion])
             .in_zones(&Zone::all_in_region(caster_region))
-            .with_prompt("Pick a minion to move").with_source_card(*self.get_id())
+            .with_prompt("Pick a minion to move")
+            .with_source_card(*self.get_id())
             .pick(&controller_id, state, false)
             .await?
         else {
@@ -68,7 +69,8 @@ impl Card for Backstab {
             .tapped()
             .in_zones(&mover.get_zone().get_adjacent())
             .id_not_in(vec![mover_id])
-            .with_prompt("Pick a tapped minion to strike").with_source_card(*self.get_id())
+            .with_prompt("Pick a tapped minion to strike")
+            .with_source_card(*self.get_id())
             .pick(&controller_id, state, false)
             .await?
         else {

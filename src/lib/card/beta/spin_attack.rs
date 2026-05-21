@@ -52,7 +52,8 @@ impl Card for SpinAttack {
             .units()
             .in_play()
             .controlled_by(&controller_id)
-            .with_prompt("Choose an ally to strike all enemies at its location").with_source_card(*self.get_id())
+            .with_prompt("Choose an ally to strike all enemies at its location")
+            .with_source_card(*self.get_id())
             .pick(&controller_id, state, false)
             .await?
         {

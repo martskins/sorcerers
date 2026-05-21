@@ -42,7 +42,8 @@ impl ActivatedAbility for HarpoonPull {
         let Some(target_id) = CardQuery::new()
             .minions()
             .in_zones(&target_zones)
-            .with_prompt("Pick a minion to harpoon").with_source_card(*card_id)
+            .with_prompt("Pick a minion to harpoon")
+            .with_source_card(*card_id)
             .pick(player_id, state, false)
             .await?
         else {

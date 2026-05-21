@@ -496,7 +496,8 @@ impl Game {
         };
 
         let ctx = ui.ctx().clone();
-        let card = source_card_id.and_then(|id| self.data.cards.iter().find(|c| c.id == id).cloned());
+        let card =
+            source_card_id.and_then(|id| self.data.cards.iter().find(|c| c.id == id).cloned());
         let instruction = prompt.to_string();
         const PAD: f32 = 10.0;
         const CARD_W: f32 = 86.0;
@@ -543,8 +544,10 @@ impl Game {
             if let Some(tex) = TextureCache::get_card_texture_blocking(card, &ctx) {
                 let mut draw_rect = image_rect;
                 if tex.aspect_ratio() > 1.0 {
-                    draw_rect =
-                        Rect::from_min_size(image_rect.min, vec2(CARD_W, CARD_W * CARD_ASPECT_RATIO));
+                    draw_rect = Rect::from_min_size(
+                        image_rect.min,
+                        vec2(CARD_W, CARD_W * CARD_ASPECT_RATIO),
+                    );
                 }
                 painter.image(
                     tex.id(),
@@ -557,7 +560,11 @@ impl Game {
             }
         }
 
-        let text_x = if has_card { image_rect.max.x + 14.0 } else { rect.min.x + PAD };
+        let text_x = if has_card {
+            image_rect.max.x + 14.0
+        } else {
+            rect.min.x + PAD
+        };
         let text_w = rect.max.x - text_x - PAD;
         painter.text(
             pos2(text_x, rect.min.y + PAD),
@@ -590,7 +597,11 @@ impl Game {
         } else {
             rect.min.y + PAD + 28.0
         };
-        painter.galley(pos2(text_x, text_y), galley, Color32::from_rgb(214, 224, 245));
+        painter.galley(
+            pos2(text_x, text_y),
+            galley,
+            Color32::from_rgb(214, 224, 245),
+        );
     }
 
     fn broadcast_command_result(&mut self, command: &ComponentCommand) -> anyhow::Result<()> {

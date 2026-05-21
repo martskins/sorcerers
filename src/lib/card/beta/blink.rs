@@ -56,7 +56,8 @@ impl Card for Blink {
         let card_id = CardQuery::new()
             .units()
             .controlled_by(&controller_id)
-            .with_prompt("Pick an ally to teleport").with_source_card(*self.get_id())
+            .with_prompt("Pick an ally to teleport")
+            .with_source_card(*self.get_id())
             .id_not_in(vec![*caster_id])
             .pick(&controller_id, state, false)
             .await?;
@@ -64,7 +65,8 @@ impl Card for Blink {
         let card = state.get_card(&card_id);
         let zone = ZoneQuery::new()
             .near(card.get_zone())
-            .with_prompt("Pick a zone to teleport to").with_source_card(*self.get_id())
+            .with_prompt("Pick a zone to teleport to")
+            .with_source_card(*self.get_id())
             .pick(&controller_id, state)
             .await?;
 

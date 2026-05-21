@@ -57,7 +57,8 @@ impl Card for WarpSpasm {
             .minions()
             .controlled_by(&controller_id)
             .in_play()
-            .with_prompt("Pick an allied minion").with_source_card(*self.get_id())
+            .with_prompt("Pick an allied minion")
+            .with_source_card(*self.get_id())
             .pick(&controller_id, state, false)
             .await?
         else {

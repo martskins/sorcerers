@@ -42,7 +42,8 @@ impl ActivatedAbility for DeathspeakerAbility {
         let Some(chosen_id) = CardQuery::new()
             .dead()
             .minions()
-            .with_prompt("Pick a dead minion to copy").with_source_card(*card_id)
+            .with_prompt("Pick a dead minion to copy")
+            .with_source_card(*card_id)
             .pick(player_id, state, false)
             .await?
         else {

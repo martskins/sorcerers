@@ -543,72 +543,73 @@ impl Menu {
                     } else if self.available_decks.is_empty() {
                         #[cfg(feature = "name-entry")]
                         {
-                        // ── Name entry ────────────────────────────────────────
-                        ui.label(
-                            egui::RichText::new("Enter your name")
-                                .color(Color32::from_rgb(180, 180, 210))
-                                .size(20.0),
-                        );
-                        ui.add_space(12.0);
-
-                        // We render the input via `allocate_exact_size` +
-                        // `ui.put` so we can apply the shake offset.
-                        let input_w = 320.0;
-                        let input_h = 46.0;
-                        let (base_rect, _) =
-                            ui.allocate_exact_size(vec2(input_w, input_h), egui::Sense::hover());
-                        let shaken_rect = base_rect.translate(vec2(shake_x, 0.0));
-
-                        let te = egui::TextEdit::singleline(&mut self.player_name)
-                            .font(egui::FontId::proportional(24.0))
-                            .text_color(Color32::DARK_GRAY)
-                            .hint_text("Your name…")
-                            .frame(
-                                egui::Frame::new()
-                                    .corner_radius(2.5)
-                                    .stroke(egui::Stroke::new(2.0, Color32::GRAY)),
-                            );
-                        let resp = ui.put(shaken_rect, te);
-
-                        // Auto-focus the field on first render
-                        if resp.gained_focus() || (!resp.has_focus() && self.player_name.is_empty())
-                        {
-                            resp.request_focus();
-                        }
-
-                        // Error hint text
-                        let is_error = self.show_name_error && self.player_name.is_empty();
-                        if is_error {
-                            ui.add_space(4.0);
+                            // ── Name entry ────────────────────────────────────────
                             ui.label(
-                                egui::RichText::new("Please enter a name to continue")
-                                    .color(Color32::from_rgb(220, 80, 60))
-                                    .size(14.0),
+                                egui::RichText::new("Enter your name")
+                                    .color(Color32::from_rgb(180, 180, 210))
+                                    .size(20.0),
                             );
-                        } else {
-                            ui.add_space(20.0); // reserve same space so layout doesn't shift
-                        }
+                            ui.add_space(12.0);
 
-                        let btn = egui::Button::new(
-                            egui::RichText::new("Search for Match")
-                                .size(24.0)
-                                .color(Color32::WHITE),
-                        )
-                        .min_size(vec2(280.0, 52.0));
+                            // We render the input via `allocate_exact_size` +
+                            // `ui.put` so we can apply the shake offset.
+                            let input_w = 320.0;
+                            let input_h = 46.0;
+                            let (base_rect, _) = ui
+                                .allocate_exact_size(vec2(input_w, input_h), egui::Sense::hover());
+                            let shaken_rect = base_rect.translate(vec2(shake_x, 0.0));
 
-                        let clicked = ui.add(btn).clicked()
-                            || ui.ctx().input(|i| i.key_pressed(egui::Key::Enter));
+                            let te = egui::TextEdit::singleline(&mut self.player_name)
+                                .font(egui::FontId::proportional(24.0))
+                                .text_color(Color32::DARK_GRAY)
+                                .hint_text("Your name…")
+                                .frame(
+                                    egui::Frame::new()
+                                        .corner_radius(2.5)
+                                        .stroke(egui::Stroke::new(2.0, Color32::GRAY)),
+                                );
+                            let resp = ui.put(shaken_rect, te);
 
-                        if clicked {
-                            if self.player_name.is_empty() {
-                                // Trigger shake + error state
-                                self.shake_start = Some(time);
-                                self.show_name_error = true;
-                                ui.ctx().request_repaint();
-                            } else {
-                                self.client.send(ClientMessage::Connect).ok();
+                            // Auto-focus the field on first render
+                            if resp.gained_focus()
+                                || (!resp.has_focus() && self.player_name.is_empty())
+                            {
+                                resp.request_focus();
                             }
-                        }
+
+                            // Error hint text
+                            let is_error = self.show_name_error && self.player_name.is_empty();
+                            if is_error {
+                                ui.add_space(4.0);
+                                ui.label(
+                                    egui::RichText::new("Please enter a name to continue")
+                                        .color(Color32::from_rgb(220, 80, 60))
+                                        .size(14.0),
+                                );
+                            } else {
+                                ui.add_space(20.0); // reserve same space so layout doesn't shift
+                            }
+
+                            let btn = egui::Button::new(
+                                egui::RichText::new("Search for Match")
+                                    .size(24.0)
+                                    .color(Color32::WHITE),
+                            )
+                            .min_size(vec2(280.0, 52.0));
+
+                            let clicked = ui.add(btn).clicked()
+                                || ui.ctx().input(|i| i.key_pressed(egui::Key::Enter));
+
+                            if clicked {
+                                if self.player_name.is_empty() {
+                                    // Trigger shake + error state
+                                    self.shake_start = Some(time);
+                                    self.show_name_error = true;
+                                    ui.ctx().request_repaint();
+                                } else {
+                                    self.client.send(ClientMessage::Connect).ok();
+                                }
+                            }
                         }
 
                         #[cfg(not(feature = "name-entry"))]

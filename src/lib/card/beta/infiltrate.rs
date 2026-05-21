@@ -69,7 +69,8 @@ impl Card for Infiltrate {
         }
 
         let Some(target_id) = CardQuery::from_ids(enemy_minions)
-            .with_prompt("Pick target enemy minion").with_source_card(*self.get_id())
+            .with_prompt("Pick target enemy minion")
+            .with_source_card(*self.get_id())
             .pick(&controller_id, state, false)
             .await?
         else {

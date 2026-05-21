@@ -80,7 +80,8 @@ impl Card for CauldronCrones {
             .controlled_by(&controller_id)
             .in_zone(self.get_zone())
             .id_not_in(vec![*self.get_id()])
-            .with_prompt("Choose a minion to sacrifice").with_source_card(*self.get_id())
+            .with_prompt("Choose a minion to sacrifice")
+            .with_source_card(*self.get_id())
             .pick(&controller_id, state, false)
             .await?
         else {

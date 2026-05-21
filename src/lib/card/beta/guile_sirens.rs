@@ -73,7 +73,8 @@ impl Card for GuileSirens {
             .controlled_by(&opponent_id)
             .minions()
             .adjacent_to(self.get_zone())
-            .with_prompt("Pick a minion to lure in").with_source_card(*self.get_id())
+            .with_prompt("Pick a minion to lure in")
+            .with_source_card(*self.get_id())
             .pick(&controller_id, state, false)
             .await?
         else {

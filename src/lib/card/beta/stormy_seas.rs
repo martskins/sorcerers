@@ -52,7 +52,8 @@ impl Card for StormySeas {
         let site_id = match CardQuery::new()
             .water_sites()
             .in_play()
-            .with_prompt("Choose a water site").with_source_card(*self.get_id())
+            .with_prompt("Choose a water site")
+            .with_source_card(*self.get_id())
             .pick(&controller_id, state, false)
             .await?
         {

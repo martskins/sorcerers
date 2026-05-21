@@ -59,9 +59,14 @@ impl Card for Blaze {
             .map(|c| *c.get_id())
             .collect::<Vec<uuid::Uuid>>();
         let prompt = "Pick an ally";
-        let picked_card =
-            pick_card_source(self.get_controller_id(state), &units, state, prompt, Some(*self.get_id()))
-                .await?;
+        let picked_card = pick_card_source(
+            self.get_controller_id(state),
+            &units,
+            state,
+            prompt,
+            Some(*self.get_id()),
+        )
+        .await?;
         Ok(vec![
             Effect::AddAbilityCounter {
                 card_id: picked_card,

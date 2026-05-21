@@ -87,7 +87,8 @@ impl Card for MiracleWorkers {
         let Some(chosen) = CardQuery::new()
             .in_zone(&Zone::Cemetery)
             .controlled_by(&controller_id)
-            .with_prompt("Return a minion that died this turn to your hand?").with_source_card(*self.get_id())
+            .with_prompt("Return a minion that died this turn to your hand?")
+            .with_source_card(*self.get_id())
             .pick(&controller_id, state, false)
             .await?
         else {

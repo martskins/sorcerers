@@ -54,7 +54,8 @@ impl Card for WaypointPortal {
         let Some(first_site_id) = CardQuery::new()
             .sites()
             .in_play()
-            .with_prompt("Pick the first site").with_source_card(*self.get_id())
+            .with_prompt("Pick the first site")
+            .with_source_card(*self.get_id())
             .pick(&controller_id, state, false)
             .await?
         else {
@@ -64,7 +65,8 @@ impl Card for WaypointPortal {
             .sites()
             .in_play()
             .id_not(&first_site_id)
-            .with_prompt("Pick the second site").with_source_card(*self.get_id())
+            .with_prompt("Pick the second site")
+            .with_source_card(*self.get_id())
             .pick(&controller_id, state, false)
             .await?
         else {

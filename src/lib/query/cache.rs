@@ -102,8 +102,15 @@ impl QueryCache {
                 .expect("failed to get random zone")
                 .clone()
         } else if let Some(options) = &qry.options {
-            pick_zone_source(player_id, options, state, false, qry.prompt(), qry.source_card_id)
-                .await?
+            pick_zone_source(
+                player_id,
+                options,
+                state,
+                false,
+                qry.prompt(),
+                qry.source_card_id,
+            )
+            .await?
         } else if qry.sites_only {
             let mut sites: Vec<Zone> = state
                 .cards
@@ -118,8 +125,15 @@ impl QueryCache {
                 .map(|c| c.get_zone().clone())
                 .collect();
             sites.dedup();
-            pick_zone_source(player_id, &sites, state, false, qry.prompt(), qry.source_card_id)
-                .await?
+            pick_zone_source(
+                player_id,
+                &sites,
+                state,
+                false,
+                qry.prompt(),
+                qry.source_card_id,
+            )
+            .await?
         } else {
             pick_zone_source(
                 player_id,

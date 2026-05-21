@@ -89,7 +89,8 @@ impl Card for SkirmishersOfMu {
         let Some(picked_unit_id) = CardQuery::new()
             .units()
             .near_to(&picked_zone)
-            .with_prompt("Pick a target for Ranged Strike").with_source_card(*self.get_id())
+            .with_prompt("Pick a target for Ranged Strike")
+            .with_source_card(*self.get_id())
             .pick(&controller_id, state, false)
             .await?
         else {

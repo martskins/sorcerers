@@ -74,7 +74,8 @@ impl Card for SunkenTreasure {
         let Some(picked_card_id) = CardQuery::new()
             .controlled_by(player_id)
             .water_sites()
-            .with_prompt("Pick a water site to place the treasure under").with_source_card(*self.get_id())
+            .with_prompt("Pick a water site to place the treasure under")
+            .with_source_card(*self.get_id())
             .pick(&opponent_id, state, false)
             .await?
         else {

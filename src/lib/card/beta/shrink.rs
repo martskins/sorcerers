@@ -56,7 +56,8 @@ impl Card for Shrink {
         let Some(target_id) = CardQuery::new()
             .units()
             .near_to(caster.get_zone())
-            .with_prompt("Pick a target unit").with_source_card(*self.get_id())
+            .with_prompt("Pick a target unit")
+            .with_source_card(*self.get_id())
             .pick(&controller_id, state, false)
             .await?
         else {
