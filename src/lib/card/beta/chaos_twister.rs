@@ -73,25 +73,30 @@ impl Card for ChaosTwister {
         let region = target.get_region(state).clone();
 
         // Move the minion to a random site zone, then deal power damage to all units there.
-        let landing_zone = ZoneQuery::random(Zone::all_realm());
+        // TODO: Does this count as a random output for things like Lucky Charm?
+        let landing_zone = ZoneQuery::random(Zone::all_realm())
+            .pick(&controller_id, state)
+            .await?;
 
-        Ok(vec![
-            Effect::MoveCard {
-                player_id: controller_id,
-                card_id: target_id,
-                from: from_zone,
-                to: landing_zone.clone(),
-                tap: false,
-                region,
-                through_path: None,
-            },
-            Effect::DealDamageAllUnitsInZone {
-                player_id: controller_id,
-                zone: landing_zone,
+        let mut effects = vec![Effect::MoveCard {
+            player_id: controller_id,
+            card_id: target_id,
+            from: from_zone,
+            to: landing_zone.clone().into(),
+            tap: false,
+            region,
+            through_path: None,
+        }];
+
+        for unit_id in CardQuery::new().units().in_zone(&landing_zone).all(state) {
+            effects.push(Effect::TakeDamage {
+                card_id: unit_id,
                 from: *self.get_id(),
-                damage: power,
-            },
-        ])
+                damage: Damage::basic(power),
+            });
+        }
+
+        Ok(effects)
     }
 }
 

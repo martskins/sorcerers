@@ -82,24 +82,25 @@ impl Card for Blaze {
                         card: picked_card.into(),
                     },
                     expires_on_effect: Some(EffectQuery::TurnEnd { player_id: None }),
-                    on_effect: Arc::new(|_state: &State, card_id: &uuid::Uuid, effect: &Effect| {
+                    on_effect: Arc::new(|state: &State, card_id: &uuid::Uuid, effect: &Effect| {
                         Box::pin(async move {
                             match effect {
-                                Effect::MoveCard {
-                                    player_id,
-                                    through_path,
-                                    ..
-                                } => {
+                                Effect::MoveCard { through_path, .. } => {
                                     let mut effects = vec![];
                                     if let Some(path) = through_path {
                                         for zone in path {
                                             if Some(zone) != path.last() {
-                                                effects.push(Effect::DealDamageAllUnitsInZone {
-                                                    player_id: *player_id,
-                                                    zone: zone.clone().into(),
-                                                    from: *card_id,
-                                                    damage: 2,
-                                                });
+                                                let units = CardQuery::new()
+                                                    .units()
+                                                    .in_zone(zone)
+                                                    .all(state);
+                                                for unit_id in units {
+                                                    effects.push(Effect::TakeDamage {
+                                                        card_id: unit_id,
+                                                        from: *card_id,
+                                                        damage: Damage::basic(2),
+                                                    });
+                                                }
                                             }
                                         }
                                     }

@@ -1,9 +1,7 @@
 use crate::zone::Zone;
 use crate::{
     card::{Ability, Card, Cost, Damage, FootSoldier, Frog, Region, Rubble, UnitBase},
-    game::{
-        BaseAction, Direction, PlayerAction, PlayerId, SoundEffect, pick_card, pick_option,
-    },
+    game::{BaseAction, Direction, PlayerAction, PlayerId, SoundEffect, pick_card, pick_option},
     networking::message::ServerMessage,
     query::{CardQuery, EffectQuery, QueryCache, ZoneQuery, entered_site},
     state::{ContinuousEffect, Phase, State, Turn},
@@ -219,12 +217,6 @@ pub enum Effect {
         card_id: uuid::Uuid,
         to_zone: Zone,
     },
-    DealDamageAllUnitsInZone {
-        player_id: PlayerId,
-        zone: ZoneQuery,
-        from: uuid::Uuid,
-        damage: u16,
-    },
     DealDamageToTarget {
         player_id: PlayerId,
         query: CardQuery,
@@ -355,7 +347,6 @@ impl Effect {
             Effect::BuryCard { card_id, .. } => Some(card_id),
             Effect::SetCardData { card_id, .. } => Some(card_id),
             Effect::TeleportCard { player_id, .. } => Some(player_id),
-            Effect::DealDamageAllUnitsInZone { from, .. } => Some(from),
             Effect::DealDamageToTarget { from, .. } => Some(from),
             Effect::RearrangeDeck { .. } => None,
             Effect::AddDeferredEffect { .. } => None,
@@ -680,19 +671,6 @@ impl Effect {
             }
             Effect::SetCardData { .. } => None,
             Effect::DealDamageToTarget { .. } => None,
-            Effect::DealDamageAllUnitsInZone {
-                player_id,
-                zone,
-                from,
-                damage,
-            } => {
-                let source = state.get_card(from).get_name();
-                let zone_name = zone.pick(player_id, state).await?;
-                Some(format!(
-                    "{} deals {} damage to all units in {}",
-                    source, damage, zone_name
-                ))
-            }
             Effect::TeleportCard {
                 player_id,
                 card_id,
@@ -1633,7 +1611,8 @@ impl Effect {
                         let mut first_strike_effects = Vec::new();
                         if attacker_has_fs {
                             for defending_id in defending_ids {
-                                let damage = assigned_damage.get(defending_id).copied().unwrap_or(0);
+                                let damage =
+                                    assigned_damage.get(defending_id).copied().unwrap_or(0);
                                 first_strike_effects.push(Effect::TakeDamage {
                                     card_id: *defending_id,
                                     from: *attacker_id,
@@ -1674,7 +1653,8 @@ impl Effect {
                                 if !defender_survived {
                                     continue;
                                 }
-                                let damage = assigned_damage.get(defending_id).copied().unwrap_or(0);
+                                let damage =
+                                    assigned_damage.get(defending_id).copied().unwrap_or(0);
                                 effects.push(Effect::TakeDamage {
                                     card_id: *defending_id,
                                     from: *attacker_id,
@@ -1822,22 +1802,6 @@ impl Effect {
 
                 effects.reverse();
                 state.queue(effects);
-            }
-            Effect::DealDamageAllUnitsInZone {
-                player_id,
-                zone: query,
-                from,
-                damage,
-            } => {
-                let zone = query.pick(player_id, state).await?;
-                let units = CardQuery::new().units().in_zone(&zone).all(state);
-                for unit_id in units {
-                    state.queue_one(Effect::TakeDamage {
-                        card_id: unit_id,
-                        from: *from,
-                        damage: Damage::basic(*damage),
-                    });
-                }
             }
             Effect::DealDamageToTarget {
                 player_id,

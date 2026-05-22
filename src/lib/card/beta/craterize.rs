@@ -126,12 +126,14 @@ impl Card for Craterize {
                     continue;
                 }
 
-                effects.push(Effect::DealDamageAllUnitsInZone {
-                    player_id: self.get_controller_id(state),
-                    zone: ZoneQuery::from_zone(zone),
-                    from: *self.get_id(),
-                    damage,
-                });
+                let units = CardQuery::new().units().in_zone(&zone).all(state);
+                for unit_id in units {
+                    effects.push(Effect::TakeDamage {
+                        card_id: unit_id,
+                        from: *self.get_id(),
+                        damage: Damage::basic(damage),
+                    });
+                }
             }
         }
 

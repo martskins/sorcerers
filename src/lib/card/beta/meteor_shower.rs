@@ -144,12 +144,13 @@ impl Card for MeteorShower {
                 continue;
             }
 
-            effects.push(Effect::DealDamageAllUnitsInZone {
-                player_id: controller_id,
-                zone: ZoneQuery::from_zone(zone),
-                from: *self.get_id(),
-                damage,
-            });
+            for unit_id in CardQuery::new().units().in_zone(&zone).all(state) {
+                effects.push(Effect::TakeDamage {
+                    card_id: unit_id,
+                    from: *self.get_id(),
+                    damage: Damage::basic(damage),
+                });
+            }
         }
 
         Ok(effects)
