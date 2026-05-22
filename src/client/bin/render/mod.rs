@@ -581,49 +581,55 @@ pub fn draw_card_preview(ui: &egui::Ui, tex: Option<&TextureHandle>) -> anyhow::
     Ok(())
 }
 
+pub enum ActionMenuResponse {
+    Selected(usize),
+    Dismissed,
+}
+
 pub fn popup_action_menu(
     ui: &mut egui::Ui,
-    anchor: Option<Pos2>,
+    anchor: Option<Rect>,
     prompt: &str,
     options: &[String],
     painter: &Painter,
-) -> Option<usize> {
-    let mut result: Option<usize> = None;
+) -> Option<ActionMenuResponse> {
+    let mut result: Option<ActionMenuResponse> = None;
 
-    // ── Layout constants ──────────────────────────────────────────
-    const MENU_W: f32 = 230.0;
-    const HEADER_H: f32 = 36.0;
-    const ROW_H: f32 = 46.0;
-    const CORNER: f32 = 10.0;
-    const ACCENT: Color32 = Color32::from_rgb(90, 160, 255);
-    const BG: Color32 = Color32::from_rgb(14, 16, 28);
-    const BG_ROW_HOVER: Color32 = Color32::from_rgb(35, 55, 100);
-    const SEP: Color32 = Color32::from_rgb(40, 44, 68);
-    const PADDING_X: f32 = 20.0;
+    #[derive(Clone, Copy)]
+    enum AnchorSide {
+        Left,
+        Right,
+        Top,
+        Bottom,
+        Center,
+    }
 
-    let total_h = HEADER_H + options.len() as f32 * ROW_H + 2.0;
+    const MIN_MENU_W: f32 = 220.0;
+    const MAX_MENU_W: f32 = 320.0;
+    const HEADER_H: f32 = 34.0;
+    const ROW_H: f32 = 40.0;
+    const CORNER: u8 = 8;
+    const GAP: f32 = 12.0;
+    const MARGIN: f32 = 10.0;
+    const POINTER: f32 = 9.0;
+    const PAD_X: f32 = 14.0;
+    const BG: Color32 = Color32::from_rgb(18, 21, 28);
+    const BG_TOP: Color32 = Color32::from_rgb(28, 35, 48);
+    const BG_ROW_HOVER: Color32 = Color32::from_rgb(45, 62, 83);
+    const BORDER: Color32 = Color32::from_rgb(126, 154, 184);
+    const ACCENT: Color32 = Color32::from_rgb(224, 191, 110);
+    const TEXT: Color32 = Color32::from_rgb(229, 234, 238);
+    const MUTED: Color32 = Color32::from_rgb(148, 164, 178);
+    const SEP: Color32 = Color32::from_rgb(48, 55, 66);
+
+    let total_h = HEADER_H + options.len() as f32 * ROW_H;
     let screen = screen_rect().unwrap_or(Rect::from_min_size(pos2(0.0, 0.0), vec2(1280.0, 720.0)));
-    let origin = if let Some(card_pos) = anchor {
-        let mut x = card_pos.x + 60.0;
-        let mut y = card_pos.y - total_h / 2.0;
-        if x + MENU_W > screen.max.x - 8.0 {
-            x = card_pos.x - MENU_W - 60.0;
-        }
-        y = y.clamp(screen.min.y + 8.0, screen.max.y - total_h - 8.0);
-        pos2(x, y)
-    } else {
-        pos2(
-            (screen.width() - MENU_W) / 2.0,
-            (screen.height() - total_h) / 2.0,
-        )
-    };
 
-    // ── Determine position ────────────────────────────────────────
     let title = painter.fonts_mut(|f| {
         f.layout_no_wrap(
             prompt.to_string(),
-            egui::FontId::proportional(14.0),
-            Color32::from_rgb(180, 200, 240),
+            egui::FontId::proportional(13.0),
+            MUTED,
         )
     });
 
@@ -633,80 +639,161 @@ pub fn popup_action_menu(
             painter.fonts_mut(|f| {
                 f.layout_no_wrap(
                     option.clone(),
-                    egui::FontId::proportional(18.0),
-                    Color32::from_rgb(200, 210, 230),
+                    egui::FontId::proportional(16.0),
+                    TEXT,
                 )
             })
         })
         .collect::<Vec<_>>();
 
-    let mut total_w = title.size().x;
-    for og in &option_galleys {
-        if og.size().x > total_w {
-            total_w = og.size().x;
-        }
-    }
-    total_w += PADDING_X;
+    let widest_text = option_galleys
+        .iter()
+        .map(|galley| galley.size().x)
+        .fold(title.size().x, f32::max);
+    let total_w = (widest_text + PAD_X * 2.0 + 24.0).clamp(MIN_MENU_W, MAX_MENU_W);
 
-    // ── Draw via Area so we control every pixel ───────────────────
-    egui::Area::new(egui::Id::new("action_menu_popup"))
+    let (origin, side) = if let Some(card_rect) = anchor {
+        let right_space = screen.max.x - card_rect.max.x - MARGIN;
+        let left_space = card_rect.min.x - screen.min.x - MARGIN;
+        let below_space = screen.max.y - card_rect.max.y - MARGIN;
+        let above_space = card_rect.min.y - screen.min.y - MARGIN;
+
+        let mut side = AnchorSide::Center;
+        let mut origin = if right_space >= total_w + GAP {
+            side = AnchorSide::Left;
+            pos2(card_rect.max.x + GAP, card_rect.center().y - total_h / 2.0)
+        } else if left_space >= total_w + GAP {
+            side = AnchorSide::Right;
+            pos2(card_rect.min.x - total_w - GAP, card_rect.center().y - total_h / 2.0)
+        } else if below_space >= total_h + GAP {
+            side = AnchorSide::Top;
+            pos2(card_rect.center().x - total_w / 2.0, card_rect.max.y + GAP)
+        } else if above_space >= total_h + GAP {
+            side = AnchorSide::Bottom;
+            pos2(card_rect.center().x - total_w / 2.0, card_rect.min.y - total_h - GAP)
+        } else {
+            pos2(
+                card_rect.center().x - total_w / 2.0,
+                card_rect.center().y - total_h / 2.0,
+            )
+        };
+
+        origin.x = origin.x.clamp(screen.min.x + MARGIN, screen.max.x - total_w - MARGIN);
+        origin.y = origin.y.clamp(screen.min.y + MARGIN, screen.max.y - total_h - MARGIN);
+        (origin, side)
+    } else {
+        (
+            pos2(
+                screen.center().x - total_w / 2.0,
+                screen.center().y - total_h / 2.0,
+            ),
+            AnchorSide::Center,
+        )
+    };
+
+    let menu_rect = Rect::from_min_size(origin, vec2(total_w, total_h));
+    let pointer = anchor.and_then(|card_rect| match side {
+        AnchorSide::Left => {
+            let y = card_rect.center().y.clamp(menu_rect.min.y + 18.0, menu_rect.max.y - 18.0);
+            Some(vec![
+                pos2(menu_rect.min.x, y - POINTER),
+                pos2(menu_rect.min.x - POINTER, y),
+                pos2(menu_rect.min.x, y + POINTER),
+            ])
+        }
+        AnchorSide::Right => {
+            let y = card_rect.center().y.clamp(menu_rect.min.y + 18.0, menu_rect.max.y - 18.0);
+            Some(vec![
+                pos2(menu_rect.max.x, y - POINTER),
+                pos2(menu_rect.max.x + POINTER, y),
+                pos2(menu_rect.max.x, y + POINTER),
+            ])
+        }
+        AnchorSide::Top => {
+            let x = card_rect.center().x.clamp(menu_rect.min.x + 18.0, menu_rect.max.x - 18.0);
+            Some(vec![
+                pos2(x - POINTER, menu_rect.min.y),
+                pos2(x, menu_rect.min.y - POINTER),
+                pos2(x + POINTER, menu_rect.min.y),
+            ])
+        }
+        AnchorSide::Bottom => {
+            let x = card_rect.center().x.clamp(menu_rect.min.x + 18.0, menu_rect.max.x - 18.0);
+            Some(vec![
+                pos2(x - POINTER, menu_rect.max.y),
+                pos2(x, menu_rect.max.y + POINTER),
+                pos2(x + POINTER, menu_rect.max.y),
+            ])
+        }
+        AnchorSide::Center => None,
+    });
+
+    let menu_response = egui::Area::new(egui::Id::new("action_menu_popup"))
         .fixed_pos(origin)
         .order(egui::Order::Foreground)
         .show(ui, |ui| {
-            let menu_rect = Rect::from_min_size(origin, vec2(total_w, total_h));
             let p = ui.painter();
 
-            // Drop shadow
             p.rect_filled(
-                menu_rect.translate(vec2(4.0, 4.0)),
-                egui::CornerRadius::same(CORNER as u8),
-                Color32::from_black_alpha(120),
+                menu_rect.translate(vec2(0.0, 6.0)),
+                egui::CornerRadius::same(CORNER),
+                Color32::from_black_alpha(92),
             );
-            // Main background
-            p.rect_filled(menu_rect, egui::CornerRadius::same(CORNER as u8), BG);
-            // Accent border
+            if let Some(points) = &pointer {
+                p.add(Shape::convex_polygon(
+                    points.clone(),
+                    BG,
+                    Stroke::new(1.0, BORDER),
+                ));
+            }
+            p.rect_filled(menu_rect, egui::CornerRadius::same(CORNER), BG);
             p.rect_stroke(
                 menu_rect,
-                egui::CornerRadius::same(CORNER as u8),
-                egui::Stroke::new(1.5, ACCENT),
+                egui::CornerRadius::same(CORNER),
+                egui::Stroke::new(1.0, BORDER),
                 egui::StrokeKind::Outside,
             );
-            // Header accent bar
+
             let header_rect = Rect::from_min_size(origin, vec2(total_w, HEADER_H));
             p.rect_filled(
                 header_rect,
                 egui::CornerRadius {
-                    nw: CORNER as u8,
-                    ne: CORNER as u8,
+                    nw: CORNER,
+                    ne: CORNER,
                     sw: 0,
                     se: 0,
                 },
-                Color32::from_rgb(22, 32, 60),
+                BG_TOP,
             );
-            // Header separator line
-            p.hline(
-                origin.x..=origin.x + total_w,
-                origin.y + HEADER_H,
-                egui::Stroke::new(1.0, ACCENT),
-            );
-            p.galley(
-                pos2(origin.x + PADDING_X / 2.0, origin.y + title.size().y / 2.0),
-                title,
-                Color32::WHITE,
+            p.rect_filled(
+                Rect::from_min_size(origin, vec2(3.0, total_h)),
+                egui::CornerRadius {
+                    nw: CORNER,
+                    ne: 0,
+                    sw: CORNER,
+                    se: 0,
+                },
+                ACCENT,
             );
 
-            // Action rows
-            for (idx, _option) in options.iter().enumerate() {
+            p.galley(
+                pos2(
+                    origin.x + PAD_X,
+                    origin.y + (HEADER_H - title.size().y) / 2.0,
+                ),
+                title,
+                MUTED,
+            );
+
+            for (idx, _) in options.iter().enumerate() {
                 let row_y = origin.y + HEADER_H + idx as f32 * ROW_H;
-                let row_rect =
-                    Rect::from_min_size(pos2(origin.x + 1.0, row_y), vec2(total_w - 2.0, ROW_H));
-                // Last row gets rounded bottom corners
+                let row_rect = Rect::from_min_size(pos2(origin.x + 3.0, row_y), vec2(total_w - 3.0, ROW_H));
                 let row_cr = if idx + 1 == options.len() {
                     egui::CornerRadius {
                         nw: 0,
                         ne: 0,
-                        sw: CORNER as u8,
-                        se: CORNER as u8,
+                        sw: 0,
+                        se: CORNER,
                     }
                 } else {
                     egui::CornerRadius::ZERO
@@ -721,35 +808,35 @@ pub fn popup_action_menu(
                     p.rect_filled(row_rect, row_cr, BG_ROW_HOVER);
                 }
                 if resp.clicked() {
-                    result = Some(idx);
+                    result = Some(ActionMenuResponse::Selected(idx));
                 }
 
-                // Separator (skip before first row)
                 if idx > 0 {
                     p.hline(
-                        origin.x + 12.0..=origin.x + total_w - 12.0,
+                        origin.x + PAD_X..=origin.x + total_w - PAD_X,
                         row_y,
                         egui::Stroke::new(0.5, SEP),
                     );
                 }
 
-                // Arrow glyph
                 p.text(
-                    pos2(origin.x + 18.0, row_y + ROW_H / 2.0),
-                    egui::Align2::LEFT_CENTER,
-                    "▸",
+                    pos2(origin.x + PAD_X, row_y + ROW_H / 2.0),
+                    egui::Align2::CENTER_CENTER,
+                    ">",
                     egui::FontId::proportional(14.0),
                     if resp.hovered() {
                         ACCENT
                     } else {
-                        Color32::from_rgb(80, 100, 140)
+                        MUTED
                     },
                 );
 
-                // Action label
                 let galley = option_galleys[idx].clone();
                 p.galley_with_override_text_color(
-                    pos2(origin.x + 36.0, row_y + galley.size().y / 2.0),
+                    pos2(
+                        origin.x + PAD_X + 18.0,
+                        row_y + (ROW_H - galley.size().y) / 2.0,
+                    ),
                     galley,
                     if resp.hovered() {
                         Color32::WHITE
@@ -759,6 +846,11 @@ pub fn popup_action_menu(
                 );
             }
         });
+
+    let clicked_elsewhere = ui.input(|i| i.pointer.any_pressed()) && !menu_response.response.hovered();
+    if clicked_elsewhere && result.is_none() {
+        result = Some(ActionMenuResponse::Dismissed);
+    }
 
     result
 }

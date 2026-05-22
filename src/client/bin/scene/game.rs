@@ -6,7 +6,7 @@ use crate::{
         player_status::PlayerStatusComponent, realm::RealmComponent,
     },
     config::*,
-    render::popup_action_menu,
+    render::{ActionMenuResponse, popup_action_menu},
     scene::{
         Scene,
         action_overlay::ActionOverlay,
@@ -147,6 +147,8 @@ pub struct GameData {
     pub avatar_health: HashMap<PlayerId, u16>,
     /// Screen position of the last card the player clicked; used to anchor context menus.
     pub last_clicked_card_pos: Option<egui::Pos2>,
+    pub last_clicked_card_rect: Option<egui::Rect>,
+    pub last_clicked_cursor_pos: Option<egui::Pos2>,
     pub last_clicked_card_id: Option<uuid::Uuid>,
     pub last_clicked_card_time: Option<f64>,
 }
@@ -164,6 +166,8 @@ impl GameData {
             resources: HashMap::new(),
             avatar_health: HashMap::new(),
             last_clicked_card_pos: None,
+            last_clicked_card_rect: None,
+            last_clicked_cursor_pos: None,
             last_clicked_card_id: None,
             last_clicked_card_time: None,
         }

@@ -974,6 +974,8 @@ impl Component for RealmComponent {
 
             if click_age > 3.0 {
                 data.last_clicked_card_id = None;
+                data.last_clicked_card_rect = None;
+                data.last_clicked_cursor_pos = None;
                 data.last_clicked_card_time = None;
             } else if let Some((card, rect, image)) = self
                 .card_rects
@@ -999,6 +1001,8 @@ impl Component for RealmComponent {
                     ctx,
                 );
                 data.last_clicked_card_id = None;
+                data.last_clicked_card_rect = None;
+                data.last_clicked_cursor_pos = None;
                 data.last_clicked_card_time = None;
             }
         }
@@ -1018,6 +1022,7 @@ impl Component for RealmComponent {
         let mut clicked_card = None;
         let mut move_delta = Vec2::default();
         let mut moved_card_id = None;
+        let suppress_preview = matches!(data.status, Status::SelectingAction { .. });
         let realm_rect = self.rect;
         let mirrored = self.mirrored;
         let card_filter = self.card_filter;
@@ -1064,8 +1069,22 @@ impl Component for RealmComponent {
                 );
             }
 
+            let visual_rect = if let Zone::Location(cell_id, _) = card_rect.card.zone {
+                Rect::from_points(&project_rect_in_cell(
+                    &realm_rect,
+                    cell_id,
+                    mirrored,
+                    card_rect.rect,
+                    18.0,
+                    card_rotation(&card_rect.card),
+                ))
+            } else {
+                card_rect.rect
+            };
+
             if resp.clicked() {
-                clicked_card = Some(card_rect.card.id);
+                let click_pos = resp.interact_pointer_pos().unwrap_or(visual_rect.center());
+                clicked_card = Some((card_rect.card.id, visual_rect, click_pos));
             }
 
             if resp.hovered() {
@@ -1080,7 +1099,7 @@ impl Component for RealmComponent {
                 ui.set_cursor_icon(CursorIcon::Default);
             }
 
-            if resp.hovered() {
+            if resp.hovered() && !resp.clicked() && !suppress_preview {
                 render::draw_card_preview(ui, card_rect.image.as_ref())?;
             }
 
@@ -1158,7 +1177,12 @@ impl Component for RealmComponent {
             }
         }
 
-        if let Some(card_id) = clicked_card {
+        if let Some((card_id, card_rect, click_pos)) = clicked_card {
+            if matches!(data.status, Status::Idle) {
+                data.last_clicked_card_pos = Some(card_rect.center());
+                data.last_clicked_card_rect = Some(card_rect);
+                data.last_clicked_cursor_pos = Some(click_pos);
+            }
             self.card_clicked(&card_id, data)?;
         }
 

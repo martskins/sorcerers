@@ -323,8 +323,9 @@ impl Component for PlayerHandComponent {
             return Ok(None);
         }
 
-        let mut clicked_card: Option<(uuid::Uuid, egui::Pos2)> = None;
+        let mut clicked_card: Option<(uuid::Uuid, Rect, Pos2)> = None;
         let mut dropped_card: Option<(uuid::Uuid, egui::Pos2)> = None;
+        let suppress_preview = matches!(data.status, Status::SelectingAction { .. });
         let drag_painter = ui.ctx().layer_painter(egui::LayerId::new(
             egui::Order::Tooltip,
             egui::Id::new("dragged_hand_card"),
@@ -358,7 +359,8 @@ impl Component for PlayerHandComponent {
                 );
             }
             if resp.clicked() {
-                clicked_card = Some((fan_card.card.id, fan_card.rect.center()));
+                let click_pos = resp.interact_pointer_pos().unwrap_or(fan_card.rect.center());
+                clicked_card = Some((fan_card.card.id, fan_card.rect, click_pos));
             }
 
             if resp.drag_started() {
@@ -406,7 +408,7 @@ impl Component for PlayerHandComponent {
                     false,
                 );
                 ui.ctx().request_repaint();
-            } else if resp.hovered() {
+            } else if resp.hovered() && !resp.clicked() && !suppress_preview {
                 render::draw_card_preview(ui, fan_card.image.as_ref())?;
             }
         }
@@ -415,11 +417,13 @@ impl Component for PlayerHandComponent {
             return Ok(Some(ComponentCommand::DropHandCard { card_id, pos }));
         }
 
-        if let Some((card_id, card_center)) = clicked_card {
+        if let Some((card_id, card_rect, click_pos)) = clicked_card {
             // Track the click origin so realm.rs can animate the card flying to its zone.
             if matches!(data.status, Status::Idle) {
                 data.last_clicked_card_id = Some(card_id);
-                data.last_clicked_card_pos = Some(card_center);
+                data.last_clicked_card_pos = Some(card_rect.center());
+                data.last_clicked_card_rect = Some(card_rect);
+                data.last_clicked_cursor_pos = Some(click_pos);
                 data.last_clicked_card_time = Some(ui.ctx().input(|i| i.time));
             }
             self.card_clicked(&card_id, data)?;

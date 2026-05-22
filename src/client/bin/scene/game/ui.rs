@@ -72,7 +72,12 @@ impl Game {
 
         let needs_overlay = matches!(
             &self.data.status,
-            Status::Waiting { .. } | Status::SelectingAction { .. } | Status::GameAborted { .. }
+            Status::Waiting { .. }
+                | Status::SelectingAction {
+                    anchor_on_cursor: false,
+                    ..
+                }
+                | Status::GameAborted { .. }
         );
         if needs_overlay {
             painter.rect_filled(
@@ -96,21 +101,34 @@ impl Game {
                 anchor_on_cursor,
                 ..
             } => {
-                let pos = if *anchor_on_cursor {
-                    self.data.last_clicked_card_pos
+                let anchor = if *anchor_on_cursor {
+                    self.data
+                        .last_clicked_cursor_pos
+                        .or(self.data.last_clicked_card_pos)
+                        .map(|pos| Rect::from_center_size(pos, vec2(1.0, 1.0)))
                 } else {
                     None
                 };
-                let result = popup_action_menu(ui, pos, prompt, actions, painter);
-                if let Some(idx) = result {
-                    self.client
-                        .send(ClientMessage::PickAction {
-                            game_id: self.game_id,
-                            player_id: self.data.player_id,
-                            action_idx: idx,
-                        })
-                        .ok();
-                    self.data.status = Status::Idle;
+                let result = popup_action_menu(ui, anchor, prompt, actions, painter);
+                if let Some(result) = result {
+                    let action_idx = match result {
+                        ActionMenuResponse::Selected(idx) => Some(idx),
+                        ActionMenuResponse::Dismissed if *anchor_on_cursor => {
+                            actions.iter().position(|action| action == "Cancel")
+                        }
+                        ActionMenuResponse::Dismissed => None,
+                    };
+
+                    if let Some(action_idx) = action_idx {
+                        self.client
+                            .send(ClientMessage::PickAction {
+                                game_id: self.game_id,
+                                player_id: self.data.player_id,
+                                action_idx,
+                            })
+                            .ok();
+                        self.data.status = Status::Idle;
+                    }
                 }
                 None
             }
