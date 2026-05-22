@@ -86,11 +86,12 @@ impl Card for SkirmishersOfMu {
         .await?;
 
         let controller_id = self.get_controller_id(state);
-        let direction = pick_direction(
+        let direction = pick_direction_source(
             controller_id,
             &CARDINAL_DIRECTIONS,
             state,
             "Skirmishers of Mu: Pick a direction for ranged strike",
+            Some(*self.get_id()),
         )
         .await?;
 

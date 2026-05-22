@@ -52,11 +52,12 @@ impl Card for Windblast {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        let direction = pick_direction(
+        let direction = pick_direction_source(
             &controller_id,
             &CARDINAL_DIRECTIONS,
             state,
             "Windblast: Pick a direction",
+            Some(*self.get_id()),
         )
         .await?;
 

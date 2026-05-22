@@ -64,11 +64,12 @@ impl Card for GrappleShot {
 
         let ally_card = state.get_card(&ally_id);
         let ally_zone = ally_card.get_zone();
-        let direction = pick_direction(
+        let direction = pick_direction_source(
             &controller_id,
             &CARDINAL_DIRECTIONS,
             state,
             "Grapple Shot: Pick a direction",
+            Some(ally_id),
         )
         .await?;
         let mut cur_zone = ally_zone.clone();

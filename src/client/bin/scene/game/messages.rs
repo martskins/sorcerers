@@ -254,6 +254,19 @@ impl Game {
                 };
                 None
             }
+            ServerMessage::PickDirection {
+                prompt,
+                directions,
+                source_card_id,
+                ..
+            } => {
+                self.data.status = Status::SelectingDirection {
+                    prompt: prompt.to_string(),
+                    directions: directions.clone(),
+                    source_card_id: *source_card_id,
+                };
+                None
+            }
             ServerMessage::Sync {
                 cards,
                 current_player,

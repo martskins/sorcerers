@@ -742,25 +742,22 @@ pub async fn pick_direction_source(
     let decision_player = state.decision_player(player_id.as_ref());
     state
         .get_sender()
-        .send(ServerMessage::PickAction {
+        .send(ServerMessage::PickDirection {
             prompt: prompt.to_string(),
             source_card_id,
             player_id: decision_player,
-            actions: directions.iter().map(|c| c.get_name()).collect(),
-            anchor_on_cursor: false,
+            directions: directions.to_vec(),
         })
         .await?;
 
     let board_flipped = &state.player_one != player_id.as_ref();
     let msg = state.get_receiver().recv().await?;
     match msg {
-        ClientMessage::PickAction { action_idx, .. } => {
-            Ok(directions[action_idx].normalise(board_flipped))
-        }
+        ClientMessage::PickDirection { direction, .. } => Ok(direction.normalise(board_flipped)),
         ClientMessage::PlayerDisconnected { player_id, .. } => {
             Err(GameError::PlayerDisconnected(player_id).into())
         }
-        _ => panic!("expected PickAction, got {:?}", msg),
+        _ => panic!("expected PickDirection, got {:?}", msg),
     }
 }
 
@@ -1384,8 +1381,14 @@ impl ActivatedAbility for UnitAction {
             UnitAction::RangedAttack => {
                 let card = state.get_card(card_id);
                 let prompt = "Pick a direction for ranged strike";
-                let direction =
-                    pick_direction(player_id, &CARDINAL_DIRECTIONS, state, prompt).await?;
+                let direction = pick_direction_source(
+                    player_id,
+                    &CARDINAL_DIRECTIONS,
+                    state,
+                    prompt,
+                    Some(*card_id),
+                )
+                .await?;
                 let mut effects = card.after_ranged_attack(state).await?;
                 effects.push(Effect::ShootProjectile {
                     id: uuid::Uuid::new_v4(),

@@ -20,11 +20,12 @@ impl ActivatedAbility for RollBoulder {
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
         let boulder = state.get_card(&self.0);
-        let picked_direction = pick_direction(
+        let picked_direction = pick_direction_source(
             player_id,
             &CARDINAL_DIRECTIONS,
             state,
             "Pick a direction to roll the Boulder",
+            Some(self.0),
         )
         .await?;
 

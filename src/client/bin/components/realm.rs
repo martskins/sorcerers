@@ -12,7 +12,7 @@ use egui::{
 use rand::SeedableRng;
 use sorcerers::{
     card::{CardData, CardType, Region},
-    game::PlayerId,
+    game::{Direction, PlayerId},
     networking::{self, message::ClientMessage},
     zone::Zone,
 };
@@ -459,6 +459,144 @@ impl RealmComponent {
         }
     }
 
+    fn direction_vector(direction: &Direction) -> Vec2 {
+        match direction {
+            Direction::Up => vec2(0.0, -1.0),
+            Direction::Down => vec2(0.0, 1.0),
+            Direction::Left => vec2(-1.0, 0.0),
+            Direction::Right => vec2(1.0, 0.0),
+            Direction::TopLeft => vec2(-1.0, -1.0).normalized(),
+            Direction::TopRight => vec2(1.0, -1.0).normalized(),
+            Direction::BottomLeft => vec2(-1.0, 1.0).normalized(),
+            Direction::BottomRight => vec2(1.0, 1.0).normalized(),
+        }
+    }
+
+    fn direction_origin(&self, data: &GameData, source_card_id: Option<uuid::Uuid>) -> Pos2 {
+        if let Some(source_card_id) = source_card_id {
+            if let Some(card_rect) = self
+                .card_rects
+                .iter()
+                .find(|card_rect| card_rect.card.id == source_card_id)
+            {
+                return card_rect.rect.center();
+            }
+
+            if let Some(card) = data.cards.iter().find(|card| card.id == source_card_id) {
+                match &card.zone {
+                    Zone::Location(cell_id, _) => {
+                        if let Some(cell) = self.cell_rects.iter().find(|cell| cell.id == *cell_id)
+                        {
+                            return cell.rect.center();
+                        }
+                    }
+                    Zone::Intersection(locations, _) => {
+                        if let Some(intersection) = self
+                            .intersection_rects
+                            .iter()
+                            .find(|intersection| &intersection.locations == locations)
+                        {
+                            return intersection.rect.center();
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        let corners = board_corners(&self.rect);
+        pos2(
+            corners.iter().map(|point| point.x).sum::<f32>() / corners.len() as f32,
+            corners.iter().map(|point| point.y).sum::<f32>() / corners.len() as f32,
+        )
+    }
+
+    fn render_direction_picker(
+        &mut self,
+        ui: &mut egui::Ui,
+        data: &mut GameData,
+        painter: &Painter,
+    ) -> anyhow::Result<()> {
+        let Status::SelectingDirection {
+            directions,
+            source_card_id,
+            ..
+        } = &data.status.clone()
+        else {
+            return Ok(());
+        };
+
+        let origin = self.direction_origin(data, *source_card_id);
+        let board = Rect::from_points(&board_corners(&self.rect));
+        let radius = (board.width().min(board.height()) * 0.24).clamp(58.0, 128.0);
+        let button_size = (board.width().min(board.height()) * 0.11).clamp(42.0, 58.0);
+        let mut picked = None;
+
+        painter.circle_stroke(
+            origin,
+            radius,
+            Stroke::new(1.0, Color32::from_rgba_unmultiplied(220, 235, 255, 58)),
+        );
+
+        for direction in directions {
+            let vector = Self::direction_vector(direction);
+            let center = origin + vector * radius;
+            let rect = Rect::from_center_size(center, vec2(button_size, button_size));
+            let response = ui.interact(
+                rect,
+                ui.id().with(format!("direction_picker_{direction:?}")),
+                Sense::click(),
+            );
+            let hovered = response.hovered();
+            let fill = if hovered {
+                theme::ACTION_HOVERED
+            } else {
+                Color32::from_rgba_unmultiplied(32, 50, 70, 230)
+            };
+            let stroke = if hovered {
+                Stroke::new(2.0, theme::PICKABLE)
+            } else {
+                Stroke::new(1.0, theme::PANEL_BORDER)
+            };
+
+            painter.circle_filled(center, button_size * 0.5, fill);
+            painter.circle_stroke(center, button_size * 0.5, stroke);
+            let shaft_start = center - vector * (button_size * 0.18);
+            let shaft_end = center + vector * (button_size * 0.18);
+            painter.line_segment(
+                [shaft_start, shaft_end],
+                Stroke::new(3.0, theme::TEXT_BRIGHT),
+            );
+            let perp = vec2(-vector.y, vector.x);
+            let tip = center + vector * (button_size * 0.28);
+            let head_left = tip - vector * (button_size * 0.18) + perp * (button_size * 0.12);
+            let head_right = tip - vector * (button_size * 0.18) - perp * (button_size * 0.12);
+            painter.add(Shape::convex_polygon(
+                vec![tip, head_left, head_right],
+                theme::TEXT_BRIGHT,
+                Stroke::NONE,
+            ));
+
+            if response.clicked() {
+                picked = Some(direction.clone());
+            }
+            if hovered {
+                ui.set_cursor_icon(CursorIcon::PointingHand);
+            }
+        }
+
+        if let Some(direction) = picked {
+            self.client.send(ClientMessage::PickDirection {
+                player_id: self.player_id,
+                game_id: self.game_id,
+                direction,
+            })?;
+            data.status = Status::Idle;
+        }
+
+        Ok(())
+    }
+
     fn draw_playmat(&self, painter: &Painter) {
         let corners = board_corners(&self.rect).to_vec();
         painter.add(Shape::convex_polygon(
@@ -545,6 +683,7 @@ impl RealmComponent {
                     | Status::SelectingCard { preview: true, .. }
                     | Status::GameAborted { .. }
                     | Status::SelectingAction { .. }
+                    | Status::SelectingDirection { .. }
                     | Status::Waiting { .. }
                     | Status::SelectingPath { .. }
                     | Status::SelectingAmount { .. }
@@ -585,6 +724,7 @@ impl RealmComponent {
                     | Status::DistributingDamage { .. }
                     | Status::Waiting { .. }
                     | Status::SelectingAction { .. }
+                    | Status::SelectingDirection { .. }
                     | Status::SelectingAmount { .. }
                     | Status::Mulligan
                     | Status::GameAborted { .. }
@@ -1082,6 +1222,7 @@ impl Component for RealmComponent {
         });
 
         self.render_paths(ui, data, painter);
+        self.render_direction_picker(ui, data, painter)?;
         self.render_prompt(data, painter)?;
         self.render_view_controls(ui);
 

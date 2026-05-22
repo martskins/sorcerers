@@ -15,11 +15,12 @@ impl ActivatedAbility for ShootProjectile {
         player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
-        let direction = pick_direction(
+        let direction = pick_direction_source(
             player_id,
             &CARDINAL_DIRECTIONS,
             state,
             "Pudge Butcher: Choose a direction to shoot the projectile in",
+            Some(*card_id),
         )
         .await?;
 

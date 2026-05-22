@@ -22,7 +22,7 @@ use egui::{Color32, Context, FontId, Painter, Rect, RichText, Ui, pos2, vec2};
 use kira::{AudioManager, DefaultBackend, sound::static_sound::StaticSoundData};
 use sorcerers::{
     card::{CardData, CardType, Region},
-    game::{PlayerId, Resources},
+    game::{Direction, PlayerId, Resources},
     networking::{
         self,
         message::{ClientMessage, ServerMessage},
@@ -46,6 +46,11 @@ pub enum Status {
         prompt: String,
         source_card_id: Option<uuid::Uuid>,
         anchor_on_cursor: bool,
+    },
+    SelectingDirection {
+        directions: Vec<Direction>,
+        prompt: String,
+        source_card_id: Option<uuid::Uuid>,
     },
     SelectingCard {
         cards: Vec<uuid::Uuid>,
@@ -476,6 +481,11 @@ impl Game {
                 ..
             }
             | Status::SelectingAmount {
+                prompt,
+                source_card_id,
+                ..
+            }
+            | Status::SelectingDirection {
                 prompt,
                 source_card_id,
                 ..
