@@ -74,37 +74,34 @@ impl Card for Thunderstorm {
 
         let zones = self.get_valid_move_zones(state).await?;
         let affected_zones = self.get_affected_zones(state);
-        let Some(picked_card_id) = CardQuery::new()
+        let picked_card_id = CardQuery::new()
             .randomised()
             .count(1)
             .units()
             .in_zones(&affected_zones)
             .id_not_in(vec![*self.get_id()])
             .pick(&self.get_controller_id(state), state, false)
-            .await?
-        else {
-            return Ok(vec![]);
-        };
+            .await?;
+        let mut effects = vec![Effect::MoveCard {
+            player_id: self.get_controller_id(state),
+            card_id: *self.get_id(),
+            from: self.get_zone().clone(),
+            to: ZoneQuery::from_options(
+                zones,
+                Some("Pick a zone to move Thunderstorm to".to_string()),
+            ),
+            tap: false,
+            region: self.get_region(state).clone(),
+            through_path: None,
+        }];
 
-        let effects = vec![
-            Effect::MoveCard {
-                player_id: self.get_controller_id(state),
-                card_id: *self.get_id(),
-                from: self.get_zone().clone(),
-                to: ZoneQuery::from_options(
-                    zones,
-                    Some("Pick a zone to move Thunderstorm to".to_string()),
-                ),
-                tap: false,
-                region: self.get_region(state).clone(),
-                through_path: None,
-            },
-            Effect::TakeDamage {
+        if let Some(picked_card_id) = picked_card_id {
+            effects.push(Effect::TakeDamage {
                 card_id: picked_card_id,
                 from: *self.get_id(),
                 damage: Damage::basic(3),
-            },
-        ];
+            });
+        };
 
         Ok(effects)
     }

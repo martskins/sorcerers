@@ -88,13 +88,24 @@ impl Card for ChaosTwister {
             through_path: None,
         }];
 
-        for unit_id in CardQuery::new().units().in_zone(&landing_zone).all(state) {
+        let units = CardQuery::new()
+            .units()
+            .in_zone(&landing_zone)
+            .id_not(&target_id)
+            .all(state);
+        for unit_id in units {
             effects.push(Effect::TakeDamage {
                 card_id: unit_id,
                 from: *self.get_id(),
                 damage: Damage::basic(power),
             });
         }
+
+        effects.push(Effect::TakeDamage {
+            card_id: target_id,
+            from: target_id,
+            damage: Damage::basic(power),
+        });
 
         Ok(effects)
     }
