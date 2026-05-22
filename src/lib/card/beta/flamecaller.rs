@@ -60,6 +60,7 @@ impl ActivatedAbility for ShootProjectile {
             shooter: *card_id,
             direction,
             damage,
+            ranged_strike: false,
             piercing: false,
             splash_damage: None,
         }];

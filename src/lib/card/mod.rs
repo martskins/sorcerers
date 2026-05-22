@@ -1229,6 +1229,17 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(false)
     }
 
+    fn ranged_range(&self, state: &State) -> anyhow::Result<Option<u8>> {
+        let mut range = 0u8;
+        for ability in self.get_abilities(state)? {
+            if let Ability::Ranged(steps) = ability {
+                range = range.saturating_add(steps);
+            }
+        }
+
+        Ok((range > 0).then_some(range))
+    }
+
     // Returns whether the card has the given modifier.
     fn has_ability(&self, state: &State, ability: &Ability) -> bool {
         if self

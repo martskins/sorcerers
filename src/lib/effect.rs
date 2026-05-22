@@ -1,7 +1,9 @@
 use crate::zone::Zone;
 use crate::{
     card::{Ability, Card, Cost, Damage, FootSoldier, Frog, Region, Rubble, UnitBase},
-    game::{BaseAction, Direction, PlayerAction, PlayerId, SoundEffect, pick_card, pick_option},
+    game::{
+        BaseAction, Direction, PlayerAction, PlayerId, SoundEffect, pick_card, pick_option,
+    },
     networking::message::ServerMessage,
     query::{CardQuery, EffectQuery, QueryCache, ZoneQuery, entered_site},
     state::{ContinuousEffect, Phase, State, Turn},
@@ -86,6 +88,7 @@ pub enum Effect {
         from_zone: Zone,
         direction: Direction,
         damage: u16,
+        ranged_strike: bool,
         piercing: bool,
         splash_damage: Option<u16>,
     },
@@ -180,10 +183,6 @@ pub enum Effect {
     AddMana {
         player_id: PlayerId,
         mana: u8,
-    },
-    RangedStrike {
-        striker_id: uuid::Uuid,
-        target_id: uuid::Uuid,
     },
     Strike {
         striker_id: uuid::Uuid,
@@ -290,6 +289,14 @@ fn player_name<'a>(player_id: &PlayerId, state: &'a State) -> &'a str {
     }
 }
 
+fn projectile_damage(amount: u16, ranged_strike: bool) -> Damage {
+    if ranged_strike {
+        Damage::strike(amount, true)
+    } else {
+        Damage::basic(amount)
+    }
+}
+
 impl Effect {
     pub async fn affected_cards(&self) -> Option<Vec<uuid::Uuid>> {
         match self {
@@ -338,7 +345,6 @@ impl Effect {
             Effect::ConsumeMana { player_id, .. } => Some(player_id),
             Effect::AddMana { player_id, .. } => Some(player_id),
             Effect::Strike { striker_id, .. } => Some(striker_id),
-            Effect::RangedStrike { striker_id, .. } => Some(striker_id),
             Effect::Attack { attacker_id, .. } => Some(attacker_id),
             Effect::RemoveCardFromGame { card_id } => Some(card_id),
             Effect::TakeDamage { card_id, .. } => Some(card_id),
@@ -671,15 +677,6 @@ impl Effect {
                 ))
             }
             Effect::SetCardData { .. } => None,
-            Effect::RangedStrike {
-                striker_id,
-                target_id,
-            } => Some(format!(
-                "{} ranged strikes {} with {}",
-                player_name(&state.get_card(striker_id).get_controller_id(state), state),
-                state.get_card(target_id).get_name(),
-                state.get_card(striker_id).get_name(),
-            )),
             Effect::DealDamageToTarget { .. } => None,
             Effect::DealDamageAllUnitsInZone {
                 player_id,
@@ -981,22 +978,25 @@ impl Effect {
                 from_zone,
                 direction,
                 damage,
+                ranged_strike,
                 piercing,
                 splash_damage,
                 ..
             } => {
                 let mut effects = vec![];
-                let mut next_zone = from_zone.zone_in_direction(direction, 1);
+                let mut next_zone = Some(from_zone.clone());
                 let mut is_starting_location = true;
                 let mut range: Option<u8> = *range;
                 while let Some(zone) = next_zone {
                     // Check if the projectile is out of range. If not, decrease the remaning range.
-                    if let Some(steps) = range.as_mut() {
-                        if *steps == 0 {
-                            break;
-                        }
+                    if !is_starting_location {
+                        if let Some(steps) = range.as_mut() {
+                            if *steps == 0 {
+                                break;
+                            }
 
-                        *steps -= 1;
+                            *steps -= 1;
+                        }
                     }
 
                     let picked_unit_id = match self.affected_cards().await {
@@ -1035,7 +1035,7 @@ impl Effect {
                         effects.push(Effect::TakeDamage {
                             card_id: picked_unit_id,
                             from: *shooter,
-                            damage: Damage::basic(*damage),
+                            damage: projectile_damage(*damage, *ranged_strike),
                         });
                         if let Some(splash_damage) = splash_damage {
                             let splash_effects = CardQuery::new()
@@ -1803,35 +1803,6 @@ impl Effect {
             Effect::SetCardData { card_id, data, .. } => {
                 let card = state.get_card_mut(card_id);
                 card.set_data(data)?;
-            }
-            Effect::RangedStrike {
-                striker_id,
-                target_id,
-                ..
-            } => {
-                // Ranged striking is an interaction: the striker loses Stealth.
-                state
-                    .get_card_mut(striker_id)
-                    .remove_modifier(&Ability::Stealth);
-
-                let snapshot = state.clone();
-                let attacker = state.get_card(striker_id);
-                if attacker.has_ability(&snapshot, &Ability::Disabled) {
-                    return Ok(());
-                }
-
-                let mut effects = vec![Effect::TakeDamage {
-                    card_id: *target_id,
-                    from: *striker_id,
-                    damage: Damage::strike(
-                        attacker
-                            .get_power(&snapshot)?
-                            .ok_or(anyhow::anyhow!("attacker has no power"))?,
-                        true,
-                    ),
-                }];
-                effects.extend(attacker.after_ranged_attack(state).await?);
-                state.queue(effects);
             }
             Effect::TeleportCard {
                 player_id,

@@ -68,6 +68,7 @@ impl Card for Fireball {
             from_zone: caster.get_zone().clone(),
             direction: direction.clone(),
             damage: 4,
+            ranged_strike: false,
             piercing: false,
             splash_damage: Some(2),
         }])

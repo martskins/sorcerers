@@ -33,6 +33,7 @@ impl ActivatedAbility for ShootProjectile {
             from_zone: pudge.get_zone().clone(),
             direction,
             damage: 0,
+            ranged_strike: false,
             piercing: false,
             splash_damage: None,
         };

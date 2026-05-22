@@ -69,6 +69,7 @@ impl Card for HeatRay {
             from_zone: caster.get_zone().clone(),
             direction,
             damage: 2,
+            ranged_strike: false,
             piercing: true,
             splash_damage: None,
         }])

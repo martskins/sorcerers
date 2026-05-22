@@ -86,21 +86,35 @@ impl Card for SkirmishersOfMu {
         .await?;
 
         let controller_id = self.get_controller_id(state);
-        let Some(picked_unit_id) = CardQuery::new()
-            .units()
-            .near_to(&picked_zone)
-            .with_prompt("Pick a target for Ranged Strike")
-            .with_source_card(*self.get_id())
-            .pick(&controller_id, state, false)
-            .await?
-        else {
-            return Ok(vec![]);
-        };
+        let direction = pick_direction(
+            controller_id,
+            &CARDINAL_DIRECTIONS,
+            state,
+            "Skirmishers of Mu: Pick a direction for ranged strike",
+        )
+        .await?;
 
-        Ok(vec![Effect::RangedStrike {
-            striker_id: *self.get_id(),
-            target_id: picked_unit_id,
-        }])
+        let mut effects = self.after_ranged_attack(state).await?;
+        effects.push(Effect::ShootProjectile {
+            id: uuid::Uuid::new_v4(),
+            range: Some(self.ranged_range(state)?.unwrap_or(1)),
+            player_id: controller_id,
+            shooter: *self.get_id(),
+            from_zone: picked_zone,
+            direction,
+            damage: self
+                .get_power(state)?
+                .ok_or(anyhow::anyhow!("ranged attacker has no power"))?,
+            ranged_strike: true,
+            piercing: false,
+            splash_damage: None,
+        });
+        effects.push(Effect::RemoveAbility {
+            card_id: *self.get_id(),
+            modifier: Ability::Stealth,
+        });
+
+        Ok(effects)
     }
 }
 

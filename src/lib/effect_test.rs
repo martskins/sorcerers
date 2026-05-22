@@ -1,13 +1,15 @@
 use crate::{
     card::{
         Ability, ApprenticeWizard, AridDesert, BottomlessPit, Card, Damage, Enchantress,
-        FootSoldier, OgreGoons, PhaseAssassin, Region, SeaRaider, VaultsOfZul, from_name_and_zone,
+        FootSoldier, OgreGoons, PhaseAssassin, Region, SeaRaider, VaultsOfZul,
+        YourkeCrossbowmen, from_name_and_zone,
     },
     deck::Deck,
     effect::{
         DeferredEffect, Effect, EffectCallback, EffectReplacementCallback, TemporaryEffect,
         TokenType,
     },
+    game::Direction,
     networking::message::ServerMessage,
     query::{CardQuery, EffectQuery, QueryCache, ZoneQuery, entered_sites, entered_zones},
     state::{Player, PlayerWithDeck, State},
@@ -181,6 +183,115 @@ async fn test_disabled_unit_cannot_strike() {
         state.get_card(&target_id).get_damage_taken().unwrap(),
         0,
         "a disabled unit should not strike or deal strike damage"
+    );
+}
+
+#[tokio::test]
+async fn test_ranged_projectile_hits_intervening_unit() {
+    let (mut state, _rx) = make_state(vec![]);
+    let player_id = state.players[0].id;
+    let opponent_id = state.players[1].id;
+
+    let mut striker = YourkeCrossbowmen::new(player_id);
+    let striker_id = *striker.get_id();
+    striker.set_zone(Zone::Location(1, Region::Surface));
+    state.cards.insert(striker_id, Box::new(striker));
+
+    let mut blocker = ApprenticeWizard::new(opponent_id);
+    let blocker_id = *blocker.get_id();
+    blocker.set_zone(Zone::Location(2, Region::Surface));
+    state.cards.insert(blocker_id, Box::new(blocker));
+
+    let mut original_target = ApprenticeWizard::new(opponent_id);
+    let original_target_id = *original_target.get_id();
+    original_target.set_zone(Zone::Location(3, Region::Surface));
+    state
+        .cards
+        .insert(original_target_id, Box::new(original_target));
+
+    state.queue_one(Effect::ShootProjectile {
+        id: uuid::Uuid::new_v4(),
+        range: Some(2),
+        player_id,
+        shooter: striker_id,
+        from_zone: Zone::Location(1, Region::Surface),
+        direction: Direction::Right,
+        damage: 3,
+        ranged_strike: true,
+        piercing: false,
+        splash_damage: None,
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(
+        state.get_card(&blocker_id).get_zone(),
+        &Zone::Cemetery,
+        "the intervening unit should be hit by the ranged projectile"
+    );
+    assert_eq!(
+        state
+            .get_card(&original_target_id)
+            .get_damage_taken()
+            .unwrap(),
+        0,
+        "the originally targeted unit should not be struck through a blocker"
+    );
+}
+
+#[tokio::test]
+async fn test_ranged_projectile_damage_is_distinct_from_regular_projectile_damage() {
+    let (mut state, _rx) = make_state(vec![]);
+    let player_id = state.players[0].id;
+    let opponent_id = state.players[1].id;
+
+    let mut shooter = OgreGoons::new(player_id);
+    let shooter_id = *shooter.get_id();
+    shooter.set_zone(Zone::Location(1, Region::Surface));
+    state.cards.insert(shooter_id, Box::new(shooter));
+
+    let mut target = YourkeCrossbowmen::new(opponent_id);
+    let target_id = *target.get_id();
+    target.set_zone(Zone::Location(2, Region::Surface));
+    state.cards.insert(target_id, Box::new(target));
+
+    state.queue_one(Effect::ShootProjectile {
+        id: uuid::Uuid::new_v4(),
+        range: Some(1),
+        player_id,
+        shooter: shooter_id,
+        from_zone: Zone::Location(1, Region::Surface),
+        direction: Direction::Right,
+        damage: 1,
+        ranged_strike: false,
+        piercing: false,
+        splash_damage: None,
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(
+        state.get_card(&target_id).get_damage_taken().unwrap(),
+        1,
+        "Yourke should still take damage from non-ranged-strike projectiles"
+    );
+
+    state.queue_one(Effect::ShootProjectile {
+        id: uuid::Uuid::new_v4(),
+        range: Some(1),
+        player_id,
+        shooter: shooter_id,
+        from_zone: Zone::Location(1, Region::Surface),
+        direction: Direction::Right,
+        damage: 1,
+        ranged_strike: true,
+        piercing: false,
+        splash_damage: None,
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(
+        state.get_card(&target_id).get_damage_taken().unwrap(),
+        1,
+        "Yourke should prevent the ranged-strike damage carried by a projectile"
     );
 }
 

@@ -1383,13 +1383,30 @@ impl ActivatedAbility for UnitAction {
         match self {
             UnitAction::RangedAttack => {
                 let card = state.get_card(card_id);
-                let cards = card.get_valid_attack_targets(state, true);
-                let prompt = "Pick a unit to attack";
-                let picked_card_id = pick_card(player_id, &cards, state, prompt).await?;
-                Ok(vec![Effect::RangedStrike {
-                    striker_id: *card_id,
-                    target_id: picked_card_id,
-                }])
+                let prompt = "Pick a direction for ranged strike";
+                let direction =
+                    pick_direction(player_id, &CARDINAL_DIRECTIONS, state, prompt).await?;
+                let mut effects = card.after_ranged_attack(state).await?;
+                effects.push(Effect::ShootProjectile {
+                    id: uuid::Uuid::new_v4(),
+                    range: Some(card.ranged_range(state)?.unwrap_or(1)),
+                    player_id: *player_id,
+                    shooter: *card_id,
+                    from_zone: card.get_zone().clone(),
+                    direction,
+                    damage: card
+                        .get_power(state)?
+                        .ok_or(anyhow::anyhow!("ranged attacker has no power"))?,
+                    ranged_strike: true,
+                    piercing: false,
+                    splash_damage: None,
+                });
+                // Ranged striking is an interaction: the striker loses Stealth.
+                effects.push(Effect::RemoveAbility {
+                    card_id: *card_id,
+                    modifier: Ability::Stealth,
+                });
+                Ok(effects)
             }
             UnitAction::Attack => {
                 let attacker = state.get_card(card_id);

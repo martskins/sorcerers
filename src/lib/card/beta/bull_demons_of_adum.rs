@@ -162,7 +162,7 @@ impl Card for BullDemonsOfAdum {
             .in_zone(to)
             .all(state)
             .into_iter()
-            .map(|target_id| Effect::RangedStrike {
+            .map(|target_id| Effect::Strike {
                 striker_id: *self.get_id(),
                 target_id,
             })

@@ -85,6 +85,7 @@ impl Card for ColickyDragonettes {
             from_zone: self.get_zone().clone(),
             direction,
             damage: 1,
+            ranged_strike: false,
             piercing: false,
             splash_damage: None,
         }])
