@@ -13,7 +13,7 @@ impl Rubble {
         Self {
             site_base: SiteBase {
                 provided_mana: 0,
-                provided_thresholds: Thresholds::parse(""),
+                provided_thresholds: Thresholds::ZERO,
                 tapped: false,
                 ..Default::default()
             },
@@ -24,7 +24,7 @@ impl Rubble {
                 costs: Costs::ZERO,
                 rarity: Rarity::Ordinary,
                 edition: Edition::Beta,
-                controller_id: owner_id,
+                controller_id: NO_CONTROLLER,
                 is_token: true,
                 ..Default::default()
             },

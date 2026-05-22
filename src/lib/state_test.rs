@@ -2,11 +2,11 @@ use crate::{
     card::{
         Ability, AridDesert, BeastOfBurden, Card, CauldronCrones, CourtesanThais, DonnybrookInn,
         Enchantress, FootSoldier, HeadlessHaunt, KiteArcher, NimbusJinn, Region, RimlandNomads,
-        from_name_and_zone,
+        Rubble, from_name_and_zone,
     },
     deck::Deck,
     effect::Effect,
-    game::Thresholds,
+    game::{NO_CONTROLLER, Thresholds},
     networking::message::ServerMessage,
     query::{CardQuery, EffectQuery, QueryCache, ZoneQuery},
     state::{Player, PlayerWithDeck, State, TemporaryEffect, Turn, TurnIterator},
@@ -508,6 +508,35 @@ fn test_card_query_spatial_filters_resolve_with_current_state() {
     state.cards.insert(site_id, Box::new(site));
 
     assert!(query.matches(&site_id, &state));
+}
+
+#[test]
+fn test_rubble_has_no_controller() {
+    let mut state = State::new_mock_state(vec![]);
+    let player_id = state.players[0].id;
+    let opponent_id = state.players[1].id;
+
+    let mut rubble = Rubble::new(player_id);
+    let rubble_id = *rubble.get_id();
+    rubble.set_zone(Zone::Location(8, Region::Surface));
+    state.cards.insert(rubble_id, Box::new(rubble));
+
+    assert_eq!(
+        state.get_card(&rubble_id).get_controller_id(&state),
+        NO_CONTROLLER
+    );
+    assert!(!CardQuery::new()
+        .sites()
+        .controlled_by(&player_id)
+        .all(&state)
+        .contains(&rubble_id));
+    assert!(!CardQuery::new()
+        .sites()
+        .controlled_by(&opponent_id)
+        .all(&state)
+        .contains(&rubble_id));
+    assert_eq!(state.get_thresholds_for_player(&player_id), Thresholds::ZERO);
+    assert_eq!(state.get_thresholds_for_player(&opponent_id), Thresholds::ZERO);
 }
 
 #[test]

@@ -17,6 +17,7 @@ use std::{collections::HashMap, iter::Sum, sync::Arc};
 use tokio::{net::tcp::OwnedWriteHalf, sync::Mutex};
 
 pub type PlayerId = uuid::Uuid;
+pub const NO_CONTROLLER: PlayerId = uuid::Uuid::nil();
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum SoundEffect {
