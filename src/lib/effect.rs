@@ -217,12 +217,6 @@ pub enum Effect {
         card_id: uuid::Uuid,
         to_zone: Zone,
     },
-    DealDamageToTarget {
-        player_id: PlayerId,
-        query: CardQuery,
-        from: uuid::Uuid,
-        damage: u16,
-    },
     RearrangeDeck {
         spells: Vec<uuid::Uuid>,
         sites: Vec<uuid::Uuid>,
@@ -347,7 +341,6 @@ impl Effect {
             Effect::BuryCard { card_id, .. } => Some(card_id),
             Effect::SetCardData { card_id, .. } => Some(card_id),
             Effect::TeleportCard { player_id, .. } => Some(player_id),
-            Effect::DealDamageToTarget { from, .. } => Some(from),
             Effect::RearrangeDeck { .. } => None,
             Effect::AddDeferredEffect { .. } => None,
             Effect::AddTemporaryEffect { .. } => None,
@@ -670,7 +663,6 @@ impl Effect {
                 ))
             }
             Effect::SetCardData { .. } => None,
-            Effect::DealDamageToTarget { .. } => None,
             Effect::TeleportCard {
                 player_id,
                 card_id,
@@ -969,14 +961,12 @@ impl Effect {
                 let mut range: Option<u8> = *range;
                 while let Some(zone) = next_zone {
                     // Check if the projectile is out of range. If not, decrease the remaning range.
-                    if !is_starting_location {
-                        if let Some(steps) = range.as_mut() {
-                            if *steps == 0 {
-                                break;
-                            }
-
-                            *steps -= 1;
+                    if !is_starting_location && let Some(steps) = range.as_mut() {
+                        if *steps == 0 {
+                            break;
                         }
+
+                        *steps -= 1;
                     }
 
                     let picked_unit_id = match self.affected_cards().await {
@@ -1802,21 +1792,6 @@ impl Effect {
 
                 effects.reverse();
                 state.queue(effects);
-            }
-            Effect::DealDamageToTarget {
-                player_id,
-                query,
-                from,
-                damage,
-                ..
-            } => {
-                if let Some(target) = query.pick(player_id, state, false).await? {
-                    state.queue_one(Effect::TakeDamage {
-                        card_id: target,
-                        from: *from,
-                        damage: Damage::basic(*damage),
-                    });
-                }
             }
             Effect::TakeDamage {
                 card_id,

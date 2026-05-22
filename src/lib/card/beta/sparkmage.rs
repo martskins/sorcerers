@@ -74,15 +74,21 @@ impl ActivatedAbility for DealDamageAction {
                 }
                 _ => acc,
             });
-        Ok(vec![Effect::DealDamageToTarget {
-            player_id: *player_id,
-            query: CardQuery::new()
-                .count(1)
-                .units()
-                .randomised()
-                .in_zone(&zone),
+
+        let Some(picked_card_id) = CardQuery::new()
+            .count(1)
+            .units()
+            .randomised()
+            .in_zone(&zone)
+            .pick(&sparkmage.get_controller_id(state), state, false)
+            .await?
+        else {
+            return Ok(vec![]);
+        };
+        Ok(vec![Effect::TakeDamage {
+            card_id: picked_card_id,
             from: *card_id,
-            damage: damage.into(),
+            damage: Damage::basic(damage as u16),
         }])
     }
 }

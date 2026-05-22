@@ -16,18 +16,22 @@ impl ActivatedAbility for DealDamage {
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
         let card = state.get_card(card_id);
-        let possible_targets = CardQuery::new()
+        let Some(picked_card_id) = CardQuery::new()
+            .units()
             .randomised()
             .count(1)
             .in_zone(card.get_zone())
             .id_not_in(vec![*card_id])
-            .units();
+            .pick(&card.get_controller_id(state), state, false)
+            .await?
+        else {
+            return Ok(vec![]);
+        };
 
-        Ok(vec![Effect::DealDamageToTarget {
+        Ok(vec![Effect::TakeDamage {
+            card_id: picked_card_id,
             from: *card_id,
-            damage: 3,
-            player_id: card.get_controller_id(state),
-            query: possible_targets,
+            damage: Damage::basic(3),
         }])
     }
 }

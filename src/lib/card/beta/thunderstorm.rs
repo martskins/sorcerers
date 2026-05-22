@@ -74,8 +74,18 @@ impl Card for Thunderstorm {
 
         let zones = self.get_valid_move_zones(state).await?;
         let affected_zones = self.get_affected_zones(state);
-        // Add DealDamageToTarget after MoveCard, so that the damage effect is processed before the
-        // move effect.
+        let Some(picked_card_id) = CardQuery::new()
+            .randomised()
+            .count(1)
+            .units()
+            .in_zones(&affected_zones)
+            .id_not_in(vec![*self.get_id()])
+            .pick(&self.get_controller_id(state), state, false)
+            .await?
+        else {
+            return Ok(vec![]);
+        };
+
         let effects = vec![
             Effect::MoveCard {
                 player_id: self.get_controller_id(state),
@@ -89,16 +99,10 @@ impl Card for Thunderstorm {
                 region: self.get_region(state).clone(),
                 through_path: None,
             },
-            Effect::DealDamageToTarget {
-                player_id: self.get_controller_id(state),
-                query: CardQuery::new()
-                    .randomised()
-                    .count(1)
-                    .units()
-                    .in_zones(&affected_zones)
-                    .id_not_in(vec![*self.get_id()]),
+            Effect::TakeDamage {
+                card_id: picked_card_id,
                 from: *self.get_id(),
-                damage: 3,
+                damage: Damage::basic(3),
             },
         ];
 

@@ -59,15 +59,21 @@ impl Card for LightningBolt {
             "Lightning Bolt: Choose a zone",
         )
         .await?;
-        Ok(vec![Effect::DealDamageToTarget {
-            player_id: *self.get_owner_id(),
-            query: CardQuery::new()
-                .units()
-                .in_zone(&picked_zone)
-                .randomised()
-                .count(1),
+        let Some(card_id) = CardQuery::new()
+            .units()
+            .in_zone(&picked_zone)
+            .randomised()
+            .count(1)
+            .pick(&self.get_controller_id(state), state, false)
+            .await?
+        else {
+            return Ok(vec![]);
+        };
+
+        Ok(vec![Effect::TakeDamage {
+            card_id,
             from: *self.get_id(),
-            damage: 3,
+            damage: Damage::basic(3),
         }])
     }
 }
