@@ -79,6 +79,7 @@ impl Card for ColickyDragonettes {
         .await?;
         Ok(vec![Effect::ShootProjectile {
             id: uuid::Uuid::new_v4(),
+            range: None,
             player_id: *self.get_owner_id(),
             shooter: *self.get_id(),
             from_zone: self.get_zone().clone(),

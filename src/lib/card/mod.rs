@@ -948,21 +948,17 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(vec![])
     }
 
+    fn strikes_back(&self, state: &State) -> anyhow::Result<bool> {
+        if !self.is_unit() || self.has_ability(state, &Ability::Disabled) {
+            return Ok(false);
+        }
+
+        Ok(true)
+    }
+
     // Returns a list of effects that must be applied when this card is defending against an
     // attack.
-    fn on_defend(&self, state: &State, attacker_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
-        if self.has_ability(state, &Ability::Disabled) {
-            return Ok(vec![]);
-        }
-
-        if let Some(power) = self.get_power(state)? {
-            return Ok(vec![Effect::TakeDamage {
-                card_id: *attacker_id,
-                from: *self.get_id(),
-                damage: Damage::strike(power, false),
-            }]);
-        }
-
+    fn on_defend(&self, _state: &State, _attacker_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![])
     }
 

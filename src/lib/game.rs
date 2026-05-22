@@ -1504,11 +1504,11 @@ impl ActivatedAbility for UnitAction {
                                 .await?;
 
                                 for (defender_id, damage) in damage_distribution {
+                                    // TODO: Check whether this triggers 3 strikes from the attacker
+                                    // or a single one. It should trigger only once.
                                     effects.push(Effect::TakeDamage {
                                         card_id: defender_id,
                                         from: *card_id,
-                                        // TODO: Not sure if this should be a strike or a basic
-                                        // attack.
                                         damage: Damage::strike(damage, false),
                                     });
 

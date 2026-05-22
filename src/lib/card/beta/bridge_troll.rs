@@ -69,7 +69,7 @@ impl Card for BridgeTroll {
         let my_controller = self.get_controller_id(state);
 
         let enemy_mana = *state.player_mana.get(&attacker_controller).unwrap_or(&0);
-        let mut effects = vec![
+        let effects = vec![
             Effect::ConsumeMana {
                 player_id: attacker_controller,
                 mana: enemy_mana,
@@ -92,15 +92,6 @@ impl Card for BridgeTroll {
                 },
             },
         ];
-
-        // Strike back as normal defender.
-        if let Some(power) = self.get_power(state)? {
-            effects.push(Effect::TakeDamage {
-                card_id: *attacker_id,
-                from: *self.get_id(),
-                damage: Damage::basic(power),
-            });
-        }
 
         Ok(effects)
     }

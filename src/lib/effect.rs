@@ -80,6 +80,7 @@ pub enum Effect {
     },
     ShootProjectile {
         id: uuid::Uuid,
+        range: Option<u8>,
         player_id: PlayerId,
         shooter: uuid::Uuid,
         from_zone: Zone,
@@ -974,6 +975,7 @@ impl Effect {
             }
             Effect::ShootProjectile {
                 id,
+                range,
                 player_id,
                 shooter,
                 from_zone,
@@ -986,7 +988,17 @@ impl Effect {
                 let mut effects = vec![];
                 let mut next_zone = from_zone.zone_in_direction(direction, 1);
                 let mut is_starting_location = true;
+                let mut range: Option<u8> = *range;
                 while let Some(zone) = next_zone {
+                    // Check if the projectile is out of range. If not, decrease the remaning range.
+                    if let Some(steps) = range.as_mut() {
+                        if *steps == 0 {
+                            break;
+                        }
+
+                        *steps -= 1;
+                    }
+
                     let picked_unit_id = match self.affected_cards().await {
                         Some(affected_cards) => affected_cards.first().cloned(),
                         None => {
@@ -1567,7 +1579,6 @@ impl Effect {
                     .get_card_mut(attacker_id)
                     .remove_modifier(&Ability::Stealth);
 
-                let snapshot = state.clone();
                 let attacker = state.get_card(attacker_id);
                 let defender = state.get_card(defender_id);
                 let mut effects = vec![Effect::MoveCard {
@@ -1582,83 +1593,68 @@ impl Effect {
 
                 let attacker_has_fs = attacker.has_ability(state, &Ability::FirstStrike);
                 let defender_has_fs = defender.has_ability(state, &Ability::FirstStrike);
-
-                // First Strike Phase: only when exactly one side has FirstStrike.
-                // The unit with FirstStrike deals damage before the other can respond.
-                // Attacker's strike = explicit TakeDamage + on_attack hooks.
-                // Defender's strike = on_defend (which includes counter-strike damage + hooks).
                 if attacker_has_fs != defender_has_fs {
-                    // Simulate the first strike phase in a snapshot to check who survives.
+                    let first_attacker = if attacker_has_fs { attacker } else { defender };
+                    let first_defender = if attacker_has_fs { defender } else { attacker };
                     let first_defender_survived = {
                         let mut sim = state.clone();
-                        if attacker_has_fs {
-                            let power = attacker
-                                .get_power(&snapshot)?
-                                .ok_or(anyhow::anyhow!("attacker has no power"))?;
-                            sim.queue_one(Effect::TakeDamage {
-                                card_id: *defender_id,
-                                from: *attacker_id,
-                                damage: Damage::strike(power, false),
-                            });
-                            for eff in attacker.on_attack(state, defender_id)? {
-                                sim.queue_one(eff);
-                            }
-                        } else {
-                            for eff in defender.on_defend(state, attacker_id)? {
-                                sim.queue_one(eff);
-                            }
-                        }
-                        Box::pin(sim.apply_effects_without_log()).await?;
-                        if attacker_has_fs {
-                            sim.get_card(defender_id).get_zone() != &Zone::Cemetery
-                        } else {
-                            sim.get_card(attacker_id).get_zone() != &Zone::Cemetery
-                        }
-                    };
-
-                    // Queue the first strike effects for real.
-                    if attacker_has_fs {
-                        let power = attacker
-                            .get_power(&snapshot)?
-                            .ok_or(anyhow::anyhow!("attacker has no power"))?;
-                        effects.push(Effect::TakeDamage {
-                            card_id: *defender_id,
-                            from: *attacker_id,
+                        let power = first_attacker
+                            .get_power(&sim)?
+                            .ok_or(anyhow::anyhow!("first attacker has no power"))?;
+                        sim.queue_one(Effect::TakeDamage {
+                            card_id: *first_defender.get_id(),
+                            from: *first_attacker.get_id(),
                             damage: Damage::strike(power, false),
                         });
-                        effects.extend(attacker.on_attack(state, defender_id)?);
-                    } else {
-                        effects.extend(defender.on_defend(state, attacker_id)?);
-                    }
+                        sim.queue(attacker.on_attack(&sim, first_defender.get_id())?);
+                        sim.queue(attacker.on_defend(&sim, first_attacker.get_id())?);
+                        Box::pin(sim.apply_effects_without_log()).await?;
+                        sim.get_card(first_defender.get_id()).get_zone() != &Zone::Cemetery
+                    };
 
-                    // Regular Phase: the unit without FirstStrike strikes back (if it survived).
-                    if first_defender_survived {
-                        if attacker_has_fs {
-                            // Defender survived; defender strikes in regular phase.
-                            effects.extend(defender.on_defend(state, attacker_id)?);
-                        } else {
-                            // Attacker survived; attacker strikes in regular phase.
-                            let power = attacker
-                                .get_power(&snapshot)?
-                                .ok_or(anyhow::anyhow!("attacker has no power"))?;
-                            effects.push(Effect::TakeDamage {
-                                card_id: *defender_id,
-                                from: *attacker_id,
-                                damage: Damage::strike(power, false),
-                            });
-                            effects.extend(attacker.on_attack(state, defender_id)?);
-                        }
+                    let power = first_defender
+                        .get_power(state)?
+                        .ok_or(anyhow::anyhow!("first defender has no power"))?;
+                    effects.push(Effect::TakeDamage {
+                        card_id: *first_defender.get_id(),
+                        from: *first_attacker.get_id(),
+                        damage: Damage::strike(power, false),
+                    });
+
+                    effects.extend(attacker.on_attack(state, first_defender.get_id())?);
+                    effects.extend(attacker.on_defend(state, first_attacker.get_id())?);
+
+                    if first_defender_survived && first_defender.strikes_back(state)? {
+                        let power = first_defender
+                            .get_power(state)?
+                            .ok_or(anyhow::anyhow!("first attacker has no power"))?;
+                        effects.push(Effect::TakeDamage {
+                            card_id: *first_attacker.get_id(),
+                            from: *first_defender.get_id(),
+                            damage: Damage::strike(power, false),
+                        });
                     }
                 } else {
                     // Both have FirstStrike or neither does: both strike simultaneously.
-                    let power = attacker
-                        .get_power(&snapshot)?
+                    let attacker_power = attacker
+                        .get_power(state)?
                         .ok_or(anyhow::anyhow!("attacker has no power"))?;
                     effects.push(Effect::TakeDamage {
                         card_id: *defender_id,
                         from: *attacker_id,
-                        damage: Damage::strike(power, false),
+                        damage: Damage::strike(attacker_power, false),
                     });
+
+                    if defender.strikes_back(state)? {
+                        let defender_power = defender
+                            .get_power(state)?
+                            .ok_or(anyhow::anyhow!("defender has no power"))?;
+                        effects.push(Effect::TakeDamage {
+                            card_id: *attacker_id,
+                            from: *defender_id,
+                            damage: Damage::strike(defender_power, false),
+                        });
+                    }
                     effects.extend(attacker.on_attack(state, defender_id)?);
                     effects.extend(defender.on_defend(state, attacker_id)?);
                 }

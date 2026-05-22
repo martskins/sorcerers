@@ -64,6 +64,7 @@ impl Card for Firebolts {
         Ok(vec![
             Effect::ShootProjectile {
                 id: uuid::Uuid::new_v4(),
+                range: None,
                 player_id: *self.get_owner_id(),
                 shooter: *caster.get_id(),
                 from_zone: caster.get_zone().clone(),
@@ -74,6 +75,7 @@ impl Card for Firebolts {
             },
             Effect::ShootProjectile {
                 id: uuid::Uuid::new_v4(),
+                range: None,
                 player_id: *self.get_owner_id(),
                 shooter: *caster.get_id(),
                 from_zone: caster.get_zone().clone(),
@@ -84,6 +86,7 @@ impl Card for Firebolts {
             },
             Effect::ShootProjectile {
                 id: uuid::Uuid::new_v4(),
+                range: None,
                 player_id: *self.get_owner_id(),
                 shooter: *caster.get_id(),
                 from_zone: caster.get_zone().clone(),

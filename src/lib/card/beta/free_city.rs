@@ -85,6 +85,8 @@ impl FreeCity {
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
+            // TODO: This card needs a unit_base that we can remove if it has been used to block or
+            // attack this turn.
             site_base: SiteBase {
                 provided_mana: 3,
                 provided_thresholds: Thresholds::new(),
@@ -145,24 +147,6 @@ impl Card for FreeCity {
 
     fn get_resource_provider(&self) -> Option<&dyn ResourceProvider> {
         Some(self)
-    }
-
-    fn on_defend(&self, state: &State, attacker_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
-        if self.used_ability || state.get_card(attacker_id).get_zone() != self.get_zone() {
-            return Ok(vec![]);
-        }
-
-        Ok(vec![
-            Effect::TakeDamage {
-                card_id: *attacker_id,
-                from: *self.get_id(),
-                damage: Damage::attack(3),
-            },
-            Effect::SetCardData {
-                card_id: *self.get_id(),
-                data: std::sync::Arc::new(true),
-            },
-        ])
     }
 
     fn set_data(

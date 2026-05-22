@@ -27,6 +27,7 @@ impl ActivatedAbility for ShootProjectile {
         let pudge = state.get_card(card_id);
         let effect = Effect::ShootProjectile {
             id: uuid::Uuid::new_v4(),
+            range: None,
             player_id: *player_id,
             shooter: *card_id,
             from_zone: pudge.get_zone().clone(),
