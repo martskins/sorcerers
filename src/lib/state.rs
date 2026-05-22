@@ -757,9 +757,21 @@ impl State {
     pub fn get_interceptors_for_move(
         &self,
         path: &[Zone],
+        moving_card_id: &uuid::Uuid,
         controller_id: &PlayerId,
-    ) -> Vec<(uuid::Uuid, Zone)> {
+    ) -> Vec<uuid::Uuid> {
         let mut interceptors = Vec::new();
+        let Some(final_zone) = path.last() else {
+            return interceptors;
+        };
+
+        let moving_card = self.get_card(moving_card_id);
+        if moving_card.has_ability(self, &Ability::Stealth)
+            || moving_card.has_ability(self, &Ability::Uninterceptable)
+        {
+            return interceptors;
+        }
+        let moving_card_is_airborne = moving_card.has_ability(self, &Ability::Airborne);
 
         for card in self.cards.values() {
             if &card.get_controller_id(self) != controller_id {
@@ -774,32 +786,20 @@ impl State {
             if card.has_ability(self, &Ability::Disabled) {
                 continue;
             }
-
-            let unit_zone = card.get_zone();
-
-            let reachable_path_zones: Vec<Zone> = if card.has_ability(self, &Ability::Airborne) {
-                let nearby = unit_zone.get_nearby();
-                path.iter()
-                    .filter(|z| nearby.contains(z) || z == &unit_zone)
-                    .cloned()
-                    .collect()
-            } else if card.has_ability(self, &Ability::Voidwalk)
-                || card
-                    .get_unit_base()
-                    .is_some_and(|ub| ub.abilities.iter().any(|a| matches!(a, Ability::Ranged(_))))
-            {
-                let adjacent = unit_zone.get_adjacent();
-                path.iter()
-                    .filter(|z| adjacent.contains(z) || z == &unit_zone)
-                    .cloned()
-                    .collect()
-            } else {
-                path.iter().filter(|z| z == &unit_zone).cloned().collect()
-            };
-
-            for zone in reachable_path_zones {
-                interceptors.push((*card.get_id(), zone));
+            if card.is_tapped() {
+                continue;
             }
+            if !card.occupies_zone(self, final_zone) {
+                continue;
+            }
+            if moving_card_is_airborne
+                && !card.has_ability(self, &Ability::Airborne)
+                && !card.is_ranged(self).unwrap_or(false)
+            {
+                continue;
+            }
+
+            interceptors.push(*card.get_id());
         }
 
         interceptors

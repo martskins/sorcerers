@@ -1578,14 +1578,20 @@ impl Effect {
                         .iter()
                         .map(|defending_id| {
                             let defending_card = state.get_card(defending_id);
-                            Effect::MoveCard {
-                                player_id: defending_card.get_controller_id(state),
-                                card_id: *defending_id,
-                                from: defending_card.get_zone().clone(),
-                                to: ZoneQuery::from_zone(attacker_zone.clone()),
-                                tap: true,
-                                region: attacker_region.clone(),
-                                through_path: None,
+                            if defending_card.occupies_zone(state, &attacker_zone) {
+                                Effect::TapCard {
+                                    card_id: *defending_id,
+                                }
+                            } else {
+                                Effect::MoveCard {
+                                    player_id: defending_card.get_controller_id(state),
+                                    card_id: *defending_id,
+                                    from: defending_card.get_zone().clone(),
+                                    to: ZoneQuery::from_zone(attacker_zone.clone()),
+                                    tap: true,
+                                    region: attacker_region.clone(),
+                                    through_path: None,
+                                }
                             }
                         })
                         .collect::<Vec<_>>();

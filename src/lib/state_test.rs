@@ -261,7 +261,7 @@ fn test_inteceptors() {
 
     let opponent_id = state.players[1].id;
     let mut kite_archer = KiteArcher::new(opponent_id);
-    kite_archer.set_zone(Zone::Location(12, Region::Surface));
+    kite_archer.set_zone(Zone::Location(18, Region::Surface));
     state
         .cards
         .insert(*kite_archer.get_id(), Box::new(kite_archer.clone()));
@@ -271,9 +271,9 @@ fn test_inteceptors() {
         Zone::Location(13, Region::Surface),
         Zone::Location(18, Region::Surface),
     ];
-    let interceptors = state.get_interceptors_for_move(&path, &opponent_id);
+    let interceptors = state.get_interceptors_for_move(&path, rimland_nomads.get_id(), &opponent_id);
     assert_eq!(interceptors.len(), 1);
-    assert_eq!(&interceptors[0].0, kite_archer.get_id());
+    assert_eq!(&interceptors[0], kite_archer.get_id());
 }
 
 #[test]
@@ -288,7 +288,7 @@ fn test_no_inteceptors() {
 
     let opponent_id = state.players[1].id;
     let mut kite_archer = KiteArcher::new(opponent_id);
-    kite_archer.set_zone(Zone::Location(11, Region::Surface));
+    kite_archer.set_zone(Zone::Location(13, Region::Surface));
     state
         .cards
         .insert(*kite_archer.get_id(), Box::new(kite_archer.clone()));
@@ -298,12 +298,70 @@ fn test_no_inteceptors() {
         Zone::Location(13, Region::Surface),
         Zone::Location(18, Region::Surface),
     ];
-    let interceptors = state.get_interceptors_for_move(&path, &opponent_id);
+    let interceptors = state.get_interceptors_for_move(&path, rimland_nomads.get_id(), &opponent_id);
     assert_eq!(interceptors.len(), 0);
 }
 
 #[test]
-fn test_voidwalking_interceptor() {
+fn test_tapped_units_cannot_intercept() {
+    let mut state = State::new_mock_state(Vec::from_iter(1..=20));
+    let player_id = state.players[0].id;
+    let mut rimland_nomads = RimlandNomads::new(player_id);
+    rimland_nomads.set_zone(Zone::Location(8, Region::Surface));
+    state
+        .cards
+        .insert(*rimland_nomads.get_id(), Box::new(rimland_nomads.clone()));
+
+    let opponent_id = state.players[1].id;
+    let mut foot_soldier = FootSoldier::new(opponent_id);
+    foot_soldier.set_zone(Zone::Location(18, Region::Surface));
+    foot_soldier.set_tapped(true);
+    state
+        .cards
+        .insert(*foot_soldier.get_id(), Box::new(foot_soldier));
+
+    let path = vec![
+        Zone::Location(8, Region::Surface),
+        Zone::Location(13, Region::Surface),
+        Zone::Location(18, Region::Surface),
+    ];
+    let interceptors = state.get_interceptors_for_move(&path, rimland_nomads.get_id(), &opponent_id);
+    assert_eq!(interceptors.len(), 0);
+}
+
+#[test]
+fn test_stealthed_units_cannot_be_intercepted() {
+    let mut state = State::new_mock_state(Vec::from_iter(1..=20));
+    let player_id = state.players[0].id;
+    let mut rimland_nomads = RimlandNomads::new(player_id);
+    rimland_nomads.set_zone(Zone::Location(8, Region::Surface));
+    rimland_nomads
+        .get_unit_base_mut()
+        .unwrap()
+        .abilities
+        .push(Ability::Stealth);
+    state
+        .cards
+        .insert(*rimland_nomads.get_id(), Box::new(rimland_nomads.clone()));
+
+    let opponent_id = state.players[1].id;
+    let mut foot_soldier = FootSoldier::new(opponent_id);
+    foot_soldier.set_zone(Zone::Location(18, Region::Surface));
+    state
+        .cards
+        .insert(*foot_soldier.get_id(), Box::new(foot_soldier));
+
+    let path = vec![
+        Zone::Location(8, Region::Surface),
+        Zone::Location(13, Region::Surface),
+        Zone::Location(18, Region::Surface),
+    ];
+    let interceptors = state.get_interceptors_for_move(&path, rimland_nomads.get_id(), &opponent_id);
+    assert_eq!(interceptors.len(), 0);
+}
+
+#[test]
+fn test_voidwalking_interceptor_must_be_at_final_location() {
     let mut state = State::new_mock_state(vec![8, 13, 18]);
     let player_id = state.players[0].id;
     let mut rimland_nomads = RimlandNomads::new(player_id);
@@ -324,34 +382,41 @@ fn test_voidwalking_interceptor() {
         Zone::Location(13, Region::Surface),
         Zone::Location(18, Region::Surface),
     ];
-    let interceptors = state.get_interceptors_for_move(&path, &opponent_id);
-    assert_eq!(interceptors.len(), 1);
+    let interceptors = state.get_interceptors_for_move(&path, rimland_nomads.get_id(), &opponent_id);
+    assert_eq!(interceptors.len(), 0);
 }
 
 #[test]
-fn test_airborne_interceptor() {
+fn test_airborne_unit_can_only_be_intercepted_by_airborne_or_ranged_units() {
     let mut state = State::new_mock_state(Vec::from_iter(1..=20));
     let player_id = state.players[0].id;
-    let mut rimland_nomads = RimlandNomads::new(player_id);
-    rimland_nomads.set_zone(Zone::Location(8, Region::Surface));
+    let mut nimbus_jinn = NimbusJinn::new(player_id);
+    nimbus_jinn.set_zone(Zone::Location(8, Region::Surface));
     state
         .cards
-        .insert(*rimland_nomads.get_id(), Box::new(rimland_nomads.clone()));
+        .insert(*nimbus_jinn.get_id(), Box::new(nimbus_jinn.clone()));
 
     let opponent_id = state.players[1].id;
-    let mut headless_haunt = NimbusJinn::new(opponent_id);
-    headless_haunt.set_zone(Zone::Location(12, Region::Surface));
+    let mut foot_soldier = FootSoldier::new(opponent_id);
+    foot_soldier.set_zone(Zone::Location(18, Region::Surface));
     state
         .cards
-        .insert(*headless_haunt.get_id(), Box::new(headless_haunt.clone()));
+        .insert(*foot_soldier.get_id(), Box::new(foot_soldier.clone()));
+
+    let mut kite_archer = KiteArcher::new(opponent_id);
+    kite_archer.set_zone(Zone::Location(18, Region::Surface));
+    state
+        .cards
+        .insert(*kite_archer.get_id(), Box::new(kite_archer.clone()));
 
     let path = vec![
         Zone::Location(8, Region::Surface),
         Zone::Location(13, Region::Surface),
         Zone::Location(18, Region::Surface),
     ];
-    let interceptors = state.get_interceptors_for_move(&path, &opponent_id);
-    assert_eq!(interceptors.len(), 3);
+    let interceptors = state.get_interceptors_for_move(&path, nimbus_jinn.get_id(), &opponent_id);
+    assert_eq!(interceptors.len(), 1);
+    assert_eq!(&interceptors[0], kite_archer.get_id());
 }
 
 #[tokio::test]

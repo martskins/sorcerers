@@ -454,20 +454,33 @@ fn test_disabled_units_cannot_defend_or_intercept() {
         "able nearby units should remain valid defenders"
     );
 
+    let opponent_id = state.players[1].id;
+    let opponent_avatar_id = state.get_player_avatar_id(&opponent_id).unwrap();
+    state
+        .get_card_mut(&opponent_avatar_id)
+        .set_zone(Zone::Location(2, Region::Surface));
+    state
+        .get_card_mut(&disabled_defender_id)
+        .set_zone(Zone::Location(3, Region::Surface));
+    state
+        .get_card_mut(&able_defender_id)
+        .set_zone(Zone::Location(3, Region::Surface));
+
     let interceptors = state.get_interceptors_for_move(
         &[
             Zone::Location(2, Region::Surface),
             Zone::Location(3, Region::Surface),
         ],
+        &opponent_avatar_id,
         &player_id,
     );
-    let interceptor_ids = interceptors
-        .iter()
-        .map(|(card_id, _)| *card_id)
-        .collect::<Vec<_>>();
     assert!(
-        !interceptor_ids.contains(&disabled_defender_id),
+        !interceptors.contains(&disabled_defender_id),
         "disabled units should not be valid interceptors"
+    );
+    assert!(
+        interceptors.contains(&able_defender_id),
+        "able units at the final location should remain valid interceptors"
     );
 }
 

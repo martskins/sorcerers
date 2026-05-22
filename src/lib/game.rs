@@ -1573,49 +1573,66 @@ impl ActivatedAbility for UnitAction {
                         .to_vec()
                 };
 
-                let can_be_intercepted = !card.has_ability(state, &Ability::Uninterceptable);
                 let opponent = state
                     .players
                     .iter()
                     .find(|p| &p.id != player_id)
                     .ok_or(anyhow::anyhow!("opponent not found"))?;
-                let interceptors = state.get_interceptors_for_move(&path, &opponent.id);
-                let mut interceptor: Option<(uuid::Uuid, Zone)> = None;
-                if can_be_intercepted && !interceptors.is_empty() {
-                    let mut options = interceptors
-                        .iter()
-                        .map(|(id, zone)| {
-                            let interceptor_card = state.get_card(id);
-                            format!(
-                                "{} from {} at {}",
-                                interceptor_card.get_name(),
-                                interceptor_card.get_zone(),
-                                zone
-                            )
-                        })
-                        .collect::<Vec<String>>();
-                    options.push("Do not intercept".to_string());
+                let legal_interceptors =
+                    state.get_interceptors_for_move(&path, card_id, &opponent.id);
+                let mut interceptors = Vec::new();
+                let mut intercept_damage_assignment = None;
+                if !legal_interceptors.is_empty() {
+                    let final_zone = path
+                        .last()
+                        .ok_or(anyhow::anyhow!("move path had no final zone"))?;
 
                     wait_for_opponent(
                         player_id,
                         state,
-                        "Wait for opponent to choose whether to intersect".to_string(),
+                        "Wait for opponent to choose whether to intercept".to_string(),
                     )
                     .await?;
 
-                    let action_idx = pick_option(
-                        &opponent.id,
-                        &options,
-                        state,
-                        format!("Intercept {} with...", card.get_name()),
-                        false,
-                    )
-                    .await?;
-                    if action_idx < interceptors.len() {
-                        interceptor = Some(interceptors[action_idx].clone());
-                    }
+                    let prompt = format!("Pick units at {} to intercept {}", final_zone, card.get_name());
+                    let picked_interceptors =
+                        pick_cards(&opponent.id, &legal_interceptors, state, &prompt).await?;
+                    interceptors = picked_interceptors
+                        .into_iter()
+                        .filter(|id| legal_interceptors.contains(id))
+                        .collect();
 
                     resume(player_id, state).await?;
+
+                    if !interceptors.is_empty() {
+                        let card_power = card
+                            .get_power(state)?
+                            .ok_or(anyhow::anyhow!("intercepted unit has no power"))?;
+                        let damage_assignment = if interceptors.len() == 1 {
+                            HashMap::from([(interceptors[0], card_power)])
+                        } else {
+                            wait_for_opponent(
+                                &opponent.id,
+                                state,
+                                "Wait for opponent to distribute damage".to_string(),
+                            )
+                            .await?;
+
+                            let damage_distribution = distribute_damage(
+                                player_id,
+                                card_id,
+                                card_power,
+                                &interceptors,
+                                state,
+                            )
+                            .await?;
+
+                            resume(&opponent.id, state).await?;
+                            damage_distribution
+                        };
+
+                        intercept_damage_assignment = Some(damage_assignment);
+                    }
                 }
 
                 let mut effects = Vec::new();
@@ -1634,31 +1651,15 @@ impl ActivatedAbility for UnitAction {
                         region: card.get_region(state).clone(),
                         through_path: Some(path.clone()),
                     });
+                }
 
-                    if let Some((interceptor_id, zone)) = &interceptor {
-                        if &to_zone != zone {
-                            continue;
-                        }
-
-                        let interceptor_card = state.get_card(interceptor_id);
-                        effects.push(Effect::MoveCard {
-                            player_id: opponent.id,
-                            card_id: *interceptor_id,
-                            from: interceptor_card.get_zone().clone(),
-                            to: ZoneQuery::from_zone(zone.clone()),
-                            tap: true,
-                            region: card.get_region(state).clone(),
-                            through_path: Some(path.clone()),
-                        });
-                        effects.push(Effect::Attack {
-                            attacker_id: *interceptor_id,
-                            defender_id: *card_id,
-                            defending_ids: vec![],
-                            damage_assignment: None,
-                        });
-
-                        break;
-                    }
+                if let Some(damage_assignment) = intercept_damage_assignment {
+                    effects.push(Effect::Attack {
+                        attacker_id: *card_id,
+                        defender_id: interceptors[0],
+                        defending_ids: interceptors,
+                        damage_assignment: Some(damage_assignment),
+                    });
                 }
 
                 effects.reverse();
