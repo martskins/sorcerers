@@ -1165,36 +1165,54 @@ impl Effect {
             Effect::DrawSite {
                 player_id, count, ..
             } => {
-                let deck = state
-                    .decks
-                    .get_mut(player_id)
-                    .ok_or(anyhow::anyhow!("failed to find player deck"))?;
                 for _ in 0..*count {
-                    if let Some(card_id) = deck.sites.pop() {
+                    let card_id = {
+                        let deck = state
+                            .decks
+                            .get_mut(player_id)
+                            .ok_or(anyhow::anyhow!("failed to find player deck"))?;
+                        deck.sites.pop()
+                    };
+
+                    if let Some(card_id) = card_id {
                         state
                             .cards
                             .values_mut()
                             .find(|c| c.get_id() == &card_id)
                             .expect("to find drawn card")
                             .set_zone(Zone::Hand);
+                    } else {
+                        state.queue_one(Effect::PlayerLost {
+                            player_id: *player_id,
+                        });
+                        break;
                     }
                 }
             }
             Effect::DrawSpell {
                 player_id, count, ..
             } => {
-                let deck = state
-                    .decks
-                    .get_mut(player_id)
-                    .ok_or(anyhow::anyhow!("failed to find player deck"))?;
                 for _ in 0..*count {
-                    if let Some(card_id) = deck.spells.pop() {
+                    let card_id = {
+                        let deck = state
+                            .decks
+                            .get_mut(player_id)
+                            .ok_or(anyhow::anyhow!("failed to find player deck"))?;
+                        deck.spells.pop()
+                    };
+
+                    if let Some(card_id) = card_id {
                         state
                             .cards
                             .values_mut()
                             .find(|c| c.get_id() == &card_id)
                             .expect("to find drawn card")
                             .set_zone(Zone::Hand);
+                    } else {
+                        state.queue_one(Effect::PlayerLost {
+                            player_id: *player_id,
+                        });
+                        break;
                     }
                 }
             }
@@ -1524,8 +1542,7 @@ impl Effect {
 
                 let snapshot = state.clone();
                 let attacker = state.get_card(striker_id);
-                let defender = state.get_card(target_id);
-                let mut effects = vec![Effect::TakeDamage {
+                state.queue_one(Effect::TakeDamage {
                     card_id: *target_id,
                     from: *striker_id,
                     damage: Damage::strike(
@@ -1534,11 +1551,7 @@ impl Effect {
                             .ok_or(anyhow::anyhow!("attacker has no power"))?,
                         false,
                     ),
-                }];
-
-                effects.extend(defender.on_defend(state, striker_id)?);
-                effects.reverse();
-                state.queue(effects);
+                });
             }
             Effect::Attack {
                 attacker_id,
@@ -1803,7 +1816,6 @@ impl Effect {
 
                 let snapshot = state.clone();
                 let attacker = state.get_card(striker_id);
-                let defender = state.get_card(target_id);
                 let mut effects = vec![Effect::TakeDamage {
                     card_id: *target_id,
                     from: *striker_id,
@@ -1815,7 +1827,6 @@ impl Effect {
                     ),
                 }];
                 effects.extend(attacker.after_ranged_attack(state).await?);
-                effects.extend(defender.on_defend(state, striker_id)?.into_iter());
                 state.queue(effects);
             }
             Effect::TeleportCard {

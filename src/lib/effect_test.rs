@@ -83,6 +83,74 @@ async fn drain_effects(state: &mut State) {
 }
 
 #[tokio::test]
+async fn test_drawing_from_empty_site_deck_loses_game() {
+    let (mut state, _rx) = make_state(vec![]);
+    let player_id = state.players[0].id;
+
+    state.queue_one(Effect::DrawSite {
+        player_id,
+        count: 1,
+    });
+    drain_effects(&mut state).await;
+
+    assert!(
+        state.loosers.contains(&player_id),
+        "attempting to draw from an empty site deck should lose the game"
+    );
+}
+
+#[tokio::test]
+async fn test_drawing_from_empty_spell_deck_loses_game() {
+    let (mut state, _rx) = make_state(vec![]);
+    let player_id = state.players[0].id;
+
+    state.queue_one(Effect::DrawSpell {
+        player_id,
+        count: 1,
+    });
+    drain_effects(&mut state).await;
+
+    assert!(
+        state.loosers.contains(&player_id),
+        "attempting to draw from an empty spell deck should lose the game"
+    );
+}
+
+#[tokio::test]
+async fn test_plain_strike_does_not_make_target_strike_back() {
+    let (mut state, _rx) = make_state(vec![]);
+    let player_id = state.players[0].id;
+    let opponent_id = state.players[1].id;
+
+    let mut striker = OgreGoons::new(player_id);
+    let striker_id = *striker.get_id();
+    striker.set_zone(Zone::Location(1, Region::Surface));
+    state.cards.insert(striker_id, Box::new(striker));
+
+    let mut target = ApprenticeWizard::new(opponent_id);
+    let target_id = *target.get_id();
+    target.set_zone(Zone::Location(1, Region::Surface));
+    state.cards.insert(target_id, Box::new(target));
+
+    state.queue_one(Effect::Strike {
+        striker_id,
+        target_id,
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(
+        state.get_card(&striker_id).get_damage_taken().unwrap(),
+        0,
+        "a plain Strike should not create a defending counterstrike"
+    );
+    assert_eq!(
+        state.get_card(&target_id).get_zone(),
+        &Zone::Cemetery,
+        "the target should still take strike damage"
+    );
+}
+
+#[tokio::test]
 async fn test_direct_avatar_damage_after_deaths_door_loses_game() {
     let (mut state, _rx) = make_state(vec![]);
     let player_id = state.players[0].id;
