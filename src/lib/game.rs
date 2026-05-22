@@ -1507,7 +1507,9 @@ impl ActivatedAbility for UnitAction {
                                     effects.push(Effect::TakeDamage {
                                         card_id: defender_id,
                                         from: *card_id,
-                                        damage: Damage::basic(damage),
+                                        // TODO: Not sure if this should be a strike or a basic
+                                        // attack.
+                                        damage: Damage::strike(damage, false),
                                     });
 
                                     let defender = state.get_card(&defender_id);

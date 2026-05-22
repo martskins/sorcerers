@@ -746,6 +746,7 @@ impl State {
             .units()
             .near_to(defender.get_zone())
             .without_ability(&Ability::CannotDefend)
+            .without_ability(&Ability::Disabled)
             .untapped()
             .id_not(defender_id)
             .controlled_by(&defender.get_controller_id(self))
@@ -767,6 +768,9 @@ impl State {
                 continue;
             }
             if !card.get_zone().is_in_play() {
+                continue;
+            }
+            if card.has_ability(self, &Ability::Disabled) {
                 continue;
             }
 

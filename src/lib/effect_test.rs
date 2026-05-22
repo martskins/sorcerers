@@ -151,6 +151,131 @@ async fn test_plain_strike_does_not_make_target_strike_back() {
 }
 
 #[tokio::test]
+async fn test_disabled_unit_cannot_strike() {
+    let (mut state, _rx) = make_state(vec![]);
+    let player_id = state.players[0].id;
+    let opponent_id = state.players[1].id;
+
+    let mut striker = OgreGoons::new(player_id);
+    let striker_id = *striker.get_id();
+    striker.set_zone(Zone::Location(1, Region::Surface));
+    striker
+        .get_unit_base_mut()
+        .unwrap()
+        .abilities
+        .push(Ability::Disabled);
+    state.cards.insert(striker_id, Box::new(striker));
+
+    let mut target = ApprenticeWizard::new(opponent_id);
+    let target_id = *target.get_id();
+    target.set_zone(Zone::Location(1, Region::Surface));
+    state.cards.insert(target_id, Box::new(target));
+
+    state.queue_one(Effect::Strike {
+        striker_id,
+        target_id,
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(
+        state.get_card(&target_id).get_damage_taken().unwrap(),
+        0,
+        "a disabled unit should not strike or deal strike damage"
+    );
+}
+
+#[tokio::test]
+async fn test_disabled_unit_does_not_counterstrike_when_attacked() {
+    let (mut state, _rx) = make_state(vec![]);
+    let player_id = state.players[0].id;
+    let opponent_id = state.players[1].id;
+
+    let mut attacker = OgreGoons::new(player_id);
+    let attacker_id = *attacker.get_id();
+    attacker.set_zone(Zone::Location(1, Region::Surface));
+    state.cards.insert(attacker_id, Box::new(attacker));
+
+    let mut defender = ApprenticeWizard::new(opponent_id);
+    let defender_id = *defender.get_id();
+    defender.set_zone(Zone::Location(1, Region::Surface));
+    defender
+        .get_unit_base_mut()
+        .unwrap()
+        .abilities
+        .push(Ability::Disabled);
+    state.cards.insert(defender_id, Box::new(defender));
+
+    state.queue_one(Effect::Attack {
+        attacker_id,
+        defender_id,
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(
+        state.get_card(&attacker_id).get_damage_taken().unwrap(),
+        0,
+        "a disabled defender should not counterstrike"
+    );
+}
+
+#[test]
+fn test_disabled_units_cannot_defend_or_intercept() {
+    let (mut state, _rx) = make_state(vec![
+        Zone::Location(1, Region::Surface),
+        Zone::Location(2, Region::Surface),
+        Zone::Location(3, Region::Surface),
+    ]);
+    let player_id = state.players[0].id;
+    let avatar_id = state.get_player_avatar_id(&player_id).unwrap();
+    state
+        .get_card_mut(&avatar_id)
+        .set_zone(Zone::Location(1, Region::Surface));
+
+    let mut disabled_defender = FootSoldier::new(player_id);
+    let disabled_defender_id = *disabled_defender.get_id();
+    disabled_defender.set_zone(Zone::Location(2, Region::Surface));
+    disabled_defender
+        .get_unit_base_mut()
+        .unwrap()
+        .abilities
+        .push(Ability::Disabled);
+    state
+        .cards
+        .insert(disabled_defender_id, Box::new(disabled_defender));
+
+    let mut able_defender = FootSoldier::new(player_id);
+    let able_defender_id = *able_defender.get_id();
+    able_defender.set_zone(Zone::Location(2, Region::Surface));
+    state.cards.insert(able_defender_id, Box::new(able_defender));
+
+    let defenders = state.get_defenders_for_attack(&avatar_id);
+    assert!(
+        !defenders.contains(&disabled_defender_id),
+        "disabled units should not be valid defenders"
+    );
+    assert!(
+        defenders.contains(&able_defender_id),
+        "able nearby units should remain valid defenders"
+    );
+
+    let interceptors = state.get_interceptors_for_move(
+        &[
+            Zone::Location(2, Region::Surface),
+            Zone::Location(3, Region::Surface),
+        ],
+        &player_id,
+    );
+    let interceptor_ids = interceptors
+        .iter()
+        .map(|(card_id, _)| *card_id)
+        .collect::<Vec<_>>();
+    assert!(
+        !interceptor_ids.contains(&disabled_defender_id),
+        "disabled units should not be valid interceptors"
+    );
+}
+
+#[tokio::test]
 async fn test_direct_avatar_damage_after_deaths_door_loses_game() {
     let (mut state, _rx) = make_state(vec![]);
     let player_id = state.players[0].id;

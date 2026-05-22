@@ -951,11 +951,15 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     // Returns a list of effects that must be applied when this card is defending against an
     // attack.
     fn on_defend(&self, state: &State, attacker_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
+        if self.has_ability(state, &Ability::Disabled) {
+            return Ok(vec![]);
+        }
+
         if let Some(power) = self.get_power(state)? {
             return Ok(vec![Effect::TakeDamage {
                 card_id: *attacker_id,
                 from: *self.get_id(),
-                damage: Damage::attack(power),
+                damage: Damage::strike(power, false),
             }]);
         }
 

@@ -1542,6 +1542,10 @@ impl Effect {
 
                 let snapshot = state.clone();
                 let attacker = state.get_card(striker_id);
+                if attacker.has_ability(&snapshot, &Ability::Disabled) {
+                    return Ok(());
+                }
+
                 state.queue_one(Effect::TakeDamage {
                     card_id: *target_id,
                     from: *striker_id,
@@ -1816,6 +1820,10 @@ impl Effect {
 
                 let snapshot = state.clone();
                 let attacker = state.get_card(striker_id);
+                if attacker.has_ability(&snapshot, &Ability::Disabled) {
+                    return Ok(());
+                }
+
                 let mut effects = vec![Effect::TakeDamage {
                     card_id: *target_id,
                     from: *striker_id,
