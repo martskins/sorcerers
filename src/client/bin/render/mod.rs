@@ -847,7 +847,8 @@ pub fn popup_action_menu(
             }
         });
 
-    let clicked_elsewhere = ui.input(|i| i.pointer.any_pressed()) && !menu_response.response.hovered();
+    let clicked_elsewhere =
+        ui.input(|i| i.pointer.any_released()) && !menu_response.response.hovered();
     if clicked_elsewhere && result.is_none() {
         result = Some(ActionMenuResponse::Dismissed);
     }
