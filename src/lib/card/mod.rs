@@ -2774,7 +2774,7 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
                     return Ok(vec![]);
                 }
 
-                if ab.deaths_door && ab.can_die {
+                if ab.deaths_door && ab.can_die && reduced_damage > 0 {
                     return Ok(vec![Effect::PlayerLost {
                         player_id: self.get_controller_id(state),
                     }]);
@@ -2812,11 +2812,18 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
                 Ok(effects)
             }
             CardType::Site => {
-                let avatar_id = state.get_player_avatar_id(&self.get_controller_id(state))?;
-                Ok(vec![Effect::TakeDamage {
-                    card_id: avatar_id,
-                    from: *from,
-                    damage,
+                let controller_id = self.get_controller_id(state);
+                let avatar_id = state.get_player_avatar_id(&controller_id)?;
+                let avatar = state.get_card(&avatar_id);
+                let unit_base = avatar
+                    .get_unit_base()
+                    .ok_or(anyhow::anyhow!("avatar has no unit base"))?;
+                let current_life = unit_base.toughness.saturating_sub(unit_base.damage);
+
+                // Attacking sites causes life loss, not damage.
+                Ok(vec![Effect::SetAvatarLife {
+                    player_id: controller_id,
+                    life: current_life.saturating_sub(reduced_damage),
                 }])
             }
             _ => Ok(vec![]),

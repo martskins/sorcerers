@@ -888,10 +888,22 @@ impl Effect {
             Effect::SetAvatarLife { player_id, life } => {
                 let avatar_id = state.get_player_avatar_id(player_id)?;
                 let avatar = state.get_card_mut(&avatar_id);
+                if avatar
+                    .get_avatar_base()
+                    .is_some_and(|avatar_base| avatar_base.deaths_door)
+                {
+                    return Ok(());
+                }
                 let unit_base = avatar
                     .get_unit_base_mut()
                     .ok_or(anyhow::anyhow!("avatar has no unit base component"))?;
                 unit_base.damage = unit_base.toughness.saturating_sub(*life);
+                if unit_base.damage >= unit_base.toughness {
+                    let avatar_base = avatar
+                        .get_avatar_base_mut()
+                        .ok_or(anyhow::anyhow!("avatar has no avatar base component"))?;
+                    avatar_base.deaths_door = true;
+                }
             }
             Effect::AddDeferredEffect { effect, .. } => {
                 state.deferred_effects_mut().push(effect.clone());
@@ -945,6 +957,12 @@ impl Effect {
             }
             Effect::Heal { card_id, amount } => {
                 let card = state.get_card_mut(card_id);
+                if card
+                    .get_avatar_base()
+                    .is_some_and(|avatar_base| avatar_base.deaths_door)
+                {
+                    return Ok(());
+                }
                 let unit_base = card
                     .get_unit_base_mut()
                     .ok_or(anyhow::anyhow!("card has no unit base"))?;

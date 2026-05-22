@@ -840,7 +840,7 @@ impl State {
                     .get_unit_base()
                     .ok_or(anyhow::anyhow!("no unit base in avatar"))?
                     .toughness
-                    - avatar_card.get_damage_taken().unwrap_or(0),
+                    .saturating_sub(avatar_card.get_damage_taken().unwrap_or(0)),
             );
         }
 

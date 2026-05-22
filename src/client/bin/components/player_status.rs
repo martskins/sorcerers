@@ -18,6 +18,7 @@ use crate::{
 const ICON_SZ: f32 = 14.0;
 const STAT_FONT: f32 = 14.0;
 const NAME_FONT: f32 = 13.0;
+const DEATHS_DOOR_FONT: f32 = 11.0;
 const THRESH_SYM: f32 = 14.0; // triangle bounding box size
 const PAD_H: i8 = 8; // horizontal inner margin (i8 for egui::Margin)
 const PAD_V: i8 = 6; // vertical   inner margin
@@ -134,6 +135,7 @@ impl Component for PlayerStatusComponent {
             .get(&self.player_id)
             .copied()
             .unwrap_or(0);
+        let deaths_door = health == 0;
         let hand_count = data
             .cards
             .iter()
@@ -224,7 +226,11 @@ impl Component for PlayerStatusComponent {
                                 ui,
                                 "assets/icons/heart.png",
                                 health,
-                                Color32::from_rgb(230, 80, 80),
+                                if deaths_door {
+                                    Color32::from_rgb(255, 210, 80)
+                                } else {
+                                    Color32::from_rgb(230, 80, 80)
+                                },
                                 &ctx,
                             );
                             ui.add_space(5.0);
@@ -323,6 +329,19 @@ impl Component for PlayerStatusComponent {
                             element_symbol(ui, resources.thresholds.air, Element::Air);
                             element_symbol(ui, resources.thresholds.earth, Element::Earth);
                             element_symbol(ui, resources.thresholds.water, Element::Water);
+                            if deaths_door {
+                                ui.with_layout(
+                                    egui::Layout::right_to_left(egui::Align::Center),
+                                    |ui| {
+                                        ui.label(
+                                            egui::RichText::new("DEATH'S DOOR")
+                                                .color(Color32::from_rgb(255, 210, 80))
+                                                .size(DEATHS_DOOR_FONT)
+                                                .strong(),
+                                        );
+                                    },
+                                );
+                            }
                         });
                     });
             });

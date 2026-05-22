@@ -1,7 +1,7 @@
 use crate::{
     card::{
-        Ability, ApprenticeWizard, AridDesert, BottomlessPit, Card, Enchantress, FootSoldier,
-        OgreGoons, PhaseAssassin, Region, SeaRaider, VaultsOfZul, from_name_and_zone,
+        Ability, ApprenticeWizard, AridDesert, BottomlessPit, Card, Damage, Enchantress,
+        FootSoldier, OgreGoons, PhaseAssassin, Region, SeaRaider, VaultsOfZul, from_name_and_zone,
     },
     deck::Deck,
     effect::{
@@ -80,6 +80,84 @@ async fn drain_effects(state: &mut State) {
         .apply_effects_without_log()
         .await
         .expect("effect queue should drain without error");
+}
+
+#[tokio::test]
+async fn test_direct_avatar_damage_after_deaths_door_loses_game() {
+    let (mut state, _rx) = make_state(vec![]);
+    let player_id = state.players[0].id;
+    let opponent_id = state.players[1].id;
+    let avatar_id = state.get_player_avatar_id(&player_id).unwrap();
+    let opponent_avatar_id = state.get_player_avatar_id(&opponent_id).unwrap();
+
+    state.queue_one(Effect::TakeDamage {
+        card_id: avatar_id,
+        from: opponent_avatar_id,
+        damage: Damage::basic(20),
+    });
+    drain_effects(&mut state).await;
+
+    assert!(
+        !state.loosers.contains(&player_id),
+        "reaching Death's Door should not immediately lose the game"
+    );
+
+    state
+        .get_card_mut(&avatar_id)
+        .get_avatar_base_mut()
+        .unwrap()
+        .can_die = true;
+
+    state.queue_one(Effect::TakeDamage {
+        card_id: avatar_id,
+        from: opponent_avatar_id,
+        damage: Damage::basic(1),
+    });
+    drain_effects(&mut state).await;
+
+    assert!(
+        state.loosers.contains(&player_id),
+        "direct damage to an avatar after Death's Door should be a death blow"
+    );
+}
+
+#[tokio::test]
+async fn test_site_damage_after_deaths_door_is_not_death_blow() {
+    let (mut state, _rx) = make_state(vec![]);
+    let player_id = state.players[0].id;
+    let opponent_id = state.players[1].id;
+    let avatar_id = state.get_player_avatar_id(&player_id).unwrap();
+    let opponent_avatar_id = state.get_player_avatar_id(&opponent_id).unwrap();
+
+    let mut site = AridDesert::new(player_id);
+    let site_id = *site.get_id();
+    site.set_zone(Zone::Location(1, Region::Surface));
+    state.cards.insert(site_id, Box::new(site));
+
+    state.queue_one(Effect::TakeDamage {
+        card_id: avatar_id,
+        from: opponent_avatar_id,
+        damage: Damage::basic(20),
+    });
+    drain_effects(&mut state).await;
+
+    state
+        .get_card_mut(&avatar_id)
+        .get_avatar_base_mut()
+        .unwrap()
+        .can_die = true;
+
+    state.queue_one(Effect::TakeDamage {
+        card_id: site_id,
+        from: opponent_avatar_id,
+        damage: Damage::strike(1, false),
+    });
+    drain_effects(&mut state).await;
+
+    assert!(
+        !state.loosers.contains(&player_id),
+        "damage to a site causes avatar life loss, not a death blow"
+    );
 }
 
 #[tokio::test]
