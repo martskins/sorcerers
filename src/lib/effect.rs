@@ -8,7 +8,7 @@ use crate::{
     query::{CardQuery, EffectQuery, QueryCache, ZoneQuery, entered_site},
     state::{ContinuousEffect, Phase, State, Turn},
 };
-use std::fmt::Debug;
+use std::{collections::HashMap, fmt::Debug};
 
 pub mod lifecycle;
 pub mod log;
@@ -191,6 +191,8 @@ pub enum Effect {
     Attack {
         attacker_id: uuid::Uuid,
         defender_id: uuid::Uuid,
+        defending_ids: Vec<uuid::Uuid>,
+        damage_assignment: Option<HashMap<uuid::Uuid, u16>>,
     },
     TakeDamage {
         card_id: uuid::Uuid,
@@ -1572,6 +1574,8 @@ impl Effect {
             Effect::Attack {
                 attacker_id,
                 defender_id,
+                defending_ids,
+                damage_assignment,
                 ..
             } => {
                 // Attacking is an interaction: the attacker loses Stealth.
@@ -1581,6 +1585,163 @@ impl Effect {
 
                 let attacker = state.get_card(attacker_id);
                 let defender = state.get_card(defender_id);
+
+                if !defending_ids.is_empty() || damage_assignment.is_some() {
+                    let attacker_power = attacker
+                        .get_power(state)?
+                        .ok_or(anyhow::anyhow!("attacker has no power"))?;
+                    let attacker_zone = attacker.get_zone().clone();
+                    let attacker_region = attacker.get_region(state).clone();
+                    let attacker_has_fs = attacker.has_ability(state, &Ability::FirstStrike);
+
+                    let mut remaining_damage = attacker_power;
+                    let mut assigned_damage = HashMap::new();
+                    for defending_id in defending_ids {
+                        let requested = damage_assignment
+                            .as_ref()
+                            .and_then(|assignment| assignment.get(defending_id).copied())
+                            .unwrap_or_default();
+                        let assigned = requested.min(remaining_damage);
+                        remaining_damage -= assigned;
+                        assigned_damage.insert(*defending_id, assigned);
+                    }
+
+                    let mut effects = defending_ids
+                        .iter()
+                        .map(|defending_id| {
+                            let defending_card = state.get_card(defending_id);
+                            Effect::MoveCard {
+                                player_id: defending_card.get_controller_id(state),
+                                card_id: *defending_id,
+                                from: defending_card.get_zone().clone(),
+                                to: ZoneQuery::from_zone(attacker_zone.clone()),
+                                tap: true,
+                                region: attacker_region.clone(),
+                                through_path: None,
+                            }
+                        })
+                        .collect::<Vec<_>>();
+
+                    let defenders_with_fs = defending_ids
+                        .iter()
+                        .copied()
+                        .filter(|id| state.get_card(id).has_ability(state, &Ability::FirstStrike))
+                        .collect::<Vec<_>>();
+                    let has_first_strike_phase = attacker_has_fs || !defenders_with_fs.is_empty();
+
+                    if has_first_strike_phase {
+                        let mut first_strike_effects = Vec::new();
+                        if attacker_has_fs {
+                            for defending_id in defending_ids {
+                                let damage = assigned_damage.get(defending_id).copied().unwrap_or(0);
+                                first_strike_effects.push(Effect::TakeDamage {
+                                    card_id: *defending_id,
+                                    from: *attacker_id,
+                                    damage: Damage::strike(damage, false),
+                                });
+                            }
+                        }
+
+                        for defending_id in &defenders_with_fs {
+                            let defender = state.get_card(defending_id);
+                            if defender.strikes_back(state)? {
+                                let defender_power = defender
+                                    .get_power(state)?
+                                    .ok_or(anyhow::anyhow!("defender has no power"))?;
+                                first_strike_effects.push(Effect::TakeDamage {
+                                    card_id: *attacker_id,
+                                    from: *defending_id,
+                                    damage: Damage::strike(defender_power, false),
+                                });
+                            }
+                        }
+
+                        let mut sim = state.clone();
+                        sim.queue(first_strike_effects.clone());
+                        Box::pin(sim.apply_effects_without_log()).await?;
+                        effects.extend(first_strike_effects);
+
+                        let attacker_survived = sim
+                            .cards
+                            .get(attacker_id)
+                            .is_some_and(|card| card.get_zone() != &Zone::Cemetery);
+                        if attacker_survived && !attacker_has_fs {
+                            for defending_id in defending_ids {
+                                let defender_survived = sim
+                                    .cards
+                                    .get(defending_id)
+                                    .is_some_and(|card| card.get_zone() != &Zone::Cemetery);
+                                if !defender_survived {
+                                    continue;
+                                }
+                                let damage = assigned_damage.get(defending_id).copied().unwrap_or(0);
+                                effects.push(Effect::TakeDamage {
+                                    card_id: *defending_id,
+                                    from: *attacker_id,
+                                    damage: Damage::strike(damage, false),
+                                });
+                            }
+                        }
+
+                        for defending_id in defending_ids {
+                            if defenders_with_fs.contains(defending_id) {
+                                continue;
+                            }
+                            let defender_survived = sim
+                                .cards
+                                .get(defending_id)
+                                .is_some_and(|card| card.get_zone() != &Zone::Cemetery);
+                            if !defender_survived {
+                                continue;
+                            }
+                            let defender = state.get_card(defending_id);
+                            if defender.strikes_back(state)? {
+                                let defender_power = defender
+                                    .get_power(state)?
+                                    .ok_or(anyhow::anyhow!("defender has no power"))?;
+                                effects.push(Effect::TakeDamage {
+                                    card_id: *attacker_id,
+                                    from: *defending_id,
+                                    damage: Damage::strike(defender_power, false),
+                                });
+                            }
+                        }
+                    } else {
+                        for defending_id in defending_ids {
+                            let damage = assigned_damage.get(defending_id).copied().unwrap_or(0);
+                            effects.push(Effect::TakeDamage {
+                                card_id: *defending_id,
+                                from: *attacker_id,
+                                damage: Damage::strike(damage, false),
+                            });
+                        }
+
+                        for defending_id in defending_ids {
+                            let defender = state.get_card(defending_id);
+                            if defender.strikes_back(state)? {
+                                let defender_power = defender
+                                    .get_power(state)?
+                                    .ok_or(anyhow::anyhow!("defender has no power"))?;
+                                effects.push(Effect::TakeDamage {
+                                    card_id: *attacker_id,
+                                    from: *defending_id,
+                                    damage: Damage::strike(defender_power, false),
+                                });
+                            }
+                        }
+                    }
+
+                    effects.extend(attacker.on_attack(state, defender_id)?);
+                    for defending_id in defending_ids {
+                        let defender = state.get_card(defending_id);
+                        effects.extend(defender.on_defend(state, attacker_id)?);
+                    }
+
+                    effects.reverse();
+                    state.queue(effects);
+                    return Ok(());
+                }
+
                 let mut effects = vec![Effect::MoveCard {
                     player_id: attacker.get_controller_id(state),
                     card_id: *attacker_id,

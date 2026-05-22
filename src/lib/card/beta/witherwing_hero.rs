@@ -75,6 +75,7 @@ impl Card for WitherwingHero {
                                 Effect::Attack {
                                     attacker_id,
                                     defender_id,
+                                    ..
                                 } => (*attacker_id, *defender_id),
                                 _ => return Ok(vec![]),
                             };

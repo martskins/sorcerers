@@ -15,7 +15,7 @@ use crate::{
     state::{Player, PlayerWithDeck, State},
     zone::Zone,
 };
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 /// Creates a test state with proper avatar cards and a live server-message receiver so
 /// that `force_sync` calls inside effects do not fail.
@@ -319,6 +319,8 @@ async fn test_disabled_unit_does_not_counterstrike_when_attacked() {
     state.queue_one(Effect::Attack {
         attacker_id,
         defender_id,
+        defending_ids: vec![],
+        damage_assignment: None,
     });
     drain_effects(&mut state).await;
 
@@ -326,6 +328,89 @@ async fn test_disabled_unit_does_not_counterstrike_when_attacked() {
         state.get_card(&attacker_id).get_damage_taken().unwrap(),
         0,
         "a disabled defender should not counterstrike"
+    );
+}
+
+#[tokio::test]
+async fn test_multiple_defenders_split_attack_damage() {
+    let (mut state, _rx) = make_state(vec![]);
+    let player_id = state.players[0].id;
+    let opponent_id = state.players[1].id;
+
+    let mut attacker = OgreGoons::new(player_id);
+    let attacker_id = *attacker.get_id();
+    attacker.set_zone(Zone::Location(1, Region::Surface));
+    state.cards.insert(attacker_id, Box::new(attacker));
+
+    let mut defender_one = ApprenticeWizard::new(opponent_id);
+    let defender_one_id = *defender_one.get_id();
+    defender_one.set_zone(Zone::Location(2, Region::Surface));
+    state.cards.insert(defender_one_id, Box::new(defender_one));
+
+    let mut defender_two = ApprenticeWizard::new(opponent_id);
+    let defender_two_id = *defender_two.get_id();
+    defender_two.set_zone(Zone::Location(3, Region::Surface));
+    state.cards.insert(defender_two_id, Box::new(defender_two));
+
+    state.queue_one(Effect::Attack {
+        attacker_id,
+        defender_id: defender_one_id,
+        defending_ids: vec![defender_one_id, defender_two_id],
+        damage_assignment: Some(HashMap::from([(defender_one_id, 1), (defender_two_id, 2)])),
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(state.get_card(&defender_one_id).get_zone(), &Zone::Cemetery);
+    assert_eq!(state.get_card(&defender_two_id).get_zone(), &Zone::Cemetery);
+    assert_eq!(
+        state.get_card(&attacker_id).get_damage_taken().unwrap(),
+        2,
+        "both surviving-at-resolution defenders should strike back"
+    );
+}
+
+#[tokio::test]
+async fn test_multiple_defender_first_strike_can_stop_split_damage() {
+    let (mut state, _rx) = make_state(vec![]);
+    let player_id = state.players[0].id;
+    let opponent_id = state.players[1].id;
+
+    let mut attacker = ApprenticeWizard::new(player_id);
+    let attacker_id = *attacker.get_id();
+    attacker.set_zone(Zone::Location(1, Region::Surface));
+    state.cards.insert(attacker_id, Box::new(attacker));
+
+    let mut first_striker = ApprenticeWizard::new(opponent_id);
+    let first_striker_id = *first_striker.get_id();
+    first_striker.set_zone(Zone::Location(2, Region::Surface));
+    first_striker
+        .get_unit_base_mut()
+        .unwrap()
+        .abilities
+        .push(Ability::FirstStrike);
+    state.cards.insert(first_striker_id, Box::new(first_striker));
+
+    let mut other_defender = ApprenticeWizard::new(opponent_id);
+    let other_defender_id = *other_defender.get_id();
+    other_defender.set_zone(Zone::Location(3, Region::Surface));
+    state.cards.insert(other_defender_id, Box::new(other_defender));
+
+    state.queue_one(Effect::Attack {
+        attacker_id,
+        defender_id: other_defender_id,
+        defending_ids: vec![first_striker_id, other_defender_id],
+        damage_assignment: Some(HashMap::from([(first_striker_id, 0), (other_defender_id, 1)])),
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(state.get_card(&attacker_id).get_zone(), &Zone::Cemetery);
+    assert_eq!(
+        state
+            .get_card(&other_defender_id)
+            .get_damage_taken()
+            .unwrap(),
+        0,
+        "a dead non-first-strike attacker should not deal assigned combat damage"
     );
 }
 

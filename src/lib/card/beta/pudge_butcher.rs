@@ -81,6 +81,8 @@ impl ActivatedAbility for ShootProjectile {
                 effects.push(Effect::Attack {
                     attacker_id: *card_id,
                     defender_id: target,
+                    defending_ids: vec![],
+                    damage_assignment: None,
                 });
             }
         }

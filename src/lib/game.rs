@@ -1,6 +1,6 @@
 use crate::prelude::*;
 use crate::{
-    card::{Ability, AdditionalCost, Aura, CardType, Cost, Damage, Region},
+    card::{Ability, AdditionalCost, Aura, CardType, Cost, Region},
     effect::{Effect, EffectEngine},
     error::GameError,
     evaluation,
@@ -191,7 +191,34 @@ pub async fn distribute_damage(
     match msg {
         ClientMessage::ResolveCombat {
             damage_assignment, ..
-        } => Ok(damage_assignment),
+        } => {
+            let assigned: u16 = damage_assignment.values().copied().sum();
+            if assigned != amount {
+                return Err(anyhow::anyhow!(
+                    "assigned combat damage {} does not match available damage {}",
+                    assigned,
+                    amount
+                ));
+            }
+            if damage_assignment
+                .keys()
+                .any(|card_id| !defenders.contains(card_id))
+            {
+                return Err(anyhow::anyhow!(
+                    "combat damage assignment contains non-defender card"
+                ));
+            }
+
+            Ok(defenders
+                .iter()
+                .map(|defender_id| {
+                    (
+                        *defender_id,
+                        damage_assignment.get(defender_id).copied().unwrap_or(0),
+                    )
+                })
+                .collect())
+        }
         ClientMessage::PlayerDisconnected { player_id, .. } => {
             Err(GameError::PlayerDisconnected(player_id).into())
         }
@@ -1464,6 +1491,8 @@ impl ActivatedAbility for UnitAction {
                                 return Ok(vec![Effect::Attack {
                                     attacker_id: *card_id,
                                     defender_id: picked_card_id,
+                                    defending_ids: vec![],
+                                    damage_assignment: None,
                                 }]);
                             }
                             // If a single defender is picked, change the attack to target the
@@ -1477,6 +1506,8 @@ impl ActivatedAbility for UnitAction {
                                     Effect::Attack {
                                         attacker_id: *card_id,
                                         defender_id,
+                                        defending_ids: vec![],
+                                        damage_assignment: None,
                                     },
                                     Effect::MoveCard {
                                         player_id: opponent.id,
@@ -1490,23 +1521,6 @@ impl ActivatedAbility for UnitAction {
                                 ]);
                             }
                             _ => {
-                                let mut effects = defenders
-                                    .iter()
-                                    .flat_map(|defender_id| {
-                                        let defender_zone =
-                                            state.get_card(defender_id).get_zone().clone();
-                                        vec![Effect::MoveCard {
-                                            player_id: opponent.id,
-                                            card_id: *defender_id,
-                                            from: defender_zone,
-                                            to: ZoneQuery::from_zone(attacker.get_zone().clone()),
-                                            tap: true,
-                                            region: attacker.get_region(state).clone(),
-                                            through_path: None,
-                                        }]
-                                    })
-                                    .collect::<Vec<Effect>>();
-
                                 wait_for_opponent(
                                     &opponent.id,
                                     state,
@@ -1523,22 +1537,13 @@ impl ActivatedAbility for UnitAction {
                                 )
                                 .await?;
 
-                                for (defender_id, damage) in damage_distribution {
-                                    // TODO: Check whether this triggers 3 strikes from the attacker
-                                    // or a single one. It should trigger only once.
-                                    effects.push(Effect::TakeDamage {
-                                        card_id: defender_id,
-                                        from: *card_id,
-                                        damage: Damage::strike(damage, false),
-                                    });
-
-                                    let defender = state.get_card(&defender_id);
-                                    effects.extend(defender.on_defend(state, attacker.get_id())?);
-                                }
-
                                 resume(&opponent.id, state).await?;
-                                effects.reverse();
-                                return Ok(effects);
+                                return Ok(vec![Effect::Attack {
+                                    attacker_id: *card_id,
+                                    defender_id: picked_card_id,
+                                    defending_ids: defenders,
+                                    damage_assignment: Some(damage_distribution),
+                                }]);
                             }
                         }
                     }
@@ -1547,6 +1552,8 @@ impl ActivatedAbility for UnitAction {
                 Ok(vec![Effect::Attack {
                     attacker_id: *card_id,
                     defender_id: picked_card_id,
+                    defending_ids: vec![],
+                    damage_assignment: None,
                 }])
             }
             UnitAction::Move => {
@@ -1645,6 +1652,8 @@ impl ActivatedAbility for UnitAction {
                         effects.push(Effect::Attack {
                             attacker_id: *interceptor_id,
                             defender_id: *card_id,
+                            defending_ids: vec![],
+                            damage_assignment: None,
                         });
 
                         break;

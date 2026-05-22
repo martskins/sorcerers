@@ -80,6 +80,8 @@ impl AwakenedMummies {
                             Effect::Attack {
                                 attacker_id: mummy_id,
                                 defender_id: *card_id,
+                                defending_ids: vec![],
+                                damage_assignment: None,
                             },
                         ])
                     })

@@ -97,6 +97,8 @@ impl Card for GiantShark {
                         let mut effects = vec![Effect::Attack {
                             attacker_id: shark_id,
                             defender_id: *card_id,
+                            defending_ids: vec![],
+                            damage_assignment: None,
                         }];
 
                         if shark_zone != target_zone {

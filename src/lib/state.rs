@@ -407,6 +407,7 @@ impl State {
             Effect::Attack {
                 defender_id,
                 attacker_id,
+                ..
             } => {
                 let defender = self.get_card(defender_id);
                 if !defender.is_unit() {

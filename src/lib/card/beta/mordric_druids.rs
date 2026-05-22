@@ -105,6 +105,7 @@ impl Card for MordricDruids {
                                         Effect::Attack {
                                             attacker_id: logged_attacker,
                                             defender_id,
+                                            ..
                                         } if logged_attacker == *attacker_id => Some(defender_id),
                                         _ => None,
                                     }

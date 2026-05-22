@@ -106,6 +106,8 @@ impl Card for GrappleShot {
                 effects.push(Effect::Attack {
                     attacker_id: ally_id,
                     defender_id: target_id,
+                    defending_ids: vec![],
+                    damage_assignment: None,
                 });
             }
             Ok(effects)
