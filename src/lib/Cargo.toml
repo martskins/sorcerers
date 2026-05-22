@@ -1,0 +1,45 @@
+[package]
+name = "sorcerers-core"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+name = "sorcerers"
+path = "mod.rs"
+
+[features]
+benchmark = []
+name-entry = []
+
+[dependencies]
+anyhow.workspace = true
+async-channel.workspace = true
+async-trait.workspace = true
+chrono.workspace = true
+convert_case.workspace = true
+crossbeam.workspace = true
+erased-serde.workspace = true
+linkme.workspace = true
+oneshot.workspace = true
+rand.workspace = true
+rmp.workspace = true
+rmp-serde.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+socket2.workspace = true
+strum.workspace = true
+strum_macros.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-serde.workspace = true
+tokio-util.workspace = true
+typetag.workspace = true
+unidecode.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+
+[[bench]]
+name = "card_query"
+harness = false
