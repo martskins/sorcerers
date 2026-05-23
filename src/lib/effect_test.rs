@@ -700,6 +700,38 @@ async fn test_phase_assassin_keeps_stealth_after_entering_void() {
 }
 
 #[tokio::test]
+async fn test_teleport_triggers_visit_zone_once() {
+    let (mut state, _rx) = make_state(vec![Zone::Location(1, Region::Surface)]);
+    let player_id = state.players[0].id;
+
+    let mut assassin = PhaseAssassin::new(player_id);
+    let assassin_id = *assassin.get_id();
+    assassin.set_zone(Zone::Location(1, Region::Surface));
+    state.cards.insert(assassin_id, Box::new(assassin));
+
+    state.queue_one(Effect::TeleportCard {
+        player_id,
+        card_id: assassin_id,
+        to_zone: Zone::Location(2, Region::Surface),
+    });
+    drain_effects(&mut state).await;
+
+    let stealth_counters = state
+        .get_card(&assassin_id)
+        .get_unit_base()
+        .expect("Phase Assassin should have unit base")
+        .ability_counters
+        .iter()
+        .filter(|counter| counter.ability == Ability::Stealth)
+        .count();
+
+    assert_eq!(
+        stealth_counters, 1,
+        "teleport should let MoveCard trigger on_visit_zone exactly once"
+    );
+}
+
+#[tokio::test]
 async fn test_region_changes_enter_location_but_not_site() {
     let (state, _rx) = make_state(vec![Zone::Location(1, Region::Surface)]);
     let player_id = state.players[0].id;

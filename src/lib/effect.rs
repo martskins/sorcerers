@@ -868,7 +868,9 @@ impl Effect {
                     };
                     let token_id = *token.get_id();
                     state.cards.insert(token_id, token);
-                    state.queue_one(Effect::SummonCards { cards: vec![(*player_id, token_id, zone.clone())] });
+                    state.queue_one(Effect::SummonCards {
+                        cards: vec![(*player_id, token_id, zone.clone())],
+                    });
                 } else {
                     // Non-unit tokens are just placed directly onto the board without going through
                     // SummonCards, since they don't need to trigger any on_summon or genesis effects.
@@ -1113,14 +1115,9 @@ impl Effect {
                                     DrawKind::Choice => unreachable!(),
                                 })
                                 .collect::<Vec<_>>();
-                            let picked_option_idx = pick_option(
-                                player_id,
-                                &option_labels,
-                                state,
-                                "Draw a card",
-                                false,
-                            )
-                            .await?;
+                            let picked_option_idx =
+                                pick_option(player_id, &option_labels, state, "Draw a card", false)
+                                    .await?;
                             options[picked_option_idx].clone()
                         }
                         kind => kind.clone(),
@@ -1212,7 +1209,9 @@ impl Effect {
                 if card.is_minion() {
                     // Minions are put into play via SummonCards, which handles zone
                     // placement, SummoningSickness, on_summon, and genesis in one place.
-                    state.queue_one(Effect::SummonCards { cards: vec![(*player_id, *card_id, zone)] });
+                    state.queue_one(Effect::SummonCards {
+                        cards: vec![(*player_id, *card_id, zone)],
+                    });
                 } else {
                     let card = state
                         .cards
@@ -1441,6 +1440,7 @@ impl Effect {
                 let attacker = state.get_card(attacker_id);
                 let defender = state.get_card(defender_id);
 
+                let mut effects = attacker.on_attack(state, defender_id)?;
                 if !defending_ids.is_empty() || damage_assignment.is_some() {
                     let attacker_power = attacker
                         .get_power(state)?
@@ -1461,25 +1461,30 @@ impl Effect {
                         assigned_damage.insert(*defending_id, assigned);
                     }
 
-                    let mut effects = defending_ids
-                        .iter()
-                        .map(|defending_id| {
-                            let defending_card = state.get_card(defending_id);
-                            if defending_card.occupies_zone(state, &attacker_zone) {
-                                Effect::SetTapped { card_id: *defending_id, tapped: true }
-                            } else {
-                                Effect::MoveCard {
-                                    player_id: defending_card.get_controller_id(state),
-                                    card_id: *defending_id,
-                                    from: defending_card.get_zone().clone(),
-                                    to: ZoneQuery::from_zone(attacker_zone.clone()),
-                                    tap: true,
-                                    region: attacker_region.clone(),
-                                    through_path: None,
+                    effects.extend(
+                        defending_ids
+                            .iter()
+                            .map(|defending_id| {
+                                let defending_card = state.get_card(defending_id);
+                                if defending_card.occupies_zone(state, &attacker_zone) {
+                                    Effect::SetTapped {
+                                        card_id: *defending_id,
+                                        tapped: true,
+                                    }
+                                } else {
+                                    Effect::MoveCard {
+                                        player_id: defending_card.get_controller_id(state),
+                                        card_id: *defending_id,
+                                        from: defending_card.get_zone().clone(),
+                                        to: ZoneQuery::from_zone(attacker_zone.clone()),
+                                        tap: true,
+                                        region: attacker_region.clone(),
+                                        through_path: None,
+                                    }
                                 }
-                            }
-                        })
-                        .collect::<Vec<_>>();
+                            })
+                            .collect::<Vec<_>>(),
+                    );
 
                     let defenders_with_fs = defending_ids
                         .iter()
@@ -1592,7 +1597,6 @@ impl Effect {
                         }
                     }
 
-                    effects.extend(attacker.on_attack(state, defender_id)?);
                     for defending_id in defending_ids {
                         let defender = state.get_card(defending_id);
                         effects.extend(defender.on_defend(state, attacker_id)?);
@@ -1603,7 +1607,7 @@ impl Effect {
                     return Ok(());
                 }
 
-                let mut effects = vec![Effect::MoveCard {
+                effects.push(Effect::MoveCard {
                     player_id: attacker.get_controller_id(state),
                     card_id: *attacker_id,
                     from: attacker.get_zone().clone(),
@@ -1611,7 +1615,7 @@ impl Effect {
                     tap: true,
                     region: attacker.get_region(state).clone(),
                     through_path: None,
-                }];
+                });
 
                 let attacker_has_fs = attacker.has_ability(state, &Ability::FirstStrike);
                 let defender_has_fs = defender.has_ability(state, &Ability::FirstStrike);
@@ -1628,13 +1632,12 @@ impl Effect {
                             from: *first_attacker.get_id(),
                             damage: Damage::strike(power, false),
                         });
-                        sim.queue(attacker.on_attack(&sim, first_defender.get_id())?);
-                        sim.queue(attacker.on_defend(&sim, first_attacker.get_id())?);
+                        sim.queue(defender.on_defend(&sim, attacker_id)?);
                         Box::pin(sim.apply_effects_without_log()).await?;
                         sim.get_card(first_defender.get_id()).get_zone() != &Zone::Cemetery
                     };
 
-                    let power = first_defender
+                    let power = first_attacker
                         .get_power(state)?
                         .ok_or(anyhow::anyhow!("first defender has no power"))?;
                     effects.push(Effect::TakeDamage {
@@ -1643,8 +1646,7 @@ impl Effect {
                         damage: Damage::strike(power, false),
                     });
 
-                    effects.extend(attacker.on_attack(state, first_defender.get_id())?);
-                    effects.extend(attacker.on_defend(state, first_attacker.get_id())?);
+                    effects.extend(defender.on_defend(state, attacker_id)?);
 
                     if first_defender_survived && first_defender.strikes_back(state)? {
                         let power = first_defender
@@ -1677,7 +1679,6 @@ impl Effect {
                             damage: Damage::strike(defender_power, false),
                         });
                     }
-                    effects.extend(attacker.on_attack(state, defender_id)?);
                     effects.extend(defender.on_defend(state, attacker_id)?);
                 }
 
@@ -1802,8 +1803,7 @@ impl Effect {
                 ..
             } => {
                 let card = state.get_card(card_id);
-                let from_zone = card.get_zone().clone();
-                let mut effects = vec![Effect::MoveCard {
+                state.queue_one(Effect::MoveCard {
                     player_id: *player_id,
                     card_id: *card_id,
                     from: card.get_zone().clone(),
@@ -1811,29 +1811,7 @@ impl Effect {
                     tap: false,
                     region: Region::Surface,
                     through_path: None,
-                }];
-
-                let carried_cards: Vec<uuid::Uuid> = state
-                    .cards
-                    .values()
-                    .filter(|c| c.get_zone().is_in_play())
-                    .filter_map(|c| {
-                        c.get_bearer_id()
-                            .ok()
-                            .flatten()
-                            .filter(|bearer_id| bearer_id == card_id)
-                            .map(|_| *c.get_id())
-                    })
-                    .collect();
-                let carried_region = state.get_card(card_id).get_region(state).clone();
-                for carried_card_id in carried_cards {
-                    let carried = state.get_card_mut(&carried_card_id);
-                    carried.set_zone(to_zone.clone());
-                    carried.set_region(carried_region.clone());
-                }
-                let card = state.get_card(card_id);
-                effects.extend(card.on_visit_zone(state, &from_zone, to_zone).await?);
-                state.queue(effects);
+                });
             }
             Effect::RearrangeDeck { spells, sites, .. } => {
                 let current_player = state.current_player();
