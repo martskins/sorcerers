@@ -23,6 +23,10 @@ pub enum EffectQuery {
         source: Option<CardQuery>,
         target: Option<CardQuery>,
     },
+    RemoveAbility {
+        card: CardQuery,
+        ability: crate::card::Ability,
+    },
     TurnEnd {
         player_id: Option<PlayerId>,
     },
@@ -167,6 +171,10 @@ impl EffectQuery {
 
                 Ok(true)
             }
+            (
+                EffectQuery::RemoveAbility { card, ability },
+                Effect::RemoveAbility { card_id, modifier },
+            ) => Ok(card.matches(card_id, state) && ability == modifier),
             (EffectQuery::MoveCard { card }, Effect::MoveCard { card_id, .. }) => {
                 Ok(card.matches(card_id, state))
             }

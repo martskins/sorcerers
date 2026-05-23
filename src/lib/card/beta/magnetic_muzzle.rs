@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::prelude::*;
 
 #[derive(Debug, Clone)]
@@ -59,25 +57,17 @@ impl Card for MagneticMuzzle {
         Some(self)
     }
 
-    fn area_modifiers(&self, _state: &State) -> AreaModifiers {
-        let bearer_id = match self.get_bearer_id().ok().flatten() {
-            Some(id) => id,
-            None => return AreaModifiers::default(),
-        };
-        let mut removes: HashMap<uuid::Uuid, Vec<Ability>> = HashMap::new();
-        removes.insert(
-            bearer_id,
-            vec![
-                Ability::Spellcaster(None),
-                Ability::Spellcaster(Some(Element::Fire)),
-                Ability::Spellcaster(Some(Element::Water)),
-                Ability::Spellcaster(Some(Element::Earth)),
-                Ability::Spellcaster(Some(Element::Air)),
-            ],
-        );
-        AreaModifiers {
-            removes_abilities: removes,
-            ..Default::default()
+    async fn get_continuous_effects(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<ContinuousEffect>> {
+        if let Some(bearer_id) = self.get_bearer_id()? {
+            Ok(vec![ContinuousEffect::GrantAbility {
+                ability: Ability::Disabled,
+                affected_cards: bearer_id,
+            }])
+        } else {
+            Ok(vec![])
         }
     }
 
@@ -99,7 +89,7 @@ impl Card for MagneticMuzzle {
             &player_id,
             &nearby_minions,
             state,
-            "Magnetic Muzzle: Pick a nearby minion to attach",
+            "Pick a nearby minion to attach",
         )
         .await?;
         let target = state.get_card(&target_id);

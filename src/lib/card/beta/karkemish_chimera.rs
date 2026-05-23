@@ -1,6 +1,79 @@
 use crate::prelude::*;
 
 #[derive(Debug, Clone)]
+struct KarkemishChimeraAttack;
+
+#[async_trait::async_trait]
+impl ActivatedAbility for KarkemishChimeraAttack {
+    fn get_name(&self) -> String {
+        "Attack up to three units here".to_string()
+    }
+
+    fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
+        Ok(Cost::additional_only(AdditionalCost::tap(card_id)))
+    }
+
+    fn can_activate(
+        &self,
+        card_id: &uuid::Uuid,
+        player_id: &PlayerId,
+        state: &State,
+    ) -> anyhow::Result<bool> {
+        let card = state.get_card(card_id);
+        let targets = CardQuery::new()
+            .units()
+            .in_zone(card.get_zone())
+            .id_not(card_id)
+            .all(state)
+            .into_iter()
+            .filter(|id| state.get_card(id).get_controller_id(state) != *player_id)
+            .count();
+
+        Ok(targets > 0)
+    }
+
+    async fn on_select(
+        &self,
+        card_id: &uuid::Uuid,
+        player_id: &PlayerId,
+        state: &State,
+    ) -> anyhow::Result<Vec<Effect>> {
+        let card = state.get_card(card_id);
+        let targets: Vec<uuid::Uuid> = CardQuery::new()
+            .units()
+            .in_zone(card.get_zone())
+            .id_not(card_id)
+            .all(state)
+            .into_iter()
+            .filter(|id| state.get_card(id).get_controller_id(state) != *player_id)
+            .collect();
+        if targets.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let mut picked = pick_cards(
+            player_id,
+            &targets,
+            state,
+            "Karkemish Chimera: pick up to three units to attack",
+        )
+        .await?;
+        picked.retain(|id| targets.contains(id));
+        picked.truncate(3);
+        if picked.is_empty() {
+            return Ok(vec![]);
+        }
+
+        Ok(vec![Effect::Attack {
+            attacker_id: *card_id,
+            defender_id: picked[0],
+            defending_ids: picked,
+            damage_assignment: None,
+        }])
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct KarkemishChimera {
     unit_base: UnitBase,
     card_base: CardBase,
@@ -56,37 +129,12 @@ impl Card for KarkemishChimera {
         Some(&mut self.unit_base)
     }
 
-    // TODO: This card needs to be revisited. It doesn't really do what it should do.
-    // fn on_attack(&self, state: &State, defender_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
-    //     let defender = state.get_card(defender_id);
-    //     if !defender.is_unit() {
-    //         return Ok(vec![]);
-    //     }
-    //
-    //     let controller_id = self.get_controller_id(state);
-    //     let power = self.get_power(state)?.unwrap_or_default();
-    //     let attacker_id = *self.get_id();
-    //     let mut effects = vec![];
-    //
-    //     for extra_id in CardQuery::new()
-    //         .units()
-    //         .in_zone(defender.get_zone())
-    //         .all(state)
-    //         .into_iter()
-    //         .filter(|id| id != defender_id)
-    //         .filter(|id| state.get_card(id).get_controller_id(state) != controller_id)
-    //         .take(2)
-    //     {
-    //         effects.push(Effect::TakeDamage {
-    //             card_id: extra_id,
-    //             from: attacker_id,
-    //             damage: Damage::basic(power),
-    //         });
-    //         effects.extend(state.get_card(&extra_id).on_defend(state, &attacker_id)?);
-    //     }
-    //
-    //     Ok(effects)
-    // }
+    fn get_additional_activated_abilities(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+        Ok(vec![Box::new(KarkemishChimeraAttack)])
+    }
 }
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]

@@ -98,11 +98,14 @@ impl Card for SeaRaider {
 
                             let sea_raider = state.get_card(&self_id);
                             let controller = sea_raider.get_controller_id(state);
-                            if state.get_card(&damaged_id).get_controller_id(state) == controller {
+                            let damaged_controller =
+                                state.get_card(&damaged_id).get_controller_id(state);
+                            if damaged_controller == controller {
                                 return Ok(vec![]);
                             }
 
-                            let Some(&spell_id) = state.get_player_deck(&controller)?.peek_spell()
+                            let Some(&spell_id) =
+                                state.get_player_deck(&damaged_controller)?.peek_spell()
                             else {
                                 return Ok(vec![]);
                             };
@@ -118,7 +121,7 @@ impl Card for SeaRaider {
 
                             Ok(vec![
                                 Effect::DiscardCard {
-                                    player_id: controller,
+                                    player_id: damaged_controller,
                                     card_id: spell_id,
                                 },
                                 Effect::AddTemporaryEffect {

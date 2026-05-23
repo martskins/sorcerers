@@ -78,7 +78,12 @@ impl Card for BrobdingnagBullfrog {
         let minions = CardQuery::new()
             .minions()
             .in_zone(self.get_zone())
+            .id_not(self.get_id())
             .all(state);
+        if minions.is_empty() {
+            return Ok(vec![]);
+        }
+
         let picked_card = pick_card(
             self.get_controller_id(state),
             &minions,
@@ -90,6 +95,9 @@ impl Card for BrobdingnagBullfrog {
         Ok(vec![Effect::SetCardData {
             card_id: *self.get_id(),
             data: std::sync::Arc::new(picked_card),
+        }, Effect::SetBearer {
+            card_id: picked_card,
+            bearer_id: Some(*self.get_id()),
         }])
     }
 
@@ -102,28 +110,6 @@ impl Card for BrobdingnagBullfrog {
         }
 
         Ok(())
-    }
-
-    async fn on_move(&self, state: &State, path: &[Zone]) -> anyhow::Result<Vec<Effect>> {
-        if let Some(minion) = self.swallowed_minion
-            && let Some(zone) = path.last()
-            && zone.is_in_play()
-        {
-            return Ok(vec![Effect::MoveCard {
-                card_id: minion,
-                to: ZoneQuery::from_zone(zone.clone()),
-                player_id: self.get_controller_id(state),
-                from: path
-                    .first()
-                    .expect("Path should have at least one element")
-                    .clone(),
-                tap: false,
-                region: self.get_region(state).clone(),
-                through_path: None,
-            }]);
-        }
-
-        Ok(vec![])
     }
 
     async fn get_continuous_effects(

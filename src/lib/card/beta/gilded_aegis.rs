@@ -70,7 +70,7 @@ impl Card for GildedAegis {
         effect: &Effect,
     ) -> anyhow::Result<Option<Vec<Effect>>> {
         let new_effects = match effect {
-            Effect::BuryCard { card_id } => {
+            Effect::KillMinion { card_id, .. } => {
                 let Some(bearer_id) = self.get_bearer_id()? else {
                     return Ok(None);
                 };
@@ -80,6 +80,10 @@ impl Card for GildedAegis {
                 }
 
                 let bearer = state.get_card(&bearer_id);
+                if !bearer.is_minion() {
+                    return Ok(None);
+                }
+
                 Some(vec![
                     Effect::BanishCard {
                         card_id: *self.get_id(),

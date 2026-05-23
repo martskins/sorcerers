@@ -124,7 +124,7 @@ impl Card for DreamQuest {
                                 let wake_up = yes_or_no(
                                     &controller_id,
                                     state,
-                                    "Dream-Quest: Wake up the dreaming minion?",
+                                    "Wake up the dreaming minion?",
                                 )
                                 .await?;
                                 if !wake_up {
@@ -136,13 +136,36 @@ impl Card for DreamQuest {
                                     modifier: Ability::Disabled,
                                 }];
 
-                                // Draw a spell from the deck.
-                                let deck = state.decks.get(&controller_id).unwrap();
-                                if let Some(spell_id) = deck.spells.last().cloned() {
-                                    effects.push(Effect::SetCardZone {
-                                        card_id: spell_id,
-                                        zone: Zone::Hand,
-                                    });
+                                let deck = state.get_player_deck(&controller_id)?.clone();
+                                if !deck.spells.is_empty() {
+                                    let chosen = pick_card_with_options(
+                                        &controller_id,
+                                        &deck.spells,
+                                        &deck.spells,
+                                        false,
+                                        state,
+                                        "Choose a card to put into your hand",
+                                    )
+                                    .await?;
+                                    let mut spells = deck.spells.clone();
+                                    spells.retain(|id| id != &chosen);
+                                    effects = vec![
+                                        Effect::ShuffleDeck {
+                                            player_id: controller_id,
+                                        },
+                                        Effect::RearrangeDeck {
+                                            spells,
+                                            sites: deck.sites.clone(),
+                                        },
+                                        Effect::SetCardZone {
+                                            card_id: chosen,
+                                            zone: Zone::Hand,
+                                        },
+                                        Effect::RemoveAbility {
+                                            card_id: minion_id,
+                                            modifier: Ability::Disabled,
+                                        },
+                                    ];
                                 }
 
                                 Ok(effects)

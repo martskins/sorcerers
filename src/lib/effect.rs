@@ -1449,16 +1449,22 @@ impl Effect {
                     let attacker_region = attacker.get_region(state).clone();
                     let attacker_has_fs = attacker.has_ability(state, &Ability::FirstStrike);
 
-                    let mut remaining_damage = attacker_power;
                     let mut assigned_damage = HashMap::new();
-                    for defending_id in defending_ids {
-                        let requested = damage_assignment
-                            .as_ref()
-                            .and_then(|assignment| assignment.get(defending_id).copied())
-                            .unwrap_or_default();
-                        let assigned = requested.min(remaining_damage);
-                        remaining_damage -= assigned;
-                        assigned_damage.insert(*defending_id, assigned);
+                    if let Some(damage_assignment) = damage_assignment {
+                        let mut remaining_damage = attacker_power;
+                        for defending_id in defending_ids {
+                            let requested = damage_assignment
+                                .get(defending_id)
+                                .copied()
+                                .unwrap_or_default();
+                            let assigned = requested.min(remaining_damage);
+                            remaining_damage -= assigned;
+                            assigned_damage.insert(*defending_id, assigned);
+                        }
+                    } else {
+                        for defending_id in defending_ids {
+                            assigned_damage.insert(*defending_id, attacker_power);
+                        }
                     }
 
                     effects.extend(

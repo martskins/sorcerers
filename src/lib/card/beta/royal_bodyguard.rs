@@ -72,13 +72,30 @@ impl Card for RoyalBodyguard {
                     return Ok(None);
                 }
 
+                if card_id == self.get_id() || damage.amount == 0 {
+                    return Ok(None);
+                }
+
                 let is_royalty = target.is_minion()
                     && ["King", "Queen", "Prince", "Princess"]
                         .iter()
-                        .any(|title| self.get_name().contains(title));
+                        .any(|title| target.get_name().contains(title));
                 let is_avatar = target.is_avatar();
                 let is_royalty_or_avatar = is_royalty || is_avatar;
                 if !is_royalty_or_avatar {
+                    return Ok(None);
+                }
+
+                let redirect = yes_or_no(
+                    self.get_controller_id(state),
+                    state,
+                    format!(
+                        "Royal Bodyguard: take the damage for {}?",
+                        target.get_name()
+                    ),
+                )
+                .await?;
+                if !redirect {
                     return Ok(None);
                 }
 

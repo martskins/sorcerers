@@ -97,11 +97,14 @@ impl Card for Infiltrate {
             },
             Effect::AddDeferredEffect {
                 effect: DeferredEffect {
-                    trigger_on_effect: EffectQuery::TurnEnd { player_id: None },
+                    trigger_on_effect: EffectQuery::RemoveAbility {
+                        card: target_id.into(),
+                        ability: Ability::Stealth,
+                    },
                     expires_on_effect: Some(EffectQuery::BuryCard {
                         card: target_id.into(),
                     }),
-                    multitrigger: true,
+                    multitrigger: false,
                     on_effect: Arc::new(
                         move |state: &State, _triggered_card_id: &uuid::Uuid, _effect: &Effect| {
                             Box::pin(async move {
