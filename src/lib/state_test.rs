@@ -138,6 +138,48 @@ async fn test_tapping_carrier_does_not_tap_carried_minion() {
 }
 
 #[tokio::test]
+async fn test_carried_minion_changes_region_with_carrier() {
+    let (mut state, _rx) = setup_carrying_state();
+    let player_id = state.players[0].id;
+
+    let mut carrier = BeastOfBurden::new(player_id);
+    carrier.add_ability(Ability::Burrowing);
+    let carrier_id = *carrier.get_id();
+    carrier.set_zone(Zone::Location(1, Region::Surface));
+    state.cards.insert(carrier_id, Box::new(carrier));
+
+    let mut passenger = RimlandNomads::new(player_id);
+    let passenger_id = *passenger.get_id();
+    passenger.set_zone(Zone::Location(1, Region::Surface));
+    passenger.set_bearer_id(Some(carrier_id));
+    state.cards.insert(passenger_id, Box::new(passenger));
+
+    state.queue_one(Effect::SetCardRegion {
+        card_id: carrier_id,
+        region: Region::Underground,
+        tap: false,
+    });
+    state.apply_effects_without_log().await.unwrap();
+
+    assert_eq!(
+        state.get_card(&carrier_id).get_region(&state),
+        &Region::Underground
+    );
+    assert_eq!(
+        state.get_card(&passenger_id).get_region(&state),
+        &Region::Underground
+    );
+    assert_eq!(
+        state.get_card(&passenger_id).get_zone(),
+        &Zone::Location(1, Region::Underground)
+    );
+    assert_eq!(
+        state.get_card(&passenger_id).get_bearer_id().unwrap(),
+        Some(carrier_id)
+    );
+}
+
+#[tokio::test]
 async fn test_carried_minion_moves_independently_and_clears_bearer() {
     let (mut state, _rx) = setup_carrying_state();
     let player_id = state.players[0].id;

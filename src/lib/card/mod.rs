@@ -1242,33 +1242,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     // Returns whether the card has the given modifier.
     fn has_ability(&self, state: &State, ability: &Ability) -> bool {
-        if self
-            .get_unit_base()
-            .unwrap_or(&UnitBase::default())
-            .abilities
-            .contains(ability)
-        {
-            return true;
-        }
-
-        if self
-            .get_unit_base()
-            .unwrap_or(&UnitBase::default())
-            .ability_counters
-            .iter()
-            .any(|c| &c.ability == ability)
-        {
-            return true;
-        }
-
-        // Also check abilities granted via continuous effects.
-        state.continuous_effects.iter().any(|ce| match ce {
-            ContinuousEffect::GrantAbility {
-                ability: granted_ability,
-                affected_cards,
-            } if granted_ability == ability => affected_cards.matches(self.get_id(), state),
-            _ => false,
-        })
+        self.get_abilities(state)
+            .is_ok_and(|abilities| abilities.contains(ability))
     }
 
     /// Returns true if this is an oversized unit (occupies a 2×2 intersection).
@@ -2608,7 +2583,10 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
                         Ability::Submerge,
                         Ability::Voidwalk,
                     ] {
-                        if bearer.has_ability(state, &ability) {
+                        if bearer
+                            .get_abilities(state)
+                            .is_ok_and(|abilities| abilities.contains(&ability))
+                        {
                             modifiers.push(ability);
                         }
                     }

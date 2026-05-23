@@ -1833,12 +1833,12 @@ impl Effect {
                 let mut change_region_effects =
                     card.on_region_change(state, from_region, region)?;
 
-                let borne_artifacts = CardQuery::new().carried_by(card_id).all(state);
+                let carried_cards = CardQuery::new().carried_by(card_id).all(state);
                 // Append these to the change_region_effects so that the effects of changing
                 // region are applied after the region change itself.
-                change_region_effects.extend(borne_artifacts.into_iter().map(|artifact_id| {
+                change_region_effects.extend(carried_cards.into_iter().map(|carried_card_id| {
                     Effect::SetCardRegion {
-                        card_id: artifact_id,
+                        card_id: carried_card_id,
                         region: region.clone(),
                         tap: false,
                     }
