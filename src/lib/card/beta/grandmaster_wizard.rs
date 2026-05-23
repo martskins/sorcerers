@@ -62,10 +62,7 @@ impl Card for GrandmasterWizard {
     }
 
     async fn genesis(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
-        Ok(vec![Effect::DrawSpell {
-            player_id: *self.get_owner_id(),
-            count: 3,
-        }])
+        Ok(vec![Effect::DrawCard { player_id: *self.get_owner_id(), count: 3, kind: DrawKind::Spell }])
     }
 }
 

@@ -56,7 +56,10 @@ impl ActivatedAbility for WaveshaperFlood {
                 .without_ability(&Ability::Submerge)
                 .all(state)
                 .into_iter()
-                .map(|card_id| Effect::TapCard { card_id }),
+                .map(|card_id| Effect::SetTapped {
+                    card_id,
+                    tapped: true,
+                }),
         );
 
         let tapped_minions = CardQuery::new()

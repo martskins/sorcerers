@@ -88,11 +88,7 @@ impl Card for BoneRabble {
                             )
                             .await?;
                             if summon_bone_rabble {
-                                Ok(vec![Effect::SummonCard {
-                                    player_id: owner_id,
-                                    card_id: bone_rabble_id,
-                                    zone: site.get_zone().clone(),
-                                }])
+                                Ok(vec![Effect::SummonCards { cards: vec![(owner_id, bone_rabble_id, site.get_zone().clone())] }])
                             } else {
                                 Ok(vec![])
                             }

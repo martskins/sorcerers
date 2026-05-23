@@ -1,6 +1,6 @@
 use crate::{
     card::Region,
-    effect::Effect,
+    effect::{DrawKind, Effect},
     game::PlayerId,
     query::{CardQuery, ZoneQuery},
     state::State,
@@ -96,13 +96,6 @@ impl EffectQuery {
                     .map(|(card_id, _)| card_id)
                     .collect())
             }
-            (EffectQuery::SummonCard { card }, Effect::SummonCard { card_id, .. }) => {
-                Ok(if card.matches(card_id, state) {
-                    vec![*card_id]
-                } else {
-                    vec![]
-                })
-            }
             (EffectQuery::SummonCard { card }, Effect::SummonCards { cards }) => Ok(cards
                 .iter()
                 .filter(|(_, card_id, _)| card.matches(card_id, state))
@@ -147,7 +140,13 @@ impl EffectQuery {
                     ..
                 },
             ) => Ok(optional_player_matches(query_player_id, effect_player_id)),
-            (EffectQuery::UntapCard { card }, Effect::UntapCard { card_id }) => {
+            (
+                EffectQuery::UntapCard { card },
+                Effect::SetTapped {
+                    card_id,
+                    tapped: false,
+                },
+            ) => {
                 Ok(card.matches(card_id, state))
             }
             (
@@ -169,9 +168,6 @@ impl EffectQuery {
                 Ok(true)
             }
             (EffectQuery::MoveCard { card }, Effect::MoveCard { card_id, .. }) => {
-                Ok(card.matches(card_id, state))
-            }
-            (EffectQuery::SummonCard { card }, Effect::SummonCard { card_id, .. }) => {
                 Ok(card.matches(card_id, state))
             }
             (EffectQuery::SummonCard { card }, Effect::SummonCards { cards }) => Ok(cards
@@ -204,19 +200,11 @@ impl EffectQuery {
                 EffectQuery::DrawCard {
                     player_id: query_pid,
                 },
-                Effect::DrawSpell { player_id, .. },
-            ) => Ok(optional_player_matches(query_pid, player_id)),
-            (
-                EffectQuery::DrawCard {
-                    player_id: query_pid,
+                Effect::DrawCard {
+                    player_id,
+                    kind: DrawKind::Spell | DrawKind::Site | DrawKind::Choice,
+                    ..
                 },
-                Effect::DrawSite { player_id, .. },
-            ) => Ok(optional_player_matches(query_pid, player_id)),
-            (
-                EffectQuery::DrawCard {
-                    player_id: query_pid,
-                },
-                Effect::DrawCard { player_id, .. },
             ) => Ok(optional_player_matches(query_pid, player_id)),
             (EffectQuery::OneOf(queries), effect) => {
                 for query in queries {
@@ -260,7 +248,6 @@ pub async fn entered_zones(
 
             Ok(entered)
         }
-        Effect::SummonCard { card_id, zone, .. } => Ok(vec![(*card_id, zone.clone())]),
         Effect::SummonCards { cards } => Ok(cards
             .iter()
             .map(|(_, card_id, zone)| (*card_id, zone.clone()))
@@ -298,10 +285,6 @@ pub async fn entered_sites(
 
             Ok(entered)
         }
-        Effect::SummonCard { card_id, zone, .. } => Ok(zone
-            .get_site_at_square(state)
-            .map(|site| vec![(*card_id, site.get_zone().clone())])
-            .unwrap_or_default()),
         Effect::SummonCards { cards } => Ok(cards
             .iter()
             .filter_map(|(_, card_id, zone)| {

@@ -101,7 +101,7 @@ impl Card for WarpSpasm {
                             });
 
                             if killed_by_target_attack {
-                                Ok(vec![Effect::UntapCard { card_id: target_id }])
+                                Ok(vec![Effect::SetTapped { card_id: target_id, tapped: false }])
                             } else {
                                 Ok(vec![])
                             }

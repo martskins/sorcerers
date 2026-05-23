@@ -94,11 +94,7 @@ impl Card for MotherNature {
                 .await?;
 
                 if summon {
-                    return Ok(vec![Effect::SummonCard {
-                        player_id: controller_id,
-                        card_id: *top_card_id,
-                        zone: self.get_zone().clone(),
-                    }]);
+                    return Ok(vec![Effect::SummonCards { cards: vec![(controller_id, *top_card_id, self.get_zone().clone())] }]);
                 }
             } else {
                 reveal_cards(

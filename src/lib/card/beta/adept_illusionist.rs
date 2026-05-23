@@ -37,11 +37,7 @@ impl ActivatedAbility for AdeptIllusionistAction {
         .await?;
 
         Ok(vec![
-            Effect::SummonCard {
-                player_id: *player_id,
-                card_id: picked_card_id,
-                zone: zone.clone(),
-            },
+            Effect::SummonCards { cards: vec![(*player_id, picked_card_id, zone.clone())] },
             Effect::ShuffleDeck {
                 player_id: *player_id,
             },

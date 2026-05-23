@@ -26,7 +26,7 @@ pub(crate) mod prelude {
         CostType, Costs, Damage, Edition, MinionType, Rarity, Region, ResourceProvider,
         ResourceProviderBaseMethods, Rubble, Site, SiteBase, SiteType, UnitBase,
     };
-    pub use crate::effect::{AbilityCounter, Counter, Effect, TokenType};
+    pub use crate::effect::{AbilityCounter, Counter, DrawKind, Effect, TokenType};
     pub use crate::game::{
         ActivatedAbility, AvatarAction, BaseAction, BaseOption, CARDINAL_DIRECTIONS, Direction,
         Element, NO_CONTROLLER, PlayerId, Thresholds, UnitAction, force_sync, get_knight_move_zones,

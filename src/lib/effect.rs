@@ -54,6 +54,13 @@ pub enum TokenType {
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
+pub enum DrawKind {
+    Site,
+    Spell,
+    Choice,
+}
+
+#[derive(Debug, Clone)]
 pub enum Effect {
     Noop,
     PlayerLost {
@@ -130,17 +137,10 @@ pub enum Effect {
         region: Region,
         through_path: Option<Vec<Zone>>,
     },
-    DrawSite {
-        player_id: PlayerId,
-        count: u8,
-    },
-    DrawSpell {
-        player_id: PlayerId,
-        count: u8,
-    },
     DrawCard {
         player_id: PlayerId,
         count: u8,
+        kind: DrawKind,
     },
     PlayMagic {
         player_id: PlayerId,
@@ -157,16 +157,9 @@ pub enum Effect {
     SummonCards {
         cards: Vec<(PlayerId, uuid::Uuid, Zone)>,
     },
-    SummonCard {
-        player_id: PlayerId,
+    SetTapped {
         card_id: uuid::Uuid,
-        zone: Zone,
-    },
-    TapCard {
-        card_id: uuid::Uuid,
-    },
-    UntapCard {
-        card_id: uuid::Uuid,
+        tapped: bool,
     },
     EndTurn {
         player_id: PlayerId,
@@ -319,15 +312,11 @@ impl Effect {
             Effect::SetCardZone { card_id, .. } => Some(card_id),
             Effect::MoveCard { card_id, .. } => Some(card_id),
             Effect::DiscardCard { card_id, .. } => Some(card_id),
-            Effect::DrawSite { player_id, .. } => Some(player_id),
-            Effect::DrawSpell { player_id, .. } => Some(player_id),
             Effect::DrawCard { player_id, .. } => Some(player_id),
             Effect::PlayMagic { card_id, .. } => Some(card_id),
             Effect::PlayCard { card_id, .. } => Some(card_id),
-            Effect::SummonCard { card_id, .. } => Some(card_id),
             Effect::SummonCards { .. } => None,
-            Effect::TapCard { card_id } => Some(card_id),
-            Effect::UntapCard { card_id } => Some(card_id),
+            Effect::SetTapped { card_id, .. } => Some(card_id),
             Effect::EndTurn { player_id } => Some(player_id),
             Effect::StartTurn { player_id } => Some(player_id),
             Effect::ConsumeMana { player_id, .. } => Some(player_id),
@@ -496,46 +485,27 @@ impl Effect {
                     )),
                 }
             }
-            Effect::DrawCard { player_id, count } => {
+            Effect::DrawCard {
+                player_id,
+                count,
+                kind,
+            } => {
                 if *count == 0 {
                     return Ok(None);
                 }
-                let cards = if *count == 1 { "card" } else { "cards" };
+                let cards = match kind {
+                    DrawKind::Site if *count == 1 => "site",
+                    DrawKind::Site => "sites",
+                    DrawKind::Spell if *count == 1 => "spell",
+                    DrawKind::Spell => "spells",
+                    DrawKind::Choice if *count == 1 => "card",
+                    DrawKind::Choice => "cards",
+                };
                 Some(format!(
                     "{} draws {} {}",
                     player_name(player_id, state),
                     count,
                     cards
-                ))
-            }
-            Effect::DrawSite {
-                player_id, count, ..
-            } => {
-                if *count == 0 {
-                    return Ok(None);
-                }
-
-                let sites = if *count == 1 { "site" } else { "sites" };
-                Some(format!(
-                    "{} draws {} {}",
-                    player_name(player_id, state),
-                    count,
-                    sites
-                ))
-            }
-            Effect::DrawSpell {
-                player_id, count, ..
-            } => {
-                if *count == 0 {
-                    return Ok(None);
-                }
-
-                let spells = if *count == 1 { "spell" } else { "spells" };
-                Some(format!(
-                    "{} draws {} {}",
-                    player_name(player_id, state),
-                    count,
-                    spells
                 ))
             }
             Effect::PlayMagic {
@@ -576,21 +546,7 @@ impl Effect {
                     Some(parts.join("; "))
                 }
             }
-            Effect::SummonCard {
-                player_id,
-                card_id,
-                zone,
-            } => {
-                let card = state.get_card(card_id).get_name();
-                Some(format!(
-                    "{} summons {} in {}",
-                    player_name(player_id, state),
-                    card,
-                    zone
-                ))
-            }
-            Effect::TapCard { .. } => None,
-            Effect::UntapCard { .. } => None,
+            Effect::SetTapped { .. } => None,
             Effect::EndTurn { player_id, .. } => {
                 Some(format!("{} passes the turn", player_name(player_id, state)))
             }
@@ -903,7 +859,7 @@ impl Effect {
                 };
 
                 if token.is_unit() {
-                    // Unit tokens are summoned via SummonCard so that zone placement,
+                    // Unit tokens are summoned via SummonCards so that zone placement,
                     // SummoningSickness, on_summon, and genesis all happen in one place.
                     let token: Box<dyn Card> = match token_type {
                         TokenType::FootSoldier => Box::new(FootSoldier::new(*player_id)),
@@ -912,14 +868,10 @@ impl Effect {
                     };
                     let token_id = *token.get_id();
                     state.cards.insert(token_id, token);
-                    state.queue_one(Effect::SummonCard {
-                        player_id: *player_id,
-                        card_id: token_id,
-                        zone: zone.clone(),
-                    });
+                    state.queue_one(Effect::SummonCards { cards: vec![(*player_id, token_id, zone.clone())] });
                 } else {
                     // Non-unit tokens are just placed directly onto the board without going through
-                    // SummonCard, since they don't need to trigger any on_summon or genesis effects.
+                    // SummonCards, since they don't need to trigger any on_summon or genesis effects.
                     let mut token = token;
                     token.set_zone(zone.clone());
                     state.cards.insert(*token.get_id(), token);
@@ -1144,76 +1096,60 @@ impl Effect {
                     }
                 }
             }
-            Effect::DrawSite {
-                player_id, count, ..
-            } => {
-                for _ in 0..*count {
-                    let card_id = {
-                        let deck = state
-                            .decks
-                            .get_mut(player_id)
-                            .ok_or(anyhow::anyhow!("failed to find player deck"))?;
-                        deck.sites.pop()
-                    };
-
-                    if let Some(card_id) = card_id {
-                        state
-                            .cards
-                            .values_mut()
-                            .find(|c| c.get_id() == &card_id)
-                            .expect("to find drawn card")
-                            .set_zone(Zone::Hand);
-                    } else {
-                        state.queue_one(Effect::PlayerLost {
-                            player_id: *player_id,
-                        });
-                        break;
-                    }
-                }
-            }
-            Effect::DrawSpell {
-                player_id, count, ..
-            } => {
-                for _ in 0..*count {
-                    let card_id = {
-                        let deck = state
-                            .decks
-                            .get_mut(player_id)
-                            .ok_or(anyhow::anyhow!("failed to find player deck"))?;
-                        deck.spells.pop()
-                    };
-
-                    if let Some(card_id) = card_id {
-                        state
-                            .cards
-                            .values_mut()
-                            .find(|c| c.get_id() == &card_id)
-                            .expect("to find drawn card")
-                            .set_zone(Zone::Hand);
-                    } else {
-                        state.queue_one(Effect::PlayerLost {
-                            player_id: *player_id,
-                        });
-                        break;
-                    }
-                }
-            }
             Effect::DrawCard {
-                player_id, count, ..
+                player_id,
+                count,
+                kind,
             } => {
                 for _ in 0..*count {
-                    let options: Vec<BaseAction> =
-                        vec![BaseAction::DrawSite, BaseAction::DrawSpell];
-                    let option_labels = options
-                        .iter()
-                        .map(|a| a.get_name().to_string())
-                        .collect::<Vec<_>>();
-                    let picked_option_idx =
-                        pick_option(player_id, &option_labels, state, "Draw a card", false).await?;
-                    let effects = options[picked_option_idx]
-                        .on_select(player_id, state)
-                        .await?;
-                    state.queue(effects);
+                    let kind = match kind {
+                        DrawKind::Choice => {
+                            let options: Vec<DrawKind> = vec![DrawKind::Site, DrawKind::Spell];
+                            let option_labels = options
+                                .iter()
+                                .map(|kind| match kind {
+                                    DrawKind::Site => "Draw Site".to_string(),
+                                    DrawKind::Spell => "Draw Spell".to_string(),
+                                    DrawKind::Choice => unreachable!(),
+                                })
+                                .collect::<Vec<_>>();
+                            let picked_option_idx = pick_option(
+                                player_id,
+                                &option_labels,
+                                state,
+                                "Draw a card",
+                                false,
+                            )
+                            .await?;
+                            options[picked_option_idx].clone()
+                        }
+                        kind => kind.clone(),
+                    };
+                    let card_id = {
+                        let deck = state
+                            .decks
+                            .get_mut(player_id)
+                            .ok_or(anyhow::anyhow!("failed to find player deck"))?;
+                        match kind {
+                            DrawKind::Site => deck.sites.pop(),
+                            DrawKind::Spell => deck.spells.pop(),
+                            DrawKind::Choice => unreachable!(),
+                        }
+                    };
+
+                    if let Some(card_id) = card_id {
+                        state
+                            .cards
+                            .values_mut()
+                            .find(|c| c.get_id() == &card_id)
+                            .expect("to find drawn card")
+                            .set_zone(Zone::Hand);
+                    } else {
+                        state.queue_one(Effect::PlayerLost {
+                            player_id: *player_id,
+                        });
+                        break;
+                    }
                 }
             }
             Effect::PlayMagic {
@@ -1274,13 +1210,9 @@ impl Effect {
 
                 let card = state.get_card(card_id);
                 if card.is_minion() {
-                    // Minions are put into play via SummonCard, which handles zone
+                    // Minions are put into play via SummonCards, which handles zone
                     // placement, SummoningSickness, on_summon, and genesis in one place.
-                    state.queue_one(Effect::SummonCard {
-                        player_id: *player_id,
-                        card_id: *card_id,
-                        zone,
-                    });
+                    state.queue_one(Effect::SummonCards { cards: vec![(*player_id, *card_id, zone)] });
                 } else {
                     let card = state
                         .cards
@@ -1299,9 +1231,10 @@ impl Effect {
             }
             Effect::SummonCards { cards } => {
                 let snapshot = state.clone();
-                for (_, card_id, zone) in cards {
+                for (player_id, card_id, zone) in cards {
                     let has_charge = state.get_card(card_id).has_ability(state, &Ability::Charge);
                     let card = state.get_card_mut(card_id);
+                    card.set_controller_id(player_id);
                     card.set_zone(zone.clone());
 
                     if !has_charge {
@@ -1327,61 +1260,15 @@ impl Effect {
 
                 state.queue(effects);
             }
-            Effect::SummonCard {
-                card_id,
-                zone,
-                player_id,
+            Effect::SetTapped {
+                card_id, tapped, ..
             } => {
-                let has_charge = state.get_card(card_id).has_ability(state, &Ability::Charge);
-                let card = state.get_card_mut(card_id);
-                let from_zone = card.get_zone().clone();
-                card.set_controller_id(player_id);
-                card.set_zone(zone.clone());
-
-                if !has_charge {
-                    card.add_ability(Ability::SummoningSickness);
-                }
-
-                // Force sync after all cards have been put on their zones, so that players see them
-                // on the board while resolving effects from on_summon, genesis and on_visit_zone.
-                crate::game::force_sync_all(state).await?;
-
-                let mut effects = vec![];
-                let card = state.get_card(card_id);
-                effects.extend(card.on_summon(state)?);
-                effects.extend(card.genesis(state).await?);
-                effects.extend(card.on_visit_zone(state, &from_zone, zone).await?);
-                if let Some(site) = zone.get_site_at_square(state) {
-                    effects.extend(site.on_card_enter(state, card_id));
-                }
-
-                state.queue(effects);
-            }
-            Effect::TapCard { card_id, .. } => {
                 let card = state
                     .cards
                     .values_mut()
                     .find(|c| c.get_id() == card_id)
                     .expect("to find card");
-                card.set_tapped(true);
-
-                let carried_cards = CardQuery::new().carried_by(card_id).all(state);
-                for cid in carried_cards {
-                    state.get_card_mut(&cid).set_tapped(true);
-                }
-            }
-            Effect::UntapCard { card_id, .. } => {
-                let card = state
-                    .cards
-                    .values_mut()
-                    .find(|c| c.get_id() == card_id)
-                    .expect("to find card");
-                card.set_tapped(false);
-
-                let carried_cards = CardQuery::new().carried_by(card_id).all(state);
-                for cid in carried_cards {
-                    state.get_card_mut(&cid).set_tapped(true);
-                }
+                card.set_tapped(*tapped);
             }
             Effect::StartTurn { player_id, .. } => {
                 let previous_controller = state.current_turn_controller();
@@ -1579,9 +1466,7 @@ impl Effect {
                         .map(|defending_id| {
                             let defending_card = state.get_card(defending_id);
                             if defending_card.occupies_zone(state, &attacker_zone) {
-                                Effect::TapCard {
-                                    card_id: *defending_id,
-                                }
+                                Effect::SetTapped { card_id: *defending_id, tapped: true }
                             } else {
                                 Effect::MoveCard {
                                     player_id: defending_card.get_controller_id(state),

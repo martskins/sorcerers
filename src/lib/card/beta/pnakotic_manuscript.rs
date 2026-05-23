@@ -48,10 +48,7 @@ impl ActivatedAbility for ReadManuscript {
         )
         .await?;
         Ok(vec![
-            Effect::DrawSpell {
-                player_id: controller_id,
-                count: 1,
-            },
+            Effect::DrawCard { player_id: controller_id, count: 1, kind: DrawKind::Spell },
             Effect::TakeDamage {
                 card_id: bearer_id,
                 from: *card_id,

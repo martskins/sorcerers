@@ -79,12 +79,10 @@ impl Card for ChainsOfPrometheus {
                     let _ = chains_id;
                     Box::pin(async move {
                         // Extract the drawing player from the effect.
-                        let drawing_player = match effect {
-                            Effect::DrawSpell { player_id, .. } => *player_id,
-                            Effect::DrawSite { player_id, .. } => *player_id,
-                            Effect::DrawCard { player_id, .. } => *player_id,
-                            _ => return Ok(vec![]),
+                        let Effect::DrawCard { player_id, .. } = effect else {
+                            return Ok(vec![]);
                         };
+                        let drawing_player = *player_id;
 
                         // Find the drawing player's strongest untapped minion.
                         let untapped_minions = CardQuery::new()
@@ -123,7 +121,7 @@ impl Card for ChainsOfPrometheus {
                             .pick(&drawing_player, state, false)
                             .await?;
                         match picked_card {
-                            Some(id) => Ok(vec![Effect::TapCard { card_id: id }]),
+                            Some(id) => Ok(vec![Effect::SetTapped { card_id: id, tapped: true }]),
                             None => Ok(vec![]),
                         }
                     })

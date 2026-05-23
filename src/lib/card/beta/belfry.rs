@@ -76,7 +76,10 @@ impl Card for Belfry {
             .filter(|card_id| {
                 state.get_card(card_id).get_controller_id(state) == self.get_controller_id(state)
             })
-            .map(|card_id| Effect::UntapCard { card_id })
+            .map(|card_id| Effect::SetTapped {
+                card_id,
+                tapped: false,
+            })
             .collect())
     }
 }

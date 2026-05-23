@@ -82,7 +82,10 @@ impl Card for SilverValkyries {
             .controlled_by(&controller_id)
             .all(state)
             .into_iter()
-            .map(|card_id| Effect::UntapCard { card_id })
+            .map(|card_id| Effect::SetTapped {
+                card_id,
+                tapped: false,
+            })
             .collect())
     }
 }

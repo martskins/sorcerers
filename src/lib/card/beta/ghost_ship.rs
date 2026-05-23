@@ -88,11 +88,7 @@ impl Card for GhostShip {
             return Ok(vec![]);
         };
 
-        Ok(vec![Effect::SummonCard {
-            player_id,
-            card_id: target_spirit,
-            zone: to.clone(),
-        }])
+        Ok(vec![Effect::SummonCards { cards: vec![(player_id, target_spirit, to.clone())] }])
     }
 }
 

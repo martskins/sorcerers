@@ -98,10 +98,7 @@ impl Card for QueenOfMidland {
                             yes_or_no(&controller_id, state, "Queen of Midland: Draw a card?")
                                 .await?;
                         if draw {
-                            Ok(vec![Effect::DrawCard {
-                                player_id: controller_id,
-                                count: 1,
-                            }])
+                            Ok(vec![Effect::DrawCard { player_id: controller_id, count: 1, kind: DrawKind::Choice }])
                         } else {
                             Ok(vec![])
                         }

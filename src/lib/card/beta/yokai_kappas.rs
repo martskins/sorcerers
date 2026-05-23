@@ -25,7 +25,7 @@ impl ActivatedAbility for DiscardWaterSiteToUntap {
         _player_id: &PlayerId,
         _state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
-        Ok(vec![Effect::UntapCard { card_id: *card_id }])
+        Ok(vec![Effect::SetTapped { card_id: *card_id, tapped: false }])
     }
 }
 

@@ -84,10 +84,7 @@ impl Card for Riptide {
                 region: unit.get_region(state).clone(),
                 through_path: None,
             },
-            Effect::DrawCard {
-                player_id: self.get_controller_id(state),
-                count: 1,
-            },
+            Effect::DrawCard { player_id: self.get_controller_id(state), count: 1, kind: DrawKind::Choice },
         ])
     }
 }

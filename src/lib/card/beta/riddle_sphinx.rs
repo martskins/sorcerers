@@ -101,10 +101,7 @@ impl Card for RiddleSphinx {
                 sites: deck.sites,
             });
         }
-        effects.push(Effect::DrawSpell {
-            player_id: controller_id,
-            count: 1,
-        });
+        effects.push(Effect::DrawCard { player_id: controller_id, count: 1, kind: DrawKind::Spell });
         Ok(effects)
     }
 }

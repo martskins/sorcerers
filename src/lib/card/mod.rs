@@ -297,7 +297,7 @@ impl CostType {
                                 .first()
                                 .expect("options to have exactly one element");
                             match ac.action {
-                                CostAction::Tap => Effect::TapCard { card_id: *card_id },
+                                CostAction::Tap => Effect::SetTapped { card_id: *card_id, tapped: true },
                                 CostAction::Discard => Effect::DiscardCard {
                                     card_id: *card_id,
                                     player_id: *player_id,
@@ -319,7 +319,7 @@ impl CostType {
                             )
                             .await?;
                             match ac.action {
-                                CostAction::Tap => Effect::TapCard { card_id },
+                                CostAction::Tap => Effect::SetTapped { card_id: card_id, tapped: true },
                                 CostAction::Discard => Effect::DiscardCard {
                                     card_id,
                                     player_id: *player_id,

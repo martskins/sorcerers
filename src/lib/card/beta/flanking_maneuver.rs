@@ -64,10 +64,7 @@ impl Card for FlankingManeuver {
             .collect();
 
         if source_zones.is_empty() {
-            return Ok(vec![Effect::DrawCard {
-                player_id: controller,
-                count: 1,
-            }]);
+            return Ok(vec![Effect::DrawCard { player_id: controller, count: 1, kind: DrawKind::Choice }]);
         }
 
         let source_zone = pick_zone(
@@ -87,10 +84,7 @@ impl Card for FlankingManeuver {
 
         let destinations = get_knight_move_zones(&source_zone);
         if destinations.is_empty() {
-            return Ok(vec![Effect::DrawCard {
-                player_id: controller,
-                count: 1,
-            }]);
+            return Ok(vec![Effect::DrawCard { player_id: controller, count: 1, kind: DrawKind::Choice }]);
         }
 
         let dest_zone = pick_zone(
@@ -128,10 +122,7 @@ impl Card for FlankingManeuver {
             });
         }
 
-        effects.push(Effect::DrawCard {
-            player_id: controller,
-            count: 1,
-        });
+        effects.push(Effect::DrawCard { player_id: controller, count: 1, kind: DrawKind::Choice });
         Ok(effects)
     }
 }

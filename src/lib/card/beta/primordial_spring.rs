@@ -101,10 +101,7 @@ impl Card for PrimordialSpring {
             });
 
         if opponent_has_more {
-            Ok(vec![Effect::DrawSite {
-                player_id: controller_id,
-                count: 3,
-            }])
+            Ok(vec![Effect::DrawCard { player_id: controller_id, count: 3, kind: DrawKind::Site }])
         } else {
             Ok(vec![])
         }

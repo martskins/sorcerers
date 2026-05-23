@@ -93,9 +93,7 @@ impl Card for TvinnaxBerserker {
         } = effect
             && killer_id == self.get_id()
         {
-            return Ok(Some(vec![Effect::UntapCard {
-                card_id: *self.get_id(),
-            }]));
+            return Ok(Some(vec![Effect::SetTapped { card_id: *self.get_id(), tapped: false }]));
         }
 
         Ok(None)

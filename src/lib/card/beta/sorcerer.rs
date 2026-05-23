@@ -19,10 +19,7 @@ impl ActivatedAbility for DrawSpellWithTap {
         player_id: &PlayerId,
         _state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
-        Ok(vec![Effect::DrawSpell {
-            player_id: *player_id,
-            count: 1,
-        }])
+        Ok(vec![Effect::DrawCard { player_id: *player_id, count: 1, kind: DrawKind::Spell }])
     }
 }
 

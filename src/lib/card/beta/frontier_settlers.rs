@@ -68,15 +68,8 @@ impl ActivatedAbility for SettleAction {
 
         Ok(vec![
             // Draw the top site to hand, then immediately summon it to the chosen zone.
-            Effect::DrawSite {
-                player_id: *player_id,
-                count: 1,
-            },
-            Effect::SummonCard {
-                player_id: *player_id,
-                card_id: site_id,
-                zone: chosen_zone.clone(),
-            },
+            Effect::DrawCard { player_id: *player_id, count: 1, kind: DrawKind::Site },
+            Effect::SummonCards { cards: vec![(*player_id, site_id, chosen_zone.clone())] },
             // Move the settlers to their new home.
             Effect::MoveCard {
                 player_id: *player_id,

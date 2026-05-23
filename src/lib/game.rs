@@ -1267,14 +1267,8 @@ impl BaseAction {
 
     pub async fn on_select(&self, player_id: &PlayerId, _: &State) -> anyhow::Result<Vec<Effect>> {
         match self {
-            BaseAction::DrawSite => Ok(vec![Effect::DrawSite {
-                player_id: *player_id,
-                count: 1,
-            }]),
-            BaseAction::DrawSpell => Ok(vec![Effect::DrawSpell {
-                player_id: *player_id,
-                count: 1,
-            }]),
+            BaseAction::DrawSite => Ok(vec![Effect::DrawCard { player_id: *player_id, count: 1, kind: DrawKind::Site }]),
+            BaseAction::DrawSpell => Ok(vec![Effect::DrawCard { player_id: *player_id, count: 1, kind: DrawKind::Spell }]),
             BaseAction::Cancel => Ok(vec![]),
         }
     }
@@ -1335,10 +1329,7 @@ impl ActivatedAbility for AvatarAction {
                     spellcaster: avatar_id,
                 }])
             }
-            AvatarAction::DrawSite => Ok(vec![Effect::DrawSite {
-                player_id: *player_id,
-                count: 1,
-            }]),
+            AvatarAction::DrawSite => Ok(vec![Effect::DrawCard { player_id: *player_id, count: 1, kind: DrawKind::Site }]),
         }
     }
 }
@@ -2145,14 +2136,8 @@ impl Game {
                 deck.rotate_spells(spell_count);
 
                 let effects = vec![
-                    Effect::DrawSite {
-                        player_id: *player_id,
-                        count: site_count as u8,
-                    },
-                    Effect::DrawSpell {
-                        player_id: *player_id,
-                        count: spell_count as u8,
-                    },
+                    Effect::DrawCard { player_id: *player_id, count: site_count as u8, kind: DrawKind::Site },
+                    Effect::DrawCard { player_id: *player_id, count: spell_count as u8, kind: DrawKind::Spell },
                 ];
                 self.state.players_with_accepted_hands.insert(*player_id);
                 self.state.queue(effects);
@@ -2255,15 +2240,9 @@ impl Game {
     pub fn draw_initial_six(&self) -> Vec<Effect> {
         let mut effects = Vec::new();
         for player in &self.state.players {
-            effects.push(Effect::DrawSite {
-                player_id: player.id,
-                count: 3,
-            });
+            effects.push(Effect::DrawCard { player_id: player.id, count: 3, kind: DrawKind::Site });
 
-            effects.push(Effect::DrawSpell {
-                player_id: player.id,
-                count: 3,
-            });
+            effects.push(Effect::DrawCard { player_id: player.id, count: 3, kind: DrawKind::Spell });
         }
 
         effects

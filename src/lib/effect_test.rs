@@ -6,7 +6,7 @@ use crate::{
     },
     deck::Deck,
     effect::{
-        DeferredEffect, Effect, EffectCallback, EffectReplacementCallback, TemporaryEffect,
+        DeferredEffect, DrawKind, Effect, EffectCallback, EffectReplacementCallback, TemporaryEffect,
         TokenType,
     },
     game::Direction,
@@ -89,10 +89,7 @@ async fn test_drawing_from_empty_site_deck_loses_game() {
     let (mut state, _rx) = make_state(vec![]);
     let player_id = state.players[0].id;
 
-    state.queue_one(Effect::DrawSite {
-        player_id,
-        count: 1,
-    });
+    state.queue_one(Effect::DrawCard { player_id: player_id, count: 1, kind: DrawKind::Site });
     drain_effects(&mut state).await;
 
     assert!(
@@ -106,10 +103,7 @@ async fn test_drawing_from_empty_spell_deck_loses_game() {
     let (mut state, _rx) = make_state(vec![]);
     let player_id = state.players[0].id;
 
-    state.queue_one(Effect::DrawSpell {
-        player_id,
-        count: 1,
-    });
+    state.queue_one(Effect::DrawCard { player_id: player_id, count: 1, kind: DrawKind::Spell });
     drain_effects(&mut state).await;
 
     assert!(
@@ -645,11 +639,7 @@ async fn test_enter_site_triggers_when_card_is_summoned_there() {
     let ogre_id = *ogre.get_id();
     state.cards.insert(ogre_id, Box::new(ogre));
 
-    state.queue_one(Effect::SummonCard {
-        player_id,
-        card_id: ogre_id,
-        zone: Zone::Location(1, Region::Surface),
-    });
+    state.queue_one(Effect::SummonCards { cards: vec![(player_id, ogre_id, Zone::Location(1, Region::Surface))] });
     drain_effects(&mut state).await;
 
     assert_eq!(
@@ -761,10 +751,7 @@ async fn test_temporary_modify_effect_runs_before_handler_and_expires() {
             on_effect: convert_draw_to_mana,
         });
 
-    state.queue_one(Effect::DrawCard {
-        player_id,
-        count: 1,
-    });
+    state.queue_one(Effect::DrawCard { player_id: player_id, count: 1, kind: DrawKind::Choice });
     drain_effects(&mut state).await;
 
     assert_eq!(*state.get_player_mana_mut(&player_id), 3);
@@ -794,10 +781,7 @@ async fn test_deferred_one_shot_removes_itself_after_trigger() {
         multitrigger: false,
     });
 
-    state.queue_one(Effect::DrawCard {
-        player_id,
-        count: 0,
-    });
+    state.queue_one(Effect::DrawCard { player_id: player_id, count: 0, kind: DrawKind::Choice });
     drain_effects(&mut state).await;
 
     assert_eq!(*state.get_player_mana_mut(&player_id), 1);
@@ -824,14 +808,8 @@ async fn test_deferred_multitrigger_remains_after_trigger() {
         multitrigger: true,
     });
 
-    state.queue_one(Effect::DrawCard {
-        player_id,
-        count: 0,
-    });
-    state.queue_one(Effect::DrawCard {
-        player_id,
-        count: 0,
-    });
+    state.queue_one(Effect::DrawCard { player_id: player_id, count: 0, kind: DrawKind::Choice });
+    state.queue_one(Effect::DrawCard { player_id: player_id, count: 0, kind: DrawKind::Choice });
     drain_effects(&mut state).await;
 
     assert_eq!(*state.get_player_mana_mut(&player_id), 2);
@@ -858,10 +836,7 @@ async fn test_deferred_expiry_removes_without_triggering() {
         multitrigger: false,
     });
 
-    state.queue_one(Effect::DrawCard {
-        player_id,
-        count: 0,
-    });
+    state.queue_one(Effect::DrawCard { player_id: player_id, count: 0, kind: DrawKind::Choice });
     drain_effects(&mut state).await;
 
     assert_eq!(*state.get_player_mana_mut(&player_id), 0);
@@ -886,10 +861,7 @@ async fn test_temporary_expiry_removes_after_matching_resolved_effect() {
             expires_on_effect: EffectQuery::DrawCard { player_id: None },
         });
 
-    state.queue_one(Effect::DrawCard {
-        player_id,
-        count: 0,
-    });
+    state.queue_one(Effect::DrawCard { player_id: player_id, count: 0, kind: DrawKind::Choice });
     drain_effects(&mut state).await;
 
     assert!(state.temporary_effects().is_empty());
@@ -904,11 +876,7 @@ async fn test_summon_card_puts_minion_in_target_zone() {
     let id = *minion.get_id();
     state.cards.insert(id, Box::new(minion));
 
-    Effect::SummonCard {
-        player_id,
-        card_id: id,
-        zone: Zone::Location(1, Region::Surface),
-    }
+    Effect::SummonCards { cards: vec![(player_id, id, Zone::Location(1, Region::Surface))] }
     .apply(&mut state)
     .await
     .unwrap();
@@ -928,11 +896,7 @@ async fn test_summon_card_adds_summoning_sickness_to_minion() {
     let id = *minion.get_id();
     state.cards.insert(id, Box::new(minion));
 
-    Effect::SummonCard {
-        player_id,
-        card_id: id,
-        zone: Zone::Location(1, Region::Surface),
-    }
+    Effect::SummonCards { cards: vec![(player_id, id, Zone::Location(1, Region::Surface))] }
     .apply(&mut state)
     .await
     .unwrap();
@@ -955,11 +919,7 @@ async fn test_summon_card_no_summoning_sickness_with_charge() {
     minion.add_ability(Ability::Charge);
     state.cards.insert(id, Box::new(minion));
 
-    Effect::SummonCard {
-        player_id,
-        card_id: id,
-        zone: Zone::Location(1, Region::Surface),
-    }
+    Effect::SummonCards { cards: vec![(player_id, id, Zone::Location(1, Region::Surface))] }
     .apply(&mut state)
     .await
     .unwrap();
@@ -974,7 +934,7 @@ async fn test_summon_card_no_summoning_sickness_with_charge() {
 
 #[tokio::test]
 async fn test_summon_card_queues_genesis_effects() {
-    // ApprenticeWizard genesis → DrawSpell
+    // ApprenticeWizard genesis -> draw spell
     let (mut state, _rx) = make_state(vec![Zone::Location(1, Region::Surface)]);
     let player_id = state.players[0].id;
 
@@ -982,11 +942,7 @@ async fn test_summon_card_queues_genesis_effects() {
     let id = *wizard.get_id();
     state.cards.insert(id, Box::new(wizard));
 
-    Effect::SummonCard {
-        player_id,
-        card_id: id,
-        zone: Zone::Location(1, Region::Surface),
-    }
+    Effect::SummonCards { cards: vec![(player_id, id, Zone::Location(1, Region::Surface))] }
     .apply(&mut state)
     .await
     .unwrap();
@@ -994,10 +950,10 @@ async fn test_summon_card_queues_genesis_effects() {
     let has_draw_spell = state
         .effects
         .iter()
-        .any(|e| matches!(*e, Effect::DrawSpell { .. }));
+        .any(|e| matches!(*e, Effect::DrawCard { kind: DrawKind::Spell, .. }));
     assert!(
         has_draw_spell,
-        "SummonCard should queue genesis effects (DrawSpell for ApprenticeWizard)"
+        "SummonCards should queue genesis effects (draw spell for ApprenticeWizard)"
     );
 }
 
@@ -1011,11 +967,7 @@ async fn test_summon_card_applies_on_summon_effects() {
     let id = *sea_raider.get_id();
     state.cards.insert(id, Box::new(sea_raider));
 
-    Effect::SummonCard {
-        player_id,
-        card_id: id,
-        zone: Zone::Location(1, Region::Surface),
-    }
+    Effect::SummonCards { cards: vec![(player_id, id, Zone::Location(1, Region::Surface))] }
     .apply(&mut state)
     .await
     .unwrap();

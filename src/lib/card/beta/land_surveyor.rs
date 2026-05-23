@@ -62,10 +62,7 @@ impl Card for LandSurveyor {
     }
 
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        Ok(vec![Effect::DrawSite {
-            player_id: self.get_controller_id(state),
-            count: 1,
-        }])
+        Ok(vec![Effect::DrawCard { player_id: self.get_controller_id(state), count: 1, kind: DrawKind::Site }])
     }
 }
 

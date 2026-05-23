@@ -112,10 +112,7 @@ impl Card for BuriedTreasure {
         }
 
         Ok(vec![
-            Effect::DrawCard {
-                player_id: self.get_controller_id(state),
-                count: 2,
-            },
+            Effect::DrawCard { player_id: self.get_controller_id(state), count: 2, kind: DrawKind::Choice },
             Effect::BuryCard {
                 card_id: *self.get_id(),
             },

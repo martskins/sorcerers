@@ -70,7 +70,7 @@ impl ActivatedAbility for GeomancerAbility {
                         zone: zone.clone().into(),
                         spellcaster: avatar_id,
                     },
-                    Effect::TapCard { card_id: *card_id },
+                    Effect::SetTapped { card_id: *card_id, tapped: true },
                 ];
 
                 let picked_site = state.get_card(&picked_card_id);
@@ -148,9 +148,7 @@ impl ActivatedAbility for GeomancerAbility {
                             region: Region::Surface,
                             through_path: None,
                         },
-                        Effect::TapCard {
-                            card_id: *rubble.get_id(),
-                        },
+                        Effect::SetTapped { card_id: *rubble.get_id(), tapped: true },
                     ]),
                     None => Ok(vec![]),
                 }

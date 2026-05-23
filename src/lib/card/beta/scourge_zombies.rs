@@ -124,12 +124,8 @@ impl Card for ScourgeZombies {
                             }
 
                             Ok(vec![
-                                Effect::SummonCard {
-                                    player_id: self_controller,
-                                    card_id: self_id,
-                                    zone: died_here,
-                                },
-                                Effect::TapCard { card_id: self_id },
+                                Effect::SummonCards { cards: vec![(self_controller, self_id, died_here)] },
+                                Effect::SetTapped { card_id: self_id, tapped: true },
                             ])
                         })
                             as Pin<

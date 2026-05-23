@@ -68,11 +68,7 @@ impl Card for ScavengingFiend {
             return Ok(vec![]);
         };
 
-        Ok(vec![Effect::SummonCard {
-            player_id: controller_id,
-            card_id: picked_card_id,
-            zone: self.get_zone().clone(),
-        }])
+        Ok(vec![Effect::SummonCards { cards: vec![(controller_id, picked_card_id, self.get_zone().clone())] }])
     }
 }
 

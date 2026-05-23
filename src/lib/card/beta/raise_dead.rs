@@ -63,11 +63,7 @@ impl Card for RaiseDead {
         let player_id = state.get_card(caster_id).get_controller_id(state);
         let zones = minion.get_valid_play_zones(state, &player_id, caster_id)?;
         let picked_zone = pick_zone(self.get_owner_id(), &zones, state, false, &prompt).await?;
-        Ok(vec![Effect::SummonCard {
-            player_id: *self.get_owner_id(),
-            card_id: minion_id,
-            zone: picked_zone,
-        }])
+        Ok(vec![Effect::SummonCards { cards: vec![(*self.get_owner_id(), minion_id, picked_zone)] }])
     }
 }
 

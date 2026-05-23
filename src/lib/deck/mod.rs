@@ -1,6 +1,10 @@
 pub mod precon;
 
-use crate::{card::Card, effect::Effect, game::PlayerId};
+use crate::{
+    card::Card,
+    effect::{DrawKind, Effect},
+    game::PlayerId,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone)]
@@ -252,10 +256,7 @@ impl Deck {
     }
 
     pub fn draw_site(&mut self) -> Vec<Effect> {
-        vec![Effect::DrawSite {
-            player_id: self.player_id,
-            count: 1,
-        }]
+        vec![Effect::DrawCard { player_id: self.player_id, count: 1, kind: DrawKind::Site }]
     }
 
     pub fn peek_site(&self) -> Option<&uuid::Uuid> {
@@ -271,10 +272,7 @@ impl Deck {
     }
 
     pub fn draw_spell(&mut self) -> Vec<Effect> {
-        vec![Effect::DrawSpell {
-            player_id: self.player_id,
-            count: 1,
-        }]
+        vec![Effect::DrawCard { player_id: self.player_id, count: 1, kind: DrawKind::Spell }]
     }
 
     pub fn shuffle(&mut self) {

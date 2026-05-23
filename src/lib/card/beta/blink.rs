@@ -76,10 +76,7 @@ impl Card for Blink {
                 card_id,
                 to_zone: zone,
             },
-            Effect::DrawCard {
-                player_id: self.get_controller_id(state),
-                count: 1,
-            },
+            Effect::DrawCard { player_id: self.get_controller_id(state), count: 1, kind: DrawKind::Choice },
         ])
     }
 }

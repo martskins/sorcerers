@@ -1,7 +1,7 @@
 use crate::{
     card::{
         Ability, AdditionalCost, ApprenticeWizard, AridDesert, AstralAlcazar, Card, Cost,
-        GreatWall, OgreGoons, Region, RimlandNomads,
+        GreatWall, OgreGoons, Region, RimlandNomads, SpectralStalker,
     },
     query::CardQuery,
     state::State,
@@ -49,7 +49,7 @@ async fn test_astral_alcazar_connects_site_to_any_void() {
     alcazar.set_zone(Zone::Location(8, Region::Surface));
     state.cards.insert(*alcazar.get_id(), Box::new(alcazar));
 
-    let mut unit = ApprenticeWizard::new(player_id);
+    let mut unit = SpectralStalker::new(player_id);
     unit.set_zone(Zone::Location(8, Region::Surface));
     state.cards.insert(*unit.get_id(), Box::new(unit.clone()));
 
@@ -65,7 +65,7 @@ async fn test_astral_alcazar_connects_site_to_any_void() {
 }
 
 #[tokio::test]
-async fn test_astral_alcazar_connects_any_void_to_site() {
+async fn test_astral_alcazar_does_not_connect_any_void_to_site() {
     let mut state = State::new_mock_state(vec![8]);
     let player_id = state.players[0].id;
 
@@ -73,7 +73,7 @@ async fn test_astral_alcazar_connects_any_void_to_site() {
     alcazar.set_zone(Zone::Location(8, Region::Surface));
     state.cards.insert(*alcazar.get_id(), Box::new(alcazar));
 
-    let mut unit = ApprenticeWizard::new(player_id);
+    let mut unit = SpectralStalker::new(player_id);
     unit.set_zone(Zone::Location(20, Region::Void));
     state.cards.insert(*unit.get_id(), Box::new(unit.clone()));
 
@@ -83,7 +83,7 @@ async fn test_astral_alcazar_connects_any_void_to_site() {
         .get_valid_move_zones(&state)
         .await
         .expect("zones to be computed");
-    assert!(zones.contains(&Zone::Location(8, Region::Surface)));
+    assert!(zones.contains(&Zone::Location(20, Region::Surface)));
     assert!(!zones.contains(&Zone::Location(1, Region::Void)));
 }
 

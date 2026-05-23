@@ -49,10 +49,7 @@ impl Site for VaultsOfZul {
                 card_id: *self.get_id(),
                 data: std::sync::Arc::new(true),
             },
-            Effect::DrawCard {
-                player_id: controller_id,
-                count: 3,
-            },
+            Effect::DrawCard { player_id: controller_id, count: 3, kind: DrawKind::Choice },
             Effect::SkipNextTurn {
                 player_id: controller_id,
             },

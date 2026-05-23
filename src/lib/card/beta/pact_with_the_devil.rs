@@ -71,10 +71,7 @@ impl Card for PactWithTheDevil {
                 from: *self.get_id(),
                 damage: Damage::basic(half_hp),
             },
-            Effect::DrawCard {
-                player_id: controller_id,
-                count: 3,
-            },
+            Effect::DrawCard { player_id: controller_id, count: 3, kind: DrawKind::Choice },
         ])
     }
 }
