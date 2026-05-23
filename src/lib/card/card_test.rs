@@ -83,7 +83,7 @@ async fn test_astral_alcazar_does_not_connect_any_void_to_site() {
         .get_valid_move_zones(&state)
         .await
         .expect("zones to be computed");
-    assert!(zones.contains(&Zone::Location(20, Region::Surface)));
+    assert!(zones.contains(&Zone::Location(20, Region::Void)));
     assert!(!zones.contains(&Zone::Location(1, Region::Void)));
 }
 
