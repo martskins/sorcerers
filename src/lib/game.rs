@@ -430,6 +430,15 @@ pub async fn yes_or_no(
     state: &State,
     prompt: impl AsRef<str>,
 ) -> anyhow::Result<bool> {
+    yes_or_no_source(player_id, state, prompt, None).await
+}
+
+pub async fn yes_or_no_source(
+    player_id: impl AsRef<PlayerId>,
+    state: &State,
+    prompt: impl AsRef<str>,
+    source_card_id: Option<uuid::Uuid>,
+) -> anyhow::Result<bool> {
     let opponent_id = state.get_opponent_id(player_id.as_ref())?;
     wait_for_opponent(&opponent_id, state, "Wait for opponent...").await?;
 
@@ -438,7 +447,8 @@ pub async fn yes_or_no(
         .iter()
         .map(|o| o.to_string())
         .collect::<Vec<String>>();
-    let choice = pick_option(player_id, &option_labels, state, prompt, false).await?;
+    let choice = pick_option_source(player_id, &option_labels, state, prompt, false, source_card_id)
+        .await?;
 
     resume(&opponent_id, state).await?;
     Ok(options[choice] == BaseOption::Yes)

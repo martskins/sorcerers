@@ -100,10 +100,11 @@ impl Card for AssortedAnimals {
             }
 
             if !chosen.is_empty()
-                && !yes_or_no(
+                && !yes_or_no_source(
                     &controller_id,
                     state,
-                    "Assorted Animals: Search for another Beast?",
+                    "Search for another Beast?",
+                    Some(*self.get_id()),
                 )
                 .await?
             {

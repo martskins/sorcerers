@@ -86,13 +86,14 @@ impl Card for Nightmare {
         let mut effects = vec![];
         for minion_id in enemy_minions {
             let minion_zone = state.get_card(&minion_id).get_zone().clone();
-            let push = yes_or_no(
+            let push = yes_or_no_source(
                 &controller_id,
                 state,
                 &format!(
-                    "Nightmare: Push {} to an adjacent location?",
+                    "Push {} to an adjacent location?",
                     state.get_card(&minion_id).get_name()
                 ),
+                Some(*self.get_id()),
             )
             .await?;
 

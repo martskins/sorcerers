@@ -77,10 +77,11 @@ impl Card for FenvaleMuse {
         }
 
         let controller_id = self.get_controller_id(state);
-        let want = yes_or_no(
+        let want = yes_or_no_source(
             &controller_id,
             state,
-            "Fenvale Muse: Trigger the Genesis of a nearby River?",
+            "Trigger the Genesis of a nearby River?",
+            Some(*self.get_id()),
         )
         .await?;
         if !want {

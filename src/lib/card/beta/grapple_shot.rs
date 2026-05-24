@@ -47,7 +47,7 @@ impl Card for GrappleShot {
     async fn on_cast(
         &mut self,
         state: &State,
-        _caster_id: &uuid::Uuid,
+        caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
@@ -99,7 +99,12 @@ impl Card for GrappleShot {
                 through_path: None,
             }];
             // 5. Ask if you want to strike the hit unit
-            let strike = yes_or_no(&controller_id, state, "Strike the hit unit?")
+            let strike = yes_or_no_source(
+                &controller_id,
+                state,
+                "Strike the hit unit?",
+                Some(*caster_id),
+            )
                 .await
                 .unwrap_or(false);
             if strike {

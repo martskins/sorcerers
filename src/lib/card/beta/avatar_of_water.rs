@@ -33,10 +33,11 @@ impl ActivatedAbility for FloodSite {
                         affected_sites: picked_site_id.into(),
                     }),
                 }];
-                let teleport = yes_or_no(
+                let teleport = yes_or_no_source(
                     player_id,
                     state,
-                    "Avatar of Water: Teleport to the flooded site?",
+                    "Teleport to the flooded site?",
+                    Some(*card_id),
                 )
                 .await?;
                 if teleport {

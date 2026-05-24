@@ -98,9 +98,13 @@ impl Game {
             Status::SelectingAction {
                 prompt,
                 actions,
+                source_card_id,
                 anchor_on_cursor,
-                ..
             } => {
+                if Self::is_yes_or_no_actions(actions) {
+                    return self.render_yes_or_no_prompt(ui, prompt, *source_card_id);
+                }
+
                 let anchor = if *anchor_on_cursor {
                     self.data
                         .last_clicked_cursor_pos
@@ -135,6 +139,137 @@ impl Game {
             Status::GameAborted { reason } => self.render_aborted_window(ui, reason),
             _ => None,
         }
+    }
+
+    fn is_yes_or_no_actions(actions: &[String]) -> bool {
+        matches!(actions, [yes, no] if yes == "Yes" && no == "No")
+    }
+
+    fn render_yes_or_no_prompt(
+        &mut self,
+        ui: &mut Ui,
+        prompt: &str,
+        source_card_id: Option<uuid::Uuid>,
+    ) -> Option<Scene> {
+        let sr = screen_rect().unwrap_or(Rect::ZERO);
+        let card =
+            source_card_id.and_then(|id| self.data.cards.iter().find(|c| c.id == id).cloned());
+        let has_card = card.is_some();
+        let panel_w = (if has_card { 560.0_f32 } else { 380.0_f32 }).min(sr.width() - 32.0);
+        let panel_h = (if has_card { 210.0_f32 } else { 168.0_f32 }).min(sr.height() - 32.0);
+        let origin = pos2(
+            sr.center().x - panel_w / 2.0,
+            sr.center().y - panel_h / 2.0,
+        );
+        let mut picked: Option<usize> = None;
+
+        egui::Area::new(egui::Id::new("yes_or_no_prompt"))
+            .fixed_pos(origin)
+            .order(egui::Order::Foreground)
+            .show(ui.ctx(), |ui| {
+                egui::Frame::new()
+                    .fill(theme::PANEL_BG)
+                    .stroke(egui::Stroke::new(1.0, theme::PANEL_BORDER))
+                    .corner_radius(8.0)
+                    .inner_margin(egui::Margin::same(16))
+                    .show(ui, |ui| {
+                        ui.set_min_width(panel_w - 32.0);
+                        ui.horizontal(|ui| {
+                            if let Some(card) = &card {
+                                let image_size = vec2(112.0, 112.0 / CARD_ASPECT_RATIO);
+                                let (image_rect, _) =
+                                    ui.allocate_exact_size(image_size, egui::Sense::hover());
+                                if let Some(tex) =
+                                    TextureCache::get_card_texture_blocking(card, ui.ctx())
+                                {
+                                    let mut draw_rect = image_rect;
+                                    if tex.aspect_ratio() > 1.0 {
+                                        draw_rect = Rect::from_min_size(
+                                            image_rect.min,
+                                            vec2(image_size.x, image_size.x * CARD_ASPECT_RATIO),
+                                        );
+                                    }
+                                    ui.painter().image(
+                                        tex.id(),
+                                        draw_rect,
+                                        Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)),
+                                        Color32::WHITE,
+                                    );
+                                } else {
+                                    ui.painter().rect_filled(
+                                        image_rect,
+                                        4.0,
+                                        Color32::from_rgb(42, 48, 68),
+                                    );
+                                }
+                                ui.add_space(16.0);
+                            }
+
+                            let text_w = ui.available_width();
+                            ui.vertical(|ui| {
+                                ui.set_width(text_w);
+                                ui.label(
+                                    RichText::new(
+                                        card.as_ref()
+                                            .map(|card| card.name.as_str())
+                                            .unwrap_or("Choose"),
+                                    )
+                                    .size(18.0)
+                                    .strong()
+                                    .color(theme::TEXT_BRIGHT),
+                                );
+                                if has_card {
+                                    ui.label(
+                                        RichText::new("Triggered ability")
+                                            .size(12.0)
+                                            .color(Color32::from_rgb(132, 168, 215)),
+                                    );
+                                }
+                                ui.add_space(10.0);
+                                ui.add(
+                                    egui::Label::new(
+                                        RichText::new(prompt)
+                                            .size(15.0)
+                                            .color(Color32::from_rgb(214, 224, 245)),
+                                    )
+                                    .wrap(),
+                                );
+                                ui.add_space(18.0);
+                                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                                    let yes = egui::Button::new(
+                                        RichText::new("Yes").size(16.0).color(Color32::WHITE),
+                                    )
+                                    .fill(theme::ACTION)
+                                    .min_size(vec2(92.0, 38.0));
+                                    if ui.add(yes).clicked() {
+                                        picked = Some(0);
+                                    }
+                                    ui.add_space(8.0);
+                                    let no = egui::Button::new(
+                                        RichText::new("No").size(16.0).color(Color32::WHITE),
+                                    )
+                                    .min_size(vec2(92.0, 38.0));
+                                    if ui.add(no).clicked() {
+                                        picked = Some(1);
+                                    }
+                                });
+                            });
+                        });
+                    });
+            });
+
+        if let Some(action_idx) = picked {
+            self.client
+                .send(ClientMessage::PickAction {
+                    game_id: self.game_id,
+                    player_id: self.data.player_id,
+                    action_idx,
+                })
+                .ok();
+            self.data.status = Status::Idle;
+        }
+
+        None
     }
 
     fn render_amount_picker(

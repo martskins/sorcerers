@@ -86,13 +86,14 @@ impl Card for RoyalBodyguard {
                     return Ok(None);
                 }
 
-                let redirect = yes_or_no(
+                let redirect = yes_or_no_source(
                     self.get_controller_id(state),
                     state,
                     format!(
-                        "Royal Bodyguard: take the damage for {}?",
+                        "Take the damage for {}?",
                         target.get_name()
                     ),
+                    Some(*self.get_id()),
                 )
                 .await?;
                 if !redirect {

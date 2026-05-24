@@ -53,10 +53,11 @@ impl Card for StarSeedsOfUhr {
             .filter(|zone| zone.get_site(state).is_none())
             .collect();
         if voids.is_empty()
-            || !yes_or_no(
+            || !yes_or_no_source(
                 &controller_id,
                 state,
-                "Star-seeds of Uhr: Fill a void with Rubble?",
+                "Fill a void with Rubble?",
+                Some(*caster_id),
             )
             .await?
         {
@@ -82,10 +83,11 @@ impl Card for StarSeedsOfUhr {
 
             if voids.is_empty()
                 || effects.len() >= 13
-                || !yes_or_no(
+                || !yes_or_no_source(
                     &controller_id,
                     state,
-                    "Star-seeds of Uhr: Fill another void with Rubble?",
+                    "Fill another void with Rubble?",
+                    Some(*caster_id),
                 )
                 .await?
             {

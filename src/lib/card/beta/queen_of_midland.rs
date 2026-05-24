@@ -94,9 +94,13 @@ impl Card for QueenOfMidland {
                         if opp_hand <= my_hand {
                             return Ok(vec![]);
                         }
-                        let draw =
-                            yes_or_no(&controller_id, state, "Queen of Midland: Draw a card?")
-                                .await?;
+                        let draw = yes_or_no_source(
+                            &controller_id,
+                            state,
+                            "Draw a card?",
+                            Some(queen_id),
+                        )
+                        .await?;
                         if draw {
                             Ok(vec![Effect::DrawCard { player_id: controller_id, count: 1, kind: DrawKind::Choice }])
                         } else {

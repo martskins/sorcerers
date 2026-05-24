@@ -85,9 +85,13 @@ impl Battlemage {
                                     return Ok(vec![]);
                                 }
 
-                                let draw =
-                                    yes_or_no(&controller, state, "Battlemage: Draw a spell?")
-                                        .await?;
+                                let draw = yes_or_no_source(
+                                    &controller,
+                                    state,
+                                    "Draw a spell?",
+                                    Some(battlemage_id),
+                                )
+                                .await?;
                                 if draw {
                                     Ok(vec![Effect::DrawCard {
                                         player_id: controller,

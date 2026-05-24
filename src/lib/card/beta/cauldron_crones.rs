@@ -64,10 +64,11 @@ impl Card for CauldronCrones {
 
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        let sacrifice = yes_or_no(
+        let sacrifice = yes_or_no_source(
             &controller_id,
             state,
-            "Cauldron Crones: Sacrifice a minion here to draw a spell?",
+            "Sacrifice a minion here to draw a spell?",
+            Some(*self.get_id()),
         )
         .await?;
 

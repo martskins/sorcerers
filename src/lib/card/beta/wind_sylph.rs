@@ -80,10 +80,11 @@ impl Card for WindSylph {
         let controller_id = self.get_controller_id(state);
         let units_here = CardQuery::new().units().in_zone(self.get_zone()).all(state);
         if units_here.is_empty()
-            || !yes_or_no(
+            || !yes_or_no_source(
                 &controller_id,
                 state,
-                "Wind Sylph: Push a unit here one step?",
+                "Push a unit here one step?",
+                Some(*self.get_id()),
             )
             .await?
         {

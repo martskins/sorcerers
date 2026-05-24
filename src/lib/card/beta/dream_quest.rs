@@ -53,6 +53,7 @@ impl Card for DreamQuest {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
+        let dream_quest_id = *self.get_id();
 
         // Find all allied Spellcaster minions in play.
         let all_minions = CardQuery::new()
@@ -121,10 +122,11 @@ impl Card for DreamQuest {
                                     return Ok(vec![]);
                                 }
 
-                                let wake_up = yes_or_no(
+                                let wake_up = yes_or_no_source(
                                     &controller_id,
                                     state,
                                     "Wake up the dreaming minion?",
+                                    Some(dream_quest_id),
                                 )
                                 .await?;
                                 if !wake_up {

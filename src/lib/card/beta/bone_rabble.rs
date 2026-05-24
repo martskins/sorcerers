@@ -81,10 +81,11 @@ impl Card for BoneRabble {
                         let owner_id = owner_id;
                         Box::pin(async move {
                             let site = state.get_card(card_id);
-                            let summon_bone_rabble = yes_or_no(
+                            let summon_bone_rabble = yes_or_no_source(
                                 &owner_id,
                                 state,
                                 "Summon Bone Rabble atop the played site?",
+                                Some(bone_rabble_id),
                             )
                             .await?;
                             if summon_bone_rabble {

@@ -101,10 +101,11 @@ impl Card for WitherwingHero {
                                 return Ok(vec![]);
                             }
                             let _ = attacker_id;
-                            let should_return = yes_or_no(
+                            let should_return = yes_or_no_source(
                                 &hero_controller,
                                 state,
-                                "Witherwing Hero: Return the attacked ally to its owner's hand?",
+                                "Return the attacked ally to its owner's hand?",
+                                Some(self_id),
                             )
                             .await?;
                             if !should_return {

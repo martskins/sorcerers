@@ -113,10 +113,11 @@ impl Card for ScourgeZombies {
                                 return Ok(vec![]);
                             }
 
-                            if !yes_or_no(
+                            if !yes_or_no_source(
                                 &self_controller,
                                 state,
                                 "Summon Scourge Zombies to the fallen Mortal's location tapped?",
+                                Some(self_id),
                             )
                             .await?
                             {

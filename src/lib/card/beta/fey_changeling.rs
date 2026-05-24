@@ -88,10 +88,11 @@ impl Card for FeyChangeling {
             return Ok(vec![]);
         }
 
-        let want = yes_or_no(
+        let want = yes_or_no_source(
             &controller_id,
             state,
-            "Fey Changeling Genesis: Return a minion here to its owner's hand?",
+            "Return a minion here to its owner's hand?",
+            Some(*self.get_id()),
         )
         .await?;
         if !want {

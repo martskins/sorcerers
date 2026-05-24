@@ -34,7 +34,7 @@ pub(crate) mod prelude {
         pick_action_source, pick_card, pick_card_source, pick_card_with_options,
         pick_card_with_preview, pick_cards, pick_direction_source, pick_option,
         pick_option_source, pick_zone, pick_zone_group, pick_zone_group_source, pick_zone_near,
-        pick_zone_source, reveal_cards, take_action, yes_or_no,
+        pick_zone_source, reveal_cards, take_action, yes_or_no_source,
     };
     pub use crate::query::{CardQuery, EffectQuery, ZoneQuery};
     pub use crate::state::{
