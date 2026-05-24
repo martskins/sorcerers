@@ -87,15 +87,6 @@ impl Card for SeaRaider {
                                 return Ok(vec![]);
                             }
 
-                            let attacked_with_raider =
-                                state.effect_log().iter().rev().any(|logged| {
-                                    matches!(logged.effect, Effect::Attack { attacker_id, .. }
-                                    if attacker_id == self_id)
-                                });
-                            if !attacked_with_raider {
-                                return Ok(vec![]);
-                            }
-
                             let sea_raider = state.get_card(&self_id);
                             let controller = sea_raider.get_controller_id(state);
                             let damaged_controller =

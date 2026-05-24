@@ -57,17 +57,17 @@ impl Card for MagneticMuzzle {
         Some(self)
     }
 
-    async fn get_continuous_effects(
-        &self,
-        _state: &State,
-    ) -> anyhow::Result<Vec<ContinuousEffect>> {
-        if let Some(bearer_id) = self.get_bearer_id()? {
-            Ok(vec![ContinuousEffect::GrantAbility {
-                ability: Ability::Disabled,
-                affected_cards: bearer_id,
-            }])
-        } else {
-            Ok(vec![])
+    fn area_modifiers(&self, _state: &State) -> AreaModifiers {
+        let Some(bearer_id) = self.get_bearer_id().ok().flatten() else {
+            return AreaModifiers::default();
+        };
+
+        AreaModifiers {
+            removes_abilities: std::collections::HashMap::from([(
+                bearer_id,
+                silenced_abilities(),
+            )]),
+            ..Default::default()
         }
     }
 

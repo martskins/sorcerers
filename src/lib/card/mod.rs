@@ -2242,6 +2242,44 @@ pub enum Ability {
     CannotDefend,
 }
 
+pub fn silenced_abilities() -> Vec<Ability> {
+    let mut abilities = vec![
+        Ability::Airborne,
+        Ability::Burrowing,
+        Ability::CanSeeStealthed,
+        Ability::Charge,
+        Ability::FirstStrike,
+        Ability::Landbound,
+        Ability::Leap,
+        Ability::Lethal,
+        Ability::LethalTarget,
+        Ability::Lifesteal,
+        Ability::Oversized,
+        Ability::SplashDamage,
+        Ability::Spellcaster(None),
+        Ability::Spellcaster(Some(Element::Fire)),
+        Ability::Spellcaster(Some(Element::Water)),
+        Ability::Spellcaster(Some(Element::Earth)),
+        Ability::Spellcaster(Some(Element::Air)),
+        Ability::Stealth,
+        Ability::Submerge,
+        Ability::TakesNoDamageFromElement(Element::Fire),
+        Ability::TakesNoDamageFromElement(Element::Water),
+        Ability::TakesNoDamageFromElement(Element::Earth),
+        Ability::TakesNoDamageFromElement(Element::Air),
+        Ability::TakesNoDamageFromRangedStrikes,
+        Ability::Unattackable,
+        Ability::Uninterceptable,
+        Ability::Voidwalk,
+        Ability::Waterbound,
+    ];
+
+    abilities.extend((0..=7).map(Ability::Movement));
+    abilities.extend((0..=7).map(Ability::Ranged));
+    abilities.extend((0..=4).map(Ability::CarryMinions));
+    abilities
+}
+
 #[derive(Debug, Default, Clone)]
 pub struct UnitBase {
     pub power: u16,

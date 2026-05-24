@@ -107,16 +107,10 @@ impl Card for ScreamingSkull {
                             return Ok(vec![]);
                         }
 
-                        let attacked_with_bearer = state.effect_log().iter().rev().any(|logged| {
-                            matches!(logged.effect, Effect::Attack { attacker_id, .. }
-                                if attacker_id == bearer_id)
-                        });
-                        if !attacked_with_bearer {
-                            return Ok(vec![]);
-                        }
-
+                        let bearer = state.get_card(&bearer_id);
+                        let bearer_controller = bearer.get_controller_id(state);
                         let damaged = state.get_card(damaged_id);
-                        if damaged.get_controller_id(state) == skull.get_controller_id(state) {
+                        if damaged.get_controller_id(state) == bearer_controller {
                             return Ok(vec![]);
                         }
 

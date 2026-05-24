@@ -52,11 +52,19 @@ impl Card for CallToWar {
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
         let deck = state.decks.get(&controller_id).unwrap();
-        let targets = CardQuery::new()
-            .minions()
-            .minion_type(&MinionType::Mortal)
-            .rarity(&Rarity::Exceptional)
-            .all(state);
+        let targets: Vec<uuid::Uuid> = deck
+            .spells
+            .iter()
+            .copied()
+            .filter(|id| {
+                let card = state.get_card(id);
+                card.is_minion()
+                    && card
+                        .get_unit_base()
+                        .is_some_and(|base| base.types.contains(&MinionType::Mortal))
+                    && card.get_base().rarity == Rarity::Exceptional
+            })
+            .collect();
         if targets.is_empty() {
             return Ok(vec![Effect::ShuffleDeck {
                 player_id: controller_id,

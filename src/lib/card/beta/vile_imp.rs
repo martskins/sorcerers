@@ -65,17 +65,33 @@ impl Card for VileImp {
         let controller_id = self.get_controller_id(state);
         let imp_id = *self.get_id();
 
-        let Some(target_id) = CardQuery::new()
+        let targets = CardQuery::new()
             .units()
             .adjacent_to(self.get_zone())
             .id_not_in(vec![imp_id])
-            .with_prompt("Optionally deal 2 damage to a target adjacent unit")
-            .with_source_card(*self.get_id())
-            .pick(&controller_id, state, true)
-            .await?
-        else {
+            .all(state);
+        if targets.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let use_genesis = yes_or_no(
+            &controller_id,
+            state,
+            "Vile Imp: Deal 2 damage to an adjacent unit?",
+        )
+        .await?;
+        if !use_genesis {
             return Ok(vec![]);
         };
+
+        let target_id = pick_card_source(
+            &controller_id,
+            &targets,
+            state,
+            "Vile Imp: Pick an adjacent unit",
+            Some(*self.get_id()),
+        )
+        .await?;
 
         Ok(vec![Effect::TakeDamage {
             card_id: target_id,

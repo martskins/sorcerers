@@ -25,6 +25,7 @@ pub(crate) mod prelude {
         AuraBase, AvatarBase, Card, CardBase, CardBaseMethods, CardConstructor, CardType, Cost,
         CostType, Costs, Damage, Edition, MinionType, Rarity, Region, ResourceProvider,
         ResourceProviderBaseMethods, Rubble, Site, SiteBase, SiteType, UnitBase,
+        silenced_abilities,
     };
     pub use crate::effect::{AbilityCounter, Counter, DrawKind, Effect, TokenType};
     pub use crate::game::{

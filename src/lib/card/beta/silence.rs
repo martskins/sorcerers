@@ -69,13 +69,7 @@ impl Card for Silence {
             .map(|c| {
                 (
                     *c.get_id(),
-                    vec![
-                        Ability::Spellcaster(None),
-                        Ability::Spellcaster(Some(Element::Fire)),
-                        Ability::Spellcaster(Some(Element::Water)),
-                        Ability::Spellcaster(Some(Element::Earth)),
-                        Ability::Spellcaster(Some(Element::Air)),
-                    ],
+                    silenced_abilities(),
                 )
             })
             .collect();

@@ -839,9 +839,20 @@ impl Effect {
             }
             Effect::SetCardZone { card_id, zone } => {
                 let was_in_play = state.get_card(card_id).get_zone().is_in_play();
+                let original_zone = state.get_card(card_id).get_zone().clone();
+                let owner_id = *state.get_card(card_id).get_owner_id();
                 let is_token = state.get_card(card_id).is_token();
                 let card = state.get_card_mut(card_id);
                 card.set_zone(zone.clone());
+                match original_zone {
+                    Zone::Spellbook => {
+                        state.get_player_deck_mut(&owner_id)?.spells.retain(|id| id != card_id);
+                    }
+                    Zone::Atlasbook => {
+                        state.get_player_deck_mut(&owner_id)?.sites.retain(|id| id != card_id);
+                    }
+                    _ => {}
+                }
                 // Tokens cease to exist when they leave the realm.
                 if was_in_play && !zone.is_in_play() && is_token {
                     state.queue_one(Effect::RemoveCardFromGame { card_id: *card_id });
@@ -1232,12 +1243,24 @@ impl Effect {
                 let snapshot = state.clone();
                 for (player_id, card_id, zone) in cards {
                     let has_charge = state.get_card(card_id).has_ability(state, &Ability::Charge);
-                    let card = state.get_card_mut(card_id);
-                    card.set_controller_id(player_id);
-                    card.set_zone(zone.clone());
-
-                    if !has_charge {
-                        card.add_ability(Ability::SummoningSickness);
+                    let original_zone = state.get_card(card_id).get_zone().clone();
+                    let owner_id = *state.get_card(card_id).get_owner_id();
+                    {
+                        let card = state.get_card_mut(card_id);
+                        card.set_controller_id(player_id);
+                        card.set_zone(zone.clone());
+                        if !has_charge {
+                            card.add_ability(Ability::SummoningSickness);
+                        }
+                    }
+                    match original_zone {
+                        Zone::Spellbook => {
+                            state.get_player_deck_mut(&owner_id)?.spells.retain(|id| id != card_id);
+                        }
+                        Zone::Atlasbook => {
+                            state.get_player_deck_mut(&owner_id)?.sites.retain(|id| id != card_id);
+                        }
+                        _ => {}
                     }
                 }
 
@@ -1707,7 +1730,31 @@ impl Effect {
                 });
                 let multiplier: u16 = if takes_double_damage { 2 } else { 1 };
                 let card = state.get_card_mut(card_id);
-                let effects = card.on_take_damage(&snapshot, from, damage * multiplier)?;
+                let mut effects = card.on_take_damage(&snapshot, from, damage * multiplier)?;
+                if damage.is_strike {
+                    let dealer = snapshot.get_card(from);
+                    if dealer.has_ability(&snapshot, &Ability::SplashDamage) {
+                        let target = snapshot.get_card(card_id);
+                        let dealer_controller = dealer.get_controller_id(&snapshot);
+                        effects.extend(
+                            CardQuery::new()
+                                .units()
+                                .in_zone(target.get_zone())
+                                .id_not(card_id)
+                                .all(&snapshot)
+                                .into_iter()
+                                .filter(|id| {
+                                    snapshot.get_card(id).get_controller_id(&snapshot)
+                                        != dealer_controller
+                                })
+                                .map(|id| Effect::TakeDamage {
+                                    card_id: id,
+                                    from: *from,
+                                    damage: Damage::basic(damage.amount),
+                                }),
+                        );
+                    }
+                }
                 state.queue(effects);
             }
             Effect::BanishCard { card_id, .. } => {

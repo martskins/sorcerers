@@ -62,18 +62,39 @@ impl Card for BaneWidow {
 
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        let Some(minion_id) = CardQuery::new()
+        let targets = CardQuery::new()
             .minions()
             .in_zone(self.get_zone())
             .id_not_in(vec![*self.get_id()])
-            .with_prompt("Pick a minion to kill")
-            .with_source_card(*self.get_id())
-            .pick(&controller_id, state, false)
-            .await?
-        else {
+            .all(state);
+        if targets.is_empty() {
+            return Ok(vec![]);
+        }
+
+        let use_genesis = yes_or_no(
+            &controller_id,
+            state,
+            "Bane Widow: Kill a target minion here?",
+        )
+        .await?;
+        if !use_genesis {
             return Ok(vec![]);
         };
-        Ok(vec![Effect::BuryCard { card_id: minion_id }])
+
+        let minion_id = pick_card_source(
+            &controller_id,
+            &targets,
+            state,
+            "Bane Widow: Pick a minion to kill",
+            Some(*self.get_id()),
+        )
+        .await?;
+
+        Ok(vec![Effect::KillMinion {
+            card_id: minion_id,
+            killer_id: *self.get_id(),
+            from_attack: false,
+        }])
     }
 }
 
