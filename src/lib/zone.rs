@@ -128,24 +128,6 @@ impl Zone {
                             .collect();
 
                         Ok(empty_adjacent_zones.contains(self))
-
-                        // let occupied_squares: Vec<&Zone> = CardQuery::new()
-                        //     .sites()
-                        //     .in_play()
-                        //     .not_named(&Rubble::NAME)
-                        //     .controlled_by(&player_id)
-                        //     .all(state)
-                        //     .into_iter()
-                        //     .map(|cid| state.get_card(&cid).get_zone())
-                        //     .collect();
-                        //
-                        // Ok(occupied_squares
-                        //     .iter()
-                        //     .flat_map(|c| get_adjacent_zones(c))
-                        //     .filter(|c| !occupied_squares.contains(&c))
-                        //     .filter(|c| !sites.contains(&c))
-                        //     .find(|c| c == self)
-                        //     .is_some())
                     }
                     _ => Ok(card.has_ability(state, &Ability::Voidwalk)),
                 }

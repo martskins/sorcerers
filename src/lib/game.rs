@@ -447,8 +447,15 @@ pub async fn yes_or_no_source(
         .iter()
         .map(|o| o.to_string())
         .collect::<Vec<String>>();
-    let choice = pick_option_source(player_id, &option_labels, state, prompt, false, source_card_id)
-        .await?;
+    let choice = pick_option_source(
+        player_id,
+        &option_labels,
+        state,
+        prompt,
+        false,
+        source_card_id,
+    )
+    .await?;
 
     resume(&opponent_id, state).await?;
     Ok(options[choice] == BaseOption::Yes)
@@ -1277,8 +1284,16 @@ impl BaseAction {
 
     pub async fn on_select(&self, player_id: &PlayerId, _: &State) -> anyhow::Result<Vec<Effect>> {
         match self {
-            BaseAction::DrawSite => Ok(vec![Effect::DrawCard { player_id: *player_id, count: 1, kind: DrawKind::Site }]),
-            BaseAction::DrawSpell => Ok(vec![Effect::DrawCard { player_id: *player_id, count: 1, kind: DrawKind::Spell }]),
+            BaseAction::DrawSite => Ok(vec![Effect::DrawCard {
+                player_id: *player_id,
+                count: 1,
+                kind: DrawKind::Site,
+            }]),
+            BaseAction::DrawSpell => Ok(vec![Effect::DrawCard {
+                player_id: *player_id,
+                count: 1,
+                kind: DrawKind::Spell,
+            }]),
             BaseAction::Cancel => Ok(vec![]),
         }
     }
@@ -1339,7 +1354,11 @@ impl ActivatedAbility for AvatarAction {
                     spellcaster: avatar_id,
                 }])
             }
-            AvatarAction::DrawSite => Ok(vec![Effect::DrawCard { player_id: *player_id, count: 1, kind: DrawKind::Site }]),
+            AvatarAction::DrawSite => Ok(vec![Effect::DrawCard {
+                player_id: *player_id,
+                count: 1,
+                kind: DrawKind::Site,
+            }]),
         }
     }
 }
@@ -1595,7 +1614,11 @@ impl ActivatedAbility for UnitAction {
                     )
                     .await?;
 
-                    let prompt = format!("Pick units at {} to intercept {}", final_zone, card.get_name());
+                    let prompt = format!(
+                        "Pick units at {} to intercept {}",
+                        final_zone,
+                        card.get_name()
+                    );
                     let picked_interceptors =
                         pick_cards(&opponent.id, &legal_interceptors, state, &prompt).await?;
                     interceptors = picked_interceptors
@@ -2146,8 +2169,16 @@ impl Game {
                 deck.rotate_spells(spell_count);
 
                 let effects = vec![
-                    Effect::DrawCard { player_id: *player_id, count: site_count as u8, kind: DrawKind::Site },
-                    Effect::DrawCard { player_id: *player_id, count: spell_count as u8, kind: DrawKind::Spell },
+                    Effect::DrawCard {
+                        player_id: *player_id,
+                        count: site_count as u8,
+                        kind: DrawKind::Site,
+                    },
+                    Effect::DrawCard {
+                        player_id: *player_id,
+                        count: spell_count as u8,
+                        kind: DrawKind::Spell,
+                    },
                 ];
                 self.state.players_with_accepted_hands.insert(*player_id);
                 self.state.queue(effects);
@@ -2250,9 +2281,17 @@ impl Game {
     pub fn draw_initial_six(&self) -> Vec<Effect> {
         let mut effects = Vec::new();
         for player in &self.state.players {
-            effects.push(Effect::DrawCard { player_id: player.id, count: 3, kind: DrawKind::Site });
+            effects.push(Effect::DrawCard {
+                player_id: player.id,
+                count: 3,
+                kind: DrawKind::Site,
+            });
 
-            effects.push(Effect::DrawCard { player_id: player.id, count: 3, kind: DrawKind::Spell });
+            effects.push(Effect::DrawCard {
+                player_id: player.id,
+                count: 3,
+                kind: DrawKind::Spell,
+            });
         }
 
         effects

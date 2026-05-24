@@ -6,10 +6,11 @@ use crate::{
     state::State,
     zone::Zone,
 };
+use std::sync::{Arc, OnceLock};
 
 #[derive(Debug, Default, Clone)]
 pub struct CardQuery {
-    id: uuid::Uuid,
+    id: Arc<OnceLock<uuid::Uuid>>,
     carried_by: Option<Option<uuid::Uuid>>,
     randomise: Option<bool>,
     count: Option<usize>,
@@ -56,10 +57,289 @@ enum SpatialFilter {
     NearbyVoids(Zone),
 }
 
+struct PreparedCardQuery<'a> {
+    query: &'a CardQuery,
+    state: &'a State,
+    spatial_zones: Vec<Vec<Zone>>,
+}
+
+impl<'a> PreparedCardQuery<'a> {
+    fn new(query: &'a CardQuery, state: &'a State) -> Self {
+        let spatial_zones = query
+            .spatial_filters
+            .iter()
+            .map(|filter| match filter {
+                SpatialFilter::AdjacentLocations(zone) => zone.get_adjacent_locations(state),
+                SpatialFilter::AdjacentLocationsToAny(zones) => zones
+                    .iter()
+                    .flat_map(|zone| zone.get_adjacent_locations(state))
+                    .collect(),
+                SpatialFilter::NearbyLocations(zone) => zone.get_nearby_locations(state),
+                SpatialFilter::NearbyLocationsToCard(card_id) => state
+                    .cards
+                    .get(card_id)
+                    .map(|card| card.get_zone().get_nearby_locations(state))
+                    .unwrap_or_default(),
+                SpatialFilter::AdjacentSites(zone) => zone.get_adjacent_sites(state),
+                SpatialFilter::NearbySites(zone) => zone.get_nearby_sites(state),
+                SpatialFilter::AdjacentVoids(zone) => zone.get_adjacent_voids(state),
+                SpatialFilter::NearbyVoids(zone) => zone.get_nearby_voids(state),
+            })
+            .collect();
+
+        Self {
+            query,
+            state,
+            spatial_zones,
+        }
+    }
+
+    fn matches_card(&self, card: &dyn Card) -> bool {
+        let query = self.query;
+        let state = self.state;
+        let card_id = card.get_id();
+
+        // Cheap ID based filters
+        if let Some(ids) = &query.ids
+            && !ids.contains(card_id)
+        {
+            return false;
+        }
+
+        if let Some(not_in_ids) = &query.not_in_ids
+            && not_in_ids.contains(card_id)
+        {
+            return false;
+        }
+
+        // Zone and visibility filters
+        if !query.include_not_in_play.unwrap_or_default() && !card.get_zone().is_in_play() {
+            return false;
+        }
+
+        if let Some(in_zones) = &query.in_zones
+            && !in_zones.iter().any(|z| self.card_occupies_zone(card, z))
+        {
+            return false;
+        }
+
+        if let Some(regions) = &query.regions
+            && !regions.contains(card.get_region(state))
+        {
+            return false;
+        }
+
+        if self
+            .spatial_zones
+            .iter()
+            .any(|zones| !zones.iter().any(|zone| self.card_occupies_zone(card, zone)))
+        {
+            return false;
+        }
+
+        // Simple property filters
+        if let Some(controller_id) = &query.controller_id
+            && &card.get_controller_id(state) != controller_id
+        {
+            return false;
+        }
+
+        if let Some(card_types) = &query.card_types
+            && !card_types.contains(&card.get_card_type())
+        {
+            return false;
+        }
+
+        if let Some(tapped) = &query.tapped
+            && &card.is_tapped() != tapped
+        {
+            return false;
+        }
+
+        if let Some(rarity) = &query.rarity
+            && &card.get_base().rarity != rarity
+        {
+            return false;
+        }
+
+        if let Some(oversized) = &query.oversized
+            && &card.is_oversized(state) != oversized
+        {
+            return false;
+        }
+
+        if let Some(carrier_id) = &query.carried_by
+            && card.get_base().bearer != *carrier_id
+        {
+            return false;
+        }
+
+        // Name filters
+        if let Some(name) = &query.card_name_contains
+            && !card.get_name().contains(name)
+        {
+            return false;
+        }
+
+        if let Some(not_named) = &query.not_named
+            && not_named.iter().any(|n| n == card.get_name())
+        {
+            return false;
+        }
+
+        if let Some(names) = &query.card_names
+            && !names.iter().any(|n| n == card.get_name())
+        {
+            return false;
+        }
+
+        // Complex/Computed filters
+        if let Some(mc) = &query.mana_cost
+            && let Ok(costs) = card.get_costs(state)
+            && costs.mana_value() > *mc
+        {
+            return false;
+        }
+
+        if let Some(elements) = &query.elements {
+            let card_elements = card.get_elements(state).unwrap_or_default();
+            if !elements.iter().any(|e| card_elements.contains(e)) {
+                return false;
+            }
+        }
+
+        if let Some(with_affinity_in) = &query.with_affinity_in {
+            let card_elements = card.get_elements(state).unwrap_or_default();
+            if !with_affinity_in.iter().any(|e| card_elements.contains(e)) {
+                return false;
+            }
+        }
+
+        if let Some(with_affinity) = &query.with_affinity {
+            let card_elements = card.get_elements(state).unwrap_or_default();
+            if !with_affinity.iter().any(|e| card_elements.contains(e)) {
+                return false;
+            }
+        }
+
+        if let Some(abilities) = &query.without_abilities {
+            for ability in abilities {
+                if card.has_ability(state, ability) {
+                    return false;
+                }
+            }
+        }
+
+        if let Some(abilities) = &query.with_abilities {
+            for ability in abilities {
+                if !card.has_ability(state, ability) {
+                    return false;
+                }
+            }
+        }
+
+        if let Some(is_water) = &query.site_is_water {
+            match is_water {
+                true => {
+                    if let Some(site) = card.get_site() {
+                        if site.provided_affinity(state).unwrap_or_default().water == 0 {
+                            return false;
+                        }
+                    } else {
+                        return false;
+                    }
+                }
+                false => {
+                    if let Some(site) = card.get_site() {
+                        if site.provided_affinity(state).unwrap_or_default().water != 0 {
+                            return false;
+                        }
+                    } else {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        if let Some(site_types) = &query.site_types {
+            if let Some(base) = card.get_site_base() {
+                let types = &base.types;
+                if !site_types.iter().any(|st| types.contains(st)) {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+
+        if let Some(artifact_types) = &query.artifact_types {
+            if let Some(base) = card.get_artifact_base() {
+                let types = &base.types;
+                if !artifact_types.iter().any(|at| types.contains(at)) {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+
+        if let Some(minion_types) = &query.minion_types {
+            if let Some(base) = card.get_unit_base() {
+                let types = &base.types;
+                if !minion_types.iter().any(|mt| types.contains(mt)) {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+
+        // Very expensive filters (Cross-card or dynamic)
+        if let Some(within_range_of) = &query.within_range_of {
+            let other_card = state.get_card(within_range_of);
+            let other_zones = other_card.zones_in_range(state);
+            if !other_zones.contains(card.get_zone()) {
+                return false;
+            }
+        }
+
+        if let Some(player_id) = &query.can_be_targeted_by_player
+            && !card.can_be_targetted_by_player(state, player_id)
+        {
+            return false;
+        }
+
+        if let Some(attacked_by) = &query.can_be_attacked_by {
+            let attacker = state.get_card(attacked_by);
+            if !attacker
+                .get_valid_attack_targets(state, false)
+                .contains(card_id)
+            {
+                return false;
+            }
+        }
+
+        true
+    }
+
+    fn card_occupies_zone(&self, card: &dyn Card, zone: &Zone) -> bool {
+        if card.get_zone() == zone {
+            return true;
+        }
+
+        if let Zone::Intersection(sub_zones, _) = card.get_zone()
+            && let Zone::Location(square, _) = zone
+        {
+            return sub_zones.contains(square) && card.is_oversized(self.state);
+        }
+
+        false
+    }
+}
+
 impl CardQuery {
     pub fn from_ids(ids: Vec<uuid::Uuid>) -> Self {
         Self {
-            id: uuid::Uuid::new_v4(),
             ids: Some(ids),
             ..Default::default()
         }
@@ -67,7 +347,6 @@ impl CardQuery {
 
     pub fn from_id(id: uuid::Uuid) -> Self {
         Self {
-            id: uuid::Uuid::new_v4(),
             ids: Some(vec![id]),
             ..Default::default()
         }
@@ -113,7 +392,8 @@ impl CardQuery {
     ) -> anyhow::Result<Option<uuid::Uuid>> {
         use crate::query::QueryCache;
 
-        if let Some(cached) = QueryCache::card_result(&self.id) {
+        let query_id = *self.id.get_or_init(uuid::Uuid::new_v4);
+        if let Some(cached) = QueryCache::card_result(&query_id) {
             return Ok(Some(cached));
         }
 
@@ -148,7 +428,7 @@ impl CardQuery {
                 if let Some(query) = card.card_query_override(state, self).await? {
                     let output = Box::pin(query.pick(player_id, state, use_preview)).await?;
                     if let Some(output) = output {
-                        QueryCache::store_card_result(state.game_id, self.id, output);
+                        QueryCache::store_card_result(state.game_id, query_id, output);
                     }
                     return Ok(output);
                 }
@@ -178,40 +458,110 @@ impl CardQuery {
             }
         };
 
-        QueryCache::store_card_result(state.game_id, self.id, output);
+        QueryCache::store_card_result(state.game_id, query_id, output);
 
         Ok(Some(output))
     }
 
     pub fn iter<'b>(&'b self, state: &'b State) -> impl Iterator<Item = &'b Box<dyn Card>> {
+        let prepared = PreparedCardQuery::new(self, state);
         state
             .cards
             .values()
-            .filter(|c| self.matches(c.get_id(), state))
+            .filter(move |c| prepared.matches_card(c.as_ref()))
     }
 
     pub fn any(&self, state: &State) -> bool {
+        if let Some(carrier_id) = self.only_carried_by_filter() {
+            return state
+                .cards
+                .values()
+                .any(|card| card.get_zone().is_in_play() && card.get_base().bearer == carrier_id);
+        }
+
+        let prepared = PreparedCardQuery::new(self, state);
         state
             .cards
             .values()
-            .any(|c| self.matches(c.get_id(), state))
+            .any(|c| prepared.matches_card(c.as_ref()))
     }
 
     pub fn first(&self, state: &State) -> Option<uuid::Uuid> {
+        if let Some(carrier_id) = self.only_carried_by_filter() {
+            return state
+                .cards
+                .values()
+                .find(|card| {
+                    card.get_zone().is_in_play() && card.get_base().bearer == carrier_id
+                })
+                .map(|card| *card.get_id());
+        }
+
+        let prepared = PreparedCardQuery::new(self, state);
         state
             .cards
             .values()
-            .find(|c| self.matches(c.get_id(), state))
+            .find(|c| prepared.matches_card(c.as_ref()))
             .map(|c| *c.get_id())
     }
 
     pub fn all(&self, state: &State) -> Vec<uuid::Uuid> {
+        if let Some(carrier_id) = self.only_carried_by_filter() {
+            return state
+                .cards
+                .values()
+                .filter(|card| {
+                    card.get_zone().is_in_play() && card.get_base().bearer == carrier_id
+                })
+                .map(|card| *card.get_id())
+                .collect();
+        }
+
+        let prepared = PreparedCardQuery::new(self, state);
         state
             .cards
             .values()
-            .filter(|c| self.matches(c.get_id(), state))
+            .filter(|c| prepared.matches_card(c.as_ref()))
             .map(|c| *c.get_id())
             .collect()
+    }
+
+    fn only_carried_by_filter(&self) -> Option<Option<uuid::Uuid>> {
+        if self.carried_by.is_some()
+            && self.randomise.is_none()
+            && self.count.is_none()
+            && self.ids.is_none()
+            && self.card_names.is_none()
+            && self.card_name_contains.is_none()
+            && self.not_named.is_none()
+            && self.controller_id.is_none()
+            && self.not_in_ids.is_none()
+            && self.without_abilities.is_none()
+            && self.with_abilities.is_none()
+            && self.card_types.is_none()
+            && self.minion_types.is_none()
+            && self.artifact_types.is_none()
+            && self.rarity.is_none()
+            && self.mana_cost.is_none()
+            && self.site_types.is_none()
+            && self.site_is_water.is_none()
+            && self.with_affinity.is_none()
+            && self.with_affinity_in.is_none()
+            && self.in_zones.is_none()
+            && self.regions.is_none()
+            && self.within_range_of.is_none()
+            && self.can_be_attacked_by.is_none()
+            && self.tapped.is_none()
+            && self.oversized.is_none()
+            && self.include_not_in_play.is_none()
+            && self.can_be_targeted_by_player.is_none()
+            && self.elements.is_none()
+            && self.spatial_filters.is_empty()
+        {
+            self.carried_by
+        } else {
+            None
+        }
     }
 
     pub fn with_prompt(self, prompt: &str) -> Self {
@@ -257,10 +607,7 @@ impl CardQuery {
     }
 
     pub fn new() -> Self {
-        Self {
-            id: uuid::Uuid::new_v4(),
-            ..Default::default()
-        }
+        Self::default()
     }
 
     pub fn in_play(self) -> Self {
@@ -602,7 +949,6 @@ impl CardQuery {
     }
 
     pub fn matches(&self, card_id: &uuid::Uuid, state: &State) -> bool {
-        // Cheap ID based filters
         if let Some(ids) = &self.ids
             && !ids.contains(card_id)
         {
@@ -616,228 +962,6 @@ impl CardQuery {
         }
 
         let card = state.get_card(card_id);
-        // Zone and visibility filters
-        if !self.include_not_in_play.unwrap_or_default() && !card.get_zone().is_in_play() {
-            return false;
-        }
-
-        if let Some(in_zones) = &self.in_zones
-            && !in_zones.iter().any(|z| card.occupies_zone(state, z))
-        {
-            return false;
-        }
-
-        if let Some(regions) = &self.regions
-            && !regions.contains(card.get_region(state))
-        {
-            return false;
-        }
-
-        if self.spatial_filters.iter().any(|filter| {
-            let zones = match filter {
-                SpatialFilter::AdjacentLocations(zone) => zone.get_adjacent_locations(state),
-                SpatialFilter::AdjacentLocationsToAny(zones) => zones
-                    .iter()
-                    .flat_map(|zone| zone.get_adjacent_locations(state))
-                    .collect(),
-                SpatialFilter::NearbyLocations(zone) => zone.get_nearby_locations(state),
-                SpatialFilter::NearbyLocationsToCard(card_id) => state
-                    .cards
-                    .get(card_id)
-                    .map(|card| card.get_zone().get_nearby_locations(state))
-                    .unwrap_or_default(),
-                SpatialFilter::AdjacentSites(zone) => zone.get_adjacent_sites(state),
-                SpatialFilter::NearbySites(zone) => zone.get_nearby_sites(state),
-                SpatialFilter::AdjacentVoids(zone) => zone.get_adjacent_voids(state),
-                SpatialFilter::NearbyVoids(zone) => zone.get_nearby_voids(state),
-            };
-            !zones.iter().any(|zone| card.occupies_zone(state, zone))
-        }) {
-            return false;
-        }
-
-        // Simple property filters
-        if let Some(controller_id) = &self.controller_id
-            && &card.get_controller_id(state) != controller_id
-        {
-            return false;
-        }
-
-        if let Some(card_types) = &self.card_types
-            && !card_types.contains(&card.get_card_type())
-        {
-            return false;
-        }
-
-        if let Some(tapped) = &self.tapped
-            && &card.is_tapped() != tapped
-        {
-            return false;
-        }
-
-        if let Some(rarity) = &self.rarity
-            && &card.get_base().rarity != rarity
-        {
-            return false;
-        }
-
-        if let Some(oversized) = &self.oversized
-            && &card.is_oversized(state) != oversized
-        {
-            return false;
-        }
-
-        if let Some(carrier_id) = &self.carried_by
-            && card.get_base().bearer != *carrier_id
-        {
-            return false;
-        }
-
-        // Name filters
-        if let Some(name) = &self.card_name_contains
-            && !card.get_name().contains(name)
-        {
-            return false;
-        }
-
-        if let Some(not_named) = &self.not_named
-            && not_named.iter().any(|n| n == card.get_name())
-        {
-            return false;
-        }
-
-        if let Some(names) = &self.card_names
-            && !names.iter().any(|n| n == card.get_name())
-        {
-            return false;
-        }
-
-        // Complex/Computed filters
-        if let Some(mc) = &self.mana_cost
-            && let Ok(costs) = card.get_costs(state)
-            && costs.mana_value() > *mc
-        {
-            return false;
-        }
-
-        if let Some(elements) = &self.elements {
-            let card_elements = card.get_elements(state).unwrap_or_default();
-            if !elements.iter().any(|e| card_elements.contains(e)) {
-                return false;
-            }
-        }
-
-        if let Some(with_affinity_in) = &self.with_affinity_in {
-            let card_elements = card.get_elements(state).unwrap_or_default();
-            if !with_affinity_in.iter().any(|e| card_elements.contains(e)) {
-                return false;
-            }
-        }
-
-        if let Some(with_affinity) = &self.with_affinity {
-            let card_elements = card.get_elements(state).unwrap_or_default();
-            if !with_affinity.iter().any(|e| card_elements.contains(e)) {
-                return false;
-            }
-        }
-
-        if let Some(abilities) = &self.without_abilities {
-            for ability in abilities {
-                if card.has_ability(state, ability) {
-                    return false;
-                }
-            }
-        }
-
-        if let Some(abilities) = &self.with_abilities {
-            for ability in abilities {
-                if !card.has_ability(state, ability) {
-                    return false;
-                }
-            }
-        }
-
-        if let Some(is_water) = &self.site_is_water {
-            match is_water {
-                true => {
-                    if let Some(site) = card.get_site() {
-                        if site.provided_affinity(state).unwrap_or_default().water == 0 {
-                            return false;
-                        }
-                    } else {
-                        return false;
-                    }
-                }
-                false => {
-                    if let Some(site) = card.get_site() {
-                        if site.provided_affinity(state).unwrap_or_default().water != 0 {
-                            return false;
-                        }
-                    } else {
-                        return false;
-                    }
-                }
-            }
-        }
-
-        if let Some(site_types) = &self.site_types {
-            if let Some(base) = card.get_site_base() {
-                let types = &base.types;
-                if !site_types.iter().any(|st| types.contains(st)) {
-                    return false;
-                }
-            } else {
-                return false;
-            }
-        }
-
-        if let Some(artifact_types) = &self.artifact_types {
-            if let Some(base) = card.get_artifact_base() {
-                let types = &base.types;
-                if !artifact_types.iter().any(|at| types.contains(at)) {
-                    return false;
-                }
-            } else {
-                return false;
-            }
-        }
-
-        if let Some(minion_types) = &self.minion_types {
-            if let Some(base) = card.get_unit_base() {
-                let types = &base.types;
-                if !minion_types.iter().any(|mt| types.contains(mt)) {
-                    return false;
-                }
-            } else {
-                return false;
-            }
-        }
-
-        // Very expensive filters (Cross-card or dynamic)
-        if let Some(within_range_of) = &self.within_range_of {
-            let other_card = state.get_card(within_range_of);
-            let other_zones = other_card.zones_in_range(state);
-            if !other_zones.contains(card.get_zone()) {
-                return false;
-            }
-        }
-
-        if let Some(player_id) = &self.can_be_targeted_by_player
-            && !card.can_be_targetted_by_player(state, player_id)
-        {
-            return false;
-        }
-
-        if let Some(attacked_by) = &self.can_be_attacked_by {
-            let attacker = state.get_card(attacked_by);
-            if !attacker
-                .get_valid_attack_targets(state, false)
-                .contains(card_id)
-            {
-                return false;
-            }
-        }
-
-        true
+        PreparedCardQuery::new(self, state).matches_card(card)
     }
 }
