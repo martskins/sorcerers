@@ -50,7 +50,11 @@ impl Card for MadDash {
         _caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
-        let mut effects = vec![Effect::DrawCard { player_id: self.get_controller_id(state), count: 1, kind: DrawKind::Choice }];
+        let mut effects = vec![Effect::DrawCard {
+            player_id: self.get_controller_id(state),
+            count: 1,
+            kind: DrawKind::Choice,
+        }];
         let cards = state
             .cards
             .values()

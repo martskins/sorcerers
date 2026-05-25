@@ -359,7 +359,9 @@ impl Component for PlayerHandComponent {
                 );
             }
             if resp.clicked() {
-                let click_pos = resp.interact_pointer_pos().unwrap_or(fan_card.rect.center());
+                let click_pos = resp
+                    .interact_pointer_pos()
+                    .unwrap_or(fan_card.rect.center());
                 clicked_card = Some((fan_card.card.id, fan_card.rect, click_pos));
             }
 

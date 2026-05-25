@@ -121,7 +121,10 @@ impl Card for ChainsOfPrometheus {
                             .pick(&drawing_player, state, false)
                             .await?;
                         match picked_card {
-                            Some(id) => Ok(vec![Effect::SetTapped { card_id: id, tapped: true }]),
+                            Some(id) => Ok(vec![Effect::SetTapped {
+                                card_id: id,
+                                tapped: true,
+                            }]),
                             None => Ok(vec![]),
                         }
                     })

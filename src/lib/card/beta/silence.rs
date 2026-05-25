@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::prelude::*;
 
 #[derive(Debug, Clone)]
@@ -56,27 +54,16 @@ impl Card for Silence {
         Some(self)
     }
 
-    fn area_modifiers(&self, state: &State) -> AreaModifiers {
+    fn area_modifiers(&self, _state: &State) -> Vec<ContinuousEffect> {
         if !self.get_zone().is_in_play() {
-            return AreaModifiers::default();
+            return vec![];
         }
-        let affected_zones = self.get_affected_zones(state);
-        let removes: HashMap<uuid::Uuid, Vec<Ability>> = state
-            .cards
-            .values()
-            .filter(|c| c.get_unit_base().is_some())
-            .filter(|c| affected_zones.contains(c.get_zone()))
-            .map(|c| {
-                (
-                    *c.get_id(),
-                    silenced_abilities(),
-                )
-            })
-            .collect();
-        AreaModifiers {
-            removes_abilities: removes,
-            ..Default::default()
-        }
+        vec![ContinuousEffect::RemoveAbilities {
+            abilities: silenced_abilities(),
+            affected_cards: CardQuery::new()
+                .units()
+                .in_affected_zones_of_card(self.get_id()),
+        }]
     }
 }
 

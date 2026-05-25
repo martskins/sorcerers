@@ -80,7 +80,11 @@ impl Card for Fade {
             .is_some_and(|site| site.get_controller_id(state) != controller_id);
 
         if on_enemy_site {
-            effects.push(Effect::DrawCard { player_id: controller_id, count: 1, kind: DrawKind::Choice });
+            effects.push(Effect::DrawCard {
+                player_id: controller_id,
+                count: 1,
+                kind: DrawKind::Choice,
+            });
         }
 
         Ok(effects)

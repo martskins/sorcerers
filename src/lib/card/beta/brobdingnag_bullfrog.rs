@@ -92,13 +92,16 @@ impl Card for BrobdingnagBullfrog {
         )
         .await?;
 
-        Ok(vec![Effect::SetCardData {
-            card_id: *self.get_id(),
-            data: std::sync::Arc::new(picked_card),
-        }, Effect::SetBearer {
-            card_id: picked_card,
-            bearer_id: Some(*self.get_id()),
-        }])
+        Ok(vec![
+            Effect::SetCardData {
+                card_id: *self.get_id(),
+                data: std::sync::Arc::new(picked_card),
+            },
+            Effect::SetBearer {
+                card_id: picked_card,
+                bearer_id: Some(*self.get_id()),
+            },
+        ])
     }
 
     fn set_data(

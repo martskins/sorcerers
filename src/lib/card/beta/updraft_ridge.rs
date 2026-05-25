@@ -65,20 +65,14 @@ impl Card for UpdraftRidge {
         Some(&mut self.site_base)
     }
 
-    fn area_modifiers(&self, state: &State) -> AreaModifiers {
-        let grants_abilities = CardQuery::new()
-            .units()
-            .in_zone(self.get_zone())
-            .with_abilities(vec![Ability::Airborne])
-            .all(state)
-            .into_iter()
-            .map(|c| (c, vec![Ability::Movement(1)]))
-            .collect();
-
-        AreaModifiers {
-            grants_abilities,
-            ..Default::default()
-        }
+    fn area_modifiers(&self, _state: &State) -> Vec<ContinuousEffect> {
+        vec![ContinuousEffect::GrantAbility {
+            ability: Ability::Movement(1),
+            affected_cards: CardQuery::new()
+                .units()
+                .in_zone(self.get_zone())
+                .with_abilities(vec![Ability::Airborne]),
+        }]
     }
 
     fn get_site(&self) -> Option<&dyn Site> {

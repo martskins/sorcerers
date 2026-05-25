@@ -86,7 +86,9 @@ impl Card for TuftedTurtles {
             return Ok(None);
         }
 
-        if let Effect::TakeDamage { card_id, damage, .. } = effect
+        if let Effect::TakeDamage {
+            card_id, damage, ..
+        } = effect
             && card_id == self.get_id()
             && damage.amount > 0
         {

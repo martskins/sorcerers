@@ -59,7 +59,10 @@ impl Card for Abundance {
         Some(self)
     }
 
-    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<ContinuousEffect>> {
         Ok(vec![ContinuousEffect::ModifyProvidedMana {
             mana_diff: 1,
             affected_cards: CardQuery::new()

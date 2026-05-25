@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::prelude::*;
 
 #[derive(Debug, Clone)]
@@ -64,24 +62,15 @@ impl Card for OldSaltAnchorman {
     }
 
     /// Grants Immobile to nearby allied units, preventing them from being moved.
-    fn area_modifiers(&self, state: &State) -> AreaModifiers {
-        let controller_id = self.get_controller_id(state);
-        let my_zone = self.get_zone();
-
-        let grants: HashMap<uuid::Uuid, Vec<Ability>> = state
-            .cards
-            .values()
-            .filter(|c| c.get_zone().is_in_play())
-            .filter(|c| c.get_controller_id(state) == controller_id)
-            .filter(|c| c.get_id() != self.get_id())
-            .filter(|c| c.get_zone().is_nearby(my_zone))
-            .map(|c| (*c.get_id(), vec![Ability::Immobile]))
-            .collect();
-
-        AreaModifiers {
-            grants_abilities: grants,
-            ..Default::default()
-        }
+    fn area_modifiers(&self, state: &State) -> Vec<ContinuousEffect> {
+        vec![ContinuousEffect::GrantAbility {
+            ability: Ability::Immobile,
+            affected_cards: CardQuery::new()
+                .in_play()
+                .controlled_by(&self.get_controller_id(state))
+                .nearby_zones_to_card(self.get_id())
+                .id_not(self.get_id()),
+        }]
     }
 }
 

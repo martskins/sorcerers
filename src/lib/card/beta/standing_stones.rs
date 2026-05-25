@@ -73,19 +73,11 @@ impl Card for StandingStones {
         Some(self)
     }
 
-    fn area_modifiers(&self, state: &State) -> AreaModifiers {
-        let minions = CardQuery::new()
-            .minions()
-            .in_zone(self.get_zone())
-            .all(state);
-
-        AreaModifiers {
-            grants_abilities: minions
-                .into_iter()
-                .map(|id| (id, vec![Ability::Spellcaster(None)]))
-                .collect(),
-            ..Default::default()
-        }
+    fn area_modifiers(&self, _state: &State) -> Vec<ContinuousEffect> {
+        vec![ContinuousEffect::GrantAbility {
+            ability: Ability::Spellcaster(None),
+            affected_cards: CardQuery::new().minions().in_zone(self.get_zone()),
+        }]
     }
 }
 

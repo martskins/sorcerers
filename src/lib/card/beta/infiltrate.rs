@@ -90,7 +90,10 @@ impl Card for Infiltrate {
                     expires_on_effect: None,
                 },
             },
-            Effect::SetTapped { card_id: target_id, tapped: true },
+            Effect::SetTapped {
+                card_id: target_id,
+                tapped: true,
+            },
             Effect::SetController {
                 card_id: target_id,
                 player_id: new_controller,

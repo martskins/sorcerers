@@ -78,7 +78,9 @@ impl Card for UltimateHorror {
                 ),
             )
             .await?;
-            effects.push(Effect::SummonCards { cards: vec![(controller_id, card_id, zone)] });
+            effects.push(Effect::SummonCards {
+                cards: vec![(controller_id, card_id, zone)],
+            });
         }
         Ok(effects)
     }

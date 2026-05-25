@@ -24,14 +24,7 @@ impl ActivatedAbility for Constrict {
         let mut effects = vec![];
         let mut constrict_zone = constrictor.get_zone().clone();
 
-        if yes_or_no_source(
-            player_id,
-            state,
-            "Take a step first?",
-            Some(*card_id),
-        )
-        .await?
-        {
+        if yes_or_no_source(player_id, state, "Take a step first?", Some(*card_id)).await? {
             let mut zones = constrictor.get_zones_within_steps_of(state, 1, constrictor.get_zone());
             zones.retain(|zone| zone != constrictor.get_zone());
             if !zones.is_empty() {

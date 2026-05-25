@@ -626,22 +626,14 @@ pub fn popup_action_menu(
     let screen = screen_rect().unwrap_or(Rect::from_min_size(pos2(0.0, 0.0), vec2(1280.0, 720.0)));
 
     let title = painter.fonts_mut(|f| {
-        f.layout_no_wrap(
-            prompt.to_string(),
-            egui::FontId::proportional(13.0),
-            MUTED,
-        )
+        f.layout_no_wrap(prompt.to_string(), egui::FontId::proportional(13.0), MUTED)
     });
 
     let option_galleys = options
         .iter()
         .map(|option| {
             painter.fonts_mut(|f| {
-                f.layout_no_wrap(
-                    option.clone(),
-                    egui::FontId::proportional(16.0),
-                    TEXT,
-                )
+                f.layout_no_wrap(option.clone(), egui::FontId::proportional(16.0), TEXT)
             })
         })
         .collect::<Vec<_>>();
@@ -664,13 +656,19 @@ pub fn popup_action_menu(
             pos2(card_rect.max.x + GAP, card_rect.center().y - total_h / 2.0)
         } else if left_space >= total_w + GAP {
             side = AnchorSide::Right;
-            pos2(card_rect.min.x - total_w - GAP, card_rect.center().y - total_h / 2.0)
+            pos2(
+                card_rect.min.x - total_w - GAP,
+                card_rect.center().y - total_h / 2.0,
+            )
         } else if below_space >= total_h + GAP {
             side = AnchorSide::Top;
             pos2(card_rect.center().x - total_w / 2.0, card_rect.max.y + GAP)
         } else if above_space >= total_h + GAP {
             side = AnchorSide::Bottom;
-            pos2(card_rect.center().x - total_w / 2.0, card_rect.min.y - total_h - GAP)
+            pos2(
+                card_rect.center().x - total_w / 2.0,
+                card_rect.min.y - total_h - GAP,
+            )
         } else {
             pos2(
                 card_rect.center().x - total_w / 2.0,
@@ -678,8 +676,12 @@ pub fn popup_action_menu(
             )
         };
 
-        origin.x = origin.x.clamp(screen.min.x + MARGIN, screen.max.x - total_w - MARGIN);
-        origin.y = origin.y.clamp(screen.min.y + MARGIN, screen.max.y - total_h - MARGIN);
+        origin.x = origin
+            .x
+            .clamp(screen.min.x + MARGIN, screen.max.x - total_w - MARGIN);
+        origin.y = origin
+            .y
+            .clamp(screen.min.y + MARGIN, screen.max.y - total_h - MARGIN);
         (origin, side)
     } else {
         (
@@ -694,7 +696,10 @@ pub fn popup_action_menu(
     let menu_rect = Rect::from_min_size(origin, vec2(total_w, total_h));
     let pointer = anchor.and_then(|card_rect| match side {
         AnchorSide::Left => {
-            let y = card_rect.center().y.clamp(menu_rect.min.y + 18.0, menu_rect.max.y - 18.0);
+            let y = card_rect
+                .center()
+                .y
+                .clamp(menu_rect.min.y + 18.0, menu_rect.max.y - 18.0);
             Some(vec![
                 pos2(menu_rect.min.x, y - POINTER),
                 pos2(menu_rect.min.x - POINTER, y),
@@ -702,7 +707,10 @@ pub fn popup_action_menu(
             ])
         }
         AnchorSide::Right => {
-            let y = card_rect.center().y.clamp(menu_rect.min.y + 18.0, menu_rect.max.y - 18.0);
+            let y = card_rect
+                .center()
+                .y
+                .clamp(menu_rect.min.y + 18.0, menu_rect.max.y - 18.0);
             Some(vec![
                 pos2(menu_rect.max.x, y - POINTER),
                 pos2(menu_rect.max.x + POINTER, y),
@@ -710,7 +718,10 @@ pub fn popup_action_menu(
             ])
         }
         AnchorSide::Top => {
-            let x = card_rect.center().x.clamp(menu_rect.min.x + 18.0, menu_rect.max.x - 18.0);
+            let x = card_rect
+                .center()
+                .x
+                .clamp(menu_rect.min.x + 18.0, menu_rect.max.x - 18.0);
             Some(vec![
                 pos2(x - POINTER, menu_rect.min.y),
                 pos2(x, menu_rect.min.y - POINTER),
@@ -718,7 +729,10 @@ pub fn popup_action_menu(
             ])
         }
         AnchorSide::Bottom => {
-            let x = card_rect.center().x.clamp(menu_rect.min.x + 18.0, menu_rect.max.x - 18.0);
+            let x = card_rect
+                .center()
+                .x
+                .clamp(menu_rect.min.x + 18.0, menu_rect.max.x - 18.0);
             Some(vec![
                 pos2(x - POINTER, menu_rect.max.y),
                 pos2(x, menu_rect.max.y + POINTER),
@@ -787,7 +801,8 @@ pub fn popup_action_menu(
 
             for (idx, _) in options.iter().enumerate() {
                 let row_y = origin.y + HEADER_H + idx as f32 * ROW_H;
-                let row_rect = Rect::from_min_size(pos2(origin.x + 3.0, row_y), vec2(total_w - 3.0, ROW_H));
+                let row_rect =
+                    Rect::from_min_size(pos2(origin.x + 3.0, row_y), vec2(total_w - 3.0, ROW_H));
                 let row_cr = if idx + 1 == options.len() {
                     egui::CornerRadius {
                         nw: 0,
@@ -824,11 +839,7 @@ pub fn popup_action_menu(
                     egui::Align2::CENTER_CENTER,
                     ">",
                     egui::FontId::proportional(14.0),
-                    if resp.hovered() {
-                        ACCENT
-                    } else {
-                        MUTED
-                    },
+                    if resp.hovered() { ACCENT } else { MUTED },
                 );
 
                 let galley = option_galleys[idx].clone();

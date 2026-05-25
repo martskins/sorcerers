@@ -150,9 +150,7 @@ impl EffectQuery {
                     card_id,
                     tapped: false,
                 },
-            ) => {
-                Ok(card.matches(card_id, state))
-            }
+            ) => Ok(card.matches(card_id, state)),
             (
                 EffectQuery::DamageDealt { source, target },
                 Effect::TakeDamage { card_id, from, .. },

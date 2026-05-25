@@ -130,19 +130,11 @@ impl Card for BatteringRam {
         Some(self)
     }
 
-    fn area_modifiers(&self, state: &State) -> AreaModifiers {
-        let abilities = CardQuery::new()
-            .units()
-            .in_zone(self.get_zone())
-            .all(state)
-            .into_iter()
-            .map(|unit| (unit, vec![Box::new(RamStrike) as Box<dyn ActivatedAbility>]))
-            .collect();
-
-        AreaModifiers {
-            grants_activated_abilities: abilities,
-            ..Default::default()
-        }
+    fn area_modifiers(&self, _state: &State) -> Vec<ContinuousEffect> {
+        vec![ContinuousEffect::GrantActivatedAbility {
+            ability: Box::new(RamStrike),
+            affected_cards: CardQuery::new().units().in_zone(self.get_zone()),
+        }]
     }
 }
 

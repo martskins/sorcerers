@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::prelude::*;
 
 #[derive(Debug, Clone)]
@@ -62,19 +60,15 @@ impl Card for MasterTracker {
         Some(&mut self.unit_base)
     }
 
-    fn area_modifiers(&self, state: &State) -> AreaModifiers {
-        let controller_id = self.get_controller_id(state);
-        let removes: HashMap<uuid::Uuid, Vec<Ability>> = state
-            .cards
-            .values()
-            .filter(|c| c.get_zone().is_in_play())
-            .filter(|c| c.get_controller_id(state) != controller_id)
-            .map(|c| (*c.get_id(), vec![Ability::Stealth]))
-            .collect();
-        AreaModifiers {
-            removes_abilities: removes,
-            ..Default::default()
-        }
+    fn area_modifiers(&self, state: &State) -> Vec<ContinuousEffect> {
+        vec![ContinuousEffect::RemoveAbilities {
+            abilities: vec![Ability::Stealth],
+            affected_cards: CardQuery::new().in_play().controlled_by(
+                &state
+                    .get_opponent_id(&self.get_controller_id(state))
+                    .unwrap(),
+            ),
+        }]
     }
 }
 

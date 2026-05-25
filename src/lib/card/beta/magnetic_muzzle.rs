@@ -57,18 +57,15 @@ impl Card for MagneticMuzzle {
         Some(self)
     }
 
-    fn area_modifiers(&self, _state: &State) -> AreaModifiers {
+    fn area_modifiers(&self, _state: &State) -> Vec<ContinuousEffect> {
         let Some(bearer_id) = self.get_bearer_id().ok().flatten() else {
-            return AreaModifiers::default();
+            return vec![];
         };
 
-        AreaModifiers {
-            removes_abilities: std::collections::HashMap::from([(
-                bearer_id,
-                silenced_abilities(),
-            )]),
-            ..Default::default()
-        }
+        vec![ContinuousEffect::RemoveAbilities {
+            abilities: silenced_abilities(),
+            affected_cards: CardQuery::from_id(bearer_id),
+        }]
     }
 
     async fn on_turn_end(&self, state: &State) -> anyhow::Result<Vec<Effect>> {

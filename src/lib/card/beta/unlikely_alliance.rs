@@ -65,7 +65,11 @@ impl Card for UnlikelyAlliance {
         if count == 0 {
             return Ok(vec![]);
         }
-        Ok(vec![Effect::DrawCard { player_id: controller_id, count: count, kind: DrawKind::Choice }])
+        Ok(vec![Effect::DrawCard {
+            player_id: controller_id,
+            count,
+            kind: DrawKind::Choice,
+        }])
     }
 }
 

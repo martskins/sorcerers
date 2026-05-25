@@ -1,5 +1,4 @@
 use crate::prelude::*;
-use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct HillockBasilisk {
@@ -62,7 +61,7 @@ impl Card for HillockBasilisk {
         Some(&mut self.unit_base)
     }
 
-    fn area_modifiers(&self, state: &State) -> AreaModifiers {
+    fn area_modifiers(&self, state: &State) -> Vec<ContinuousEffect> {
         let mut zones = vec![self.get_zone().clone()];
         let board_flipped = self.get_owner_id() != &state.player_one;
         let zone_in_front = self
@@ -72,19 +71,13 @@ impl Card for HillockBasilisk {
             zones.push(zone);
         }
 
-        let grants_abilities = CardQuery::new()
-            .units()
-            .in_zones(&zones)
-            .id_not(self.get_id())
-            .all(state)
-            .into_iter()
-            .map(|id| (id, vec![Ability::Disabled]))
-            .collect::<HashMap<uuid::Uuid, Vec<Ability>>>();
-
-        AreaModifiers {
-            grants_abilities,
-            ..Default::default()
-        }
+        vec![ContinuousEffect::GrantAbility {
+            ability: Ability::Disabled,
+            affected_cards: CardQuery::new()
+                .units()
+                .in_zones(&zones)
+                .id_not(self.get_id()),
+        }]
     }
 }
 

@@ -90,7 +90,11 @@ impl Card for CauldronCrones {
         };
         Ok(vec![
             Effect::BuryCard { card_id: picked },
-            Effect::DrawCard { player_id: controller_id, count: 1, kind: DrawKind::Spell },
+            Effect::DrawCard {
+                player_id: controller_id,
+                count: 1,
+                kind: DrawKind::Spell,
+            },
         ])
     }
 }

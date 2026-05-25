@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::prelude::*;
 
 #[derive(Debug, Clone)]
@@ -68,21 +66,14 @@ impl Card for RiverOfFlame {
         Some(self)
     }
 
-    fn area_modifiers(&self, state: &State) -> AreaModifiers {
+    fn area_modifiers(&self, _state: &State) -> Vec<ContinuousEffect> {
         if !self.get_zone().is_in_play() {
-            return AreaModifiers::default();
+            return vec![];
         }
-        let grants: HashMap<uuid::Uuid, Vec<Ability>> = state
-            .cards
-            .values()
-            .filter(|c| c.get_unit_base().is_some())
-            .filter(|c| c.get_zone() == self.get_zone())
-            .map(|c| (*c.get_id(), vec![Ability::Spellcaster(Some(Element::Fire))]))
-            .collect();
-        AreaModifiers {
-            grants_abilities: grants,
-            ..Default::default()
-        }
+        vec![ContinuousEffect::GrantAbility {
+            ability: Ability::Spellcaster(Some(Element::Fire)),
+            affected_cards: CardQuery::new().units().in_zone(self.get_zone()),
+        }]
     }
 }
 

@@ -87,7 +87,7 @@ fn passive_ongoing_timestamps_for_source(state: &State, source_id: &uuid::Uuid) 
     state
         .ongoing_effects
         .iter()
-        .filter(|effect| effect.passive && effect.source == Some(*source_id))
+        .filter(|effect| effect.source == Some(*source_id))
         .map(|effect| effect.timestamp)
         .collect()
 }
@@ -151,7 +151,13 @@ async fn test_tapping_carrier_does_not_tap_carried_minion() {
     passenger.set_bearer_id(Some(carrier_id));
     state.cards.insert(passenger_id, Box::new(passenger));
 
-    Effect::SetTapped { card_id: carrier_id, tapped: true }.apply(&mut state).await.unwrap();
+    Effect::SetTapped {
+        card_id: carrier_id,
+        tapped: true,
+    }
+    .apply(&mut state)
+    .await
+    .unwrap();
 
     assert!(state.get_card(&carrier_id).is_tapped());
     assert!(!state.get_card(&passenger_id).is_tapped());
@@ -355,7 +361,8 @@ fn test_inteceptors() {
         Zone::Location(13, Region::Surface),
         Zone::Location(18, Region::Surface),
     ];
-    let interceptors = state.get_interceptors_for_move(&path, rimland_nomads.get_id(), &opponent_id);
+    let interceptors =
+        state.get_interceptors_for_move(&path, rimland_nomads.get_id(), &opponent_id);
     assert_eq!(interceptors.len(), 1);
     assert_eq!(&interceptors[0], kite_archer.get_id());
 }
@@ -382,7 +389,8 @@ fn test_no_inteceptors() {
         Zone::Location(13, Region::Surface),
         Zone::Location(18, Region::Surface),
     ];
-    let interceptors = state.get_interceptors_for_move(&path, rimland_nomads.get_id(), &opponent_id);
+    let interceptors =
+        state.get_interceptors_for_move(&path, rimland_nomads.get_id(), &opponent_id);
     assert_eq!(interceptors.len(), 0);
 }
 
@@ -409,7 +417,8 @@ fn test_tapped_units_cannot_intercept() {
         Zone::Location(13, Region::Surface),
         Zone::Location(18, Region::Surface),
     ];
-    let interceptors = state.get_interceptors_for_move(&path, rimland_nomads.get_id(), &opponent_id);
+    let interceptors =
+        state.get_interceptors_for_move(&path, rimland_nomads.get_id(), &opponent_id);
     assert_eq!(interceptors.len(), 0);
 }
 
@@ -440,7 +449,8 @@ fn test_stealthed_units_cannot_be_intercepted() {
         Zone::Location(13, Region::Surface),
         Zone::Location(18, Region::Surface),
     ];
-    let interceptors = state.get_interceptors_for_move(&path, rimland_nomads.get_id(), &opponent_id);
+    let interceptors =
+        state.get_interceptors_for_move(&path, rimland_nomads.get_id(), &opponent_id);
     assert_eq!(interceptors.len(), 0);
 }
 
@@ -466,7 +476,8 @@ fn test_voidwalking_interceptor_must_be_at_final_location() {
         Zone::Location(13, Region::Surface),
         Zone::Location(18, Region::Surface),
     ];
-    let interceptors = state.get_interceptors_for_move(&path, rimland_nomads.get_id(), &opponent_id);
+    let interceptors =
+        state.get_interceptors_for_move(&path, rimland_nomads.get_id(), &opponent_id);
     assert_eq!(interceptors.len(), 0);
 }
 
@@ -682,8 +693,16 @@ async fn test_sisters_of_silence_use_timestamp_order_for_dependent_effects() {
     )
     .await;
 
-    assert!(state.get_card(&older_id).has_ability(&state, &Ability::Airborne));
-    assert!(!state.get_card(&newer_id).has_ability(&state, &Ability::Airborne));
+    assert!(
+        state
+            .get_card(&older_id)
+            .has_ability(&state, &Ability::Airborne)
+    );
+    assert!(
+        !state
+            .get_card(&newer_id)
+            .has_ability(&state, &Ability::Airborne)
+    );
 }
 
 #[tokio::test]
@@ -704,8 +723,16 @@ async fn test_smokestacks_of_gnaak_use_timestamp_order_for_dependent_effects() {
     )
     .await;
 
-    assert!(!state.get_card(&older_id).has_ability(&state, &Ability::Disabled));
-    assert!(state.get_card(&newer_id).has_ability(&state, &Ability::Disabled));
+    assert!(
+        !state
+            .get_card(&older_id)
+            .has_ability(&state, &Ability::Disabled)
+    );
+    assert!(
+        state
+            .get_card(&newer_id)
+            .has_ability(&state, &Ability::Disabled)
+    );
 }
 
 #[tokio::test]
@@ -832,15 +859,16 @@ async fn test_source_relative_ongoing_effects_follow_source_without_refreshing()
     .await;
     let initial_timestamps = passive_ongoing_timestamps_for_source(&state, &source_id);
 
-    assert!(state.get_card(&target_id).has_ability(&state, &Ability::Disabled));
+    assert!(
+        state
+            .get_card(&target_id)
+            .has_ability(&state, &Ability::Disabled)
+    );
 
     let target_zone = Zone::Location(8, Region::Surface);
     let new_source_zone = Zone::all_realm()
         .into_iter()
-        .find(|zone| {
-            zone != &target_zone
-                && !zone.get_nearby_sites(&state).contains(&target_zone)
-        })
+        .find(|zone| zone != &target_zone && !zone.get_nearby_sites(&state).contains(&target_zone))
         .expect("a non-nearby source zone should exist");
     Effect::SetCardZone {
         card_id: source_id,
@@ -854,7 +882,11 @@ async fn test_source_relative_ongoing_effects_follow_source_without_refreshing()
         passive_ongoing_timestamps_for_source(&state, &source_id),
         initial_timestamps
     );
-    assert!(!state.get_card(&target_id).has_ability(&state, &Ability::Disabled));
+    assert!(
+        !state
+            .get_card(&target_id)
+            .has_ability(&state, &Ability::Disabled)
+    );
 }
 
 #[test]
@@ -872,18 +904,28 @@ fn test_rubble_has_no_controller() {
         state.get_card(&rubble_id).get_controller_id(&state),
         NO_CONTROLLER
     );
-    assert!(!CardQuery::new()
-        .sites()
-        .controlled_by(&player_id)
-        .all(&state)
-        .contains(&rubble_id));
-    assert!(!CardQuery::new()
-        .sites()
-        .controlled_by(&opponent_id)
-        .all(&state)
-        .contains(&rubble_id));
-    assert_eq!(state.get_thresholds_for_player(&player_id), Thresholds::ZERO);
-    assert_eq!(state.get_thresholds_for_player(&opponent_id), Thresholds::ZERO);
+    assert!(
+        !CardQuery::new()
+            .sites()
+            .controlled_by(&player_id)
+            .all(&state)
+            .contains(&rubble_id)
+    );
+    assert!(
+        !CardQuery::new()
+            .sites()
+            .controlled_by(&opponent_id)
+            .all(&state)
+            .contains(&rubble_id)
+    );
+    assert_eq!(
+        state.get_thresholds_for_player(&player_id),
+        Thresholds::ZERO
+    );
+    assert_eq!(
+        state.get_thresholds_for_player(&opponent_id),
+        Thresholds::ZERO
+    );
 }
 
 #[test]

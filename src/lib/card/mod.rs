@@ -323,7 +323,7 @@ impl CostType {
                             .await?;
                             match ac.action {
                                 CostAction::Tap => Effect::SetTapped {
-                                    card_id: card_id,
+                                    card_id,
                                     tapped: true,
                                 },
                                 CostAction::Discard => Effect::DiscardCard {
@@ -1934,9 +1934,9 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(vec![])
     }
 
-    // Returns the modifiers that this card provides to other cards in the game.
-    fn area_modifiers(&self, _state: &State) -> AreaModifiers {
-        AreaModifiers::default()
+    // Returns the area-based ongoing effects that this card provides to other cards.
+    fn area_modifiers(&self, _state: &State) -> Vec<ContinuousEffect> {
+        vec![]
     }
 
     fn area_effects(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
@@ -1949,14 +1949,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     ) -> anyhow::Result<Vec<ContinuousEffect>> {
         Ok(vec![])
     }
-}
-
-#[derive(Debug, Default, Clone)]
-pub struct AreaModifiers {
-    pub grants_abilities: HashMap<uuid::Uuid, Vec<Ability>>,
-    pub removes_abilities: HashMap<uuid::Uuid, Vec<Ability>>,
-    pub grants_activated_abilities: HashMap<uuid::Uuid, Vec<Box<dyn ActivatedAbility>>>,
-    pub grants_counters: HashMap<uuid::Uuid, Vec<Counter>>,
 }
 
 fn apply_ability_modifiers(modifiers: &mut Vec<Ability>, changes: Vec<AbilityModifier>) {

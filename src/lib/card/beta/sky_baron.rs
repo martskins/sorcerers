@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::prelude::*;
 
 /// **Sky Baron** — Elite Minion (6 cost, 6/2)
@@ -65,21 +63,14 @@ impl Card for SkyBaron {
     fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
         Some(&mut self.unit_base)
     }
-    fn area_modifiers(&self, state: &State) -> AreaModifiers {
+    fn area_modifiers(&self, _state: &State) -> Vec<ContinuousEffect> {
         if !self.get_zone().is_in_play() {
-            return AreaModifiers::default();
+            return vec![];
         }
-        let removes: HashMap<uuid::Uuid, Vec<Ability>> = state
-            .cards
-            .values()
-            .filter(|c| c.get_zone().is_in_play() && c.is_unit())
-            .filter(|c| c.get_id() != self.get_id())
-            .map(|c| (*c.get_id(), vec![Ability::Airborne]))
-            .collect();
-        AreaModifiers {
-            removes_abilities: removes,
-            ..Default::default()
-        }
+        vec![ContinuousEffect::RemoveAbilities {
+            abilities: vec![Ability::Airborne],
+            affected_cards: CardQuery::new().units().id_not(self.get_id()),
+        }]
     }
 }
 

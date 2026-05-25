@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::prelude::*;
 
 #[derive(Debug, Clone)]
@@ -57,29 +55,21 @@ impl Card for SistersOfSilence {
         Some(&mut self.unit_base)
     }
 
-    fn area_modifiers(&self, state: &State) -> AreaModifiers {
+    async fn get_continuous_effects(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<ContinuousEffect>> {
         if !self.get_zone().is_in_play() {
-            return AreaModifiers::default();
+            return Ok(vec![]);
         }
-        let self_id = *self.get_id();
-        let nearby_zones = self.get_zone().get_nearby();
-        let removes: HashMap<uuid::Uuid, Vec<Ability>> = state
-            .cards
-            .values()
-            .filter(|c| *c.get_id() != self_id)
-            .filter(|c| c.get_unit_base().is_some())
-            .filter(|c| nearby_zones.contains(c.get_zone()))
-            .map(|c| {
-                (
-                    *c.get_id(),
-                    silenced_abilities(),
-                )
-            })
-            .collect();
-        AreaModifiers {
-            removes_abilities: removes,
-            ..Default::default()
-        }
+
+        Ok(vec![ContinuousEffect::RemoveAbilities {
+            abilities: silenced_abilities(),
+            affected_cards: CardQuery::new()
+                .minions()
+                .nearby_zones_to_card(self.get_id())
+                .id_not(self.get_id()),
+        }])
     }
 }
 

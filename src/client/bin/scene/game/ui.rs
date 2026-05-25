@@ -157,10 +157,7 @@ impl Game {
         let has_card = card.is_some();
         let panel_w = (if has_card { 560.0_f32 } else { 380.0_f32 }).min(sr.width() - 32.0);
         let panel_h = (if has_card { 210.0_f32 } else { 168.0_f32 }).min(sr.height() - 32.0);
-        let origin = pos2(
-            sr.center().x - panel_w / 2.0,
-            sr.center().y - panel_h / 2.0,
-        );
+        let origin = pos2(sr.center().x - panel_w / 2.0, sr.center().y - panel_h / 2.0);
         let mut picked: Option<usize> = None;
 
         egui::Area::new(egui::Id::new("yes_or_no_prompt"))
@@ -235,24 +232,27 @@ impl Game {
                                     .wrap(),
                                 );
                                 ui.add_space(18.0);
-                                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                                    let yes = egui::Button::new(
-                                        RichText::new("Yes").size(16.0).color(Color32::WHITE),
-                                    )
-                                    .fill(theme::ACTION)
-                                    .min_size(vec2(92.0, 38.0));
-                                    if ui.add(yes).clicked() {
-                                        picked = Some(0);
-                                    }
-                                    ui.add_space(8.0);
-                                    let no = egui::Button::new(
-                                        RichText::new("No").size(16.0).color(Color32::WHITE),
-                                    )
-                                    .min_size(vec2(92.0, 38.0));
-                                    if ui.add(no).clicked() {
-                                        picked = Some(1);
-                                    }
-                                });
+                                ui.with_layout(
+                                    egui::Layout::right_to_left(egui::Align::Center),
+                                    |ui| {
+                                        let yes = egui::Button::new(
+                                            RichText::new("Yes").size(16.0).color(Color32::WHITE),
+                                        )
+                                        .fill(theme::ACTION)
+                                        .min_size(vec2(92.0, 38.0));
+                                        if ui.add(yes).clicked() {
+                                            picked = Some(0);
+                                        }
+                                        ui.add_space(8.0);
+                                        let no = egui::Button::new(
+                                            RichText::new("No").size(16.0).color(Color32::WHITE),
+                                        )
+                                        .min_size(vec2(92.0, 38.0));
+                                        if ui.add(no).clicked() {
+                                            picked = Some(1);
+                                        }
+                                    },
+                                );
                             });
                         });
                     });

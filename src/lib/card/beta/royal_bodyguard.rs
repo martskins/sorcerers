@@ -89,10 +89,7 @@ impl Card for RoyalBodyguard {
                 let redirect = yes_or_no_source(
                     self.get_controller_id(state),
                     state,
-                    format!(
-                        "Take the damage for {}?",
-                        target.get_name()
-                    ),
+                    format!("Take the damage for {}?", target.get_name()),
                     Some(*self.get_id()),
                 )
                 .await?;

@@ -50,6 +50,7 @@ enum SpatialFilter {
     AdjacentLocations(Zone),
     AdjacentLocationsToAny(Vec<Zone>),
     NearbyLocations(Zone),
+    NearbyZonesToCard(uuid::Uuid),
     NearbyLocationsToCard(uuid::Uuid),
     AffectedZonesOfCard(uuid::Uuid),
     AdjacentSites(Zone),
@@ -77,6 +78,11 @@ impl<'a> PreparedCardQuery<'a> {
                     .flat_map(|zone| zone.get_adjacent_locations(state))
                     .collect(),
                 SpatialFilter::NearbyLocations(zone) => zone.get_nearby_locations(state),
+                SpatialFilter::NearbyZonesToCard(card_id) => state
+                    .cards
+                    .get(card_id)
+                    .map(|card| card.get_zone().get_nearby())
+                    .unwrap_or_default(),
                 SpatialFilter::NearbyLocationsToCard(card_id) => state
                     .cards
                     .get(card_id)
@@ -507,9 +513,7 @@ impl CardQuery {
             return state
                 .cards
                 .values()
-                .find(|card| {
-                    card.get_zone().is_in_play() && card.get_base().bearer == carrier_id
-                })
+                .find(|card| card.get_zone().is_in_play() && card.get_base().bearer == carrier_id)
                 .map(|card| *card.get_id());
         }
 
@@ -526,9 +530,7 @@ impl CardQuery {
             return state
                 .cards
                 .values()
-                .filter(|card| {
-                    card.get_zone().is_in_play() && card.get_base().bearer == carrier_id
-                })
+                .filter(|card| card.get_zone().is_in_play() && card.get_base().bearer == carrier_id)
                 .map(|card| *card.get_id())
                 .collect();
         }
@@ -732,6 +734,12 @@ impl CardQuery {
     pub fn nearby_locations_to_card(mut self, card_id: &uuid::Uuid) -> Self {
         self.spatial_filters
             .push(SpatialFilter::NearbyLocationsToCard(*card_id));
+        self
+    }
+
+    pub fn nearby_zones_to_card(mut self, card_id: &uuid::Uuid) -> Self {
+        self.spatial_filters
+            .push(SpatialFilter::NearbyZonesToCard(*card_id));
         self
     }
 

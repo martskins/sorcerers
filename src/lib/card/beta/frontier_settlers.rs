@@ -77,7 +77,9 @@ impl ActivatedAbility for SettleAction {
                 region: Region::Surface,
                 through_path: None,
             },
-            Effect::SummonCards { cards: vec![(*player_id, site_id, chosen_zone.clone())] },
+            Effect::SummonCards {
+                cards: vec![(*player_id, site_id, chosen_zone.clone())],
+            },
             Effect::SetCardData {
                 card_id: *card_id,
                 data: std::sync::Arc::new(false),

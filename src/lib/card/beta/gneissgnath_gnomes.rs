@@ -64,13 +64,8 @@ impl Card for GneissgnathGnomes {
 
     async fn on_turn_end(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        let burrow = yes_or_no_source(
-            controller_id,
-            state,
-            "Burrow?",
-            Some(*self.get_id()),
-        )
-        .await?;
+        let burrow =
+            yes_or_no_source(controller_id, state, "Burrow?", Some(*self.get_id())).await?;
         match burrow {
             true => Ok(vec![Effect::SetCardRegion {
                 card_id: *self.get_id(),

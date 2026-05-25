@@ -72,22 +72,20 @@ impl Card for EntangleTerrain {
         Some(self)
     }
 
-    fn area_modifiers(&self, state: &State) -> AreaModifiers {
-        let minions = CardQuery::new()
+    fn area_modifiers(&self, _state: &State) -> Vec<ContinuousEffect> {
+        let affected_cards = CardQuery::new()
             .minions()
-            .in_zones(&self.get_affected_zones(state))
-            .all(state);
-        AreaModifiers {
-            grants_abilities: minions
-                .iter()
-                .map(|id| (*id, vec![Ability::Immobile]))
-                .collect(),
-            removes_abilities: minions
-                .iter()
-                .map(|id| (*id, vec![Ability::Airborne]))
-                .collect(),
-            ..Default::default()
-        }
+            .in_affected_zones_of_card(self.get_id());
+        vec![
+            ContinuousEffect::GrantAbility {
+                ability: Ability::Immobile,
+                affected_cards: affected_cards.clone(),
+            },
+            ContinuousEffect::RemoveAbilities {
+                abilities: vec![Ability::Airborne],
+                affected_cards,
+            },
+        ]
     }
 }
 

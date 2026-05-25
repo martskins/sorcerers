@@ -73,25 +73,17 @@ impl Card for Iceberg {
         Some(self)
     }
 
-    fn area_modifiers(&self, state: &State) -> AreaModifiers {
+    fn area_modifiers(&self, _state: &State) -> Vec<ContinuousEffect> {
         if !self.get_zone().is_in_play() {
-            return AreaModifiers::default();
+            return vec![];
         }
 
-        let nearby_minions = CardQuery::new()
-            .minions()
-            .near_to(self.get_zone())
-            .all(state);
-
-        let removes = nearby_minions
-            .iter()
-            .map(|id| (*id, vec![Ability::Submerge]))
-            .collect();
-
-        AreaModifiers {
-            removes_abilities: removes,
-            ..Default::default()
-        }
+        vec![ContinuousEffect::RemoveAbilities {
+            abilities: vec![Ability::Submerge],
+            affected_cards: CardQuery::new()
+                .minions()
+                .nearby_zones_to_card(self.get_id()),
+        }]
     }
 }
 

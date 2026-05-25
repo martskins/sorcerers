@@ -79,23 +79,18 @@ impl Card for Blizzard {
         Some(self)
     }
 
-    fn area_modifiers(&self, state: &State) -> AreaModifiers {
-        let affected_sites = self.get_affected_zones(state);
-        let sites = affected_sites
-            .iter()
-            .filter_map(|zone| zone.get_site(state).map(|site| *site.get_id()));
-        let minions = CardQuery::new()
-            .minions()
-            .in_zones(&affected_sites)
-            .all(state);
-
-        AreaModifiers {
-            grants_abilities: sites
-                .chain(minions)
-                .map(|id| (id, vec![Ability::Unattackable, Ability::Uninterceptable]))
-                .collect(),
-            ..Default::default()
-        }
+    fn area_modifiers(&self, _state: &State) -> Vec<ContinuousEffect> {
+        let affected_cards = CardQuery::new().in_affected_zones_of_card(self.get_id());
+        vec![
+            ContinuousEffect::GrantAbility {
+                ability: Ability::Unattackable,
+                affected_cards: affected_cards.clone(),
+            },
+            ContinuousEffect::GrantAbility {
+                ability: Ability::Uninterceptable,
+                affected_cards,
+            },
+        ]
     }
 }
 

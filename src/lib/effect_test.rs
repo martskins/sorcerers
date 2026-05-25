@@ -1,13 +1,13 @@
 use crate::{
     card::{
         Ability, ApprenticeWizard, AridDesert, BottomlessPit, Card, Damage, Enchantress,
-        FootSoldier, OgreGoons, PhaseAssassin, Region, SeaRaider, VaultsOfZul,
-        YourkeCrossbowmen, from_name_and_zone,
+        FootSoldier, OgreGoons, PhaseAssassin, Region, SeaRaider, VaultsOfZul, YourkeCrossbowmen,
+        from_name_and_zone,
     },
     deck::Deck,
     effect::{
-        DeferredEffect, DrawKind, Effect, EffectCallback, EffectReplacementCallback, TemporaryEffect,
-        TokenType,
+        DeferredEffect, DrawKind, Effect, EffectCallback, EffectReplacementCallback,
+        TemporaryEffect, TokenType,
     },
     game::Direction,
     networking::message::ServerMessage,
@@ -89,7 +89,11 @@ async fn test_drawing_from_empty_site_deck_loses_game() {
     let (mut state, _rx) = make_state(vec![]);
     let player_id = state.players[0].id;
 
-    state.queue_one(Effect::DrawCard { player_id: player_id, count: 1, kind: DrawKind::Site });
+    state.queue_one(Effect::DrawCard {
+        player_id,
+        count: 1,
+        kind: DrawKind::Site,
+    });
     drain_effects(&mut state).await;
 
     assert!(
@@ -103,7 +107,11 @@ async fn test_drawing_from_empty_spell_deck_loses_game() {
     let (mut state, _rx) = make_state(vec![]);
     let player_id = state.players[0].id;
 
-    state.queue_one(Effect::DrawCard { player_id: player_id, count: 1, kind: DrawKind::Spell });
+    state.queue_one(Effect::DrawCard {
+        player_id,
+        count: 1,
+        kind: DrawKind::Spell,
+    });
     drain_effects(&mut state).await;
 
     assert!(
@@ -382,18 +390,25 @@ async fn test_multiple_defender_first_strike_can_stop_split_damage() {
         .unwrap()
         .abilities
         .push(Ability::FirstStrike);
-    state.cards.insert(first_striker_id, Box::new(first_striker));
+    state
+        .cards
+        .insert(first_striker_id, Box::new(first_striker));
 
     let mut other_defender = ApprenticeWizard::new(opponent_id);
     let other_defender_id = *other_defender.get_id();
     other_defender.set_zone(Zone::Location(3, Region::Surface));
-    state.cards.insert(other_defender_id, Box::new(other_defender));
+    state
+        .cards
+        .insert(other_defender_id, Box::new(other_defender));
 
     state.queue_one(Effect::Attack {
         attacker_id,
         defender_id: other_defender_id,
         defending_ids: vec![first_striker_id, other_defender_id],
-        damage_assignment: Some(HashMap::from([(first_striker_id, 0), (other_defender_id, 1)])),
+        damage_assignment: Some(HashMap::from([
+            (first_striker_id, 0),
+            (other_defender_id, 1),
+        ])),
     });
     drain_effects(&mut state).await;
 
@@ -436,7 +451,9 @@ fn test_disabled_units_cannot_defend_or_intercept() {
     let mut able_defender = FootSoldier::new(player_id);
     let able_defender_id = *able_defender.get_id();
     able_defender.set_zone(Zone::Location(2, Region::Surface));
-    state.cards.insert(able_defender_id, Box::new(able_defender));
+    state
+        .cards
+        .insert(able_defender_id, Box::new(able_defender));
 
     let defenders = state.get_defenders_for_attack(&avatar_id);
     assert!(
@@ -639,7 +656,9 @@ async fn test_enter_site_triggers_when_card_is_summoned_there() {
     let ogre_id = *ogre.get_id();
     state.cards.insert(ogre_id, Box::new(ogre));
 
-    state.queue_one(Effect::SummonCards { cards: vec![(player_id, ogre_id, Zone::Location(1, Region::Surface))] });
+    state.queue_one(Effect::SummonCards {
+        cards: vec![(player_id, ogre_id, Zone::Location(1, Region::Surface))],
+    });
     drain_effects(&mut state).await;
 
     assert_eq!(
@@ -783,7 +802,11 @@ async fn test_temporary_modify_effect_runs_before_handler_and_expires() {
             on_effect: convert_draw_to_mana,
         });
 
-    state.queue_one(Effect::DrawCard { player_id: player_id, count: 1, kind: DrawKind::Choice });
+    state.queue_one(Effect::DrawCard {
+        player_id,
+        count: 1,
+        kind: DrawKind::Choice,
+    });
     drain_effects(&mut state).await;
 
     assert_eq!(*state.get_player_mana_mut(&player_id), 3);
@@ -813,7 +836,11 @@ async fn test_deferred_one_shot_removes_itself_after_trigger() {
         multitrigger: false,
     });
 
-    state.queue_one(Effect::DrawCard { player_id: player_id, count: 0, kind: DrawKind::Choice });
+    state.queue_one(Effect::DrawCard {
+        player_id,
+        count: 0,
+        kind: DrawKind::Choice,
+    });
     drain_effects(&mut state).await;
 
     assert_eq!(*state.get_player_mana_mut(&player_id), 1);
@@ -840,8 +867,16 @@ async fn test_deferred_multitrigger_remains_after_trigger() {
         multitrigger: true,
     });
 
-    state.queue_one(Effect::DrawCard { player_id: player_id, count: 0, kind: DrawKind::Choice });
-    state.queue_one(Effect::DrawCard { player_id: player_id, count: 0, kind: DrawKind::Choice });
+    state.queue_one(Effect::DrawCard {
+        player_id,
+        count: 0,
+        kind: DrawKind::Choice,
+    });
+    state.queue_one(Effect::DrawCard {
+        player_id,
+        count: 0,
+        kind: DrawKind::Choice,
+    });
     drain_effects(&mut state).await;
 
     assert_eq!(*state.get_player_mana_mut(&player_id), 2);
@@ -868,7 +903,11 @@ async fn test_deferred_expiry_removes_without_triggering() {
         multitrigger: false,
     });
 
-    state.queue_one(Effect::DrawCard { player_id: player_id, count: 0, kind: DrawKind::Choice });
+    state.queue_one(Effect::DrawCard {
+        player_id,
+        count: 0,
+        kind: DrawKind::Choice,
+    });
     drain_effects(&mut state).await;
 
     assert_eq!(*state.get_player_mana_mut(&player_id), 0);
@@ -893,7 +932,11 @@ async fn test_temporary_expiry_removes_after_matching_resolved_effect() {
             expires_on_effect: EffectQuery::DrawCard { player_id: None },
         });
 
-    state.queue_one(Effect::DrawCard { player_id: player_id, count: 0, kind: DrawKind::Choice });
+    state.queue_one(Effect::DrawCard {
+        player_id,
+        count: 0,
+        kind: DrawKind::Choice,
+    });
     drain_effects(&mut state).await;
 
     assert!(state.temporary_effects().is_empty());
@@ -908,7 +951,9 @@ async fn test_summon_card_puts_minion_in_target_zone() {
     let id = *minion.get_id();
     state.cards.insert(id, Box::new(minion));
 
-    Effect::SummonCards { cards: vec![(player_id, id, Zone::Location(1, Region::Surface))] }
+    Effect::SummonCards {
+        cards: vec![(player_id, id, Zone::Location(1, Region::Surface))],
+    }
     .apply(&mut state)
     .await
     .unwrap();
@@ -928,7 +973,9 @@ async fn test_summon_card_adds_summoning_sickness_to_minion() {
     let id = *minion.get_id();
     state.cards.insert(id, Box::new(minion));
 
-    Effect::SummonCards { cards: vec![(player_id, id, Zone::Location(1, Region::Surface))] }
+    Effect::SummonCards {
+        cards: vec![(player_id, id, Zone::Location(1, Region::Surface))],
+    }
     .apply(&mut state)
     .await
     .unwrap();
@@ -951,7 +998,9 @@ async fn test_summon_card_no_summoning_sickness_with_charge() {
     minion.add_ability(Ability::Charge);
     state.cards.insert(id, Box::new(minion));
 
-    Effect::SummonCards { cards: vec![(player_id, id, Zone::Location(1, Region::Surface))] }
+    Effect::SummonCards {
+        cards: vec![(player_id, id, Zone::Location(1, Region::Surface))],
+    }
     .apply(&mut state)
     .await
     .unwrap();
@@ -974,15 +1023,22 @@ async fn test_summon_card_queues_genesis_effects() {
     let id = *wizard.get_id();
     state.cards.insert(id, Box::new(wizard));
 
-    Effect::SummonCards { cards: vec![(player_id, id, Zone::Location(1, Region::Surface))] }
+    Effect::SummonCards {
+        cards: vec![(player_id, id, Zone::Location(1, Region::Surface))],
+    }
     .apply(&mut state)
     .await
     .unwrap();
 
-    let has_draw_spell = state
-        .effects
-        .iter()
-        .any(|e| matches!(*e, Effect::DrawCard { kind: DrawKind::Spell, .. }));
+    let has_draw_spell = state.effects.iter().any(|e| {
+        matches!(
+            *e,
+            Effect::DrawCard {
+                kind: DrawKind::Spell,
+                ..
+            }
+        )
+    });
     assert!(
         has_draw_spell,
         "SummonCards should queue genesis effects (draw spell for ApprenticeWizard)"
@@ -999,7 +1055,9 @@ async fn test_summon_card_applies_on_summon_effects() {
     let id = *sea_raider.get_id();
     state.cards.insert(id, Box::new(sea_raider));
 
-    Effect::SummonCards { cards: vec![(player_id, id, Zone::Location(1, Region::Surface))] }
+    Effect::SummonCards {
+        cards: vec![(player_id, id, Zone::Location(1, Region::Surface))],
+    }
     .apply(&mut state)
     .await
     .unwrap();

@@ -77,7 +77,11 @@ impl Card for FireHarpoons {
             .all(state);
 
         if targets.is_empty() {
-            return Ok(vec![Effect::DrawCard { player_id: controller_id, count: 1, kind: DrawKind::Choice }]);
+            return Ok(vec![Effect::DrawCard {
+                player_id: controller_id,
+                count: 1,
+                kind: DrawKind::Choice,
+            }]);
         }
 
         let target_id = pick_card(
@@ -104,7 +108,11 @@ impl Card for FireHarpoons {
                 region: target.get_region(state).clone(),
                 through_path: None,
             },
-            Effect::DrawCard { player_id: controller_id, count: 1, kind: DrawKind::Choice },
+            Effect::DrawCard {
+                player_id: controller_id,
+                count: 1,
+                kind: DrawKind::Choice,
+            },
         ])
     }
 }

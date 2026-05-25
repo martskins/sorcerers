@@ -95,7 +95,10 @@ impl Card for TvinnaxBerserker {
             && killer_id == self.get_id()
             && state.get_card(card_id).get_controller_id(state) != self.get_controller_id(state)
         {
-            return Ok(Some(vec![Effect::SetTapped { card_id: *self.get_id(), tapped: false }]));
+            return Ok(Some(vec![Effect::SetTapped {
+                card_id: *self.get_id(),
+                tapped: false,
+            }]));
         }
 
         Ok(None)

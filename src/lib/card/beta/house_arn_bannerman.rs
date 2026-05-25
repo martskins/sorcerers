@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::prelude::*;
 
 #[derive(Debug, Clone)]
@@ -63,32 +61,15 @@ impl Card for HouseArnBannerman {
         Some(&mut self.unit_base)
     }
 
-    fn area_modifiers(&self, state: &State) -> AreaModifiers {
-        let nearby_allies = CardQuery::new()
-            .units()
-            .near_to(self.get_zone())
-            .controlled_by(&self.get_controller_id(state))
-            .id_not_in(vec![*self.get_id()])
-            .all(state);
-
-        let counters: HashMap<uuid::Uuid, Vec<Counter>> = nearby_allies
-            .into_iter()
-            .map(|unit_id| {
-                (
-                    unit_id,
-                    vec![Counter {
-                        id: uuid::Uuid::new_v4(),
-                        power: 1,
-                        toughness: 0,
-                        expires_on_effect: None,
-                    }],
-                )
-            })
-            .collect();
-        AreaModifiers {
-            grants_counters: counters,
-            ..Default::default()
-        }
+    fn area_modifiers(&self, state: &State) -> Vec<ContinuousEffect> {
+        vec![ContinuousEffect::GrantCounter {
+            counter: Counter::new(1, 0, None),
+            affected_cards: CardQuery::new()
+                .units()
+                .near_to(self.get_zone())
+                .controlled_by(&self.get_controller_id(state))
+                .id_not(self.get_id()),
+        }]
     }
 }
 

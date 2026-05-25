@@ -95,7 +95,11 @@ impl Card for TheImmortalThrone {
                 }
 
                 Ok(vec![
-                    Effect::DrawCard { player_id: *player_id, count: 1, kind: DrawKind::Choice },
+                    Effect::DrawCard {
+                        player_id: *player_id,
+                        count: 1,
+                        kind: DrawKind::Choice,
+                    },
                     Effect::SetCardData {
                         card_id: *self.get_id(),
                         data: std::sync::Arc::new(self.level_counters + 1),
@@ -111,7 +115,11 @@ impl Card for TheImmortalThrone {
                 }
 
                 Ok(vec![
-                    Effect::DrawCard { player_id: *player_id, count: 1, kind: DrawKind::Choice },
+                    Effect::DrawCard {
+                        player_id: *player_id,
+                        count: 1,
+                        kind: DrawKind::Choice,
+                    },
                     Effect::SetCardData {
                         card_id: *self.get_id(),
                         data: std::sync::Arc::new(self.level_counters + 1),

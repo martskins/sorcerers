@@ -135,23 +135,11 @@ impl Card for RollingBoulder {
         Some(self)
     }
 
-    fn area_modifiers(&self, state: &State) -> AreaModifiers {
-        let granted_activated_abilities = CardQuery::new()
-            .units()
-            .in_zone(self.get_zone())
-            .all(state)
-            .into_iter()
-            .map(|u| {
-                (
-                    u,
-                    vec![Box::new(RollBoulder(*self.get_id())) as Box<dyn ActivatedAbility>],
-                )
-            })
-            .collect();
-        AreaModifiers {
-            grants_activated_abilities: granted_activated_abilities,
-            ..Default::default()
-        }
+    fn area_modifiers(&self, _state: &State) -> Vec<ContinuousEffect> {
+        vec![ContinuousEffect::GrantActivatedAbility {
+            ability: Box::new(RollBoulder(*self.get_id())),
+            affected_cards: CardQuery::new().units().in_zone(self.get_zone()),
+        }]
     }
 }
 

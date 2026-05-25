@@ -849,14 +849,22 @@ impl Effect {
                 if was_in_play && !zone.is_in_play() {
                     state.remove_ongoing_effects_from_source(card_id);
                 } else if !was_in_play && zone.is_in_play() {
-                    state.add_passive_ongoing_effects_for_source(card_id).await?;
+                    state
+                        .add_passive_ongoing_effects_for_source(card_id)
+                        .await?;
                 }
                 match original_zone {
                     Zone::Spellbook => {
-                        state.get_player_deck_mut(&owner_id)?.spells.retain(|id| id != card_id);
+                        state
+                            .get_player_deck_mut(&owner_id)?
+                            .spells
+                            .retain(|id| id != card_id);
                     }
                     Zone::Atlasbook => {
-                        state.get_player_deck_mut(&owner_id)?.sites.retain(|id| id != card_id);
+                        state
+                            .get_player_deck_mut(&owner_id)?
+                            .sites
+                            .retain(|id| id != card_id);
                     }
                     _ => {}
                 }
@@ -897,7 +905,9 @@ impl Effect {
                     let token_id = *token.get_id();
                     token.set_zone(zone.clone());
                     state.cards.insert(token_id, token);
-                    state.add_passive_ongoing_effects_for_source(&token_id).await?;
+                    state
+                        .add_passive_ongoing_effects_for_source(&token_id)
+                        .await?;
                     state.invalidate_runtime_caches();
                 }
             }
@@ -1247,7 +1257,9 @@ impl Effect {
                         card.set_zone(zone.clone());
                         (from_zone, cast_effects)
                     };
-                    state.add_passive_ongoing_effects_for_source(card_id).await?;
+                    state
+                        .add_passive_ongoing_effects_for_source(card_id)
+                        .await?;
                     let card = state.get_card(card_id);
                     let mut effects = card.genesis(&snapshot).await?;
                     effects.extend(card.on_visit_zone(&snapshot, &from_zone, &zone).await?);
@@ -1270,16 +1282,24 @@ impl Effect {
                         }
                     }
                     if !original_zone.is_in_play() && zone.is_in_play() {
-                        state.add_passive_ongoing_effects_for_source(card_id).await?;
+                        state
+                            .add_passive_ongoing_effects_for_source(card_id)
+                            .await?;
                     } else if original_zone.is_in_play() && !zone.is_in_play() {
                         state.remove_ongoing_effects_from_source(card_id);
                     }
                     match original_zone {
                         Zone::Spellbook => {
-                            state.get_player_deck_mut(&owner_id)?.spells.retain(|id| id != card_id);
+                            state
+                                .get_player_deck_mut(&owner_id)?
+                                .spells
+                                .retain(|id| id != card_id);
                         }
                         Zone::Atlasbook => {
-                            state.get_player_deck_mut(&owner_id)?.sites.retain(|id| id != card_id);
+                            state
+                                .get_player_deck_mut(&owner_id)?
+                                .sites
+                                .retain(|id| id != card_id);
                         }
                         _ => {}
                     }
@@ -2075,7 +2095,9 @@ impl Effect {
                     }
                     from_zone
                 };
-                state.add_passive_ongoing_effects_for_source(&copy_id).await?;
+                state
+                    .add_passive_ongoing_effects_for_source(&copy_id)
+                    .await?;
 
                 crate::game::force_sync_all(state).await?;
 

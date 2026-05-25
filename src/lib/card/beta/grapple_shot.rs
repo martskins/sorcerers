@@ -105,8 +105,8 @@ impl Card for GrappleShot {
                 "Strike the hit unit?",
                 Some(*caster_id),
             )
-                .await
-                .unwrap_or(false);
+            .await
+            .unwrap_or(false);
             if strike {
                 effects.push(Effect::Attack {
                     attacker_id: ally_id,

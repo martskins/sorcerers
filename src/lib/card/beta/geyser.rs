@@ -68,7 +68,11 @@ impl Card for Geyser {
             .all(state);
 
         let mut effects = vec![
-            Effect::DrawCard { player_id: player_id, count: 1, kind: DrawKind::Choice },
+            Effect::DrawCard {
+                player_id,
+                count: 1,
+                kind: DrawKind::Choice,
+            },
             Effect::AddTemporaryEffect {
                 effect: TemporaryEffect::FloodSites {
                     affected_sites: target_site_id.into(),

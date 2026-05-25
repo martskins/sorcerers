@@ -217,18 +217,15 @@ impl Card for FreeCity {
         }])
     }
 
-    fn area_modifiers(&self, _state: &State) -> AreaModifiers {
+    fn area_modifiers(&self, _state: &State) -> Vec<ContinuousEffect> {
         if !self.used_ability {
-            return AreaModifiers::default();
+            return vec![];
         }
 
-        AreaModifiers {
-            grants_abilities: std::collections::HashMap::from([(
-                *self.get_id(),
-                vec![Ability::CannotDefend],
-            )]),
-            ..Default::default()
-        }
+        vec![ContinuousEffect::GrantAbility {
+            ability: Ability::CannotDefend,
+            affected_cards: CardQuery::from_id(*self.get_id()),
+        }]
     }
 }
 

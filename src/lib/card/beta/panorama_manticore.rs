@@ -101,7 +101,10 @@ impl Card for PanoramaManticore {
             .is_some();
 
         if played_fire_spell {
-            return Ok(vec![Effect::SetTapped { card_id: *self.get_id(), tapped: false }]);
+            return Ok(vec![Effect::SetTapped {
+                card_id: *self.get_id(),
+                tapped: false,
+            }]);
         }
 
         Ok(vec![])

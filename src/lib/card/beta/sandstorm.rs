@@ -86,7 +86,10 @@ impl Card for Sandstorm {
         Some(self)
     }
 
-    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<ContinuousEffect>> {
         if !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }

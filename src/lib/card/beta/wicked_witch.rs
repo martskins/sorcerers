@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use crate::prelude::*;
 
 #[derive(Debug, Clone)]
@@ -58,24 +56,17 @@ impl Card for WickedWitch {
         Some(&mut self.unit_base)
     }
 
-    fn area_modifiers(&self, state: &State) -> AreaModifiers {
+    fn area_modifiers(&self, _state: &State) -> Vec<ContinuousEffect> {
         if !self.get_zone().is_in_play() {
-            return AreaModifiers::default();
+            return vec![];
         }
-        let self_id = *self.get_id();
-        let nearby_zones = self.get_zone().get_nearby();
-        let counters: HashMap<uuid::Uuid, Vec<Counter>> = state
-            .cards
-            .values()
-            .filter(|c| *c.get_id() != self_id)
-            .filter(|c| c.get_unit_base().is_some())
-            .filter(|c| nearby_zones.contains(c.get_zone()))
-            .map(|c| (*c.get_id(), vec![Counter::new(-2, 0, None)]))
-            .collect();
-        AreaModifiers {
-            grants_counters: counters,
-            ..Default::default()
-        }
+        vec![ContinuousEffect::GrantCounter {
+            counter: Counter::new(-2, 0, None),
+            affected_cards: CardQuery::new()
+                .minions()
+                .nearby_zones_to_card(self.get_id())
+                .id_not(self.get_id()),
+        }]
     }
 }
 

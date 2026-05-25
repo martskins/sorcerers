@@ -114,8 +114,12 @@ impl Card for ScreamingSkull {
                             return Ok(vec![]);
                         }
 
-                        Ok(vec![Effect::SetTapped { card_id: bearer_id, tapped: false }])
-                    }) as Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>>
+                        Ok(vec![Effect::SetTapped {
+                            card_id: bearer_id,
+                            tapped: false,
+                        }])
+                    })
+                        as Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>>
                 }),
                 multitrigger: true,
             },
