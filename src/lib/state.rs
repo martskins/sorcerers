@@ -1,5 +1,6 @@
 use crate::{
     card::{Ability, Card, CardData, CardType, Costs, DodgeRoll, SiteType},
+    effect::Counter,
     deck::Deck,
     effect::{Effect, EffectCallback, EffectEngine, EffectState},
     game::{
@@ -11,7 +12,10 @@ use crate::{
     zone::Zone,
 };
 use async_channel::{Receiver, Sender};
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::{
+    collections::{HashMap, HashSet, VecDeque},
+    sync::RwLock,
+};
 
 pub use crate::effect::{DeferredEffect, LoggedEffect, TemporaryEffect};
 
@@ -31,6 +35,148 @@ pub struct PlayerWithDeck {
     pub player: Player,
     pub deck: Deck,
     pub cards: Vec<Box<dyn Card>>,
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct AreaModifierIndex {
+    pub ability_modifiers: HashMap<uuid::Uuid, Vec<AbilityModifier>>,
+    pub grants_activated_abilities: HashMap<uuid::Uuid, Vec<Box<dyn ActivatedAbility>>>,
+    pub grants_counters: HashMap<uuid::Uuid, Vec<Counter>>,
+}
+
+#[derive(Debug, Clone)]
+pub enum AbilityModifier {
+    Grant(Ability),
+    Remove(Ability),
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct ContinuousEffectIndex {
+    pub grants_abilities: HashMap<uuid::Uuid, Vec<Ability>>,
+    pub grants_activated_abilities: HashMap<uuid::Uuid, Vec<Box<dyn ActivatedAbility>>>,
+    pub power_diffs: HashMap<uuid::Uuid, i16>,
+}
+
+impl ContinuousEffectIndex {
+    fn build(state: &State) -> Self {
+        let mut index = Self::default();
+
+        for effect in &state.continuous_effects {
+            match effect {
+                ContinuousEffect::GrantAbility {
+                    ability,
+                    affected_cards,
+                } => {
+                    for card_id in affected_cards.all(state) {
+                        index
+                            .grants_abilities
+                            .entry(card_id)
+                            .or_default()
+                            .push(ability.clone());
+                    }
+                }
+                ContinuousEffect::GrantActivatedAbility {
+                    ability,
+                    affected_cards,
+                } => {
+                    for card_id in affected_cards.all(state) {
+                        index
+                            .grants_activated_abilities
+                            .entry(card_id)
+                            .or_default()
+                            .push(ability.clone());
+                    }
+                }
+                ContinuousEffect::ModifyPower {
+                    power_diff,
+                    affected_cards,
+                } => {
+                    for card_id in affected_cards.all(state) {
+                        *index.power_diffs.entry(card_id).or_default() += *power_diff;
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        index
+    }
+}
+
+impl AreaModifierIndex {
+    fn build(state: &State) -> Self {
+        let mut index = Self::default();
+
+        for card in state.cards.values().filter(|c| c.get_zone().is_in_play()) {
+            let modifiers = card.area_modifiers(state);
+            merge_ability_modifier_map(
+                &mut index.ability_modifiers,
+                modifiers.grants_abilities,
+                AbilityModifier::Grant,
+            );
+            merge_ability_modifier_map(
+                &mut index.ability_modifiers,
+                modifiers.removes_abilities,
+                AbilityModifier::Remove,
+            );
+            if !card.is_flooded_site(state) {
+                merge_modifier_map(&mut index.grants_counters, modifiers.grants_counters);
+                merge_modifier_map(
+                    &mut index.grants_activated_abilities,
+                    modifiers.grants_activated_abilities,
+                );
+            }
+        }
+
+        index
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct StateRuntimeCache {
+    area_modifier_index: RwLock<Option<AreaModifierIndex>>,
+    continuous_effect_index: RwLock<Option<ContinuousEffectIndex>>,
+}
+
+impl Clone for StateRuntimeCache {
+    fn clone(&self) -> Self {
+        Self::default()
+    }
+}
+
+impl StateRuntimeCache {
+    fn clear(&self) {
+        self.area_modifier_index
+            .write()
+            .expect("area modifier index lock should not be poisoned")
+            .take();
+        self.continuous_effect_index
+            .write()
+            .expect("continuous effect index lock should not be poisoned")
+            .take();
+    }
+}
+
+fn merge_modifier_map<T>(
+    target: &mut HashMap<uuid::Uuid, Vec<T>>,
+    source: HashMap<uuid::Uuid, Vec<T>>,
+) {
+    for (card_id, modifiers) in source {
+        target.entry(card_id).or_default().extend(modifiers);
+    }
+}
+
+fn merge_ability_modifier_map(
+    target: &mut HashMap<uuid::Uuid, Vec<AbilityModifier>>,
+    source: HashMap<uuid::Uuid, Vec<Ability>>,
+    convert: impl Fn(Ability) -> AbilityModifier,
+) {
+    for (card_id, modifiers) in source {
+        target
+            .entry(card_id)
+            .or_default()
+            .extend(modifiers.into_iter().map(&convert));
+    }
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -245,6 +391,7 @@ pub struct State {
     pub loosers: HashSet<PlayerId>,
     pub players_skipping_turns: HashSet<PlayerId>,
     pub players_with_accepted_hands: HashSet<PlayerId>,
+    runtime_cache: StateRuntimeCache,
 }
 
 impl State {
@@ -291,6 +438,7 @@ impl State {
             loosers: HashSet::new(),
             players_skipping_turns: HashSet::new(),
             players_with_accepted_hands: HashSet::new(),
+            runtime_cache: StateRuntimeCache::default(),
         }
     }
 
@@ -531,14 +679,17 @@ impl State {
     }
 
     pub fn queue(&mut self, effects: impl IntoIterator<Item = Effect>) {
+        self.invalidate_runtime_caches();
         self.effects.extend(effects);
     }
 
     pub fn queue_one(&mut self, effect: Effect) {
+        self.invalidate_runtime_caches();
         self.effects.push_back(effect);
     }
 
     pub fn queue_front(&mut self, effect: Effect) {
+        self.invalidate_runtime_caches();
         self.effects.push_front(effect);
     }
 
@@ -547,6 +698,7 @@ impl State {
     }
 
     pub fn effect_log_mut(&mut self) -> &mut Vec<LoggedEffect> {
+        self.invalidate_runtime_caches();
         self.effects.log_mut()
     }
 
@@ -555,6 +707,7 @@ impl State {
     }
 
     pub fn temporary_effects_mut(&mut self) -> &mut Vec<TemporaryEffect> {
+        self.invalidate_runtime_caches();
         self.effects.temporary_mut()
     }
 
@@ -563,7 +716,145 @@ impl State {
     }
 
     pub fn deferred_effects_mut(&mut self) -> &mut Vec<DeferredEffect> {
+        self.invalidate_runtime_caches();
         self.effects.deferred_mut()
+    }
+
+    pub fn invalidate_runtime_caches(&self) {
+        self.runtime_cache.clear();
+    }
+
+    fn with_area_modifier_index<T>(&self, f: impl FnOnce(&AreaModifierIndex) -> T) -> T {
+        {
+            let index = self
+                .runtime_cache
+                .area_modifier_index
+                .read()
+                .expect("area modifier index lock should not be poisoned");
+            if let Some(index) = index.as_ref() {
+                return f(index);
+            }
+        }
+
+        {
+            let index = AreaModifierIndex::build(self);
+            let mut cached = self
+                .runtime_cache
+                .area_modifier_index
+                .write()
+                .expect("area modifier index lock should not be poisoned");
+            if cached.is_none() {
+                *cached = Some(index);
+            }
+        }
+
+        let index = self
+            .runtime_cache
+            .area_modifier_index
+            .read()
+            .expect("area modifier index lock should not be poisoned");
+        f(index
+            .as_ref()
+            .expect("area modifier index should be initialized"))
+    }
+
+    fn with_continuous_effect_index<T>(&self, f: impl FnOnce(&ContinuousEffectIndex) -> T) -> T {
+        {
+            let index = self
+                .runtime_cache
+                .continuous_effect_index
+                .read()
+                .expect("continuous effect index lock should not be poisoned");
+            if let Some(index) = index.as_ref() {
+                return f(index);
+            }
+        }
+
+        {
+            let index = ContinuousEffectIndex::build(self);
+            let mut cached = self
+                .runtime_cache
+                .continuous_effect_index
+                .write()
+                .expect("continuous effect index lock should not be poisoned");
+            if cached.is_none() {
+                *cached = Some(index);
+            }
+        }
+
+        let index = self
+            .runtime_cache
+            .continuous_effect_index
+            .read()
+            .expect("continuous effect index lock should not be poisoned");
+        f(index
+            .as_ref()
+            .expect("continuous effect index should be initialized"))
+    }
+
+    pub fn ability_modifiers_from_area_modifiers(
+        &self,
+        card_id: &uuid::Uuid,
+    ) -> Vec<AbilityModifier> {
+        self.with_area_modifier_index(|index| {
+            index
+                .ability_modifiers
+                .get(card_id)
+                .cloned()
+                .unwrap_or_default()
+        })
+    }
+
+    pub fn counters_from_area_modifiers(&self, card_id: &uuid::Uuid) -> Vec<Counter> {
+        self.with_area_modifier_index(|index| {
+            index
+                .grants_counters
+                .get(card_id)
+                .cloned()
+                .unwrap_or_default()
+        })
+    }
+
+    pub fn activated_abilities_from_area_modifiers(
+        &self,
+        card_id: &uuid::Uuid,
+    ) -> Vec<Box<dyn ActivatedAbility>> {
+        self.with_area_modifier_index(|index| {
+            index
+                .grants_activated_abilities
+                .get(card_id)
+                .cloned()
+                .unwrap_or_default()
+        })
+    }
+
+    pub fn granted_abilities_from_continuous_effects(&self, card_id: &uuid::Uuid) -> Vec<Ability> {
+        self.with_continuous_effect_index(|index| {
+            index
+                .grants_abilities
+                .get(card_id)
+                .cloned()
+                .unwrap_or_default()
+        })
+    }
+
+    pub fn activated_abilities_from_continuous_effects(
+        &self,
+        card_id: &uuid::Uuid,
+    ) -> Vec<Box<dyn ActivatedAbility>> {
+        self.with_continuous_effect_index(|index| {
+            index
+                .grants_activated_abilities
+                .get(card_id)
+                .cloned()
+                .unwrap_or_default()
+        })
+    }
+
+    pub fn power_diff_from_continuous_effects(&self, card_id: &uuid::Uuid) -> i16 {
+        self.with_continuous_effect_index(|index| {
+            index.power_diffs.get(card_id).copied().unwrap_or_default()
+        })
     }
 
     pub fn get_thresholds_for_player(&self, player_id: &PlayerId) -> Thresholds {
@@ -708,6 +999,7 @@ impl State {
     }
 
     pub async fn compute_world_effects(&mut self) -> anyhow::Result<()> {
+        self.invalidate_runtime_caches();
         self.continuous_effects.clear();
 
         for card in self.cards.values() {
@@ -721,6 +1013,7 @@ impl State {
             }
         }
 
+        self.invalidate_runtime_caches();
         Ok(())
     }
 
@@ -872,6 +1165,7 @@ impl State {
     }
 
     pub fn get_card_mut(&mut self, card_id: &uuid::Uuid) -> &mut dyn Card {
+        self.invalidate_runtime_caches();
         &mut **self.cards.get_mut(card_id).expect("card to exist")
     }
 

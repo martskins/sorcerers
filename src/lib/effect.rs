@@ -782,6 +782,8 @@ impl Effect {
     }
 
     pub async fn apply(&self, state: &mut State) -> anyhow::Result<()> {
+        state.invalidate_runtime_caches();
+
         let mut effects: Vec<Effect> = vec![];
         for card in state.cards.values() {
             let replace_effects = card.replace_effect(state, self).await?.unwrap_or_default();
@@ -879,6 +881,7 @@ impl Effect {
                     };
                     let token_id = *token.get_id();
                     state.cards.insert(token_id, token);
+                    state.invalidate_runtime_caches();
                     state.queue_one(Effect::SummonCards {
                         cards: vec![(*player_id, token_id, zone.clone())],
                     });
@@ -888,6 +891,7 @@ impl Effect {
                     let mut token = token;
                     token.set_zone(zone.clone());
                     state.cards.insert(*token.get_id(), token);
+                    state.invalidate_runtime_caches();
                 }
             }
             Effect::Heal { card_id, amount } => {
@@ -1263,6 +1267,7 @@ impl Effect {
                         _ => {}
                     }
                 }
+                state.invalidate_runtime_caches();
 
                 // Force sync after all cards have been put on their zones, so that players see them
                 // on the board while resolving effects from on_summon, genesis and on_visit_zone.
@@ -1409,6 +1414,7 @@ impl Effect {
                         .ok_or(anyhow::anyhow!("card has no unit base component"))?
                         .damage = 0;
                 }
+                state.invalidate_runtime_caches();
 
                 // Push StartTurn to the front of the queue so all end of turn effects are resolved
                 // first.
@@ -1972,6 +1978,7 @@ impl Effect {
                 replacement_base.bearer = original_base.bearer;
                 replacement_base.is_token = original_base.is_token;
                 state.cards.insert(*card_id, replacement);
+                state.invalidate_runtime_caches();
             }
             Effect::CopyMagic {
                 source_id: _,
@@ -2010,6 +2017,7 @@ impl Effect {
                 copy.set_bearer_id(*bearer_id);
                 let copy_id = *copy.get_id();
                 state.cards.insert(*copy.get_id(), copy);
+                state.invalidate_runtime_caches();
 
                 if bearer_id.is_none() {
                     let copy = state.get_card(&copy_id);
@@ -2039,6 +2047,7 @@ impl Effect {
                 let has_charge = copy.has_ability(state, &Ability::Charge);
                 let copy_id = *copy.get_id();
                 state.cards.insert(copy_id, copy);
+                state.invalidate_runtime_caches();
 
                 let card = state.get_card_mut(&copy_id);
                 let from_zone = card.get_zone().clone();
@@ -2059,9 +2068,11 @@ impl Effect {
             }
             Effect::RemoveCardFromGame { card_id } => {
                 state.cards.retain(|_, c| c.get_id() != card_id);
+                state.invalidate_runtime_caches();
             }
         }
 
+        state.invalidate_runtime_caches();
         let area_effects: Vec<Effect> = state
             .cards
             .values()
@@ -2079,6 +2090,7 @@ impl Effect {
         EffectLifecycle::after_resolved_effect(state, self).await?;
 
         crate::game::force_sync_all(state).await?;
+        state.invalidate_runtime_caches();
 
         Ok(())
     }

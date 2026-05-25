@@ -19,7 +19,7 @@ use crate::{
         pick_amount, pick_card, pick_option, pick_zone,
     },
     query::{CardQuery, ZoneQuery},
-    state::{ContinuousEffect, LoggedEffect, State, TemporaryEffect},
+    state::{AbilityModifier, ContinuousEffect, LoggedEffect, State, TemporaryEffect},
 };
 use linkme::distributed_slice;
 use serde::{Deserialize, Serialize};
@@ -1460,13 +1460,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 }
 
                 let counters: i16 = state
-                    .cards
-                    .values()
-                    .filter(|c| c.get_zone().is_in_play())
-                    .filter(|c| !c.is_flooded_site(state))
-                    .map(|c| c.area_modifiers(state))
-                    .filter_map(|mods| mods.grants_counters.get(self.get_id()).cloned())
-                    .flatten()
+                    .counters_from_area_modifiers(self.get_id())
+                    .iter()
                     .map(|counter| counter.toughness)
                     .sum();
                 toughness = toughness.saturating_add_signed(counters);
@@ -1923,16 +1918,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             self.get_additional_activated_abilities(state)?
         };
 
-        for ce in &state.continuous_effects {
-            if let ContinuousEffect::GrantActivatedAbility {
-                ability,
-                affected_cards,
-            } = ce
-                && affected_cards.matches(self.get_id(), state)
-            {
-                abilities.push(ability.clone())
-            }
-        }
+        abilities.extend(state.activated_abilities_from_continuous_effects(self.get_id()));
 
         Ok(abilities)
     }
@@ -1971,6 +1957,15 @@ pub struct AreaModifiers {
     pub removes_abilities: HashMap<uuid::Uuid, Vec<Ability>>,
     pub grants_activated_abilities: HashMap<uuid::Uuid, Vec<Box<dyn ActivatedAbility>>>,
     pub grants_counters: HashMap<uuid::Uuid, Vec<Counter>>,
+}
+
+fn apply_ability_modifiers(modifiers: &mut Vec<Ability>, changes: Vec<AbilityModifier>) {
+    for change in changes {
+        match change {
+            AbilityModifier::Grant(ability) => modifiers.push(ability),
+            AbilityModifier::Remove(ability) => modifiers.retain(|m| m != &ability),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Clone, EnumIter)]
@@ -2571,25 +2566,12 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
                     power = power.saturating_add_signed(counter.power);
                 }
 
-                for we in &state.continuous_effects {
-                    if let ContinuousEffect::ModifyPower {
-                        power_diff,
-                        affected_cards,
-                    } = we
-                        && affected_cards.matches(self.get_id(), state)
-                    {
-                        power = power.saturating_add_signed(*power_diff);
-                    }
-                }
+                power = power
+                    .saturating_add_signed(state.power_diff_from_continuous_effects(self.get_id()));
 
                 let power_counters: i16 = state
-                    .cards
-                    .values()
-                    .filter(|c| c.get_zone().is_in_play())
-                    .filter(|c| !c.is_flooded_site(state))
-                    .map(|c| c.area_modifiers(state))
-                    .filter_map(|mods| mods.grants_counters.get(self.get_id()).cloned())
-                    .flatten()
+                    .counters_from_area_modifiers(self.get_id())
+                    .iter()
                     .map(|counter| counter.power)
                     .sum();
                 power = power.saturating_add_signed(power_counters);
@@ -2611,12 +2593,10 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
                     modifiers.push(counter.ability.clone());
                 }
 
-                for card in state.cards.values().filter(|c| c.get_zone().is_in_play()) {
-                    let mods = card.area_modifiers(state);
-                    if let Some(mods) = mods.grants_abilities.get(self.get_id()) {
-                        modifiers.extend(mods.clone());
-                    }
-                }
+                apply_ability_modifiers(
+                    &mut modifiers,
+                    state.ability_modifiers_from_area_modifiers(self.get_id()),
+                );
 
                 // Units that can carry other units confer Airborne, Burrowing, Submerge, and/or
                 // Voidwalk to the carried units while they're carried.
@@ -2637,58 +2617,18 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
                     }
                 }
 
-                for card in state.cards.values().filter(|c| c.get_zone().is_in_play()) {
-                    let mods = card.area_modifiers(state);
-                    if let Some(mods) = mods.removes_abilities.get(self.get_id()) {
-                        for modif in mods {
-                            modifiers.retain(|m| m != modif);
-                        }
-                    }
-                }
-
-                for ce in &state.continuous_effects {
-                    match ce {
-                        ContinuousEffect::GrantAbility {
-                            ability,
-                            affected_cards,
-                        } if affected_cards.matches(self.get_id(), state) => {
-                            modifiers.push(ability.clone())
-                        }
-                        _ => {}
-                    }
-                }
+                modifiers.extend(state.granted_abilities_from_continuous_effects(self.get_id()));
 
                 modifiers
             }
             CardType::Site => {
                 let base = self.get_site_base().expect("site to have a site base");
                 let mut modifiers = base.abilities.clone();
-                for card in state.cards.values().filter(|c| c.get_zone().is_in_play()) {
-                    let mods = card.area_modifiers(state);
-                    if let Some(mods) = mods.grants_abilities.get(self.get_id()) {
-                        modifiers.extend(mods.clone());
-                    }
-                }
-
-                for card in state.cards.values().filter(|c| c.get_zone().is_in_play()) {
-                    let mods = card.area_modifiers(state);
-                    if let Some(mods) = mods.removes_abilities.get(self.get_id()) {
-                        for modif in mods {
-                            modifiers.retain(|m| m != modif);
-                        }
-                    }
-                }
-                for ce in &state.continuous_effects {
-                    match ce {
-                        ContinuousEffect::GrantAbility {
-                            ability,
-                            affected_cards,
-                        } if affected_cards.matches(self.get_id(), state) => {
-                            modifiers.push(ability.clone())
-                        }
-                        _ => {}
-                    }
-                }
+                apply_ability_modifiers(
+                    &mut modifiers,
+                    state.ability_modifiers_from_area_modifiers(self.get_id()),
+                );
+                modifiers.extend(state.granted_abilities_from_continuous_effects(self.get_id()));
 
                 modifiers
             }
@@ -2748,13 +2688,9 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
                             .ability_counters
                             .iter()
                             .any(|c| c.ability == Ability::LethalTarget)
-                }) || state.continuous_effects.iter().any(|ce| match ce {
-                    ContinuousEffect::GrantAbility {
-                        ability: Ability::LethalTarget,
-                        affected_cards,
-                    } => affected_cards.matches(self.get_id(), state),
-                    _ => false,
-                });
+                }) || state
+                    .granted_abilities_from_continuous_effects(self.get_id())
+                    .contains(&Ability::LethalTarget);
 
                 let ub = self
                     .get_unit_base_mut()
@@ -2949,15 +2885,7 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
             activated_abilities.push(Box::new(AvatarAction::PlaySite));
         }
 
-        for card in state.cards.values().filter(|c| c.get_zone().is_in_play()) {
-            let mods = card.area_modifiers(state);
-            if card.is_flooded_site(state) {
-                continue;
-            }
-            if let Some(mods) = mods.grants_activated_abilities.get(self.get_id()) {
-                activated_abilities.extend(mods.clone());
-            }
-        }
+        activated_abilities.extend(state.activated_abilities_from_area_modifiers(self.get_id()));
 
         Ok(activated_abilities)
     }
@@ -2990,15 +2918,7 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
             }
         }
 
-        for card in state.cards.values().filter(|c| c.get_zone().is_in_play()) {
-            let mods = card.area_modifiers(state);
-            if card.is_flooded_site(state) {
-                continue;
-            }
-            if let Some(mods) = mods.grants_activated_abilities.get(self.get_id()) {
-                activated_abilities.extend(mods.clone());
-            }
-        }
+        activated_abilities.extend(state.activated_abilities_from_area_modifiers(self.get_id()));
 
         let unborne_artifacts: Vec<(uuid::Uuid, String)> = CardQuery::new()
             .artifacts()
