@@ -72,7 +72,7 @@ impl Card for RiverOfFlame {
         }
         vec![ContinuousEffect::GrantAbility {
             ability: Ability::Spellcaster(Some(Element::Fire)),
-            affected_cards: CardQuery::new().units().in_zone(self.get_zone()),
+            affected_cards: CardQuery::new().units().in_zone_of_card(self.get_id()),
         }]
     }
 }

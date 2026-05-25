@@ -89,7 +89,7 @@ impl Card for DomeOfOsiros {
             // Minions here cannot be attacked.
             ContinuousEffect::GrantAbility {
                 ability: Ability::Unattackable,
-                affected_cards: CardQuery::new().in_zone(self.get_zone()).minions(),
+                affected_cards: CardQuery::new().in_zone_of_card(self.get_id()).minions(),
             },
         ])
     }

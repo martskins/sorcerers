@@ -70,7 +70,7 @@ impl Card for UpdraftRidge {
             ability: Ability::Movement(1),
             affected_cards: CardQuery::new()
                 .units()
-                .in_zone(self.get_zone())
+                .in_zone_of_card(self.get_id())
                 .with_abilities(vec![Ability::Airborne]),
         }]
     }

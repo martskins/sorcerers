@@ -2,7 +2,7 @@ use rand::seq::IndexedRandom;
 
 use crate::{
     card::{Ability, ArtifactType, Card, CardType, MinionType, Rarity, Region, SiteType},
-    game::{Element, PlayerId, pick_card_source, pick_card_with_options_source},
+    game::{Direction, Element, PlayerId, pick_card_source, pick_card_with_options_source},
     state::State,
     zone::Zone,
 };
@@ -19,6 +19,8 @@ pub struct CardQuery {
     card_name_contains: Option<String>,
     not_named: Option<Vec<String>>,
     controller_id: Option<PlayerId>,
+    same_controller_as: Option<uuid::Uuid>,
+    different_controller_than: Option<uuid::Uuid>,
     not_in_ids: Option<Vec<uuid::Uuid>>,
     without_abilities: Option<Vec<Ability>>,
     with_abilities: Option<Vec<Ability>>,
@@ -43,10 +45,18 @@ pub struct CardQuery {
     spatial_filters: Vec<SpatialFilter>,
     prompt: Option<String>,
     source_card_id: Option<uuid::Uuid>,
+    bearer_of: Option<uuid::Uuid>,
 }
 
 #[derive(Debug, Clone)]
 enum SpatialFilter {
+    ZoneOfCard(uuid::Uuid),
+    ZoneAndDirectionFromCard {
+        card_id: uuid::Uuid,
+        direction: Direction,
+        steps: u8,
+        normalise_for_owner: bool,
+    },
     AdjacentLocations(Zone),
     AdjacentLocationsToAny(Vec<Zone>),
     NearbyLocations(Zone),
@@ -78,6 +88,32 @@ impl<'a> PreparedCardQuery<'a> {
                     .flat_map(|zone| zone.get_adjacent_locations(state))
                     .collect(),
                 SpatialFilter::NearbyLocations(zone) => zone.get_nearby_locations(state),
+                SpatialFilter::ZoneOfCard(card_id) => state
+                    .cards
+                    .get(card_id)
+                    .map(|card| vec![card.get_zone().clone()])
+                    .unwrap_or_default(),
+                SpatialFilter::ZoneAndDirectionFromCard {
+                    card_id,
+                    direction,
+                    steps,
+                    normalise_for_owner,
+                } => state
+                    .cards
+                    .get(card_id)
+                    .map(|card| {
+                        let board_flipped =
+                            *normalise_for_owner && card.get_owner_id() != &state.player_one;
+                        let mut zones = vec![card.get_zone().clone()];
+                        if let Some(zone) = card
+                            .get_zone()
+                            .zone_in_direction(&direction.normalise(board_flipped), *steps)
+                        {
+                            zones.push(zone);
+                        }
+                        zones
+                    })
+                    .unwrap_or_default(),
                 SpatialFilter::NearbyZonesToCard(card_id) => state
                     .cards
                     .get(card_id)
@@ -166,6 +202,24 @@ impl<'a> PreparedCardQuery<'a> {
             return false;
         }
 
+        if let Some(source_id) = &query.same_controller_as {
+            let Some(source) = state.cards.get(source_id) else {
+                return false;
+            };
+            if card.get_controller_id(state) != source.get_controller_id(state) {
+                return false;
+            }
+        }
+
+        if let Some(source_id) = &query.different_controller_than {
+            let Some(source) = state.cards.get(source_id) else {
+                return false;
+            };
+            if card.get_controller_id(state) == source.get_controller_id(state) {
+                return false;
+            }
+        }
+
         if let Some(card_types) = &query.card_types
             && !card_types.contains(&card.get_card_type())
         {
@@ -194,6 +248,15 @@ impl<'a> PreparedCardQuery<'a> {
             && card.get_base().bearer != *carrier_id
         {
             return false;
+        }
+
+        if let Some(source_id) = &query.bearer_of {
+            let Some(source) = state.cards.get(source_id) else {
+                return false;
+            };
+            if source.get_base().bearer != Some(*card_id) {
+                return false;
+            }
         }
 
         // Name filters
@@ -553,6 +616,8 @@ impl CardQuery {
             && self.card_name_contains.is_none()
             && self.not_named.is_none()
             && self.controller_id.is_none()
+            && self.same_controller_as.is_none()
+            && self.different_controller_than.is_none()
             && self.not_in_ids.is_none()
             && self.without_abilities.is_none()
             && self.with_abilities.is_none()
@@ -575,6 +640,7 @@ impl CardQuery {
             && self.can_be_targeted_by_player.is_none()
             && self.elements.is_none()
             && self.spatial_filters.is_empty()
+            && self.bearer_of.is_none()
         {
             self.carried_by
         } else {
@@ -639,7 +705,6 @@ impl CardQuery {
     pub fn in_zones(self, zones: &[Zone]) -> Self {
         Self {
             in_zones: Some(zones.to_vec()),
-            include_not_in_play: Some(true),
             ..self
         }
     }
@@ -661,9 +726,31 @@ impl CardQuery {
     pub fn in_zone(self, zone: &Zone) -> Self {
         Self {
             in_zones: Some(vec![zone.clone()]),
-            include_not_in_play: Some(true),
             ..self
         }
+    }
+
+    pub fn in_zone_of_card(mut self, card_id: &uuid::Uuid) -> Self {
+        self.spatial_filters
+            .push(SpatialFilter::ZoneOfCard(*card_id));
+        self
+    }
+
+    pub fn in_zone_and_direction_from_card(
+        mut self,
+        card_id: &uuid::Uuid,
+        direction: Direction,
+        steps: u8,
+        normalise_for_owner: bool,
+    ) -> Self {
+        self.spatial_filters
+            .push(SpatialFilter::ZoneAndDirectionFromCard {
+                card_id: *card_id,
+                direction,
+                steps,
+                normalise_for_owner,
+            });
+        self
     }
 
     pub fn including_not_in_play(self) -> Self {
@@ -838,6 +925,27 @@ impl CardQuery {
     pub fn controlled_by(self, controller_id: &PlayerId) -> Self {
         Self {
             controller_id: Some(*controller_id),
+            ..self
+        }
+    }
+
+    pub fn controlled_by_same_controller_as_card(self, card_id: &uuid::Uuid) -> Self {
+        Self {
+            same_controller_as: Some(*card_id),
+            ..self
+        }
+    }
+
+    pub fn controlled_by_different_controller_than_card(self, card_id: &uuid::Uuid) -> Self {
+        Self {
+            different_controller_than: Some(*card_id),
+            ..self
+        }
+    }
+
+    pub fn bearer_of_card(self, card_id: &uuid::Uuid) -> Self {
+        Self {
+            bearer_of: Some(*card_id),
             ..self
         }
     }

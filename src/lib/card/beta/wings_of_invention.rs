@@ -57,22 +57,21 @@ impl Card for WingsOfInvention {
         Some(self)
     }
 
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
-        let bearer_id = match self.get_bearer_id()? {
-            Some(id) => id,
-            None => return Ok(vec![]),
-        };
-        if !state.get_card(&bearer_id).is_minion() {
-            return Ok(vec![]);
-        }
+    async fn get_continuous_effects(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<ContinuousEffect>> {
+        let affected_cards = CardQuery::new()
+            .minions()
+            .bearer_of_card(self.get_id());
         Ok(vec![
             ContinuousEffect::GrantAbility {
                 ability: Ability::Airborne,
-                affected_cards: CardQuery::from_id(bearer_id),
+                affected_cards: affected_cards.clone(),
             },
             ContinuousEffect::GrantAbility {
                 ability: Ability::Movement(1),
-                affected_cards: CardQuery::from_id(bearer_id),
+                affected_cards,
             },
         ])
     }

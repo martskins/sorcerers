@@ -61,13 +61,13 @@ impl Card for HouseArnBannerman {
         Some(&mut self.unit_base)
     }
 
-    fn area_modifiers(&self, state: &State) -> Vec<ContinuousEffect> {
+    fn area_modifiers(&self, _state: &State) -> Vec<ContinuousEffect> {
         vec![ContinuousEffect::GrantCounter {
             counter: Counter::new(1, 0, None),
             affected_cards: CardQuery::new()
                 .units()
-                .near_to(self.get_zone())
-                .controlled_by(&self.get_controller_id(state))
+                .nearby_locations_to_card(self.get_id())
+                .controlled_by_same_controller_as_card(self.get_id())
                 .id_not(self.get_id()),
         }]
     }

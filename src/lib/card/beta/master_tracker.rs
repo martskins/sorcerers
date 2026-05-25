@@ -60,14 +60,12 @@ impl Card for MasterTracker {
         Some(&mut self.unit_base)
     }
 
-    fn area_modifiers(&self, state: &State) -> Vec<ContinuousEffect> {
+    fn area_modifiers(&self, _state: &State) -> Vec<ContinuousEffect> {
         vec![ContinuousEffect::RemoveAbilities {
             abilities: vec![Ability::Stealth],
-            affected_cards: CardQuery::new().in_play().controlled_by(
-                &state
-                    .get_opponent_id(&self.get_controller_id(state))
-                    .unwrap(),
-            ),
+            affected_cards: CardQuery::new()
+                .in_play()
+                .controlled_by_different_controller_than_card(self.get_id()),
         }]
     }
 }

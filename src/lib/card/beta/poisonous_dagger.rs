@@ -67,13 +67,9 @@ impl Card for PoisonousDagger {
         &self,
         _state: &State,
     ) -> anyhow::Result<Vec<ContinuousEffect>> {
-        let bearer_id = match self.get_bearer_id()? {
-            Some(id) => id,
-            None => return Ok(vec![]),
-        };
         Ok(vec![ContinuousEffect::GrantAbility {
             ability: Ability::Lethal,
-            affected_cards: CardQuery::from_id(bearer_id),
+            affected_cards: CardQuery::new().bearer_of_card(self.get_id()),
         }])
     }
 }

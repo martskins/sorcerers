@@ -80,7 +80,7 @@ impl Card for CrownOfTheVictor {
 
         Ok(vec![ContinuousEffect::ModifyPower {
             power_diff: 3,
-            affected_cards: bearer_id.into(),
+            affected_cards: CardQuery::new().bearer_of_card(self.get_id()),
         }])
     }
 }

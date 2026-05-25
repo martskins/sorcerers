@@ -106,6 +106,18 @@ impl ContinuousEffectIndex {
                         *index.power_diffs.entry(card_id).or_default() += *power_diff;
                     }
                 }
+                ContinuousEffect::ModifyPowerForEach {
+                    power_per_card,
+                    affected_cards,
+                    matching_cards,
+                } => {
+                    let power_diff = *power_per_card * matching_cards.all(state).len() as i16;
+                    if power_diff != 0 {
+                        for card_id in affected_cards.all(state) {
+                            *index.power_diffs.entry(card_id).or_default() += power_diff;
+                        }
+                    }
+                }
                 _ => {}
             }
         }
@@ -234,6 +246,11 @@ pub enum OngoingEffect {
         power_diff: i16,
         affected_cards: CardQuery,
     },
+    ModifyPowerForEach {
+        power_per_card: i16,
+        affected_cards: CardQuery,
+        matching_cards: CardQuery,
+    },
     FloodSites {
         affected_sites: CardQuery,
     },
@@ -302,13 +319,13 @@ pub enum OngoingEffect {
         affected_cards: CardQuery,
     },
     OverrideValidPlayZone {
-        affected_zones: Vec<Zone>,
+        affected_zones: ZoneQuery,
         affected_cards: CardQuery,
     },
     ModifyManaCost {
         mana_diff: i8,
         affected_cards: CardQuery,
-        zones: Option<Vec<Zone>>,
+        zones: Option<ZoneQuery>,
     },
     TriggeredEffect {
         trigger_on_effect: EffectQuery,
@@ -325,6 +342,10 @@ impl std::fmt::Debug for OngoingEffect {
             Self::ModifyPower { power_diff, .. } => f
                 .debug_struct("ModifyPower")
                 .field("power_diff", power_diff)
+                .finish(),
+            Self::ModifyPowerForEach { power_per_card, .. } => f
+                .debug_struct("ModifyPowerForEach")
+                .field("power_per_card", power_per_card)
                 .finish(),
             Self::FloodSites { .. } => f.debug_struct("FloodSites").finish(),
             Self::DroughtSites { .. } => f.debug_struct("DroughtSites").finish(),
@@ -384,10 +405,7 @@ impl std::fmt::Debug for OngoingEffect {
                 .debug_struct("ModifyProvidedMana")
                 .field("mana_diff", mana_diff)
                 .finish(),
-            Self::OverrideValidPlayZone { affected_zones, .. } => f
-                .debug_struct("OverrideValidPlayZone")
-                .field("affected_zones", affected_zones)
-                .finish(),
+            Self::OverrideValidPlayZone { .. } => f.debug_struct("OverrideValidPlayZone").finish(),
             Self::ModifyManaCost {
                 mana_diff, zones, ..
             } => f
@@ -781,10 +799,9 @@ impl State {
                     }
                     let zone_ok = match zones {
                         None => true,
-                        Some(effect_zones) => match target_zone {
-                            None => false,
-                            Some(z) => effect_zones.contains(z),
-                        },
+                        Some(effect_zones) => target_zone
+                            .map(|z| effect_zones.options(self).contains(z))
+                            .unwrap_or_default(),
                     };
                     if zone_ok { Some(*mana_diff) } else { None }
                 }
@@ -908,7 +925,7 @@ impl State {
     fn ongoing_effect_layer(effect: &TimedOngoingEffect) -> u8 {
         match &effect.effect {
             ContinuousEffect::ControllerOverride { .. } => 3,
-            ContinuousEffect::ModifyPower { .. } => 6,
+            ContinuousEffect::ModifyPower { .. } | ContinuousEffect::ModifyPowerForEach { .. } => 6,
             ContinuousEffect::GrantAbility {
                 ability: Ability::Disabled,
                 ..

@@ -76,7 +76,7 @@ impl Card for StandingStones {
     fn area_modifiers(&self, _state: &State) -> Vec<ContinuousEffect> {
         vec![ContinuousEffect::GrantAbility {
             ability: Ability::Spellcaster(None),
-            affected_cards: CardQuery::new().minions().in_zone(self.get_zone()),
+            affected_cards: CardQuery::new().minions().in_zone_of_card(self.get_id()),
         }]
     }
 }

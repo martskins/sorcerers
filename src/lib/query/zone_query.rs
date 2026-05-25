@@ -4,6 +4,8 @@ use crate::{game::PlayerId, query::QueryCache, state::State, zone::Zone};
 pub(super) enum ZoneSpatialFilter {
     AdjacentLocations(Zone),
     NearbyLocations(Zone),
+    ZoneOfCard(uuid::Uuid),
+    AffectedZonesOfCard(uuid::Uuid),
 }
 
 #[derive(Debug, Clone)]
@@ -81,6 +83,18 @@ impl ZoneQuery {
         self
     }
 
+    pub fn zone_of_card(mut self, card_id: &uuid::Uuid) -> Self {
+        self.spatial_filters
+            .push(ZoneSpatialFilter::ZoneOfCard(*card_id));
+        self
+    }
+
+    pub fn affected_zones_of_card(mut self, card_id: &uuid::Uuid) -> Self {
+        self.spatial_filters
+            .push(ZoneSpatialFilter::AffectedZonesOfCard(*card_id));
+        self
+    }
+
     /// Player picks from in-play site zones, optionally filtered by controller.
     pub fn any_site(controlled_by: Option<PlayerId>, prompt: Option<String>) -> Self {
         Self {
@@ -140,6 +154,20 @@ impl ZoneQuery {
         let filter_zones = |filter: &ZoneSpatialFilter| match filter {
             ZoneSpatialFilter::AdjacentLocations(zone) => zone.get_adjacent_locations(state),
             ZoneSpatialFilter::NearbyLocations(zone) => zone.get_nearby_locations(state),
+            ZoneSpatialFilter::ZoneOfCard(card_id) => state
+                .cards
+                .get(card_id)
+                .map(|card| vec![card.get_zone().clone()])
+                .unwrap_or_default(),
+            ZoneSpatialFilter::AffectedZonesOfCard(card_id) => state
+                .cards
+                .get(card_id)
+                .map(|card| {
+                    card.get_aura()
+                        .map(|aura| aura.get_affected_zones(state))
+                        .unwrap_or_else(|| vec![card.get_zone().clone()])
+                })
+                .unwrap_or_default(),
         };
 
         let (mut zones, filters_to_apply) = if let Some(opts) = &self.options {

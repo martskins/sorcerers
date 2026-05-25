@@ -60,32 +60,22 @@ impl Card for GreyWolves {
         Some(&mut self.unit_base)
     }
 
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<ContinuousEffect>> {
         if !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }
 
-        let nearby_wolf_count = CardQuery::new()
-            .minions()
-            .near_to(self.get_zone())
-            .id_not(self.get_id())
-            .all(state)
-            .into_iter()
-            .filter(|id| {
-                state
-                    .get_card(id)
-                    .get_name()
-                    .eq_ignore_ascii_case(Self::NAME)
-            })
-            .count() as i16;
-
-        if nearby_wolf_count == 0 {
-            return Ok(vec![]);
-        }
-
-        Ok(vec![ContinuousEffect::ModifyPower {
-            power_diff: nearby_wolf_count,
+        Ok(vec![ContinuousEffect::ModifyPowerForEach {
+            power_per_card: 1,
             affected_cards: self.get_id().into(),
+            matching_cards: CardQuery::new()
+                .minions()
+                .cards_named(Self::NAME)
+                .nearby_locations_to_card(self.get_id())
+                .id_not(self.get_id()),
         }])
     }
 }

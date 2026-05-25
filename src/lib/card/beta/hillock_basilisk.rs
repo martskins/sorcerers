@@ -61,21 +61,12 @@ impl Card for HillockBasilisk {
         Some(&mut self.unit_base)
     }
 
-    fn area_modifiers(&self, state: &State) -> Vec<ContinuousEffect> {
-        let mut zones = vec![self.get_zone().clone()];
-        let board_flipped = self.get_owner_id() != &state.player_one;
-        let zone_in_front = self
-            .get_zone()
-            .zone_in_direction(&Direction::Up.normalise(board_flipped), 1);
-        if let Some(zone) = zone_in_front {
-            zones.push(zone);
-        }
-
+    fn area_modifiers(&self, _state: &State) -> Vec<ContinuousEffect> {
         vec![ContinuousEffect::GrantAbility {
             ability: Ability::Disabled,
             affected_cards: CardQuery::new()
                 .units()
-                .in_zones(&zones)
+                .in_zone_and_direction_from_card(self.get_id(), Direction::Up, 1, true)
                 .id_not(self.get_id()),
         }]
     }

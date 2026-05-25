@@ -106,9 +106,12 @@ impl Card for EvilPresence {
         }])
     }
 
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<ContinuousEffect>> {
         Ok(vec![ContinuousEffect::OverrideValidPlayZone {
-            affected_zones: self.get_affected_zones(state),
+            affected_zones: ZoneQuery::new().affected_zones_of_card(self.get_id()),
             affected_cards: CardQuery::new()
                 .minions()
                 .minion_type(&MinionType::Spirit)

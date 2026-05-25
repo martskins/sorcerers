@@ -83,7 +83,10 @@ impl Zone {
                     affected_zones,
                     affected_cards,
                     ..
-                } => affected_zones.contains(self) && affected_cards.matches(card_id, state),
+                } => {
+                    affected_zones.options(state).contains(self)
+                        && affected_cards.matches(card_id, state)
+                }
                 _ => false,
             })
             .count()

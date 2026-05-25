@@ -71,7 +71,7 @@ impl Card for DoomsdayProphet {
 
         Ok(vec![ContinuousEffect::DoubleDamageTaken {
             affected_cards: CardQuery::new()
-                .near_to(self.get_zone())
+                .nearby_locations_to_card(self.get_id())
                 .units()
                 .id_not_in(vec![*self.get_id()]),
             except_strikes: true,

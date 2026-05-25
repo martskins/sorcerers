@@ -64,7 +64,7 @@ impl Card for WickerManikin {
     }
 
     fn area_modifiers(&self, _state: &State) -> Vec<ContinuousEffect> {
-        let affected_cards = CardQuery::new().units().in_zone(self.get_zone());
+        let affected_cards = CardQuery::new().units().in_zone_of_card(self.get_id());
         vec![
             ContinuousEffect::GrantAbility {
                 ability: Ability::Spellcaster(Some(Element::Air)),

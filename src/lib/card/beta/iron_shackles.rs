@@ -78,18 +78,9 @@ impl Card for IronShackles {
         &self,
         _state: &State,
     ) -> anyhow::Result<Vec<ContinuousEffect>> {
-        let bearer_id = self
-            .get_artifact()
-            .expect("IronShackles should have artifact base")
-            .get_bearer()?;
-
-        let Some(bearer_id) = bearer_id else {
-            return Ok(vec![]);
-        };
-
         Ok(vec![ContinuousEffect::GrantAbility {
             ability: Ability::Disabled,
-            affected_cards: bearer_id.into(),
+            affected_cards: CardQuery::new().bearer_of_card(self.get_id()),
         }])
     }
 }

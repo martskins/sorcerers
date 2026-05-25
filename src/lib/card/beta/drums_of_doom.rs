@@ -73,7 +73,9 @@ impl Card for DrumsOfDoom {
 
         Ok(vec![ContinuousEffect::GrantAbility {
             ability: Ability::LethalTarget,
-            affected_cards: CardQuery::new().near_to(self.get_zone()).minions(),
+            affected_cards: CardQuery::new()
+                .nearby_locations_to_card(self.get_id())
+                .minions(),
         }])
     }
 }

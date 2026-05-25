@@ -81,10 +81,10 @@ impl Card for DwarvenForge {
             ContinuousEffect::ModifyManaCost {
                 mana_diff: -1,
                 affected_cards: CardQuery::new().minions().including_not_in_play(),
-                zones: Some(vec![self.get_zone().clone()]),
+                zones: Some(ZoneQuery::new().zone_of_card(self.get_id())),
             },
             ContinuousEffect::OverrideValidPlayZone {
-                affected_zones: vec![self.get_zone().clone()],
+                affected_zones: ZoneQuery::new().zone_of_card(self.get_id()),
                 affected_cards: CardQuery::new()
                     .artifacts()
                     .artifact_types(vec![ArtifactType::Weapon, ArtifactType::Armor])

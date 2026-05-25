@@ -66,26 +66,16 @@ impl Card for SevenLeagueBoots {
         Some(self)
     }
 
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
-        let bearer_id = self
-            .get_artifact()
-            .expect("SevenLeagueBoots should have an artifact base")
-            .get_bearer()?;
-
-        match bearer_id {
-            Some(ref bearer_id) => {
-                let bearer = state.get_card(bearer_id);
-                if !bearer.is_minion() {
-                    return Ok(vec![]);
-                }
-
-                Ok(vec![ContinuousEffect::GrantAbility {
-                    ability: Ability::Movement(7),
-                    affected_cards: bearer_id.into(),
-                }])
-            }
-            None => Ok(vec![]),
-        }
+    async fn get_continuous_effects(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<ContinuousEffect>> {
+        Ok(vec![ContinuousEffect::GrantAbility {
+            ability: Ability::Movement(7),
+            affected_cards: CardQuery::new()
+                .minions()
+                .bearer_of_card(self.get_id()),
+        }])
     }
 }
 

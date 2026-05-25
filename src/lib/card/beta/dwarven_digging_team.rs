@@ -62,19 +62,20 @@ impl Card for DwarvenDiggingTeam {
         Some(&mut self.unit_base)
     }
 
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(
+        &self,
+        _state: &State,
+    ) -> anyhow::Result<Vec<ContinuousEffect>> {
         if !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }
-
-        let controller_id = self.get_controller_id(state);
 
         Ok(vec![ContinuousEffect::GrantAbility {
             ability: Ability::Burrowing,
             affected_cards: CardQuery::new()
                 .minions()
-                .near_to(self.get_zone())
-                .controlled_by(&controller_id)
+                .nearby_locations_to_card(self.get_id())
+                .controlled_by_same_controller_as_card(self.get_id())
                 .id_not_in(vec![*self.get_id()]),
         }])
     }

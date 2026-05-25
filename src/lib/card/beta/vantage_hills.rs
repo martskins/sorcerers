@@ -72,7 +72,7 @@ impl Card for VantageHills {
     fn area_modifiers(&self, _state: &State) -> Vec<ContinuousEffect> {
         vec![ContinuousEffect::GrantAbility {
             ability: Ability::Ranged(1),
-            affected_cards: CardQuery::new().units().in_zone(self.get_zone()),
+            affected_cards: CardQuery::new().units().in_zone_of_card(self.get_id()),
         }]
     }
 

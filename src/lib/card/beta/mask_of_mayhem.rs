@@ -64,7 +64,7 @@ impl Card for MaskOfMayhem {
         Ok(vec![ContinuousEffect::DoubleDamageTaken {
             affected_cards: CardQuery::new()
                 .units()
-                .nearby_locations_to(self.get_zone()),
+                .nearby_locations_to_card(self.get_id()),
             except_strikes: false,
         }])
     }

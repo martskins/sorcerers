@@ -133,7 +133,7 @@ impl Card for BatteringRam {
     fn area_modifiers(&self, _state: &State) -> Vec<ContinuousEffect> {
         vec![ContinuousEffect::GrantActivatedAbility {
             ability: Box::new(RamStrike),
-            affected_cards: CardQuery::new().units().in_zone(self.get_zone()),
+            affected_cards: CardQuery::new().units().in_zone_of_card(self.get_id()),
         }]
     }
 }

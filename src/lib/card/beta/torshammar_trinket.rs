@@ -68,13 +68,9 @@ impl Card for TorshammarTrinket {
         &self,
         _state: &State,
     ) -> anyhow::Result<Vec<ContinuousEffect>> {
-        let Some(bearer_id) = self.get_bearer_id()? else {
-            return Ok(vec![]);
-        };
-
         Ok(vec![ContinuousEffect::ModifyPower {
             power_diff: 1,
-            affected_cards: bearer_id.into(),
+            affected_cards: CardQuery::new().bearer_of_card(self.get_id()),
         }])
     }
 
