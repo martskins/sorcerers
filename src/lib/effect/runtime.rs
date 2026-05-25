@@ -15,7 +15,6 @@ impl EffectEngine {
                 }
 
                 EffectLogEmitter::emit(game, effect).await?;
-                game.state.compute_world_effects().await?;
 
                 Game::dispell_auras(&mut game.state).await?;
                 game.broadcast(&game.make_sync()?).await?;

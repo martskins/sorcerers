@@ -86,24 +86,29 @@ impl Card for Sandstorm {
         Some(self)
     }
 
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
-        let affected_zones = self.get_affected_zones(state);
-        if affected_zones.is_empty() {
+    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+        if !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }
 
         Ok(vec![
             ContinuousEffect::GrantAbility {
                 ability: Ability::Unattackable,
-                affected_cards: CardQuery::new().sites().in_zones(&affected_zones),
+                affected_cards: CardQuery::new()
+                    .sites()
+                    .in_affected_zones_of_card(self.get_id()),
             },
             ContinuousEffect::GrantAbility {
                 ability: Ability::Unattackable,
-                affected_cards: CardQuery::new().units().in_zones(&affected_zones),
+                affected_cards: CardQuery::new()
+                    .units()
+                    .in_affected_zones_of_card(self.get_id()),
             },
             ContinuousEffect::GrantAbility {
                 ability: Ability::Uninterceptable,
-                affected_cards: CardQuery::new().units().in_zones(&affected_zones),
+                affected_cards: CardQuery::new()
+                    .units()
+                    .in_affected_zones_of_card(self.get_id()),
             },
         ])
     }

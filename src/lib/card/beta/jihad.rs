@@ -62,11 +62,10 @@ impl Card for Jihad {
 
     async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
         let controller_id = self.get_controller_id(state);
-        let affected_zones = self.get_affected_zones(state);
 
         let affected_minions = CardQuery::new()
             .minions()
-            .in_zones(&affected_zones)
+            .in_affected_zones_of_card(self.get_id())
             .controlled_by(&controller_id)
             .with_affinity(Element::Fire);
 

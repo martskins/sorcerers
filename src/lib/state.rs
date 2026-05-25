@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardData, CardType, Costs, DodgeRoll, SiteType},
+    card::{Ability, AreaModifiers, Card, CardData, CardType, Costs, DodgeRoll, SiteType},
     effect::Counter,
     deck::Deck,
     effect::{Effect, EffectCallback, EffectEngine, EffectState},
@@ -50,6 +50,20 @@ pub enum AbilityModifier {
     Remove(Ability),
 }
 
+#[derive(Debug, Clone)]
+pub struct OngoingEffect {
+    pub effect: OngoingEffectKind,
+    pub source: Option<uuid::Uuid>,
+    pub timestamp: u64,
+    pub passive: bool,
+}
+
+#[derive(Debug, Clone)]
+pub enum OngoingEffectKind {
+    Continuous(ContinuousEffect),
+    AreaModifier,
+}
+
 #[derive(Debug, Default, Clone)]
 pub struct ContinuousEffectIndex {
     pub grants_abilities: HashMap<uuid::Uuid, Vec<Ability>>,
@@ -60,42 +74,66 @@ pub struct ContinuousEffectIndex {
 impl ContinuousEffectIndex {
     fn build(state: &State) -> Self {
         let mut index = Self::default();
+        let mut blocked_sources = HashSet::new();
 
-        for effect in &state.continuous_effects {
-            match effect {
-                ContinuousEffect::GrantAbility {
-                    ability,
-                    affected_cards,
-                } => {
-                    for card_id in affected_cards.all(state) {
-                        index
-                            .grants_abilities
-                            .entry(card_id)
-                            .or_default()
-                            .push(ability.clone());
+        for effect in state.ordered_ongoing_effects() {
+            if effect
+                .source
+                .is_some_and(|source_id| blocked_sources.contains(&source_id))
+            {
+                continue;
+            }
+
+            match &effect.effect {
+                OngoingEffectKind::AreaModifier => {
+                    if let Some(source_id) = effect.source
+                        && let Some(card) = state.cards.get(&source_id)
+                        && card.get_zone().is_in_play()
+                    {
+                        add_blocked_sources_from_area_modifiers(
+                            &mut blocked_sources,
+                            card.area_modifiers(state),
+                        );
                     }
                 }
-                ContinuousEffect::GrantActivatedAbility {
-                    ability,
-                    affected_cards,
-                } => {
-                    for card_id in affected_cards.all(state) {
-                        index
-                            .grants_activated_abilities
-                            .entry(card_id)
-                            .or_default()
-                            .push(ability.clone());
+                OngoingEffectKind::Continuous(effect) => match effect {
+                    ContinuousEffect::GrantAbility {
+                        ability,
+                        affected_cards,
+                    } => {
+                        for card_id in affected_cards.all(state) {
+                            index
+                                .grants_abilities
+                                .entry(card_id)
+                                .or_default()
+                                .push(ability.clone());
+                            if ability == &Ability::Disabled {
+                                blocked_sources.insert(card_id);
+                            }
+                        }
                     }
-                }
-                ContinuousEffect::ModifyPower {
-                    power_diff,
-                    affected_cards,
-                } => {
-                    for card_id in affected_cards.all(state) {
-                        *index.power_diffs.entry(card_id).or_default() += *power_diff;
+                    ContinuousEffect::GrantActivatedAbility {
+                        ability,
+                        affected_cards,
+                    } => {
+                        for card_id in affected_cards.all(state) {
+                            index
+                                .grants_activated_abilities
+                                .entry(card_id)
+                                .or_default()
+                                .push(ability.clone());
+                        }
                     }
-                }
-                _ => {}
+                    ContinuousEffect::ModifyPower {
+                        power_diff,
+                        affected_cards,
+                    } => {
+                        for card_id in affected_cards.all(state) {
+                            *index.power_diffs.entry(card_id).or_default() += *power_diff;
+                        }
+                    }
+                    _ => {}
+                },
             }
         }
 
@@ -106,29 +144,76 @@ impl ContinuousEffectIndex {
 impl AreaModifierIndex {
     fn build(state: &State) -> Self {
         let mut index = Self::default();
+        let mut blocked_sources = HashSet::new();
 
-        for card in state.cards.values().filter(|c| c.get_zone().is_in_play()) {
-            let modifiers = card.area_modifiers(state);
-            merge_ability_modifier_map(
-                &mut index.ability_modifiers,
-                modifiers.grants_abilities,
-                AbilityModifier::Grant,
-            );
-            merge_ability_modifier_map(
-                &mut index.ability_modifiers,
-                modifiers.removes_abilities,
-                AbilityModifier::Remove,
-            );
-            if !card.is_flooded_site(state) {
-                merge_modifier_map(&mut index.grants_counters, modifiers.grants_counters);
-                merge_modifier_map(
-                    &mut index.grants_activated_abilities,
-                    modifiers.grants_activated_abilities,
-                );
+        for effect in state.ordered_ongoing_effects() {
+            if effect
+                .source
+                .is_some_and(|source_id| blocked_sources.contains(&source_id))
+            {
+                continue;
+            }
+
+            match &effect.effect {
+                OngoingEffectKind::AreaModifier => {
+                    if let Some(source_id) = effect.source
+                        && let Some(card) = state.cards.get(&source_id)
+                        && card.get_zone().is_in_play()
+                    {
+                        let modifiers = card.area_modifiers(state);
+                        merge_ability_modifier_map(
+                            &mut index.ability_modifiers,
+                            modifiers.grants_abilities,
+                            AbilityModifier::Grant,
+                        );
+                        for (card_id, removed) in &modifiers.removes_abilities {
+                            if is_silence_modifier(removed) {
+                                blocked_sources.insert(*card_id);
+                            }
+                        }
+                        merge_ability_modifier_map(
+                            &mut index.ability_modifiers,
+                            modifiers.removes_abilities,
+                            AbilityModifier::Remove,
+                        );
+                        if !card.is_flooded_site(state) {
+                            merge_modifier_map(&mut index.grants_counters, modifiers.grants_counters);
+                            merge_modifier_map(
+                                &mut index.grants_activated_abilities,
+                                modifiers.grants_activated_abilities,
+                            );
+                        }
+                    }
+                }
+                OngoingEffectKind::Continuous(ContinuousEffect::GrantAbility {
+                    ability,
+                    affected_cards,
+                }) if ability == &Ability::Disabled => {
+                    for card_id in affected_cards.all(state) {
+                        blocked_sources.insert(card_id);
+                    }
+                }
+                _ => {}
             }
         }
 
         index
+    }
+}
+
+fn is_silence_modifier(abilities: &[Ability]) -> bool {
+    let silenced = crate::card::silenced_abilities();
+    silenced.iter().all(|ability| abilities.contains(ability))
+}
+
+fn add_blocked_sources_from_area_modifiers(
+    blocked_sources: &mut HashSet<uuid::Uuid>,
+    modifiers: AreaModifiers,
+) {
+    for (card_id, removed) in modifiers.removes_abilities {
+        if is_silence_modifier(&removed) {
+            blocked_sources.insert(card_id);
+        }
     }
 }
 
@@ -387,10 +472,12 @@ pub struct State {
     pub server_tx: Sender<ServerMessage>,
     pub client_rx: Receiver<ClientMessage>,
     pub continuous_effects: Vec<ContinuousEffect>,
+    pub ongoing_effects: Vec<OngoingEffect>,
     pub player_mana: HashMap<PlayerId, u8>,
     pub loosers: HashSet<PlayerId>,
     pub players_skipping_turns: HashSet<PlayerId>,
     pub players_with_accepted_hands: HashSet<PlayerId>,
+    next_ongoing_effect_timestamp: u64,
     runtime_cache: StateRuntimeCache,
 }
 
@@ -434,10 +521,12 @@ impl State {
             server_tx,
             client_rx,
             continuous_effects: Vec::new(),
+            ongoing_effects: Vec::new(),
             player_mana,
             loosers: HashSet::new(),
             players_skipping_turns: HashSet::new(),
             players_with_accepted_hands: HashSet::new(),
+            next_ongoing_effect_timestamp: 1,
             runtime_cache: StateRuntimeCache::default(),
         }
     }
@@ -724,6 +813,127 @@ impl State {
         self.runtime_cache.clear();
     }
 
+    fn next_ongoing_effect_timestamp(&mut self) -> u64 {
+        let timestamp = self.next_ongoing_effect_timestamp;
+        self.next_ongoing_effect_timestamp += 1;
+        timestamp
+    }
+
+    fn ongoing_effect_layer(effect: &OngoingEffect) -> u8 {
+        match &effect.effect {
+            OngoingEffectKind::AreaModifier => 2,
+            OngoingEffectKind::Continuous(ContinuousEffect::ControllerOverride { .. }) => 3,
+            OngoingEffectKind::Continuous(ContinuousEffect::ModifyPower { .. }) => 6,
+            OngoingEffectKind::Continuous(ContinuousEffect::GrantAbility {
+                ability: Ability::Disabled,
+                ..
+            }) => 2,
+            OngoingEffectKind::Continuous(ContinuousEffect::FloodSites { .. })
+            | OngoingEffectKind::Continuous(ContinuousEffect::DroughtSites { .. })
+            | OngoingEffectKind::Continuous(ContinuousEffect::GrantAbility { .. })
+            | OngoingEffectKind::Continuous(ContinuousEffect::GrantActivatedAbility { .. }) => 5,
+            OngoingEffectKind::Continuous(_) => 5,
+        }
+    }
+
+    fn ordered_ongoing_effects(&self) -> Vec<&OngoingEffect> {
+        let mut effects = self.ongoing_effects.iter().enumerate().collect::<Vec<_>>();
+        effects.sort_by_key(|(idx, effect)| {
+            (
+                Self::ongoing_effect_layer(effect),
+                effect.timestamp,
+                *idx,
+            )
+        });
+        effects.into_iter().map(|(_, effect)| effect).collect()
+    }
+
+    fn refresh_continuous_effects(&mut self) {
+        self.continuous_effects = self
+            .ordered_ongoing_effects()
+            .into_iter()
+            .filter_map(|effect| match &effect.effect {
+                OngoingEffectKind::Continuous(effect) => Some(effect.clone()),
+                OngoingEffectKind::AreaModifier => None,
+            })
+            .collect();
+        self.invalidate_runtime_caches();
+    }
+
+    pub fn add_ongoing_effect(
+        &mut self,
+        effect: ContinuousEffect,
+        source: Option<uuid::Uuid>,
+    ) -> u64 {
+        let timestamp = self.next_ongoing_effect_timestamp();
+        self.ongoing_effects.push(OngoingEffect {
+            effect: OngoingEffectKind::Continuous(effect),
+            source,
+            timestamp,
+            passive: false,
+        });
+        self.refresh_continuous_effects();
+        timestamp
+    }
+
+    pub fn remove_ongoing_effects_from_source(&mut self, source_id: &uuid::Uuid) {
+        self.ongoing_effects
+            .retain(|effect| !(effect.passive && effect.source == Some(*source_id)));
+        self.refresh_continuous_effects();
+    }
+
+    async fn replace_passive_ongoing_effects_for_source(
+        &mut self,
+        source_id: &uuid::Uuid,
+    ) -> anyhow::Result<()> {
+        let timestamp = match self
+            .ongoing_effects
+            .iter()
+            .find(|effect| effect.passive && effect.source == Some(*source_id))
+            .map(|effect| effect.timestamp)
+        {
+            Some(timestamp) => timestamp,
+            None => self.next_ongoing_effect_timestamp(),
+        };
+
+        let Some(card) = self.cards.get(source_id) else {
+            self.remove_ongoing_effects_from_source(source_id);
+            return Ok(());
+        };
+        if !card.get_zone().is_in_play() {
+            self.remove_ongoing_effects_from_source(source_id);
+            return Ok(());
+        }
+
+        let continuous_effects = card.get_continuous_effects(self).await?;
+
+        self.ongoing_effects
+            .retain(|effect| !(effect.passive && effect.source == Some(*source_id)));
+        self.ongoing_effects.push(OngoingEffect {
+            effect: OngoingEffectKind::AreaModifier,
+            source: Some(*source_id),
+            timestamp,
+            passive: true,
+        });
+        for effect in continuous_effects {
+            self.ongoing_effects.push(OngoingEffect {
+                effect: OngoingEffectKind::Continuous(effect),
+                source: Some(*source_id),
+                timestamp,
+                passive: true,
+            });
+        }
+        self.refresh_continuous_effects();
+        Ok(())
+    }
+
+    pub async fn add_passive_ongoing_effects_for_source(
+        &mut self,
+        source_id: &uuid::Uuid,
+    ) -> anyhow::Result<()> {
+        self.replace_passive_ongoing_effects_for_source(source_id).await
+    }
+
     fn with_area_modifier_index<T>(&self, f: impl FnOnce(&AreaModifierIndex) -> T) -> T {
         {
             let index = self
@@ -855,6 +1065,29 @@ impl State {
         self.with_continuous_effect_index(|index| {
             index.power_diffs.get(card_id).copied().unwrap_or_default()
         })
+    }
+
+    pub fn water_site_status_from_continuous_effects(
+        &self,
+        card_id: &uuid::Uuid,
+    ) -> Option<bool> {
+        let mut status = None;
+        for effect in &self.continuous_effects {
+            match effect {
+                ContinuousEffect::FloodSites { affected_sites }
+                    if affected_sites.matches(card_id, self) =>
+                {
+                    status = Some(true);
+                }
+                ContinuousEffect::DroughtSites { affected_sites }
+                    if affected_sites.matches(card_id, self) =>
+                {
+                    status = Some(false);
+                }
+                _ => {}
+            }
+        }
+        status
     }
 
     pub fn get_thresholds_for_player(&self, player_id: &PlayerId) -> Thresholds {
@@ -998,22 +1231,47 @@ impl State {
         water_zones.len() as u16
     }
 
-    pub async fn compute_world_effects(&mut self) -> anyhow::Result<()> {
+    pub async fn reconcile_ongoing_effects_for_test(&mut self) -> anyhow::Result<()> {
         self.invalidate_runtime_caches();
-        self.continuous_effects.clear();
 
-        for card in self.cards.values() {
-            if !card.get_zone().is_in_play() {
-                continue;
-            }
+        let sources_to_remove = self
+            .ongoing_effects
+            .iter()
+            .filter_map(|effect| {
+                let source_id = effect.source?;
+                let source_in_play = self
+                    .cards
+                    .get(&source_id)
+                    .is_some_and(|card| card.get_zone().is_in_play());
+                if effect.passive && !source_in_play {
+                    Some(source_id)
+                } else {
+                    None
+                }
+            })
+            .collect::<HashSet<_>>();
+        for source_id in sources_to_remove {
+            self.remove_ongoing_effects_from_source(&source_id);
+        }
 
-            let card_world_effects = card.get_continuous_effects(self).await?;
-            for effect in card_world_effects {
-                self.continuous_effects.push(effect);
+        let in_play_sources = self
+            .cards
+            .values()
+            .filter(|card| card.get_zone().is_in_play())
+            .map(|card| *card.get_id())
+            .collect::<Vec<_>>();
+        for source_id in in_play_sources {
+            let has_passive_effect = self
+                .ongoing_effects
+                .iter()
+                .any(|effect| effect.passive && effect.source == Some(source_id));
+            if !has_passive_effect {
+                self.replace_passive_ongoing_effects_for_source(&source_id)
+                    .await?;
             }
         }
 
-        self.invalidate_runtime_caches();
+        self.refresh_continuous_effects();
         Ok(())
     }
 

@@ -2054,14 +2054,21 @@ impl<T: Card + ?Sized> ResourceProviderBaseMethods for T {
                     .get_site()
                     .ok_or(anyhow::anyhow!("site card does not implement site"))?;
                 let mut thresholds = site_base.provided_thresholds.clone();
-                if site.is_flooded(state)? {
-                    thresholds.fire = 0;
-                    thresholds.air = 0;
-                    thresholds.earth = 0;
-                    thresholds.water = std::cmp::max(1, thresholds.water);
-                }
-                if site.is_droughted(state)? {
-                    thresholds.water = 0;
+                match state.water_site_status_from_continuous_effects(self.get_id()) {
+                    Some(true) => {
+                        thresholds.fire = 0;
+                        thresholds.air = 0;
+                        thresholds.earth = 0;
+                        thresholds.water = std::cmp::max(1, thresholds.water);
+                    }
+                    Some(false) => thresholds.water = 0,
+                    None if site.is_flooded(state)? => {
+                        thresholds.fire = 0;
+                        thresholds.air = 0;
+                        thresholds.earth = 0;
+                        thresholds.water = std::cmp::max(1, thresholds.water);
+                    }
+                    None => {}
                 }
 
                 state.continuous_effects.iter().for_each(|ce| {
@@ -2178,24 +2185,12 @@ pub trait Site: Card + ResourceProvider {
         }
 
         Ok(state
-            .continuous_effects
-            .iter()
-            .find(|ce| match ce {
-                ContinuousEffect::FloodSites { affected_sites } => {
-                    affected_sites.matches(self.get_id(), state)
-                }
-                _ => false,
-            })
-            .is_some())
+            .water_site_status_from_continuous_effects(self.get_id())
+            .unwrap_or(false))
     }
 
     fn is_droughted(&self, state: &State) -> anyhow::Result<bool> {
-        Ok(state.continuous_effects.iter().any(|ce| match ce {
-            ContinuousEffect::DroughtSites { affected_sites } => {
-                affected_sites.matches(self.get_id(), state)
-            }
-            _ => false,
-        }))
+        Ok(state.water_site_status_from_continuous_effects(self.get_id()) == Some(false))
     }
 }
 

@@ -53,7 +53,7 @@ async fn test_astral_alcazar_connects_site_to_any_void() {
     unit.set_zone(Zone::Location(8, Region::Surface));
     state.cards.insert(*unit.get_id(), Box::new(unit.clone()));
 
-    state.compute_world_effects().await.unwrap();
+    state.reconcile_ongoing_effects_for_test().await.unwrap();
 
     let zones = unit
         .get_valid_move_zones(&state)
@@ -77,7 +77,7 @@ async fn test_astral_alcazar_does_not_connect_any_void_to_site() {
     unit.set_zone(Zone::Location(20, Region::Void));
     state.cards.insert(*unit.get_id(), Box::new(unit.clone()));
 
-    state.compute_world_effects().await.unwrap();
+    state.reconcile_ongoing_effects_for_test().await.unwrap();
 
     let zones = unit
         .get_valid_move_zones(&state)

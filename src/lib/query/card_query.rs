@@ -51,8 +51,10 @@ enum SpatialFilter {
     AdjacentLocationsToAny(Vec<Zone>),
     NearbyLocations(Zone),
     NearbyLocationsToCard(uuid::Uuid),
+    AffectedZonesOfCard(uuid::Uuid),
     AdjacentSites(Zone),
     NearbySites(Zone),
+    NearbySitesToCard(uuid::Uuid),
     AdjacentVoids(Zone),
     NearbyVoids(Zone),
 }
@@ -80,8 +82,22 @@ impl<'a> PreparedCardQuery<'a> {
                     .get(card_id)
                     .map(|card| card.get_zone().get_nearby_locations(state))
                     .unwrap_or_default(),
+                SpatialFilter::AffectedZonesOfCard(card_id) => state
+                    .cards
+                    .get(card_id)
+                    .map(|card| {
+                        card.get_aura()
+                            .map(|aura| aura.get_affected_zones(state))
+                            .unwrap_or_else(|| vec![card.get_zone().clone()])
+                    })
+                    .unwrap_or_default(),
                 SpatialFilter::AdjacentSites(zone) => zone.get_adjacent_sites(state),
                 SpatialFilter::NearbySites(zone) => zone.get_nearby_sites(state),
+                SpatialFilter::NearbySitesToCard(card_id) => state
+                    .cards
+                    .get(card_id)
+                    .map(|card| card.get_zone().get_nearby_sites(state))
+                    .unwrap_or_default(),
                 SpatialFilter::AdjacentVoids(zone) => zone.get_adjacent_voids(state),
                 SpatialFilter::NearbyVoids(zone) => zone.get_nearby_voids(state),
             })
@@ -719,6 +735,12 @@ impl CardQuery {
         self
     }
 
+    pub fn in_affected_zones_of_card(mut self, card_id: &uuid::Uuid) -> Self {
+        self.spatial_filters
+            .push(SpatialFilter::AffectedZonesOfCard(*card_id));
+        self
+    }
+
     pub fn adjacent_sites_to(mut self, zone: &Zone) -> Self {
         self.spatial_filters
             .push(SpatialFilter::AdjacentSites(zone.clone()));
@@ -728,6 +750,12 @@ impl CardQuery {
     pub fn nearby_sites_to(mut self, zone: &Zone) -> Self {
         self.spatial_filters
             .push(SpatialFilter::NearbySites(zone.clone()));
+        self
+    }
+
+    pub fn nearby_sites_to_card(mut self, card_id: &uuid::Uuid) -> Self {
+        self.spatial_filters
+            .push(SpatialFilter::NearbySitesToCard(*card_id));
         self
     }
 

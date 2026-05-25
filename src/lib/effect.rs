@@ -846,6 +846,11 @@ impl Effect {
                 let is_token = state.get_card(card_id).is_token();
                 let card = state.get_card_mut(card_id);
                 card.set_zone(zone.clone());
+                if was_in_play && !zone.is_in_play() {
+                    state.remove_ongoing_effects_from_source(card_id);
+                } else if !was_in_play && zone.is_in_play() {
+                    state.add_passive_ongoing_effects_for_source(card_id).await?;
+                }
                 match original_zone {
                     Zone::Spellbook => {
                         state.get_player_deck_mut(&owner_id)?.spells.retain(|id| id != card_id);
@@ -889,8 +894,10 @@ impl Effect {
                     // Non-unit tokens are just placed directly onto the board without going through
                     // SummonCards, since they don't need to trigger any on_summon or genesis effects.
                     let mut token = token;
+                    let token_id = *token.get_id();
                     token.set_zone(zone.clone());
-                    state.cards.insert(*token.get_id(), token);
+                    state.cards.insert(token_id, token);
+                    state.add_passive_ongoing_effects_for_source(&token_id).await?;
                     state.invalidate_runtime_caches();
                 }
             }
@@ -1228,15 +1235,20 @@ impl Effect {
                         cards: vec![(*player_id, *card_id, zone)],
                     });
                 } else {
-                    let card = state
-                        .cards
-                        .values_mut()
-                        .find(|c| c.get_id() == card_id)
-                        .expect("to find card");
-                    card.set_controller_id(player_id);
-                    let from_zone = card.get_zone().clone();
-                    let cast_effects = card.on_summon(&snapshot)?;
-                    card.set_zone(zone.clone());
+                    let (from_zone, cast_effects) = {
+                        let card = state
+                            .cards
+                            .values_mut()
+                            .find(|c| c.get_id() == card_id)
+                            .expect("to find card");
+                        card.set_controller_id(player_id);
+                        let from_zone = card.get_zone().clone();
+                        let cast_effects = card.on_summon(&snapshot)?;
+                        card.set_zone(zone.clone());
+                        (from_zone, cast_effects)
+                    };
+                    state.add_passive_ongoing_effects_for_source(card_id).await?;
+                    let card = state.get_card(card_id);
                     let mut effects = card.genesis(&snapshot).await?;
                     effects.extend(card.on_visit_zone(&snapshot, &from_zone, &zone).await?);
                     state.queue(effects);
@@ -1256,6 +1268,11 @@ impl Effect {
                         if !has_charge {
                             card.add_ability(Ability::SummoningSickness);
                         }
+                    }
+                    if !original_zone.is_in_play() && zone.is_in_play() {
+                        state.add_passive_ongoing_effects_for_source(card_id).await?;
+                    } else if original_zone.is_in_play() && !zone.is_in_play() {
+                        state.remove_ongoing_effects_from_source(card_id);
                     }
                     match original_zone {
                         Zone::Spellbook => {
@@ -2049,12 +2066,16 @@ impl Effect {
                 state.cards.insert(copy_id, copy);
                 state.invalidate_runtime_caches();
 
-                let card = state.get_card_mut(&copy_id);
-                let from_zone = card.get_zone().clone();
-                card.set_zone(zone.clone());
-                if !has_charge {
-                    card.add_ability(Ability::SummoningSickness);
-                }
+                let from_zone = {
+                    let card = state.get_card_mut(&copy_id);
+                    let from_zone = card.get_zone().clone();
+                    card.set_zone(zone.clone());
+                    if !has_charge {
+                        card.add_ability(Ability::SummoningSickness);
+                    }
+                    from_zone
+                };
+                state.add_passive_ongoing_effects_for_source(&copy_id).await?;
 
                 crate::game::force_sync_all(state).await?;
 
@@ -2067,6 +2088,7 @@ impl Effect {
                 state.queue(effects);
             }
             Effect::RemoveCardFromGame { card_id } => {
+                state.remove_ongoing_effects_from_source(card_id);
                 state.cards.retain(|_, c| c.get_id() != card_id);
                 state.invalidate_runtime_caches();
             }

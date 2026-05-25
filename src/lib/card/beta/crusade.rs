@@ -60,7 +60,6 @@ impl Card for Crusade {
     }
 
     async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
-        let affected_zones = self.get_affected_zones(state);
         let controller_id = self.get_controller_id(state);
         Ok(vec![
             ContinuousEffect::OverrideValidPlayZone {
@@ -73,7 +72,7 @@ impl Card for Crusade {
             ContinuousEffect::ModifyPower {
                 power_diff: 1,
                 affected_cards: CardQuery::new()
-                    .in_zones(&affected_zones)
+                    .in_affected_zones_of_card(self.get_id())
                     .controlled_by(&controller_id)
                     .minions()
                     .with_affinity_in(vec![Element::Earth]),

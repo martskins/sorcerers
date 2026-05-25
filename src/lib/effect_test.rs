@@ -1021,7 +1021,7 @@ async fn test_play_card_minion_ends_in_target_zone() {
     let (mut state, _rx) = make_state(vec![Zone::Location(1, Region::Surface)]);
     let player_id = state.players[0].id;
     *state.get_player_mana_mut(&player_id) = 3;
-    state.compute_world_effects().await.unwrap();
+    state.reconcile_ongoing_effects_for_test().await.unwrap();
 
     let mut ogre = OgreGoons::new(player_id);
     let ogre_id = *ogre.get_id();
@@ -1054,7 +1054,7 @@ async fn test_play_card_minion_has_summoning_sickness() {
     let (mut state, _rx) = make_state(vec![Zone::Location(1, Region::Surface)]);
     let player_id = state.players[0].id;
     *state.get_player_mana_mut(&player_id) = 3;
-    state.compute_world_effects().await.unwrap();
+    state.reconcile_ongoing_effects_for_test().await.unwrap();
 
     let mut ogre = OgreGoons::new(player_id);
     let ogre_id = *ogre.get_id();

@@ -59,10 +59,11 @@ impl Card for Flood {
         Some(self)
     }
 
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
-        let affected_zones = self.get_affected_zones(state);
+    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
         Ok(vec![ContinuousEffect::FloodSites {
-            affected_sites: CardQuery::new().in_zones(&affected_zones).sites(),
+            affected_sites: CardQuery::new()
+                .in_affected_zones_of_card(self.get_id())
+                .sites(),
         }])
     }
 }

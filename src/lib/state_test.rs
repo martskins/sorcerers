@@ -1,8 +1,8 @@
 use crate::{
     card::{
         Ability, AridDesert, BeastOfBurden, Card, CauldronCrones, CourtesanThais, DonnybrookInn,
-        Enchantress, FootSoldier, HeadlessHaunt, KiteArcher, NimbusJinn, Region, RimlandNomads,
-        Rubble, from_name_and_zone,
+        Drought, Enchantress, Flood, FootSoldier, HeadlessHaunt, KiteArcher, NimbusJinn, Region,
+        RimlandNomads, Rubble, SistersOfSilence, SmokestacksOfGnaak, from_name_and_zone,
     },
     deck::Deck,
     effect::Effect,
@@ -70,6 +70,26 @@ fn setup_carrying_state() -> (State, async_channel::Receiver<ServerMessage>) {
         client_rx,
     );
     (state, server_rx)
+}
+
+async fn insert_realm_card(state: &mut State, mut card: Box<dyn Card>, zone: Zone) -> uuid::Uuid {
+    let card_id = *card.get_id();
+    card.set_zone(zone);
+    state.cards.insert(card_id, card);
+    state
+        .add_passive_ongoing_effects_for_source(&card_id)
+        .await
+        .unwrap();
+    card_id
+}
+
+fn passive_ongoing_timestamps_for_source(state: &State, source_id: &uuid::Uuid) -> Vec<u64> {
+    state
+        .ongoing_effects
+        .iter()
+        .filter(|effect| effect.passive && effect.source == Some(*source_id))
+        .map(|effect| effect.timestamp)
+        .collect()
 }
 
 #[tokio::test]
@@ -499,7 +519,7 @@ async fn test_get_effective_costs_donnybrook_inn() {
         .cards
         .insert(*cauldron_crones.get_id(), Box::new(cauldron_crones.clone()));
 
-    state.compute_world_effects().await.unwrap();
+    state.reconcile_ongoing_effects_for_test().await.unwrap();
     let regular_costs = state
         .get_effective_costs(cauldron_crones.get_id(), None, &player_id)
         .unwrap();
@@ -526,7 +546,7 @@ async fn test_get_effective_costs_ignoring_thresholds() {
         .cards
         .insert(*cauldron_crones.get_id(), Box::new(cauldron_crones.clone()));
 
-    state.compute_world_effects().await.unwrap();
+    state.reconcile_ongoing_effects_for_test().await.unwrap();
     let regular_costs = state
         .get_effective_costs(cauldron_crones.get_id(), None, &player_id)
         .unwrap();
@@ -637,6 +657,204 @@ fn test_card_query_spatial_filters_resolve_with_current_state() {
     state.cards.insert(site_id, Box::new(site));
 
     assert!(query.matches(&site_id, &state));
+}
+
+#[tokio::test]
+async fn test_sisters_of_silence_use_timestamp_order_for_dependent_effects() {
+    let mut state = State::new_mock_state(vec![]);
+    let player_id = state.players[0].id;
+
+    let mut older_sisters = SistersOfSilence::new(player_id);
+    older_sisters.add_ability(Ability::Airborne);
+    let older_id = insert_realm_card(
+        &mut state,
+        Box::new(older_sisters),
+        Zone::Location(7, Region::Surface),
+    )
+    .await;
+
+    let mut newer_sisters = SistersOfSilence::new(player_id);
+    newer_sisters.add_ability(Ability::Airborne);
+    let newer_id = insert_realm_card(
+        &mut state,
+        Box::new(newer_sisters),
+        Zone::Location(8, Region::Surface),
+    )
+    .await;
+
+    assert!(state.get_card(&older_id).has_ability(&state, &Ability::Airborne));
+    assert!(!state.get_card(&newer_id).has_ability(&state, &Ability::Airborne));
+}
+
+#[tokio::test]
+async fn test_smokestacks_of_gnaak_use_timestamp_order_for_dependent_effects() {
+    let mut state = State::new_mock_state(vec![]);
+    let player_id = state.players[0].id;
+
+    let older_id = insert_realm_card(
+        &mut state,
+        Box::new(SmokestacksOfGnaak::new(player_id)),
+        Zone::Location(7, Region::Surface),
+    )
+    .await;
+    let newer_id = insert_realm_card(
+        &mut state,
+        Box::new(SmokestacksOfGnaak::new(player_id)),
+        Zone::Location(8, Region::Surface),
+    )
+    .await;
+
+    assert!(!state.get_card(&older_id).has_ability(&state, &Ability::Disabled));
+    assert!(state.get_card(&newer_id).has_ability(&state, &Ability::Disabled));
+}
+
+#[tokio::test]
+async fn test_flood_and_drought_use_timestamp_order_for_water_affinity() {
+    let mut state = State::new_mock_state(vec![]);
+    let player_id = state.players[0].id;
+    let site_id = insert_realm_card(
+        &mut state,
+        Box::new(AridDesert::new(player_id)),
+        Zone::Location(7, Region::Surface),
+    )
+    .await;
+    insert_realm_card(
+        &mut state,
+        Box::new(Flood::new(player_id)),
+        Zone::Location(7, Region::Surface),
+    )
+    .await;
+    insert_realm_card(
+        &mut state,
+        Box::new(Drought::new(player_id)),
+        Zone::Location(7, Region::Surface),
+    )
+    .await;
+
+    let site = state.get_card(&site_id).get_resource_provider().unwrap();
+    assert_eq!(site.provided_affinity(&state).unwrap().water, 0);
+
+    let mut state = State::new_mock_state(vec![]);
+    let player_id = state.players[0].id;
+    let site_id = insert_realm_card(
+        &mut state,
+        Box::new(AridDesert::new(player_id)),
+        Zone::Location(7, Region::Surface),
+    )
+    .await;
+    insert_realm_card(
+        &mut state,
+        Box::new(Drought::new(player_id)),
+        Zone::Location(7, Region::Surface),
+    )
+    .await;
+    insert_realm_card(
+        &mut state,
+        Box::new(Flood::new(player_id)),
+        Zone::Location(7, Region::Surface),
+    )
+    .await;
+
+    let site = state.get_card(&site_id).get_resource_provider().unwrap();
+    assert_eq!(site.provided_affinity(&state).unwrap().water, 1);
+}
+
+#[tokio::test]
+async fn test_passive_ongoing_effect_lifecycle_tracks_realm_entry_and_exit() {
+    let (mut state, _rx) = setup_carrying_state();
+    let player_id = state.players[0].id;
+
+    let source_id = insert_realm_card(
+        &mut state,
+        Box::new(DonnybrookInn::new(player_id)),
+        Zone::Location(7, Region::Surface),
+    )
+    .await;
+    let first_timestamps = passive_ongoing_timestamps_for_source(&state, &source_id);
+    assert!(!first_timestamps.is_empty());
+
+    Effect::SetCardZone {
+        card_id: source_id,
+        zone: Zone::Location(8, Region::Surface),
+    }
+    .apply(&mut state)
+    .await
+    .unwrap();
+    let moved_timestamps = passive_ongoing_timestamps_for_source(&state, &source_id);
+    assert_eq!(moved_timestamps, first_timestamps);
+    state.reconcile_ongoing_effects_for_test().await.unwrap();
+    assert_eq!(
+        passive_ongoing_timestamps_for_source(&state, &source_id),
+        first_timestamps
+    );
+
+    Effect::SetCardZone {
+        card_id: source_id,
+        zone: Zone::Hand,
+    }
+    .apply(&mut state)
+    .await
+    .unwrap();
+    assert!(passive_ongoing_timestamps_for_source(&state, &source_id).is_empty());
+
+    Effect::SetCardZone {
+        card_id: source_id,
+        zone: Zone::Location(9, Region::Surface),
+    }
+    .apply(&mut state)
+    .await
+    .unwrap();
+    let reentered_timestamps = passive_ongoing_timestamps_for_source(&state, &source_id);
+    assert!(!reentered_timestamps.is_empty());
+    assert!(reentered_timestamps.iter().all(|timestamp| {
+        first_timestamps
+            .iter()
+            .all(|first_timestamp| timestamp > first_timestamp)
+    }));
+}
+
+#[tokio::test]
+async fn test_source_relative_ongoing_effects_follow_source_without_refreshing() {
+    let (mut state, _rx) = setup_carrying_state();
+    let player_id = state.players[0].id;
+
+    let source_id = insert_realm_card(
+        &mut state,
+        Box::new(SmokestacksOfGnaak::new(player_id)),
+        Zone::Location(7, Region::Surface),
+    )
+    .await;
+    let target_id = insert_realm_card(
+        &mut state,
+        Box::new(SmokestacksOfGnaak::new(player_id)),
+        Zone::Location(8, Region::Surface),
+    )
+    .await;
+    let initial_timestamps = passive_ongoing_timestamps_for_source(&state, &source_id);
+
+    assert!(state.get_card(&target_id).has_ability(&state, &Ability::Disabled));
+
+    let target_zone = Zone::Location(8, Region::Surface);
+    let new_source_zone = Zone::all_realm()
+        .into_iter()
+        .find(|zone| {
+            zone != &target_zone
+                && !zone.get_nearby_sites(&state).contains(&target_zone)
+        })
+        .expect("a non-nearby source zone should exist");
+    Effect::SetCardZone {
+        card_id: source_id,
+        zone: new_source_zone,
+    }
+    .apply(&mut state)
+    .await
+    .unwrap();
+
+    assert_eq!(
+        passive_ongoing_timestamps_for_source(&state, &source_id),
+        initial_timestamps
+    );
+    assert!(!state.get_card(&target_id).has_ability(&state, &Ability::Disabled));
 }
 
 #[test]

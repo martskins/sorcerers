@@ -65,7 +65,7 @@ impl Card for ShieldMaidens {
             affected_cards: CardQuery::new()
                 .minions()
                 .controlled_by(&self.get_controller_id(state))
-                .in_zones(&self.get_zone().get_nearby()),
+                .nearby_locations_to_card(self.get_id()),
         }])
     }
 }
