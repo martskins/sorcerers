@@ -6,8 +6,8 @@ use crate::{
     theme,
 };
 use egui::{
-    Color32, Context, CursorIcon, Painter, Pos2, Rect, RichText, Sense, Stroke, Ui, Vec2,
-    epaint::Shape, pos2, vec2,
+    Color32, Context, CursorIcon, Painter, Pos2, Rect, Sense, Stroke, Ui, Vec2, epaint::Shape,
+    pos2, vec2,
 };
 use rand::SeedableRng;
 use sorcerers::{
@@ -20,9 +20,8 @@ use sorcerers::{
 mod geometry;
 
 use geometry::{
-    RealmViewMode, board_corners, card_rotation, cell_corners, cell_inner_rect, cell_rect,
-    intersection_rect, project_rect_in_cell, projected_card_dimensions, realm_view_mode,
-    set_realm_view_mode, site_dimensions, spell_dimensions,
+    board_corners, card_corners, card_rotation, cell_corners, cell_inner_rect, cell_rect,
+    intersection_rect, projected_card_dimensions, site_dimensions, spell_dimensions,
 };
 
 static OCCUPIED_ZONE_BACKGROUND_COLOR: Color32 =
@@ -789,10 +788,6 @@ impl RealmComponent {
         Ok(())
     }
 
-    fn render_prompt(&self, _data: &GameData, _painter: &Painter) -> anyhow::Result<()> {
-        Ok(())
-    }
-
     fn render_view_controls(&mut self, ui: &mut Ui) {
         let button_pos = pos2(self.rect.min.x + 18.0, self.rect.min.y + 18.0);
         egui::Area::new(egui::Id::new("realm_view_controls"))
@@ -800,35 +795,6 @@ impl RealmComponent {
             .order(egui::Order::Foreground)
             .show(ui.ctx(), |ui| {
                 ui.horizontal(|ui| {
-                    let mode = realm_view_mode();
-                    let next_mode = match mode {
-                        RealmViewMode::Perspective3d => RealmViewMode::TopDown2d,
-                        RealmViewMode::TopDown2d => RealmViewMode::Perspective3d,
-                    };
-                    let button_label = match mode {
-                        RealmViewMode::Perspective3d => "3D View",
-                        RealmViewMode::TopDown2d => "2D View",
-                    };
-
-                    if ui
-                        .add(
-                            egui::Button::new(
-                                RichText::new(button_label)
-                                    .size(14.0)
-                                    .color(theme::TEXT_BRIGHT),
-                            )
-                            .min_size(vec2(84.0, 30.0)),
-                        )
-                        .on_hover_text("Switch realm view")
-                        .clicked()
-                    {
-                        set_realm_view_mode(next_mode);
-                        self.refresh_geometry();
-                        self.card_rects.clear();
-                    }
-
-                    ui.add_space(8.0);
-
                     for filter in [
                         RealmCardFilter::All,
                         RealmCardFilter::Surface,
@@ -1044,15 +1010,8 @@ impl Component for RealmComponent {
             }
 
             let resp = ui.allocate_rect(card_rect.rect, Sense::HOVER | Sense::CLICK | Sense::DRAG);
-            if let Zone::Location(cell_id, _) = card_rect.card.zone {
-                let corners = project_rect_in_cell(
-                    &realm_rect,
-                    cell_id,
-                    mirrored,
-                    card_rect.rect,
-                    18.0,
-                    card_rotation(&card_rect.card),
-                );
+            if matches!(card_rect.card.zone, Zone::Location(_, _)) {
+                let corners = card_corners(card_rect.rect, card_rotation(&card_rect.card));
                 render::draw_projected_card(
                     card_rect,
                     card_rect.card.controller_id == self.player_id,
@@ -1069,13 +1028,9 @@ impl Component for RealmComponent {
                 );
             }
 
-            let visual_rect = if let Zone::Location(cell_id, _) = card_rect.card.zone {
-                Rect::from_points(&project_rect_in_cell(
-                    &realm_rect,
-                    cell_id,
-                    mirrored,
+            let visual_rect = if matches!(card_rect.card.zone, Zone::Location(_, _)) {
+                Rect::from_points(&card_corners(
                     card_rect.rect,
-                    18.0,
                     card_rotation(&card_rect.card),
                 ))
             } else {
@@ -1139,17 +1094,9 @@ impl Component for RealmComponent {
                 && !cards.contains(&card_rect.card.id)
             {
                 let overlay_color = Color32::from_rgba_unmultiplied(100, 100, 100, 153);
-                if let Zone::Location(cell_id, _) = card_rect.card.zone {
+                if matches!(card_rect.card.zone, Zone::Location(_, _)) {
                     painter.add(Shape::convex_polygon(
-                        project_rect_in_cell(
-                            &realm_rect,
-                            cell_id,
-                            mirrored,
-                            card_rect.rect,
-                            18.0,
-                            card_rotation(&card_rect.card),
-                        )
-                        .to_vec(),
+                        card_corners(card_rect.rect, card_rotation(&card_rect.card)).to_vec(),
                         overlay_color,
                         Stroke::NONE,
                     ));
@@ -1213,20 +1160,13 @@ impl Component for RealmComponent {
                 image: flight.image.clone(),
                 is_selected: false,
             };
-            if let Zone::Location(cell_id, _) = card_rect.card.zone {
+            if matches!(card_rect.card.zone, Zone::Location(_, _)) {
                 render::draw_projected_card(
                     &card_rect,
                     card_rect.card.controller_id == self.player_id,
                     true,
                     painter,
-                    project_rect_in_cell(
-                        &self.rect,
-                        cell_id,
-                        self.mirrored,
-                        card_rect.rect,
-                        18.0,
-                        rotation,
-                    ),
+                    card_corners(card_rect.rect, rotation),
                 );
             } else {
                 render::draw_card_with_rotation(
@@ -1247,7 +1187,6 @@ impl Component for RealmComponent {
 
         self.render_paths(ui, data, painter);
         self.render_direction_picker(ui, data, painter)?;
-        self.render_prompt(data, painter)?;
         self.render_view_controls(ui);
 
         Ok(None)
