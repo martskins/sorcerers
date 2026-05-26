@@ -7,6 +7,7 @@ impl EffectEngine {
         while !game.state.effects.is_empty() {
             let effect = game.state.effects.pop_back();
             if let Some(effect) = effect {
+                let losers_before = game.state.loosers.clone();
                 match effect.apply(&mut game.state).await {
                     Ok(_) => {}
                     Err(e) => {
@@ -18,6 +19,11 @@ impl EffectEngine {
 
                 Game::dispell_auras(&mut game.state).await?;
                 game.broadcast(&game.make_sync()?).await?;
+                if game.state.loosers != losers_before
+                    && let Some(message) = game.game_over_message()
+                {
+                    game.broadcast(&message).await?;
+                }
             }
         }
 

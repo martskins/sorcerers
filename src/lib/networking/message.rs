@@ -73,6 +73,10 @@ pub enum ServerMessage {
     PlayerDisconnected {
         player_id: PlayerId,
     },
+    GameOver {
+        winner_id: PlayerId,
+        winner_name: String,
+    },
     Resume {
         player_id: PlayerId,
     },
@@ -210,6 +214,7 @@ impl ServerMessage {
             ServerMessage::Sync { .. } => uuid::Uuid::nil(),
             ServerMessage::ForceSync { player_id, .. } => *player_id,
             ServerMessage::PlayerDisconnected { player_id } => *player_id,
+            ServerMessage::GameOver { .. } => uuid::Uuid::nil(),
             ServerMessage::PickCards { player_id, .. } => *player_id,
             ServerMessage::RevealCards { player_id, .. } => *player_id,
             ServerMessage::DistributeDamage { player_id, .. } => *player_id,

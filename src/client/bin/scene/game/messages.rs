@@ -19,6 +19,16 @@ impl Game {
                 };
                 None
             }
+            ServerMessage::GameOver {
+                winner_id,
+                winner_name,
+            } => {
+                self.data.status = Status::GameOver {
+                    winner_id: *winner_id,
+                    winner_name: winner_name.clone(),
+                };
+                None
+            }
             ServerMessage::Resume { .. } => {
                 self.data.status = Status::Idle;
                 None

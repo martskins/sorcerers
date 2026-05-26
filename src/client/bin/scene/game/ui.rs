@@ -80,6 +80,7 @@ impl Game {
                     ..
                 }
                 | Status::GameAborted { .. }
+                | Status::GameOver { .. }
         );
         if needs_overlay {
             painter.rect_filled(
@@ -139,6 +140,10 @@ impl Game {
                 None
             }
             Status::GameAborted { reason } => self.render_aborted_window(ui, reason),
+            Status::GameOver {
+                winner_id,
+                winner_name,
+            } => self.render_game_over_window(ui, *winner_id, winner_name),
             _ => None,
         }
     }
@@ -473,6 +478,78 @@ impl Game {
         if new_scene.is_some() {
             self.data.status = Status::Idle;
         }
+        new_scene
+    }
+
+    fn render_game_over_window(
+        &mut self,
+        ui: &mut Ui,
+        winner_id: PlayerId,
+        winner_name: &str,
+    ) -> Option<Scene> {
+        let sr = screen_rect().unwrap_or(Rect::ZERO);
+        let panel_w = 360.0_f32.min(sr.width() - 32.0);
+        let panel_h = 190.0_f32.min(sr.height() - 32.0);
+        let origin = pos2(sr.center().x - panel_w / 2.0, sr.center().y - panel_h / 2.0);
+        let mut new_scene = None;
+        let result = if winner_id == self.data.player_id {
+            "Victory"
+        } else {
+            "Defeat"
+        };
+
+        egui::Area::new(egui::Id::new("game_over_window"))
+            .fixed_pos(origin)
+            .order(egui::Order::Foreground)
+            .show(ui.ctx(), |ui| {
+                egui::Frame::new()
+                    .fill(theme::PANEL_BG)
+                    .stroke(egui::Stroke::new(1.0, theme::PANEL_BORDER))
+                    .corner_radius(8.0)
+                    .inner_margin(egui::Margin::same(18))
+                    .show(ui, |ui| {
+                        ui.set_min_size(vec2(panel_w - 36.0, panel_h - 36.0));
+                        ui.vertical_centered(|ui| {
+                            ui.label(
+                                RichText::new("Game Over")
+                                    .size(17.0)
+                                    .color(theme::TURN_WAITING),
+                            );
+                            ui.add_space(8.0);
+                            ui.label(
+                                RichText::new(result)
+                                    .size(30.0)
+                                    .strong()
+                                    .color(if winner_id == self.data.player_id {
+                                        theme::TURN_READY
+                                    } else {
+                                        Color32::from_rgb(224, 96, 104)
+                                    }),
+                            );
+                            ui.add_space(8.0);
+                            ui.label(
+                                RichText::new(format!("{winner_name} wins"))
+                                    .size(16.0)
+                                    .color(theme::TEXT_BRIGHT),
+                            );
+                            ui.add_space(18.0);
+                            if ui
+                                .add(
+                                    egui::Button::new(
+                                        RichText::new("Back to Menu")
+                                            .size(15.0)
+                                            .color(Color32::WHITE),
+                                    )
+                                    .min_size(vec2(150.0, 34.0)),
+                                )
+                                .clicked()
+                            {
+                                new_scene = Some(Scene::Menu(Menu::new(self.client.clone())));
+                            }
+                        });
+                    });
+            });
+
         new_scene
     }
 }

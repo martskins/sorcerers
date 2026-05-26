@@ -99,6 +99,10 @@ pub enum Status {
     GameAborted {
         reason: String,
     },
+    GameOver {
+        winner_id: PlayerId,
+        winner_name: String,
+    },
 }
 
 #[derive(Debug)]

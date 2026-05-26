@@ -2307,6 +2307,23 @@ impl Game {
         Ok(sync)
     }
 
+    pub(crate) fn game_over_message(&self) -> Option<ServerMessage> {
+        if self.state.loosers.is_empty() {
+            return None;
+        }
+
+        let winner = self
+            .state
+            .players
+            .iter()
+            .find(|player| !self.state.loosers.contains(&player.id))?;
+
+        Some(ServerMessage::GameOver {
+            winner_id: winner.id,
+            winner_name: winner.name.clone(),
+        })
+    }
+
     pub fn draw_initial_six(&self) -> Vec<Effect> {
         let mut effects = Vec::new();
         for player in &self.state.players {

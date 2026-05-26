@@ -723,6 +723,7 @@ impl RealmComponent {
                     | Status::SelectingZoneGroup { .. }
                     | Status::SelectingCard { preview: true, .. }
                     | Status::GameAborted { .. }
+                    | Status::GameOver { .. }
                     | Status::SelectingAction { .. }
                     | Status::SelectingDirection { .. }
                     | Status::Waiting { .. }
@@ -769,6 +770,7 @@ impl RealmComponent {
                     | Status::SelectingAmount { .. }
                     | Status::Mulligan
                     | Status::GameAborted { .. }
+                    | Status::GameOver { .. }
                     | Status::SelectingPath { .. }
                     | Status::ViewingCards { .. } => {
                         continue;
