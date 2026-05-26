@@ -59,7 +59,7 @@ impl Card for Silence {
             return vec![];
         }
         vec![ContinuousEffect::RemoveAbilities {
-            abilities: silenced_abilities(),
+            removal: AbilityRemoval::SpecialAbilities,
             affected_cards: CardQuery::new()
                 .units()
                 .in_affected_zones_of_card(self.get_id()),

@@ -79,7 +79,7 @@ impl Card for Iceberg {
         }
 
         vec![ContinuousEffect::RemoveAbilities {
-            abilities: vec![Ability::Submerge],
+            removal: AbilityRemoval::exact(Ability::Submerge),
             affected_cards: CardQuery::new()
                 .minions()
                 .nearby_zones_to_card(self.get_id()),

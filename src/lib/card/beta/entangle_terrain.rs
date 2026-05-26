@@ -82,7 +82,7 @@ impl Card for EntangleTerrain {
                 affected_cards: affected_cards.clone(),
             },
             ContinuousEffect::RemoveAbilities {
-                abilities: vec![Ability::Airborne],
+                removal: AbilityRemoval::exact(Ability::Airborne),
                 affected_cards,
             },
         ]

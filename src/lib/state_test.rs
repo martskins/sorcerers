@@ -2,7 +2,8 @@ use crate::{
     card::{
         Ability, AridDesert, BeastOfBurden, Card, CauldronCrones, CourtesanThais, DonnybrookInn,
         Drought, Enchantress, Flood, FootSoldier, HeadlessHaunt, KiteArcher, NimbusJinn, Region,
-        RimlandNomads, Rubble, SistersOfSilence, SmokestacksOfGnaak, from_name_and_zone,
+        RimlandNomads, Rubble, SistersOfSilence, SkyBaron, SmokestacksOfGnaak, SneakThief,
+        from_name_and_zone,
     },
     deck::Deck,
     effect::Effect,
@@ -703,6 +704,95 @@ async fn test_sisters_of_silence_use_timestamp_order_for_dependent_effects() {
             .get_card(&newer_id)
             .has_ability(&state, &Ability::Airborne)
     );
+}
+
+#[tokio::test]
+async fn test_silence_removes_keyword_abilities_without_enumerating_values() {
+    let mut state = State::new_mock_state(vec![]);
+    let player_id = state.players[0].id;
+
+    insert_realm_card(
+        &mut state,
+        Box::new(SistersOfSilence::new(player_id)),
+        Zone::Location(7, Region::Surface),
+    )
+    .await;
+
+    let mut target = FootSoldier::new(player_id);
+    target.add_ability(Ability::Movement(99));
+    target.add_ability(Ability::Ranged(99));
+    target.add_ability(Ability::CarryMinions(99));
+    target.add_ability(Ability::Disabled);
+    let target_id = insert_realm_card(
+        &mut state,
+        Box::new(target),
+        Zone::Location(8, Region::Surface),
+    )
+    .await;
+
+    let target = state.get_card(&target_id);
+    assert!(!target.has_ability(&state, &Ability::Movement(99)));
+    assert!(!target.has_ability(&state, &Ability::Ranged(99)));
+    assert!(!target.has_ability(&state, &Ability::CarryMinions(99)));
+    assert!(target.has_ability(&state, &Ability::Disabled));
+}
+
+#[tokio::test]
+async fn test_silence_removes_special_activated_abilities_but_keeps_basic_actions() {
+    let mut state = State::new_mock_state(vec![]);
+    let player_id = state.players[0].id;
+
+    insert_realm_card(
+        &mut state,
+        Box::new(SistersOfSilence::new(player_id)),
+        Zone::Location(7, Region::Surface),
+    )
+    .await;
+    let target_id = insert_realm_card(
+        &mut state,
+        Box::new(SneakThief::new(player_id)),
+        Zone::Location(8, Region::Surface),
+    )
+    .await;
+
+    let action_names = state
+        .get_card(&target_id)
+        .get_activated_abilities(&state)
+        .unwrap()
+        .into_iter()
+        .map(|action| action.get_name())
+        .collect::<Vec<_>>();
+
+    assert!(action_names.contains(&"Attack".to_string()));
+    assert!(action_names.contains(&"Move".to_string()));
+    assert!(!action_names.contains(&"Steal Artifact".to_string()));
+}
+
+#[tokio::test]
+async fn test_exact_ability_removal_only_removes_that_ability() {
+    let mut state = State::new_mock_state(vec![]);
+    let player_id = state.players[0].id;
+
+    insert_realm_card(
+        &mut state,
+        Box::new(SkyBaron::new(player_id)),
+        Zone::Location(7, Region::Surface),
+    )
+    .await;
+
+    let mut target = FootSoldier::new(player_id);
+    target.add_ability(Ability::Airborne);
+    target.add_ability(Ability::Stealth);
+    let target_id = insert_realm_card(
+        &mut state,
+        Box::new(target),
+        Zone::Location(8, Region::Surface),
+    )
+    .await;
+
+    let target = state.get_card(&target_id);
+    assert!(!target.has_ability(&state, &Ability::Airborne));
+    assert!(target.has_ability(&state, &Ability::Stealth));
 }
 
 #[tokio::test]

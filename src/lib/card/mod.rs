@@ -1908,17 +1908,26 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
         let mut abilities = if self.is_avatar() {
             let mut abilities = self.base_avatar_activated_abilities(state)?;
-            abilities.extend(self.get_additional_activated_abilities(state)?);
+            if !state.card_has_special_abilities_removed(self.get_id()) {
+                abilities.extend(self.get_additional_activated_abilities(state)?);
+            }
             abilities
         } else if self.is_unit() {
             let mut abilities = self.base_unit_activated_abilities(state)?;
-            abilities.extend(self.get_additional_activated_abilities(state)?);
+            if !state.card_has_special_abilities_removed(self.get_id()) {
+                abilities.extend(self.get_additional_activated_abilities(state)?);
+            }
             abilities
+        } else if state.card_has_special_abilities_removed(self.get_id()) {
+            vec![]
         } else {
             self.get_additional_activated_abilities(state)?
         };
 
-        abilities.extend(state.activated_abilities_from_continuous_effects(self.get_id()));
+        if !state.card_has_special_abilities_removed(self.get_id()) {
+            abilities.extend(state.activated_abilities_from_area_modifiers(self.get_id()));
+            abilities.extend(state.activated_abilities_from_continuous_effects(self.get_id()));
+        }
 
         Ok(abilities)
     }
@@ -1955,7 +1964,7 @@ fn apply_ability_modifiers(modifiers: &mut Vec<Ability>, changes: Vec<AbilityMod
     for change in changes {
         match change {
             AbilityModifier::Grant(ability) => modifiers.push(ability),
-            AbilityModifier::Remove(ability) => modifiers.retain(|m| m != &ability),
+            AbilityModifier::Remove(removal) => modifiers.retain(|m| !removal.removes(m)),
         }
     }
 }
@@ -2224,42 +2233,52 @@ pub enum Ability {
     CannotDefend,
 }
 
-pub fn silenced_abilities() -> Vec<Ability> {
-    let mut abilities = vec![
-        Ability::Airborne,
-        Ability::Burrowing,
-        Ability::CanSeeStealthed,
-        Ability::Charge,
-        Ability::FirstStrike,
-        Ability::Landbound,
-        Ability::Leap,
-        Ability::Lethal,
-        Ability::LethalTarget,
-        Ability::Lifesteal,
-        Ability::Oversized,
-        Ability::SplashDamage,
-        Ability::Spellcaster(None),
-        Ability::Spellcaster(Some(Element::Fire)),
-        Ability::Spellcaster(Some(Element::Water)),
-        Ability::Spellcaster(Some(Element::Earth)),
-        Ability::Spellcaster(Some(Element::Air)),
-        Ability::Stealth,
-        Ability::Submerge,
-        Ability::TakesNoDamageFromElement(Element::Fire),
-        Ability::TakesNoDamageFromElement(Element::Water),
-        Ability::TakesNoDamageFromElement(Element::Earth),
-        Ability::TakesNoDamageFromElement(Element::Air),
-        Ability::TakesNoDamageFromRangedStrikes,
-        Ability::Unattackable,
-        Ability::Uninterceptable,
-        Ability::Voidwalk,
-        Ability::Waterbound,
-    ];
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum AbilityCategory {
+    Keyword,
+    Passive,
+    Activated,
+    Triggered,
+    EngineStatus,
+}
 
-    abilities.extend((0..=7).map(Ability::Movement));
-    abilities.extend((0..=7).map(Ability::Ranged));
-    abilities.extend((0..=4).map(Ability::CarryMinions));
-    abilities
+impl Ability {
+    pub fn category(&self) -> AbilityCategory {
+        match self {
+            Ability::Disabled
+            | Ability::SummoningSickness
+            | Ability::Immobile
+            | Ability::CannotDefend => AbilityCategory::EngineStatus,
+            Ability::Voidwalk
+            | Ability::Airborne
+            | Ability::Ranged(_)
+            | Ability::Stealth
+            | Ability::CanSeeStealthed
+            | Ability::Lethal
+            | Ability::Movement(_)
+            | Ability::Leap
+            | Ability::Burrowing
+            | Ability::Landbound
+            | Ability::Submerge
+            | Ability::Spellcaster(_)
+            | Ability::Charge
+            | Ability::TakesNoDamageFromElement(_)
+            | Ability::TakesNoDamageFromRangedStrikes
+            | Ability::Waterbound
+            | Ability::Lifesteal
+            | Ability::FirstStrike
+            | Ability::Unattackable
+            | Ability::Uninterceptable
+            | Ability::Oversized
+            | Ability::LethalTarget
+            | Ability::CarryMinions(_)
+            | Ability::SplashDamage => AbilityCategory::Keyword,
+        }
+    }
+
+    pub fn is_keyword_ability(&self) -> bool {
+        self.category() == AbilityCategory::Keyword
+    }
 }
 
 #[derive(Debug, Default, Clone)]
@@ -2872,8 +2891,6 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
             activated_abilities.push(Box::new(AvatarAction::PlaySite));
         }
 
-        activated_abilities.extend(state.activated_abilities_from_area_modifiers(self.get_id()));
-
         Ok(activated_abilities)
     }
 
@@ -2904,8 +2921,6 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
                 }
             }
         }
-
-        activated_abilities.extend(state.activated_abilities_from_area_modifiers(self.get_id()));
 
         let unborne_artifacts: Vec<(uuid::Uuid, String)> = CardQuery::new()
             .artifacts()

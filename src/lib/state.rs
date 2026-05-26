@@ -47,7 +47,30 @@ pub struct AreaModifierIndex {
 #[derive(Debug, Clone)]
 pub enum AbilityModifier {
     Grant(Ability),
-    Remove(Ability),
+    Remove(AbilityRemoval),
+}
+
+#[derive(Debug, Clone)]
+pub enum AbilityRemoval {
+    Exact(Vec<Ability>),
+    SpecialAbilities,
+}
+
+impl AbilityRemoval {
+    pub fn exact(ability: Ability) -> Self {
+        Self::Exact(vec![ability])
+    }
+
+    pub fn is_silence(&self) -> bool {
+        matches!(self, Self::SpecialAbilities)
+    }
+
+    pub fn removes(&self, ability: &Ability) -> bool {
+        match self {
+            Self::Exact(abilities) => abilities.contains(ability),
+            Self::SpecialAbilities => ability.is_keyword_ability(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -89,10 +112,10 @@ impl ContinuousEffectIndex {
                     }
                 }
                 ContinuousEffect::RemoveAbilities {
-                    abilities,
+                    removal,
                     affected_cards,
                 } => {
-                    if is_silence_modifier(abilities) {
+                    if removal.is_silence() {
                         for card_id in affected_cards.all(state) {
                             blocked_sources.insert(card_id);
                         }
@@ -156,11 +179,11 @@ impl AreaModifierIndex {
                     }
                 }
                 ContinuousEffect::RemoveAbilities {
-                    abilities,
+                    removal,
                     affected_cards,
                 } => {
                     let affected_cards = affected_cards.all(state);
-                    if is_silence_modifier(abilities) {
+                    if removal.is_silence() {
                         blocked_sources.extend(affected_cards.iter().copied());
                     }
                     for card_id in affected_cards {
@@ -168,7 +191,7 @@ impl AreaModifierIndex {
                             .ability_modifiers
                             .entry(card_id)
                             .or_default()
-                            .extend(abilities.iter().cloned().map(AbilityModifier::Remove));
+                            .push(AbilityModifier::Remove(removal.clone()));
                     }
                 }
                 ContinuousEffect::GrantActivatedAbility {
@@ -203,11 +226,6 @@ impl AreaModifierIndex {
 
         index
     }
-}
-
-fn is_silence_modifier(abilities: &[Ability]) -> bool {
-    let silenced = crate::card::silenced_abilities();
-    silenced.iter().all(|ability| abilities.contains(ability))
 }
 
 #[derive(Debug, Default)]
@@ -299,7 +317,7 @@ pub enum OngoingEffect {
         affected_cards: CardQuery,
     },
     RemoveAbilities {
-        abilities: Vec<Ability>,
+        removal: AbilityRemoval,
         affected_cards: CardQuery,
     },
     GrantActivatedAbility {
@@ -377,9 +395,12 @@ impl OngoingEffect {
             Self::GrantAbility { ability, .. } => {
                 format!("Grants {:?}", ability)
             }
-            Self::RemoveAbilities { abilities, .. } => {
-                format!("Removes {} abilities", abilities.len())
-            }
+            Self::RemoveAbilities { removal, .. } => match removal {
+                AbilityRemoval::Exact(abilities) => {
+                    format!("Removes {} abilities", abilities.len())
+                }
+                AbilityRemoval::SpecialAbilities => "Removes special abilities".to_string(),
+            },
             Self::GrantActivatedAbility { ability, .. } => {
                 format!("Grants {}", ability.get_name())
             }
@@ -497,9 +518,9 @@ impl std::fmt::Debug for OngoingEffect {
                 .debug_struct("GrantAbility")
                 .field("ability", ability)
                 .finish(),
-            Self::RemoveAbilities { abilities, .. } => f
+            Self::RemoveAbilities { removal, .. } => f
                 .debug_struct("RemoveAbilities")
-                .field("abilities", abilities)
+                .field("removal", removal)
                 .finish(),
             Self::GrantActivatedAbility { .. } => f.debug_struct("GrantActivatedAbility").finish(),
             Self::GrantCounter { counter, .. } => f
@@ -1090,9 +1111,9 @@ impl State {
                             blocked_sources.extend(affected_cards.all(self));
                         }
                         OngoingEffect::RemoveAbilities {
-                            abilities,
+                            removal,
                             affected_cards,
-                        } if is_silence_modifier(abilities) => {
+                        } if removal.is_silence() => {
                             blocked_sources.extend(affected_cards.all(self));
                         }
                         _ => {}
@@ -1278,6 +1299,17 @@ impl State {
                 .cloned()
                 .unwrap_or_default()
         })
+    }
+
+    pub fn card_has_special_abilities_removed(&self, card_id: &uuid::Uuid) -> bool {
+        self.ability_modifiers_from_area_modifiers(card_id)
+            .iter()
+            .any(|modifier| {
+                matches!(
+                    modifier,
+                    AbilityModifier::Remove(removal) if removal.is_silence()
+                )
+            })
     }
 
     pub fn counters_from_area_modifiers(&self, card_id: &uuid::Uuid) -> Vec<Counter> {

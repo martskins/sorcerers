@@ -24,7 +24,7 @@ mod geometry;
 
 use geometry::{
     board_corners, card_corners, card_rotation, cell_corners, cell_inner_rect, cell_rect,
-    intersection_rect, projected_card_dimensions, site_dimensions, spell_dimensions,
+    intersection_rect, projected_card_dimensions, site_dimensions,
 };
 
 static OCCUPIED_ZONE_BACKGROUND_COLOR: Color32 =
@@ -316,10 +316,11 @@ impl RealmComponent {
                     {
                         let existing = self.card_rects.iter().find(|c| c.card.id == card.id);
                         let rect = intersection.rect;
-                        let mut dimensions = spell_dimensions(&self.cell_rects[0].rect);
-                        if card.card_type == CardType::Site {
-                            dimensions = site_dimensions(&rect);
-                        }
+                        let dimensions = if card.card_type == CardType::Site {
+                            site_dimensions(&rect)
+                        } else {
+                            projected_card_dimensions(&self.rect, locs[0], self.mirrored, false)
+                        };
 
                         let jitter_x: f32 = rng.random_range(-2.0..2.0);
                         let jitter_y: f32 = rng.random_range(-2.0..2.0);

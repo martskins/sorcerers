@@ -19,6 +19,10 @@ pub use lifecycle::{
 pub use log::{EffectLogEmitter, LoggedEffect};
 pub use runtime::EffectEngine;
 
+fn can_use_special_abilities(state: &State, card_id: &uuid::Uuid) -> bool {
+    !state.card_has_special_abilities_removed(card_id)
+}
+
 #[derive(Debug, Clone)]
 pub struct AbilityCounter {
     pub id: uuid::Uuid,
@@ -785,7 +789,11 @@ impl Effect {
         state.invalidate_runtime_caches();
 
         let mut effects: Vec<Effect> = vec![];
-        for card in state.cards.values() {
+        for card in state
+            .cards
+            .values()
+            .filter(|card| can_use_special_abilities(state, card.get_id()))
+        {
             let replace_effects = card.replace_effect(state, self).await?.unwrap_or_default();
             effects.extend(replace_effects);
         }
@@ -1065,19 +1073,27 @@ impl Effect {
 
                             let card = state.get_card(card_id);
                             let moved = from_zone != zone;
-                            let mut effects = card.on_move(&snapshot, path).await?;
+                            let mut effects = if can_use_special_abilities(&snapshot, card_id) {
+                                card.on_move(&snapshot, path).await?
+                            } else {
+                                vec![]
+                            };
                             if moved {
-                                effects.extend(
-                                    card.on_visit_zone(&snapshot, &from_zone, &zone).await?,
-                                );
+                                if can_use_special_abilities(&snapshot, card_id) {
+                                    effects.extend(
+                                        card.on_visit_zone(&snapshot, &from_zone, &zone).await?,
+                                    );
+                                }
                                 if let Some(site_zone) = entered_site(&from_zone, &zone, state)
                                     && let Some(site) = site_zone.get_site(state)
+                                    && can_use_special_abilities(state, site.get_id())
                                 {
                                     effects.extend(site.on_card_enter(state, card_id));
                                 }
 
                                 if idx + 1 == path.len()
                                     && let Some(site) = zone.get_site_at_square(state)
+                                    && can_use_special_abilities(state, site.get_id())
                                 {
                                     effects.extend(site.on_card_stop(state, card_id));
                                     for cid in &carried_cards {
@@ -1110,15 +1126,26 @@ impl Effect {
 
                         let card = state.get_card(card_id);
                         let path = vec![from.clone(), zone.clone()];
-                        let mut effects = card.on_move(&snapshot, &path).await?;
+                        let mut effects = if can_use_special_abilities(&snapshot, card_id) {
+                            card.on_move(&snapshot, &path).await?
+                        } else {
+                            vec![]
+                        };
                         if from_zone != zone {
-                            effects.extend(card.on_visit_zone(&snapshot, &from_zone, &zone).await?);
+                            if can_use_special_abilities(&snapshot, card_id) {
+                                effects.extend(
+                                    card.on_visit_zone(&snapshot, &from_zone, &zone).await?,
+                                );
+                            }
                             if let Some(site_zone) = entered_site(&from_zone, &zone, state)
                                 && let Some(site) = site_zone.get_site(state)
+                                && can_use_special_abilities(state, site.get_id())
                             {
                                 effects.extend(site.on_card_enter(state, card_id));
                             }
-                            if let Some(site) = zone.get_site_at_square(state) {
+                            if let Some(site) = zone.get_site_at_square(state)
+                                && can_use_special_abilities(state, site.get_id())
+                            {
                                 effects.extend(site.on_card_stop(state, card_id));
                                 for cid in &carried_cards {
                                     effects.extend(site.on_card_stop(state, cid));
@@ -1262,7 +1289,9 @@ impl Effect {
                         .await?;
                     let card = state.get_card(card_id);
                     let mut effects = card.genesis(&snapshot).await?;
-                    effects.extend(card.on_visit_zone(&snapshot, &from_zone, &zone).await?);
+                    if can_use_special_abilities(state, card_id) {
+                        effects.extend(card.on_visit_zone(&snapshot, &from_zone, &zone).await?);
+                    }
                     state.queue(effects);
                     state.queue(cast_effects);
                 }
@@ -1316,8 +1345,12 @@ impl Effect {
                     let from_zone = snapshot.get_card(card_id).get_zone().clone();
                     effects.extend(card.on_summon(state)?);
                     effects.extend(card.genesis(state).await?);
-                    effects.extend(card.on_visit_zone(state, &from_zone, zone).await?);
-                    if let Some(site) = zone.get_site_at_square(state) {
+                    if can_use_special_abilities(state, card_id) {
+                        effects.extend(card.on_visit_zone(state, &from_zone, zone).await?);
+                    }
+                    if let Some(site) = zone.get_site_at_square(state)
+                        && can_use_special_abilities(state, site.get_id())
+                    {
                         effects.extend(site.on_card_enter(state, card_id));
                     }
                 }
@@ -1384,7 +1417,9 @@ impl Effect {
                 *player_mana = available_mana;
 
                 let mut all_effects: Vec<Effect> = vec![];
-                for card in state.cards.values().filter(|c| c.get_zone().is_in_play()) {
+                for card in state.cards.values().filter(|c| {
+                    c.get_zone().is_in_play() && can_use_special_abilities(state, c.get_id())
+                }) {
                     let effects = card.on_turn_start(state).await?;
                     all_effects.extend(effects);
                 }
@@ -1423,7 +1458,9 @@ impl Effect {
             }
             Effect::EndTurn { player_id, .. } => {
                 let mut all_effects: Vec<Effect> = vec![];
-                for card in state.cards.values().filter(|c| c.get_zone().is_in_play()) {
+                for card in state.cards.values().filter(|c| {
+                    c.get_zone().is_in_play() && can_use_special_abilities(state, c.get_id())
+                }) {
                     let effects = card.on_turn_end(state).await?;
                     all_effects.extend(effects);
                 }
@@ -1506,7 +1543,11 @@ impl Effect {
                 let attacker = state.get_card(attacker_id);
                 let defender = state.get_card(defender_id);
 
-                let mut effects = attacker.on_attack(state, defender_id)?;
+                let mut effects = if can_use_special_abilities(state, attacker_id) {
+                    attacker.on_attack(state, defender_id)?
+                } else {
+                    vec![]
+                };
                 if !defending_ids.is_empty() || damage_assignment.is_some() {
                     let attacker_power = attacker
                         .get_power(state)?
@@ -1671,7 +1712,9 @@ impl Effect {
 
                     for defending_id in defending_ids {
                         let defender = state.get_card(defending_id);
-                        effects.extend(defender.on_defend(state, attacker_id)?);
+                        if can_use_special_abilities(state, defending_id) {
+                            effects.extend(defender.on_defend(state, attacker_id)?);
+                        }
                     }
 
                     effects.reverse();
@@ -1704,7 +1747,9 @@ impl Effect {
                             from: *first_attacker.get_id(),
                             damage: Damage::strike(power, false),
                         });
-                        sim.queue(defender.on_defend(&sim, attacker_id)?);
+                        if can_use_special_abilities(&sim, defender_id) {
+                            sim.queue(defender.on_defend(&sim, attacker_id)?);
+                        }
                         Box::pin(sim.apply_effects_without_log()).await?;
                         sim.get_card(first_defender.get_id()).get_zone() != &Zone::Cemetery
                     };
@@ -1718,7 +1763,9 @@ impl Effect {
                         damage: Damage::strike(power, false),
                     });
 
-                    effects.extend(defender.on_defend(state, attacker_id)?);
+                    if can_use_special_abilities(state, defender_id) {
+                        effects.extend(defender.on_defend(state, attacker_id)?);
+                    }
 
                     if first_defender_survived && first_defender.strikes_back(state)? {
                         let power = first_defender
@@ -1751,7 +1798,9 @@ impl Effect {
                             damage: Damage::strike(defender_power, false),
                         });
                     }
-                    effects.extend(defender.on_defend(state, attacker_id)?);
+                    if can_use_special_abilities(state, defender_id) {
+                        effects.extend(defender.on_defend(state, attacker_id)?);
+                    }
                 }
 
                 effects.reverse();
@@ -1773,7 +1822,11 @@ impl Effect {
                 });
                 let multiplier: u16 = if takes_double_damage { 2 } else { 1 };
                 let card = state.get_card_mut(card_id);
-                let mut effects = card.on_take_damage(&snapshot, from, damage * multiplier)?;
+                let mut effects = if can_use_special_abilities(&snapshot, card_id) {
+                    card.on_take_damage(&snapshot, from, damage * multiplier)?
+                } else {
+                    vec![]
+                };
                 if damage.is_strike {
                     let dealer = snapshot.get_card(from);
                     if dealer.has_ability(&snapshot, &Ability::SplashDamage) {
@@ -2066,10 +2119,12 @@ impl Effect {
                     let bearer = state.get_card(&bearer_id);
                     let mut effects = copy.on_summon(state)?;
                     effects.extend(copy.genesis(state).await?);
-                    effects.extend(
-                        copy.on_visit_zone(state, &Zone::Spellbook, bearer.get_zone())
-                            .await?,
-                    );
+                    if can_use_special_abilities(state, &copy_id) {
+                        effects.extend(
+                            copy.on_visit_zone(state, &Zone::Spellbook, bearer.get_zone())
+                                .await?,
+                        );
+                    }
                     state.queue(effects);
                 }
             }
@@ -2105,7 +2160,9 @@ impl Effect {
                 let mut effects: Vec<Effect> = vec![];
                 effects.extend(card.on_summon(state)?);
                 effects.extend(card.genesis(state).await?);
-                effects.extend(card.on_visit_zone(state, &from_zone, zone).await?);
+                if can_use_special_abilities(state, &copy_id) {
+                    effects.extend(card.on_visit_zone(state, &from_zone, zone).await?);
+                }
                 effects.push(Effect::BanishCard { card_id: copy_id });
                 state.queue(effects);
             }
@@ -2120,12 +2177,17 @@ impl Effect {
         let area_effects: Vec<Effect> = state
             .cards
             .values()
+            .filter(|c| can_use_special_abilities(state, c.get_id()))
             .filter_map(|c| c.area_effects(state).ok())
             .flatten()
             .collect();
         state.queue(area_effects);
 
-        for card in state.cards.values() {
+        for card in state
+            .cards
+            .values()
+            .filter(|c| can_use_special_abilities(state, c.get_id()))
+        {
             let replace_effects = card.on_effect(state, self).await?;
             effects.extend(replace_effects);
         }

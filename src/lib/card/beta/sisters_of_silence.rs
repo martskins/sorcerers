@@ -64,7 +64,7 @@ impl Card for SistersOfSilence {
         }
 
         Ok(vec![ContinuousEffect::RemoveAbilities {
-            abilities: silenced_abilities(),
+            removal: AbilityRemoval::SpecialAbilities,
             affected_cards: CardQuery::new()
                 .minions()
                 .nearby_zones_to_card(self.get_id())

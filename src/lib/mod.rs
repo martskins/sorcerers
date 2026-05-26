@@ -24,7 +24,7 @@ pub(crate) mod prelude {
         Ability, AdditionalCost, Artifact, ArtifactBase, ArtifactType, Aura, AuraBase, AvatarBase,
         Card, CardBase, CardBaseMethods, CardConstructor, CardType, Cost, CostType, Costs, Damage,
         Edition, MinionType, Rarity, Region, ResourceProvider, ResourceProviderBaseMethods, Rubble,
-        Site, SiteBase, SiteType, UnitBase, silenced_abilities,
+        Site, SiteBase, SiteType, UnitBase,
     };
     pub use crate::effect::{AbilityCounter, Counter, DrawKind, Effect, TokenType};
     pub use crate::game::{
@@ -37,7 +37,7 @@ pub(crate) mod prelude {
     };
     pub use crate::query::{CardQuery, EffectQuery, ZoneQuery};
     pub use crate::state::{
-        ContinuousEffect, DeferredEffect, LoggedEffect, State, TemporaryEffect,
+        AbilityRemoval, ContinuousEffect, DeferredEffect, LoggedEffect, State, TemporaryEffect,
     };
     pub use crate::zone::Zone;
 }

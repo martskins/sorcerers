@@ -2,7 +2,7 @@ use async_channel::Sender;
 use sorcerers::{
     card::{
         ApprenticeWizard, AramosMercenaries, AridDesert, BaneWidow, CaptainBaldassare, Drought,
-        FelbogFrogMen, SummerRiver, Wildfire, WillsOTheWisp,
+        FelbogFrogMen, HumbleVillage, SummerRiver, Wildfire, WillsOTheWisp,
     },
     deck::precon::ALL_PRECONS,
     game::Game,
@@ -237,37 +237,37 @@ impl Server {
         );
         game.state.cards.insert(*card.get_id(), card);
         let card = sorcerers::card::from_name_and_zone(
-            SummerRiver::NAME,
+            HumbleVillage::NAME,
             &player_one,
             sorcerers::zone::Zone::Location(3, sorcerers::card::Region::Surface),
         );
         game.state.cards.insert(*card.get_id(), card);
         let card = sorcerers::card::from_name_and_zone(
-            SummerRiver::NAME,
+            HumbleVillage::NAME,
             &player_one,
             sorcerers::zone::Zone::Location(9, sorcerers::card::Region::Surface),
         );
         game.state.cards.insert(*card.get_id(), card);
         let card = sorcerers::card::from_name_and_zone(
-            SummerRiver::NAME,
+            HumbleVillage::NAME,
             &player_one,
             sorcerers::zone::Zone::Location(4, sorcerers::card::Region::Surface),
         );
         game.state.cards.insert(*card.get_id(), card);
         let card = sorcerers::card::from_name_and_zone(
-            SummerRiver::NAME,
+            HumbleVillage::NAME,
             &player_one,
             sorcerers::zone::Zone::Location(6, sorcerers::card::Region::Surface),
         );
         game.state.cards.insert(*card.get_id(), card);
         let card = sorcerers::card::from_name_and_zone(
-            SummerRiver::NAME,
+            HumbleVillage::NAME,
             &player_one,
             sorcerers::zone::Zone::Location(7, sorcerers::card::Region::Surface),
         );
         game.state.cards.insert(*card.get_id(), card);
         let card = sorcerers::card::from_name_and_zone(
-            SummerRiver::NAME,
+            HumbleVillage::NAME,
             &player_one,
             sorcerers::zone::Zone::Location(2, sorcerers::card::Region::Surface),
         );

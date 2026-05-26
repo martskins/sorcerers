@@ -59,7 +59,7 @@ impl Card for MagneticMuzzle {
 
     fn area_modifiers(&self, _state: &State) -> Vec<ContinuousEffect> {
         vec![ContinuousEffect::RemoveAbilities {
-            abilities: silenced_abilities(),
+            removal: AbilityRemoval::SpecialAbilities,
             affected_cards: CardQuery::new().bearer_of_card(self.get_id()),
         }]
     }
