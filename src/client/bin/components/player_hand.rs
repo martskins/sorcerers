@@ -5,7 +5,7 @@ use crate::{
     scene::game::{GameData, Status},
     texture_cache::TextureCache,
 };
-use egui::{Context, Painter, Pos2, Rect, Sense, Ui, Vec2, pos2};
+use egui::{Context, Painter, Pos2, Rect, Sense, Ui, pos2};
 use sorcerers::{
     card::CardData,
     game::PlayerId,
@@ -90,19 +90,6 @@ impl PlayerHandComponent {
         );
 
         (rect, rotation)
-    }
-
-    fn floating_card_corners(&self, center: Pos2, size: Vec2) -> [Pos2; 4] {
-        let y = ((center.y - self.rect.min.y) / self.rect.height()).clamp(0.0, 1.0);
-        let top_width = size.x * (0.82 + y * 0.08);
-        let bottom_width = size.x * (0.96 + y * 0.04);
-        let height = size.y * (0.64 + y * 0.08);
-        [
-            pos2(center.x - top_width / 2.0, center.y - height / 2.0),
-            pos2(center.x + top_width / 2.0, center.y - height / 2.0),
-            pos2(center.x + bottom_width / 2.0, center.y + height / 2.0),
-            pos2(center.x - bottom_width / 2.0, center.y + height / 2.0),
-        ]
     }
 
     fn compute_rects(&mut self, cards: &[CardData], ctx: &Context) -> anyhow::Result<()> {
@@ -394,20 +381,15 @@ impl Component for PlayerHandComponent {
                     .drag_visual_pos
                     .or(pointer)
                     .unwrap_or(draw_rect.center());
-                let floating_size = if fan_card.card.is_site() {
-                    let size = draw_rect.size();
-                    egui::vec2(size.y, size.x) * 1.04
-                } else {
-                    draw_rect.size() * 1.04
-                };
+                let floating_size = draw_rect.size() * 1.04;
                 fan_card.rect = Rect::from_center_size(center, floating_size);
-                render::draw_projected_card_with_texture_rotation(
+                render::draw_card_with_texture_rotation(
                     &fan_card,
                     true,
                     false,
                     &drag_painter,
-                    self.floating_card_corners(center, fan_card.rect.size()),
-                    false,
+                    0.0,
+                    fan_card.card.is_site(),
                 );
                 ui.ctx().request_repaint();
             } else if resp.hovered() && !resp.clicked() && !suppress_preview {

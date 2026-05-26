@@ -1,4 +1,4 @@
-use crate::{element_icon, scene::Scene, texture_cache::TextureCache};
+use crate::{element_icon, render, scene::Scene, texture_cache::TextureCache};
 use egui::{
     Color32, Context, CornerRadius, Frame, Rect, ScrollArea, Sense, Stroke, StrokeKind, Ui, pos2,
     vec2,
@@ -335,7 +335,9 @@ impl DeckBuilder {
                 self.render_right_panel(&mut right_ui, ui.ctx(), right_rect);
 
                 // ── Card preview popup (floating, over everything) ─────────────
-                if let Some((ref entry, anchor)) = self.hovered_card.clone() {
+                if render::card_preview_requested(ui.ctx())
+                    && let Some((ref entry, anchor)) = self.hovered_card.clone()
+                {
                     Self::draw_card_preview(ui.ctx(), entry, anchor, screen);
                 }
             });

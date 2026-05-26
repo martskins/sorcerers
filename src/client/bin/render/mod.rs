@@ -548,9 +548,16 @@ fn translate_if_out_of_bounds(rect: Rect) -> anyhow::Result<Rect> {
     Ok(rect)
 }
 
-/// Draws a bigger version of a card under the cursor, for hover previews. The card will be rotated
-/// if it's tapped.
+pub fn card_preview_requested(ctx: &egui::Context) -> bool {
+    ctx.input(|i| i.modifiers.shift)
+}
+
+/// Draws a bigger version of a card under the cursor when the preview key is held.
 pub fn draw_card_preview(ui: &egui::Ui, tex: Option<&TextureHandle>) -> anyhow::Result<()> {
+    if !card_preview_requested(ui.ctx()) {
+        return Ok(());
+    }
+
     let pointer_pos = ui.input(|i| i.pointer.latest_pos()).unwrap_or_default();
     let preview_painter = ui.ctx().layer_painter(egui::LayerId::new(
         egui::Order::Tooltip,

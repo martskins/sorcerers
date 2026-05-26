@@ -148,6 +148,7 @@ pub struct GameData {
     pub aura_affected_zones: HashMap<uuid::Uuid, Option<Vec<Zone>>>,
     pub ongoing_effects: Option<Vec<OngoingEffectData>>,
     pub show_ongoing_effects: bool,
+    pub show_controls_help: bool,
     pub highlighted_ongoing_effect: Option<OngoingEffectData>,
     /// Screen position of the last card the player clicked; used to anchor context menus.
     pub last_clicked_card_pos: Option<egui::Pos2>,
@@ -172,6 +173,7 @@ impl GameData {
             aura_affected_zones: HashMap::new(),
             ongoing_effects: None,
             show_ongoing_effects: false,
+            show_controls_help: false,
             highlighted_ongoing_effect: None,
             last_clicked_card_pos: None,
             last_clicked_card_rect: None,

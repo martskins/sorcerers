@@ -23,6 +23,8 @@ impl Game {
             turn_color,
         );
 
+        self.render_controls_button(ui, sr);
+
         if is_in_turn && is_idle {
             let client = self.client.clone();
             let player_id = self.data.player_id;
@@ -139,6 +141,87 @@ impl Game {
             Status::GameAborted { reason } => self.render_aborted_window(ui, reason),
             _ => None,
         }
+    }
+
+    fn render_controls_button(&mut self, ui: &mut Ui, sr: Rect) {
+        let icon_size = vec2(24.0, 24.0);
+        let icon_pos = pos2(sr.center().x + 92.0, 16.0);
+        let mut hovered = false;
+        egui::Area::new(egui::Id::new("controls_help_btn"))
+            .fixed_pos(icon_pos)
+            .order(egui::Order::Foreground)
+            .show(ui, |ui| {
+                let (rect, response) = ui.allocate_exact_size(icon_size, egui::Sense::click());
+                hovered = response.hovered();
+                let fill = if self.data.show_controls_help || hovered {
+                    Color32::from_rgba_premultiplied(55, 112, 155, 210)
+                } else {
+                    Color32::from_rgba_premultiplied(18, 23, 35, 190)
+                };
+                ui.painter().circle_filled(rect.center(), 11.0, fill);
+                ui.painter().circle_stroke(
+                    rect.center(),
+                    11.0,
+                    egui::Stroke::new(1.0, theme::PANEL_BORDER),
+                );
+                ui.painter().text(
+                    rect.center(),
+                    egui::Align2::CENTER_CENTER,
+                    "?",
+                    FontId::proportional(15.0),
+                    theme::TEXT_BRIGHT,
+                );
+                if response.on_hover_text("Game controls").clicked() {
+                    self.data.show_controls_help = !self.data.show_controls_help;
+                }
+            });
+
+        if self.data.show_controls_help || hovered {
+            let panel_w = 320.0_f32.min(sr.width() - 32.0);
+            let panel_pos = pos2((sr.center().x + 122.0).min(sr.max.x - panel_w - 18.0), 48.0);
+            egui::Area::new(egui::Id::new("game_controls_help_panel"))
+                .fixed_pos(panel_pos)
+                .order(egui::Order::Tooltip)
+                .show(ui.ctx(), |ui| {
+                    egui::Frame::new()
+                        .fill(theme::PANEL_BG)
+                        .stroke(egui::Stroke::new(1.0, theme::PANEL_BORDER))
+                        .corner_radius(6.0)
+                        .inner_margin(egui::Margin::symmetric(12, 10))
+                        .show(ui, |ui| {
+                            ui.set_width(panel_w - 24.0);
+                            ui.label(
+                                RichText::new("Controls")
+                                    .size(13.0)
+                                    .strong()
+                                    .color(theme::TEXT_BRIGHT),
+                            );
+                            ui.add_space(5.0);
+                            Self::control_help_row(ui, "Shift + hover", "Preview a card");
+                            Self::control_help_row(ui, "Click card", "Select or open actions");
+                            Self::control_help_row(ui, "Drag hand card", "Play to the realm");
+                            Self::control_help_row(ui, "Effects", "Inspect ongoing effects");
+                            Self::control_help_row(ui, "Done Selecting", "Submit multi-picks");
+                        });
+                });
+        }
+    }
+
+    fn control_help_row(ui: &mut Ui, input: &str, action: &str) {
+        ui.horizontal(|ui| {
+            ui.set_height(22.0);
+            ui.label(
+                RichText::new(input)
+                    .size(12.0)
+                    .color(Color32::from_rgb(132, 168, 215)),
+            );
+            ui.add_space(8.0);
+            ui.label(
+                RichText::new(action)
+                    .size(12.0)
+                    .color(Color32::from_rgb(214, 224, 245)),
+            );
+        });
     }
 
     fn is_yes_or_no_actions(actions: &[String]) -> bool {
