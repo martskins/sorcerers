@@ -621,6 +621,7 @@ impl State {
         match msg {
             ClientMessage::ClickCard { card_id, .. }
             | ClientMessage::RequestPlayableZones { card_id, .. }
+            | ClientMessage::RequestAuraAffectedZones { card_id, .. }
             | ClientMessage::PlayCardAtZone { card_id, .. }
             | ClientMessage::PickCard { card_id, .. } => {
                 self.cards

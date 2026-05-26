@@ -16,7 +16,7 @@ impl Flood {
                 id: uuid::Uuid::new_v4(),
                 owner_id,
                 zone: Zone::Spellbook,
-                costs: Costs::basic(4, "F"),
+                costs: Costs::basic(4, "WW"),
                 rarity: Rarity::Exceptional,
                 edition: Edition::Beta,
                 controller_id: owner_id,

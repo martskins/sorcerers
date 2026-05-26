@@ -75,6 +75,12 @@ impl Game {
                 };
                 None
             }
+            ServerMessage::AuraAffectedZones { card_id, zones, .. } => {
+                self.data
+                    .aura_affected_zones
+                    .insert(*card_id, Some(zones.clone()));
+                None
+            }
             ServerMessage::PickAmount {
                 prompt,
                 source_card_id,
@@ -281,6 +287,7 @@ impl Game {
                 self.data.turn_player = *turn_player;
                 self.data.resources = resources.clone();
                 self.data.avatar_health = health.clone();
+                self.data.aura_affected_zones.clear();
                 self.open_controlled_hand_viewer();
                 None
             }
@@ -298,6 +305,7 @@ impl Game {
                 self.data.turn_player = *turn_player;
                 self.data.resources = resources.clone();
                 self.data.avatar_health = health.clone();
+                self.data.aura_affected_zones.clear();
                 self.open_controlled_hand_viewer();
                 None
             }

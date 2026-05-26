@@ -1980,6 +1980,25 @@ impl Game {
                         .await?;
                 }
             }
+            ClientMessage::RequestAuraAffectedZones {
+                player_id, card_id, ..
+            } => {
+                let zones = self
+                    .state
+                    .get_card(card_id)
+                    .get_aura()
+                    .map(|aura| aura.get_affected_zones(&self.state))
+                    .unwrap_or_default();
+
+                self.state
+                    .get_sender()
+                    .send(ServerMessage::AuraAffectedZones {
+                        player_id: *player_id,
+                        card_id: *card_id,
+                        zones,
+                    })
+                    .await?;
+            }
             ClientMessage::PlayCardAtZone {
                 player_id,
                 card_id,

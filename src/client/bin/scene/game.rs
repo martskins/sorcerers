@@ -145,6 +145,7 @@ pub struct GameData {
     pub unseen_events: usize,
     pub resources: HashMap<PlayerId, Resources>,
     pub avatar_health: HashMap<PlayerId, u16>,
+    pub aura_affected_zones: HashMap<uuid::Uuid, Option<Vec<Zone>>>,
     /// Screen position of the last card the player clicked; used to anchor context menus.
     pub last_clicked_card_pos: Option<egui::Pos2>,
     pub last_clicked_card_rect: Option<egui::Rect>,
@@ -165,6 +166,7 @@ impl GameData {
             unseen_events: 0,
             resources: HashMap::new(),
             avatar_health: HashMap::new(),
+            aura_affected_zones: HashMap::new(),
             last_clicked_card_pos: None,
             last_clicked_card_rect: None,
             last_clicked_cursor_pos: None,

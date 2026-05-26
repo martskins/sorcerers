@@ -144,6 +144,11 @@ pub enum ServerMessage {
         card_id: uuid::Uuid,
         zones: Vec<Zone>,
     },
+    AuraAffectedZones {
+        player_id: PlayerId,
+        card_id: uuid::Uuid,
+        zones: Vec<Zone>,
+    },
     PickZoneGroup {
         prompt: String,
         source_card_id: Option<uuid::Uuid>,
@@ -180,6 +185,7 @@ impl ServerMessage {
             ServerMessage::PickCard { player_id, .. } => *player_id,
             ServerMessage::PickZone { player_id, .. } => *player_id,
             ServerMessage::PlayableZones { player_id, .. } => *player_id,
+            ServerMessage::AuraAffectedZones { player_id, .. } => *player_id,
             ServerMessage::PickZoneGroup { player_id, .. } => *player_id,
             ServerMessage::PickAction { player_id, .. } => *player_id,
             ServerMessage::PickPath { player_id, .. } => *player_id,
@@ -236,6 +242,11 @@ pub enum ClientMessage {
         card_id: uuid::Uuid,
     },
     RequestPlayableZones {
+        game_id: uuid::Uuid,
+        player_id: PlayerId,
+        card_id: uuid::Uuid,
+    },
+    RequestAuraAffectedZones {
         game_id: uuid::Uuid,
         player_id: PlayerId,
         card_id: uuid::Uuid,
@@ -309,6 +320,7 @@ impl ClientMessage {
             ClientMessage::PickPath { game_id, .. } => *game_id,
             ClientMessage::ClickCard { game_id, .. } => *game_id,
             ClientMessage::RequestPlayableZones { game_id, .. } => *game_id,
+            ClientMessage::RequestAuraAffectedZones { game_id, .. } => *game_id,
             ClientMessage::PlayCardAtZone { game_id, .. } => *game_id,
             ClientMessage::DrawCard { game_id, .. } => *game_id,
             ClientMessage::PickDirection { game_id, .. } => *game_id,
@@ -332,6 +344,7 @@ impl ClientMessage {
             ClientMessage::PickPath { player_id, .. } => player_id,
             ClientMessage::ClickCard { player_id, .. } => player_id,
             ClientMessage::RequestPlayableZones { player_id, .. } => player_id,
+            ClientMessage::RequestAuraAffectedZones { player_id, .. } => player_id,
             ClientMessage::PlayCardAtZone { player_id, .. } => player_id,
             ClientMessage::DrawCard { player_id, .. } => player_id,
             ClientMessage::PickDirection { player_id, .. } => player_id,

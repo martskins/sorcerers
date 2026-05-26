@@ -630,6 +630,44 @@ impl RealmComponent {
         );
     }
 
+    fn draw_affected_zone_highlight(
+        painter: &Painter,
+        zones: &[Zone],
+        realm_rect: Rect,
+        mirrored: bool,
+        intersection_rects: &[IntersectionRect],
+    ) {
+        let fill = Color32::from_rgba_unmultiplied(80, 200, 190, 62);
+        let stroke = Stroke::new(2.5, Color32::from_rgba_unmultiplied(120, 235, 220, 210));
+
+        for zone in zones {
+            match zone {
+                Zone::Location(cell_id, _) => {
+                    painter.add(Shape::convex_polygon(
+                        cell_corners(&realm_rect, *cell_id, mirrored, 5.0).to_vec(),
+                        fill,
+                        stroke,
+                    ));
+                }
+                Zone::Intersection(locations, _) => {
+                    if let Some(intersection) = intersection_rects
+                        .iter()
+                        .find(|intersection| &intersection.locations == locations)
+                    {
+                        painter.rect_filled(intersection.rect, 4.0, fill);
+                        painter.rect_stroke(
+                            intersection.rect,
+                            4.0,
+                            stroke,
+                            egui::StrokeKind::Outside,
+                        );
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
     fn render_grid(
         &mut self,
         ui: &mut egui::Ui,
@@ -992,6 +1030,7 @@ impl Component for RealmComponent {
         let realm_rect = self.rect;
         let mirrored = self.mirrored;
         let card_filter = self.card_filter;
+        let intersection_rects = self.intersection_rects.clone();
         for card_rect in &mut self.card_rects {
             if !card_rect.card.zone.is_in_play() {
                 continue;
@@ -1010,6 +1049,29 @@ impl Component for RealmComponent {
             }
 
             let resp = ui.allocate_rect(card_rect.rect, Sense::HOVER | Sense::CLICK | Sense::DRAG);
+            if resp.hovered() && card_rect.card.card_type == CardType::Aura {
+                match data.aura_affected_zones.get(&card_rect.card.id) {
+                    Some(Some(zones)) if !zones.is_empty() => {
+                        Self::draw_affected_zone_highlight(
+                            painter,
+                            zones,
+                            realm_rect,
+                            mirrored,
+                            &intersection_rects,
+                        );
+                    }
+                    Some(_) => {}
+                    None => {
+                        data.aura_affected_zones.insert(card_rect.card.id, None);
+                        self.client.send(ClientMessage::RequestAuraAffectedZones {
+                            player_id: self.player_id,
+                            game_id: self.game_id,
+                            card_id: card_rect.card.id,
+                        })?;
+                    }
+                }
+            }
+
             if matches!(card_rect.card.zone, Zone::Location(_, _)) {
                 let corners = card_corners(card_rect.rect, card_rotation(&card_rect.card));
                 render::draw_projected_card(
