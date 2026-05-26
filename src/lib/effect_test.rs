@@ -97,7 +97,7 @@ async fn test_drawing_from_empty_site_deck_loses_game() {
     drain_effects(&mut state).await;
 
     assert!(
-        state.loosers.contains(&player_id),
+        state.eliminated_players.contains(&player_id),
         "attempting to draw from an empty site deck should lose the game"
     );
 }
@@ -115,7 +115,7 @@ async fn test_drawing_from_empty_spell_deck_loses_game() {
     drain_effects(&mut state).await;
 
     assert!(
-        state.loosers.contains(&player_id),
+        state.eliminated_players.contains(&player_id),
         "attempting to draw from an empty spell deck should lose the game"
     );
 }
@@ -499,7 +499,7 @@ async fn test_direct_avatar_damage_after_deaths_door_loses_game() {
     drain_effects(&mut state).await;
 
     assert!(
-        !state.loosers.contains(&player_id),
+        !state.eliminated_players.contains(&player_id),
         "reaching Death's Door should not immediately lose the game"
     );
 
@@ -517,7 +517,7 @@ async fn test_direct_avatar_damage_after_deaths_door_loses_game() {
     drain_effects(&mut state).await;
 
     assert!(
-        state.loosers.contains(&player_id),
+        state.eliminated_players.contains(&player_id),
         "direct damage to an avatar after Death's Door should be a death blow"
     );
 }
@@ -556,7 +556,7 @@ async fn test_site_damage_after_deaths_door_is_not_death_blow() {
     drain_effects(&mut state).await;
 
     assert!(
-        !state.loosers.contains(&player_id),
+        !state.eliminated_players.contains(&player_id),
         "damage to a site causes avatar life loss, not a death blow"
     );
 }

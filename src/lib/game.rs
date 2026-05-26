@@ -2308,15 +2308,7 @@ impl Game {
     }
 
     pub(crate) fn game_over_message(&self) -> Option<ServerMessage> {
-        if self.state.loosers.is_empty() {
-            return None;
-        }
-
-        let winner = self
-            .state
-            .players
-            .iter()
-            .find(|player| !self.state.loosers.contains(&player.id))?;
+        let winner = self.state.winner_if_game_over()?;
 
         Some(ServerMessage::GameOver {
             winner_id: winner.id,

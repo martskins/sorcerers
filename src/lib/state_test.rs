@@ -804,6 +804,28 @@ async fn test_loses_all_abilities_keeps_disabled_status() {
     assert!(target.has_status(&state, &CardStatus::Disabled));
 }
 
+#[test]
+fn test_game_is_over_only_when_one_player_remains() {
+    let mut state = State::new_mock_state(vec![]);
+    let first_player = state.players[0].clone();
+    let second_player = state.players[1].clone();
+    let third_player = Player {
+        id: uuid::Uuid::new_v4(),
+        name: "Player 3".to_string(),
+    };
+    state.players.push(third_player.clone());
+
+    assert_eq!(state.living_players().len(), 3);
+    assert!(state.winner_if_game_over().is_none());
+
+    state.eliminate_player(first_player.id);
+    assert_eq!(state.living_players().len(), 2);
+    assert!(state.winner_if_game_over().is_none());
+
+    state.eliminate_player(second_player.id);
+    assert_eq!(state.winner_if_game_over().map(|player| player.id), Some(third_player.id));
+}
+
 #[tokio::test]
 async fn test_silence_removes_special_activated_abilities_but_keeps_basic_actions() {
     let mut state = State::new_mock_state(vec![]);

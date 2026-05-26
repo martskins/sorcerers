@@ -861,7 +861,7 @@ impl Effect {
         match &effect {
             Effect::Noop => {}
             Effect::PlayerLost { player_id } => {
-                state.loosers.insert(*player_id);
+                state.eliminate_player(*player_id);
             }
             Effect::SkipNextTurn { player_id } => {
                 state.players_skipping_turns.insert(*player_id);

@@ -714,7 +714,7 @@ pub struct State {
     pub continuous_effects: Vec<ContinuousEffect>,
     pub ongoing_effects: Vec<TimedOngoingEffect>,
     pub player_mana: HashMap<PlayerId, u8>,
-    pub loosers: HashSet<PlayerId>,
+    pub eliminated_players: HashSet<PlayerId>,
     pub players_skipping_turns: HashSet<PlayerId>,
     pub players_with_accepted_hands: HashSet<PlayerId>,
     next_ongoing_effect_timestamp: u64,
@@ -763,7 +763,7 @@ impl State {
             continuous_effects: Vec::new(),
             ongoing_effects: Vec::new(),
             player_mana,
-            loosers: HashSet::new(),
+            eliminated_players: HashSet::new(),
             players_skipping_turns: HashSet::new(),
             players_with_accepted_hands: HashSet::new(),
             next_ongoing_effect_timestamp: 1,
@@ -1593,6 +1593,26 @@ impl State {
         }
 
         Err(anyhow::anyhow!("failed to get opponent id"))
+    }
+
+    pub fn eliminate_player(&mut self, player_id: PlayerId) {
+        self.eliminated_players.insert(player_id);
+    }
+
+    pub fn is_player_eliminated(&self, player_id: &PlayerId) -> bool {
+        self.eliminated_players.contains(player_id)
+    }
+
+    pub fn living_players(&self) -> Vec<&Player> {
+        self.players
+            .iter()
+            .filter(|player| !self.is_player_eliminated(&player.id))
+            .collect()
+    }
+
+    pub fn winner_if_game_over(&self) -> Option<&Player> {
+        let living_players = self.living_players();
+        (living_players.len() == 1).then_some(living_players[0])
     }
 
     pub fn get_defenders_for_attack(&self, defender_id: &uuid::Uuid) -> Vec<uuid::Uuid> {
