@@ -2093,7 +2093,7 @@ pub trait ResourceProvider: Card {
 
 #[async_trait::async_trait]
 pub trait Site: Card + ResourceProvider {
-    fn is_valid_play_zone_for(
+    fn is_valid_play_site_for(
         &self,
         state: &State,
         card_id: &uuid::Uuid,

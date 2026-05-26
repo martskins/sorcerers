@@ -97,13 +97,18 @@ impl Zone {
 
         match self {
             Zone::Location(_, _) => {
+                let card = state.get_card(card_id);
+                // Auras should be played on intersections unless otherwise stated.
+                if card.get_card_type() == CardType::Aura {
+                    return Ok(false);
+                }
+
                 let site_in_zone = self.get_site(state);
                 if let Some(site) = site_in_zone {
-                    return site.is_valid_play_zone_for(state, card_id, player_id);
+                    return site.is_valid_play_site_for(state, card_id, player_id);
                 }
 
                 // If there's no site in the zone, only cards with Voidwalk can be played there.
-                let card = state.get_card(card_id);
                 match card.get_card_type() {
                     CardType::Site => {
                         let has_played_site = !CardQuery::new()
