@@ -13,7 +13,10 @@ use rand::SeedableRng;
 use sorcerers::{
     card::{CardData, CardType, Region},
     game::{Direction, PlayerId},
-    networking::{self, message::ClientMessage},
+    networking::{
+        self,
+        message::{ClientMessage, OngoingEffectData},
+    },
     zone::Zone,
 };
 
@@ -826,7 +829,12 @@ impl RealmComponent {
         Ok(())
     }
 
-    fn render_view_controls(&mut self, ui: &mut Ui) {
+    fn render_view_controls(
+        &mut self,
+        data: &mut GameData,
+        ui: &mut Ui,
+    ) -> anyhow::Result<Option<OngoingEffectData>> {
+        let mut hovered_effect = None;
         let button_pos = pos2(self.rect.min.x + 18.0, self.rect.min.y + 18.0);
         egui::Area::new(egui::Id::new("realm_view_controls"))
             .fixed_pos(button_pos)
@@ -848,8 +856,66 @@ impl RealmComponent {
                             self.card_filter = filter;
                         }
                     }
+                    ui.separator();
+                    let effects_clicked = ui
+                        .selectable_label(data.show_ongoing_effects, "Effects")
+                        .on_hover_text("Show active ongoing effects")
+                        .clicked();
+                    if effects_clicked {
+                        data.show_ongoing_effects = !data.show_ongoing_effects;
+                        if data.show_ongoing_effects {
+                            data.ongoing_effects = None;
+                        }
+                    }
                 });
+
             });
+        if data.show_ongoing_effects {
+            egui::Window::new("Ongoing effects")
+                .id(egui::Id::new("ongoing_effects_window"))
+                .default_pos(pos2(self.rect.min.x + 18.0, self.rect.min.y + 58.0))
+                .default_width(340.0)
+                .resizable(true)
+                .collapsible(false)
+                .open(&mut data.show_ongoing_effects)
+                .show(ui.ctx(), |ui| {
+                    if data.ongoing_effects.is_none() {
+                        ui.label("Loading effects...");
+                    } else if let Some(effects) = &data.ongoing_effects {
+                        egui::ScrollArea::vertical()
+                            .max_height(260.0)
+                            .show(ui, |ui| {
+                                if effects.is_empty() {
+                                    ui.label("No ongoing effects");
+                                }
+                                for effect in effects {
+                                    let source =
+                                        effect.source_name.as_deref().unwrap_or("No source");
+                                    let title = format!("{}: {}", source, effect.description);
+                                    let text = if effect.active {
+                                        egui::RichText::new(title)
+                                    } else {
+                                        egui::RichText::new(format!("{} (inactive)", title))
+                                            .color(theme::TURN_WAITING)
+                                    };
+                                    let response = ui
+                                        .label(text)
+                                        .on_hover_text("Hover to highlight affected realm zones and cards");
+                                    if response.hovered() {
+                                        hovered_effect = Some(effect.clone());
+                                    }
+                                }
+                            });
+                    }
+                });
+        }
+        if data.show_ongoing_effects && data.ongoing_effects.is_none() {
+            self.client.send(ClientMessage::RequestOngoingEffects {
+                player_id: self.player_id,
+                game_id: self.game_id,
+            })?;
+        }
+        Ok(hovered_effect)
     }
 
     fn card_visible_in_filter(&self, card: &CardData) -> bool {
@@ -1023,6 +1089,7 @@ impl Component for RealmComponent {
         let now = ui.ctx().input(|i| i.time);
         self.render_grid(ui, data, painter)?;
 
+        let highlighted_effect = data.highlighted_ongoing_effect.clone();
         let mut clicked_card = None;
         let mut move_delta = Vec2::default();
         let mut moved_card_id = None;
@@ -1031,6 +1098,17 @@ impl Component for RealmComponent {
         let mirrored = self.mirrored;
         let card_filter = self.card_filter;
         let intersection_rects = self.intersection_rects.clone();
+
+        if let Some(effect) = &highlighted_effect {
+            Self::draw_affected_zone_highlight(
+                painter,
+                &effect.affected_zones,
+                realm_rect,
+                mirrored,
+                &intersection_rects,
+            );
+        }
+
         for card_rect in &mut self.card_rects {
             if !card_rect.card.zone.is_in_play() {
                 continue;
@@ -1098,6 +1176,21 @@ impl Component for RealmComponent {
             } else {
                 card_rect.rect
             };
+
+            if highlighted_effect
+                .as_ref()
+                .is_some_and(|effect| effect.affected_card_ids.contains(&card_rect.card.id))
+            {
+                let stroke = Stroke::new(3.0, Color32::from_rgba_unmultiplied(120, 235, 220, 230));
+                if matches!(card_rect.card.zone, Zone::Location(_, _)) {
+                    painter.add(Shape::closed_line(
+                        card_corners(card_rect.rect, card_rotation(&card_rect.card)).to_vec(),
+                        stroke,
+                    ));
+                } else {
+                    painter.rect_stroke(visual_rect, 4.0, stroke, egui::StrokeKind::Outside);
+                }
+            }
 
             if resp.clicked() {
                 let click_pos = resp.interact_pointer_pos().unwrap_or(visual_rect.center());
@@ -1249,7 +1342,7 @@ impl Component for RealmComponent {
 
         self.render_paths(ui, data, painter);
         self.render_direction_picker(ui, data, painter)?;
-        self.render_view_controls(ui);
+        data.highlighted_ongoing_effect = self.render_view_controls(data, ui)?;
 
         Ok(None)
     }

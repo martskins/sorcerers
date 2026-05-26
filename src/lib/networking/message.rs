@@ -42,6 +42,17 @@ impl DeckChoice {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OngoingEffectData {
+    pub source_card_id: Option<uuid::Uuid>,
+    pub source_name: Option<String>,
+    pub description: String,
+    pub timestamp: u64,
+    pub active: bool,
+    pub affected_card_ids: Vec<uuid::Uuid>,
+    pub affected_zones: Vec<Zone>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ServerMessage {
     RevealCards {
         player_id: PlayerId,
@@ -149,6 +160,10 @@ pub enum ServerMessage {
         card_id: uuid::Uuid,
         zones: Vec<Zone>,
     },
+    OngoingEffects {
+        player_id: PlayerId,
+        effects: Vec<OngoingEffectData>,
+    },
     PickZoneGroup {
         prompt: String,
         source_card_id: Option<uuid::Uuid>,
@@ -186,6 +201,7 @@ impl ServerMessage {
             ServerMessage::PickZone { player_id, .. } => *player_id,
             ServerMessage::PlayableZones { player_id, .. } => *player_id,
             ServerMessage::AuraAffectedZones { player_id, .. } => *player_id,
+            ServerMessage::OngoingEffects { player_id, .. } => *player_id,
             ServerMessage::PickZoneGroup { player_id, .. } => *player_id,
             ServerMessage::PickAction { player_id, .. } => *player_id,
             ServerMessage::PickPath { player_id, .. } => *player_id,
@@ -250,6 +266,10 @@ pub enum ClientMessage {
         game_id: uuid::Uuid,
         player_id: PlayerId,
         card_id: uuid::Uuid,
+    },
+    RequestOngoingEffects {
+        game_id: uuid::Uuid,
+        player_id: PlayerId,
     },
     PlayCardAtZone {
         game_id: uuid::Uuid,
@@ -321,6 +341,7 @@ impl ClientMessage {
             ClientMessage::ClickCard { game_id, .. } => *game_id,
             ClientMessage::RequestPlayableZones { game_id, .. } => *game_id,
             ClientMessage::RequestAuraAffectedZones { game_id, .. } => *game_id,
+            ClientMessage::RequestOngoingEffects { game_id, .. } => *game_id,
             ClientMessage::PlayCardAtZone { game_id, .. } => *game_id,
             ClientMessage::DrawCard { game_id, .. } => *game_id,
             ClientMessage::PickDirection { game_id, .. } => *game_id,
@@ -345,6 +366,7 @@ impl ClientMessage {
             ClientMessage::ClickCard { player_id, .. } => player_id,
             ClientMessage::RequestPlayableZones { player_id, .. } => player_id,
             ClientMessage::RequestAuraAffectedZones { player_id, .. } => player_id,
+            ClientMessage::RequestOngoingEffects { player_id, .. } => player_id,
             ClientMessage::PlayCardAtZone { player_id, .. } => player_id,
             ClientMessage::DrawCard { player_id, .. } => player_id,
             ClientMessage::PickDirection { player_id, .. } => player_id,

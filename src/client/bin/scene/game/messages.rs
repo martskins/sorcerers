@@ -81,6 +81,10 @@ impl Game {
                     .insert(*card_id, Some(zones.clone()));
                 None
             }
+            ServerMessage::OngoingEffects { effects, .. } => {
+                self.data.ongoing_effects = Some(effects.clone());
+                None
+            }
             ServerMessage::PickAmount {
                 prompt,
                 source_card_id,
@@ -288,6 +292,8 @@ impl Game {
                 self.data.resources = resources.clone();
                 self.data.avatar_health = health.clone();
                 self.data.aura_affected_zones.clear();
+                self.data.ongoing_effects = None;
+                self.data.highlighted_ongoing_effect = None;
                 self.open_controlled_hand_viewer();
                 None
             }
@@ -306,6 +312,8 @@ impl Game {
                 self.data.resources = resources.clone();
                 self.data.avatar_health = health.clone();
                 self.data.aura_affected_zones.clear();
+                self.data.ongoing_effects = None;
+                self.data.highlighted_ongoing_effect = None;
                 self.open_controlled_hand_viewer();
                 None
             }

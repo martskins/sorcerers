@@ -1999,6 +1999,15 @@ impl Game {
                     })
                     .await?;
             }
+            ClientMessage::RequestOngoingEffects { player_id, .. } => {
+                self.state
+                    .get_sender()
+                    .send(ServerMessage::OngoingEffects {
+                        player_id: *player_id,
+                        effects: self.state.ongoing_effects_data(),
+                    })
+                    .await?;
+            }
             ClientMessage::PlayCardAtZone {
                 player_id,
                 card_id,

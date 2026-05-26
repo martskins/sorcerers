@@ -7,7 +7,7 @@ use crate::{
         ActivatedAbility, InputStatus, PlayerId, Resources, Thresholds, ThresholdsDiff, pick_zone,
         yes_or_no,
     },
-    networking::message::{ClientMessage, ServerMessage},
+    networking::message::{ClientMessage, OngoingEffectData, ServerMessage},
     query::{CardQuery, EffectQuery, ZoneQuery},
     zone::Zone,
 };
@@ -334,6 +334,115 @@ pub enum OngoingEffect {
 }
 
 pub type ContinuousEffect = OngoingEffect;
+
+impl OngoingEffect {
+    fn display_description(&self) -> String {
+        match self {
+            Self::ControllerOverride { controller_id, .. } => {
+                format!("Controller becomes {}", controller_id)
+            }
+            Self::ModifyPower { power_diff, .. } => {
+                format!("Power {:+}", power_diff)
+            }
+            Self::ModifyPowerForEach { power_per_card, .. } => {
+                format!("Power {:+} for each matching card", power_per_card)
+            }
+            Self::FloodSites { .. } => "Floods sites".to_string(),
+            Self::DroughtSites { .. } => "Droughts sites".to_string(),
+            Self::MakeZoneUnvisitable { affected_zone, .. } => {
+                format!("Makes {} unvisitable", affected_zone)
+            }
+            Self::DoubleDamageTaken { except_strikes, .. } if *except_strikes => {
+                "Doubles non-strike damage taken".to_string()
+            }
+            Self::DoubleDamageTaken { .. } => "Doubles damage taken".to_string(),
+            Self::ReduceDamageTaken { amount, .. } => {
+                format!("Reduces damage taken by {}", amount)
+            }
+            Self::PreventDamageFromMagic { .. } => "Prevents magic damage".to_string(),
+            Self::RestrictMoveToZones { allowed_zones, .. } => {
+                format!("Restricts movement to {} zones", allowed_zones.len())
+            }
+            Self::BlockMovementThrough { border, .. } => {
+                format!("Blocks movement through {}", border)
+            }
+            Self::ConnectTopBottomEdges { .. } => "Connects top and bottom edges".to_string(),
+            Self::ConnectLeftRightEdges { .. } => "Connects left and right edges".to_string(),
+            Self::ConnectZones {
+                connected_zones, ..
+            } => format!("Connects {} zones", connected_zones.len()),
+            Self::ChangeSiteType { site_type, .. } => {
+                format!("Changes site type to {:?}", site_type)
+            }
+            Self::GrantAbility { ability, .. } => {
+                format!("Grants {:?}", ability)
+            }
+            Self::RemoveAbilities { abilities, .. } => {
+                format!("Removes {} abilities", abilities.len())
+            }
+            Self::GrantActivatedAbility { ability, .. } => {
+                format!("Grants {}", ability.get_name())
+            }
+            Self::GrantCounter { counter, .. } => {
+                format!("Grants {:?} counter", counter)
+            }
+            Self::ModifyProvidedAffinities { .. } => "Modifies provided affinities".to_string(),
+            Self::ModifyProvidedMana { mana_diff, .. } => {
+                format!("Provided mana {:+}", mana_diff)
+            }
+            Self::OverrideValidPlayZone { .. } => "Overrides valid play zones".to_string(),
+            Self::ModifyManaCost { mana_diff, .. } => {
+                format!("Mana cost {:+}", mana_diff)
+            }
+            Self::TriggeredEffect { .. } => "Triggered ongoing effect".to_string(),
+        }
+    }
+
+    fn affected_card_ids(&self, state: &State) -> Vec<uuid::Uuid> {
+        match self {
+            Self::ControllerOverride { affected_cards, .. }
+            | Self::ModifyPower { affected_cards, .. }
+            | Self::ModifyPowerForEach { affected_cards, .. }
+            | Self::MakeZoneUnvisitable { affected_cards, .. }
+            | Self::DoubleDamageTaken { affected_cards, .. }
+            | Self::ReduceDamageTaken { affected_cards, .. }
+            | Self::PreventDamageFromMagic { affected_cards, .. }
+            | Self::RestrictMoveToZones { affected_cards, .. }
+            | Self::BlockMovementThrough { affected_cards, .. }
+            | Self::ConnectTopBottomEdges { affected_cards, .. }
+            | Self::ConnectLeftRightEdges { affected_cards, .. }
+            | Self::ConnectZones { affected_cards, .. }
+            | Self::GrantAbility { affected_cards, .. }
+            | Self::RemoveAbilities { affected_cards, .. }
+            | Self::GrantActivatedAbility { affected_cards, .. }
+            | Self::GrantCounter { affected_cards, .. }
+            | Self::ModifyProvidedMana { affected_cards, .. }
+            | Self::OverrideValidPlayZone { affected_cards, .. }
+            | Self::ModifyManaCost { affected_cards, .. } => affected_cards.all(state),
+            Self::FloodSites { affected_sites }
+            | Self::DroughtSites { affected_sites }
+            | Self::ChangeSiteType { affected_sites, .. }
+            | Self::ModifyProvidedAffinities { affected_sites, .. } => affected_sites.all(state),
+            Self::TriggeredEffect { .. } => Vec::new(),
+        }
+    }
+
+    fn explicit_affected_zones(&self, state: &State) -> Vec<Zone> {
+        match self {
+            Self::MakeZoneUnvisitable { affected_zone, .. } => vec![affected_zone.clone()],
+            Self::RestrictMoveToZones { allowed_zones, .. } => allowed_zones.clone(),
+            Self::BlockMovementThrough { border, .. } => vec![border.clone()],
+            Self::ConnectZones {
+                connected_zones, ..
+            } => connected_zones.clone(),
+            Self::OverrideValidPlayZone { affected_zones, .. } => affected_zones.options(state),
+            Self::ModifyManaCost {
+                zones: Some(zones), ..
+            } => zones.options(state),
+            _ => Vec::new(),
+        }
+    }
+}
 
 impl std::fmt::Debug for OngoingEffect {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -947,6 +1056,65 @@ impl State {
             (Self::ongoing_effect_layer(effect), effect.timestamp, *idx)
         });
         effects.into_iter().map(|(_, effect)| effect).collect()
+    }
+
+    pub fn ongoing_effects_data(&self) -> Vec<OngoingEffectData> {
+        let mut blocked_sources = HashSet::new();
+        self.ordered_ongoing_effects()
+            .into_iter()
+            .map(|timed_effect| {
+                let active = timed_effect
+                    .source
+                    .is_none_or(|source_id| !blocked_sources.contains(&source_id));
+
+                let mut affected_card_ids = timed_effect.effect.affected_card_ids(self);
+                affected_card_ids.sort();
+                affected_card_ids.dedup();
+
+                let mut affected_zones = timed_effect.effect.explicit_affected_zones(self);
+                affected_zones.extend(affected_card_ids.iter().filter_map(|card_id| {
+                    self.cards.get(card_id).and_then(|card| {
+                        let zone = card.get_zone().clone();
+                        zone.is_in_play().then_some(zone)
+                    })
+                }));
+                affected_zones.sort();
+                affected_zones.dedup();
+
+                if active {
+                    match &timed_effect.effect {
+                        OngoingEffect::GrantAbility {
+                            ability: Ability::Disabled,
+                            affected_cards,
+                        } => {
+                            blocked_sources.extend(affected_cards.all(self));
+                        }
+                        OngoingEffect::RemoveAbilities {
+                            abilities,
+                            affected_cards,
+                        } if is_silence_modifier(abilities) => {
+                            blocked_sources.extend(affected_cards.all(self));
+                        }
+                        _ => {}
+                    }
+                }
+
+                let source_name = timed_effect
+                    .source
+                    .and_then(|source_id| self.cards.get(&source_id))
+                    .map(|card| card.get_name().to_string());
+
+                OngoingEffectData {
+                    source_card_id: timed_effect.source,
+                    source_name,
+                    description: timed_effect.effect.display_description(),
+                    timestamp: timed_effect.timestamp,
+                    active,
+                    affected_card_ids,
+                    affected_zones,
+                }
+            })
+            .collect()
     }
 
     fn refresh_continuous_effects(&mut self) {

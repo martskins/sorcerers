@@ -25,7 +25,7 @@ use sorcerers::{
     game::{Direction, PlayerId, Resources},
     networking::{
         self,
-        message::{ClientMessage, ServerMessage},
+        message::{ClientMessage, OngoingEffectData, ServerMessage},
     },
     zone::Zone,
 };
@@ -146,6 +146,9 @@ pub struct GameData {
     pub resources: HashMap<PlayerId, Resources>,
     pub avatar_health: HashMap<PlayerId, u16>,
     pub aura_affected_zones: HashMap<uuid::Uuid, Option<Vec<Zone>>>,
+    pub ongoing_effects: Option<Vec<OngoingEffectData>>,
+    pub show_ongoing_effects: bool,
+    pub highlighted_ongoing_effect: Option<OngoingEffectData>,
     /// Screen position of the last card the player clicked; used to anchor context menus.
     pub last_clicked_card_pos: Option<egui::Pos2>,
     pub last_clicked_card_rect: Option<egui::Rect>,
@@ -167,6 +170,9 @@ impl GameData {
             resources: HashMap::new(),
             avatar_health: HashMap::new(),
             aura_affected_zones: HashMap::new(),
+            ongoing_effects: None,
+            show_ongoing_effects: false,
+            highlighted_ongoing_effect: None,
             last_clicked_card_pos: None,
             last_clicked_card_rect: None,
             last_clicked_cursor_pos: None,
