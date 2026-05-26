@@ -120,8 +120,8 @@ impl Card for BrobdingnagBullfrog {
         _state: &State,
     ) -> anyhow::Result<Vec<ContinuousEffect>> {
         if let Some(swallowed_minion) = self.swallowed_minion {
-            Ok(vec![ContinuousEffect::GrantAbility {
-                ability: Ability::Disabled,
+            Ok(vec![ContinuousEffect::GrantStatus {
+                status: CardStatus::Disabled,
                 affected_cards: swallowed_minion.into(),
             }])
         } else {

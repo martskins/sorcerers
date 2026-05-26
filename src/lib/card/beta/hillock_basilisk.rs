@@ -62,8 +62,8 @@ impl Card for HillockBasilisk {
     }
 
     fn area_modifiers(&self, _state: &State) -> Vec<ContinuousEffect> {
-        vec![ContinuousEffect::GrantAbility {
-            ability: Ability::Disabled,
+        vec![ContinuousEffect::GrantStatus {
+            status: CardStatus::Disabled,
             affected_cards: CardQuery::new()
                 .units()
                 .in_zone_and_direction_from_card(self.get_id(), Direction::Up, 1, true)

@@ -13,7 +13,7 @@ use crate::prelude::*;
 mod card_test;
 
 use crate::{
-    effect::{AbilityCounter, Counter, Effect},
+    effect::{AbilityCounter, Counter, Effect, StatusCounter},
     game::{
         ActivatedAbility, AvatarAction, Element, PlayerId, Thresholds, ThresholdsDiff, UnitAction,
         pick_amount, pick_card, pick_option, pick_zone,
@@ -128,6 +128,7 @@ pub struct CardData {
     pub region: Region,
     pub card_type: CardType,
     pub abilities: Vec<Ability>,
+    pub statuses: Vec<CardStatus>,
     pub damage_taken: u16,
     pub bearer: Option<uuid::Uuid>,
     pub rarity: Rarity,
@@ -278,7 +279,7 @@ impl CostType {
                         CostAction::Tap => {
                             query = query
                                 .untapped()
-                                .without_ability(&Ability::SummoningSickness)
+                                .without_status(&CardStatus::SummoningSickness)
                         }
                         CostAction::Discard => query = query.in_zone(&Zone::Hand),
                         CostAction::Sacrifice => query = query.in_zones(&Zone::all_realm()),
@@ -375,7 +376,7 @@ impl CostType {
                         CostAction::Tap => {
                             query = query
                                 .untapped()
-                                .without_ability(&Ability::SummoningSickness)
+                                .without_status(&CardStatus::SummoningSickness)
                         }
                         CostAction::Discard => query = query.in_zone(&Zone::Hand),
                         CostAction::Sacrifice => query = query.in_zones(&Zone::all_realm()),
@@ -904,6 +905,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         }
     }
 
+    fn remove_status_counter(&mut self, id: &uuid::Uuid) {
+        self.get_base_mut().status_counters.retain(|c| &c.id != id);
+    }
+
     // Returns the ID of the player who owns this card.
     fn get_owner_id(&self) -> &PlayerId {
         &self.get_base().owner_id
@@ -955,7 +960,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     fn strikes_back(&self, state: &State) -> anyhow::Result<bool> {
-        if !self.is_unit() || self.has_ability(state, &Ability::Disabled) {
+        if !self.is_unit() || self.has_status(state, &CardStatus::Disabled) {
             return Ok(false);
         }
 
@@ -1252,6 +1257,24 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             .is_ok_and(|abilities| abilities.contains(ability))
     }
 
+    fn get_statuses(&self, state: &State) -> Vec<CardStatus> {
+        let mut statuses = self.get_base().statuses.clone();
+        statuses.extend(
+            self.get_base()
+                .status_counters
+                .iter()
+                .map(|counter| counter.status.clone()),
+        );
+        statuses.extend(state.granted_statuses_from_continuous_effects(self.get_id()));
+        statuses.sort();
+        statuses.dedup();
+        statuses
+    }
+
+    fn has_status(&self, state: &State, status: &CardStatus) -> bool {
+        self.get_statuses(state).contains(status)
+    }
+
     /// Returns true if this is an oversized unit (occupies a 2×2 intersection).
     fn is_oversized(&self, state: &State) -> bool {
         self.has_ability(state, &Ability::Oversized)
@@ -1442,7 +1465,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     fn can_attack(&self, state: &State) -> bool {
-        self.is_unit() && !self.has_ability(state, &Ability::Disabled) && !self.is_tapped()
+        self.is_unit() && !self.has_status(state, &CardStatus::Disabled) && !self.is_tapped()
     }
 
     // Returns the valid attack targets for this card.
@@ -1709,6 +1732,17 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         }
     }
 
+    fn remove_status(&mut self, status: &CardStatus) {
+        self.get_base_mut().statuses.retain(|s| s != status);
+        self.get_base_mut()
+            .status_counters
+            .retain(|c| &c.status != status);
+    }
+
+    fn add_status(&mut self, status: CardStatus) {
+        self.get_base_mut().statuses.push(status);
+    }
+
     fn on_summon(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         if self.is_site() {
             return self.base_site_on_summon(state);
@@ -1897,7 +1931,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         &self,
         state: &State,
     ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
-        if self.has_ability(state, &Ability::Disabled) {
+        if self.has_status(state, &CardStatus::Disabled) {
             return Ok(vec![]);
         }
 
@@ -2195,9 +2229,15 @@ pub trait Site: Card + ResourceProvider {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Serialize, Deserialize)]
+pub enum CardStatus {
+    Disabled,
+    Silenced,
+    SummoningSickness,
+}
+
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum Ability {
-    Disabled,
     Voidwalk,
     Airborne,
     Ranged(u8),
@@ -2211,7 +2251,6 @@ pub enum Ability {
     Submerge,
     Spellcaster(Option<Element>),
     Charge,
-    SummoningSickness,
     TakesNoDamageFromElement(Element),
     TakesNoDamageFromRangedStrikes,
     Immobile,
@@ -2239,16 +2278,11 @@ pub enum AbilityCategory {
     Passive,
     Activated,
     Triggered,
-    EngineStatus,
 }
 
 impl Ability {
     pub fn category(&self) -> AbilityCategory {
         match self {
-            Ability::Disabled
-            | Ability::SummoningSickness
-            | Ability::Immobile
-            | Ability::CannotDefend => AbilityCategory::EngineStatus,
             Ability::Voidwalk
             | Ability::Airborne
             | Ability::Ranged(_)
@@ -2262,6 +2296,7 @@ impl Ability {
             | Ability::Submerge
             | Ability::Spellcaster(_)
             | Ability::Charge
+            | Ability::Immobile
             | Ability::TakesNoDamageFromElement(_)
             | Ability::TakesNoDamageFromRangedStrikes
             | Ability::Waterbound
@@ -2272,12 +2307,25 @@ impl Ability {
             | Ability::Oversized
             | Ability::LethalTarget
             | Ability::CarryMinions(_)
-            | Ability::SplashDamage => AbilityCategory::Keyword,
+            | Ability::SplashDamage
+            | Ability::CannotDefend => AbilityCategory::Keyword,
         }
     }
 
     pub fn is_keyword_ability(&self) -> bool {
         self.category() == AbilityCategory::Keyword
+    }
+
+    pub fn is_card_ability(&self) -> bool {
+        true
+    }
+
+    pub fn is_special_ability(&self) -> bool {
+        self.is_card_ability()
+    }
+
+    pub fn persists_while_disabled(&self) -> bool {
+        matches!(self, Ability::Landbound | Ability::Waterbound)
     }
 }
 
@@ -2365,6 +2413,8 @@ pub struct CardBase {
     pub controller_id: PlayerId,
     pub zone: Zone,
     pub costs: Costs,
+    pub statuses: Vec<CardStatus>,
+    pub status_counters: Vec<StatusCounter>,
     // In the case of artifacts, bearer is the id of the card that has the artifact equipped. This
     // field can also be used for units to track when another unit is carrying them (e.g. a unit
     // being carried by Beast of Burden).
@@ -2383,6 +2433,8 @@ impl Default for CardBase {
             controller_id: PlayerId::default(),
             zone: Zone::default(),
             costs: Costs::default(),
+            statuses: vec![],
+            status_counters: vec![],
             bearer: None,
             rarity: Rarity::default(),
             edition: Edition::default(),
@@ -2625,6 +2677,13 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
 
                 modifiers.extend(state.granted_abilities_from_continuous_effects(self.get_id()));
 
+                if self.has_status(state, &CardStatus::Silenced) {
+                    modifiers.retain(|ability| !ability.is_special_ability());
+                }
+                if self.has_status(state, &CardStatus::Disabled) {
+                    modifiers.retain(|ability| ability.persists_while_disabled());
+                }
+
                 modifiers
             }
             CardType::Site => {
@@ -2635,6 +2694,12 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
                     state.ability_modifiers_from_area_modifiers(self.get_id()),
                 );
                 modifiers.extend(state.granted_abilities_from_continuous_effects(self.get_id()));
+
+                if self.has_status(state, &CardStatus::Silenced)
+                    || self.has_status(state, &CardStatus::Disabled)
+                {
+                    modifiers.retain(|ability| !ability.is_special_ability());
+                }
 
                 modifiers
             }

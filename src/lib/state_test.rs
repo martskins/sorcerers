@@ -1,8 +1,9 @@
 use crate::{
     card::{
-        Ability, AridDesert, BeastOfBurden, Card, CauldronCrones, CourtesanThais, DonnybrookInn,
-        Drought, Enchantress, Flood, FootSoldier, HeadlessHaunt, KiteArcher, NimbusJinn, Region,
-        RimlandNomads, Rubble, SistersOfSilence, SkyBaron, SmokestacksOfGnaak, SneakThief,
+        Ability, AridDesert, BeastOfBurden, Card, CardStatus, CauldronCrones, CourtesanThais,
+        DonnybrookInn, Drought, Enchantress, Flood, FootSoldier, HeadlessHaunt, KiteArcher,
+        NimbusJinn, Region, RimlandNomads, Rubble, SistersOfSilence, SkyBaron, SmokestacksOfGnaak,
+        SneakThief,
         from_name_and_zone,
     },
     deck::Deck,
@@ -10,7 +11,10 @@ use crate::{
     game::{NO_CONTROLLER, Thresholds},
     networking::message::ServerMessage,
     query::{CardQuery, EffectQuery, QueryCache, ZoneQuery},
-    state::{Player, PlayerWithDeck, State, TemporaryEffect, Turn, TurnIterator},
+    state::{
+        AbilityRemoval, ContinuousEffect, Player, PlayerWithDeck, State, TemporaryEffect,
+        TimedOngoingEffect, Turn, TurnIterator,
+    },
     zone::Zone,
 };
 
@@ -722,7 +726,7 @@ async fn test_silence_removes_keyword_abilities_without_enumerating_values() {
     target.add_ability(Ability::Movement(99));
     target.add_ability(Ability::Ranged(99));
     target.add_ability(Ability::CarryMinions(99));
-    target.add_ability(Ability::Disabled);
+    target.add_status(CardStatus::Disabled);
     let target_id = insert_realm_card(
         &mut state,
         Box::new(target),
@@ -734,7 +738,70 @@ async fn test_silence_removes_keyword_abilities_without_enumerating_values() {
     assert!(!target.has_ability(&state, &Ability::Movement(99)));
     assert!(!target.has_ability(&state, &Ability::Ranged(99)));
     assert!(!target.has_ability(&state, &Ability::CarryMinions(99)));
-    assert!(target.has_ability(&state, &Ability::Disabled));
+    assert!(target.has_status(&state, &CardStatus::Disabled));
+}
+
+#[tokio::test]
+async fn test_silence_removes_special_negative_abilities_but_keeps_engine_statuses() {
+    let mut state = State::new_mock_state(vec![]);
+    let player_id = state.players[0].id;
+
+    insert_realm_card(
+        &mut state,
+        Box::new(SistersOfSilence::new(player_id)),
+        Zone::Location(7, Region::Surface),
+    )
+    .await;
+
+    let mut target = FootSoldier::new(player_id);
+    target.add_ability(Ability::Immobile);
+    target.add_ability(Ability::CannotDefend);
+    target.add_status(CardStatus::Disabled);
+    target.add_status(CardStatus::SummoningSickness);
+    let target_id = insert_realm_card(
+        &mut state,
+        Box::new(target),
+        Zone::Location(8, Region::Surface),
+    )
+    .await;
+
+    let target = state.get_card(&target_id);
+    assert!(!target.has_ability(&state, &Ability::Immobile));
+    assert!(!target.has_ability(&state, &Ability::CannotDefend));
+    assert!(target.has_status(&state, &CardStatus::Silenced));
+    assert!(target.has_status(&state, &CardStatus::Disabled));
+    assert!(target.has_status(&state, &CardStatus::SummoningSickness));
+}
+
+#[tokio::test]
+async fn test_loses_all_abilities_keeps_disabled_status() {
+    let mut state = State::new_mock_state(vec![]);
+    let player_id = state.players[0].id;
+
+    let mut target = FootSoldier::new(player_id);
+    target.add_ability(Ability::Airborne);
+    target.add_ability(Ability::Immobile);
+    target.add_status(CardStatus::Disabled);
+    let target_id = insert_realm_card(
+        &mut state,
+        Box::new(target),
+        Zone::Location(8, Region::Surface),
+    )
+    .await;
+
+    state.ongoing_effects.push(TimedOngoingEffect {
+        effect: ContinuousEffect::RemoveAbilities {
+            removal: AbilityRemoval::AllAbilities,
+            affected_cards: CardQuery::from_id(target_id),
+        },
+        source: None,
+        timestamp: 1,
+    });
+
+    let target = state.get_card(&target_id);
+    assert!(!target.has_ability(&state, &Ability::Airborne));
+    assert!(!target.has_ability(&state, &Ability::Immobile));
+    assert!(target.has_status(&state, &CardStatus::Disabled));
 }
 
 #[tokio::test]
@@ -816,12 +883,12 @@ async fn test_smokestacks_of_gnaak_use_timestamp_order_for_dependent_effects() {
     assert!(
         !state
             .get_card(&older_id)
-            .has_ability(&state, &Ability::Disabled)
+            .has_status(&state, &CardStatus::Disabled)
     );
     assert!(
         state
             .get_card(&newer_id)
-            .has_ability(&state, &Ability::Disabled)
+            .has_status(&state, &CardStatus::Disabled)
     );
 }
 
@@ -952,7 +1019,7 @@ async fn test_source_relative_ongoing_effects_follow_source_without_refreshing()
     assert!(
         state
             .get_card(&target_id)
-            .has_ability(&state, &Ability::Disabled)
+            .has_status(&state, &CardStatus::Disabled)
     );
 
     let target_zone = Zone::Location(8, Region::Surface);
@@ -975,7 +1042,7 @@ async fn test_source_relative_ongoing_effects_follow_source_without_refreshing()
     assert!(
         !state
             .get_card(&target_id)
-            .has_ability(&state, &Ability::Disabled)
+            .has_status(&state, &CardStatus::Disabled)
     );
 }
 

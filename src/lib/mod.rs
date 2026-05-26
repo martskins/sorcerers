@@ -22,11 +22,11 @@ mod zone_test;
 pub(crate) mod prelude {
     pub use crate::card::{
         Ability, AdditionalCost, Artifact, ArtifactBase, ArtifactType, Aura, AuraBase, AvatarBase,
-        Card, CardBase, CardBaseMethods, CardConstructor, CardType, Cost, CostType, Costs, Damage,
-        Edition, MinionType, Rarity, Region, ResourceProvider, ResourceProviderBaseMethods, Rubble,
-        Site, SiteBase, SiteType, UnitBase,
+        Card, CardBase, CardBaseMethods, CardConstructor, CardStatus, CardType, Cost, CostType,
+        Costs, Damage, Edition, MinionType, Rarity, Region, ResourceProvider,
+        ResourceProviderBaseMethods, Rubble, Site, SiteBase, SiteType, UnitBase,
     };
-    pub use crate::effect::{AbilityCounter, Counter, DrawKind, Effect, TokenType};
+    pub use crate::effect::{AbilityCounter, Counter, DrawKind, Effect, StatusCounter, TokenType};
     pub use crate::game::{
         ActivatedAbility, AvatarAction, BaseAction, BaseOption, CARDINAL_DIRECTIONS, Direction,
         Element, NO_CONTROLLER, PlayerId, Thresholds, UnitAction, force_sync,

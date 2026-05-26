@@ -56,6 +56,7 @@ impl CardEntry {
             region: Region::Surface,
             card_type: self.card_type.clone(),
             abilities: vec![],
+            statuses: vec![],
             damage_taken: 0,
             bearer: None,
             rarity: self.rarity.clone(),

@@ -1,7 +1,7 @@
 use rand::seq::IndexedRandom;
 
 use crate::{
-    card::{Ability, ArtifactType, Card, CardType, MinionType, Rarity, Region, SiteType},
+    card::{Ability, ArtifactType, Card, CardStatus, CardType, MinionType, Rarity, Region, SiteType},
     game::{Direction, Element, PlayerId, pick_card_source, pick_card_with_options_source},
     state::State,
     zone::Zone,
@@ -24,6 +24,8 @@ pub struct CardQuery {
     not_in_ids: Option<Vec<uuid::Uuid>>,
     without_abilities: Option<Vec<Ability>>,
     with_abilities: Option<Vec<Ability>>,
+    without_statuses: Option<Vec<CardStatus>>,
+    with_statuses: Option<Vec<CardStatus>>,
     card_types: Option<Vec<CardType>>,
     minion_types: Option<Vec<MinionType>>,
     artifact_types: Option<Vec<ArtifactType>>,
@@ -318,6 +320,22 @@ impl<'a> PreparedCardQuery<'a> {
         if let Some(abilities) = &query.with_abilities {
             for ability in abilities {
                 if !card.has_ability(state, ability) {
+                    return false;
+                }
+            }
+        }
+
+        if let Some(statuses) = &query.without_statuses {
+            for status in statuses {
+                if card.has_status(state, status) {
+                    return false;
+                }
+            }
+        }
+
+        if let Some(statuses) = &query.with_statuses {
+            for status in statuses {
+                if !card.has_status(state, status) {
                     return false;
                 }
             }
@@ -621,6 +639,8 @@ impl CardQuery {
             && self.not_in_ids.is_none()
             && self.without_abilities.is_none()
             && self.with_abilities.is_none()
+            && self.without_statuses.is_none()
+            && self.with_statuses.is_none()
             && self.card_types.is_none()
             && self.minion_types.is_none()
             && self.artifact_types.is_none()
@@ -918,6 +938,20 @@ impl CardQuery {
     pub fn with_abilities(self, abilities: Vec<Ability>) -> Self {
         Self {
             with_abilities: Some(abilities),
+            ..self
+        }
+    }
+
+    pub fn without_status(self, status: &CardStatus) -> Self {
+        Self {
+            without_statuses: Some(vec![status.clone()]),
+            ..self
+        }
+    }
+
+    pub fn with_status(self, status: &CardStatus) -> Self {
+        Self {
+            with_statuses: Some(vec![status.clone()]),
             ..self
         }
     }

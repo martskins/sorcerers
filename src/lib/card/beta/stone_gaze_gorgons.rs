@@ -75,8 +75,8 @@ impl Card for StoneGazeGorgons {
 
         Ok(resting_minions
             .into_iter()
-            .map(|card_id| ContinuousEffect::GrantAbility {
-                ability: Ability::Disabled,
+            .map(|card_id| ContinuousEffect::GrantStatus {
+                status: CardStatus::Disabled,
                 affected_cards: card_id.into(),
             })
             .collect())

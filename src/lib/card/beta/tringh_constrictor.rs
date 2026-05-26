@@ -66,11 +66,11 @@ impl ActivatedAbility for Constrict {
             card_id: target_id,
             bearer_id: Some(*card_id),
         });
-        effects.push(Effect::AddAbilityCounter {
+        effects.push(Effect::AddStatusCounter {
             card_id: target_id,
-            counter: AbilityCounter {
+            counter: StatusCounter {
                 id: uuid::Uuid::new_v4(),
-                ability: Ability::Disabled,
+                status: CardStatus::Disabled,
                 expires_on_effect: Some(EffectQuery::BuryCard {
                     card: CardQuery::from_id(target_id),
                 }),

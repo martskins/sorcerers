@@ -94,11 +94,11 @@ impl Card for DreamQuest {
         let counter_id = uuid::Uuid::new_v4();
 
         Ok(vec![
-            Effect::AddAbilityCounter {
+            Effect::AddStatusCounter {
                 card_id: minion_id,
-                counter: AbilityCounter {
+                counter: StatusCounter {
                     id: counter_id,
-                    ability: Ability::Disabled,
+                    status: CardStatus::Disabled,
                     expires_on_effect: Some(EffectQuery::DamageDealt {
                         source: None,
                         target: Some(minion_id.into()),
@@ -117,7 +117,7 @@ impl Card for DreamQuest {
                             let minion_id = minion_id;
                             Box::pin(async move {
                                 let minion = state.get_card(&minion_id);
-                                if !minion.has_ability(state, &Ability::Disabled) {
+                                if !minion.has_status(state, &CardStatus::Disabled) {
                                     // Minion is no longer asleep, do nothing.
                                     return Ok(vec![]);
                                 }
@@ -133,9 +133,9 @@ impl Card for DreamQuest {
                                     return Ok(vec![]);
                                 }
 
-                                let mut effects = vec![Effect::RemoveAbility {
+                                let mut effects = vec![Effect::RemoveStatus {
                                     card_id: minion_id,
-                                    modifier: Ability::Disabled,
+                                    status: CardStatus::Disabled,
                                 }];
 
                                 let deck = state.get_player_deck(&controller_id)?.clone();
@@ -163,9 +163,9 @@ impl Card for DreamQuest {
                                             card_id: chosen,
                                             zone: Zone::Hand,
                                         },
-                                        Effect::RemoveAbility {
+                                        Effect::RemoveStatus {
                                             card_id: minion_id,
-                                            modifier: Ability::Disabled,
+                                            status: CardStatus::Disabled,
                                         },
                                     ];
                                 }

@@ -2032,7 +2032,8 @@ impl Game {
                         return Ok(());
                     }
 
-                    let unit_disabled = card.has_ability(&self.state, &Ability::SummoningSickness);
+                    let unit_disabled =
+                        card.has_status(&self.state, &CardStatus::SummoningSickness);
                     if card.is_unit() && unit_disabled {
                         return Ok(());
                     }

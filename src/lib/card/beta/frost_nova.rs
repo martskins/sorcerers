@@ -60,11 +60,11 @@ impl Card for FrostNova {
             .all(state);
         Ok(nearby_enemies
             .into_iter()
-            .map(|card_id| Effect::AddAbilityCounter {
+            .map(|card_id| Effect::AddStatusCounter {
                 card_id,
-                counter: AbilityCounter {
+                counter: StatusCounter {
                     id: uuid::Uuid::new_v4(),
-                    ability: Ability::Disabled,
+                    status: CardStatus::Disabled,
                     expires_on_effect: Some(EffectQuery::TurnStart {
                         player_id: Some(controller_id),
                     }),

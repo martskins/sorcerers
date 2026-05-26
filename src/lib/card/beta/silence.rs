@@ -58,8 +58,8 @@ impl Card for Silence {
         if !self.get_zone().is_in_play() {
             return vec![];
         }
-        vec![ContinuousEffect::RemoveAbilities {
-            removal: AbilityRemoval::SpecialAbilities,
+        vec![ContinuousEffect::GrantStatus {
+            status: CardStatus::Silenced,
             affected_cards: CardQuery::new()
                 .units()
                 .in_affected_zones_of_card(self.get_id()),

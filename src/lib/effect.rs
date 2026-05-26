@@ -1,6 +1,6 @@
 use crate::zone::Zone;
 use crate::{
-    card::{Ability, Card, Cost, Damage, FootSoldier, Frog, Region, Rubble, UnitBase},
+    card::{Ability, Card, CardStatus, Cost, Damage, FootSoldier, Frog, Region, Rubble, UnitBase},
     game::{BaseAction, Direction, PlayerAction, PlayerId, SoundEffect, pick_card, pick_option},
     networking::message::ServerMessage,
     query::{CardQuery, EffectQuery, QueryCache, ZoneQuery, entered_site},
@@ -27,6 +27,13 @@ fn can_use_special_abilities(state: &State, card_id: &uuid::Uuid) -> bool {
 pub struct AbilityCounter {
     pub id: uuid::Uuid,
     pub ability: Ability,
+    pub expires_on_effect: Option<EffectQuery>,
+}
+
+#[derive(Debug, Clone)]
+pub struct StatusCounter {
+    pub id: uuid::Uuid,
+    pub status: CardStatus,
     pub expires_on_effect: Option<EffectQuery>,
 }
 
@@ -105,9 +112,17 @@ pub enum Effect {
         card_id: uuid::Uuid,
         modifier: Ability,
     },
+    RemoveStatus {
+        card_id: uuid::Uuid,
+        status: CardStatus,
+    },
     AddAbilityCounter {
         card_id: uuid::Uuid,
         counter: AbilityCounter,
+    },
+    AddStatusCounter {
+        card_id: uuid::Uuid,
+        counter: StatusCounter,
     },
     // RemoveCardFromGame completely removes a card from the game, removing it from all zones and
     // clearing all references to it. This is primarily used for token cards, as when they leave the
@@ -310,7 +325,9 @@ impl Effect {
             Effect::Heal { card_id, .. } => Some(card_id),
             Effect::ShootProjectile { player_id, .. } => Some(player_id),
             Effect::RemoveAbility { card_id, .. } => Some(card_id),
+            Effect::RemoveStatus { card_id, .. } => Some(card_id),
             Effect::AddAbilityCounter { card_id, .. } => Some(card_id),
+            Effect::AddStatusCounter { card_id, .. } => Some(card_id),
             Effect::AddCounter { card_id, .. } => Some(card_id),
             Effect::SetCardRegion { card_id, .. } => Some(card_id),
             Effect::SetCardZone { card_id, .. } => Some(card_id),
@@ -414,6 +431,8 @@ impl Effect {
                 Some(format!("{} heals {} for {} health", card, card, amount))
             }
             Effect::RemoveAbility { .. } => None,
+            Effect::RemoveStatus { .. } => None,
+            Effect::AddStatusCounter { .. } => None,
             Effect::ShootProjectile {
                 player_id,
                 shooter,
@@ -743,6 +762,35 @@ impl Effect {
             }
         }
 
+        let modified_cards: Vec<&dyn Card> = state
+            .cards
+            .values()
+            .filter(|c| !c.get_base().status_counters.is_empty())
+            .map(|c| c.as_ref())
+            .collect();
+        let mut card_statuses_to_remove: Vec<(uuid::Uuid, Vec<uuid::Uuid>)> = vec![];
+        for card in modified_cards {
+            let mut to_remove: Vec<uuid::Uuid> = vec![];
+            for counter in &card.get_base().status_counters {
+                if let Some(effect_query) = &counter.expires_on_effect
+                    && effect_query.matches(self, state).await?
+                {
+                    to_remove.push(counter.id);
+                }
+            }
+
+            if !to_remove.is_empty() {
+                card_statuses_to_remove.push((*card.get_id(), to_remove));
+            }
+        }
+
+        for (card_id, to_remove) in card_statuses_to_remove {
+            let card_mut = state.get_card_mut(&card_id);
+            for counter_id in to_remove {
+                card_mut.remove_status_counter(&counter_id);
+            }
+        }
+
         let cards_with_counters: Vec<&dyn Card> = state
             .cards
             .values()
@@ -935,6 +983,10 @@ impl Effect {
             Effect::RemoveAbility { card_id, modifier } => {
                 let card = state.get_card_mut(card_id);
                 card.remove_modifier(modifier);
+            }
+            Effect::RemoveStatus { card_id, status } => {
+                let card = state.get_card_mut(card_id);
+                card.remove_status(status);
             }
             Effect::ShootProjectile {
                 id,
@@ -1307,7 +1359,7 @@ impl Effect {
                         card.set_controller_id(player_id);
                         card.set_zone(zone.clone());
                         if !has_charge {
-                            card.add_ability(Ability::SummoningSickness);
+                            card.add_status(CardStatus::SummoningSickness);
                         }
                     }
                     if !original_zone.is_in_play() && zone.is_in_play() {
@@ -1472,7 +1524,7 @@ impl Effect {
 
                 let cards = state.cards.values_mut().filter(|c| c.is_unit());
                 for card in cards {
-                    card.remove_modifier(&Ability::SummoningSickness);
+                    card.remove_status(&CardStatus::SummoningSickness);
 
                     if card.is_avatar() {
                         // Avatars at death's door become killable after the turn ends.
@@ -1513,7 +1565,7 @@ impl Effect {
 
                 let snapshot = state.clone();
                 let attacker = state.get_card(striker_id);
-                if attacker.has_ability(&snapshot, &Ability::Disabled) {
+                if attacker.has_status(&snapshot, &CardStatus::Disabled) {
                     return Ok(());
                 }
 
@@ -1941,6 +1993,12 @@ impl Effect {
                     base.ability_counters.push(counter.clone());
                 }
             }
+            Effect::AddStatusCounter {
+                card_id, counter, ..
+            } => {
+                let card = state.get_card_mut(card_id);
+                card.get_base_mut().status_counters.push(counter.clone());
+            }
             Effect::SetCardData { card_id, data, .. } => {
                 let card = state.get_card_mut(card_id);
                 card.set_data(data)?;
@@ -2146,7 +2204,7 @@ impl Effect {
                     let from_zone = card.get_zone().clone();
                     card.set_zone(zone.clone());
                     if !has_charge {
-                        card.add_ability(Ability::SummoningSickness);
+                        card.add_status(CardStatus::SummoningSickness);
                     }
                     from_zone
                 };

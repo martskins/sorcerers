@@ -4,7 +4,7 @@ use egui::{
     epaint::{Mesh, Shape, Vertex},
     pos2, vec2,
 };
-use sorcerers::card::{Ability, CardData, CardType};
+use sorcerers::card::{Ability, CardData, CardStatus, CardType};
 
 #[derive(Clone)]
 pub struct CardRect {
@@ -238,8 +238,8 @@ fn draw_card_internal(
 
     if card_rect
         .card
-        .abilities
-        .contains(&Ability::SummoningSickness)
+        .statuses
+        .contains(&CardStatus::SummoningSickness)
     {
         let icon_size = 22.0;
         let x = card_rect.rect.min.x + card_rect.rect.width() * scale - icon_size - 4.0;
@@ -247,7 +247,7 @@ fn draw_card_internal(
         draw_vortex_icon(painter, x, y, icon_size, Color32::BLUE);
     }
 
-    if card_rect.card.abilities.contains(&Ability::Disabled) {
+    if card_rect.card.statuses.contains(&CardStatus::Disabled) {
         let icon_size = 15.0;
         let x = card_rect.rect.min.x + card_rect.rect.width() - 30.0 - 5.0;
         let y = card_rect.rect.min.y + 4.0;

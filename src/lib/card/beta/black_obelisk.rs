@@ -88,7 +88,7 @@ impl Card for BlackObelisk {
             return Ok(vec![]);
         }
 
-        if site.has_ability(state, &Ability::Disabled) {
+        if site.has_status(state, &CardStatus::Disabled) {
             return Ok(vec![]);
         }
 

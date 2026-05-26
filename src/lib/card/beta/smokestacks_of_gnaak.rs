@@ -74,8 +74,8 @@ impl Card for SmokestacksOfGnaak {
             return Ok(vec![]);
         }
 
-        Ok(vec![ContinuousEffect::GrantAbility {
-            ability: Ability::Disabled,
+        Ok(vec![ContinuousEffect::GrantStatus {
+            status: CardStatus::Disabled,
             affected_cards: CardQuery::new()
                 .sites()
                 .nearby_sites_to_card(self.get_id())

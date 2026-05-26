@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardData, CardType, Costs, DodgeRoll, SiteType},
+    card::{Ability, Card, CardData, CardStatus, CardType, Costs, DodgeRoll, SiteType},
     deck::Deck,
     effect::Counter,
     effect::{Effect, EffectCallback, EffectEngine, EffectState},
@@ -40,6 +40,7 @@ pub struct PlayerWithDeck {
 #[derive(Debug, Default, Clone)]
 pub struct AreaModifierIndex {
     pub ability_modifiers: HashMap<uuid::Uuid, Vec<AbilityModifier>>,
+    pub grants_statuses: HashMap<uuid::Uuid, Vec<CardStatus>>,
     pub grants_activated_abilities: HashMap<uuid::Uuid, Vec<Box<dyn ActivatedAbility>>>,
     pub grants_counters: HashMap<uuid::Uuid, Vec<Counter>>,
 }
@@ -53,6 +54,7 @@ pub enum AbilityModifier {
 #[derive(Debug, Clone)]
 pub enum AbilityRemoval {
     Exact(Vec<Ability>),
+    AllAbilities,
     SpecialAbilities,
 }
 
@@ -65,10 +67,15 @@ impl AbilityRemoval {
         matches!(self, Self::SpecialAbilities)
     }
 
+    pub fn removes_special_abilities(&self) -> bool {
+        matches!(self, Self::AllAbilities | Self::SpecialAbilities)
+    }
+
     pub fn removes(&self, ability: &Ability) -> bool {
         match self {
             Self::Exact(abilities) => abilities.contains(ability),
-            Self::SpecialAbilities => ability.is_keyword_ability(),
+            Self::AllAbilities => ability.is_card_ability(),
+            Self::SpecialAbilities => ability.is_special_ability(),
         }
     }
 }
@@ -83,6 +90,7 @@ pub struct TimedOngoingEffect {
 #[derive(Debug, Default, Clone)]
 pub struct ContinuousEffectIndex {
     pub grants_abilities: HashMap<uuid::Uuid, Vec<Ability>>,
+    pub grants_statuses: HashMap<uuid::Uuid, Vec<CardStatus>>,
     pub grants_activated_abilities: HashMap<uuid::Uuid, Vec<Box<dyn ActivatedAbility>>>,
     pub power_diffs: HashMap<uuid::Uuid, i16>,
 }
@@ -101,12 +109,17 @@ impl ContinuousEffectIndex {
             }
 
             match &effect.effect {
-                ContinuousEffect::GrantAbility {
-                    ability,
+                ContinuousEffect::GrantStatus {
+                    status,
                     affected_cards,
                 } => {
-                    if ability == &Ability::Disabled {
-                        for card_id in affected_cards.all(state) {
+                    for card_id in affected_cards.all(state) {
+                        index
+                            .grants_statuses
+                            .entry(card_id)
+                            .or_default()
+                            .push(status.clone());
+                        if matches!(status, CardStatus::Disabled | CardStatus::Silenced) {
                             blocked_sources.insert(card_id);
                         }
                     }
@@ -115,10 +128,22 @@ impl ContinuousEffectIndex {
                     removal,
                     affected_cards,
                 } => {
-                    if removal.is_silence() {
+                    if removal.removes_special_abilities() {
                         for card_id in affected_cards.all(state) {
                             blocked_sources.insert(card_id);
                         }
+                    }
+                }
+                ContinuousEffect::GrantAbility {
+                    ability,
+                    affected_cards,
+                } => {
+                    for card_id in affected_cards.all(state) {
+                        index
+                            .grants_abilities
+                            .entry(card_id)
+                            .or_default()
+                            .push(ability.clone());
                     }
                 }
                 ContinuousEffect::ModifyPower {
@@ -173,7 +198,19 @@ impl AreaModifierIndex {
                             .entry(card_id)
                             .or_default()
                             .push(AbilityModifier::Grant(ability.clone()));
-                        if ability == &Ability::Disabled {
+                    }
+                }
+                ContinuousEffect::GrantStatus {
+                    status,
+                    affected_cards,
+                } => {
+                    for card_id in affected_cards.all(state) {
+                        index
+                            .grants_statuses
+                            .entry(card_id)
+                            .or_default()
+                            .push(status.clone());
+                        if matches!(status, CardStatus::Disabled | CardStatus::Silenced) {
                             blocked_sources.insert(card_id);
                         }
                     }
@@ -183,7 +220,7 @@ impl AreaModifierIndex {
                     affected_cards,
                 } => {
                     let affected_cards = affected_cards.all(state);
-                    if removal.is_silence() {
+                    if removal.removes_special_abilities() {
                         blocked_sources.extend(affected_cards.iter().copied());
                     }
                     for card_id in affected_cards {
@@ -316,6 +353,10 @@ pub enum OngoingEffect {
         ability: Ability,
         affected_cards: CardQuery,
     },
+    GrantStatus {
+        status: CardStatus,
+        affected_cards: CardQuery,
+    },
     RemoveAbilities {
         removal: AbilityRemoval,
         affected_cards: CardQuery,
@@ -395,10 +436,14 @@ impl OngoingEffect {
             Self::GrantAbility { ability, .. } => {
                 format!("Grants {:?}", ability)
             }
+            Self::GrantStatus { status, .. } => {
+                format!("Grants {:?} status", status)
+            }
             Self::RemoveAbilities { removal, .. } => match removal {
                 AbilityRemoval::Exact(abilities) => {
                     format!("Removes {} abilities", abilities.len())
                 }
+                AbilityRemoval::AllAbilities => "Removes all abilities".to_string(),
                 AbilityRemoval::SpecialAbilities => "Removes special abilities".to_string(),
             },
             Self::GrantActivatedAbility { ability, .. } => {
@@ -434,6 +479,7 @@ impl OngoingEffect {
             | Self::ConnectLeftRightEdges { affected_cards, .. }
             | Self::ConnectZones { affected_cards, .. }
             | Self::GrantAbility { affected_cards, .. }
+            | Self::GrantStatus { affected_cards, .. }
             | Self::RemoveAbilities { affected_cards, .. }
             | Self::GrantActivatedAbility { affected_cards, .. }
             | Self::GrantCounter { affected_cards, .. }
@@ -517,6 +563,10 @@ impl std::fmt::Debug for OngoingEffect {
             Self::GrantAbility { ability, .. } => f
                 .debug_struct("GrantAbility")
                 .field("ability", ability)
+                .finish(),
+            Self::GrantStatus { status, .. } => f
+                .debug_struct("GrantStatus")
+                .field("status", status)
                 .finish(),
             Self::RemoveAbilities { removal, .. } => f
                 .debug_struct("RemoveAbilities")
@@ -1057,14 +1107,15 @@ impl State {
         match &effect.effect {
             ContinuousEffect::ControllerOverride { .. } => 3,
             ContinuousEffect::ModifyPower { .. } | ContinuousEffect::ModifyPowerForEach { .. } => 6,
-            ContinuousEffect::GrantAbility {
-                ability: Ability::Disabled,
+            ContinuousEffect::GrantStatus {
+                status: CardStatus::Disabled | CardStatus::Silenced,
                 ..
             } => 2,
             ContinuousEffect::RemoveAbilities { .. } => 2,
             ContinuousEffect::FloodSites { .. }
             | ContinuousEffect::DroughtSites { .. }
             | ContinuousEffect::GrantAbility { .. }
+            | ContinuousEffect::GrantStatus { .. }
             | ContinuousEffect::GrantActivatedAbility { .. }
             | ContinuousEffect::GrantCounter { .. } => 5,
             _ => 5,
@@ -1104,16 +1155,10 @@ impl State {
 
                 if active {
                     match &timed_effect.effect {
-                        OngoingEffect::GrantAbility {
-                            ability: Ability::Disabled,
+                        OngoingEffect::GrantStatus {
+                            status: CardStatus::Disabled | CardStatus::Silenced,
                             affected_cards,
                         } => {
-                            blocked_sources.extend(affected_cards.all(self));
-                        }
-                        OngoingEffect::RemoveAbilities {
-                            removal,
-                            affected_cards,
-                        } if removal.is_silence() => {
                             blocked_sources.extend(affected_cards.all(self));
                         }
                         _ => {}
@@ -1302,14 +1347,9 @@ impl State {
     }
 
     pub fn card_has_special_abilities_removed(&self, card_id: &uuid::Uuid) -> bool {
-        self.ability_modifiers_from_area_modifiers(card_id)
-            .iter()
-            .any(|modifier| {
-                matches!(
-                    modifier,
-                    AbilityModifier::Remove(removal) if removal.is_silence()
-                )
-            })
+        self.get_card(card_id)
+            .has_status(self, &CardStatus::Silenced)
+            || self.get_card(card_id).has_status(self, &CardStatus::Disabled)
     }
 
     pub fn counters_from_area_modifiers(&self, card_id: &uuid::Uuid) -> Vec<Counter> {
@@ -1339,6 +1379,19 @@ impl State {
         self.with_continuous_effect_index(|index| {
             index
                 .grants_abilities
+                .get(card_id)
+                .cloned()
+                .unwrap_or_default()
+        })
+    }
+
+    pub fn granted_statuses_from_continuous_effects(
+        &self,
+        card_id: &uuid::Uuid,
+    ) -> Vec<CardStatus> {
+        self.with_continuous_effect_index(|index| {
+            index
+                .grants_statuses
                 .get(card_id)
                 .cloned()
                 .unwrap_or_default()
@@ -1548,7 +1601,7 @@ impl State {
             .units()
             .near_to(defender.get_zone())
             .without_ability(&Ability::CannotDefend)
-            .without_ability(&Ability::Disabled)
+            .without_status(&CardStatus::Disabled)
             .untapped()
             .id_not(defender_id)
             .controlled_by(&defender.get_controller_id(self))
@@ -1584,7 +1637,7 @@ impl State {
             if !card.get_zone().is_in_play() {
                 continue;
             }
-            if card.has_ability(self, &Ability::Disabled) {
+            if card.has_status(self, &CardStatus::Disabled) {
                 continue;
             }
             if card.is_tapped() {
@@ -1623,6 +1676,7 @@ impl State {
                 zone: c.get_zone().clone(),
                 card_type: c.get_card_type().clone(),
                 abilities: c.get_abilities(self).unwrap_or_default(),
+                statuses: c.get_statuses(self),
                 region: c.get_region(self).clone(),
                 damage_taken: c.get_damage_taken().unwrap_or(0),
                 bearer: c.get_bearer_id().unwrap_or_default(),

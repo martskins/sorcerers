@@ -1,6 +1,6 @@
 use crate::{
     card::{
-        Ability, ApprenticeWizard, AridDesert, BottomlessPit, Card, Damage, Enchantress,
+        Ability, ApprenticeWizard, AridDesert, BottomlessPit, Card, CardStatus, Damage, Enchantress,
         FootSoldier, OgreGoons, PhaseAssassin, Region, SeaRaider, VaultsOfZul, YourkeCrossbowmen,
         from_name_and_zone,
     },
@@ -163,11 +163,7 @@ async fn test_disabled_unit_cannot_strike() {
     let mut striker = OgreGoons::new(player_id);
     let striker_id = *striker.get_id();
     striker.set_zone(Zone::Location(1, Region::Surface));
-    striker
-        .get_unit_base_mut()
-        .unwrap()
-        .abilities
-        .push(Ability::Disabled);
+    striker.add_status(CardStatus::Disabled);
     state.cards.insert(striker_id, Box::new(striker));
 
     let mut target = ApprenticeWizard::new(opponent_id);
@@ -311,11 +307,7 @@ async fn test_disabled_unit_does_not_counterstrike_when_attacked() {
     let mut defender = ApprenticeWizard::new(opponent_id);
     let defender_id = *defender.get_id();
     defender.set_zone(Zone::Location(1, Region::Surface));
-    defender
-        .get_unit_base_mut()
-        .unwrap()
-        .abilities
-        .push(Ability::Disabled);
+    defender.add_status(CardStatus::Disabled);
     state.cards.insert(defender_id, Box::new(defender));
 
     state.queue_one(Effect::Attack {
@@ -439,11 +431,7 @@ fn test_disabled_units_cannot_defend_or_intercept() {
     let mut disabled_defender = FootSoldier::new(player_id);
     let disabled_defender_id = *disabled_defender.get_id();
     disabled_defender.set_zone(Zone::Location(2, Region::Surface));
-    disabled_defender
-        .get_unit_base_mut()
-        .unwrap()
-        .abilities
-        .push(Ability::Disabled);
+    disabled_defender.add_status(CardStatus::Disabled);
     state
         .cards
         .insert(disabled_defender_id, Box::new(disabled_defender));
@@ -983,7 +971,7 @@ async fn test_summon_card_adds_summoning_sickness_to_minion() {
     assert!(
         state
             .get_card(&id)
-            .has_ability(&state, &Ability::SummoningSickness),
+            .has_status(&state, &CardStatus::SummoningSickness),
         "minion should have SummoningSickness after SummonCard"
     );
 }
@@ -1008,7 +996,7 @@ async fn test_summon_card_no_summoning_sickness_with_charge() {
     assert!(
         !state
             .get_card(&id)
-            .has_ability(&state, &Ability::SummoningSickness),
+            .has_status(&state, &CardStatus::SummoningSickness),
         "minion with Charge should not receive SummoningSickness"
     );
 }
@@ -1136,7 +1124,7 @@ async fn test_play_card_minion_has_summoning_sickness() {
     assert!(
         state
             .get_card(&ogre_id)
-            .has_ability(&state, &Ability::SummoningSickness),
+            .has_status(&state, &CardStatus::SummoningSickness),
         "minion should have SummoningSickness after being played"
     );
 }
@@ -1190,7 +1178,7 @@ async fn test_summon_token_unit_has_summoning_sickness() {
         .find(|c| c.get_name() == FootSoldier::NAME)
         .expect("FootSoldier should exist after SummonToken");
     assert!(
-        soldier.has_ability(&state, &Ability::SummoningSickness),
+        soldier.has_status(&state, &CardStatus::SummoningSickness),
         "summoned unit token should have SummoningSickness"
     );
 }

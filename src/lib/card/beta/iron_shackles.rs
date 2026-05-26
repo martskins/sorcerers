@@ -78,8 +78,8 @@ impl Card for IronShackles {
         &self,
         _state: &State,
     ) -> anyhow::Result<Vec<ContinuousEffect>> {
-        Ok(vec![ContinuousEffect::GrantAbility {
-            ability: Ability::Disabled,
+        Ok(vec![ContinuousEffect::GrantStatus {
+            status: CardStatus::Disabled,
             affected_cards: CardQuery::new().bearer_of_card(self.get_id()),
         }])
     }
