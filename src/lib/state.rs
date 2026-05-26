@@ -98,12 +98,12 @@ pub struct ContinuousEffectIndex {
 impl ContinuousEffectIndex {
     fn build(state: &State) -> Self {
         let mut index = Self::default();
-        let mut blocked_sources = HashSet::new();
+        let mut inactive_sources = HashSet::new();
 
         for effect in state.ordered_ongoing_effects() {
             if effect
                 .source
-                .is_some_and(|source_id| blocked_sources.contains(&source_id))
+                .is_some_and(|source_id| inactive_sources.contains(&source_id))
             {
                 continue;
             }
@@ -120,7 +120,7 @@ impl ContinuousEffectIndex {
                             .or_default()
                             .push(status.clone());
                         if matches!(status, CardStatus::Disabled | CardStatus::Silenced) {
-                            blocked_sources.insert(card_id);
+                            inactive_sources.insert(card_id);
                         }
                     }
                 }
@@ -130,7 +130,7 @@ impl ContinuousEffectIndex {
                 } => {
                     if removal.removes_special_abilities() {
                         for card_id in affected_cards.all(state) {
-                            blocked_sources.insert(card_id);
+                            inactive_sources.insert(card_id);
                         }
                     }
                 }
@@ -177,12 +177,12 @@ impl ContinuousEffectIndex {
 impl AreaModifierIndex {
     fn build(state: &State) -> Self {
         let mut index = Self::default();
-        let mut blocked_sources = HashSet::new();
+        let mut inactive_sources = HashSet::new();
 
         for effect in state.ordered_ongoing_effects() {
             if effect
                 .source
-                .is_some_and(|source_id| blocked_sources.contains(&source_id))
+                .is_some_and(|source_id| inactive_sources.contains(&source_id))
             {
                 continue;
             }
@@ -211,7 +211,7 @@ impl AreaModifierIndex {
                             .or_default()
                             .push(status.clone());
                         if matches!(status, CardStatus::Disabled | CardStatus::Silenced) {
-                            blocked_sources.insert(card_id);
+                            inactive_sources.insert(card_id);
                         }
                     }
                 }
@@ -221,7 +221,7 @@ impl AreaModifierIndex {
                 } => {
                     let affected_cards = affected_cards.all(state);
                     if removal.removes_special_abilities() {
-                        blocked_sources.extend(affected_cards.iter().copied());
+                        inactive_sources.extend(affected_cards.iter().copied());
                     }
                     for card_id in affected_cards {
                         index
@@ -711,7 +711,6 @@ pub struct State {
     pub player_one: PlayerId,
     pub server_tx: Sender<ServerMessage>,
     pub client_rx: Receiver<ClientMessage>,
-    pub continuous_effects: Vec<ContinuousEffect>,
     pub ongoing_effects: Vec<TimedOngoingEffect>,
     pub player_mana: HashMap<PlayerId, u8>,
     pub eliminated_players: HashSet<PlayerId>,
@@ -760,7 +759,6 @@ impl State {
             player_one,
             server_tx,
             client_rx,
-            continuous_effects: Vec::new(),
             ongoing_effects: Vec::new(),
             player_mana,
             eliminated_players: HashSet::new(),
@@ -967,8 +965,8 @@ impl State {
         let base_costs = card.get_costs(self)?.clone();
 
         let total_mana_diff: i8 = self
-            .continuous_effects
-            .iter()
+            .active_continuous_effects()
+            .into_iter()
             .filter_map(|ce| match ce {
                 ContinuousEffect::ModifyManaCost {
                     mana_diff,
@@ -984,7 +982,7 @@ impl State {
                             .map(|z| effect_zones.options(self).contains(z))
                             .unwrap_or_default(),
                     };
-                    if zone_ok { Some(*mana_diff) } else { None }
+                    if zone_ok { Some(mana_diff) } else { None }
                 }
                 _ => None,
             })
@@ -1093,7 +1091,7 @@ impl State {
             }
         }
 
-        self.refresh_continuous_effects();
+        self.invalidate_runtime_caches();
         Ok(())
     }
 
@@ -1130,14 +1128,47 @@ impl State {
         effects.into_iter().map(|(_, effect)| effect).collect()
     }
 
+    pub fn active_continuous_effects(&self) -> Vec<&ContinuousEffect> {
+        let mut inactive_sources = HashSet::new();
+        self.ordered_ongoing_effects()
+            .into_iter()
+            .filter_map(|timed_effect| {
+                let active = timed_effect
+                    .source
+                    .is_none_or(|source_id| !inactive_sources.contains(&source_id));
+
+                if active {
+                    match &timed_effect.effect {
+                        OngoingEffect::GrantStatus {
+                            status: CardStatus::Disabled | CardStatus::Silenced,
+                            affected_cards,
+                        } => {
+                            inactive_sources.extend(affected_cards.all(self));
+                        }
+                        OngoingEffect::RemoveAbilities {
+                            removal,
+                            affected_cards,
+                        } if removal.removes_special_abilities() => {
+                            inactive_sources.extend(affected_cards.all(self));
+                        }
+                        _ => {}
+                    }
+                    Some(&timed_effect.effect)
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
     pub fn ongoing_effects_data(&self) -> Vec<OngoingEffectData> {
-        let mut blocked_sources = HashSet::new();
+        let mut inactive_sources = HashSet::new();
         self.ordered_ongoing_effects()
             .into_iter()
             .map(|timed_effect| {
                 let active = timed_effect
                     .source
-                    .is_none_or(|source_id| !blocked_sources.contains(&source_id));
+                    .is_none_or(|source_id| !inactive_sources.contains(&source_id));
 
                 let mut affected_card_ids = timed_effect.effect.affected_card_ids(self);
                 affected_card_ids.sort();
@@ -1159,7 +1190,7 @@ impl State {
                             status: CardStatus::Disabled | CardStatus::Silenced,
                             affected_cards,
                         } => {
-                            blocked_sources.extend(affected_cards.all(self));
+                            inactive_sources.extend(affected_cards.all(self));
                         }
                         _ => {}
                     }
@@ -1183,19 +1214,10 @@ impl State {
             .collect()
     }
 
-    fn refresh_continuous_effects(&mut self) {
-        self.continuous_effects = self
-            .ordered_ongoing_effects()
-            .into_iter()
-            .map(|effect| effect.effect.clone())
-            .collect();
-        self.invalidate_runtime_caches();
-    }
-
     pub fn remove_ongoing_effects_from_source(&mut self, source_id: &uuid::Uuid) {
         self.ongoing_effects
             .retain(|effect| effect.source != Some(*source_id));
-        self.refresh_continuous_effects();
+        self.invalidate_runtime_caches();
     }
 
     async fn replace_passive_ongoing_effects_for_source(
@@ -1233,7 +1255,7 @@ impl State {
                 timestamp,
             });
         }
-        self.refresh_continuous_effects();
+        self.invalidate_runtime_caches();
         Ok(())
     }
 
@@ -1419,7 +1441,7 @@ impl State {
 
     pub fn water_site_status_from_continuous_effects(&self, card_id: &uuid::Uuid) -> Option<bool> {
         let mut status = None;
-        for effect in &self.continuous_effects {
+        for effect in self.active_continuous_effects() {
             match effect {
                 ContinuousEffect::FloodSites { affected_sites }
                     if affected_sites.matches(card_id, self) =>

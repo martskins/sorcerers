@@ -925,7 +925,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             controller = bearer.get_controller_id(state);
         }
 
-        for we in &state.continuous_effects {
+        for we in state.active_continuous_effects() {
             if let ContinuousEffect::ControllerOverride {
                 controller_id,
                 affected_cards,
@@ -1014,14 +1014,14 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             }
         }
 
-        let wraps_top_and_bottom = state.continuous_effects.iter().any(|ce| match ce {
+        let wraps_top_and_bottom = state.active_continuous_effects().into_iter().any(|ce| match ce {
             ContinuousEffect::ConnectTopBottomEdges { affected_cards } => {
                 affected_cards.matches(self.get_id(), state)
             }
             _ => false,
         });
 
-        let wraps_left_and_right = state.continuous_effects.iter().any(|ce| match ce {
+        let wraps_left_and_right = state.active_continuous_effects().into_iter().any(|ce| match ce {
             ContinuousEffect::ConnectLeftRightEdges { affected_cards } => {
                 affected_cards.matches(self.get_id(), state)
             }
@@ -1141,7 +1141,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             return Ok(true);
         }
 
-        for ce in &state.continuous_effects {
+        for ce in state.active_continuous_effects() {
             if let ContinuousEffect::BlockMovementThrough {
                 border,
                 affected_cards,
@@ -2058,8 +2058,8 @@ impl<T: Card + ?Sized> ResourceProviderBaseMethods for T {
             .provided_mana;
 
         state
-            .continuous_effects
-            .iter()
+            .active_continuous_effects()
+            .into_iter()
             .filter(|ce| match ce {
                 ContinuousEffect::ModifyProvidedMana { affected_cards, .. } => {
                     affected_cards.matches(self.get_id(), state)
@@ -2106,7 +2106,7 @@ impl<T: Card + ?Sized> ResourceProviderBaseMethods for T {
                     None => {}
                 }
 
-                state.continuous_effects.iter().for_each(|ce| {
+                state.active_continuous_effects().into_iter().for_each(|ce| {
                     if let ContinuousEffect::ModifyProvidedAffinities {
                         new_affinities,
                         affected_sites,
@@ -2719,7 +2719,7 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
 
         let dealer = state.get_card(from);
         if dealer.get_card_type() == CardType::Magic
-            && state.continuous_effects.iter().any(|ce| match ce {
+            && state.active_continuous_effects().into_iter().any(|ce| match ce {
                 ContinuousEffect::PreventDamageFromMagic { affected_cards } => {
                     affected_cards.matches(self.get_id(), state)
                 }
@@ -2737,17 +2737,17 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
         }
 
         let reduced_damage = state
-            .continuous_effects
-            .iter()
+            .active_continuous_effects()
+            .into_iter()
             .filter_map(|ce| match ce {
                 ContinuousEffect::ReduceDamageTaken {
                     amount,
                     affected_cards,
-                } if affected_cards.matches(self.get_id(), state) => Some(*amount),
+                } if affected_cards.matches(self.get_id(), state) => Some(amount),
                 _ => None,
             })
             .fold(damage.amount, |remaining, amount| {
-                remaining.saturating_sub(amount)
+                remaining.saturating_sub(*amount)
             });
 
         match self.get_card_type() {
@@ -2923,7 +2923,7 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
             zones.push(zone.clone());
         }
 
-        for ce in &state.continuous_effects {
+        for ce in state.active_continuous_effects() {
             if let ContinuousEffect::RestrictMoveToZones {
                 affected_cards,
                 allowed_zones,
@@ -3079,8 +3079,8 @@ fn temporarily_connected_sites(state: &State, card_id: &uuid::Uuid, zone: &Zone)
 
 fn continuously_connected_zones(state: &State, card_id: &uuid::Uuid) -> Vec<Zone> {
     state
-        .continuous_effects
-        .iter()
+        .active_continuous_effects()
+        .into_iter()
         .filter_map(|effect| match effect {
             ContinuousEffect::ConnectZones {
                 connected_zones,
@@ -3093,7 +3093,7 @@ fn continuously_connected_zones(state: &State, card_id: &uuid::Uuid) -> Vec<Zone
 }
 
 fn is_continuously_connected_zone(state: &State, card_id: &uuid::Uuid, zone: &Zone) -> bool {
-    state.continuous_effects.iter().any(|effect| match effect {
+    state.active_continuous_effects().into_iter().any(|effect| match effect {
         ContinuousEffect::ConnectZones {
             connected_zones,
             affected_cards,

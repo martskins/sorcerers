@@ -1868,7 +1868,7 @@ impl Effect {
 
                 let snapshot = state.clone();
                 // Check if this card has DoubleDamageTaken applied to it.
-                let takes_double_damage = snapshot.continuous_effects.iter().any(|ce| {
+                let takes_double_damage = snapshot.active_continuous_effects().into_iter().any(|ce| {
                     matches!(ce, ContinuousEffect::DoubleDamageTaken { affected_cards, except_strikes }
                         if affected_cards.matches(card_id, &snapshot) && !(*except_strikes && damage.is_strike))
                 });

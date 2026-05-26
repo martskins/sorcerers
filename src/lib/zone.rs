@@ -49,7 +49,7 @@ impl Zone {
 
     pub fn can_be_entered_by(&self, state: &State, card_id: &uuid::Uuid) -> anyhow::Result<bool> {
         let mut can_enter = true;
-        for ce in &state.continuous_effects {
+        for ce in state.active_continuous_effects() {
             match ce {
                 ContinuousEffect::MakeZoneUnvisitable {
                     affected_zone,
@@ -76,8 +76,8 @@ impl Zone {
         }
 
         let should_override = state
-            .continuous_effects
-            .iter()
+            .active_continuous_effects()
+            .into_iter()
             .filter(|e| match e {
                 ContinuousEffect::OverrideValidPlayZone {
                     affected_zones,
