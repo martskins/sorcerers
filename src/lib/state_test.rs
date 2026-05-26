@@ -3,8 +3,7 @@ use crate::{
         Ability, AridDesert, BeastOfBurden, Card, CardStatus, CauldronCrones, CourtesanThais,
         DonnybrookInn, Drought, Enchantress, Flood, FootSoldier, HeadlessHaunt, KiteArcher,
         NimbusJinn, Region, RimlandNomads, Rubble, SistersOfSilence, SkyBaron, SmokestacksOfGnaak,
-        SneakThief,
-        from_name_and_zone,
+        SneakThief, from_name_and_zone,
     },
     deck::Deck,
     effect::Effect,
@@ -823,7 +822,10 @@ fn test_game_is_over_only_when_one_player_remains() {
     assert!(state.winner_if_game_over().is_none());
 
     state.eliminate_player(second_player.id);
-    assert_eq!(state.winner_if_game_over().map(|player| player.id), Some(third_player.id));
+    assert_eq!(
+        state.winner_if_game_over().map(|player| player.id),
+        Some(third_player.id)
+    );
 }
 
 #[tokio::test]
@@ -1130,6 +1132,67 @@ fn test_turn_iterator() {
     let curr = it.next();
     assert!(curr.is_some());
     assert_eq!(curr.unwrap().player_id, player_one);
+}
+
+#[test]
+fn test_turn_iterator_skips_next_turn() {
+    let player_one = uuid::Uuid::new_v4();
+    let player_two = uuid::Uuid::new_v4();
+    let player_three = uuid::Uuid::new_v4();
+    let mut it = TurnIterator::new(vec![player_one, player_two, player_three]);
+
+    it.skip_next_for(&player_two);
+
+    let curr = it.next();
+    assert!(curr.is_some());
+    assert_eq!(curr.unwrap().player_id, player_three);
+}
+
+#[test]
+fn test_turn_iterator_skips_future_multiplayer_turn() {
+    let player_one = uuid::Uuid::new_v4();
+    let player_two = uuid::Uuid::new_v4();
+    let player_three = uuid::Uuid::new_v4();
+    let mut it = TurnIterator::new(vec![player_one, player_two, player_three]);
+
+    it.skip_next_for(&player_three);
+
+    let curr = it.next();
+    assert!(curr.is_some());
+    assert_eq!(curr.unwrap().player_id, player_two);
+
+    let curr = it.next();
+    assert!(curr.is_some());
+    assert_eq!(curr.unwrap().player_id, player_one);
+}
+
+#[test]
+fn test_turn_iterator_skips_overridden_turn() {
+    let player_one = uuid::Uuid::new_v4();
+    let player_two = uuid::Uuid::new_v4();
+    let player_three = uuid::Uuid::new_v4();
+    let mut it = TurnIterator::new(vec![player_one, player_two, player_three]);
+
+    it.override_next(Turn::controlled_by(player_three, player_one));
+    it.skip_next_for(&player_three);
+
+    let curr = it.next();
+    assert!(curr.is_some());
+    assert_eq!(curr.unwrap().player_id, player_two);
+}
+
+#[tokio::test]
+async fn test_skip_next_turn_effect_updates_turn_order() {
+    let (mut state, _rx) = setup_carrying_state();
+    let player_one = state.players[0].id;
+    let player_two = state.players[1].id;
+
+    state.queue_one(Effect::SkipNextTurn {
+        player_id: player_two,
+    });
+    state.apply_effects_without_log().await.unwrap();
+
+    assert_eq!(state.next_turn().player_id(), player_one);
 }
 
 #[tokio::test]

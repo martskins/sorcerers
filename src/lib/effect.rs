@@ -864,7 +864,7 @@ impl Effect {
                 state.eliminate_player(*player_id);
             }
             Effect::SkipNextTurn { player_id } => {
-                state.players_skipping_turns.insert(*player_id);
+                state.skip_next_turn_for(player_id);
             }
             Effect::OverrideNextTurn { turn } => {
                 state.override_next_turn(turn.clone());
@@ -1430,13 +1430,6 @@ impl Effect {
                         prompt: "Waiting for other player".to_string(),
                     })
                     .await?;
-
-                if state.players_skipping_turns.remove(player_id) {
-                    state.queue_front(Effect::EndTurn {
-                        player_id: *player_id,
-                    });
-                    return Ok(());
-                }
 
                 // Snapshot for controller checks (get_controller_id needs &State).
                 let ctrl_snapshot = state.clone();

@@ -678,6 +678,30 @@ impl TurnIterator {
     {
         self.overrides.extend(values);
     }
+
+    pub fn skip_next_for(&mut self, player_id: &PlayerId) {
+        if let Some(position) = self
+            .overrides
+            .iter()
+            .position(|turn| turn.player_id() == *player_id)
+        {
+            self.overrides.remove(position);
+            return;
+        }
+
+        let Some(position) = (0..self.normal.len()).find(|offset| {
+            self.normal[(self.index + offset) % self.normal.len()].player_id() == *player_id
+        }) else {
+            return;
+        };
+
+        self.overrides.extend(
+            (0..position)
+                .map(|offset| self.normal[(self.index + offset) % self.normal.len()].clone()),
+        );
+
+        self.index = (self.index + position + 1) % self.normal.len();
+    }
 }
 
 impl Iterator for TurnIterator {
@@ -714,7 +738,6 @@ pub struct State {
     pub ongoing_effects: Vec<TimedOngoingEffect>,
     pub player_mana: HashMap<PlayerId, u8>,
     pub eliminated_players: HashSet<PlayerId>,
-    pub players_skipping_turns: HashSet<PlayerId>,
     pub players_with_accepted_hands: HashSet<PlayerId>,
     next_ongoing_effect_timestamp: u64,
     runtime_cache: StateRuntimeCache,
@@ -762,7 +785,6 @@ impl State {
             ongoing_effects: Vec::new(),
             player_mana,
             eliminated_players: HashSet::new(),
-            players_skipping_turns: HashSet::new(),
             players_with_accepted_hands: HashSet::new(),
             next_ongoing_effect_timestamp: 1,
             runtime_cache: StateRuntimeCache::default(),
@@ -876,6 +898,10 @@ impl State {
 
     pub fn override_next_turn(&mut self, turn: Turn) {
         self.curr_turn.override_next(turn);
+    }
+
+    pub fn skip_next_turn_for(&mut self, player_id: &PlayerId) {
+        self.curr_turn.skip_next_for(player_id);
     }
 
     pub async fn replace_effect(&self, effect: &Effect) -> anyhow::Result<Option<Vec<Effect>>> {
@@ -1184,16 +1210,13 @@ impl State {
                 affected_zones.sort();
                 affected_zones.dedup();
 
-                if active {
-                    match &timed_effect.effect {
-                        OngoingEffect::GrantStatus {
-                            status: CardStatus::Disabled | CardStatus::Silenced,
-                            affected_cards,
-                        } => {
-                            inactive_sources.extend(affected_cards.all(self));
-                        }
-                        _ => {}
-                    }
+                if active
+                    && let OngoingEffect::GrantStatus {
+                        status: CardStatus::Disabled | CardStatus::Silenced,
+                        affected_cards,
+                    } = &timed_effect.effect
+                {
+                    inactive_sources.extend(affected_cards.all(self));
                 }
 
                 let source_name = timed_effect
@@ -1371,7 +1394,9 @@ impl State {
     pub fn card_has_special_abilities_removed(&self, card_id: &uuid::Uuid) -> bool {
         self.get_card(card_id)
             .has_status(self, &CardStatus::Silenced)
-            || self.get_card(card_id).has_status(self, &CardStatus::Disabled)
+            || self
+                .get_card(card_id)
+                .has_status(self, &CardStatus::Disabled)
     }
 
     pub fn counters_from_area_modifiers(&self, card_id: &uuid::Uuid) -> Vec<Counter> {

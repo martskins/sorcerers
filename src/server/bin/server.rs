@@ -1,8 +1,8 @@
 use async_channel::Sender;
 use sorcerers::{
     card::{
-        ApprenticeWizard, AramosMercenaries, AridDesert, BaneWidow, CaptainBaldassare, Drought,
-        FelbogFrogMen, HumbleVillage, SummerRiver, Wildfire, WillsOTheWisp,
+        ApprenticeWizard, AramosMercenaries, AridDesert, CaptainBaldassare, Drought, FelbogFrogMen,
+        HumbleVillage, WillsOTheWisp,
     },
     deck::precon::ALL_PRECONS,
     game::Game,
