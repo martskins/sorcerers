@@ -195,8 +195,10 @@ impl Component for ActionOverlay {
                                 })
                                 .ok();
                             set_invisible = true;
+                            should_close = true;
                         }
                         ui.add_space(40.0);
+
                         let no = egui::Button::new(
                             egui::RichText::new("No").size(22.0).color(Color32::WHITE),
                         )
