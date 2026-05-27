@@ -32,10 +32,6 @@ impl EffectEngine {
 
     pub async fn drain_without_log(state: &mut State) -> anyhow::Result<()> {
         while !state.effects.is_empty() {
-            if state.waiting_for_input {
-                return Ok(());
-            }
-
             if let Some(effect) = state.effects.pop_back() {
                 effect.apply(state).await?;
             }

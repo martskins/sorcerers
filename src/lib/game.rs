@@ -1181,45 +1181,6 @@ impl Clone for Box<dyn ActivatedAbility> {
     }
 }
 
-#[derive(Debug, Clone)]
-pub enum InputStatus {
-    None,
-    ShootingProjectile {
-        player_id: PlayerId,
-        card_id: uuid::Uuid,
-        caster_id: Option<uuid::Uuid>,
-        from: Zone,
-        direction: Option<Direction>,
-        damage: u16,
-        piercing: bool,
-    },
-    SelectingAction {
-        player_id: PlayerId,
-        actions: Vec<Box<dyn ActivatedAbility>>,
-        card_id: Option<uuid::Uuid>,
-    },
-    PlayingSite {
-        player_id: PlayerId,
-        site_id: Option<uuid::Uuid>,
-    },
-    PlayingSpell {
-        player_id: PlayerId,
-        card_id: uuid::Uuid,
-    },
-    PlayingCard {
-        player_id: PlayerId,
-        card_id: uuid::Uuid,
-    },
-    Attacking {
-        player_id: PlayerId,
-        attacker_id: uuid::Uuid,
-    },
-    Moving {
-        player_id: PlayerId,
-        card_id: uuid::Uuid,
-    },
-}
-
 struct PlayableHandCard {
     player_id: PlayerId,
     card_id: uuid::Uuid,
@@ -1851,23 +1812,6 @@ impl Game {
         }
     }
 
-    fn maybe_unblock_effects(&mut self, message: &ClientMessage) {
-        if !self.state.waiting_for_input {
-            return;
-        }
-
-        match message {
-            ClientMessage::DrawCard { .. }
-            | ClientMessage::PickAction { .. }
-            | ClientMessage::PickDirection { .. }
-            | ClientMessage::PickCard { .. }
-            | ClientMessage::PickZone { .. } => {
-                self.state.waiting_for_input = false;
-            }
-            _ => {}
-        }
-    }
-
     fn playable_hand_card(
         &self,
         player_id: &PlayerId,
@@ -1961,7 +1905,6 @@ impl Game {
 
     async fn handle_message(&mut self, message: &ClientMessage) -> anyhow::Result<()> {
         self.state.validate_client_message(message)?;
-        self.maybe_unblock_effects(message);
         match message {
             ClientMessage::PlayerDisconnected { player_id, .. } => {
                 self.player_disconnected(player_id).await?;
