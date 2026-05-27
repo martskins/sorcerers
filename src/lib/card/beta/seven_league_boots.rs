@@ -72,9 +72,7 @@ impl Card for SevenLeagueBoots {
     ) -> anyhow::Result<Vec<ContinuousEffect>> {
         Ok(vec![ContinuousEffect::GrantAbility {
             ability: Ability::Movement(7),
-            affected_cards: CardQuery::new()
-                .minions()
-                .bearer_of_card(self.get_id()),
+            affected_cards: CardQuery::new().minions().bearer_of_card(self.get_id()),
         }])
     }
 }

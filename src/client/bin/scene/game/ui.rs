@@ -516,16 +516,13 @@ impl Game {
                                     .color(theme::TURN_WAITING),
                             );
                             ui.add_space(8.0);
-                            ui.label(
-                                RichText::new(result)
-                                    .size(30.0)
-                                    .strong()
-                                    .color(if winner_id == self.data.player_id {
-                                        theme::TURN_READY
-                                    } else {
-                                        Color32::from_rgb(224, 96, 104)
-                                    }),
-                            );
+                            ui.label(RichText::new(result).size(30.0).strong().color(
+                                if winner_id == self.data.player_id {
+                                    theme::TURN_READY
+                                } else {
+                                    Color32::from_rgb(224, 96, 104)
+                                },
+                            ));
                             ui.add_space(8.0);
                             ui.label(
                                 RichText::new(format!("{winner_name} wins"))

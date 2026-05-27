@@ -1014,19 +1014,27 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             }
         }
 
-        let wraps_top_and_bottom = state.active_continuous_effects().into_iter().any(|ce| match ce {
-            ContinuousEffect::ConnectTopBottomEdges { affected_cards } => {
-                affected_cards.matches(self.get_id(), state)
-            }
-            _ => false,
-        });
+        let wraps_top_and_bottom =
+            state
+                .active_continuous_effects()
+                .into_iter()
+                .any(|ce| match ce {
+                    ContinuousEffect::ConnectTopBottomEdges { affected_cards } => {
+                        affected_cards.matches(self.get_id(), state)
+                    }
+                    _ => false,
+                });
 
-        let wraps_left_and_right = state.active_continuous_effects().into_iter().any(|ce| match ce {
-            ContinuousEffect::ConnectLeftRightEdges { affected_cards } => {
-                affected_cards.matches(self.get_id(), state)
-            }
-            _ => false,
-        });
+        let wraps_left_and_right =
+            state
+                .active_continuous_effects()
+                .into_iter()
+                .any(|ce| match ce {
+                    ContinuousEffect::ConnectLeftRightEdges { affected_cards } => {
+                        affected_cards.matches(self.get_id(), state)
+                    }
+                    _ => false,
+                });
 
         let mut visited = Vec::new();
         let mut to_visit = vec![(zone.clone(), 0)];
@@ -2106,16 +2114,19 @@ impl<T: Card + ?Sized> ResourceProviderBaseMethods for T {
                     None => {}
                 }
 
-                state.active_continuous_effects().into_iter().for_each(|ce| {
-                    if let ContinuousEffect::ModifyProvidedAffinities {
-                        new_affinities,
-                        affected_sites,
-                    } = ce
-                        && affected_sites.matches(self.get_id(), state)
-                    {
-                        thresholds = new_affinities.clone();
-                    }
-                });
+                state
+                    .active_continuous_effects()
+                    .into_iter()
+                    .for_each(|ce| {
+                        if let ContinuousEffect::ModifyProvidedAffinities {
+                            new_affinities,
+                            affected_sites,
+                        } = ce
+                            && affected_sites.matches(self.get_id(), state)
+                        {
+                            thresholds = new_affinities.clone();
+                        }
+                    });
 
                 Ok(thresholds)
             }
@@ -2719,12 +2730,15 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
 
         let dealer = state.get_card(from);
         if dealer.get_card_type() == CardType::Magic
-            && state.active_continuous_effects().into_iter().any(|ce| match ce {
-                ContinuousEffect::PreventDamageFromMagic { affected_cards } => {
-                    affected_cards.matches(self.get_id(), state)
-                }
-                _ => false,
-            })
+            && state
+                .active_continuous_effects()
+                .into_iter()
+                .any(|ce| match ce {
+                    ContinuousEffect::PreventDamageFromMagic { affected_cards } => {
+                        affected_cards.matches(self.get_id(), state)
+                    }
+                    _ => false,
+                })
         {
             return Ok(vec![]);
         }
@@ -3093,13 +3107,16 @@ fn continuously_connected_zones(state: &State, card_id: &uuid::Uuid) -> Vec<Zone
 }
 
 fn is_continuously_connected_zone(state: &State, card_id: &uuid::Uuid, zone: &Zone) -> bool {
-    state.active_continuous_effects().into_iter().any(|effect| match effect {
-        ContinuousEffect::ConnectZones {
-            connected_zones,
-            affected_cards,
-        } => affected_cards.matches(card_id, state) && connected_zones.contains(zone),
-        _ => false,
-    })
+    state
+        .active_continuous_effects()
+        .into_iter()
+        .any(|effect| match effect {
+            ContinuousEffect::ConnectZones {
+                connected_zones,
+                affected_cards,
+            } => affected_cards.matches(card_id, state) && connected_zones.contains(zone),
+            _ => false,
+        })
 }
 
 fn leap_destinations(state: &State, zone: &Zone) -> Vec<Zone> {

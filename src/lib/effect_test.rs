@@ -1,8 +1,8 @@
 use crate::{
     card::{
-        Ability, ApprenticeWizard, AridDesert, BottomlessPit, Card, CardStatus, Damage, Enchantress,
-        FootSoldier, OgreGoons, PhaseAssassin, Region, SeaRaider, VaultsOfZul, YourkeCrossbowmen,
-        from_name_and_zone,
+        Ability, ApprenticeWizard, AridDesert, BottomlessPit, Card, CardStatus, Damage,
+        Enchantress, FootSoldier, OgreGoons, PhaseAssassin, Region, SeaRaider, VaultsOfZul,
+        YourkeCrossbowmen, from_name_and_zone,
     },
     deck::Deck,
     effect::{

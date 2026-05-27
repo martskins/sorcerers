@@ -62,9 +62,7 @@ impl Card for AllTerrainVestments {
         &self,
         _state: &State,
     ) -> anyhow::Result<Vec<ContinuousEffect>> {
-        let affected_cards = CardQuery::new()
-            .minions()
-            .bearer_of_card(self.get_id());
+        let affected_cards = CardQuery::new().minions().bearer_of_card(self.get_id());
         Ok(vec![
             ContinuousEffect::GrantAbility {
                 ability: Ability::Burrowing,

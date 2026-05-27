@@ -871,7 +871,6 @@ impl RealmComponent {
                         }
                     }
                 });
-
             });
         if data.show_ongoing_effects {
             egui::Window::new("Ongoing effects")
@@ -901,9 +900,9 @@ impl RealmComponent {
                                         egui::RichText::new(format!("{} (inactive)", title))
                                             .color(theme::TURN_WAITING)
                                     };
-                                    let response = ui
-                                        .label(text)
-                                        .on_hover_text("Hover to highlight affected realm zones and cards");
+                                    let response = ui.label(text).on_hover_text(
+                                        "Hover to highlight affected realm zones and cards",
+                                    );
                                     if response.hovered() {
                                         hovered_effect = Some(effect.clone());
                                     }

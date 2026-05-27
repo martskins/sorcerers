@@ -1,7 +1,9 @@
 use rand::seq::IndexedRandom;
 
 use crate::{
-    card::{Ability, ArtifactType, Card, CardStatus, CardType, MinionType, Rarity, Region, SiteType},
+    card::{
+        Ability, ArtifactType, Card, CardStatus, CardType, MinionType, Rarity, Region, SiteType,
+    },
     game::{Direction, Element, PlayerId, pick_card_source, pick_card_with_options_source},
     state::State,
     zone::Zone,
