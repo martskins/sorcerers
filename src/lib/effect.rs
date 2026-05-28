@@ -186,13 +186,9 @@ pub enum Effect {
     StartTurn {
         player_id: PlayerId,
     },
-    ConsumeMana {
+    AdjustMana {
         player_id: PlayerId,
-        mana: u8,
-    },
-    AddMana {
-        player_id: PlayerId,
-        mana: u8,
+        mana: i8,
     },
     Strike {
         striker_id: uuid::Uuid,
@@ -340,8 +336,7 @@ impl Effect {
             Effect::SetTapped { card_id, .. } => Some(card_id),
             Effect::EndTurn { player_id } => Some(player_id),
             Effect::StartTurn { player_id } => Some(player_id),
-            Effect::ConsumeMana { player_id, .. } => Some(player_id),
-            Effect::AddMana { player_id, .. } => Some(player_id),
+            Effect::AdjustMana { player_id, .. } => Some(player_id),
             Effect::Strike { striker_id, .. } => Some(striker_id),
             Effect::Attack { attacker_id, .. } => Some(attacker_id),
             Effect::RemoveCardFromGame { card_id } => Some(card_id),
@@ -577,8 +572,7 @@ impl Effect {
                 "--- {}'s turn begins ---",
                 player_name(player_id, state)
             )),
-            Effect::ConsumeMana { .. } => None,
-            Effect::AddMana { .. } => None,
+            Effect::AdjustMana { .. } => None,
             Effect::Strike {
                 striker_id,
                 target_id,
@@ -1495,11 +1489,11 @@ impl Effect {
                     })
                     .await?;
             }
-            Effect::ConsumeMana {
+            Effect::AdjustMana {
                 player_id, mana, ..
             } => {
                 let player_mana = state.get_player_mana_mut(player_id);
-                *player_mana = player_mana.saturating_sub(*mana);
+                *player_mana = ((*player_mana as i8) + *mana) as u8;
             }
             Effect::EndTurn { player_id, .. } => {
                 let mut all_effects: Vec<Effect> = vec![];
@@ -1540,12 +1534,6 @@ impl Effect {
                 state.queue_front(Effect::StartTurn {
                     player_id: state.next_turn().player_id(),
                 });
-            }
-            Effect::AddMana {
-                player_id, mana, ..
-            } => {
-                let player_mana = state.get_player_mana_mut(player_id);
-                *player_mana += mana;
             }
             Effect::Strike {
                 striker_id,

@@ -79,7 +79,7 @@ impl Card for GothicTower {
             return Ok(vec![]);
         }
 
-        Ok(vec![Effect::AddMana {
+        Ok(vec![Effect::AdjustMana {
             player_id: *self.get_owner_id(),
             mana: 1,
         }])

@@ -72,13 +72,13 @@ impl Card for OccultRitual {
                     .iter()
                     .any(|a| c.has_ability(state, a))
             })
-            .count() as u8;
+            .count() as i8;
 
         if count == 0 {
             return Ok(vec![]);
         }
 
-        Ok(vec![Effect::AddMana {
+        Ok(vec![Effect::AdjustMana {
             player_id: controller_id,
             mana: count * 2,
         }])

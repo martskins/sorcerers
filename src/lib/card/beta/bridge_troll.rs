@@ -68,11 +68,11 @@ impl Card for BridgeTroll {
         let attacker_controller = attacker.get_controller_id(state);
         let my_controller = self.get_controller_id(state);
 
-        let enemy_mana = *state.player_mana.get(&attacker_controller).unwrap_or(&0);
+        let opponent_mana = *state.player_mana.get(&attacker_controller).unwrap_or(&0) as i8;
         let effects = vec![
-            Effect::ConsumeMana {
+            Effect::AdjustMana {
                 player_id: attacker_controller,
-                mana: enemy_mana,
+                mana: -opponent_mana,
             },
             Effect::AddDeferredEffect {
                 effect: DeferredEffect {
@@ -82,9 +82,9 @@ impl Card for BridgeTroll {
                     expires_on_effect: None,
                     on_effect: Arc::new(move |_: &State, _: &uuid::Uuid, _: &Effect| {
                         Box::pin(async move {
-                            Ok(vec![Effect::AddMana {
+                            Ok(vec![Effect::AdjustMana {
                                 player_id: my_controller,
-                                mana: enemy_mana,
+                                mana: opponent_mana,
                             }])
                         })
                     }),

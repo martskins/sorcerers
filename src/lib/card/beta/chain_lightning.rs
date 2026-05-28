@@ -83,9 +83,9 @@ impl Card for ChainLightning {
             effects.push(effect);
 
             if !first_pick {
-                let effect = Effect::ConsumeMana {
+                let effect = Effect::AdjustMana {
                     player_id: self.get_controller_id(state),
-                    mana: 2,
+                    mana: -2,
                 };
                 effect.apply(&mut local_state).await?;
                 effects.push(effect);

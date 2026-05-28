@@ -774,7 +774,7 @@ async fn test_temporary_modify_effect_runs_before_handler_and_expires() {
     let convert_draw_to_mana: EffectReplacementCallback = Arc::new(|_state, effect| {
         Box::pin(async move {
             if let Effect::DrawCard { player_id, .. } = effect {
-                *effect = Effect::AddMana {
+                *effect = Effect::AdjustMana {
                     player_id: *player_id,
                     mana: 3,
                 };
@@ -810,7 +810,7 @@ async fn test_deferred_one_shot_removes_itself_after_trigger() {
     let player_id = state.players[0].id;
     let grant_mana: EffectCallback = Arc::new(|_state, source_id, _effect| {
         Box::pin(async move {
-            Ok(vec![Effect::AddMana {
+            Ok(vec![Effect::AdjustMana {
                 player_id: *source_id,
                 mana: 1,
             }])
@@ -841,7 +841,7 @@ async fn test_deferred_multitrigger_remains_after_trigger() {
     let player_id = state.players[0].id;
     let grant_mana: EffectCallback = Arc::new(|_state, source_id, _effect| {
         Box::pin(async move {
-            Ok(vec![Effect::AddMana {
+            Ok(vec![Effect::AdjustMana {
                 player_id: *source_id,
                 mana: 1,
             }])
@@ -877,7 +877,7 @@ async fn test_deferred_expiry_removes_without_triggering() {
     let player_id = state.players[0].id;
     let grant_mana: EffectCallback = Arc::new(|_state, source_id, _effect| {
         Box::pin(async move {
-            Ok(vec![Effect::AddMana {
+            Ok(vec![Effect::AdjustMana {
                 player_id: *source_id,
                 mana: 1,
             }])

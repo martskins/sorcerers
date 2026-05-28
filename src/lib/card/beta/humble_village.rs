@@ -86,9 +86,9 @@ impl Card for HumbleVillage {
         }
 
         Ok(vec![
-            Effect::ConsumeMana {
+            Effect::AdjustMana {
                 player_id: self.get_controller_id(state),
-                mana: 1,
+                mana: -1,
             },
             Effect::SummonToken {
                 player_id: self.get_controller_id(state),

@@ -52,7 +52,7 @@ impl ActivatedAbility for DeathspeakerAbility {
 
         let chosen = state.get_card(&chosen_id);
         let card_name = chosen.get_name().to_string();
-        let mana_cost = chosen.get_base().costs.mana_value();
+        let mana_cost = chosen.get_base().costs.mana_value() as i8;
 
         // Step 2: Check Death's Door (avatar has taken max damage).
         let deaths_door = state
@@ -68,7 +68,7 @@ impl ActivatedAbility for DeathspeakerAbility {
 
         // Step 3: Check affordability (skip if on Death's Door).
         if !deaths_door {
-            let available = *state.player_mana.get(player_id).unwrap_or(&0);
+            let available = *state.player_mana.get(player_id).unwrap_or(&0) as i8;
             if available < mana_cost {
                 return Ok(vec![]);
             }
@@ -97,9 +97,9 @@ impl ActivatedAbility for DeathspeakerAbility {
 
         // Consume mana unless on Death's Door.
         if !deaths_door && mana_cost > 0 {
-            effects.push(Effect::ConsumeMana {
+            effects.push(Effect::AdjustMana {
                 player_id: *player_id,
-                mana: mana_cost,
+                mana: -mana_cost,
             });
         }
 
