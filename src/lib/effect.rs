@@ -23,6 +23,54 @@ fn can_use_special_abilities(state: &State, card_id: &uuid::Uuid) -> bool {
     !state.card_has_special_abilities_removed(card_id)
 }
 
+fn location_survival_effects_for_cards(
+    state: &State,
+    card_ids: impl IntoIterator<Item = uuid::Uuid>,
+) -> Vec<Effect> {
+    card_ids
+        .into_iter()
+        .filter_map(|card_id| state.get_card(&card_id).location_survival_effect(state))
+        .collect()
+}
+
+fn location_survival_effects_for_zones(
+    state: &State,
+    zones: impl IntoIterator<Item = Zone>,
+) -> Vec<Effect> {
+    let mut squares = zones
+        .into_iter()
+        .flat_map(|zone| zone.squares())
+        .collect::<Vec<_>>();
+    squares.sort();
+    squares.dedup();
+
+    let affected_card_ids = state
+        .cards
+        .values()
+        .filter(|card| card.get_zone().is_in_play())
+        .filter(|card| {
+            card.get_zone()
+                .squares()
+                .into_iter()
+                .any(|square| squares.contains(&square))
+        })
+        .map(|card| *card.get_id())
+        .collect::<Vec<_>>();
+
+    location_survival_effects_for_cards(state, affected_card_ids)
+}
+
+fn location_survival_effects_for_realm(state: &State) -> Vec<Effect> {
+    let card_ids = state
+        .cards
+        .values()
+        .filter(|card| card.get_zone().is_in_play())
+        .map(|card| *card.get_id())
+        .collect::<Vec<_>>();
+
+    location_survival_effects_for_cards(state, card_ids)
+}
+
 #[derive(Debug, Clone)]
 pub struct AbilityCounter {
     pub id: uuid::Uuid,
@@ -888,20 +936,24 @@ impl Effect {
             }
             Effect::AddTemporaryEffect { effect } => {
                 state.temporary_effects_mut().push(effect.clone());
+                state.queue(location_survival_effects_for_realm(state));
             }
             Effect::SetCardZone { card_id, zone } => {
                 let was_in_play = state.get_card(card_id).get_zone().is_in_play();
                 let original_zone = state.get_card(card_id).get_zone().clone();
                 let owner_id = *state.get_card(card_id).get_owner_id();
                 let is_token = state.get_card(card_id).is_token();
+                let mut ongoing_effects_changed = false;
                 let card = state.get_card_mut(card_id);
                 card.set_zone(zone.clone());
                 if was_in_play && !zone.is_in_play() {
                     state.remove_ongoing_effects_from_source(card_id);
+                    ongoing_effects_changed = true;
                 } else if !was_in_play && zone.is_in_play() {
                     state
                         .add_passive_ongoing_effects_for_source(card_id)
                         .await?;
+                    ongoing_effects_changed = true;
                 }
                 match original_zone {
                     Zone::Spellbook => {
@@ -921,6 +973,14 @@ impl Effect {
                 // Tokens cease to exist when they leave the realm.
                 if was_in_play && !zone.is_in_play() && is_token {
                     state.queue_one(Effect::RemoveCardFromGame { card_id: *card_id });
+                }
+                if ongoing_effects_changed {
+                    state.queue(location_survival_effects_for_realm(state));
+                } else {
+                    state.queue(location_survival_effects_for_zones(
+                        state,
+                        [original_zone, zone.clone()],
+                    ));
                 }
             }
             Effect::SummonToken {
@@ -1082,8 +1142,8 @@ impl Effect {
                 from,
                 to,
                 tap,
+                region,
                 through_path,
-                ..
             } => {
                 let card = state.get_card(card_id);
                 // Skip the move if the card is no longer in the same zone as it was originally.
@@ -1102,7 +1162,6 @@ impl Effect {
                                 .pick(player_id, state)
                                 .await?;
                             let card = state.get_card_mut(card_id);
-                            let region = card.get_region(&snapshot).clone();
                             let from_zone = card.get_zone().clone();
                             card.set_zone(zone.clone());
                             if *tap {
@@ -1114,7 +1173,6 @@ impl Effect {
                             for cid in &carried_cards {
                                 let carried_card = state.get_card_mut(cid);
                                 carried_card.set_zone(zone.clone());
-                                carried_card.set_region(region.clone());
                             }
 
                             let card = state.get_card(card_id);
@@ -1147,15 +1205,18 @@ impl Effect {
                                     }
                                 }
                             }
+                            effects.extend(location_survival_effects_for_cards(
+                                state,
+                                std::iter::once(*card_id).chain(carried_cards.iter().copied()),
+                            ));
 
                             state.queue(effects);
                         }
                     }
                     None => {
                         let snapshot = state.clone();
-                        let zone = to.pick(player_id, state).await?.into_zone();
+                        let zone = to.pick(player_id, state).await?.with_region(region.clone()).into_zone();
                         let card = state.get_card_mut(card_id);
-                        let region = card.get_region(&snapshot).clone();
                         let from_zone = card.get_zone().clone();
                         card.set_zone(zone.clone());
                         if *tap {
@@ -1198,6 +1259,10 @@ impl Effect {
                                 }
                             }
                         }
+                        effects.extend(location_survival_effects_for_cards(
+                            state,
+                            std::iter::once(*card_id).chain(carried_cards.iter().copied()),
+                        ));
 
                         state.queue(effects);
                     }
@@ -1338,6 +1403,7 @@ impl Effect {
                     if can_use_special_abilities(state, card_id) {
                         effects.extend(card.on_visit_zone(&snapshot, &from_zone, &zone).await?);
                     }
+                    effects.extend(location_survival_effects_for_realm(state));
                     state.queue(effects);
                     state.queue(cast_effects);
                 }
@@ -1399,6 +1465,10 @@ impl Effect {
                     {
                         effects.extend(site.on_card_enter(state, card_id));
                     }
+                    effects.extend(location_survival_effects_for_cards(
+                        state,
+                        std::iter::once(*card_id),
+                    ));
                 }
 
                 state.queue(effects);
@@ -1983,6 +2053,7 @@ impl Effect {
             Effect::SetCardData { card_id, data, .. } => {
                 let card = state.get_card_mut(card_id);
                 card.set_data(data)?;
+                state.queue(location_survival_effects_for_realm(state));
             }
             Effect::TeleportCard {
                 player_id,
@@ -2038,23 +2109,18 @@ impl Effect {
                     card.set_tapped(true);
                 }
 
-                if card.is_minion() {
-                    let card = state.get_card(card_id);
-                    let snapshot = state.clone();
-                    let underground_without_burrowing = region == &Region::Underground
-                        && !card.has_ability(&snapshot, &Ability::Burrowing);
-                    let underwater_without_submerge = region == &Region::Underwater
-                        && !card.has_ability(&snapshot, &Ability::Submerge);
-                    if underground_without_burrowing || underwater_without_submerge {
-                        state.queue_one(Effect::BuryCard { card_id: *card_id });
-                    }
-                }
+                state.queue(location_survival_effects_for_cards(
+                    state,
+                    std::iter::once(*card_id),
+                ));
 
                 state.queue(change_region_effects);
             }
             Effect::SetBearer { card_id, bearer_id } => {
-                let target = state.get_card_mut(card_id);
-                target.set_bearer_id(*bearer_id);
+                if let Some(target) = state.cards.get_mut(card_id) {
+                    target.set_bearer_id(*bearer_id);
+                    state.invalidate_runtime_caches();
+                }
             }
             Effect::ShuffleDeck { player_id } => {
                 let deck = state

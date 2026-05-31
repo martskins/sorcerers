@@ -235,6 +235,7 @@ pub async fn entered_zones(
             card_id,
             from,
             to,
+            region,
             through_path,
             ..
         } => {
@@ -242,7 +243,11 @@ pub async fn entered_zones(
             let mut previous_zone = from.clone();
             let zones = match through_path {
                 Some(path) => path.clone(),
-                None => vec![to.pick(player_id, state).await?.into_zone()],
+                None => vec![to
+                    .pick(player_id, state)
+                    .await?
+                    .with_region(region.clone())
+                    .into_zone()],
             };
 
             for zone in zones {
@@ -272,6 +277,7 @@ pub async fn entered_sites(
             card_id,
             from,
             to,
+            region,
             through_path,
             ..
         } => {
@@ -279,7 +285,11 @@ pub async fn entered_sites(
             let mut previous_zone = from.clone();
             let zones = match through_path {
                 Some(path) => path.clone(),
-                None => vec![to.pick(player_id, state).await?.into_zone()],
+                None => vec![to
+                    .pick(player_id, state)
+                    .await?
+                    .with_region(region.clone())
+                    .into_zone()],
             };
 
             for zone in zones {

@@ -1189,6 +1189,33 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         }
     }
 
+    fn location_survival_effect(&self, state: &State) -> Option<Effect> {
+        if !self.is_minion() || !self.get_zone().is_in_play() {
+            return None;
+        }
+
+        let occupied_regions = self.get_zone().occupied_regions(state);
+        let fails_void = occupied_regions.contains(&Region::Void)
+            && !self.has_ability(state, &Ability::Voidwalk);
+        if fails_void {
+            return Some(Effect::BanishCard {
+                card_id: *self.get_id(),
+            });
+        }
+
+        let fails_underground = occupied_regions.contains(&Region::Underground)
+            && !self.has_ability(state, &Ability::Burrowing);
+        let fails_underwater = occupied_regions.contains(&Region::Underwater)
+            && !self.has_ability(state, &Ability::Submerge);
+        if fails_underground || fails_underwater {
+            return Some(Effect::BuryCard {
+                card_id: *self.get_id(),
+            });
+        }
+
+        None
+    }
+
     fn is_flooded_site(&self, state: &State) -> bool {
         if !self.is_site() {
             return false;

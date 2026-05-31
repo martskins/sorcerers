@@ -1,8 +1,8 @@
 use crate::{
     card::{
-        Ability, ApprenticeWizard, AridDesert, BottomlessPit, Card, CardStatus, Damage,
-        Enchantress, FootSoldier, OgreGoons, PhaseAssassin, Region, SeaRaider, VaultsOfZul,
-        YourkeCrossbowmen, from_name_and_zone,
+        Ability, ApprenticeWizard, AridDesert, BottomlessPit, Card, CardStatus, Damage, Drought,
+        Enchantress, FootSoldier, OgreGoons, PhaseAssassin, Region, SeaRaider, SpringRiver,
+        VaultsOfZul, YourkeCrossbowmen, from_name_and_zone,
     },
     deck::Deck,
     effect::{
@@ -772,6 +772,103 @@ async fn test_region_changes_enter_location_but_not_site() {
         entered_sites(&effect, &state).await.unwrap().is_empty(),
         "changing regions on the same realm square should not count as entering a new site"
     );
+}
+
+#[tokio::test]
+async fn test_minion_without_burrowing_dies_underground() {
+    let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
+    let player_id = state.players[0].id;
+
+    let mut apprentice_wizard = ApprenticeWizard::new(player_id);
+    let apprentice_wizard_id = *apprentice_wizard.get_id();
+    apprentice_wizard.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    state.cards.insert(apprentice_wizard_id, Box::new(apprentice_wizard));
+
+    state.queue_one(Effect::MoveCard {
+        player_id,
+        card_id: apprentice_wizard_id,
+        from: Zone::Location(Location::Square(1, Region::Surface)),
+        to: LocationQuery::from_zone(Zone::Location(Location::Square(1, Region::Surface))),
+        tap: false,
+        region: Region::Underground,
+        through_path: None,
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(state.get_card(&apprentice_wizard_id).get_zone(), &Zone::Cemetery);
+}
+
+#[tokio::test]
+async fn test_minion_without_voidwalk_is_banished_in_void() {
+    let (mut state, _rx) = make_state(vec![]);
+    let player_id = state.players[0].id;
+
+    let apprentice_wizard = ApprenticeWizard::new(player_id);
+    let apprentice_wizard_id = *apprentice_wizard.get_id();
+    state.cards.insert(apprentice_wizard_id, Box::new(apprentice_wizard));
+
+    state.queue_one(Effect::SummonCards {
+        cards: vec![(
+            player_id,
+            apprentice_wizard_id,
+            Zone::Location(Location::Square(1, Region::Void)),
+        )],
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(state.get_card(&apprentice_wizard_id).get_zone(), &Zone::Banish);
+}
+
+#[tokio::test]
+async fn test_location_survival_is_checked_when_site_type_changes() {
+    let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
+    let player_id = state.players[0].id;
+
+    let mut apprentice_wizard = ApprenticeWizard::new(player_id);
+    let apprentice_wizard_id = *apprentice_wizard.get_id();
+    apprentice_wizard.add_ability(Ability::Burrowing);
+    apprentice_wizard.set_zone(Zone::Location(Location::Square(1, Region::Underground)));
+    state.cards.insert(apprentice_wizard_id, Box::new(apprentice_wizard));
+
+    state.queue_one(Effect::AddTemporaryEffect {
+        effect: TemporaryEffect::FloodSites {
+            affected_sites: CardQuery::new().sites(),
+            expires_on_effect: EffectQuery::TurnEnd { player_id: None },
+        },
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(state.get_card(&apprentice_wizard_id).get_zone(), &Zone::Cemetery);
+}
+
+#[tokio::test]
+async fn test_submerged_minion_dies_when_water_site_becomes_land() {
+    let (mut state, _rx) = make_state(vec![]);
+    let player_id = state.players[0].id;
+
+    let mut spring_river = SpringRiver::new(player_id);
+    let spring_river_id = *spring_river.get_id();
+    spring_river.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    state.cards.insert(spring_river_id, Box::new(spring_river));
+
+    let mut apprentice_wizard = ApprenticeWizard::new(player_id);
+    let apprentice_wizard_id = *apprentice_wizard.get_id();
+    apprentice_wizard.add_ability(Ability::Submerge);
+    apprentice_wizard.set_zone(Zone::Location(Location::Square(1, Region::Underwater)));
+    state.cards.insert(apprentice_wizard_id, Box::new(apprentice_wizard));
+
+    let mut drought = Drought::new(player_id);
+    let drought_id = *drought.get_id();
+    drought.set_zone(Zone::Hand);
+    state.cards.insert(drought_id, Box::new(drought));
+
+    state.queue_one(Effect::SetCardZone {
+        card_id: drought_id,
+        zone: Zone::Location(Location::Square(1, Region::Surface)),
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(state.get_card(&apprentice_wizard_id).get_zone(), &Zone::Cemetery);
 }
 
 #[tokio::test]

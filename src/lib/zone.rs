@@ -106,6 +106,50 @@ impl Zone {
         }
     }
 
+    pub fn squares(&self) -> Vec<u8> {
+        match self {
+            Zone::Location(Location::Square(square, _)) => vec![*square],
+            Zone::Location(Location::Intersection(squares, _)) => squares.clone(),
+            _ => vec![],
+        }
+    }
+
+    pub fn occupied_regions(&self, state: &State) -> Vec<Region> {
+        match self {
+            Zone::Location(Location::Square(square, region)) => {
+                vec![Self::occupied_square_region(*square, region, state)]
+            }
+            Zone::Location(Location::Intersection(squares, region)) => {
+                let mut regions = squares
+                    .iter()
+                    .map(|square| Self::occupied_square_region(*square, region, state))
+                    .collect::<Vec<_>>();
+                regions.sort();
+                regions.dedup();
+                regions
+            }
+            _ => vec![],
+        }
+    }
+
+    fn occupied_square_region(square: u8, region: &Region, state: &State) -> Region {
+        let zone = Zone::Location(Location::Square(square, region.clone()));
+        let Some(site) = zone.get_site_at_square(state) else {
+            return Region::Void;
+        };
+
+        match region {
+            Region::Void | Region::Surface => Region::Surface,
+            Region::Underground | Region::Underwater => {
+                if site.is_water_site(state).unwrap_or_default() {
+                    Region::Underwater
+                } else {
+                    Region::Underground
+                }
+            }
+        }
+    }
+
     pub fn is_in_play(&self) -> bool {
         matches!(
             self,
