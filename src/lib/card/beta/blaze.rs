@@ -57,7 +57,7 @@ impl Card for Blaze {
             .filter(|c| c.is_unit())
             .filter(|c| c.get_controller_id(state) == self.get_controller_id(state))
             .map(|c| *c.get_id())
-            .collect::<Vec<uuid::Uuid>>();
+            .collect::<Vec<CardId>>();
         let prompt = "Pick an ally";
         let picked_card = pick_card_source(
             self.get_controller_id(state),
@@ -82,7 +82,7 @@ impl Card for Blaze {
                         card: picked_card.into(),
                     },
                     expires_on_effect: Some(EffectQuery::TurnEnd { player_id: None }),
-                    on_effect: Arc::new(|state: &State, card_id: &uuid::Uuid, effect: &Effect| {
+                    on_effect: Arc::new(|state: &State, card_id: &CardId, effect: &Effect| {
                         Box::pin(async move {
                             match effect {
                                 Effect::MoveCard { through_path, .. } => {

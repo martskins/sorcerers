@@ -30,7 +30,7 @@ impl MeteorShower {
         }
     }
 
-    fn sites_that_share_no_borders_with(state: &State, selected_zones: &[Zone]) -> Vec<uuid::Uuid> {
+    fn sites_that_share_no_borders_with(state: &State, selected_zones: &[Zone]) -> Vec<CardId> {
         CardQuery::new()
             .sites()
             .in_play()

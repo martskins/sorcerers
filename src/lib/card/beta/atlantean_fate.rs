@@ -27,7 +27,7 @@ impl AtlanteanFate {
         }
     }
 
-    fn flooded_site_ids(&self, state: &State) -> Vec<uuid::Uuid> {
+    fn flooded_site_ids(&self, state: &State) -> Vec<CardId> {
         let affected_zones = self.get_affected_zones(state);
         state
             .cards

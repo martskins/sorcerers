@@ -61,7 +61,7 @@ impl Card for DreamQuest {
             .minions()
             .in_play()
             .all(state);
-        let spellcasters: Vec<uuid::Uuid> = all_minions
+        let spellcasters: Vec<CardId> = all_minions
             .into_iter()
             .filter(|id| {
                 let card = state.get_card(id);
@@ -112,7 +112,7 @@ impl Card for DreamQuest {
                     },
                     expires_on_effect: None,
                     on_effect: Arc::new(
-                        move |state: &State, _card_id: &uuid::Uuid, _effect: &Effect| {
+                        move |state: &State, _card_id: &CardId, _effect: &Effect| {
                             let controller_id = controller_id;
                             let minion_id = minion_id;
                             Box::pin(async move {

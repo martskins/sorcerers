@@ -85,7 +85,7 @@ impl Card for AssortedAnimals {
         let mut remaining_mana = x_cost;
         let mut chosen = Vec::new();
 
-        let mut display_card_ids: Vec<uuid::Uuid> = CardQuery::new()
+        let mut display_card_ids: Vec<CardId> = CardQuery::new()
             .controlled_by(&controller_id)
             .in_zone(&Zone::Spellbook)
             .all(state);
@@ -132,7 +132,7 @@ impl Card for AssortedAnimals {
             display_card_ids.retain(|id| id != &picked_id);
         }
 
-        let chosen_ids: Vec<uuid::Uuid> = chosen.iter().map(|(_, id, _)| *id).collect();
+        let chosen_ids: Vec<CardId> = chosen.iter().map(|(_, id, _)| *id).collect();
         if !chosen_ids.is_empty() {
             reveal_cards(
                 &controller_id,

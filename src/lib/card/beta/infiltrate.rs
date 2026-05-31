@@ -56,7 +56,7 @@ impl Card for Infiltrate {
         let caster = state.get_card(caster_id);
         let caster_zone = caster.get_zone().clone();
 
-        let enemy_minions: Vec<uuid::Uuid> = CardQuery::new()
+        let enemy_minions: Vec<CardId> = CardQuery::new()
             .minions()
             .near_to(&caster_zone)
             .all(state)
@@ -109,7 +109,7 @@ impl Card for Infiltrate {
                     }),
                     multitrigger: false,
                     on_effect: Arc::new(
-                        move |state: &State, _triggered_card_id: &uuid::Uuid, _effect: &Effect| {
+                        move |state: &State, _triggered_card_id: &CardId, _effect: &Effect| {
                             Box::pin(async move {
                                 let target = state.get_card(&target_id);
                                 if !target.has_ability(state, &Ability::Stealth) {

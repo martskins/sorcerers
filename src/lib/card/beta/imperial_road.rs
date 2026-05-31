@@ -91,7 +91,7 @@ impl Card for ImperialRoad {
         let mut effects = vec![];
 
         for player_id in [opponent_id, controller_id] {
-            let sites_in_atlasbook: Vec<uuid::Uuid> = state
+            let sites_in_atlasbook: Vec<CardId> = state
                 .cards
                 .values()
                 .filter(|c| c.is_site())

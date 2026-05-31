@@ -9,7 +9,7 @@ impl ActivatedAbility for TapToDealDamage {
         "Tap to deal 3 damage to target unit".to_string()
     }
 
-    fn get_cost(&self, card_id: &uuid::Uuid, state: &State) -> anyhow::Result<Cost> {
+    fn get_cost(&self, card_id: &CardId, state: &State) -> anyhow::Result<Cost> {
         let card = state.get_card(card_id);
         let bearer = card
             .get_artifact()
@@ -30,7 +30,7 @@ impl ActivatedAbility for TapToDealDamage {
 
     async fn on_select(
         &self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
         _player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<crate::effect::Effect>> {

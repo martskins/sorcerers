@@ -66,7 +66,7 @@ impl Card for AccursedAlbatross {
     fn on_take_damage(
         &mut self,
         state: &State,
-        from: &uuid::Uuid,
+        from: &CardId,
         damage: Damage,
     ) -> anyhow::Result<Vec<Effect>> {
         let damage_effects = self.base_take_damage(state, from, damage)?;

@@ -35,7 +35,7 @@ impl GreatWall {
 
     fn is_enemy_ground_unit_crossing_top_border(
         &self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
         other_side: &Zone,
         region: &Region,
         state: &State,
@@ -60,7 +60,7 @@ impl GreatWall {
 impl Site for GreatWall {
     fn can_be_entered_by(
         &self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
         from: &Zone,
         region: &Region,
         state: &State,
@@ -73,7 +73,7 @@ impl Site for GreatWall {
 
     fn can_be_exited_by(
         &self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
         to: &Zone,
         region: &Region,
         state: &State,

@@ -12,7 +12,7 @@ use egui::{
 use rand::SeedableRng;
 use sorcerers::{
     card::{CardData, CardType, Region},
-    game::{Direction, PlayerId},
+    game::{CardId, Direction, PlayerId},
     networking::{
         self,
         message::{ClientMessage, OngoingEffectData},
@@ -78,7 +78,7 @@ impl RealmCardRegion for CardData {
 
 #[derive(Clone)]
 struct CardFlight {
-    card_id: uuid::Uuid,
+    card_id: CardId,
     card: CardData,
     from: Rect,
     to: Rect,
@@ -477,7 +477,7 @@ impl RealmComponent {
         }
     }
 
-    fn direction_origin(&self, data: &GameData, source_card_id: Option<uuid::Uuid>) -> Pos2 {
+    fn direction_origin(&self, data: &GameData, source_card_id: Option<CardId>) -> Pos2 {
         if let Some(source_card_id) = source_card_id {
             if let Some(card_rect) = self
                 .card_rects
@@ -985,7 +985,7 @@ impl RealmComponent {
             .retain(|flight| card_filter.includes(&flight.card));
     }
 
-    fn card_clicked(&mut self, card_id: &uuid::Uuid, data: &mut GameData) -> anyhow::Result<()> {
+    fn card_clicked(&mut self, card_id: &CardId, data: &mut GameData) -> anyhow::Result<()> {
         let mut reset_status = false;
         match data.status.clone() {
             Status::Idle => {
@@ -1316,7 +1316,7 @@ impl Component for RealmComponent {
         }
 
         if let Some(card_id) = moved_card_id {
-            let attached_cards: Vec<uuid::Uuid> = self
+            let attached_cards: Vec<CardId> = self
                 .card_rects
                 .iter()
                 .filter(|c| c.card.bearer == Some(card_id))

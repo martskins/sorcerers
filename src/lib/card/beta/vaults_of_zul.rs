@@ -38,7 +38,7 @@ impl VaultsOfZul {
 
 #[async_trait::async_trait]
 impl Site for VaultsOfZul {
-    fn on_card_stop(&self, state: &State, card_id: &uuid::Uuid) -> Vec<Effect> {
+    fn on_card_stop(&self, state: &State, card_id: &CardId) -> Vec<Effect> {
         if self.triggered || !state.get_card(card_id).is_avatar() {
             return vec![];
         }

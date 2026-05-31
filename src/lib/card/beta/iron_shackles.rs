@@ -33,7 +33,7 @@ impl IronShackles {
 }
 
 impl Artifact for IronShackles {
-    fn get_valid_attach_targets(&self, state: &State) -> Vec<uuid::Uuid> {
+    fn get_valid_attach_targets(&self, state: &State) -> Vec<CardId> {
         let controller_id = self.get_controller_id(state);
         CardQuery::new()
             .minions()

@@ -78,7 +78,7 @@ impl Card for Crossroads {
         let deck = state.decks.get(&controller_id).unwrap().clone();
 
         let mut remaining_sites = deck.sites.clone();
-        let mut looked_at: Vec<uuid::Uuid> = vec![];
+        let mut looked_at: Vec<CardId> = vec![];
         for _ in 0..4 {
             if let Some(card_id) = remaining_sites.pop() {
                 looked_at.push(card_id);
@@ -98,7 +98,7 @@ impl Card for Crossroads {
         .await?;
 
         // The rest go to the bottom of the deck (front of sites vec).
-        let bottom: Vec<uuid::Uuid> = looked_at
+        let bottom: Vec<CardId> = looked_at
             .iter()
             .filter(|id| **id != chosen_id)
             .cloned()

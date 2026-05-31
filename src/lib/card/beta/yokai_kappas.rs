@@ -9,7 +9,7 @@ impl ActivatedAbility for DiscardWaterSiteToUntap {
         "Discard a water site → Untap".to_string()
     }
 
-    fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
+    fn get_cost(&self, card_id: &CardId, _state: &State) -> anyhow::Result<Cost> {
         Ok(Cost::additional_only(AdditionalCost::discard(
             CardQuery::new()
                 .water_sites()
@@ -21,7 +21,7 @@ impl ActivatedAbility for DiscardWaterSiteToUntap {
 
     async fn on_select(
         &self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
         _player_id: &PlayerId,
         _state: &State,
     ) -> anyhow::Result<Vec<Effect>> {

@@ -9,13 +9,13 @@ impl ActivatedAbility for UseAbility {
         "Use Vesuvius Ability".to_string()
     }
 
-    fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
+    fn get_cost(&self, card_id: &CardId, _state: &State) -> anyhow::Result<Cost> {
         Ok(Cost::thresholds_only("FFF").with_additional(AdditionalCost::sacrifice(card_id)))
     }
 
     async fn on_select(
         &self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
         _: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {

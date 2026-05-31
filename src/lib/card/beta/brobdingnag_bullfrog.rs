@@ -4,7 +4,7 @@ use crate::prelude::*;
 pub struct BrobdingnagBullfrog {
     unit_base: UnitBase,
     card_base: CardBase,
-    swallowed_minion: Option<uuid::Uuid>,
+    swallowed_minion: Option<CardId>,
 }
 
 impl BrobdingnagBullfrog {

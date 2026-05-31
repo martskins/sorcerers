@@ -3,7 +3,7 @@ pub mod precon;
 use crate::{
     card::Card,
     effect::{DrawKind, Effect},
-    game::PlayerId,
+    game::{CardId, PlayerId},
 };
 use serde::{Deserialize, Serialize};
 
@@ -229,18 +229,18 @@ impl DeckList {
 pub struct Deck {
     pub name: String,
     pub player_id: PlayerId,
-    pub sites: Vec<uuid::Uuid>,
-    pub spells: Vec<uuid::Uuid>,
-    pub avatar: uuid::Uuid,
+    pub sites: Vec<CardId>,
+    pub spells: Vec<CardId>,
+    pub avatar: CardId,
 }
 
 impl Deck {
     pub fn new(
         player_id: &PlayerId,
         name: String,
-        sites: Vec<uuid::Uuid>,
-        spells: Vec<uuid::Uuid>,
-        avatar: uuid::Uuid,
+        sites: Vec<CardId>,
+        spells: Vec<CardId>,
+        avatar: CardId,
     ) -> Self {
         Deck {
             name,
@@ -251,7 +251,7 @@ impl Deck {
         }
     }
 
-    pub fn peek_sites(&self, count: usize) -> Vec<&uuid::Uuid> {
+    pub fn peek_sites(&self, count: usize) -> Vec<&CardId> {
         self.sites.iter().rev().take(count).collect()
     }
 
@@ -263,15 +263,15 @@ impl Deck {
         }]
     }
 
-    pub fn peek_site(&self) -> Option<&uuid::Uuid> {
+    pub fn peek_site(&self) -> Option<&CardId> {
         self.sites.last()
     }
 
-    pub fn peek_spell(&self) -> Option<&uuid::Uuid> {
+    pub fn peek_spell(&self) -> Option<&CardId> {
         self.spells.last()
     }
 
-    pub fn peek_spells(&self, count: usize) -> Vec<&uuid::Uuid> {
+    pub fn peek_spells(&self, count: usize) -> Vec<&CardId> {
         self.spells.iter().rev().take(count).collect()
     }
 

@@ -11,7 +11,7 @@ impl ActivatedAbility for SacrificeForFireSpell {
 
     async fn on_select(
         &self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
         player_id: &PlayerId,
         _state: &State,
     ) -> anyhow::Result<Vec<Effect>> {

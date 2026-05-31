@@ -74,7 +74,7 @@ impl Card for GiantShark {
                 site: ZoneQuery::from_options(body_of_water.clone(), None),
             },
             on_effect: Arc::new(
-                move |state: &State, card_id: &uuid::Uuid, effect: &Effect| {
+                move |state: &State, card_id: &CardId, effect: &Effect| {
                     let body_of_water = body_of_water.clone();
                     Box::pin(async move {
                         if card_id == &shark_id {

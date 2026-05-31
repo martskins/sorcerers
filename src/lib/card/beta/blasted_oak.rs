@@ -69,8 +69,8 @@ impl Card for BlastedOak {
         &self,
         state: &State,
         _query: &CardQuery,
-        targets: &[uuid::Uuid],
-    ) -> Option<Vec<uuid::Uuid>> {
+        targets: &[CardId],
+    ) -> Option<Vec<CardId>> {
         let oak_id = self.get_id();
         let oak_zone = self.get_zone();
 
@@ -80,7 +80,7 @@ impl Card for BlastedOak {
         }
 
         // Precedence 2: The site card at Blasted Oak's location
-        let site_targets: Vec<uuid::Uuid> = targets
+        let site_targets: Vec<CardId> = targets
             .iter()
             .filter(|id| {
                 state
@@ -96,7 +96,7 @@ impl Card for BlastedOak {
         }
 
         // Precedence 3: Anything else at Blasted Oak's location
-        let at_zone_targets: Vec<uuid::Uuid> = targets
+        let at_zone_targets: Vec<CardId> = targets
             .iter()
             .filter(|id| {
                 *id != oak_id

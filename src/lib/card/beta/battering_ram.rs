@@ -4,7 +4,7 @@ use crate::prelude::*;
 struct RamStrike;
 
 impl RamStrike {
-    fn valid_targets(&self, card_id: &uuid::Uuid, state: &State) -> Vec<uuid::Uuid> {
+    fn valid_targets(&self, card_id: &CardId, state: &State) -> Vec<CardId> {
         let card = state.get_card(card_id);
         let walls = CardQuery::new()
             .auras()
@@ -32,7 +32,7 @@ impl ActivatedAbility for RamStrike {
 
     fn can_activate(
         &self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
         _player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<bool> {
@@ -42,7 +42,7 @@ impl ActivatedAbility for RamStrike {
 
     async fn on_select(
         &self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
         player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
@@ -61,7 +61,7 @@ impl ActivatedAbility for RamStrike {
         Ok(vec![Effect::BuryCard { card_id: picked }])
     }
 
-    fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
+    fn get_cost(&self, card_id: &CardId, _state: &State) -> anyhow::Result<Cost> {
         Ok(Cost::additional_only(AdditionalCost::tap(card_id)))
     }
 }

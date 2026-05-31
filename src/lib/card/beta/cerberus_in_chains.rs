@@ -92,7 +92,7 @@ impl Card for CerberusInChains {
                 card: self.get_id().into(),
             }),
             on_effect: Arc::new(
-                move |state: &State, avatar_card_id: &uuid::Uuid, _effect: &Effect| {
+                move |state: &State, avatar_card_id: &CardId, _effect: &Effect| {
                     let cerberus_id = cerberus_id;
                     let owner_id = controller_id;
                     Box::pin(async move {

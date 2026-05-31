@@ -11,7 +11,7 @@ impl ActivatedAbility for FloodAdjacentSite {
 
     async fn on_select(
         &self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
         _player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
@@ -34,13 +34,13 @@ impl ActivatedAbility for FloodAdjacentSite {
         ])
     }
 
-    fn get_cost(&self, _card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
+    fn get_cost(&self, _card_id: &CardId, _state: &State) -> anyhow::Result<Cost> {
         Ok(Cost::ZERO.clone())
     }
 
     fn can_activate(
         &self,
-        _card_id: &uuid::Uuid,
+        _card_id: &CardId,
         _player_id: &PlayerId,
         _state: &State,
     ) -> anyhow::Result<bool> {

@@ -64,7 +64,7 @@ impl Card for HighlandPrincess {
         let controller_id = self.get_controller_id(state);
 
         let deck = state.decks.get(&controller_id).unwrap();
-        let targets: Vec<uuid::Uuid> = state
+        let targets: Vec<CardId> = state
             .cards
             .values()
             .filter(|c| c.is_artifact())

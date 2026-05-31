@@ -9,13 +9,13 @@ impl ActivatedAbility for StealArtifact {
         "Steal Artifact".to_string()
     }
 
-    fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
+    fn get_cost(&self, card_id: &CardId, _state: &State) -> anyhow::Result<Cost> {
         Ok(Cost::additional_only(AdditionalCost::tap(card_id)))
     }
 
     async fn on_select(
         &self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
         player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
@@ -23,7 +23,7 @@ impl ActivatedAbility for StealArtifact {
         let controller_id = card.get_controller_id(state);
         let zone = card.get_zone().clone();
 
-        let candidate_units: Vec<uuid::Uuid> = CardQuery::new()
+        let candidate_units: Vec<CardId> = CardQuery::new()
             .units()
             .in_zone(&zone)
             .id_not(card_id)

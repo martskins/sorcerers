@@ -11,7 +11,7 @@ impl ActivatedAbility for DealDamage {
 
     async fn on_select(
         &self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
         _player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {

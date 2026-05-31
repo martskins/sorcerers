@@ -74,7 +74,7 @@ impl Card for EvilPresence {
                 },
                 expires_on_effect: None,
                 on_effect: Arc::new(
-                    move |_state: &State, card_id: &uuid::Uuid, _effect: &Effect| {
+                    move |_state: &State, card_id: &CardId, _effect: &Effect| {
                         Box::pin(async move {
                             Ok(vec![
                                 Effect::SetCardZone {

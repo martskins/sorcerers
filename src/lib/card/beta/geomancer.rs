@@ -19,7 +19,7 @@ impl ActivatedAbility for GeomancerAbility {
 
     fn can_activate(
         &self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
         _player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<bool> {
@@ -40,13 +40,13 @@ impl ActivatedAbility for GeomancerAbility {
 
     async fn on_select(
         &self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
         player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
         match self {
             GeomancerAbility::PlaySite => {
-                let cards: Vec<uuid::Uuid> = state
+                let cards: Vec<CardId> = state
                     .cards
                     .values()
                     .filter(|c| c.is_site())
@@ -77,7 +77,7 @@ impl ActivatedAbility for GeomancerAbility {
                     .filter(|c| c.get_name() == Rubble::NAME)
                     .filter(|c| adjacent_zones.contains(c.get_zone()))
                     .map(|c| *c.get_id())
-                    .collect::<Vec<uuid::Uuid>>();
+                    .collect::<Vec<CardId>>();
                 let picked_rubble = pick_card(
                     card.get_controller_id(state),
                     &cards,
@@ -112,10 +112,10 @@ impl ActivatedAbility for GeomancerAbility {
 }
 
 async fn geomancer_play_site_effects(
-    geomancer_id: &uuid::Uuid,
+    geomancer_id: &PlayerId,
     player_id: &PlayerId,
     state: &State,
-    site_id: uuid::Uuid,
+    site_id: PlayerId,
     zone: Zone,
 ) -> anyhow::Result<Vec<Effect>> {
     let mut effects = vec![
@@ -269,7 +269,7 @@ impl Avatar for Geomancer {
         &self,
         state: &State,
         player_id: &PlayerId,
-        site_id: &uuid::Uuid,
+        site_id: &CardId,
         zone: &Zone,
     ) -> anyhow::Result<Vec<Effect>> {
         geomancer_play_site_effects(self.get_id(), player_id, state, *site_id, zone.clone()).await

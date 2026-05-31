@@ -54,7 +54,7 @@ impl Card for FontOfLife {
         let caster = state.get_card(caster_id);
         let owner = caster.get_controller_id(state);
 
-        let ally_units: Vec<uuid::Uuid> = CardQuery::new()
+        let ally_units: Vec<CardId> = CardQuery::new()
             .units()
             .in_play()
             .controlled_by(&owner)

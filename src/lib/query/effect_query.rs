@@ -1,7 +1,7 @@
 use crate::{
     card::Region,
     effect::{DrawKind, Effect},
-    game::PlayerId,
+    game::{CardId, PlayerId},
     query::{CardQuery, ZoneQuery},
     state::State,
     zone::Zone,
@@ -65,7 +65,7 @@ impl EffectQuery {
         &self,
         effect: &Effect,
         state: &State,
-    ) -> anyhow::Result<Vec<uuid::Uuid>> {
+    ) -> anyhow::Result<Vec<CardId>> {
         match (self, effect) {
             (EffectQuery::OneOf(queries), _) => {
                 let mut source_ids = vec![];

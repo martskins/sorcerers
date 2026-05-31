@@ -65,7 +65,7 @@ impl Card for CriticalStrike {
                     player_id: Some(controller_id),
                 }),
                 on_effect: Arc::new(
-                    move |_state: &State, _card_id: &uuid::Uuid, effect: &Effect| {
+                    move |_state: &State, _card_id: &CardId, effect: &Effect| {
                         Box::pin(async move {
                             if let Effect::TakeDamage {
                                 card_id,

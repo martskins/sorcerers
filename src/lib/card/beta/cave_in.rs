@@ -75,7 +75,7 @@ impl Card for CaveIn {
         .await?;
 
         let picked_site = state.get_card(&picked_site_id);
-        let minions_and_artifacts: Vec<uuid::Uuid> = state
+        let minions_and_artifacts: Vec<CardId> = state
             .cards
             .values()
             .filter(|c| c.get_zone() == picked_site.get_zone())

@@ -8,6 +8,7 @@ use crate::{
 use egui::{Color32, Context, Painter, Rect, Sense, Stroke, Ui, pos2, vec2};
 use sorcerers::{
     card::CardData,
+    game::PlayerId,
     networking::{client::Client, message::ClientMessage},
     zone::Zone,
 };
@@ -23,7 +24,7 @@ fn draw_card_thumb(
     ui: &mut Ui,
     client: &Client,
     game_id: &uuid::Uuid,
-    player_id: &uuid::Uuid,
+    player_id: &PlayerId,
 ) {
     let texture = TextureCache::get_card_texture_blocking(card, ui.ctx());
     if let Some(ref tex) = texture {
@@ -82,7 +83,7 @@ fn render_hand_viewer(
     ui: &mut Ui,
     client: &Client,
     game_id: &uuid::Uuid,
-    player_id: &uuid::Uuid,
+    player_id: &PlayerId,
 ) {
     let spells = cards
         .iter()
@@ -121,7 +122,7 @@ fn render_hand_viewer(
 struct ViewerEntry {
     title: String,
     zone: Zone,
-    controller_id: Option<uuid::Uuid>,
+    controller_id: Option<PlayerId>,
     visible: bool,
 }
 
@@ -130,11 +131,11 @@ pub struct CardViewerComponent {
     viewers: Vec<ViewerEntry>,
     client: Client,
     game_id: uuid::Uuid,
-    player_id: uuid::Uuid,
+    player_id: PlayerId,
 }
 
 impl CardViewerComponent {
-    pub fn new(game_id: &uuid::Uuid, player_id: &uuid::Uuid, client: Client) -> Self {
+    pub fn new(game_id: &uuid::Uuid, player_id: &PlayerId, client: Client) -> Self {
         Self {
             viewers: Vec::new(),
             client,
@@ -149,7 +150,7 @@ fn handle_card_click(
     card: &CardData,
     client: &Client,
     game_id: &uuid::Uuid,
-    player_id: &uuid::Uuid,
+    player_id: &PlayerId,
 ) -> anyhow::Result<()> {
     match &data.status {
         Status::Idle => {
@@ -188,7 +189,7 @@ fn render_viewer(
     ui: &mut Ui,
     client: &Client,
     game_id: &uuid::Uuid,
-    player_id: &uuid::Uuid,
+    player_id: &PlayerId,
 ) {
     let cards = data
         .cards

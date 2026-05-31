@@ -15,8 +15,8 @@ mod card_test;
 use crate::{
     effect::{AbilityCounter, Counter, Effect, StatusCounter},
     game::{
-        ActivatedAbility, AvatarAction, Element, PlayerId, Thresholds, ThresholdsDiff, UnitAction,
-        pick_amount, pick_card, pick_option, pick_zone,
+        ActivatedAbility, AvatarAction, CardId, Element, PlayerId, Thresholds, ThresholdsDiff,
+        UnitAction, pick_amount, pick_card, pick_option, pick_zone,
     },
     query::{CardQuery, ZoneQuery},
     state::{AbilityModifier, ContinuousEffect, LoggedEffect, State, TemporaryEffect},
@@ -130,7 +130,7 @@ pub struct CardData {
     pub abilities: Vec<Ability>,
     pub statuses: Vec<CardStatus>,
     pub damage_taken: u16,
-    pub bearer: Option<uuid::Uuid>,
+    pub bearer: Option<CardId>,
     pub rarity: Rarity,
     pub power: u16,
     pub has_attachments: bool,
@@ -189,14 +189,14 @@ pub struct AdditionalCost {
     pub action: CostAction,
 }
 
-impl From<uuid::Uuid> for CardQuery {
-    fn from(val: uuid::Uuid) -> Self {
+impl From<CardId> for CardQuery {
+    fn from(val: CardId) -> Self {
         CardQuery::from_id(val)
     }
 }
 
-impl From<&uuid::Uuid> for CardQuery {
-    fn from(val: &uuid::Uuid) -> Self {
+impl From<&CardId> for CardQuery {
+    fn from(val: &CardId) -> Self {
         CardQuery::from_id(*val)
     }
 }
@@ -724,7 +724,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         &self,
         state: &State,
         player_id: &PlayerId,
-        caster_id: &uuid::Uuid,
+        caster_id: &CardId,
     ) -> anyhow::Result<bool> {
         // A card is playable if affordable at ANY of its valid target zones
         // (accounting for zone-specific cost reductions like Donnybrook Inn).
@@ -816,7 +816,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         }
     }
 
-    fn get_id(&self) -> &uuid::Uuid {
+    fn get_id(&self) -> &CardId {
         &self.get_base().id
     }
 
@@ -877,7 +877,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         _state: &State,
         _query: &CardQuery,
         _targets: &[uuid::Uuid],
-    ) -> Option<Vec<uuid::Uuid>> {
+    ) -> Option<Vec<CardId>> {
         None
     }
 
@@ -939,7 +939,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         controller
     }
 
-    fn get_bearer_id(&self) -> anyhow::Result<Option<uuid::Uuid>> {
+    fn get_bearer_id(&self) -> anyhow::Result<Option<CardId>> {
         if let Some(artifact) = self.get_artifact() {
             return artifact.get_bearer();
         }
@@ -947,7 +947,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(self.get_base().bearer)
     }
 
-    fn set_bearer_id(&mut self, bearer_id: Option<uuid::Uuid>) {
+    fn set_bearer_id(&mut self, bearer_id: Option<CardId>) {
         self.get_base_mut().bearer = bearer_id;
     }
 
@@ -1260,7 +1260,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         &self,
         state: &State,
         player_id: &PlayerId,
-        caster_id: &uuid::Uuid,
+        caster_id: &CardId,
     ) -> anyhow::Result<Vec<Zone>> {
         self.base_get_valid_play_zones(state, player_id, caster_id)
     }
@@ -1439,7 +1439,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         state: &State,
         _ranged: bool,
         zone: &Zone,
-    ) -> Vec<uuid::Uuid> {
+    ) -> Vec<CardId> {
         let attacker_region = self.get_region(state);
         let attacker_is_airborne = self.has_ability(state, &Ability::Airborne);
 
@@ -1504,7 +1504,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     // Returns the valid attack targets for this card.
-    fn get_valid_attack_targets(&self, state: &State, ranged: bool) -> Vec<uuid::Uuid> {
+    fn get_valid_attack_targets(&self, state: &State, ranged: bool) -> Vec<CardId> {
         self.get_valid_attack_targets_from_zone(state, ranged, self.get_zone())
     }
 
@@ -1697,7 +1697,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     fn can_cast_spell_with_id(
         &self,
         state: &State,
-        spell_id: &uuid::Uuid,
+        spell_id: &CardId,
         player_id: &PlayerId,
     ) -> anyhow::Result<bool> {
         if !self.get_zone().is_in_play() {
@@ -1743,7 +1743,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     fn on_take_damage(
         &mut self,
         state: &State,
-        from: &uuid::Uuid,
+        from: &CardId,
         damage: Damage,
     ) -> anyhow::Result<Vec<Effect>> {
         self.base_take_damage(state, from, damage)
@@ -1817,7 +1817,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         &self,
         state: &State,
         player_id: &PlayerId,
-        caster_id: &uuid::Uuid,
+        caster_id: &CardId,
     ) -> anyhow::Result<Vec<Effect>> {
         let card_id = self.get_id();
         match self.get_card_type() {
@@ -1837,7 +1837,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     .get_artifact()
                     .ok_or(anyhow::anyhow!("artifact card does not implement artifact"))?
                     .get_valid_attach_targets(state);
-                let valid_play_zones: Vec<uuid::Uuid> = self
+                let valid_play_zones: Vec<CardId> = self
                     .get_valid_play_zones(state, player_id, caster_id)?
                     .into_iter()
                     .filter_map(|z| z.get_site(state))
@@ -2181,7 +2181,7 @@ pub trait Site: Card + ResourceProvider {
     fn is_valid_play_site_for(
         &self,
         state: &State,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
         player_id: &PlayerId,
     ) -> anyhow::Result<bool> {
         let card = state.get_card(card_id);
@@ -2212,11 +2212,11 @@ pub trait Site: Card + ResourceProvider {
         Ok(false)
     }
 
-    fn on_card_enter(&self, _state: &State, _card_id: &uuid::Uuid) -> Vec<Effect> {
+    fn on_card_enter(&self, _state: &State, _card_id: &CardId) -> Vec<Effect> {
         vec![]
     }
 
-    fn on_card_stop(&self, _state: &State, _card_id: &uuid::Uuid) -> Vec<Effect> {
+    fn on_card_stop(&self, _state: &State, _card_id: &CardId) -> Vec<Effect> {
         vec![]
     }
 
@@ -2380,7 +2380,7 @@ pub struct UnitBase {
     pub power_counters: Vec<Counter>,
     pub ability_counters: Vec<AbilityCounter>,
     pub types: Vec<MinionType>,
-    pub carried_by: Option<uuid::Uuid>,
+    pub carried_by: Option<CardId>,
     pub tapped: bool,
 }
 
@@ -2431,7 +2431,7 @@ pub trait Avatar: Card {
         &self,
         _state: &State,
         player_id: &PlayerId,
-        site_id: &uuid::Uuid,
+        site_id: &CardId,
         zone: &Zone,
     ) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![Effect::PlayCard {
@@ -2455,7 +2455,7 @@ pub trait Artifact: Card {
             && !artifact_types.contains(&ArtifactType::Monument)
     }
 
-    fn get_valid_attach_targets(&self, state: &State) -> Vec<uuid::Uuid> {
+    fn get_valid_attach_targets(&self, state: &State) -> Vec<CardId> {
         match self.get_card_type() {
             CardType::Artifact => CardQuery::new()
                 .units()
@@ -2465,14 +2465,14 @@ pub trait Artifact: Card {
         }
     }
 
-    fn get_bearer(&self) -> anyhow::Result<Option<uuid::Uuid>> {
+    fn get_bearer(&self) -> anyhow::Result<Option<CardId>> {
         Ok(self.get_base().bearer)
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct CardBase {
-    pub id: uuid::Uuid,
+    pub id: CardId,
     pub owner_id: PlayerId,
     pub controller_id: PlayerId,
     pub zone: Zone,
@@ -2482,7 +2482,7 @@ pub struct CardBase {
     // In the case of artifacts, bearer is the id of the card that has the artifact equipped. This
     // field can also be used for units to track when another unit is carrying them (e.g. a unit
     // being carried by Beast of Burden).
-    pub bearer: Option<uuid::Uuid>,
+    pub bearer: Option<CardId>,
     pub rarity: Rarity,
     pub edition: Edition,
     pub is_token: bool,
@@ -2620,7 +2620,7 @@ pub trait CardBaseMethods: Card {
     fn base_take_damage(
         &mut self,
         state: &State,
-        from: &uuid::Uuid,
+        from: &CardId,
         damage: Damage,
     ) -> anyhow::Result<Vec<Effect>>;
     fn base_site_on_summon(&self, state: &State) -> anyhow::Result<Vec<Effect>>;
@@ -2637,7 +2637,7 @@ pub trait CardBaseMethods: Card {
         &self,
         state: &State,
         player_id: &PlayerId,
-        caster_id: &uuid::Uuid,
+        caster_id: &CardId,
     ) -> anyhow::Result<Vec<Zone>>;
 }
 
@@ -2774,7 +2774,7 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
     fn base_take_damage(
         &mut self,
         state: &State,
-        from: &uuid::Uuid,
+        from: &CardId,
         damage: Damage,
     ) -> anyhow::Result<Vec<Effect>> {
         if self.has_ability(state, &Ability::TakesNoDamageFromRangedStrikes) && damage.is_ranged {
@@ -3122,7 +3122,7 @@ fn zones_cross_border(from: &Zone, to: &Zone, border: &Zone) -> bool {
     }
 }
 
-fn temporarily_connected_sites(state: &State, card_id: &uuid::Uuid, zone: &Zone) -> Vec<Zone> {
+fn temporarily_connected_sites(state: &State, card_id: &CardId, zone: &Zone) -> Vec<Zone> {
     state
         .temporary_effects()
         .iter()
@@ -3140,7 +3140,7 @@ fn temporarily_connected_sites(state: &State, card_id: &uuid::Uuid, zone: &Zone)
         .collect()
 }
 
-fn continuously_connected_zones(state: &State, card_id: &uuid::Uuid) -> Vec<Zone> {
+fn continuously_connected_zones(state: &State, card_id: &CardId) -> Vec<Zone> {
     state
         .active_continuous_effects()
         .into_iter()
@@ -3155,7 +3155,7 @@ fn continuously_connected_zones(state: &State, card_id: &uuid::Uuid) -> Vec<Zone
         .collect()
 }
 
-fn is_continuously_connected_zone(state: &State, card_id: &uuid::Uuid, zone: &Zone) -> bool {
+fn is_continuously_connected_zone(state: &State, card_id: &CardId, zone: &Zone) -> bool {
     state
         .active_continuous_effects()
         .into_iter()

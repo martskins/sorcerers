@@ -55,7 +55,7 @@ impl Battlemage {
                     },
                     expires_on_effect: None,
                     on_effect: Arc::new(
-                        move |state: &State, damaged_id: &uuid::Uuid, effect: &Effect| {
+                        move |state: &State, damaged_id: &CardId, effect: &Effect| {
                             let damaged_id = *damaged_id;
                             Box::pin(async move {
                                 let battlemage = state.get_card(&battlemage_id);

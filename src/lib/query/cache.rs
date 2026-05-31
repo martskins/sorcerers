@@ -1,7 +1,7 @@
 use rand::seq::IndexedRandom;
 
 use crate::{
-    game::{PlayerId, pick_zone_source},
+    game::{CardId, PlayerId, pick_zone_source},
     query::ZoneQuery,
     state::State,
     zone::Zone,
@@ -17,8 +17,8 @@ static QUERY_CACHE: OnceLock<RwLock<QueryCache>> = OnceLock::new();
 pub struct QueryCache {
     zone_queries: HashMap<uuid::Uuid, Zone>,
     card_queries: HashMap<uuid::Uuid, uuid::Uuid>,
-    effect_targets: HashMap<uuid::Uuid, Vec<uuid::Uuid>>,
-    game_queries: HashMap<uuid::Uuid, Vec<uuid::Uuid>>,
+    effect_targets: HashMap<uuid::Uuid, Vec<CardId>>,
+    game_queries: HashMap<uuid::Uuid, Vec<CardId>>,
 }
 
 impl QueryCache {
@@ -35,12 +35,12 @@ impl QueryCache {
         QUERY_CACHE.get_or_init(|| RwLock::new(QueryCache::new()));
     }
 
-    pub fn card_result(query_id: &uuid::Uuid) -> Option<uuid::Uuid> {
+    pub fn card_result(query_id: &uuid::Uuid) -> Option<CardId> {
         let cache = QUERY_CACHE.get().expect("to get lock").read().unwrap();
         cache.card_queries.get(query_id).cloned()
     }
 
-    pub fn store_card_result(game_id: uuid::Uuid, query_id: uuid::Uuid, card_id: uuid::Uuid) {
+    pub fn store_card_result(game_id: uuid::Uuid, query_id: uuid::Uuid, card_id: CardId) {
         let mut cache = QUERY_CACHE.get().expect("to get lock").write().unwrap();
         cache.card_queries.insert(query_id, card_id);
 
@@ -54,7 +54,7 @@ impl QueryCache {
     pub fn store_effect_targets(
         game_id: uuid::Uuid,
         effect_id: uuid::Uuid,
-        affected_cards: Vec<uuid::Uuid>,
+        affected_cards: Vec<CardId>,
     ) {
         let mut cache = QUERY_CACHE.get().expect("to get lock").write().unwrap();
         cache.effect_targets.insert(effect_id, affected_cards);
@@ -66,7 +66,7 @@ impl QueryCache {
             .push(effect_id);
     }
 
-    pub fn effect_targets(effect_id: &uuid::Uuid) -> Option<Vec<uuid::Uuid>> {
+    pub fn effect_targets(effect_id: &uuid::Uuid) -> Option<Vec<CardId>> {
         let cache = QUERY_CACHE.get().expect("to get lock").read().unwrap();
         cache.effect_targets.get(effect_id).cloned()
     }

@@ -69,7 +69,7 @@ impl Card for SeaRaider {
                     card: CardQuery::from_id(self_id),
                 }),
                 on_effect: Arc::new(
-                    move |state: &State, damaged_id: &uuid::Uuid, effect: &Effect| {
+                    move |state: &State, damaged_id: &CardId, effect: &Effect| {
                         let damaged_id = *damaged_id;
                         Box::pin(async move {
                             let Effect::TakeDamage { from, .. } = effect else {

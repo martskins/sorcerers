@@ -11,7 +11,7 @@ impl ActivatedAbility for DeathspeakerAbility {
 
     fn can_activate(
         &self,
-        _card_id: &uuid::Uuid,
+        _card_id: &CardId,
         player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<bool> {
@@ -27,14 +27,14 @@ impl ActivatedAbility for DeathspeakerAbility {
         Ok(has_dead_minion && can_afford_any)
     }
 
-    fn get_cost(&self, _card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
+    fn get_cost(&self, _card_id: &CardId, _state: &State) -> anyhow::Result<Cost> {
         // The activation is free; the copy's mana cost is consumed inside on_select.
         Ok(Cost::ZERO.clone())
     }
 
     async fn on_select(
         &self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
         player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {

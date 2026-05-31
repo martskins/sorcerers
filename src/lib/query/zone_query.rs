@@ -1,5 +1,5 @@
 use crate::{
-    game::PlayerId,
+    game::{CardId, PlayerId},
     query::QueryCache,
     state::State,
     zone::{Location, Zone},
@@ -9,8 +9,8 @@ use crate::{
 pub(super) enum ZoneSpatialFilter {
     AdjacentLocations(Zone),
     NearbyLocations(Zone),
-    ZoneOfCard(uuid::Uuid),
-    AffectedZonesOfCard(uuid::Uuid),
+    ZoneOfCard(CardId),
+    AffectedZonesOfCard(CardId),
 }
 
 #[derive(Debug, Clone)]
@@ -27,7 +27,7 @@ pub struct ZoneQuery {
     /// Optionally filter `sites_only` results to zones controlled by this player.
     pub(super) controlled_by: Option<PlayerId>,
     pub(super) prompt: Option<String>,
-    pub(super) source_card_id: Option<uuid::Uuid>,
+    pub(super) source_card_id: Option<CardId>,
     pub(super) spatial_filters: Vec<ZoneSpatialFilter>,
 }
 
@@ -88,13 +88,13 @@ impl ZoneQuery {
         self
     }
 
-    pub fn zone_of_card(mut self, card_id: &uuid::Uuid) -> Self {
+    pub fn zone_of_card(mut self, card_id: &CardId) -> Self {
         self.spatial_filters
             .push(ZoneSpatialFilter::ZoneOfCard(*card_id));
         self
     }
 
-    pub fn affected_zones_of_card(mut self, card_id: &uuid::Uuid) -> Self {
+    pub fn affected_zones_of_card(mut self, card_id: &CardId) -> Self {
         self.spatial_filters
             .push(ZoneSpatialFilter::AffectedZonesOfCard(*card_id));
         self
@@ -135,7 +135,7 @@ impl ZoneQuery {
         }
     }
 
-    pub fn with_source_card(self, card_id: uuid::Uuid) -> Self {
+    pub fn with_source_card(self, card_id: CardId) -> Self {
         Self {
             source_card_id: Some(card_id),
             ..self

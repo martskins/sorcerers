@@ -69,7 +69,7 @@ impl Card for WitherwingHero {
                     card: CardQuery::from_id(self_id),
                 }),
                 on_effect: Arc::new(
-                    move |state: &State, _card_id: &uuid::Uuid, effect: &Effect| {
+                    move |state: &State, _card_id: &CardId, effect: &Effect| {
                         Box::pin(async move {
                             let (attacker_id, defender_id) = match effect {
                                 Effect::Attack {

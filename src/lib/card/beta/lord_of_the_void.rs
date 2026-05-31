@@ -72,7 +72,7 @@ impl Card for LordOfTheVoid {
 
         // Find adjacent zones that have a site and no avatar
         let my_zone = self.get_zone().clone();
-        let candidate_sites: Vec<uuid::Uuid> = CardQuery::new()
+        let candidate_sites: Vec<CardId> = CardQuery::new()
             .sites()
             .adjacent_sites_to(&my_zone)
             .all(state)

@@ -29,7 +29,7 @@ pub(crate) mod prelude {
     pub use crate::effect::{AbilityCounter, Counter, DrawKind, Effect, StatusCounter, TokenType};
     pub use crate::game::{
         ActivatedAbility, AvatarAction, BaseAction, BaseOption, CARDINAL_DIRECTIONS, Direction,
-        Element, NO_CONTROLLER, PlayerId, Thresholds, UnitAction, force_sync,
+        CardId, Element, NO_CONTROLLER, PlayerId, Thresholds, UnitAction, force_sync,
         get_knight_move_zones, pick_action_source, pick_card, pick_card_source,
         pick_card_with_options, pick_card_with_preview, pick_cards, pick_direction_source,
         pick_option, pick_option_source, pick_zone, pick_zone_group, pick_zone_group_source,

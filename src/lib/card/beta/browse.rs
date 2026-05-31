@@ -55,7 +55,7 @@ impl Card for Browse {
 
         // Take up to 7 cards from the top of the spellbook (last in vec = top of deck).
         let mut remaining_spells = deck.spells.clone();
-        let mut looked_at: Vec<uuid::Uuid> = vec![];
+        let mut looked_at: Vec<CardId> = vec![];
         for _ in 0..7 {
             if let Some(card_id) = remaining_spells.pop() {
                 looked_at.push(card_id);
@@ -75,7 +75,7 @@ impl Card for Browse {
         )
         .await?;
 
-        let mut bottom_spells: Vec<uuid::Uuid> = looked_at
+        let mut bottom_spells: Vec<CardId> = looked_at
             .iter()
             .filter(|id| **id != chosen_id)
             .cloned()
@@ -83,7 +83,7 @@ impl Card for Browse {
 
         // Player orders the remaining spells for the bottom of the deck (position 0).
         // Ask player to arrange them one by one from bottom to top.
-        let mut ordered_bottom: Vec<uuid::Uuid> = vec![];
+        let mut ordered_bottom: Vec<CardId> = vec![];
         while !bottom_spells.is_empty() {
             let position_label = if bottom_spells.len() == 1 {
                 "the bottom".to_string()

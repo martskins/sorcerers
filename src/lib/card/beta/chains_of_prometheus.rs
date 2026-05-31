@@ -75,7 +75,7 @@ impl Card for ChainsOfPrometheus {
                 card: self.get_id().into(),
             }),
             on_effect: Arc::new(
-                move |state: &State, _card_id: &uuid::Uuid, effect: &Effect| {
+                move |state: &State, _card_id: &CardId, effect: &Effect| {
                     let _ = chains_id;
                     Box::pin(async move {
                         // Extract the drawing player from the effect.
@@ -114,7 +114,7 @@ impl Card for ChainsOfPrometheus {
                                     Ok(power) => power.unwrap_or_default() == max_power,
                                 }
                             })
-                            .collect::<Vec<uuid::Uuid>>();
+                            .collect::<Vec<CardId>>();
 
                         let picked_card = CardQuery::from_ids(strongest)
                             .count(1)

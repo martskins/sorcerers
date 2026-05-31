@@ -63,7 +63,7 @@ impl Card for SacredScarabs {
     }
 
     fn deathrite(&self, state: &State, from: &Zone) -> Vec<Effect> {
-        let units_here: Vec<uuid::Uuid> = state
+        let units_here: Vec<CardId> = state
             .cards
             .values()
             .filter(|c| c.is_unit())

@@ -8,7 +8,7 @@ use crate::{
 use egui::{Context, Painter, Pos2, Rect, Sense, Ui, pos2};
 use sorcerers::{
     card::CardData,
-    game::PlayerId,
+    game::{CardId, PlayerId},
     networking::{self, message::ClientMessage},
     zone::Zone,
 };
@@ -22,11 +22,11 @@ pub struct PlayerHandComponent {
     visible: bool,
     expanded: bool,
     expansion: f32,
-    dragging_card: Option<uuid::Uuid>,
+    dragging_card: Option<CardId>,
     drag_visual_pos: Option<Pos2>,
     rect: Rect,
-    spells_in_hand: Vec<uuid::Uuid>,
-    sites_in_hand: Vec<uuid::Uuid>,
+    spells_in_hand: Vec<CardId>,
+    sites_in_hand: Vec<CardId>,
 }
 
 impl PlayerHandComponent {
@@ -175,7 +175,7 @@ impl PlayerHandComponent {
         Ok(())
     }
 
-    fn card_clicked(&mut self, card_id: &uuid::Uuid, data: &mut GameData) -> anyhow::Result<()> {
+    fn card_clicked(&mut self, card_id: &CardId, data: &mut GameData) -> anyhow::Result<()> {
         if let Status::SelectingAction { .. } = &data.status {
             return Ok(());
         }
@@ -431,7 +431,7 @@ impl Component for PlayerHandComponent {
     ) -> anyhow::Result<()> {
         match command {
             ComponentCommand::DonePicking if matches!(data.status, Status::Mulligan) => {
-                let selected_cards: Vec<uuid::Uuid> = self
+                let selected_cards: Vec<CardId> = self
                     .card_rects
                     .iter()
                     .filter(|c| c.is_selected)

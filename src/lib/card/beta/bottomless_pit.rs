@@ -37,7 +37,7 @@ impl BottomlessPit {
 
 #[async_trait::async_trait]
 impl Site for BottomlessPit {
-    fn on_card_enter(&self, state: &State, card_id: &uuid::Uuid) -> Vec<Effect> {
+    fn on_card_enter(&self, state: &State, card_id: &CardId) -> Vec<Effect> {
         let card = state.get_card(card_id);
         if !card.is_minion() || card.has_ability(state, &Ability::Airborne) {
             return vec![];

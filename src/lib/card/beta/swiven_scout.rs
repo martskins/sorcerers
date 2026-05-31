@@ -25,7 +25,7 @@ async fn reveal_enemy_hands_in_range(
         })
     {
         let avatar = state.get_card(&avatar_id);
-        let hand: Vec<uuid::Uuid> = state
+        let hand: Vec<CardId> = state
             .cards
             .values()
             .filter(|card| card.get_zone() == &Zone::Hand)
@@ -119,7 +119,7 @@ impl Card for SwivenScout {
                 card: CardQuery::new().units(),
             },
             on_effect: Arc::new(
-                move |state: &State, _card_id: &uuid::Uuid, _effect: &Effect| {
+                move |state: &State, _card_id: &CardId, _effect: &Effect| {
                     Box::pin(async move { reveal_enemy_hands_in_range(scout_id, state).await })
                 },
             ),

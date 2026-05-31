@@ -61,7 +61,7 @@ impl Card for UndertakerEngine {
             return Ok(vec![]);
         }
 
-        let cards_here: Vec<uuid::Uuid> = state
+        let cards_here: Vec<CardId> = state
             .cards
             .values()
             .filter(|card| card.get_zone() == self.get_zone())

@@ -147,7 +147,7 @@ impl TheImmortalThrone {
             .all(state)
             .into_iter()
             .filter(|card_id| !avatars_here.contains(card_id))
-            .collect::<Vec<uuid::Uuid>>();
+            .collect::<Vec<CardId>>();
 
         if avatars_here.len() != 1 || !other_units_here.is_empty() {
             return vec![];

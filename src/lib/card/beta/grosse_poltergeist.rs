@@ -9,13 +9,13 @@ impl ActivatedAbility for PossessArtifact {
         "Tap → Control nearby artifact".to_string()
     }
 
-    fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
+    fn get_cost(&self, card_id: &CardId, _state: &State) -> anyhow::Result<Cost> {
         Ok(Cost::additional_only(AdditionalCost::tap(card_id)))
     }
 
     fn can_activate(
         &self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
         _player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<bool> {
@@ -29,7 +29,7 @@ impl ActivatedAbility for PossessArtifact {
 
     async fn on_select(
         &self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
         player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
@@ -61,7 +61,7 @@ impl ActivatedAbility for PossessArtifact {
 pub struct GrossePoltergeist {
     unit_base: UnitBase,
     card_base: CardBase,
-    controlled_artifact: Option<uuid::Uuid>,
+    controlled_artifact: Option<CardId>,
 }
 
 impl GrossePoltergeist {
@@ -118,7 +118,7 @@ impl Card for GrossePoltergeist {
         &mut self,
         data: &std::sync::Arc<dyn std::any::Any + Send + Sync>,
     ) -> anyhow::Result<()> {
-        if let Some(controlled_artifact) = data.downcast_ref::<Option<uuid::Uuid>>() {
+        if let Some(controlled_artifact) = data.downcast_ref::<Option<CardId>>() {
             self.controlled_artifact = *controlled_artifact;
             return Ok(());
         }

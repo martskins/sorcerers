@@ -2,7 +2,7 @@ use crate::{
     card::{Card, CardData, CardType},
     deck::{Deck, DeckList, precon::PreconDeck},
     evaluation::Evaluation,
-    game::{Direction, PlayerId, Resources, SoundEffect},
+    game::{CardId, Direction, PlayerId, Resources, SoundEffect},
     zone::Zone,
 };
 use serde::{Deserialize, Serialize};
@@ -43,12 +43,12 @@ impl DeckChoice {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OngoingEffectData {
-    pub source_card_id: Option<uuid::Uuid>,
+    pub source_card_id: Option<CardId>,
     pub source_name: Option<String>,
     pub description: String,
     pub timestamp: u64,
     pub active: bool,
-    pub affected_card_ids: Vec<uuid::Uuid>,
+    pub affected_card_ids: Vec<CardId>,
     pub affected_zones: Vec<Zone>,
 }
 
@@ -56,14 +56,14 @@ pub struct OngoingEffectData {
 pub enum ServerMessage {
     RevealCards {
         player_id: PlayerId,
-        cards: Vec<uuid::Uuid>,
+        cards: Vec<CardId>,
         prompt: String,
         action: Option<String>,
     },
     DistributeDamage {
         player_id: PlayerId,
-        attacker: uuid::Uuid,
-        defenders: Vec<uuid::Uuid>,
+        attacker: CardId,
+        defenders: Vec<CardId>,
         damage: u16,
     },
     PlaySoundEffect {
@@ -90,7 +90,7 @@ pub enum ServerMessage {
         datetime: chrono::DateTime<chrono::Utc>,
     },
     CardPlayed {
-        card_id: uuid::Uuid,
+        card_id: CardId,
         description: String,
     },
     ConnectResponse {
@@ -115,53 +115,53 @@ pub enum ServerMessage {
     },
     PickCards {
         prompt: String,
-        source_card_id: Option<uuid::Uuid>,
+        source_card_id: Option<CardId>,
         player_id: PlayerId,
-        cards: Vec<uuid::Uuid>,
+        cards: Vec<CardId>,
         preview: bool,
     },
     PickCard {
         prompt: String,
-        source_card_id: Option<uuid::Uuid>,
+        source_card_id: Option<CardId>,
         player_id: PlayerId,
-        cards: Vec<uuid::Uuid>,
-        pickable_cards: Vec<uuid::Uuid>,
+        cards: Vec<CardId>,
+        pickable_cards: Vec<CardId>,
         preview: bool,
     },
     PickAmount {
         prompt: String,
-        source_card_id: Option<uuid::Uuid>,
+        source_card_id: Option<CardId>,
         player_id: PlayerId,
         min_amount: u8,
         max_amount: u8,
     },
     PickAction {
         prompt: String,
-        source_card_id: Option<uuid::Uuid>,
+        source_card_id: Option<CardId>,
         player_id: PlayerId,
         actions: Vec<String>,
         anchor_on_cursor: bool,
     },
     PickPath {
         prompt: String,
-        source_card_id: Option<uuid::Uuid>,
+        source_card_id: Option<CardId>,
         player_id: PlayerId,
         paths: Vec<Vec<Zone>>,
     },
     PickZone {
         prompt: String,
-        source_card_id: Option<uuid::Uuid>,
+        source_card_id: Option<CardId>,
         player_id: PlayerId,
         zones: Vec<Zone>,
     },
     PlayableZones {
         player_id: PlayerId,
-        card_id: uuid::Uuid,
+        card_id: CardId,
         zones: Vec<Zone>,
     },
     AuraAffectedZones {
         player_id: PlayerId,
-        card_id: uuid::Uuid,
+        card_id: CardId,
         zones: Vec<Zone>,
     },
     OngoingEffects {
@@ -170,13 +170,13 @@ pub enum ServerMessage {
     },
     PickZoneGroup {
         prompt: String,
-        source_card_id: Option<uuid::Uuid>,
+        source_card_id: Option<CardId>,
         player_id: PlayerId,
         groups: Vec<Vec<Zone>>,
     },
     PickDirection {
         prompt: String,
-        source_card_id: Option<uuid::Uuid>,
+        source_card_id: Option<CardId>,
         player_id: PlayerId,
         directions: Vec<Direction>,
     },
@@ -241,7 +241,7 @@ pub enum ClientMessage {
     ResolveCombat {
         game_id: uuid::Uuid,
         player_id: PlayerId,
-        damage_assignment: HashMap<uuid::Uuid, u16>,
+        damage_assignment: HashMap<CardId, u16>,
     },
     PlayerDisconnected {
         game_id: uuid::Uuid,
@@ -260,17 +260,17 @@ pub enum ClientMessage {
     ClickCard {
         game_id: uuid::Uuid,
         player_id: PlayerId,
-        card_id: uuid::Uuid,
+        card_id: CardId,
     },
     RequestPlayableZones {
         game_id: uuid::Uuid,
         player_id: PlayerId,
-        card_id: uuid::Uuid,
+        card_id: CardId,
     },
     RequestAuraAffectedZones {
         game_id: uuid::Uuid,
         player_id: PlayerId,
-        card_id: uuid::Uuid,
+        card_id: CardId,
     },
     RequestOngoingEffects {
         game_id: uuid::Uuid,
@@ -279,7 +279,7 @@ pub enum ClientMessage {
     PlayCardAtZone {
         game_id: uuid::Uuid,
         player_id: PlayerId,
-        card_id: uuid::Uuid,
+        card_id: CardId,
         zone: Zone,
     },
     PickDirection {
@@ -290,12 +290,12 @@ pub enum ClientMessage {
     PickCards {
         game_id: uuid::Uuid,
         player_id: PlayerId,
-        card_ids: Vec<uuid::Uuid>,
+        card_ids: Vec<CardId>,
     },
     PickCard {
         game_id: uuid::Uuid,
         player_id: PlayerId,
-        card_id: uuid::Uuid,
+        card_id: CardId,
     },
     PickPath {
         game_id: uuid::Uuid,

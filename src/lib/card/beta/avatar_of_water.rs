@@ -11,7 +11,7 @@ impl ActivatedAbility for FloodSite {
 
     async fn on_select(
         &self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
         player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
@@ -19,7 +19,7 @@ impl ActivatedAbility for FloodSite {
         let controller_id = avatar.get_controller_id(state);
         match state.get_body_of_water_at(avatar.get_zone()) {
             Some(body_of_water) => {
-                let picked_site_id: uuid::Uuid = CardQuery::new()
+                let picked_site_id: CardId = CardQuery::new()
                     .adjacent_to_zones(&body_of_water)
                     .sites()
                     .with_prompt("Pick a site to flood")
@@ -54,7 +54,7 @@ impl ActivatedAbility for FloodSite {
         }
     }
 
-    fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
+    fn get_cost(&self, card_id: &CardId, _state: &State) -> anyhow::Result<Cost> {
         Ok(Cost::additional_only(AdditionalCost::tap(card_id)))
     }
 }

@@ -11,7 +11,7 @@ impl ActivatedAbility for DiscardToGainControlAbility {
 
     async fn on_select(
         &self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
         player_id: &PlayerId,
         _state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
@@ -21,7 +21,7 @@ impl ActivatedAbility for DiscardToGainControlAbility {
         }])
     }
 
-    fn get_cost(&self, _card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
+    fn get_cost(&self, _card_id: &CardId, _state: &State) -> anyhow::Result<Cost> {
         Ok(Cost::additional_only(AdditionalCost::discard(
             CardQuery::new().in_zone(&Zone::Hand),
         )))

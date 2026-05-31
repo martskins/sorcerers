@@ -22,7 +22,7 @@ use egui::{Color32, Context, FontId, Painter, Rect, RichText, Ui, pos2, vec2};
 use kira::{AudioManager, DefaultBackend, sound::static_sound::StaticSoundData};
 use sorcerers::{
     card::{CardData, CardType, Region},
-    game::{Direction, PlayerId, Resources},
+    game::{CardId, Direction, PlayerId, Resources},
     networking::{
         self,
         message::{ClientMessage, OngoingEffectData, ServerMessage},
@@ -44,56 +44,56 @@ pub enum Status {
     SelectingAction {
         actions: Vec<String>,
         prompt: String,
-        source_card_id: Option<uuid::Uuid>,
+        source_card_id: Option<CardId>,
         anchor_on_cursor: bool,
     },
     SelectingDirection {
         directions: Vec<Direction>,
         prompt: String,
-        source_card_id: Option<uuid::Uuid>,
+        source_card_id: Option<CardId>,
     },
     SelectingCard {
-        cards: Vec<uuid::Uuid>,
+        cards: Vec<CardId>,
         preview: bool,
         prompt: String,
-        source_card_id: Option<uuid::Uuid>,
+        source_card_id: Option<CardId>,
         multiple: bool,
     },
     SelectingAmount {
         prompt: String,
-        source_card_id: Option<uuid::Uuid>,
+        source_card_id: Option<CardId>,
         min_amount: u8,
         max_amount: u8,
     },
     SelectingPath {
         paths: Vec<Vec<Zone>>,
         prompt: String,
-        source_card_id: Option<uuid::Uuid>,
+        source_card_id: Option<CardId>,
     },
     SelectingZoneGroup {
         groups: Vec<Vec<Zone>>,
         prompt: String,
-        source_card_id: Option<uuid::Uuid>,
+        source_card_id: Option<CardId>,
     },
     SelectingZone {
         zones: Vec<Zone>,
         prompt: String,
-        source_card_id: Option<uuid::Uuid>,
+        source_card_id: Option<CardId>,
     },
     PreviewingPlayableZones {
-        card_id: uuid::Uuid,
+        card_id: CardId,
         zones: Vec<Zone>,
     },
     ViewingCards {
-        cards: Vec<uuid::Uuid>,
+        cards: Vec<CardId>,
         prompt: String,
         prev_status: Box<Status>,
         behaviour: SelectionOverlayBehaviour,
     },
     DistributingDamage {
         player_id: PlayerId,
-        attacker: uuid::Uuid,
-        defenders: Vec<uuid::Uuid>,
+        attacker: CardId,
+        defenders: Vec<CardId>,
         damage: u16,
     },
     GameAborted {
@@ -158,7 +158,7 @@ pub struct GameData {
     pub last_clicked_card_pos: Option<egui::Pos2>,
     pub last_clicked_card_rect: Option<egui::Rect>,
     pub last_clicked_cursor_pos: Option<egui::Pos2>,
-    pub last_clicked_card_id: Option<uuid::Uuid>,
+    pub last_clicked_card_id: Option<CardId>,
     pub last_clicked_card_time: Option<f64>,
 }
 
@@ -229,7 +229,7 @@ impl Game {
     pub fn new(
         game_id: uuid::Uuid,
         player_id: PlayerId,
-        opponent_id: uuid::Uuid,
+        opponent_id: PlayerId,
         is_player_one: bool,
         cards: Vec<CardData>,
         client: networking::client::Client,
@@ -480,7 +480,7 @@ impl Game {
         }
     }
 
-    fn current_prompt(&self) -> Option<(&str, Option<uuid::Uuid>)> {
+    fn current_prompt(&self) -> Option<(&str, Option<CardId>)> {
         match &self.data.status {
             Status::Waiting { prompt } => Some((prompt.as_str(), None)),
             Status::SelectingZone {

@@ -10,7 +10,7 @@ use crate::{
 use egui::{Color32, Context, Painter, Rect, Ui, pos2, vec2};
 use sorcerers::{
     card::CardData,
-    game::PlayerId,
+    game::{CardId, PlayerId},
     networking::{self, message::ClientMessage},
 };
 
@@ -23,7 +23,7 @@ pub struct CombatResolutionOverlay {
     player_id: PlayerId,
     game_id: uuid::Uuid,
     client: networking::client::Client,
-    defender_damage: HashMap<uuid::Uuid, u16>,
+    defender_damage: HashMap<CardId, u16>,
     damage: u16,
     shake_button_until: Option<chrono::DateTime<chrono::Utc>>,
     visible: bool,

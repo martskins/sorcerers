@@ -63,7 +63,7 @@ impl Card for RimlandNomads {
     fn on_take_damage(
         &mut self,
         state: &State,
-        from: &uuid::Uuid,
+        from: &CardId,
         damage: Damage,
     ) -> anyhow::Result<Vec<Effect>> {
         let dealer = state.get_card(from);

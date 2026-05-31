@@ -75,35 +75,31 @@ impl Card for MenOfLeng {
                 expires_on_effect: Some(EffectQuery::BuryCard {
                     card: CardQuery::from_id(men_of_leng_id),
                 }),
-                on_effect: Arc::new(
-                    move |state: &State, avatar_id: &uuid::Uuid, _effect: &Effect| {
-                        let avatar_id = *avatar_id;
-                        Box::pin(async move {
-                            let avatar = state.get_card(&avatar_id);
-                            let avatar_controller = avatar.get_controller_id(state);
+                on_effect: Arc::new(move |state: &State, avatar_id: &CardId, _effect: &Effect| {
+                    let avatar_id = *avatar_id;
+                    Box::pin(async move {
+                        let avatar = state.get_card(&avatar_id);
+                        let avatar_controller = avatar.get_controller_id(state);
 
-                            let random_card = CardQuery::new()
-                                .in_zone(&Zone::Hand)
-                                .controlled_by(&avatar_controller)
-                                .randomised()
-                                .count(1)
-                                .pick(&avatar_controller, state, false)
-                                .await?;
+                        let random_card = CardQuery::new()
+                            .in_zone(&Zone::Hand)
+                            .controlled_by(&avatar_controller)
+                            .randomised()
+                            .count(1)
+                            .pick(&avatar_controller, state, false)
+                            .await?;
 
-                            if let Some(card_id) = random_card {
-                                Ok(vec![Effect::DiscardCard {
-                                    player_id: avatar_controller,
-                                    card_id,
-                                }])
-                            } else {
-                                Ok(vec![])
-                            }
-                        })
-                            as Pin<
-                                Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>,
-                            >
-                    },
-                ),
+                        if let Some(card_id) = random_card {
+                            Ok(vec![Effect::DiscardCard {
+                                player_id: avatar_controller,
+                                card_id,
+                            }])
+                        } else {
+                            Ok(vec![])
+                        }
+                    })
+                        as Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>>
+                }),
                 multitrigger: true,
             },
         }])

@@ -11,7 +11,7 @@ impl ActivatedAbility for TransformIntoAMonster {
 
     async fn on_select(
         &self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
         player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
@@ -40,7 +40,7 @@ impl ActivatedAbility for TransformIntoAMonster {
 
     fn can_activate(
         &self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
         _player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<bool> {
@@ -48,7 +48,7 @@ impl ActivatedAbility for TransformIntoAMonster {
         Ok(card.get_site_base().is_some())
     }
 
-    fn get_cost(&self, _card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
+    fn get_cost(&self, _card_id: &CardId, _state: &State) -> anyhow::Result<Cost> {
         Ok(Cost::thresholds_only("WWWWWWWW"))
     }
 }

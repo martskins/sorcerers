@@ -85,7 +85,7 @@ impl Card for MarinersCurse {
                 }),
                 multitrigger: false,
                 on_effect: Arc::new(
-                    move |state: &State, card_id: &uuid::Uuid, effect: &Effect| {
+                    move |state: &State, card_id: &CardId, effect: &Effect| {
                         Box::pin(async move {
                             // Check if aura is still in play.
                             if !state.get_card(&aura_id).get_zone().is_in_play() {

@@ -80,7 +80,7 @@ impl Card for FlankingManeuver {
         )
         .await?;
 
-        let ally_minions_at_source: Vec<uuid::Uuid> = CardQuery::new()
+        let ally_minions_at_source: Vec<CardId> = CardQuery::new()
             .units()
             .in_zone(&source_zone)
             .controlled_by(&controller)

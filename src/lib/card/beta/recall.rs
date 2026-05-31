@@ -57,7 +57,7 @@ impl Card for Recall {
         let controller_id = self.get_controller_id(state);
         let caster_zone = state.get_card(caster_id).get_zone().clone();
 
-        let allied_minions: Vec<uuid::Uuid> = CardQuery::new()
+        let allied_minions: Vec<CardId> = CardQuery::new()
             .minions()
             .in_play()
             .controlled_by(&controller_id)

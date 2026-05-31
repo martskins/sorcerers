@@ -9,13 +9,13 @@ impl ActivatedAbility for PickUpWeakerMinion {
         "Pick Up Minion".to_string()
     }
 
-    fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
+    fn get_cost(&self, card_id: &CardId, _state: &State) -> anyhow::Result<Cost> {
         Ok(Cost::additional_only(AdditionalCost::tap(card_id)))
     }
 
     async fn on_select(
         &self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
         player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
@@ -26,7 +26,7 @@ impl ActivatedAbility for PickUpWeakerMinion {
         };
         let controller_id = card.get_controller_id(state);
 
-        let weaker_minions: Vec<uuid::Uuid> = state
+        let weaker_minions: Vec<CardId> = state
             .cards
             .values()
             .filter(|c| c.is_minion())

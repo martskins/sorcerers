@@ -61,7 +61,7 @@ impl Card for MadDash {
             .filter(|c| c.is_unit())
             .filter(|c| c.get_controller_id(state) == self.get_controller_id(state))
             .map(|c| *c.get_id())
-            .collect::<Vec<uuid::Uuid>>();
+            .collect::<Vec<CardId>>();
         let prompt = "Pick a unit to gain Movement +1";
         let picked_card_id = pick_card_source(
             self.get_controller_id(state),

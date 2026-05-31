@@ -77,7 +77,7 @@ impl Card for BoneRabble {
                     card: self.get_id().into(),
                 }),
                 on_effect: Arc::new(
-                    move |state: &State, card_id: &uuid::Uuid, _effect: &Effect| {
+                    move |state: &State, card_id: &CardId, _effect: &Effect| {
                         let owner_id = owner_id;
                         Box::pin(async move {
                             let site = state.get_card(card_id);

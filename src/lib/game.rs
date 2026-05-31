@@ -17,6 +17,7 @@ use std::{collections::HashMap, iter::Sum, sync::Arc};
 use tokio::{net::tcp::OwnedWriteHalf, sync::Mutex};
 
 pub type PlayerId = uuid::Uuid;
+pub type CardId = uuid::Uuid;
 pub const NO_CONTROLLER: PlayerId = uuid::Uuid::nil();
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -100,7 +101,7 @@ pub const CARDINAL_DIRECTIONS: [Direction; 4] = [
 
 pub async fn pick_card_with_preview(
     player_id: impl AsRef<PlayerId>,
-    card_ids: &[uuid::Uuid],
+    card_ids: &[CardId],
     state: &State,
     prompt: &str,
 ) -> anyhow::Result<uuid::Uuid> {
@@ -109,8 +110,8 @@ pub async fn pick_card_with_preview(
 
 pub async fn pick_card_with_options(
     player_id: impl AsRef<PlayerId>,
-    card_ids: &[uuid::Uuid],
-    pickable_card_ids: &[uuid::Uuid],
+    card_ids: &[CardId],
+    pickable_card_ids: &[CardId],
     block_opponent: bool,
     state: &State,
     prompt: &str,
@@ -129,12 +130,12 @@ pub async fn pick_card_with_options(
 
 pub async fn pick_card_with_options_source(
     player_id: impl AsRef<PlayerId>,
-    card_ids: &[uuid::Uuid],
-    pickable_card_ids: &[uuid::Uuid],
+    card_ids: &[CardId],
+    pickable_card_ids: &[CardId],
     block_opponent: bool,
     state: &State,
     prompt: &str,
-    source_card_id: Option<uuid::Uuid>,
+    source_card_id: Option<CardId>,
 ) -> anyhow::Result<uuid::Uuid> {
     let decision_player = state.decision_player(player_id.as_ref());
     let opponent_id = state.get_opponent_id(player_id.as_ref())?;
@@ -172,11 +173,11 @@ pub async fn pick_card_with_options_source(
 
 pub async fn distribute_damage(
     player_id: impl AsRef<PlayerId>,
-    attacker: &uuid::Uuid,
+    attacker: &CardId,
     amount: u16,
-    defenders: &[uuid::Uuid],
+    defenders: &[CardId],
     state: &State,
-) -> anyhow::Result<HashMap<uuid::Uuid, u16>> {
+) -> anyhow::Result<HashMap<CardId, u16>> {
     let decision_player = state.decision_player(player_id.as_ref());
     state
         .get_sender()
@@ -229,20 +230,20 @@ pub async fn distribute_damage(
 
 pub async fn pick_cards(
     player_id: impl AsRef<PlayerId>,
-    card_ids: &[uuid::Uuid],
+    card_ids: &[CardId],
     state: &State,
     prompt: &str,
-) -> anyhow::Result<Vec<uuid::Uuid>> {
+) -> anyhow::Result<Vec<CardId>> {
     pick_cards_source(player_id, card_ids, state, prompt, None).await
 }
 
 pub async fn pick_cards_source(
     player_id: impl AsRef<PlayerId>,
-    card_ids: &[uuid::Uuid],
+    card_ids: &[CardId],
     state: &State,
     prompt: &str,
-    source_card_id: Option<uuid::Uuid>,
-) -> anyhow::Result<Vec<uuid::Uuid>> {
+    source_card_id: Option<CardId>,
+) -> anyhow::Result<Vec<CardId>> {
     let decision_player = state.decision_player(player_id.as_ref());
     state
         .get_sender()
@@ -267,7 +268,7 @@ pub async fn pick_cards_source(
 
 pub async fn reveal_cards(
     player_id: impl AsRef<PlayerId>,
-    preview_cards: &[uuid::Uuid],
+    preview_cards: &[CardId],
     state: &State,
     prompt: &str,
 ) -> anyhow::Result<()> {
@@ -287,7 +288,7 @@ pub async fn reveal_cards(
 
 pub async fn take_action(
     player_id: impl AsRef<PlayerId>,
-    preview_cards: &[uuid::Uuid],
+    preview_cards: &[CardId],
     state: &State,
     prompt: &str,
     action: &str,
@@ -314,7 +315,7 @@ pub async fn take_action(
 }
 pub async fn pick_card(
     player_id: impl AsRef<PlayerId>,
-    card_ids: &[uuid::Uuid],
+    card_ids: &[CardId],
     state: &State,
     prompt: &str,
 ) -> anyhow::Result<uuid::Uuid> {
@@ -323,10 +324,10 @@ pub async fn pick_card(
 
 pub async fn pick_card_source(
     player_id: impl AsRef<PlayerId>,
-    card_ids: &[uuid::Uuid],
+    card_ids: &[CardId],
     state: &State,
     prompt: &str,
-    source_card_id: Option<uuid::Uuid>,
+    source_card_id: Option<CardId>,
 ) -> anyhow::Result<uuid::Uuid> {
     let decision_player = state.decision_player(player_id.as_ref());
     let opponent_id = state.get_opponent_id(player_id.as_ref())?;
@@ -372,7 +373,7 @@ pub async fn pick_action_source<'a>(
     state: &State,
     prompt: &str,
     anchor_on_cursor: bool,
-    source_card_id: Option<uuid::Uuid>,
+    source_card_id: Option<CardId>,
 ) -> anyhow::Result<&'a Box<dyn ActivatedAbility>> {
     let decision_player = state.decision_player(player_id.as_ref());
     state
@@ -437,7 +438,7 @@ pub async fn yes_or_no_source(
     player_id: impl AsRef<PlayerId>,
     state: &State,
     prompt: impl AsRef<str>,
-    source_card_id: Option<uuid::Uuid>,
+    source_card_id: Option<CardId>,
 ) -> anyhow::Result<bool> {
     let opponent_id = state.get_opponent_id(player_id.as_ref())?;
     wait_for_opponent(&opponent_id, state, "Wait for opponent...").await?;
@@ -477,7 +478,7 @@ pub async fn pick_amount_source(
     max_amount: u8,
     state: &State,
     prompt: impl AsRef<str>,
-    source_card_id: Option<uuid::Uuid>,
+    source_card_id: Option<CardId>,
 ) -> anyhow::Result<u8> {
     let decision_player = state.decision_player(player_id.as_ref());
     state
@@ -517,7 +518,7 @@ pub async fn pick_option_source(
     state: &State,
     prompt: impl AsRef<str>,
     anchor_on_cursor: bool,
-    source_card_id: Option<uuid::Uuid>,
+    source_card_id: Option<CardId>,
 ) -> anyhow::Result<usize> {
     let decision_player = state.decision_player(player_id.as_ref());
     state
@@ -555,7 +556,7 @@ pub async fn pick_path_source(
     paths: &[Vec<Zone>],
     state: &State,
     prompt: &str,
-    source_card_id: Option<uuid::Uuid>,
+    source_card_id: Option<CardId>,
 ) -> anyhow::Result<Vec<Zone>> {
     let decision_player = state.decision_player(player_id.as_ref());
     state
@@ -594,7 +595,7 @@ pub async fn pick_zone_group_source(
     state: &State,
     block_opponent: bool,
     prompt: &str,
-    source_card_id: Option<uuid::Uuid>,
+    source_card_id: Option<CardId>,
 ) -> anyhow::Result<Vec<Zone>> {
     let decision_player = state.decision_player(player_id.as_ref());
     let opponent_id = state.get_opponent_id(player_id.as_ref())?;
@@ -644,7 +645,7 @@ pub async fn pick_zone_near_source(
     state: &State,
     block_opponent: bool,
     prompt: &str,
-    source_card_id: Option<uuid::Uuid>,
+    source_card_id: Option<CardId>,
 ) -> anyhow::Result<Zone> {
     let decision_player = state.decision_player(player_id.as_ref());
     let opponent_id = state.get_opponent_id(player_id.as_ref())?;
@@ -694,7 +695,7 @@ pub async fn pick_zone_source(
     state: &State,
     block_opponent: bool,
     prompt: &str,
-    source_card_id: Option<uuid::Uuid>,
+    source_card_id: Option<CardId>,
 ) -> anyhow::Result<Zone> {
     let decision_player = state.decision_player(player_id.as_ref());
     let opponent_id = state.get_opponent_id(player_id.as_ref())?;
@@ -782,7 +783,7 @@ pub async fn pick_direction_source(
     directions: &[Direction],
     state: &State,
     prompt: &str,
-    source_card_id: Option<uuid::Uuid>,
+    source_card_id: Option<CardId>,
 ) -> anyhow::Result<Direction> {
     let decision_player = state.decision_player(player_id.as_ref());
     state
@@ -1156,21 +1157,21 @@ pub trait ActivatedAbility: std::fmt::Debug + Send + Sync + CloneBoxedAction {
 
     async fn on_select(
         &self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
         player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>>;
 
     fn can_activate(
         &self,
-        _card_id: &uuid::Uuid,
+        _card_id: &CardId,
         _player_id: &PlayerId,
         _state: &State,
     ) -> anyhow::Result<bool> {
         Ok(true)
     }
 
-    fn get_cost(&self, _card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
+    fn get_cost(&self, _card_id: &CardId, _state: &State) -> anyhow::Result<Cost> {
         Ok(Cost::ZERO.clone())
     }
 
@@ -1190,8 +1191,8 @@ impl Clone for Box<dyn ActivatedAbility> {
 
 struct PlayableHandCard {
     player_id: PlayerId,
-    card_id: uuid::Uuid,
-    spellcaster_id: uuid::Uuid,
+    card_id: CardId,
+    spellcaster_id: CardId,
     card_type: CardType,
     zones: Vec<Zone>,
 }
@@ -1222,7 +1223,7 @@ impl ActivatedAbility for CancelAction {
 
     async fn on_select(
         &self,
-        _card_id: &uuid::Uuid,
+        _card_id: &CardId,
         _player_id: &PlayerId,
         _state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
@@ -1282,7 +1283,7 @@ impl ActivatedAbility for AvatarAction {
         }
     }
 
-    fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
+    fn get_cost(&self, card_id: &CardId, _state: &State) -> anyhow::Result<Cost> {
         match self {
             AvatarAction::PlaySite | AvatarAction::DrawSite => {
                 Ok(Cost::additional_only(AdditionalCost::tap(card_id)))
@@ -1292,13 +1293,13 @@ impl ActivatedAbility for AvatarAction {
 
     async fn on_select(
         &self,
-        _card_id: &uuid::Uuid,
+        _card_id: &CardId,
         player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
         match self {
             AvatarAction::PlaySite => {
-                let cards: Vec<uuid::Uuid> = state
+                let cards: Vec<CardId> = state
                     .cards
                     .values()
                     .filter(|c| c.is_site())
@@ -1340,11 +1341,11 @@ pub enum UnitAction {
     Submerge,
     Surface,
     PickUpArtifact {
-        artifact_id: uuid::Uuid,
+        artifact_id: CardId,
         artifact_name: String,
     },
     DropArtifact {
-        artifact_id: uuid::Uuid,
+        artifact_id: CardId,
         artifact_name: String,
     },
     PickUpMinion,
@@ -1370,7 +1371,7 @@ impl ActivatedAbility for UnitAction {
         }
     }
 
-    fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
+    fn get_cost(&self, card_id: &CardId, _state: &State) -> anyhow::Result<Cost> {
         let cost = match self {
             UnitAction::Move
             | UnitAction::Attack
@@ -1389,7 +1390,7 @@ impl ActivatedAbility for UnitAction {
 
     async fn on_select(
         &self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
         player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
@@ -1687,7 +1688,7 @@ impl ActivatedAbility for UnitAction {
             }]),
             UnitAction::PickUpMinion => {
                 let card = state.get_card(card_id);
-                let minions: Vec<uuid::Uuid> = CardQuery::new()
+                let minions: Vec<CardId> = CardQuery::new()
                     .minions()
                     .in_zone(card.get_zone())
                     .id_not_in(vec![*card.get_id()])
@@ -1827,7 +1828,7 @@ impl Game {
     fn playable_hand_card(
         &self,
         player_id: &PlayerId,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
     ) -> anyhow::Result<Option<PlayableHandCard>> {
         if player_id != &self.state.current_turn_controller() {
             return Ok(None);
@@ -1895,7 +1896,7 @@ impl Game {
     async fn queue_play_hand_card_at_zone(
         &mut self,
         player_id: &PlayerId,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
         zone: &Zone,
     ) -> anyhow::Result<()> {
         let Some(playable) = self.playable_hand_card(player_id, card_id)? else {

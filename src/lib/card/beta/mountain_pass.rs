@@ -39,7 +39,7 @@ impl MountainPass {
 impl Site for MountainPass {
     fn can_be_entered_by(
         &self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
         _from: &Zone,
         region: &Region,
         state: &State,

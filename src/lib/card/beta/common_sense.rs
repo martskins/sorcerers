@@ -53,7 +53,7 @@ impl Card for CommonSense {
         let controller_id = self.get_controller_id(state);
         let deck = state.decks.get(&controller_id).unwrap();
 
-        let targets: Vec<uuid::Uuid> = deck
+        let targets: Vec<CardId> = deck
             .spells
             .iter()
             .filter(|id| state.get_card(id).get_base().rarity == Rarity::Ordinary)

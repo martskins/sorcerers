@@ -17,7 +17,7 @@ impl ActivatedAbility for ClamorOfHarpiesAction {
 
     async fn on_select(
         &self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
         _player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
@@ -99,7 +99,7 @@ impl Card for ClamorOfHarpies {
     }
 
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        let valid_cards: Vec<uuid::Uuid> = state
+        let valid_cards: Vec<CardId> = state
             .cards
             .values()
             .filter(|c| c.is_unit())

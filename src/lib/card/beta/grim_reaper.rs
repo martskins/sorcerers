@@ -74,7 +74,7 @@ impl Card for GrimReaper {
                 card: self.get_id().into(),
             }),
             on_effect: Arc::new(
-                move |state: &State, buried_card_id: &uuid::Uuid, _effect: &Effect| {
+                move |state: &State, buried_card_id: &CardId, _effect: &Effect| {
                     let buried_card_id = *buried_card_id;
                     Box::pin(async move {
                         // Check if Grim Reaper was the killer.
@@ -98,7 +98,7 @@ impl Card for GrimReaper {
                         }];
 
                         // Find all copies of that card (by name) in any zone belonging to its owner.
-                        let copies: Vec<uuid::Uuid> = state
+                        let copies: Vec<CardId> = state
                             .cards
                             .values()
                             .filter(|c| c.get_name().eq_ignore_ascii_case(&buried_name))

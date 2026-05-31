@@ -1,5 +1,6 @@
 use crate::{
     effect::Effect,
+    game::CardId,
     query::{CardQuery, EffectQuery},
     state::State,
     zone::Zone,
@@ -20,7 +21,7 @@ pub type EffectCallback = Arc<
         + Send
         + for<'a> Fn(
             &'a State,
-            &'a uuid::Uuid,
+            &'a CardId,
             &'a Effect,
         )
             -> Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + 'a>>,
@@ -87,7 +88,7 @@ impl std::fmt::Debug for TemporaryEffect {
 }
 
 impl TemporaryEffect {
-    pub fn affected_cards(&self, state: &State) -> Vec<uuid::Uuid> {
+    pub fn affected_cards(&self, state: &State) -> Vec<CardId> {
         match self {
             TemporaryEffect::FloodSites { affected_sites, .. } => affected_sites.all(state),
             TemporaryEffect::MakePlayable { affected_cards, .. } => {

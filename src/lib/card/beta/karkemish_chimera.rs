@@ -9,13 +9,13 @@ impl ActivatedAbility for KarkemishChimeraAttack {
         "Attack up to three units here".to_string()
     }
 
-    fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
+    fn get_cost(&self, card_id: &CardId, _state: &State) -> anyhow::Result<Cost> {
         Ok(Cost::additional_only(AdditionalCost::tap(card_id)))
     }
 
     fn can_activate(
         &self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
         player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<bool> {
@@ -34,12 +34,12 @@ impl ActivatedAbility for KarkemishChimeraAttack {
 
     async fn on_select(
         &self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
         player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
         let card = state.get_card(card_id);
-        let targets: Vec<uuid::Uuid> = CardQuery::new()
+        let targets: Vec<CardId> = CardQuery::new()
             .units()
             .in_zone(card.get_zone())
             .id_not(card_id)

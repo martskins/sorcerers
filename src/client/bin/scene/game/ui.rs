@@ -237,7 +237,7 @@ impl Game {
         &mut self,
         ui: &mut Ui,
         prompt: &str,
-        source_card_id: Option<uuid::Uuid>,
+        source_card_id: Option<CardId>,
     ) -> Option<Scene> {
         let sr = screen_rect().unwrap_or(Rect::ZERO);
         let card =

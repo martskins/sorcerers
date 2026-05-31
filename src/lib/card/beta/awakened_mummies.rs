@@ -50,7 +50,7 @@ impl AwakenedMummies {
                 card: self.get_id().into(),
             }),
             on_effect: Arc::new(
-                move |state: &State, card_id: &uuid::Uuid, effect: &Effect| {
+                move |state: &State, card_id: &CardId, effect: &Effect| {
                     let mummy_id = mummy_id;
                     let zone = zone.clone();
                     Box::pin(async move {

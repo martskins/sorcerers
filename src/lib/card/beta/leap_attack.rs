@@ -53,7 +53,7 @@ impl Card for LeapAttack {
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
 
-        let allies: Vec<uuid::Uuid> = CardQuery::new()
+        let allies: Vec<CardId> = CardQuery::new()
             .minions()
             .controlled_by(&controller_id)
             .in_play()
@@ -87,7 +87,7 @@ impl Card for LeapAttack {
         )
         .await?;
 
-        let enemies_at_dest: Vec<uuid::Uuid> = CardQuery::new()
+        let enemies_at_dest: Vec<CardId> = CardQuery::new()
             .minions()
             .in_zone(&dest_zone)
             .all(state)

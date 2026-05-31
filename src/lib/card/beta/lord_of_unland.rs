@@ -105,7 +105,7 @@ impl Card for LordOfUnland {
         let controller_id = self.get_controller_id(state);
         let water_zones = Self::connected_water_zones(self.get_zone(), state);
 
-        let allies: Vec<uuid::Uuid> = CardQuery::new()
+        let allies: Vec<CardId> = CardQuery::new()
             .minions()
             .in_zones(&water_zones)
             .controlled_by(&controller_id)

@@ -4,7 +4,7 @@ use crate::{
     card::{
         Ability, ArtifactType, Card, CardStatus, CardType, MinionType, Rarity, Region, SiteType,
     },
-    game::{Direction, Element, PlayerId, pick_card_source, pick_card_with_options_source},
+    game::{CardId, Direction, Element, PlayerId, pick_card_source, pick_card_with_options_source},
     state::State,
     zone::{Location, Zone},
 };
@@ -13,17 +13,17 @@ use std::sync::{Arc, OnceLock};
 #[derive(Debug, Default, Clone)]
 pub struct CardQuery {
     id: Arc<OnceLock<uuid::Uuid>>,
-    carried_by: Option<Option<uuid::Uuid>>,
+    carried_by: Option<Option<CardId>>,
     randomise: Option<bool>,
     count: Option<usize>,
-    ids: Option<Vec<uuid::Uuid>>,
+    ids: Option<Vec<CardId>>,
     card_names: Option<Vec<String>>,
     card_name_contains: Option<String>,
     not_named: Option<Vec<String>>,
     controller_id: Option<PlayerId>,
-    same_controller_as: Option<uuid::Uuid>,
-    different_controller_than: Option<uuid::Uuid>,
-    not_in_ids: Option<Vec<uuid::Uuid>>,
+    same_controller_as: Option<CardId>,
+    different_controller_than: Option<CardId>,
+    not_in_ids: Option<Vec<CardId>>,
     without_abilities: Option<Vec<Ability>>,
     with_abilities: Option<Vec<Ability>>,
     without_statuses: Option<Vec<CardStatus>>,
@@ -39,24 +39,24 @@ pub struct CardQuery {
     with_affinity_in: Option<Vec<Element>>,
     in_zones: Option<Vec<Zone>>,
     regions: Option<Vec<Region>>,
-    within_range_of: Option<uuid::Uuid>,
-    can_be_attacked_by: Option<uuid::Uuid>,
+    within_range_of: Option<CardId>,
+    can_be_attacked_by: Option<CardId>,
     tapped: Option<bool>,
     oversized: Option<bool>,
     include_not_in_play: Option<bool>,
-    can_be_targeted_by_player: Option<uuid::Uuid>,
+    can_be_targeted_by_player: Option<CardId>,
     elements: Option<Vec<Element>>,
     spatial_filters: Vec<SpatialFilter>,
     prompt: Option<String>,
-    source_card_id: Option<uuid::Uuid>,
-    bearer_of: Option<uuid::Uuid>,
+    source_card_id: Option<CardId>,
+    bearer_of: Option<CardId>,
 }
 
 #[derive(Debug, Clone)]
 enum SpatialFilter {
     ZoneOfCard(uuid::Uuid),
     ZoneAndDirectionFromCard {
-        card_id: uuid::Uuid,
+        card_id: CardId,
         direction: Direction,
         steps: u8,
         normalise_for_owner: bool,
@@ -443,7 +443,7 @@ impl<'a> PreparedCardQuery<'a> {
 }
 
 impl CardQuery {
-    pub fn from_ids(ids: Vec<uuid::Uuid>) -> Self {
+    pub fn from_ids(ids: Vec<CardId>) -> Self {
         Self {
             ids: Some(ids),
             ..Default::default()
@@ -494,7 +494,7 @@ impl CardQuery {
         player_id: &PlayerId,
         state: &State,
         use_preview: bool,
-    ) -> anyhow::Result<Option<uuid::Uuid>> {
+    ) -> anyhow::Result<Option<CardId>> {
         use crate::query::QueryCache;
 
         let query_id = *self.id.get_or_init(uuid::Uuid::new_v4);
@@ -591,7 +591,7 @@ impl CardQuery {
             .any(|c| prepared.matches_card(c.as_ref()))
     }
 
-    pub fn first(&self, state: &State) -> Option<uuid::Uuid> {
+    pub fn first(&self, state: &State) -> Option<CardId> {
         if let Some(carrier_id) = self.only_carried_by_filter() {
             return state
                 .cards
@@ -608,7 +608,7 @@ impl CardQuery {
             .map(|c| *c.get_id())
     }
 
-    pub fn all(&self, state: &State) -> Vec<uuid::Uuid> {
+    pub fn all(&self, state: &State) -> Vec<CardId> {
         if let Some(carrier_id) = self.only_carried_by_filter() {
             return state
                 .cards
@@ -627,7 +627,7 @@ impl CardQuery {
             .collect()
     }
 
-    fn only_carried_by_filter(&self) -> Option<Option<uuid::Uuid>> {
+    fn only_carried_by_filter(&self) -> Option<Option<CardId>> {
         if self.carried_by.is_some()
             && self.randomise.is_none()
             && self.count.is_none()
@@ -677,7 +677,7 @@ impl CardQuery {
         }
     }
 
-    pub fn with_source_card(self, card_id: uuid::Uuid) -> Self {
+    pub fn with_source_card(self, card_id: CardId) -> Self {
         Self {
             source_card_id: Some(card_id),
             ..self
@@ -752,7 +752,7 @@ impl CardQuery {
         }
     }
 
-    pub fn in_zone_of_card(mut self, card_id: &uuid::Uuid) -> Self {
+    pub fn in_zone_of_card(mut self, card_id: &CardId) -> Self {
         self.spatial_filters
             .push(SpatialFilter::ZoneOfCard(*card_id));
         self
@@ -760,7 +760,7 @@ impl CardQuery {
 
     pub fn in_zone_and_direction_from_card(
         mut self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
         direction: Direction,
         steps: u8,
         normalise_for_owner: bool,
@@ -807,7 +807,7 @@ impl CardQuery {
         }
     }
 
-    pub fn within_range_of(self, card_id: &uuid::Uuid) -> Self {
+    pub fn within_range_of(self, card_id: &CardId) -> Self {
         Self {
             within_range_of: Some(*card_id),
             ..self
@@ -840,19 +840,19 @@ impl CardQuery {
         self
     }
 
-    pub fn nearby_locations_to_card(mut self, card_id: &uuid::Uuid) -> Self {
+    pub fn nearby_locations_to_card(mut self, card_id: &CardId) -> Self {
         self.spatial_filters
             .push(SpatialFilter::NearbyLocationsToCard(*card_id));
         self
     }
 
-    pub fn nearby_zones_to_card(mut self, card_id: &uuid::Uuid) -> Self {
+    pub fn nearby_zones_to_card(mut self, card_id: &CardId) -> Self {
         self.spatial_filters
             .push(SpatialFilter::NearbyZonesToCard(*card_id));
         self
     }
 
-    pub fn in_affected_zones_of_card(mut self, card_id: &uuid::Uuid) -> Self {
+    pub fn in_affected_zones_of_card(mut self, card_id: &CardId) -> Self {
         self.spatial_filters
             .push(SpatialFilter::AffectedZonesOfCard(*card_id));
         self
@@ -870,7 +870,7 @@ impl CardQuery {
         self
     }
 
-    pub fn nearby_sites_to_card(mut self, card_id: &uuid::Uuid) -> Self {
+    pub fn nearby_sites_to_card(mut self, card_id: &CardId) -> Self {
         self.spatial_filters
             .push(SpatialFilter::NearbySitesToCard(*card_id));
         self
@@ -965,21 +965,21 @@ impl CardQuery {
         }
     }
 
-    pub fn controlled_by_same_controller_as_card(self, card_id: &uuid::Uuid) -> Self {
+    pub fn controlled_by_same_controller_as_card(self, card_id: &CardId) -> Self {
         Self {
             same_controller_as: Some(*card_id),
             ..self
         }
     }
 
-    pub fn controlled_by_different_controller_than_card(self, card_id: &uuid::Uuid) -> Self {
+    pub fn controlled_by_different_controller_than_card(self, card_id: &CardId) -> Self {
         Self {
             different_controller_than: Some(*card_id),
             ..self
         }
     }
 
-    pub fn bearer_of_card(self, card_id: &uuid::Uuid) -> Self {
+    pub fn bearer_of_card(self, card_id: &CardId) -> Self {
         Self {
             bearer_of: Some(*card_id),
             ..self
@@ -993,7 +993,7 @@ impl CardQuery {
         }
     }
 
-    pub fn id_not_in(self, not_in_ids: Vec<uuid::Uuid>) -> Self {
+    pub fn id_not_in(self, not_in_ids: Vec<CardId>) -> Self {
         Self {
             not_in_ids: Some(not_in_ids),
             ..self
@@ -1128,7 +1128,7 @@ impl CardQuery {
         }
     }
 
-    pub fn matches(&self, card_id: &uuid::Uuid, state: &State) -> bool {
+    pub fn matches(&self, card_id: &CardId, state: &State) -> bool {
         if let Some(ids) = &self.ids
             && !ids.contains(card_id)
         {

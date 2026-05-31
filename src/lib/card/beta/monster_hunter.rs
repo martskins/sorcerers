@@ -64,7 +64,7 @@ impl Card for MonsterHunter {
         let controller_id = self.get_controller_id(state);
         let my_zone = self.get_zone().clone();
 
-        let nearby_monsters: Vec<uuid::Uuid> = state
+        let nearby_monsters: Vec<CardId> = state
             .cards
             .values()
             .filter(|c| c.is_minion())

@@ -96,7 +96,7 @@ impl Card for MaddeningBells {
         }
 
         // Collect all spell cards (Magic type) for those players in hand or spellbook.
-        let affected_spell_ids: Vec<uuid::Uuid> = state
+        let affected_spell_ids: Vec<CardId> = state
             .cards
             .values()
             .filter(|c| {

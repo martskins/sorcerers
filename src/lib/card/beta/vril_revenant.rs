@@ -9,13 +9,13 @@ impl ActivatedAbility for VrilRevenantAbility {
         "Pay 1 mana to gain +1 power this turn".to_string()
     }
 
-    fn get_cost(&self, _card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
+    fn get_cost(&self, _card_id: &CardId, _state: &State) -> anyhow::Result<Cost> {
         Ok(Cost::mana_only(1))
     }
 
     async fn on_select(
         &self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
         _player_id: &PlayerId,
         _state: &State,
     ) -> anyhow::Result<Vec<Effect>> {

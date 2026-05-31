@@ -71,7 +71,7 @@ impl Card for UnlandEel {
                     card: CardQuery::from_id(self_id),
                 }),
                 on_effect: Arc::new(
-                    move |state: &State, _card_id: &uuid::Uuid, _effect: &Effect| {
+                    move |state: &State, _card_id: &CardId, _effect: &Effect| {
                         Box::pin(async move {
                             let eel = state.get_card(&self_id);
                             let controller_id = eel.get_controller_id(state);

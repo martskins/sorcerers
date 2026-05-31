@@ -8,7 +8,7 @@ use crate::{
 use egui::{Color32, Context, Painter, Rect, Sense, Ui, pos2, vec2};
 use sorcerers::{
     card::CardData,
-    game::PlayerId,
+    game::{CardId, PlayerId},
     networking::{self, message::ClientMessage},
     zone::{Location, Zone},
 };
@@ -41,7 +41,7 @@ pub struct SelectionOverlay {
     player_id: PlayerId,
     game_id: uuid::Uuid,
     client: networking::client::Client,
-    pickable_cards: HashSet<uuid::Uuid>,
+    pickable_cards: HashSet<CardId>,
 }
 
 /// Maps a card's zone + ownership into a (sort_order, display_label) pair.
@@ -111,7 +111,7 @@ impl SelectionOverlay {
         game_id: &uuid::Uuid,
         player_id: &PlayerId,
         cards: Vec<&CardData>,
-        pickable_cards: Vec<uuid::Uuid>,
+        pickable_cards: Vec<CardId>,
         prompt: &str,
         behaviour: SelectionOverlayBehaviour,
     ) -> Self {
@@ -249,13 +249,13 @@ impl SelectionOverlay {
         (all_rects, headers)
     }
 
-    fn is_pickable(&self, card_id: &uuid::Uuid) -> bool {
+    fn is_pickable(&self, card_id: &CardId) -> bool {
         self.pickable_cards.contains(card_id)
     }
 
     fn handle_card_click(
         &mut self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
         data: &mut GameData,
     ) -> anyhow::Result<()> {
         match self.behaviour {

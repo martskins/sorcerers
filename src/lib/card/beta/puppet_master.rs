@@ -3,7 +3,7 @@ use crate::prelude::*;
 #[derive(Debug, Clone, Default)]
 struct PuppetMasterData {
     controller_id: Option<PlayerId>,
-    controlled_minions: Vec<uuid::Uuid>,
+    controlled_minions: Vec<CardId>,
 }
 
 #[derive(Debug, Clone)]

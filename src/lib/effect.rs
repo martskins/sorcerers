@@ -1,7 +1,9 @@
 use crate::zone::{Location, Zone};
 use crate::{
     card::{Ability, Card, CardStatus, Cost, Damage, FootSoldier, Frog, Region, Rubble, UnitBase},
-    game::{BaseAction, Direction, PlayerAction, PlayerId, SoundEffect, pick_card, pick_option},
+    game::{
+        BaseAction, CardId, Direction, PlayerAction, PlayerId, SoundEffect, pick_card, pick_option,
+    },
     networking::message::ServerMessage,
     query::{CardQuery, EffectQuery, LocationQuery, QueryCache, ZoneQuery, entered_site},
     state::{ContinuousEffect, Phase, State, Turn},
@@ -19,13 +21,13 @@ pub use lifecycle::{
 pub use log::{EffectLogEmitter, LoggedEffect};
 pub use runtime::EffectEngine;
 
-fn can_use_special_abilities(state: &State, card_id: &uuid::Uuid) -> bool {
+fn can_use_special_abilities(state: &State, card_id: &CardId) -> bool {
     !state.card_has_special_abilities_removed(card_id)
 }
 
 fn location_survival_effects_for_cards(
     state: &State,
-    card_ids: impl IntoIterator<Item = uuid::Uuid>,
+    card_ids: impl IntoIterator<Item = CardId>,
 ) -> Vec<Effect> {
     card_ids
         .into_iter()
@@ -73,7 +75,7 @@ fn location_survival_effects_for_realm(state: &State) -> Vec<Effect> {
 
 fn mana_effect_for_resource_entering_realm(
     state: &State,
-    card_id: &uuid::Uuid,
+    card_id: &CardId,
 ) -> anyhow::Result<Option<Effect>> {
     let card = state.get_card(card_id);
     let controller_id = card.get_controller_id(state);
@@ -165,14 +167,14 @@ pub enum Effect {
         zone: Zone,
     },
     Heal {
-        card_id: uuid::Uuid,
+        card_id: CardId,
         amount: u16,
     },
     ShootProjectile {
         id: uuid::Uuid,
         range: Option<u8>,
         player_id: PlayerId,
-        shooter: uuid::Uuid,
+        shooter: CardId,
         from_zone: Zone,
         direction: Direction,
         damage: u16,
@@ -181,47 +183,47 @@ pub enum Effect {
         splash_damage: Option<u16>,
     },
     RemoveAbility {
-        card_id: uuid::Uuid,
+        card_id: CardId,
         modifier: Ability,
     },
     RemoveStatus {
-        card_id: uuid::Uuid,
+        card_id: CardId,
         status: CardStatus,
     },
     AddAbilityCounter {
-        card_id: uuid::Uuid,
+        card_id: CardId,
         counter: AbilityCounter,
     },
     AddStatusCounter {
-        card_id: uuid::Uuid,
+        card_id: CardId,
         counter: StatusCounter,
     },
     // RemoveCardFromGame completely removes a card from the game, removing it from all zones and
     // clearing all references to it. This is primarily used for token cards, as when they leave the
     // board they hit the cemetery and then immediately cease to exist.
     RemoveCardFromGame {
-        card_id: uuid::Uuid,
+        card_id: CardId,
     },
     AddCounter {
-        card_id: uuid::Uuid,
+        card_id: CardId,
         counter: Counter,
     },
     SetCardRegion {
-        card_id: uuid::Uuid,
+        card_id: CardId,
         region: Region,
         tap: bool,
     },
     SetCardZone {
-        card_id: uuid::Uuid,
+        card_id: CardId,
         zone: Zone,
     },
     DiscardCard {
         player_id: PlayerId,
-        card_id: uuid::Uuid,
+        card_id: CardId,
     },
     MoveCard {
         player_id: PlayerId,
-        card_id: uuid::Uuid,
+        card_id: CardId,
         from: Location,
         to: LocationQuery,
         tap: bool,
@@ -234,21 +236,21 @@ pub enum Effect {
     },
     PlayMagic {
         player_id: PlayerId,
-        card_id: uuid::Uuid,
-        caster_id: uuid::Uuid,
+        card_id: CardId,
+        caster_id: CardId,
         from: Location,
     },
     PlayCard {
         player_id: PlayerId,
-        card_id: uuid::Uuid,
+        card_id: CardId,
         zone: ZoneQuery,
-        spellcaster: uuid::Uuid,
+        spellcaster: CardId,
     },
     SummonCards {
         cards: Vec<(PlayerId, uuid::Uuid, Location)>,
     },
     SetTapped {
-        card_id: uuid::Uuid,
+        card_id: CardId,
         tapped: bool,
     },
     EndTurn {
@@ -262,43 +264,43 @@ pub enum Effect {
         mana: i8,
     },
     Strike {
-        striker_id: uuid::Uuid,
-        target_id: uuid::Uuid,
+        striker_id: CardId,
+        target_id: CardId,
     },
     Attack {
-        attacker_id: uuid::Uuid,
-        defender_id: uuid::Uuid,
-        defending_ids: Vec<uuid::Uuid>,
-        damage_assignment: Option<HashMap<uuid::Uuid, u16>>,
+        attacker_id: CardId,
+        defender_id: CardId,
+        defending_ids: Vec<CardId>,
+        damage_assignment: Option<HashMap<CardId, u16>>,
     },
     TakeDamage {
-        card_id: uuid::Uuid,
-        from: uuid::Uuid,
+        card_id: CardId,
+        from: CardId,
         damage: Damage,
     },
     BanishCard {
-        card_id: uuid::Uuid,
+        card_id: CardId,
     },
     KillMinion {
-        card_id: uuid::Uuid,
-        killer_id: uuid::Uuid,
+        card_id: CardId,
+        killer_id: CardId,
         from_attack: bool,
     },
     BuryCard {
-        card_id: uuid::Uuid,
+        card_id: CardId,
     },
     SetCardData {
-        card_id: uuid::Uuid,
+        card_id: CardId,
         data: std::sync::Arc<dyn std::any::Any + Send + Sync>,
     },
     TeleportCard {
         player_id: PlayerId,
-        card_id: uuid::Uuid,
+        card_id: CardId,
         to_location: Location,
     },
     RearrangeDeck {
-        spells: Vec<uuid::Uuid>,
-        sites: Vec<uuid::Uuid>,
+        spells: Vec<CardId>,
+        sites: Vec<CardId>,
     },
     AddDeferredEffect {
         effect: DeferredEffect,
@@ -307,31 +309,31 @@ pub enum Effect {
         effect: TemporaryEffect,
     },
     SetBearer {
-        card_id: uuid::Uuid,
-        bearer_id: Option<uuid::Uuid>,
+        card_id: CardId,
+        bearer_id: Option<CardId>,
     },
     ShuffleDeck {
         player_id: PlayerId,
     },
     SetController {
-        card_id: uuid::Uuid,
+        card_id: CardId,
         player_id: PlayerId,
     },
     MakeCardCopyOf {
-        card_id: uuid::Uuid,
-        copy_source_id: uuid::Uuid,
+        card_id: CardId,
+        copy_source_id: CardId,
     },
     CopyMagic {
-        source_id: uuid::Uuid,
+        source_id: CardId,
         player_id: PlayerId,
-        card_id: uuid::Uuid,
-        caster_id: uuid::Uuid,
+        card_id: CardId,
+        caster_id: CardId,
     },
     CopyArtifact {
         player_id: PlayerId,
-        artifact_id: uuid::Uuid,
-        bearer_id: Option<uuid::Uuid>,
-        caster_id: uuid::Uuid,
+        artifact_id: CardId,
+        bearer_id: Option<CardId>,
+        caster_id: CardId,
     },
     /// Creates a token copy of the named card for the given player and summons it in the target
     /// zone. The copy triggers its Genesis, then is automatically banished afterwards.
@@ -365,7 +367,7 @@ fn projectile_damage(amount: u16, ranged_strike: bool) -> Damage {
 }
 
 impl Effect {
-    pub async fn affected_cards(&self) -> Option<Vec<uuid::Uuid>> {
+    pub async fn affected_cards(&self) -> Option<Vec<CardId>> {
         match self {
             Effect::ShootProjectile { id, .. } => QueryCache::effect_targets(id),
             _ => None,
@@ -432,7 +434,7 @@ impl Effect {
 
     /// Returns the card ID if this effect represents a card being played from hand
     /// (PlayCard or PlayMagic), so clients can display the card face to all players.
-    pub fn played_card_id(&self) -> Option<uuid::Uuid> {
+    pub fn played_card_id(&self) -> Option<CardId> {
         match self {
             Effect::PlayCard { card_id, .. } => Some(*card_id),
             Effect::PlayMagic { card_id, .. } => Some(*card_id),
@@ -800,9 +802,9 @@ impl Effect {
             })
             .map(|c| c.as_ref())
             .collect();
-        let mut card_modifiers_to_remove: Vec<(uuid::Uuid, Vec<uuid::Uuid>)> = vec![];
+        let mut card_modifiers_to_remove: Vec<(uuid::Uuid, Vec<CardId>)> = vec![];
         for card in modified_cards {
-            let mut to_remove: Vec<uuid::Uuid> = vec![];
+            let mut to_remove: Vec<CardId> = vec![];
             for counter in &card
                 .get_unit_base()
                 .unwrap_or(&UnitBase::default())
@@ -833,9 +835,9 @@ impl Effect {
             .filter(|c| !c.get_base().status_counters.is_empty())
             .map(|c| c.as_ref())
             .collect();
-        let mut card_statuses_to_remove: Vec<(uuid::Uuid, Vec<uuid::Uuid>)> = vec![];
+        let mut card_statuses_to_remove: Vec<(uuid::Uuid, Vec<CardId>)> = vec![];
         for card in modified_cards {
-            let mut to_remove: Vec<uuid::Uuid> = vec![];
+            let mut to_remove: Vec<CardId> = vec![];
             for counter in &card.get_base().status_counters {
                 if let Some(effect_query) = &counter.expires_on_effect
                     && effect_query.matches(self, state).await?
@@ -868,9 +870,9 @@ impl Effect {
             })
             .map(|c| c.as_ref())
             .collect();
-        let mut card_counters_to_remove: Vec<(uuid::Uuid, Vec<uuid::Uuid>)> = vec![];
+        let mut card_counters_to_remove: Vec<(uuid::Uuid, Vec<CardId>)> = vec![];
         for card in cards_with_counters {
-            let mut to_remove: Vec<uuid::Uuid> = vec![];
+            let mut to_remove: Vec<CardId> = vec![];
             for counter in &card
                 .get_unit_base()
                 .unwrap_or(&UnitBase::default())
@@ -1558,7 +1560,7 @@ impl Effect {
                 let ctrl_snapshot = state.clone();
                 // Untap cards controlled by the current player (not merely owned — control can
                 // be transferred via steal effects).
-                let controlled_cards: Vec<uuid::Uuid> = state
+                let controlled_cards: Vec<CardId> = state
                     .cards
                     .values()
                     .filter(|c| &c.get_controller_id(&ctrl_snapshot) == player_id)
@@ -2026,7 +2028,7 @@ impl Effect {
                 card.set_bearer_id(None);
                 card.set_zone(Zone::Banish);
 
-                let borne_cards: Vec<uuid::Uuid> = state
+                let borne_cards: Vec<CardId> = state
                     .cards
                     .values()
                     .filter(|c| c.get_zone().is_in_play())

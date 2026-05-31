@@ -72,7 +72,7 @@ impl Card for MageSlayer {
             Ability::Spellcaster(Some(Element::Water)),
         ];
 
-        let enemy_spellcasters: Vec<uuid::Uuid> = state
+        let enemy_spellcasters: Vec<CardId> = state
             .cards
             .values()
             .filter(|c| c.is_minion())

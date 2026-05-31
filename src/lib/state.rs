@@ -4,7 +4,8 @@ use crate::{
     effect::Counter,
     effect::{Effect, EffectCallback, EffectEngine, EffectState},
     game::{
-        ActivatedAbility, PlayerId, Resources, Thresholds, ThresholdsDiff, pick_zone, yes_or_no,
+        ActivatedAbility, CardId, PlayerId, Resources, Thresholds, ThresholdsDiff, pick_zone,
+        yes_or_no,
     },
     networking::message::{ClientMessage, OngoingEffectData, ServerMessage},
     query::{CardQuery, EffectQuery, LocationQuery, ZoneQuery},
@@ -38,10 +39,10 @@ pub struct PlayerWithDeck {
 
 #[derive(Debug, Default, Clone)]
 pub struct AreaModifierIndex {
-    pub ability_modifiers: HashMap<uuid::Uuid, Vec<AbilityModifier>>,
-    pub grants_statuses: HashMap<uuid::Uuid, Vec<CardStatus>>,
-    pub grants_activated_abilities: HashMap<uuid::Uuid, Vec<Box<dyn ActivatedAbility>>>,
-    pub grants_counters: HashMap<uuid::Uuid, Vec<Counter>>,
+    pub ability_modifiers: HashMap<CardId, Vec<AbilityModifier>>,
+    pub grants_statuses: HashMap<CardId, Vec<CardStatus>>,
+    pub grants_activated_abilities: HashMap<CardId, Vec<Box<dyn ActivatedAbility>>>,
+    pub grants_counters: HashMap<CardId, Vec<Counter>>,
 }
 
 #[derive(Debug, Clone)]
@@ -82,16 +83,16 @@ impl AbilityRemoval {
 #[derive(Debug, Clone)]
 pub struct TimedOngoingEffect {
     pub effect: OngoingEffect,
-    pub source: Option<uuid::Uuid>,
+    pub source: Option<CardId>,
     pub timestamp: u64,
 }
 
 #[derive(Debug, Default, Clone)]
 pub struct ContinuousEffectIndex {
-    pub grants_abilities: HashMap<uuid::Uuid, Vec<Ability>>,
-    pub grants_statuses: HashMap<uuid::Uuid, Vec<CardStatus>>,
-    pub grants_activated_abilities: HashMap<uuid::Uuid, Vec<Box<dyn ActivatedAbility>>>,
-    pub power_diffs: HashMap<uuid::Uuid, i16>,
+    pub grants_abilities: HashMap<CardId, Vec<Ability>>,
+    pub grants_statuses: HashMap<CardId, Vec<CardStatus>>,
+    pub grants_activated_abilities: HashMap<CardId, Vec<Box<dyn ActivatedAbility>>>,
+    pub power_diffs: HashMap<CardId, i16>,
 }
 
 impl ContinuousEffectIndex {
@@ -463,7 +464,7 @@ impl OngoingEffect {
         }
     }
 
-    fn affected_card_ids(&self, state: &State) -> Vec<uuid::Uuid> {
+    fn affected_card_ids(&self, state: &State) -> Vec<CardId> {
         match self {
             Self::ControllerOverride { affected_cards, .. }
             | Self::ModifyPower { affected_cards, .. }
@@ -724,7 +725,7 @@ pub struct State {
     pub game_id: uuid::Uuid,
     pub players: Vec<Player>,
     pub turns: usize,
-    pub cards: HashMap<uuid::Uuid, Box<dyn Card>>,
+    pub cards: HashMap<CardId, Box<dyn Card>>,
     pub decks: HashMap<PlayerId, Deck>,
     pub phase: Phase,
     pub curr_turn: TurnIterator,
@@ -837,7 +838,7 @@ impl State {
         }
     }
 
-    pub fn find_caster(&self, spell_id: &uuid::Uuid) -> Option<uuid::Uuid> {
+    pub fn find_caster(&self, spell_id: &CardId) -> Option<CardId> {
         self.effect_log().iter().find_map(|e| match e.effect {
             Effect::PlayMagic {
                 card_id, caster_id, ..
@@ -985,7 +986,7 @@ impl State {
     /// applied.
     pub fn get_effective_costs(
         &self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
         target_zone: Option<&Zone>,
         player_id: &PlayerId,
     ) -> anyhow::Result<Costs> {
@@ -1382,7 +1383,7 @@ impl State {
 
     pub fn ability_modifiers_from_area_modifiers(
         &self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
     ) -> Vec<AbilityModifier> {
         self.with_area_modifier_index(|index| {
             index
@@ -1393,7 +1394,7 @@ impl State {
         })
     }
 
-    pub fn card_has_special_abilities_removed(&self, card_id: &uuid::Uuid) -> bool {
+    pub fn card_has_special_abilities_removed(&self, card_id: &CardId) -> bool {
         self.get_card(card_id)
             .has_status(self, &CardStatus::Silenced)
             || self
@@ -1401,7 +1402,7 @@ impl State {
                 .has_status(self, &CardStatus::Disabled)
     }
 
-    pub fn counters_from_area_modifiers(&self, card_id: &uuid::Uuid) -> Vec<Counter> {
+    pub fn counters_from_area_modifiers(&self, card_id: &CardId) -> Vec<Counter> {
         self.with_area_modifier_index(|index| {
             index
                 .grants_counters
@@ -1413,7 +1414,7 @@ impl State {
 
     pub fn activated_abilities_from_area_modifiers(
         &self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
     ) -> Vec<Box<dyn ActivatedAbility>> {
         self.with_area_modifier_index(|index| {
             index
@@ -1424,7 +1425,7 @@ impl State {
         })
     }
 
-    pub fn granted_abilities_from_continuous_effects(&self, card_id: &uuid::Uuid) -> Vec<Ability> {
+    pub fn granted_abilities_from_continuous_effects(&self, card_id: &CardId) -> Vec<Ability> {
         self.with_continuous_effect_index(|index| {
             index
                 .grants_abilities
@@ -1436,7 +1437,7 @@ impl State {
 
     pub fn granted_statuses_from_continuous_effects(
         &self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
     ) -> Vec<CardStatus> {
         self.with_continuous_effect_index(|index| {
             index
@@ -1449,7 +1450,7 @@ impl State {
 
     pub fn activated_abilities_from_continuous_effects(
         &self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
     ) -> Vec<Box<dyn ActivatedAbility>> {
         self.with_continuous_effect_index(|index| {
             index
@@ -1460,13 +1461,13 @@ impl State {
         })
     }
 
-    pub fn power_diff_from_continuous_effects(&self, card_id: &uuid::Uuid) -> i16 {
+    pub fn power_diff_from_continuous_effects(&self, card_id: &CardId) -> i16 {
         self.with_continuous_effect_index(|index| {
             index.power_diffs.get(card_id).copied().unwrap_or_default()
         })
     }
 
-    pub fn water_site_status_from_continuous_effects(&self, card_id: &uuid::Uuid) -> Option<bool> {
+    pub fn water_site_status_from_continuous_effects(&self, card_id: &CardId) -> Option<bool> {
         let mut status = None;
         for effect in self.active_continuous_effects() {
             match effect {
@@ -1664,7 +1665,7 @@ impl State {
         (living_players.len() == 1).then_some(living_players[0])
     }
 
-    pub fn get_defenders_for_attack(&self, defender_id: &uuid::Uuid) -> Vec<uuid::Uuid> {
+    pub fn get_defenders_for_attack(&self, defender_id: &CardId) -> Vec<CardId> {
         let defender = self.get_card(defender_id);
         CardQuery::new()
             .units()
@@ -1680,9 +1681,9 @@ impl State {
     pub fn get_interceptors_for_move(
         &self,
         path: &[Zone],
-        moving_card_id: &uuid::Uuid,
+        moving_card_id: &CardId,
         controller_id: &PlayerId,
-    ) -> Vec<uuid::Uuid> {
+    ) -> Vec<CardId> {
         let mut interceptors = Vec::new();
         let Some(final_zone) = path.last() else {
             return interceptors;
@@ -1795,12 +1796,12 @@ impl State {
         self.server_tx.clone()
     }
 
-    pub fn get_card_mut(&mut self, card_id: &uuid::Uuid) -> &mut dyn Card {
+    pub fn get_card_mut(&mut self, card_id: &CardId) -> &mut dyn Card {
         self.invalidate_runtime_caches();
         &mut **self.cards.get_mut(card_id).expect("card to exist")
     }
 
-    pub fn get_card(&self, card_id: &uuid::Uuid) -> &dyn Card {
+    pub fn get_card(&self, card_id: &CardId) -> &dyn Card {
         &**self.cards.get(card_id).expect("card to exist")
     }
 

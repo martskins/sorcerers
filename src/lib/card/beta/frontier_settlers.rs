@@ -3,7 +3,7 @@ use crate::prelude::*;
 #[derive(Debug, Clone)]
 struct SettleAction;
 
-fn adjacent_void_or_rubble(card_id: &uuid::Uuid, state: &State) -> Vec<Zone> {
+fn adjacent_void_or_rubble(card_id: &CardId, state: &State) -> Vec<Zone> {
     let card = state.get_card(card_id);
     card.get_zone()
         .get_adjacent()
@@ -21,13 +21,13 @@ impl ActivatedAbility for SettleAction {
         "Tap → Reveal and play topmost site to adjacent void or Rubble; move there and lose this ability".to_string()
     }
 
-    fn get_cost(&self, card_id: &uuid::Uuid, _state: &State) -> anyhow::Result<Cost> {
+    fn get_cost(&self, card_id: &CardId, _state: &State) -> anyhow::Result<Cost> {
         Ok(Cost::additional_only(AdditionalCost::tap(card_id)))
     }
 
     fn can_activate(
         &self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
         player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<bool> {
@@ -43,7 +43,7 @@ impl ActivatedAbility for SettleAction {
 
     async fn on_select(
         &self,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
         player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {

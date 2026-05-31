@@ -76,7 +76,7 @@ impl Card for FlameWave {
                 unit.get_region(state) == &Region::Surface
                     && unit.get_zone().get_site(state).is_some()
             })
-            .collect::<Vec<uuid::Uuid>>();
+            .collect::<Vec<CardId>>();
         let effects = all_units
             .into_iter()
             .filter_map(|unit_id| {

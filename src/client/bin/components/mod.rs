@@ -1,6 +1,9 @@
 use crate::scene::game::GameData;
 use egui::Rect;
-use sorcerers::{game::PlayerId, zone::Zone};
+use sorcerers::{
+    game::{CardId, PlayerId},
+    zone::Zone,
+};
 
 pub mod card_viewer;
 pub mod event_log;
@@ -38,7 +41,7 @@ pub enum ComponentCommand {
         open_only: bool,
     },
     DropHandCard {
-        card_id: uuid::Uuid,
+        card_id: CardId,
         pos: egui::Pos2,
     },
     CloseOverlay,

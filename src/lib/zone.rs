@@ -1,6 +1,9 @@
 use crate::{
     card::{Ability, CardType, Region, Rubble, Site},
-    game::{Direction, PlayerId, are_adjacent, are_nearby, get_adjacent_zones, get_nearby_zones},
+    game::{
+        CardId, Direction, PlayerId, are_adjacent, are_nearby, get_adjacent_zones,
+        get_nearby_zones,
+    },
     query::CardQuery,
     state::{ContinuousEffect, State},
 };
@@ -157,7 +160,7 @@ impl Zone {
         )
     }
 
-    pub fn can_be_entered_by(&self, state: &State, card_id: &uuid::Uuid) -> anyhow::Result<bool> {
+    pub fn can_be_entered_by(&self, state: &State, card_id: &CardId) -> anyhow::Result<bool> {
         let mut can_enter = true;
         for ce in state.active_continuous_effects() {
             match ce {
@@ -178,7 +181,7 @@ impl Zone {
     pub fn is_valid_play_zone_for(
         &self,
         state: &State,
-        card_id: &uuid::Uuid,
+        card_id: &CardId,
         player_id: &PlayerId,
     ) -> anyhow::Result<bool> {
         if !self.is_in_play() {

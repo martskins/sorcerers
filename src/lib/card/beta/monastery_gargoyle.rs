@@ -34,7 +34,7 @@ impl MonasteryGargoyle {
     }
 
     async fn toggle_form(
-        card_id: uuid::Uuid,
+        card_id: CardId,
         controller_id: uuid::Uuid,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
