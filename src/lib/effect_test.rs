@@ -866,6 +866,80 @@ async fn test_submerged_minion_dies_when_water_site_becomes_land() {
 }
 
 #[tokio::test]
+async fn test_site_generates_mana_when_set_card_zone_enters_realm() {
+    let (mut state, _rx) = make_state(vec![]);
+    let player_id = state.players[0].id;
+
+    let spring_river = SpringRiver::new(player_id);
+    let spring_river_id = *spring_river.get_id();
+    state.cards.insert(spring_river_id, Box::new(spring_river));
+
+    state.queue_one(Effect::SetCardZone {
+        card_id: spring_river_id,
+        zone: Zone::Location(Location::Square(1, Region::Surface)),
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(
+        *state.get_player_mana_mut(&player_id),
+        1,
+        "a site entering the realm on its controller's turn should provide mana"
+    );
+}
+
+#[tokio::test]
+async fn test_site_entering_realm_outside_controller_turn_does_not_generate_mana() {
+    let (mut state, _rx) = make_state(vec![]);
+    let opponent_id = state.players[1].id;
+
+    let spring_river = SpringRiver::new(opponent_id);
+    let spring_river_id = *spring_river.get_id();
+    state.cards.insert(spring_river_id, Box::new(spring_river));
+
+    state.queue_one(Effect::SetCardZone {
+        card_id: spring_river_id,
+        zone: Zone::Location(Location::Square(1, Region::Surface)),
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(
+        *state.get_player_mana_mut(&opponent_id),
+        0,
+        "a site should only provide mana when it enters during its controller's turn"
+    );
+}
+
+#[tokio::test]
+async fn test_played_site_generates_mana_once() {
+    let (mut state, _rx) = make_state(vec![]);
+    let player_id = state.players[0].id;
+
+    let spring_river = SpringRiver::new(player_id);
+    let spring_river_id = *spring_river.get_id();
+    state.cards.insert(spring_river_id, Box::new(spring_river));
+
+    let avatar_id = state
+        .get_player_avatar_id(&player_id)
+        .expect("avatar id to be some");
+    Effect::PlayCard {
+        player_id,
+        card_id: spring_river_id,
+        zone: ZoneQuery::from_zone(Zone::Location(Location::Square(1, Region::Surface))),
+        spellcaster: avatar_id,
+    }
+    .apply(&mut state)
+    .await
+    .unwrap();
+    drain_effects(&mut state).await;
+
+    assert_eq!(
+        *state.get_player_mana_mut(&player_id),
+        1,
+        "playing a site should use the generic realm-entry mana path exactly once"
+    );
+}
+
+#[tokio::test]
 async fn test_temporary_modify_effect_runs_before_handler_and_expires() {
     let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
     let player_id = state.players[0].id;

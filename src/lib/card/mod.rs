@@ -2938,14 +2938,8 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
         }
     }
 
-    fn base_site_on_summon(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        let site_base = self
-            .get_site()
-            .ok_or(anyhow::anyhow!("site card has no site base"))?;
-        Ok(vec![Effect::AdjustMana {
-            player_id: *self.get_owner_id(),
-            mana: site_base.provided_mana(state)? as i8,
-        }])
+    fn base_site_on_summon(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
+        Ok(vec![])
     }
 
     async fn base_valid_move_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {

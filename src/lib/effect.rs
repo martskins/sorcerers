@@ -71,6 +71,30 @@ fn location_survival_effects_for_realm(state: &State) -> Vec<Effect> {
     location_survival_effects_for_cards(state, card_ids)
 }
 
+fn mana_effect_for_resource_entering_realm(
+    state: &State,
+    card_id: &uuid::Uuid,
+) -> anyhow::Result<Option<Effect>> {
+    let card = state.get_card(card_id);
+    let controller_id = card.get_controller_id(state);
+    if controller_id != state.current_player() {
+        return Ok(None);
+    }
+
+    let Some(resource_provider) = card.get_resource_provider() else {
+        return Ok(None);
+    };
+    let mana = resource_provider.provided_mana(state)?;
+    if mana == 0 {
+        return Ok(None);
+    }
+
+    Ok(Some(Effect::AdjustMana {
+        player_id: controller_id,
+        mana: mana as i8,
+    }))
+}
+
 #[derive(Debug, Clone)]
 pub struct AbilityCounter {
     pub id: uuid::Uuid,
@@ -953,6 +977,11 @@ impl Effect {
                         .add_passive_ongoing_effects_for_source(card_id)
                         .await?;
                     ongoing_effects_changed = true;
+                    if let Some(mana_effect) =
+                        mana_effect_for_resource_entering_realm(state, card_id)?
+                    {
+                        state.queue_one(mana_effect);
+                    }
                 }
                 match original_zone {
                     Zone::Spellbook => {
@@ -1024,6 +1053,12 @@ impl Effect {
                         .add_passive_ongoing_effects_for_source(&token_id)
                         .await?;
                     state.invalidate_runtime_caches();
+                    if zone.is_in_play()
+                        && let Some(mana_effect) =
+                            mana_effect_for_resource_entering_realm(state, &token_id)?
+                    {
+                        state.queue_one(mana_effect);
+                    }
                 }
             }
             Effect::Heal { card_id, amount } => {
@@ -1408,6 +1443,13 @@ impl Effect {
                         .await?;
                     let card = state.get_card(card_id);
                     let mut effects = card.genesis(&snapshot).await?;
+                    if !from_zone.is_in_play()
+                        && zone.is_in_play()
+                        && let Some(mana_effect) =
+                            mana_effect_for_resource_entering_realm(state, card_id)?
+                    {
+                        effects.push(mana_effect);
+                    }
                     if can_use_special_abilities(state, card_id) {
                         effects.extend(card.on_visit_zone(&snapshot, &from_zone, &zone).await?);
                     }
@@ -1467,6 +1509,13 @@ impl Effect {
                     let from_zone = snapshot.get_card(card_id).get_zone().clone();
                     effects.extend(card.on_summon(state)?);
                     effects.extend(card.genesis(state).await?);
+                    if !from_zone.is_in_play()
+                        && zone.is_in_play()
+                        && let Some(mana_effect) =
+                            mana_effect_for_resource_entering_realm(state, card_id)?
+                    {
+                        effects.push(mana_effect);
+                    }
                     if can_use_special_abilities(state, card_id) {
                         effects.extend(card.on_visit_zone(state, &from_zone, &zone).await?);
                     }
