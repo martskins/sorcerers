@@ -15,10 +15,10 @@ use crate::{
 };
 
 // ── Layout ─────────────────────────────────────────────────────────────────────
-const SIDE_ICON_SZ: f32 = 14.0;
+const SIDE_ICON_SZ: f32 = 13.0;
 const NAME_FONT: f32 = 13.0;
 const DEATHS_DOOR_FONT: f32 = 11.0;
-const THRESH_SYM: f32 = 14.0; // triangle bounding box size
+const THRESH_SYM: f32 = 13.0; // triangle bounding box size
 const PAD_H: i8 = 8; // horizontal inner margin (i8 for egui::Margin)
 const PAD_V: i8 = 6; // vertical   inner margin
 
@@ -82,7 +82,7 @@ fn side_stat(
 ) -> Response {
     let response = ui
         .push_id(id, |ui| {
-            let (rect, response) = ui.allocate_exact_size(vec2(40.0, 28.0), egui::Sense::click());
+            let (rect, response) = ui.allocate_exact_size(vec2(58.0, 23.0), egui::Sense::click());
             let hovered = clickable && response.hovered();
             let fill = if hovered {
                 Color32::from_rgba_unmultiplied(60, 78, 96, 230)
@@ -99,13 +99,14 @@ fn side_stat(
             );
 
             ui.scope_builder(egui::UiBuilder::new().max_rect(rect), |ui| {
-                ui.vertical_centered(|ui| {
-                    ui.add_space(2.0);
+                ui.horizontal_centered(|ui| {
+                    ui.add_space(4.0);
                     status_icon(ui, icon_path, ctx, SIDE_ICON_SZ);
+                    ui.add_space(5.0);
                     ui.label(
                         egui::RichText::new(value.to_string())
                             .color(color)
-                            .size(11.0)
+                            .size(12.0)
                             .strong(),
                     );
                 });
@@ -128,7 +129,7 @@ fn life_vial(ui: &mut Ui, health: u16, deaths_door: bool) {
     } else {
         (health as f32 / max_health).clamp(0.0, 1.0)
     };
-    let (rect, _) = ui.allocate_exact_size(vec2(40.0, 72.0), egui::Sense::hover());
+    let (rect, _) = ui.allocate_exact_size(vec2(46.0, 62.0), egui::Sense::hover());
     let painter = ui.painter();
     let rounding = CornerRadius::same(8);
     painter.rect_filled(rect, rounding, Color32::from_rgba_unmultiplied(28, 18, 22, 230));
@@ -183,15 +184,16 @@ impl Component for PlayerStatusComponent {
 
         let sr = crate::config::screen_rect()?;
         let ctx = ui.ctx().clone();
-        let panel_w = 58.0;
-        let panel_h = (sr.height() - 190.0).clamp(304.0, 360.0);
-        let max_panel_y = (sr.max.y - panel_h - 124.0).max(74.0);
-        let panel_y = (sr.center().y - panel_h / 2.0).clamp(74.0, max_panel_y);
-        let panel_x = if self.player {
-            10.0
+        let panel_w = 74.0;
+        let top_margin = 72.0;
+        let bottom_margin = 96.0;
+        let panel_h = 242.0;
+        let panel_y = if self.player {
+            sr.max.y - bottom_margin - panel_h
         } else {
-            sr.max.x - panel_w - 10.0
+            top_margin
         };
+        let panel_x = 12.0;
         let panel_pos = pos2(panel_x, panel_y);
         let panel_rect = Rect::from_min_size(panel_pos, vec2(panel_w, panel_h));
         self.rect = panel_rect;
@@ -227,7 +229,7 @@ impl Component for PlayerStatusComponent {
             .filter(|c| c.owner_id == self.player_id && c.zone == Zone::Cemetery)
             .count();
         let is_self = data.player_id == self.player_id;
-        let name = if is_self { "YOU" } else { "OPPONENT" };
+        let name = if is_self { "YOU" } else { "OPP" };
         let unseen = data.unseen_events;
 
         let area_id = if self.player { "ps_self" } else { "ps_opp" };
@@ -251,6 +253,7 @@ impl Component for PlayerStatusComponent {
                         ui.set_min_width(panel_w - (PAD_H as f32) * 2.0);
                         ui.set_max_width(panel_w - (PAD_H as f32) * 2.0);
                         ui.vertical_centered(|ui| {
+                            ui.spacing_mut().item_spacing = vec2(4.0, 3.0);
                             ui.label(
                                 egui::RichText::new(name)
                                     .color(Color32::from_rgb(190, 210, 255))
@@ -267,7 +270,7 @@ impl Component for PlayerStatusComponent {
                                         .strong(),
                                 );
                             }
-                            ui.add_space(5.0);
+                            ui.add_space(4.0);
                             side_stat(
                                 ui,
                                 "assets/icons/potion.png",
@@ -318,7 +321,7 @@ impl Component for PlayerStatusComponent {
                                 open_banish = true;
                             }
 
-                            ui.add_space(4.0);
+                            ui.add_space(3.0);
                             ui.vertical_centered(|ui| {
                                 ui.spacing_mut().item_spacing = vec2(2.0, 0.0);
                                 ui.horizontal(|ui| {

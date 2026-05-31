@@ -16,8 +16,8 @@ fn cell_position(id: u8, mirror: bool) -> (u8, u8) {
 
 fn board_rect(realm_rect: &Rect) -> Rect {
     Rect::from_min_max(
-        pos2(realm_rect.min.x + 60.0, realm_rect.min.y + 72.0),
-        pos2(realm_rect.max.x - 60.0, realm_rect.max.y - 96.0),
+        pos2(realm_rect.min.x + 120.0, realm_rect.min.y + 72.0),
+        pos2(realm_rect.max.x - 40.0, realm_rect.max.y - 96.0),
     )
 }
 
