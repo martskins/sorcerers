@@ -99,14 +99,9 @@ impl Card for MiracleWorkers {
             return Ok(vec![]);
         }
 
-        Ok(vec![Effect::MoveCard {
-            player_id: controller_id,
+        Ok(vec![Effect::SetCardZone {
             card_id: chosen,
-            from: Zone::Cemetery,
-            to: crate::query::ZoneQuery::from_zone(Zone::Hand),
-            tap: false,
-            region: crate::card::Region::Surface,
-            through_path: None,
+            zone: Zone::Hand,
         }])
     }
 }

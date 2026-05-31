@@ -121,7 +121,7 @@ impl Card for GuileSirens {
                 player_id: opponent_id,
                 card_id: picked_card_id,
                 from: picked_card.get_zone().clone(),
-                to: ZoneQuery::from_zone(picked_zone),
+                to: LocationQuery::from_zone(picked_zone),
                 tap: false,
                 region: picked_card.get_region(state).clone(),
                 through_path: None,

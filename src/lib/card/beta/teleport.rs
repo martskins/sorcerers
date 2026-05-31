@@ -69,7 +69,9 @@ impl Card for Teleport {
         Ok(vec![Effect::TeleportCard {
             player_id: *self.get_owner_id(),
             card_id,
-            to_zone: zone,
+            to_location: zone
+                .into_location()
+                .expect("teleport target must be a location"),
         }])
     }
 }

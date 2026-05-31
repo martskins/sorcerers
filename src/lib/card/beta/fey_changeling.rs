@@ -106,15 +106,9 @@ impl Card for FeyChangeling {
             "Fey Changeling Genesis: Pick a minion to return to hand",
         )
         .await?;
-        let target = state.get_card(&target_id);
-        Ok(vec![Effect::MoveCard {
-            player_id: *target.get_owner_id(),
+        Ok(vec![Effect::SetCardZone {
             card_id: target_id,
-            from: target.get_zone().clone(),
-            to: ZoneQuery::from_zone(Zone::Hand),
-            tap: false,
-            region: Region::Surface,
-            through_path: None,
+            zone: Zone::Hand,
         }])
     }
 }

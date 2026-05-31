@@ -84,7 +84,7 @@ impl Card for Windblast {
                 player_id: unit.get_controller_id(state),
                 card_id: unit_id,
                 from: unit.get_zone().clone(),
-                to: ZoneQuery::from_zone(to_zone),
+                to: LocationQuery::from_zone(to_zone),
                 tap: false,
                 region: Region::Surface,
                 through_path: None,

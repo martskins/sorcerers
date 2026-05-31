@@ -1,8 +1,8 @@
 use async_channel::Sender;
 use sorcerers::{
     card::{
-        ApprenticeWizard, AramosMercenaries, AridDesert, CaptainBaldassare, Drought, FelbogFrogMen,
-        HumbleVillage, WillsOTheWisp,
+        self, ApprenticeWizard, AramosMercenaries, AridDesert, CaptainBaldassare, Drought,
+        FelbogFrogMen, HumbleVillage, Region, WillsOTheWisp,
     },
     deck::precon::ALL_PRECONS,
     game::Game,
@@ -11,6 +11,7 @@ use sorcerers::{
         message::{ClientMessage, DeckChoice, Message, ServerMessage},
     },
     state::{Player, PlayerWithDeck},
+    zone::{Location, Zone},
 };
 use std::{collections::HashMap, sync::Arc};
 use tokio::{net::tcp::OwnedWriteHalf, sync::Mutex};
@@ -204,109 +205,93 @@ impl Server {
 
     fn setup_test_state(&mut self, game: &mut Game) {
         let player_one = game.state.players[0].id;
-        let card = sorcerers::card::from_name_and_zone(
-            AramosMercenaries::NAME,
-            &player_one,
-            sorcerers::zone::Zone::Cemetery,
-        );
+        let card = card::from_name_and_zone(AramosMercenaries::NAME, &player_one, Zone::Cemetery);
         game.state.cards.insert(*card.get_id(), card);
-        let card = sorcerers::card::from_name_and_zone(
-            ApprenticeWizard::NAME,
-            &player_one,
-            sorcerers::zone::Zone::Cemetery,
-        );
+        let card = card::from_name_and_zone(ApprenticeWizard::NAME, &player_one, Zone::Cemetery);
         game.state.cards.insert(*card.get_id(), card);
-        let card = sorcerers::card::from_name_and_zone(
+        let card = card::from_name_and_zone(
             CaptainBaldassare::NAME,
             &player_one,
-            sorcerers::zone::Zone::Location(8, sorcerers::card::Region::Surface),
+            Zone::Location(Location::Square(8, Region::Surface)),
         );
         game.state.cards.insert(*card.get_id(), card);
 
         let player_two = game.state.players[1].id;
-        let card = sorcerers::card::from_name_and_zone(
-            Drought::NAME,
-            &player_one,
-            sorcerers::zone::Zone::Hand,
-        );
+        let card = card::from_name_and_zone(Drought::NAME, &player_one, Zone::Hand);
         game.state.cards.insert(*card.get_id(), card);
-        let card = sorcerers::card::from_name_and_zone(
-            WillsOTheWisp::NAME,
-            &player_one,
-            sorcerers::zone::Zone::Hand,
-        );
+        let card = card::from_name_and_zone(WillsOTheWisp::NAME, &player_one, Zone::Hand);
         game.state.cards.insert(*card.get_id(), card);
-        let card = sorcerers::card::from_name_and_zone(
+        let card = card::from_name_and_zone(
             HumbleVillage::NAME,
             &player_one,
-            sorcerers::zone::Zone::Location(3, sorcerers::card::Region::Surface),
+            Zone::Location(Location::Square(3, Region::Surface)),
         );
         game.state.cards.insert(*card.get_id(), card);
-        let card = sorcerers::card::from_name_and_zone(
+        let card = card::from_name_and_zone(
             HumbleVillage::NAME,
             &player_one,
-            sorcerers::zone::Zone::Location(9, sorcerers::card::Region::Surface),
+            Zone::Location(Location::Square(9, Region::Surface)),
         );
         game.state.cards.insert(*card.get_id(), card);
-        let card = sorcerers::card::from_name_and_zone(
+        let card = card::from_name_and_zone(
             HumbleVillage::NAME,
             &player_one,
-            sorcerers::zone::Zone::Location(4, sorcerers::card::Region::Surface),
+            Zone::Location(Location::Square(4, Region::Surface)),
         );
         game.state.cards.insert(*card.get_id(), card);
-        let card = sorcerers::card::from_name_and_zone(
+        let card = card::from_name_and_zone(
             HumbleVillage::NAME,
             &player_one,
-            sorcerers::zone::Zone::Location(6, sorcerers::card::Region::Surface),
+            Zone::Location(Location::Square(6, Region::Surface)),
         );
         game.state.cards.insert(*card.get_id(), card);
-        let card = sorcerers::card::from_name_and_zone(
+        let card = card::from_name_and_zone(
             HumbleVillage::NAME,
             &player_one,
-            sorcerers::zone::Zone::Location(7, sorcerers::card::Region::Surface),
+            Zone::Location(Location::Square(7, Region::Surface)),
         );
         game.state.cards.insert(*card.get_id(), card);
-        let card = sorcerers::card::from_name_and_zone(
+        let card = card::from_name_and_zone(
             HumbleVillage::NAME,
             &player_one,
-            sorcerers::zone::Zone::Location(2, sorcerers::card::Region::Surface),
+            Zone::Location(Location::Square(2, Region::Surface)),
         );
         game.state.cards.insert(*card.get_id(), card);
-        let card = sorcerers::card::from_name_and_zone(
+        let card = card::from_name_and_zone(
             AridDesert::NAME,
             &player_one,
-            sorcerers::zone::Zone::Location(8, sorcerers::card::Region::Surface),
+            Zone::Location(Location::Square(8, Region::Surface)),
         );
         game.state.cards.insert(*card.get_id(), card);
 
-        let kite_archer = sorcerers::card::from_name_and_zone(
+        let kite_archer = card::from_name_and_zone(
             "Kite Archer",
             &player_one,
-            sorcerers::zone::Zone::Location(8, sorcerers::card::Region::Surface),
+            Zone::Location(Location::Square(8, Region::Surface)),
         );
         game.state.cards.insert(*kite_archer.get_id(), kite_archer);
-        let card = sorcerers::card::from_name_and_zone(
+        let card = card::from_name_and_zone(
             AridDesert::NAME,
             &player_two,
-            sorcerers::zone::Zone::Location(13, sorcerers::card::Region::Surface),
+            Zone::Location(Location::Square(13, Region::Surface)),
         );
         game.state.cards.insert(*card.get_id(), card);
-        let card = sorcerers::card::from_name_and_zone(
+        let card = card::from_name_and_zone(
             AridDesert::NAME,
             &player_two,
-            sorcerers::zone::Zone::Location(18, sorcerers::card::Region::Surface),
+            Zone::Location(Location::Square(18, Region::Surface)),
         );
         game.state.cards.insert(*card.get_id(), card);
-        let card = sorcerers::card::from_name_and_zone(
+        let card = card::from_name_and_zone(
             "Ultimate Horror",
             &player_two,
-            sorcerers::zone::Zone::Location(3, sorcerers::card::Region::Surface),
+            Zone::Location(Location::Square(3, Region::Surface)),
         );
         game.state.cards.insert(*card.get_id(), card);
-        let card = sorcerers::card::from_name_and_zone(
+        let card = card::from_name_and_zone(
             FelbogFrogMen::NAME,
             &player_one,
-            sorcerers::zone::Zone::Location(13, sorcerers::card::Region::Surface),
+            Zone::Location(Location::Square(13, Region::Surface)),
         );
         game.state.cards.insert(*card.get_id(), card);
         let player_mana = game.state.get_player_mana_mut(&player_one);

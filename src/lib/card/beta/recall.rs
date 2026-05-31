@@ -88,7 +88,10 @@ impl Card for Recall {
                     effects.push(Effect::TeleportCard {
                         player_id: controller_id,
                         card_id,
-                        to_zone: caster_zone.clone(),
+                        to_location: caster_zone
+                            .clone()
+                            .into_location()
+                            .expect("teleport target must be a location"),
                     });
                     remaining.retain(|id| *id != card_id);
                 }

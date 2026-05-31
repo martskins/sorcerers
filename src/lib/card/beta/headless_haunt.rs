@@ -75,7 +75,7 @@ impl Card for HeadlessHaunt {
             player_id: *self.get_owner_id(),
             card_id: *self.get_id(),
             from: self.get_zone().clone(),
-            to: ZoneQuery::random(Zone::all_in_surface()),
+            to: LocationQuery::random(Zone::all_in_surface()),
             tap: false,
             region: self.get_region(_state).clone(),
             through_path: None,

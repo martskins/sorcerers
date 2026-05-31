@@ -80,20 +80,14 @@ impl Card for TorshammarTrinket {
             return Ok(vec![]);
         }
 
-        let owner_id = *self.get_owner_id();
         Ok(vec![
             Effect::SetBearer {
                 card_id: *self.get_id(),
                 bearer_id: None,
             },
-            Effect::MoveCard {
-                player_id: owner_id,
+            Effect::SetCardZone {
                 card_id: *self.get_id(),
-                from: zone.clone(),
-                to: ZoneQuery::from_zone(Zone::Hand),
-                tap: false,
-                region: Region::Surface,
-                through_path: None,
+                zone: Zone::Hand,
             },
         ])
     }

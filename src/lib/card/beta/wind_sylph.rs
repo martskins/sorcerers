@@ -140,7 +140,7 @@ impl Card for WindSylph {
             player_id: controller_id,
             card_id: unit_id,
             from: unit.get_zone().clone(),
-            to: ZoneQuery::from_zone(target_zone),
+            to: LocationQuery::from_zone(target_zone),
             tap: false,
             region: unit.get_region(state).clone(),
             through_path: None,

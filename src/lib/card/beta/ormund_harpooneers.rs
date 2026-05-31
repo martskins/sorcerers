@@ -64,7 +64,7 @@ impl ActivatedAbility for HarpoonPull {
                 player_id: *player_id,
                 card_id: target_id,
                 from: target_zone,
-                to: ZoneQuery::from_zone(my_zone),
+                to: LocationQuery::from_zone(my_zone),
                 tap: false,
                 region: target_region,
                 through_path: None,

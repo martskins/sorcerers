@@ -77,7 +77,7 @@ impl ActivatedAbility for ThrowArtifactAbility {
                 player_id: *player_id,
                 card_id: artifact_id,
                 from: artifact.get_zone().clone(),
-                to: ZoneQuery::from_zone(target.get_zone().clone()),
+                to: LocationQuery::from_zone(target.get_zone().clone()),
                 tap: false,
                 region: target.get_region(state).clone(),
                 through_path: None,

@@ -106,7 +106,7 @@ impl Card for GiantShark {
                                 player_id: shark.get_controller_id(state),
                                 card_id: shark_id,
                                 from: shark_zone,
-                                to: ZoneQuery::from_zone(target_zone),
+                                to: LocationQuery::from_zone(target_zone),
                                 tap: false,
                                 region: Region::Underwater,
                                 through_path: None,

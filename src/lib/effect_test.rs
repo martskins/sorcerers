@@ -11,9 +11,11 @@ use crate::{
     },
     game::Direction,
     networking::message::ServerMessage,
-    query::{CardQuery, EffectQuery, QueryCache, ZoneQuery, entered_sites, entered_zones},
+    query::{
+        CardQuery, EffectQuery, LocationQuery, QueryCache, ZoneQuery, entered_sites, entered_zones,
+    },
     state::{Player, PlayerWithDeck, State},
-    zone::Zone,
+    zone::{Location, Zone},
 };
 use std::{collections::HashMap, sync::Arc};
 
@@ -128,12 +130,12 @@ async fn test_plain_strike_does_not_make_target_strike_back() {
 
     let mut striker = OgreGoons::new(player_id);
     let striker_id = *striker.get_id();
-    striker.set_zone(Zone::Location(1, Region::Surface));
+    striker.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
     state.cards.insert(striker_id, Box::new(striker));
 
     let mut target = ApprenticeWizard::new(opponent_id);
     let target_id = *target.get_id();
-    target.set_zone(Zone::Location(1, Region::Surface));
+    target.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
     state.cards.insert(target_id, Box::new(target));
 
     state.queue_one(Effect::Strike {
@@ -162,13 +164,13 @@ async fn test_disabled_unit_cannot_strike() {
 
     let mut striker = OgreGoons::new(player_id);
     let striker_id = *striker.get_id();
-    striker.set_zone(Zone::Location(1, Region::Surface));
+    striker.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
     striker.add_status(CardStatus::Disabled);
     state.cards.insert(striker_id, Box::new(striker));
 
     let mut target = ApprenticeWizard::new(opponent_id);
     let target_id = *target.get_id();
-    target.set_zone(Zone::Location(1, Region::Surface));
+    target.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
     state.cards.insert(target_id, Box::new(target));
 
     state.queue_one(Effect::Strike {
@@ -192,17 +194,17 @@ async fn test_ranged_projectile_hits_intervening_unit() {
 
     let mut striker = YourkeCrossbowmen::new(player_id);
     let striker_id = *striker.get_id();
-    striker.set_zone(Zone::Location(1, Region::Surface));
+    striker.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
     state.cards.insert(striker_id, Box::new(striker));
 
     let mut blocker = ApprenticeWizard::new(opponent_id);
     let blocker_id = *blocker.get_id();
-    blocker.set_zone(Zone::Location(2, Region::Surface));
+    blocker.set_zone(Zone::Location(Location::Square(2, Region::Surface)));
     state.cards.insert(blocker_id, Box::new(blocker));
 
     let mut original_target = ApprenticeWizard::new(opponent_id);
     let original_target_id = *original_target.get_id();
-    original_target.set_zone(Zone::Location(3, Region::Surface));
+    original_target.set_zone(Zone::Location(Location::Square(3, Region::Surface)));
     state
         .cards
         .insert(original_target_id, Box::new(original_target));
@@ -212,7 +214,7 @@ async fn test_ranged_projectile_hits_intervening_unit() {
         range: Some(2),
         player_id,
         shooter: striker_id,
-        from_zone: Zone::Location(1, Region::Surface),
+        from_zone: Zone::Location(Location::Square(1, Region::Surface)),
         direction: Direction::Right,
         damage: 3,
         ranged_strike: true,
@@ -244,12 +246,12 @@ async fn test_ranged_projectile_damage_is_distinct_from_regular_projectile_damag
 
     let mut shooter = OgreGoons::new(player_id);
     let shooter_id = *shooter.get_id();
-    shooter.set_zone(Zone::Location(1, Region::Surface));
+    shooter.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
     state.cards.insert(shooter_id, Box::new(shooter));
 
     let mut target = YourkeCrossbowmen::new(opponent_id);
     let target_id = *target.get_id();
-    target.set_zone(Zone::Location(2, Region::Surface));
+    target.set_zone(Zone::Location(Location::Square(2, Region::Surface)));
     state.cards.insert(target_id, Box::new(target));
 
     state.queue_one(Effect::ShootProjectile {
@@ -257,7 +259,7 @@ async fn test_ranged_projectile_damage_is_distinct_from_regular_projectile_damag
         range: Some(1),
         player_id,
         shooter: shooter_id,
-        from_zone: Zone::Location(1, Region::Surface),
+        from_zone: Zone::Location(Location::Square(1, Region::Surface)),
         direction: Direction::Right,
         damage: 1,
         ranged_strike: false,
@@ -277,7 +279,7 @@ async fn test_ranged_projectile_damage_is_distinct_from_regular_projectile_damag
         range: Some(1),
         player_id,
         shooter: shooter_id,
-        from_zone: Zone::Location(1, Region::Surface),
+        from_zone: Zone::Location(Location::Square(1, Region::Surface)),
         direction: Direction::Right,
         damage: 1,
         ranged_strike: true,
@@ -301,12 +303,12 @@ async fn test_disabled_unit_does_not_counterstrike_when_attacked() {
 
     let mut attacker = OgreGoons::new(player_id);
     let attacker_id = *attacker.get_id();
-    attacker.set_zone(Zone::Location(1, Region::Surface));
+    attacker.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
     state.cards.insert(attacker_id, Box::new(attacker));
 
     let mut defender = ApprenticeWizard::new(opponent_id);
     let defender_id = *defender.get_id();
-    defender.set_zone(Zone::Location(1, Region::Surface));
+    defender.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
     defender.add_status(CardStatus::Disabled);
     state.cards.insert(defender_id, Box::new(defender));
 
@@ -333,17 +335,17 @@ async fn test_multiple_defenders_split_attack_damage() {
 
     let mut attacker = OgreGoons::new(player_id);
     let attacker_id = *attacker.get_id();
-    attacker.set_zone(Zone::Location(1, Region::Surface));
+    attacker.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
     state.cards.insert(attacker_id, Box::new(attacker));
 
     let mut defender_one = ApprenticeWizard::new(opponent_id);
     let defender_one_id = *defender_one.get_id();
-    defender_one.set_zone(Zone::Location(2, Region::Surface));
+    defender_one.set_zone(Zone::Location(Location::Square(2, Region::Surface)));
     state.cards.insert(defender_one_id, Box::new(defender_one));
 
     let mut defender_two = ApprenticeWizard::new(opponent_id);
     let defender_two_id = *defender_two.get_id();
-    defender_two.set_zone(Zone::Location(3, Region::Surface));
+    defender_two.set_zone(Zone::Location(Location::Square(3, Region::Surface)));
     state.cards.insert(defender_two_id, Box::new(defender_two));
 
     state.queue_one(Effect::Attack {
@@ -371,12 +373,12 @@ async fn test_multiple_defender_first_strike_can_stop_split_damage() {
 
     let mut attacker = ApprenticeWizard::new(player_id);
     let attacker_id = *attacker.get_id();
-    attacker.set_zone(Zone::Location(1, Region::Surface));
+    attacker.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
     state.cards.insert(attacker_id, Box::new(attacker));
 
     let mut first_striker = ApprenticeWizard::new(opponent_id);
     let first_striker_id = *first_striker.get_id();
-    first_striker.set_zone(Zone::Location(2, Region::Surface));
+    first_striker.set_zone(Zone::Location(Location::Square(2, Region::Surface)));
     first_striker
         .get_unit_base_mut()
         .unwrap()
@@ -388,7 +390,7 @@ async fn test_multiple_defender_first_strike_can_stop_split_damage() {
 
     let mut other_defender = ApprenticeWizard::new(opponent_id);
     let other_defender_id = *other_defender.get_id();
-    other_defender.set_zone(Zone::Location(3, Region::Surface));
+    other_defender.set_zone(Zone::Location(Location::Square(3, Region::Surface)));
     state
         .cards
         .insert(other_defender_id, Box::new(other_defender));
@@ -418,19 +420,19 @@ async fn test_multiple_defender_first_strike_can_stop_split_damage() {
 #[test]
 fn test_disabled_units_cannot_defend_or_intercept() {
     let (mut state, _rx) = make_state(vec![
-        Zone::Location(1, Region::Surface),
-        Zone::Location(2, Region::Surface),
-        Zone::Location(3, Region::Surface),
+        Zone::Location(Location::Square(1, Region::Surface)),
+        Zone::Location(Location::Square(2, Region::Surface)),
+        Zone::Location(Location::Square(3, Region::Surface)),
     ]);
     let player_id = state.players[0].id;
     let avatar_id = state.get_player_avatar_id(&player_id).unwrap();
     state
         .get_card_mut(&avatar_id)
-        .set_zone(Zone::Location(1, Region::Surface));
+        .set_zone(Zone::Location(Location::Square(1, Region::Surface)));
 
     let mut disabled_defender = FootSoldier::new(player_id);
     let disabled_defender_id = *disabled_defender.get_id();
-    disabled_defender.set_zone(Zone::Location(2, Region::Surface));
+    disabled_defender.set_zone(Zone::Location(Location::Square(2, Region::Surface)));
     disabled_defender.add_status(CardStatus::Disabled);
     state
         .cards
@@ -438,7 +440,7 @@ fn test_disabled_units_cannot_defend_or_intercept() {
 
     let mut able_defender = FootSoldier::new(player_id);
     let able_defender_id = *able_defender.get_id();
-    able_defender.set_zone(Zone::Location(2, Region::Surface));
+    able_defender.set_zone(Zone::Location(Location::Square(2, Region::Surface)));
     state
         .cards
         .insert(able_defender_id, Box::new(able_defender));
@@ -457,18 +459,18 @@ fn test_disabled_units_cannot_defend_or_intercept() {
     let opponent_avatar_id = state.get_player_avatar_id(&opponent_id).unwrap();
     state
         .get_card_mut(&opponent_avatar_id)
-        .set_zone(Zone::Location(2, Region::Surface));
+        .set_zone(Zone::Location(Location::Square(2, Region::Surface)));
     state
         .get_card_mut(&disabled_defender_id)
-        .set_zone(Zone::Location(3, Region::Surface));
+        .set_zone(Zone::Location(Location::Square(3, Region::Surface)));
     state
         .get_card_mut(&able_defender_id)
-        .set_zone(Zone::Location(3, Region::Surface));
+        .set_zone(Zone::Location(Location::Square(3, Region::Surface)));
 
     let interceptors = state.get_interceptors_for_move(
         &[
-            Zone::Location(2, Region::Surface),
-            Zone::Location(3, Region::Surface),
+            Zone::Location(Location::Square(2, Region::Surface)),
+            Zone::Location(Location::Square(3, Region::Surface)),
         ],
         &opponent_avatar_id,
         &player_id,
@@ -532,7 +534,7 @@ async fn test_site_damage_after_deaths_door_is_not_death_blow() {
 
     let mut site = AridDesert::new(player_id);
     let site_id = *site.get_id();
-    site.set_zone(Zone::Location(1, Region::Surface));
+    site.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
     state.cards.insert(site_id, Box::new(site));
 
     state.queue_one(Effect::TakeDamage {
@@ -568,23 +570,23 @@ async fn test_vaults_of_zul_triggers_on_stop_not_intermediate_enter() {
     let avatar_id = state.get_player_avatar_id(&player_id).unwrap();
     state
         .get_card_mut(&avatar_id)
-        .set_zone(Zone::Location(1, Region::Surface));
+        .set_zone(Zone::Location(Location::Square(1, Region::Surface)));
 
     let mut vaults = VaultsOfZul::new(player_id);
     let vaults_id = *vaults.get_id();
-    vaults.set_zone(Zone::Location(2, Region::Surface));
+    vaults.set_zone(Zone::Location(Location::Square(2, Region::Surface)));
     state.cards.insert(vaults_id, Box::new(vaults));
 
     Effect::MoveCard {
         player_id,
         card_id: avatar_id,
-        from: Zone::Location(1, Region::Surface),
-        to: ZoneQuery::from_zone(Zone::Location(3, Region::Surface)),
+        from: Zone::Location(Location::Square(1, Region::Surface)),
+        to: LocationQuery::from_zone(Zone::Location(Location::Square(3, Region::Surface))),
         tap: false,
         region: Region::Surface,
         through_path: Some(vec![
-            Zone::Location(2, Region::Surface),
-            Zone::Location(3, Region::Surface),
+            Zone::Location(Location::Square(2, Region::Surface)),
+            Zone::Location(Location::Square(3, Region::Surface)),
         ]),
     }
     .apply(&mut state)
@@ -601,20 +603,20 @@ async fn test_vaults_of_zul_triggers_on_stop_not_intermediate_enter() {
 
     state
         .get_card_mut(&vaults_id)
-        .set_zone(Zone::Location(3, Region::Surface));
+        .set_zone(Zone::Location(Location::Square(3, Region::Surface)));
     state
         .get_card_mut(&avatar_id)
-        .set_zone(Zone::Location(1, Region::Surface));
+        .set_zone(Zone::Location(Location::Square(1, Region::Surface)));
     Effect::MoveCard {
         player_id,
         card_id: avatar_id,
-        from: Zone::Location(1, Region::Surface),
-        to: ZoneQuery::from_zone(Zone::Location(3, Region::Surface)),
+        from: Zone::Location(Location::Square(1, Region::Surface)),
+        to: LocationQuery::from_zone(Zone::Location(Location::Square(3, Region::Surface))),
         tap: false,
         region: Region::Surface,
         through_path: Some(vec![
-            Zone::Location(2, Region::Surface),
-            Zone::Location(3, Region::Surface),
+            Zone::Location(Location::Square(2, Region::Surface)),
+            Zone::Location(Location::Square(3, Region::Surface)),
         ]),
     }
     .apply(&mut state)
@@ -637,7 +639,7 @@ async fn test_enter_site_triggers_when_card_is_summoned_there() {
 
     let mut pit = BottomlessPit::new(player_id);
     let pit_id = *pit.get_id();
-    pit.set_zone(Zone::Location(1, Region::Surface));
+    pit.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
     state.cards.insert(pit_id, Box::new(pit));
 
     let ogre = OgreGoons::new(player_id);
@@ -645,7 +647,11 @@ async fn test_enter_site_triggers_when_card_is_summoned_there() {
     state.cards.insert(ogre_id, Box::new(ogre));
 
     state.queue_one(Effect::SummonCards {
-        cards: vec![(player_id, ogre_id, Zone::Location(1, Region::Surface))],
+        cards: vec![(
+            player_id,
+            ogre_id,
+            Zone::Location(Location::Square(1, Region::Surface)),
+        )],
     });
     drain_effects(&mut state).await;
 
@@ -659,21 +665,21 @@ async fn test_enter_site_triggers_when_card_is_summoned_there() {
 #[tokio::test]
 async fn test_phase_assassin_keeps_stealth_after_entering_void() {
     let (mut state, _rx) = make_state(vec![
-        Zone::Location(1, Region::Surface),
-        Zone::Location(3, Region::Surface),
+        Zone::Location(Location::Square(1, Region::Surface)),
+        Zone::Location(Location::Square(3, Region::Surface)),
     ]);
     let player_id = state.players[0].id;
 
     let mut assassin = PhaseAssassin::new(player_id);
     let assassin_id = *assassin.get_id();
-    assassin.set_zone(Zone::Location(1, Region::Surface));
+    assassin.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
     state.cards.insert(assassin_id, Box::new(assassin));
 
     state.queue_one(Effect::MoveCard {
         player_id,
         card_id: assassin_id,
-        from: Zone::Location(1, Region::Surface),
-        to: ZoneQuery::from_zone(Zone::Location(2, Region::Surface)),
+        from: Zone::Location(Location::Square(1, Region::Surface)),
+        to: LocationQuery::from_zone(Zone::Location(Location::Square(2, Region::Surface))),
         tap: false,
         region: Region::Surface,
         through_path: None,
@@ -690,8 +696,8 @@ async fn test_phase_assassin_keeps_stealth_after_entering_void() {
     state.queue_one(Effect::MoveCard {
         player_id,
         card_id: assassin_id,
-        from: Zone::Location(2, Region::Surface),
-        to: ZoneQuery::from_zone(Zone::Location(3, Region::Surface)),
+        from: Zone::Location(Location::Square(2, Region::Surface)),
+        to: LocationQuery::from_zone(Zone::Location(Location::Square(3, Region::Surface))),
         tap: false,
         region: Region::Surface,
         through_path: None,
@@ -708,18 +714,18 @@ async fn test_phase_assassin_keeps_stealth_after_entering_void() {
 
 #[tokio::test]
 async fn test_teleport_triggers_visit_zone_once() {
-    let (mut state, _rx) = make_state(vec![Zone::Location(1, Region::Surface)]);
+    let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
     let player_id = state.players[0].id;
 
     let mut assassin = PhaseAssassin::new(player_id);
     let assassin_id = *assassin.get_id();
-    assassin.set_zone(Zone::Location(1, Region::Surface));
+    assassin.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
     state.cards.insert(assassin_id, Box::new(assassin));
 
     state.queue_one(Effect::TeleportCard {
         player_id,
         card_id: assassin_id,
-        to_zone: Zone::Location(2, Region::Surface),
+        to_location: Location::Square(2, Region::Surface),
     });
     drain_effects(&mut state).await;
 
@@ -740,15 +746,15 @@ async fn test_teleport_triggers_visit_zone_once() {
 
 #[tokio::test]
 async fn test_region_changes_enter_location_but_not_site() {
-    let (state, _rx) = make_state(vec![Zone::Location(1, Region::Surface)]);
+    let (state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
     let player_id = state.players[0].id;
     let card_id = state.get_player_avatar_id(&player_id).unwrap();
 
     let effect = Effect::MoveCard {
         player_id,
         card_id,
-        from: Zone::Location(1, Region::Surface),
-        to: ZoneQuery::from_zone(Zone::Location(1, Region::Underground)),
+        from: Zone::Location(Location::Square(1, Region::Surface)),
+        to: LocationQuery::from_zone(Zone::Location(Location::Square(1, Region::Underground))),
         tap: false,
         region: Region::Underground,
         through_path: None,
@@ -756,7 +762,10 @@ async fn test_region_changes_enter_location_but_not_site() {
 
     assert_eq!(
         entered_zones(&effect, &state).await.unwrap(),
-        vec![(card_id, Zone::Location(1, Region::Underground))],
+        vec![(
+            card_id,
+            Zone::Location(Location::Square(1, Region::Underground))
+        )],
         "changing regions on the same realm square should count as entering a new location"
     );
     assert!(
@@ -767,7 +776,7 @@ async fn test_region_changes_enter_location_but_not_site() {
 
 #[tokio::test]
 async fn test_temporary_modify_effect_runs_before_handler_and_expires() {
-    let (mut state, _rx) = make_state(vec![Zone::Location(1, Region::Surface)]);
+    let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
     let player_id = state.players[0].id;
 
     let draw_query = EffectQuery::DrawCard { player_id: None };
@@ -806,7 +815,7 @@ async fn test_temporary_modify_effect_runs_before_handler_and_expires() {
 
 #[tokio::test]
 async fn test_deferred_one_shot_removes_itself_after_trigger() {
-    let (mut state, _rx) = make_state(vec![Zone::Location(1, Region::Surface)]);
+    let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
     let player_id = state.players[0].id;
     let grant_mana: EffectCallback = Arc::new(|_state, source_id, _effect| {
         Box::pin(async move {
@@ -837,7 +846,7 @@ async fn test_deferred_one_shot_removes_itself_after_trigger() {
 
 #[tokio::test]
 async fn test_deferred_multitrigger_remains_after_trigger() {
-    let (mut state, _rx) = make_state(vec![Zone::Location(1, Region::Surface)]);
+    let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
     let player_id = state.players[0].id;
     let grant_mana: EffectCallback = Arc::new(|_state, source_id, _effect| {
         Box::pin(async move {
@@ -873,7 +882,7 @@ async fn test_deferred_multitrigger_remains_after_trigger() {
 
 #[tokio::test]
 async fn test_deferred_expiry_removes_without_triggering() {
-    let (mut state, _rx) = make_state(vec![Zone::Location(1, Region::Surface)]);
+    let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
     let player_id = state.players[0].id;
     let grant_mana: EffectCallback = Arc::new(|_state, source_id, _effect| {
         Box::pin(async move {
@@ -904,7 +913,7 @@ async fn test_deferred_expiry_removes_without_triggering() {
 
 #[tokio::test]
 async fn test_temporary_expiry_removes_after_matching_resolved_effect() {
-    let (mut state, _rx) = make_state(vec![Zone::Location(1, Region::Surface)]);
+    let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
     let player_id = state.players[0].id;
     let site_id = *state
         .cards
@@ -932,7 +941,7 @@ async fn test_temporary_expiry_removes_after_matching_resolved_effect() {
 
 #[tokio::test]
 async fn test_summon_card_puts_minion_in_target_zone() {
-    let (mut state, _rx) = make_state(vec![Zone::Location(1, Region::Surface)]);
+    let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
     let player_id = state.players[0].id;
 
     let minion = OgreGoons::new(player_id);
@@ -940,7 +949,11 @@ async fn test_summon_card_puts_minion_in_target_zone() {
     state.cards.insert(id, Box::new(minion));
 
     Effect::SummonCards {
-        cards: vec![(player_id, id, Zone::Location(1, Region::Surface))],
+        cards: vec![(
+            player_id,
+            id,
+            Zone::Location(Location::Square(1, Region::Surface)),
+        )],
     }
     .apply(&mut state)
     .await
@@ -948,13 +961,13 @@ async fn test_summon_card_puts_minion_in_target_zone() {
 
     assert_eq!(
         state.get_card(&id).get_zone(),
-        &Zone::Location(1, Region::Surface)
+        &Zone::Location(Location::Square(1, Region::Surface))
     );
 }
 
 #[tokio::test]
 async fn test_summon_card_adds_summoning_sickness_to_minion() {
-    let (mut state, _rx) = make_state(vec![Zone::Location(1, Region::Surface)]);
+    let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
     let player_id = state.players[0].id;
 
     let minion = OgreGoons::new(player_id);
@@ -962,7 +975,11 @@ async fn test_summon_card_adds_summoning_sickness_to_minion() {
     state.cards.insert(id, Box::new(minion));
 
     Effect::SummonCards {
-        cards: vec![(player_id, id, Zone::Location(1, Region::Surface))],
+        cards: vec![(
+            player_id,
+            id,
+            Zone::Location(Location::Square(1, Region::Surface)),
+        )],
     }
     .apply(&mut state)
     .await
@@ -978,7 +995,7 @@ async fn test_summon_card_adds_summoning_sickness_to_minion() {
 
 #[tokio::test]
 async fn test_summon_card_no_summoning_sickness_with_charge() {
-    let (mut state, _rx) = make_state(vec![Zone::Location(1, Region::Surface)]);
+    let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
     let player_id = state.players[0].id;
 
     let mut minion = OgreGoons::new(player_id);
@@ -987,7 +1004,11 @@ async fn test_summon_card_no_summoning_sickness_with_charge() {
     state.cards.insert(id, Box::new(minion));
 
     Effect::SummonCards {
-        cards: vec![(player_id, id, Zone::Location(1, Region::Surface))],
+        cards: vec![(
+            player_id,
+            id,
+            Zone::Location(Location::Square(1, Region::Surface)),
+        )],
     }
     .apply(&mut state)
     .await
@@ -1004,7 +1025,7 @@ async fn test_summon_card_no_summoning_sickness_with_charge() {
 #[tokio::test]
 async fn test_summon_card_queues_genesis_effects() {
     // ApprenticeWizard genesis -> draw spell
-    let (mut state, _rx) = make_state(vec![Zone::Location(1, Region::Surface)]);
+    let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
     let player_id = state.players[0].id;
 
     let wizard = ApprenticeWizard::new(player_id);
@@ -1012,7 +1033,11 @@ async fn test_summon_card_queues_genesis_effects() {
     state.cards.insert(id, Box::new(wizard));
 
     Effect::SummonCards {
-        cards: vec![(player_id, id, Zone::Location(1, Region::Surface))],
+        cards: vec![(
+            player_id,
+            id,
+            Zone::Location(Location::Square(1, Region::Surface)),
+        )],
     }
     .apply(&mut state)
     .await
@@ -1036,7 +1061,7 @@ async fn test_summon_card_queues_genesis_effects() {
 #[tokio::test]
 async fn test_summon_card_applies_on_summon_effects() {
     // Sea Raider on_summon → AddDeferredEffect
-    let (mut state, _rx) = make_state(vec![Zone::Location(1, Region::Surface)]);
+    let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
     let player_id = state.players[0].id;
 
     let sea_raider = SeaRaider::new(player_id);
@@ -1044,7 +1069,11 @@ async fn test_summon_card_applies_on_summon_effects() {
     state.cards.insert(id, Box::new(sea_raider));
 
     Effect::SummonCards {
-        cards: vec![(player_id, id, Zone::Location(1, Region::Surface))],
+        cards: vec![(
+            player_id,
+            id,
+            Zone::Location(Location::Square(1, Region::Surface)),
+        )],
     }
     .apply(&mut state)
     .await
@@ -1064,7 +1093,7 @@ async fn test_summon_card_applies_on_summon_effects() {
 #[tokio::test]
 async fn test_play_card_minion_ends_in_target_zone() {
     // OgreGoons costs 3F; AridDesert in Realm(1) provides fire threshold.
-    let (mut state, _rx) = make_state(vec![Zone::Location(1, Region::Surface)]);
+    let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
     let player_id = state.players[0].id;
     *state.get_player_mana_mut(&player_id) = 3;
     state.reconcile_ongoing_effects_for_test().await.unwrap();
@@ -1080,7 +1109,7 @@ async fn test_play_card_minion_ends_in_target_zone() {
     Effect::PlayCard {
         player_id,
         card_id: ogre_id,
-        zone: ZoneQuery::from_zone(Zone::Location(1, Region::Surface)),
+        zone: ZoneQuery::from_zone(Zone::Location(Location::Square(1, Region::Surface))),
         spellcaster: avatar_id,
     }
     .apply(&mut state)
@@ -1090,14 +1119,14 @@ async fn test_play_card_minion_ends_in_target_zone() {
 
     assert_eq!(
         state.get_card(&ogre_id).get_zone(),
-        &Zone::Location(1, Region::Surface),
+        &Zone::Location(Location::Square(1, Region::Surface)),
         "minion should end in the chosen zone"
     );
 }
 
 #[tokio::test]
 async fn test_play_card_minion_has_summoning_sickness() {
-    let (mut state, _rx) = make_state(vec![Zone::Location(1, Region::Surface)]);
+    let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
     let player_id = state.players[0].id;
     *state.get_player_mana_mut(&player_id) = 3;
     state.reconcile_ongoing_effects_for_test().await.unwrap();
@@ -1113,7 +1142,7 @@ async fn test_play_card_minion_has_summoning_sickness() {
     Effect::PlayCard {
         player_id,
         card_id: ogre_id,
-        zone: ZoneQuery::from_zone(Zone::Location(1, Region::Surface)),
+        zone: ZoneQuery::from_zone(Zone::Location(Location::Square(1, Region::Surface))),
         spellcaster: avatar_id,
     }
     .apply(&mut state)
@@ -1131,13 +1160,13 @@ async fn test_play_card_minion_has_summoning_sickness() {
 
 #[tokio::test]
 async fn test_summon_token_unit_placed_in_target_zone() {
-    let (mut state, _rx) = make_state(vec![Zone::Location(1, Region::Surface)]);
+    let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
     let player_id = state.players[0].id;
 
     Effect::SummonToken {
         player_id,
         token_type: TokenType::FootSoldier,
-        zone: Zone::Location(1, Region::Surface),
+        zone: Zone::Location(Location::Square(1, Region::Surface)),
     }
     .apply(&mut state)
     .await
@@ -1152,20 +1181,20 @@ async fn test_summon_token_unit_placed_in_target_zone() {
     assert_eq!(soldiers.len(), 1, "one FootSoldier token should exist");
     assert_eq!(
         soldiers[0].get_zone(),
-        &Zone::Location(1, Region::Surface),
+        &Zone::Location(Location::Square(1, Region::Surface)),
         "FootSoldier should be in the target zone"
     );
 }
 
 #[tokio::test]
 async fn test_summon_token_unit_has_summoning_sickness() {
-    let (mut state, _rx) = make_state(vec![Zone::Location(1, Region::Surface)]);
+    let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
     let player_id = state.players[0].id;
 
     Effect::SummonToken {
         player_id,
         token_type: TokenType::FootSoldier,
-        zone: Zone::Location(1, Region::Surface),
+        zone: Zone::Location(Location::Square(1, Region::Surface)),
     }
     .apply(&mut state)
     .await

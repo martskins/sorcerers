@@ -84,7 +84,7 @@ impl Card for UnlandAngler {
                     player_id: controller_id,
                     card_id: minion_id,
                     from: minion.get_zone().clone(),
-                    to: ZoneQuery::from_zone(self.get_zone().clone()),
+                    to: LocationQuery::from_zone(self.get_zone().clone()),
                     tap: minion.is_tapped(),
                     region: minion.get_region(state).clone(),
                     through_path: None,

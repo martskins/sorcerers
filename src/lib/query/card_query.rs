@@ -6,7 +6,7 @@ use crate::{
     },
     game::{Direction, Element, PlayerId, pick_card_source, pick_card_with_options_source},
     state::State,
-    zone::Zone,
+    zone::{Location, Zone},
 };
 use std::sync::{Arc, OnceLock};
 
@@ -432,8 +432,8 @@ impl<'a> PreparedCardQuery<'a> {
             return true;
         }
 
-        if let Zone::Intersection(sub_zones, _) = card.get_zone()
-            && let Zone::Location(square, _) = zone
+        if let Zone::Location(Location::Intersection(sub_zones, _)) = card.get_zone()
+            && let Zone::Location(Location::Square(square, _)) = zone
         {
             return sub_zones.contains(square) && card.is_oversized(self.state);
         }

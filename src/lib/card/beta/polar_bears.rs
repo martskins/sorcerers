@@ -38,11 +38,11 @@ impl PolarBears {
     fn wrapped_neighbours(zone: &Zone) -> Vec<Zone> {
         // Polar Bears can wrap between top row (16-20) and bottom row (1-5)
         match zone {
-            Zone::Location(id, region) if *id >= 1 && *id <= 5 => {
-                vec![Zone::Location(id + 15, region.clone())]
+            Zone::Location(Location::Square(id, region)) if *id >= 1 && *id <= 5 => {
+                vec![Zone::Location(Location::Square(id + 15, region.clone()))]
             }
-            Zone::Location(id, region) if *id >= 16 && *id <= 20 => {
-                vec![Zone::Location(id - 15, region.clone())]
+            Zone::Location(Location::Square(id, region)) if *id >= 16 && *id <= 20 => {
+                vec![Zone::Location(Location::Square(id - 15, region.clone()))]
             }
             _ => vec![],
         }

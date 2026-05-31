@@ -52,7 +52,7 @@ impl RestInPeace {
                         let occupied_zone = match effect {
                             Effect::SummonCards { cards } if cards.len() == 1 => cards[0].2.clone(),
                             Effect::MoveCard { to, player_id, .. } => {
-                                to.pick(player_id, state).await?
+                                to.pick(player_id, state).await?.into_zone()
                             }
                             _ => return Ok(vec![]),
                         };

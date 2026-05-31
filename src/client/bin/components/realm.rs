@@ -17,7 +17,7 @@ use sorcerers::{
         self,
         message::{ClientMessage, OngoingEffectData},
     },
-    zone::Zone,
+    zone::{Location, Zone},
 };
 
 mod geometry;
@@ -69,7 +69,8 @@ trait RealmCardRegion {
 impl RealmCardRegion for CardData {
     fn zone_region(&self) -> Option<Region> {
         match &self.zone {
-            Zone::Location(_, region) | Zone::Intersection(_, region) => Some(region.clone()),
+            Zone::Location(Location::Square(_, region))
+            | Zone::Location(Location::Intersection(_, region)) => Some(region.clone()),
             _ => None,
         }
     }
@@ -135,7 +136,7 @@ impl RealmComponent {
         let intersection_rects = Zone::all_intersections()
             .into_iter()
             .filter_map(|z| match z {
-                Zone::Intersection(locs, _) => {
+                Zone::Location(Location::Intersection(locs, _)) => {
                     intersection_rect(&rect, &locs, mirrored).map(|r| IntersectionRect {
                         locations: locs,
                         rect: r,
@@ -169,11 +170,12 @@ impl RealmComponent {
         self.intersection_rects = Zone::all_intersections()
             .into_iter()
             .filter_map(|z| match z {
-                Zone::Intersection(locs, _) => intersection_rect(&self.rect, &locs, self.mirrored)
-                    .map(|r| IntersectionRect {
+                Zone::Location(Location::Intersection(locs, _)) => {
+                    intersection_rect(&self.rect, &locs, self.mirrored).map(|r| IntersectionRect {
                         locations: locs,
                         rect: r,
-                    }),
+                    })
+                }
                 _ => None,
             })
             .collect();
@@ -255,7 +257,7 @@ impl RealmComponent {
             }
 
             match &card.zone {
-                Zone::Location(square, _) => {
+                Zone::Location(Location::Square(square, _)) => {
                     if self.cell_rects.iter().any(|c| &c.id == square) {
                         let existing = self.card_rects.iter().find(|c| c.card.id == card.id);
                         let rect = cell_inner_rect(&self.rect, *square, self.mirrored, 18.0);
@@ -308,7 +310,7 @@ impl RealmComponent {
                         });
                     }
                 }
-                Zone::Intersection(locs, _) => {
+                Zone::Location(Location::Intersection(locs, _)) => {
                     if let Some(intersection) = self
                         .intersection_rects
                         .iter()
@@ -381,7 +383,7 @@ impl RealmComponent {
         for path in paths {
             let mut points = Vec::new();
             for zone in path {
-                if let Zone::Location(id, _) = zone
+                if let Zone::Location(Location::Square(id, _)) = zone
                     && let Some(cell_r) = self.cell_rects.iter().find(|c| c.id == *id)
                 {
                     points.push(cell_r.rect.center());
@@ -487,13 +489,13 @@ impl RealmComponent {
 
             if let Some(card) = data.cards.iter().find(|card| card.id == source_card_id) {
                 match &card.zone {
-                    Zone::Location(cell_id, _) => {
+                    Zone::Location(Location::Square(cell_id, _)) => {
                         if let Some(cell) = self.cell_rects.iter().find(|cell| cell.id == *cell_id)
                         {
                             return cell.rect.center();
                         }
                     }
-                    Zone::Intersection(locations, _) => {
+                    Zone::Location(Location::Intersection(locations, _)) => {
                         if let Some(intersection) = self
                             .intersection_rects
                             .iter()
@@ -646,14 +648,14 @@ impl RealmComponent {
 
         for zone in zones {
             match zone {
-                Zone::Location(cell_id, _) => {
+                Zone::Location(Location::Square(cell_id, _)) => {
                     painter.add(Shape::convex_polygon(
                         cell_corners(&realm_rect, *cell_id, mirrored, 5.0).to_vec(),
                         fill,
                         stroke,
                     ));
                 }
-                Zone::Intersection(locations, _) => {
+                Zone::Location(Location::Intersection(locations, _)) => {
                     if let Some(intersection) = intersection_rects
                         .iter()
                         .find(|intersection| &intersection.locations == locations)
@@ -682,7 +684,7 @@ impl RealmComponent {
             .filtered_card_rects()
             .filter(|c| c.card.card_type == CardType::Site)
             .filter_map(|c| match &c.card.zone {
-                Zone::Location(loc, _) => Some(*loc),
+                Zone::Location(Location::Square(loc, _)) => Some(*loc),
                 _ => None,
             })
             .collect();
@@ -703,7 +705,7 @@ impl RealmComponent {
             if let Some(zones) = playable_preview_zones {
                 if let Some(zone) = zones
                     .iter()
-                    .find(|zone| matches!(zone, Zone::Location(id, _) if *id == cell.id))
+                    .find(|zone| matches!(zone, Zone::Location(Location::Square(id, _)) if *id == cell.id))
                 {
                     if matches!(data.status, Status::SelectingZone { .. }) {
                         let resp = ui.allocate_rect(rect, Sense::click());
@@ -748,7 +750,9 @@ impl RealmComponent {
             if let Some(zones) = playable_preview_zones {
                 let rect = intersection.rect;
                 let can_pick = zones.iter().any(|z| match z {
-                    Zone::Intersection(locations, _) => locations == &intersection.locations,
+                    Zone::Location(Location::Intersection(locations, _)) => {
+                        locations == &intersection.locations
+                    }
                     _ => false,
                 });
                 if can_pick {
@@ -795,7 +799,7 @@ impl RealmComponent {
                 groups.iter().position(|group| {
                     group
                         .iter()
-                        .any(|zone| matches!(zone, Zone::Location(id, _) if *id == cell_rect.id))
+                        .any(|zone| matches!(zone, Zone::Location(Location::Square(id, _)) if *id == cell_rect.id))
                 })
             });
 
@@ -807,7 +811,7 @@ impl RealmComponent {
                 };
                 let color = Color32::from_rgba_unmultiplied(80, 200, 190, base_alpha);
                 for zone in group {
-                    if let Zone::Location(cell_id, _) = zone
+                    if let Zone::Location(Location::Square(cell_id, _)) = zone
                         && let Some(cell) = self.cell_rects.iter().find(|c| c.id == *cell_id)
                     {
                         let resp = ui.allocate_rect(cell.rect, Sense::click());
@@ -1152,7 +1156,7 @@ impl Component for RealmComponent {
                 }
             }
 
-            if matches!(card_rect.card.zone, Zone::Location(_, _)) {
+            if matches!(card_rect.card.zone, Zone::Location(Location::Square(_, _))) {
                 let corners = card_corners(card_rect.rect, card_rotation(&card_rect.card));
                 render::draw_projected_card(
                     card_rect,
@@ -1170,21 +1174,22 @@ impl Component for RealmComponent {
                 );
             }
 
-            let visual_rect = if matches!(card_rect.card.zone, Zone::Location(_, _)) {
-                Rect::from_points(&card_corners(
-                    card_rect.rect,
-                    card_rotation(&card_rect.card),
-                ))
-            } else {
-                card_rect.rect
-            };
+            let visual_rect =
+                if matches!(card_rect.card.zone, Zone::Location(Location::Square(_, _))) {
+                    Rect::from_points(&card_corners(
+                        card_rect.rect,
+                        card_rotation(&card_rect.card),
+                    ))
+                } else {
+                    card_rect.rect
+                };
 
             if highlighted_effect
                 .as_ref()
                 .is_some_and(|effect| effect.affected_card_ids.contains(&card_rect.card.id))
             {
                 let stroke = Stroke::new(3.0, Color32::from_rgba_unmultiplied(120, 235, 220, 230));
-                if matches!(card_rect.card.zone, Zone::Location(_, _)) {
+                if matches!(card_rect.card.zone, Zone::Location(Location::Square(_, _))) {
                     painter.add(Shape::closed_line(
                         card_corners(card_rect.rect, card_rotation(&card_rect.card)).to_vec(),
                         stroke,
@@ -1216,7 +1221,9 @@ impl Component for RealmComponent {
             }
 
             let cell = match &card_rect.card.zone {
-                Zone::Location(cell_id, _) => self.cell_rects.iter().find(|c| c.id == *cell_id),
+                Zone::Location(Location::Square(cell_id, _)) => {
+                    self.cell_rects.iter().find(|c| c.id == *cell_id)
+                }
                 _ => None,
             };
 
@@ -1225,7 +1232,7 @@ impl Component for RealmComponent {
             {
                 let card_id = card_rect.card.id;
                 let bounds = match card_rect.card.zone {
-                    Zone::Location(cell_id, _) => {
+                    Zone::Location(Location::Square(cell_id, _)) => {
                         cell_inner_rect(&realm_rect, cell_id, mirrored, 18.0)
                     }
                     _ => cell.rect,
@@ -1251,7 +1258,7 @@ impl Component for RealmComponent {
                 && !cards.contains(&card_rect.card.id)
             {
                 let overlay_color = Color32::from_rgba_unmultiplied(100, 100, 100, 153);
-                if matches!(card_rect.card.zone, Zone::Location(_, _)) {
+                if matches!(card_rect.card.zone, Zone::Location(Location::Square(_, _))) {
                     painter.add(Shape::convex_polygon(
                         card_corners(card_rect.rect, card_rotation(&card_rect.card)).to_vec(),
                         overlay_color,
@@ -1317,7 +1324,7 @@ impl Component for RealmComponent {
                 image: flight.image.clone(),
                 is_selected: false,
             };
-            if matches!(card_rect.card.zone, Zone::Location(_, _)) {
+            if matches!(card_rect.card.zone, Zone::Location(Location::Square(_, _))) {
                 render::draw_projected_card(
                     &card_rect,
                     card_rect.card.controller_id == self.player_id,
@@ -1401,7 +1408,7 @@ impl Component for RealmComponent {
                         .find(|cell| cell.rect.contains(*pos))
                         .and_then(|cell| {
                             zones.iter().find(
-                                |zone| matches!(zone, Zone::Location(id, _) if *id == cell.id),
+                                |zone| matches!(zone, Zone::Location(Location::Square(id, _)) if *id == cell.id),
                             )
                         })
                         .or_else(|| {
@@ -1412,7 +1419,7 @@ impl Component for RealmComponent {
                                     zones.iter().find(|zone| {
                                         matches!(
                                             zone,
-                                            Zone::Intersection(locations, _)
+                                            Zone::Location(Location::Intersection(locations, _))
                                                 if locations == &intersection.locations
                                         )
                                     })

@@ -63,8 +63,6 @@ impl Card for EvilPresence {
     }
 
     async fn genesis(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
-        let owner_id = *self.get_owner_id();
-        let zone = self.get_zone().clone();
         let evil_presence_id = *self.get_id();
         Ok(vec![Effect::AddDeferredEffect {
             effect: DeferredEffect {
@@ -77,17 +75,11 @@ impl Card for EvilPresence {
                 expires_on_effect: None,
                 on_effect: Arc::new(
                     move |_state: &State, card_id: &uuid::Uuid, _effect: &Effect| {
-                        let zone = zone.clone();
                         Box::pin(async move {
                             Ok(vec![
-                                Effect::MoveCard {
-                                    player_id: owner_id,
+                                Effect::SetCardZone {
                                     card_id: evil_presence_id,
-                                    from: zone,
-                                    to: ZoneQuery::from_zone(Zone::Hand),
-                                    tap: false,
-                                    region: Region::Surface,
-                                    through_path: None,
+                                    zone: Zone::Hand,
                                 },
                                 Effect::AddAbilityCounter {
                                     card_id: *card_id,

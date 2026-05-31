@@ -1,4 +1,9 @@
-use crate::{game::PlayerId, query::QueryCache, state::State, zone::Zone};
+use crate::{
+    game::PlayerId,
+    query::QueryCache,
+    state::State,
+    zone::{Location, Zone},
+};
 
 #[derive(Debug, Clone)]
 pub(super) enum ZoneSpatialFilter {
@@ -206,5 +211,73 @@ impl ZoneQuery {
     /// Resolves the query, prompting the player if needed. Caches the result.
     pub async fn pick(&self, player_id: &PlayerId, state: &State) -> anyhow::Result<Zone> {
         QueryCache::resolve_zone(self, player_id, state).await
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct LocationQuery {
+    zone_query: ZoneQuery,
+}
+
+impl From<Location> for LocationQuery {
+    fn from(location: Location) -> Self {
+        Self::from_location(location)
+    }
+}
+
+impl From<Zone> for LocationQuery {
+    fn from(zone: Zone) -> Self {
+        Self::from_zone(zone)
+    }
+}
+
+impl From<&Zone> for LocationQuery {
+    fn from(zone: &Zone) -> Self {
+        Self::from_zone(zone.clone())
+    }
+}
+
+impl LocationQuery {
+    pub fn from_location(location: Location) -> Self {
+        Self {
+            zone_query: ZoneQuery::from_zone(Zone::Location(location)),
+        }
+    }
+
+    pub fn from_zone(zone: Zone) -> Self {
+        let Zone::Location(location) = zone else {
+            panic!("LocationQuery::from_zone requires an in-play location");
+        };
+        Self::from_location(location)
+    }
+
+    pub fn from_options(options: Vec<Zone>, prompt: Option<String>) -> Self {
+        Self {
+            zone_query: ZoneQuery::from_options(options, prompt),
+        }
+    }
+
+    pub fn random(options: Vec<Zone>) -> Self {
+        Self {
+            zone_query: ZoneQuery::random(options),
+        }
+    }
+
+    pub fn options(&self, state: &State) -> Vec<Location> {
+        self.zone_query
+            .options(state)
+            .into_iter()
+            .filter_map(|zone| match zone {
+                Zone::Location(location) => Some(location),
+                _ => None,
+            })
+            .collect()
+    }
+
+    pub async fn pick(&self, player_id: &PlayerId, state: &State) -> anyhow::Result<Location> {
+        match self.zone_query.pick(player_id, state).await? {
+            Zone::Location(location) => Ok(location),
+            zone => Err(anyhow::anyhow!("expected location, got {zone}")),
+        }
     }
 }

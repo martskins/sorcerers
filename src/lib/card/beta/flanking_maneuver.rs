@@ -126,7 +126,10 @@ impl Card for FlankingManeuver {
             effects.push(Effect::TeleportCard {
                 player_id: controller,
                 card_id: picked,
-                to_zone: dest_zone.clone(),
+                to_location: dest_zone
+                    .clone()
+                    .into_location()
+                    .expect("teleport target must be a location"),
             });
         }
 

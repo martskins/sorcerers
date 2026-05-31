@@ -4,7 +4,7 @@ use sorcerers::{
     card::{ALL_CARDS, ApprenticeWizard, Card, PoisonousDagger, Region},
     query::CardQuery,
     state::State,
-    zone::Zone,
+    zone::{Location, Zone},
 };
 
 fn setup_state_with_cards(num_cards: usize) -> State {
@@ -17,10 +17,10 @@ fn setup_state_with_cards(num_cards: usize) -> State {
         .choose_multiple(&mut rand::rng(), num_cards)
         .for_each(|(_, constructor)| {
             let mut card = constructor(player_id);
-            card.set_zone(Zone::Location(
+            card.set_zone(Zone::Location(Location::Square(
                 (card.get_id().as_u128() % 25) as u8,
                 Region::Surface,
-            ));
+            )));
             state.cards.insert(*card.get_id(), card);
         });
 
@@ -31,14 +31,14 @@ fn bench_card_query(c: &mut Criterion) {
     let mut state = setup_state_with_cards(180);
     let player_id = state.players[0].id;
     let mut card = ApprenticeWizard::new(player_id);
-    card.set_zone(Zone::Location(8, Region::Surface));
+    card.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
     state.cards.insert(*card.get_id(), Box::new(card.clone()));
 
     let mut group = c.benchmark_group("CardQuery");
     group.bench_function("Zone + Untapped", |b| {
         b.iter(|| {
             let query = CardQuery::new()
-                .in_zone(&Zone::Location(10, Region::Surface))
+                .in_zone(&Zone::Location(Location::Square(10, Region::Surface)))
                 .untapped();
             let _ = black_box(query.all(&state));
         })
@@ -67,11 +67,11 @@ fn bench_card_query_manual(c: &mut Criterion) {
 
     let mut card = ApprenticeWizard::new(player_id);
     let card_id = *card.get_id();
-    card.set_zone(Zone::Location(8, Region::Surface));
+    card.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
     state.cards.insert(*card.get_id(), Box::new(card.clone()));
 
     let mut dagger = PoisonousDagger::new(player_id);
-    dagger.set_zone(Zone::Location(8, Region::Surface));
+    dagger.set_zone(Zone::Location(Location::Square(8, Region::Surface)));
     dagger.set_bearer_id(Some(*card.get_id()));
     state
         .cards

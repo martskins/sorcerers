@@ -103,7 +103,7 @@ impl Card for FireHarpoons {
                 player_id: controller_id,
                 card_id: target_id,
                 from: target.get_zone().clone(),
-                to: ZoneQuery::from_zone(caster_zone),
+                to: LocationQuery::from_zone(caster_zone),
                 tap: false,
                 region: target.get_region(state).clone(),
                 through_path: None,

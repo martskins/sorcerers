@@ -127,7 +127,7 @@ impl Card for Wildfire {
             player_id: *self.get_owner_id(),
             card_id: *self.get_id(),
             from: self.get_zone().clone(),
-            to: ZoneQuery::from_zone(picked_zone.clone()),
+            to: LocationQuery::from_zone(picked_zone.clone()),
             tap: false,
             region: self.get_region(state).clone(),
             through_path: None,

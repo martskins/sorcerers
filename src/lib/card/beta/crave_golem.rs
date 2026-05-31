@@ -128,7 +128,7 @@ impl Card for CraveGolem {
                 {
                     return Ok(vec![Effect::MoveCard {
                         card_id: *self.get_id(),
-                        to: ZoneQuery::from_zone(target_zone),
+                        to: LocationQuery::from_zone(target_zone),
                         player_id: self.get_controller_id(state),
                         from: self_zone,
                         tap: true,

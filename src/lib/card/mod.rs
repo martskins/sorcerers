@@ -804,13 +804,13 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     fn set_region(&mut self, region: Region) {
         let base = self.get_base_mut();
         match &base.zone {
-            Zone::Location(sq, _) => {
+            Zone::Location(Location::Square(sq, _)) => {
                 let sq = *sq;
-                base.zone = Zone::Location(sq, region);
+                base.zone = Zone::Location(Location::Square(sq, region));
             }
-            Zone::Intersection(sqs, _) => {
+            Zone::Location(Location::Intersection(sqs, _)) => {
                 let sqs = sqs.clone();
-                base.zone = Zone::Intersection(sqs, region);
+                base.zone = Zone::Location(Location::Intersection(sqs, region));
             }
             _ => {}
         }
@@ -992,11 +992,11 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     fn get_zones_within_steps_of(&self, state: &State, steps: u8, zone: &Zone) -> Vec<Zone> {
         fn top_bottom_wrapped_neighbours(zone: &Zone) -> Vec<Zone> {
             match zone {
-                Zone::Location(id, region) if *id >= 1 && *id <= 5 => {
-                    vec![Zone::Location(id + 15, region.clone())]
+                Zone::Location(Location::Square(id, region)) if *id >= 1 && *id <= 5 => {
+                    vec![Zone::Location(Location::Square(id + 15, region.clone()))]
                 }
-                Zone::Location(id, region) if *id >= 16 && *id <= 20 => {
-                    vec![Zone::Location(id - 15, region.clone())]
+                Zone::Location(Location::Square(id, region)) if *id >= 16 && *id <= 20 => {
+                    vec![Zone::Location(Location::Square(id - 15, region.clone()))]
                 }
                 _ => vec![],
             }
@@ -1004,11 +1004,11 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
         fn left_right_wrapped_neighbours(zone: &Zone) -> Vec<Zone> {
             match zone {
-                Zone::Location(id, region) if (*id - 1) % 5 == 0 => {
-                    vec![Zone::Location(id + 4, region.clone())]
+                Zone::Location(Location::Square(id, region)) if (*id - 1) % 5 == 0 => {
+                    vec![Zone::Location(Location::Square(id + 4, region.clone()))]
                 }
-                Zone::Location(id, region) if *id % 5 == 0 => {
-                    vec![Zone::Location(id - 4, region.clone())]
+                Zone::Location(Location::Square(id, region)) if *id % 5 == 0 => {
+                    vec![Zone::Location(Location::Square(id - 4, region.clone()))]
                 }
                 _ => vec![],
             }
@@ -1183,8 +1183,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
         let zone = &self.get_base().zone;
         match zone {
-            Zone::Location(_, region) => region,
-            Zone::Intersection(_, region) => region,
+            Zone::Location(Location::Square(_, region)) => region,
+            Zone::Location(Location::Intersection(_, region)) => region,
             _ => &VOID,
         }
     }
@@ -1291,15 +1291,15 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     /// Returns true if this card physically occupies `zone`.
     ///
     /// For normal cards this is equivalent to `self.get_zone() == zone`.
-    /// For oversized units at a `Zone::Intersection`, the unit also occupies
+    /// For oversized units at a `Location::Intersection`, the unit also occupies
     /// each of the four constituent `Zone::Realm` sub-zones.
     fn occupies_zone(&self, state: &State, zone: &Zone) -> bool {
         if self.get_zone() == zone {
             return true;
         }
         if self.is_oversized(state)
-            && let Zone::Intersection(sub_zones, _) = self.get_zone()
-            && let Zone::Location(sq, _) = zone
+            && let Zone::Location(Location::Intersection(sub_zones, _)) = self.get_zone()
+            && let Zone::Location(Location::Square(sq, _)) = zone
         {
             return sub_zones.contains(sq);
         }
@@ -2615,11 +2615,11 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
 
     fn base_get_affected_zones(&self, _state: &State) -> Vec<Zone> {
         match self.get_zone() {
-            z @ Zone::Location(_, _) => vec![z.clone()],
-            Zone::Intersection(locs, region) => {
+            z @ Zone::Location(Location::Square(_, _)) => vec![z.clone()],
+            Zone::Location(Location::Intersection(locs, region)) => {
                 let mut zones = Vec::new();
                 for sq in locs {
-                    zones.push(Zone::Location(*sq, region.clone()));
+                    zones.push(Zone::Location(Location::Square(*sq, region.clone())));
                 }
                 zones
             }
@@ -2919,9 +2919,9 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
 
             // Oversized units may only move to intersection zones where all 4 sub-zones have sites.
             if self.is_oversized(state)
-                && let Zone::Intersection(sqs, region) = zone
+                && let Zone::Location(Location::Intersection(sqs, region)) = zone
                 && sqs.iter().all(|sq| {
-                    Zone::Location(*sq, region.clone())
+                    Zone::Location(Location::Square(*sq, region.clone()))
                         .get_site(state)
                         .is_some()
                 })
@@ -3066,7 +3066,7 @@ fn zones_cross_border(from: &Zone, to: &Zone, border: &Zone) -> bool {
     };
 
     match border {
-        Zone::Intersection(squares, _) => {
+        Zone::Location(Location::Intersection(squares, _)) => {
             squares.contains(&from_square) && squares.contains(&to_square)
         }
         _ => false,
@@ -3123,7 +3123,7 @@ fn leap_destinations(state: &State, zone: &Zone) -> Vec<Zone> {
     let Some(square) = zone.get_square() else {
         return vec![];
     };
-    let Zone::Location(_, region) = zone else {
+    let Zone::Location(Location::Square(_, region)) = zone else {
         return vec![];
     };
     let col = ((square - 1) % 5) as i8;
@@ -3144,10 +3144,13 @@ fn leap_destinations(state: &State, zone: &Zone) -> Vec<Zone> {
                 return None;
             }
             let middle_square = (middle_row * 5 + middle_col + 1) as u8;
-            let middle = Zone::Location(middle_square, region.clone());
+            let middle = Zone::Location(Location::Square(middle_square, region.clone()));
             middle.get_site(state)?;
             let landing_square = (landing_row * 5 + landing_col + 1) as u8;
-            Some(Zone::Location(landing_square, region.clone()))
+            Some(Zone::Location(Location::Square(
+                landing_square,
+                region.clone(),
+            )))
         })
         .collect()
 }

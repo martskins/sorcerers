@@ -89,7 +89,7 @@ impl Card for WallOfFire {
         let mut path = vec![from.clone()];
         match through_path {
             Some(steps) => path.extend(steps.clone()),
-            None => path.push(to.pick(player_id, state).await?),
+            None => path.push(to.pick(player_id, state).await?.into_zone()),
         }
 
         if path
@@ -113,7 +113,7 @@ fn zones_cross_border(from: &Zone, to: &Zone, border: &Zone) -> bool {
     };
 
     match border {
-        Zone::Intersection(squares, _) => {
+        Zone::Location(Location::Intersection(squares, _)) => {
             squares.contains(&from_square) && squares.contains(&to_square)
         }
         _ => false,
@@ -127,7 +127,7 @@ fn border_zones_of_controlled_sites(state: &State, player_id: &PlayerId) -> Vec<
         .filter(|card| card.is_site())
         .filter(|card| card.get_controller_id(state) == *player_id)
         .filter_map(|card| match card.get_zone() {
-            Zone::Location(square, Region::Surface) => Some(*square),
+            Zone::Location(Location::Square(square, Region::Surface)) => Some(*square),
             _ => None,
         })
         .collect();
@@ -135,7 +135,7 @@ fn border_zones_of_controlled_sites(state: &State, player_id: &PlayerId) -> Vec<
     Zone::all_intersections()
         .into_iter()
         .filter(|zone| match zone {
-            Zone::Intersection(squares, _) => squares
+            Zone::Location(Location::Intersection(squares, _)) => squares
                 .iter()
                 .any(|square| controlled_sites.contains(square)),
             _ => false,

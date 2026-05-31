@@ -68,7 +68,7 @@ impl ActivatedAbility for TapMoveAndStrike {
                 player_id: *player_id,
                 card_id: *card_id,
                 from: start_zone,
-                to: ZoneQuery::from_zone(final_zone.clone()),
+                to: LocationQuery::from_zone(final_zone.clone()),
                 tap: false,
                 region: state.get_card(card_id).get_region(state).clone(),
                 through_path: Some(path),

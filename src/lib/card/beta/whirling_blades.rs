@@ -90,7 +90,7 @@ impl Card for WhirlingBlades {
                 player_id: controller_id,
                 card_id: ally_id,
                 from: from_zone.clone(),
-                to: ZoneQuery::from_zone(destination),
+                to: LocationQuery::from_zone(destination),
                 tap: false,
                 region: ally.get_region(state).clone(),
                 through_path: None,

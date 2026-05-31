@@ -41,7 +41,9 @@ impl ActivatedAbility for SpearStrike {
             Effect::TeleportCard {
                 player_id: controller_id,
                 card_id: *card_id,
-                to_zone: target_zone,
+                to_location: target_zone
+                    .into_location()
+                    .expect("teleport target must be a location"),
             },
             Effect::KillMinion {
                 card_id: target_id,

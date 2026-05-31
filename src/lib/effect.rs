@@ -1,9 +1,9 @@
-use crate::zone::Zone;
+use crate::zone::{Location, Zone};
 use crate::{
     card::{Ability, Card, CardStatus, Cost, Damage, FootSoldier, Frog, Region, Rubble, UnitBase},
     game::{BaseAction, Direction, PlayerAction, PlayerId, SoundEffect, pick_card, pick_option},
     networking::message::ServerMessage,
-    query::{CardQuery, EffectQuery, QueryCache, ZoneQuery, entered_site},
+    query::{CardQuery, EffectQuery, LocationQuery, QueryCache, ZoneQuery, entered_site},
     state::{ContinuousEffect, Phase, State, Turn},
 };
 use std::{collections::HashMap, fmt::Debug};
@@ -151,7 +151,7 @@ pub enum Effect {
         player_id: PlayerId,
         card_id: uuid::Uuid,
         from: Zone,
-        to: ZoneQuery,
+        to: LocationQuery,
         tap: bool,
         region: Region,
         through_path: Option<Vec<Zone>>,
@@ -223,7 +223,7 @@ pub enum Effect {
     TeleportCard {
         player_id: PlayerId,
         card_id: uuid::Uuid,
-        to_zone: Zone,
+        to_location: Location,
     },
     RearrangeDeck {
         spells: Vec<uuid::Uuid>,
@@ -499,7 +499,7 @@ impl Effect {
                         "{} moves {} to {}",
                         player_name(player_id, state),
                         card_name,
-                        to.pick(player_id, state).await?,
+                        to.pick(player_id, state).await?.into_zone(),
                     )),
                 }
             }
@@ -639,14 +639,14 @@ impl Effect {
             Effect::TeleportCard {
                 player_id,
                 card_id,
-                to_zone,
+                to_location,
             } => {
                 let card = state.get_card(card_id).get_name();
                 Some(format!(
                     "{} teleports {} to {}",
                     player_name(player_id, state),
                     card,
-                    to_zone
+                    to_location
                 ))
             }
             Effect::RearrangeDeck { .. } => None,
@@ -1153,7 +1153,7 @@ impl Effect {
                     }
                     None => {
                         let snapshot = state.clone();
-                        let zone = to.pick(player_id, state).await?;
+                        let zone = to.pick(player_id, state).await?.into_zone();
                         let card = state.get_card_mut(card_id);
                         let region = card.get_region(&snapshot).clone();
                         let from_zone = card.get_zone().clone();
@@ -1622,7 +1622,7 @@ impl Effect {
                                         player_id: defending_card.get_controller_id(state),
                                         card_id: *defending_id,
                                         from: defending_card.get_zone().clone(),
-                                        to: ZoneQuery::from_zone(attacker_zone.clone()),
+                                        to: LocationQuery::from_zone(attacker_zone.clone()),
                                         tap: true,
                                         region: attacker_region.clone(),
                                         through_path: None,
@@ -1987,7 +1987,7 @@ impl Effect {
             Effect::TeleportCard {
                 player_id,
                 card_id,
-                to_zone,
+                to_location,
                 ..
             } => {
                 let card = state.get_card(card_id);
@@ -1995,7 +1995,7 @@ impl Effect {
                     player_id: *player_id,
                     card_id: *card_id,
                     from: card.get_zone().clone(),
-                    to: ZoneQuery::from_zone(to_zone.clone()),
+                    to: LocationQuery::from_location(to_location.clone()),
                     tap: false,
                     region: Region::Surface,
                     through_path: None,

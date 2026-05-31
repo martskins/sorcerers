@@ -39,7 +39,10 @@ impl TheColourOutOfSpace {
             .get_adjacent()
             .into_iter()
             .filter(|zone| zone != self.get_zone())
-            .any(|zone| matches!(zone, Zone::Location(_, _)) && zone.get_site(state).is_none())
+            .any(|zone| {
+                matches!(zone, Zone::Location(Location::Square(_, _)))
+                    && zone.get_site(state).is_none()
+            })
     }
 }
 

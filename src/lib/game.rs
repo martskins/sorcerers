@@ -8,7 +8,7 @@ use crate::{
         client::Client,
         message::{ClientMessage, ServerMessage},
     },
-    query::{CardQuery, QueryCache, ZoneQuery},
+    query::{CardQuery, QueryCache},
     state::{Phase, PlayerWithDeck, State},
 };
 use async_channel::{Receiver, Sender};
@@ -972,25 +972,27 @@ pub fn are_nearby(square1: &Zone, square2: &Zone) -> bool {
 pub fn get_nearby_zones(zone: &Zone) -> Vec<Zone> {
     let mut adjacent = get_adjacent_zones(zone);
     let region = match zone {
-        Zone::Location(_, r) | Zone::Intersection(_, r) => r.clone(),
+        Zone::Location(Location::Square(_, r)) | Zone::Location(Location::Intersection(_, r)) => {
+            r.clone()
+        }
         _ => Region::Surface,
     };
     match zone {
-        Zone::Location(square, _) => {
+        Zone::Location(Location::Square(square, _)) => {
             let diagonals = match square % 5 {
                 0 => vec![
-                    Zone::Location(square.saturating_add(4), region.clone()),
-                    Zone::Location(square.saturating_sub(6), region.clone()),
+                    Zone::Location(Location::Square(square.saturating_add(4), region.clone())),
+                    Zone::Location(Location::Square(square.saturating_sub(6), region.clone())),
                 ],
                 1 => vec![
-                    Zone::Location(square.saturating_sub(4), region.clone()),
-                    Zone::Location(square.saturating_add(6), region.clone()),
+                    Zone::Location(Location::Square(square.saturating_sub(4), region.clone())),
+                    Zone::Location(Location::Square(square.saturating_add(6), region.clone())),
                 ],
                 _ => vec![
-                    Zone::Location(square.saturating_sub(4), region.clone()),
-                    Zone::Location(square.saturating_add(6), region.clone()),
-                    Zone::Location(square.saturating_add(4), region.clone()),
-                    Zone::Location(square.saturating_sub(6), region.clone()),
+                    Zone::Location(Location::Square(square.saturating_sub(4), region.clone())),
+                    Zone::Location(Location::Square(square.saturating_add(6), region.clone())),
+                    Zone::Location(Location::Square(square.saturating_add(4), region.clone())),
+                    Zone::Location(Location::Square(square.saturating_sub(6), region.clone())),
                 ],
             };
             adjacent.extend(diagonals);
@@ -999,38 +1001,41 @@ pub fn get_nearby_zones(zone: &Zone) -> Vec<Zone> {
             adjacent.dedup();
             adjacent
         }
-        Zone::Intersection(sqs, _) => {
+        Zone::Location(Location::Intersection(sqs, _)) => {
             // Nearby zones are all adjacent zones of all squares in the intersection, plus all intersections that share at least one square
             let mut nearby = Vec::new();
             for sq in sqs {
-                let realm_zone = Zone::Location(*sq, region.clone());
+                let realm_zone = Zone::Location(Location::Square(*sq, region.clone()));
                 nearby.extend(get_adjacent_zones(&realm_zone));
                 // Add diagonals for each square
                 let diagonals = match sq % 5 {
                     0 => vec![
-                        Zone::Location(sq.saturating_add(4), region.clone()),
-                        Zone::Location(sq.saturating_sub(6), region.clone()),
+                        Zone::Location(Location::Square(sq.saturating_add(4), region.clone())),
+                        Zone::Location(Location::Square(sq.saturating_sub(6), region.clone())),
                     ],
                     1 => vec![
-                        Zone::Location(sq.saturating_sub(4), region.clone()),
-                        Zone::Location(sq.saturating_add(6), region.clone()),
+                        Zone::Location(Location::Square(sq.saturating_sub(4), region.clone())),
+                        Zone::Location(Location::Square(sq.saturating_add(6), region.clone())),
                     ],
                     _ => vec![
-                        Zone::Location(sq.saturating_sub(4), region.clone()),
-                        Zone::Location(sq.saturating_add(6), region.clone()),
-                        Zone::Location(sq.saturating_add(4), region.clone()),
-                        Zone::Location(sq.saturating_sub(6), region.clone()),
+                        Zone::Location(Location::Square(sq.saturating_sub(4), region.clone())),
+                        Zone::Location(Location::Square(sq.saturating_add(6), region.clone())),
+                        Zone::Location(Location::Square(sq.saturating_add(4), region.clone())),
+                        Zone::Location(Location::Square(sq.saturating_sub(6), region.clone())),
                     ],
                 };
                 nearby.extend(diagonals);
             }
             // Add intersections that share at least one square (excluding self)
             for intersection in Zone::all_intersections() {
-                if let Zone::Intersection(isqs, _) = &intersection
+                if let Zone::Location(Location::Intersection(isqs, _)) = &intersection
                     && isqs != sqs
                     && isqs.iter().any(|sq| sqs.contains(sq))
                 {
-                    nearby.push(Zone::Intersection(isqs.clone(), region.clone()));
+                    nearby.push(Zone::Location(Location::Intersection(
+                        isqs.clone(),
+                        region.clone(),
+                    )));
                 }
             }
             // Remove duplicates
@@ -1043,62 +1048,64 @@ pub fn get_nearby_zones(zone: &Zone) -> Vec<Zone> {
 
 pub fn get_adjacent_zones(zone: &Zone) -> Vec<Zone> {
     let region = match zone {
-        Zone::Location(_, r) | Zone::Intersection(_, r) => r.clone(),
+        Zone::Location(Location::Square(_, r)) | Zone::Location(Location::Intersection(_, r)) => {
+            r.clone()
+        }
         _ => Region::Surface,
     };
     match zone {
-        &Zone::Location(square, _) => {
+        &Zone::Location(Location::Square(square, _)) => {
             let mut adjacent = match square % 5 {
                 0 => vec![
-                    Zone::Location(square.saturating_add(5), region.clone()),
-                    Zone::Location(square.saturating_sub(5), region.clone()),
-                    Zone::Location(square.saturating_sub(1), region.clone()),
-                    Zone::Location(square, region.clone()),
+                    Zone::Location(Location::Square(square.saturating_add(5), region.clone())),
+                    Zone::Location(Location::Square(square.saturating_sub(5), region.clone())),
+                    Zone::Location(Location::Square(square.saturating_sub(1), region.clone())),
+                    Zone::Location(Location::Square(square, region.clone())),
                 ],
                 1 => vec![
-                    Zone::Location(square.saturating_add(5), region.clone()),
-                    Zone::Location(square.saturating_sub(5), region.clone()),
-                    Zone::Location(square.saturating_add(1), region.clone()),
-                    Zone::Location(square, region.clone()),
+                    Zone::Location(Location::Square(square.saturating_add(5), region.clone())),
+                    Zone::Location(Location::Square(square.saturating_sub(5), region.clone())),
+                    Zone::Location(Location::Square(square.saturating_add(1), region.clone())),
+                    Zone::Location(Location::Square(square, region.clone())),
                 ],
                 _ => vec![
-                    Zone::Location(square.saturating_add(5), region.clone()),
-                    Zone::Location(square.saturating_sub(5), region.clone()),
-                    Zone::Location(square.saturating_add(1), region.clone()),
-                    Zone::Location(square.saturating_sub(1), region.clone()),
-                    Zone::Location(square, region.clone()),
+                    Zone::Location(Location::Square(square.saturating_add(5), region.clone())),
+                    Zone::Location(Location::Square(square.saturating_sub(5), region.clone())),
+                    Zone::Location(Location::Square(square.saturating_add(1), region.clone())),
+                    Zone::Location(Location::Square(square.saturating_sub(1), region.clone())),
+                    Zone::Location(Location::Square(square, region.clone())),
                 ],
             };
             adjacent.retain(|s| s.get_square().unwrap_or(0) <= 20);
             adjacent.retain(|s| s.get_square().unwrap_or(0) > 0);
             adjacent
         }
-        Zone::Intersection(locs, _) => {
+        Zone::Location(Location::Intersection(locs, _)) => {
             let mut locs = locs.clone();
             locs.sort();
             let mut intersections = vec![
-                Zone::Intersection(
+                Zone::Location(Location::Intersection(
                     locs.iter().map(|l| l.saturating_add(5)).collect(),
                     region.clone(),
-                ),
-                Zone::Intersection(
+                )),
+                Zone::Location(Location::Intersection(
                     locs.iter().map(|l| l.saturating_add(1)).collect(),
                     region.clone(),
-                ),
+                )),
             ];
 
             if locs[0] > 1 {
-                intersections.push(Zone::Intersection(
+                intersections.push(Zone::Location(Location::Intersection(
                     locs.iter().map(|l| l.saturating_sub(1)).collect(),
                     region.clone(),
-                ));
+                )));
             }
 
             if locs[0] > 5 {
-                intersections.push(Zone::Intersection(
+                intersections.push(Zone::Location(Location::Intersection(
                     locs.iter().map(|l| l.saturating_sub(5)).collect(),
                     region.clone(),
-                ));
+                )));
             }
 
             intersections
@@ -1126,7 +1133,7 @@ pub fn get_knight_move_zones(zone: &Zone) -> Vec<Zone> {
         .iter()
         .map(|(dc, dr)| (col + dc, row + dr))
         .filter(|(c, r)| *c >= 1 && *c <= 5 && *r >= 1 && *r <= 4)
-        .map(|(c, r)| Zone::Location(((r - 1) * 5 + c) as u8, Region::Surface))
+        .map(|(c, r)| Zone::Location(Location::Square(((r - 1) * 5 + c) as u8, Region::Surface)))
         .collect()
 }
 
@@ -1495,7 +1502,7 @@ impl ActivatedAbility for UnitAction {
                                         player_id: opponent.id,
                                         card_id: defender_id,
                                         from: defender.get_zone().clone(),
-                                        to: ZoneQuery::from_zone(attacker.get_zone().clone()),
+                                        to: LocationQuery::from_zone(attacker.get_zone().clone()),
                                         tap: true,
                                         region: attacker.get_region(state).clone(),
                                         through_path: None,
@@ -1631,7 +1638,7 @@ impl ActivatedAbility for UnitAction {
                         player_id: *player_id,
                         card_id: *card_id,
                         from: zone.clone(),
-                        to: ZoneQuery::from_zone(to_zone.clone()),
+                        to: LocationQuery::from_zone(to_zone.clone()),
                         tap: true,
                         region: card.get_region(state).clone(),
                         through_path: Some(path.clone()),
@@ -1970,7 +1977,7 @@ impl Game {
                 }
 
                 let acting_player = self.state.current_player();
-                if matches!(card.get_zone(), Zone::Location(_, _)) {
+                if matches!(card.get_zone(), Zone::Location(Location::Square(_, _))) {
                     if card.get_controller_id(&self.state) != acting_player {
                         return Ok(());
                     }
@@ -2291,7 +2298,10 @@ impl Game {
                 player_id: *player_id,
                 card_id: avatar_id,
                 from: Zone::Spellbook,
-                to: ZoneQuery::from_zone(Zone::Location(square, Region::Surface)),
+                to: LocationQuery::from_zone(Zone::Location(Location::Square(
+                    square,
+                    Region::Surface,
+                ))),
                 tap: false,
                 region: Region::Surface,
                 through_path: None,

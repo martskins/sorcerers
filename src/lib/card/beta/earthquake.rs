@@ -60,12 +60,12 @@ impl Card for Earthquake {
             "Earthquake: Pick a two-by-two area",
         )
         .await?;
-        let Zone::Intersection(squares, _) = area else {
+        let Zone::Location(Location::Intersection(squares, _)) = area else {
             return Ok(vec![]);
         };
         let affected_zones = squares
             .into_iter()
-            .map(|square| Zone::Location(square, Region::Surface))
+            .map(|square| Zone::Location(Location::Square(square, Region::Surface)))
             .collect::<Vec<Zone>>();
         let affected_cards = CardQuery::new()
             .card_types(vec![CardType::Minion, CardType::Artifact])

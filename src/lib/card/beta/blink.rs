@@ -74,7 +74,9 @@ impl Card for Blink {
             Effect::TeleportCard {
                 player_id: controller_id,
                 card_id,
-                to_zone: zone,
+                to_location: zone
+                    .into_location()
+                    .expect("teleport target must be a location"),
             },
             Effect::DrawCard {
                 player_id: self.get_controller_id(state),

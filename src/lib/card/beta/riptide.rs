@@ -79,7 +79,7 @@ impl Card for Riptide {
                 player_id: self.get_controller_id(state),
                 card_id: picked_unit_id,
                 from: unit.get_zone().clone(),
-                to: ZoneQuery::from_zone(site.get_zone().clone()),
+                to: LocationQuery::from_zone(site.get_zone().clone()),
                 tap: false,
                 region: unit.get_region(state).clone(),
                 through_path: None,

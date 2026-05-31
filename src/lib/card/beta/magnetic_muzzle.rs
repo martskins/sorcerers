@@ -91,7 +91,7 @@ impl Card for MagneticMuzzle {
                 player_id,
                 card_id: *self.get_id(),
                 from: self.get_zone().clone(),
-                to: ZoneQuery::from_zone(target.get_zone().clone()),
+                to: LocationQuery::from_zone(target.get_zone().clone()),
                 tap: false,
                 region: target.get_region(state).clone(),
                 through_path: None,

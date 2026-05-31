@@ -35,9 +35,9 @@ pub(crate) mod prelude {
         pick_option, pick_option_source, pick_zone, pick_zone_group, pick_zone_group_source,
         pick_zone_near, pick_zone_source, reveal_cards, take_action, yes_or_no_source,
     };
-    pub use crate::query::{CardQuery, EffectQuery, ZoneQuery};
+    pub use crate::query::{CardQuery, EffectQuery, LocationQuery, ZoneQuery};
     pub use crate::state::{
         AbilityRemoval, ContinuousEffect, DeferredEffect, LoggedEffect, State, TemporaryEffect,
     };
-    pub use crate::zone::Zone;
+    pub use crate::zone::{Location, Zone};
 }

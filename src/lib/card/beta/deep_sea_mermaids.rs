@@ -65,14 +65,9 @@ impl Card for DeepSeaMermaids {
         let controller_id = self.get_controller_id(state);
         let deck = state.get_player_deck(&controller_id)?;
         if let Some(card_id) = deck.spells.first() {
-            return Ok(vec![Effect::MoveCard {
-                player_id: controller_id,
+            return Ok(vec![Effect::SetCardZone {
                 card_id: *card_id,
-                from: Zone::Spellbook,
-                to: ZoneQuery::from_zone(Zone::Hand),
-                tap: false,
-                region: Region::Surface,
-                through_path: None,
+                zone: Zone::Hand,
             }]);
         }
 

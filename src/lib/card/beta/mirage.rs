@@ -104,14 +104,9 @@ impl Card for Mirage {
             .await?;
             let other_zone = state.get_card(&other_site_id).get_zone().clone();
             return Ok(vec![
-                Effect::MoveCard {
-                    player_id: *player_id,
+                Effect::SetCardZone {
                     card_id: other_site_id,
-                    from: other_zone.clone(),
-                    to: ZoneQuery::from_zone(Zone::Hand),
-                    tap: false,
-                    region: Region::Surface,
-                    through_path: None,
+                    zone: Zone::Hand,
                 },
                 Effect::PlayCard {
                     player_id: *player_id,

@@ -79,7 +79,7 @@ impl ActivatedAbility for PathfinderSitewalk {
                 player_id: *player_id,
                 card_id: *card_id,
                 from: pathfinder.get_zone().clone(),
-                to: ZoneQuery::from_zone(zone),
+                to: LocationQuery::from_zone(zone),
                 tap: false,
                 region: pathfinder.get_region(state).clone(),
                 through_path: None,

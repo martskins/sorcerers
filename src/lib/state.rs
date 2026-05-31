@@ -1,3 +1,5 @@
+#[cfg(test)]
+use crate::prelude::Location;
 use crate::{
     card::{Ability, Card, CardData, CardStatus, CardType, Costs, DodgeRoll, SiteType},
     deck::Deck,
@@ -7,7 +9,7 @@ use crate::{
         ActivatedAbility, PlayerId, Resources, Thresholds, ThresholdsDiff, pick_zone, yes_or_no,
     },
     networking::message::{ClientMessage, OngoingEffectData, ServerMessage},
-    query::{CardQuery, EffectQuery, ZoneQuery},
+    query::{CardQuery, EffectQuery, LocationQuery, ZoneQuery},
     zone::Zone,
 };
 use async_channel::{Receiver, Sender};
@@ -948,7 +950,7 @@ impl State {
                         player_id: attacker_controller,
                         card_id: *attacker_id,
                         from: attacker.get_zone().clone(),
-                        to: ZoneQuery::from_zone(defender.get_zone().clone()),
+                        to: LocationQuery::from_zone(defender.get_zone().clone()),
                         tap: true,
                         region: attacker.get_region(self).clone(),
                         through_path: None,
@@ -1842,7 +1844,7 @@ impl State {
                 from_name_and_zone(
                     AridDesert::NAME,
                     &player_one_id,
-                    Zone::Location(*z, Region::Surface),
+                    Zone::Location(Location::Square(*z, Region::Surface)),
                 )
             })
             .collect();

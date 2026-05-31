@@ -86,7 +86,7 @@ impl Card for Thunderstorm {
             player_id: self.get_controller_id(state),
             card_id: *self.get_id(),
             from: self.get_zone().clone(),
-            to: ZoneQuery::from_options(
+            to: LocationQuery::from_options(
                 zones,
                 Some("Pick a zone to move Thunderstorm to".to_string()),
             ),

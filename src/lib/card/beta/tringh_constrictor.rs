@@ -40,7 +40,7 @@ impl ActivatedAbility for Constrict {
                     player_id: *player_id,
                     card_id: *card_id,
                     from: constrictor.get_zone().clone(),
-                    to: ZoneQuery::from_zone(picked_zone.clone()),
+                    to: LocationQuery::from_zone(picked_zone.clone()),
                     tap: true,
                     region: constrictor.get_region(state).clone(),
                     through_path: None,

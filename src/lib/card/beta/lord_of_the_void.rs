@@ -116,18 +116,9 @@ impl Card for LordOfTheVoid {
         let units_there = CardQuery::new().units().in_zone(&target_zone).all(state);
         let mut effects: Vec<Effect> = units_there
             .into_iter()
-            .map(|unit_id| {
-                let unit = state.get_card(&unit_id);
-                let unit_owner = *unit.get_owner_id();
-                Effect::MoveCard {
-                    player_id: unit_owner,
-                    card_id: unit_id,
-                    from: target_zone.clone(),
-                    to: ZoneQuery::from_zone(Zone::Spellbook),
-                    tap: false,
-                    region: Region::Surface,
-                    through_path: None,
-                }
+            .map(|unit_id| Effect::SetCardZone {
+                card_id: unit_id,
+                zone: Zone::Spellbook,
             })
             .collect();
 

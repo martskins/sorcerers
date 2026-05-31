@@ -111,7 +111,7 @@ impl Card for CerberusInChains {
                             player_id: owner_id,
                             card_id: cerberus_id,
                             from,
-                            to: ZoneQuery::from_zone(new_zone),
+                            to: LocationQuery::from_zone(new_zone),
                             tap: false,
                             region,
                             through_path: None,

@@ -72,7 +72,7 @@ impl ActivatedAbility for SettleAction {
                 player_id: *player_id,
                 card_id: *card_id,
                 from: state.get_card(card_id).get_zone().clone(),
-                to: crate::query::ZoneQuery::from_zone(chosen_zone.clone()),
+                to: crate::query::LocationQuery::from_zone(chosen_zone.clone()),
                 tap: false,
                 region: Region::Surface,
                 through_path: None,

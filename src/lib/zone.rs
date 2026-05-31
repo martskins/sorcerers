@@ -6,6 +6,56 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Clone, PartialEq, PartialOrd, Ord, Eq, Serialize, Deserialize)]
+pub enum Location {
+    Square(u8, Region),
+    Intersection(Vec<u8>, Region),
+}
+
+impl Location {
+    pub fn region(&self) -> &Region {
+        match self {
+            Location::Square(_, region) | Location::Intersection(_, region) => region,
+        }
+    }
+
+    pub fn square(&self) -> Option<u8> {
+        match self {
+            Location::Square(square, _) => Some(*square),
+            Location::Intersection(_, _) => None,
+        }
+    }
+
+    pub fn with_region(&self, region: Region) -> Self {
+        match self {
+            Location::Square(square, _) => Location::Square(*square, region),
+            Location::Intersection(squares, _) => Location::Intersection(squares.clone(), region),
+        }
+    }
+
+    pub fn into_zone(self) -> Zone {
+        Zone::Location(self)
+    }
+}
+
+impl std::fmt::Display for Location {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Location::Square(square, region) => write!(f, "{} ({})", square, region),
+            Location::Intersection(squares, region) => write!(
+                f,
+                "Intersection of ({}) ({})",
+                squares
+                    .iter()
+                    .map(|c| c.to_string())
+                    .collect::<Vec<String>>()
+                    .join(","),
+                region
+            ),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Default, PartialEq, PartialOrd, Ord, Eq, Serialize, Deserialize)]
 pub enum Zone {
     #[default]
@@ -13,10 +63,9 @@ pub enum Zone {
     Hand,
     Spellbook,
     Atlasbook,
-    Location(u8, Region),
+    Location(Location),
     Cemetery,
     Banish,
-    Intersection(Vec<u8>, Region),
 }
 
 impl std::fmt::Display for Zone {
@@ -26,10 +75,10 @@ impl std::fmt::Display for Zone {
             Zone::Hand => write!(f, "Hand"),
             Zone::Spellbook => write!(f, "Spellbook"),
             Zone::Atlasbook => write!(f, "Atlasbook"),
-            Zone::Location(sq, region) => write!(f, "{} ({})", sq, region),
+            Zone::Location(Location::Square(sq, region)) => write!(f, "{} ({})", sq, region),
             Zone::Cemetery => write!(f, "Cemetery"),
             Zone::Banish => write!(f, "Banish"),
-            Zone::Intersection(locs, region) => write!(
+            Zone::Location(Location::Intersection(locs, region)) => write!(
                 f,
                 "Intersection of ({}) ({})",
                 locs.iter()
@@ -43,8 +92,25 @@ impl std::fmt::Display for Zone {
 }
 
 impl Zone {
+    pub fn location(&self) -> Option<&Location> {
+        match self {
+            Zone::Location(location) => Some(location),
+            _ => None,
+        }
+    }
+
+    pub fn into_location(self) -> Option<Location> {
+        match self {
+            Zone::Location(location) => Some(location),
+            _ => None,
+        }
+    }
+
     pub fn is_in_play(&self) -> bool {
-        matches!(self, Zone::Location(_, _) | Zone::Intersection(_, _))
+        matches!(
+            self,
+            Zone::Location(Location::Square(_, _)) | Zone::Location(Location::Intersection(_, _))
+        )
     }
 
     pub fn can_be_entered_by(&self, state: &State, card_id: &uuid::Uuid) -> anyhow::Result<bool> {
@@ -96,7 +162,7 @@ impl Zone {
         }
 
         match self {
-            Zone::Location(_, _) => {
+            Zone::Location(Location::Square(_, _)) => {
                 let card = state.get_card(card_id);
                 // Auras should be played on intersections unless otherwise stated.
                 if card.get_card_type() == CardType::Aura {
@@ -140,7 +206,7 @@ impl Zone {
                     _ => Ok(card.has_ability(state, &Ability::Voidwalk)),
                 }
             }
-            Zone::Intersection(sqs, _) => {
+            Zone::Location(Location::Intersection(sqs, _)) => {
                 let card = state.get_card(card_id);
                 match card.get_card_type() {
                     CardType::Minion => {
@@ -203,36 +269,48 @@ impl Zone {
 
     pub fn all_intersections() -> Vec<Zone> {
         vec![
-            Zone::Intersection(vec![1, 2, 6, 7], Region::Surface),
-            Zone::Intersection(vec![2, 3, 7, 8], Region::Surface),
-            Zone::Intersection(vec![3, 4, 8, 9], Region::Surface),
-            Zone::Intersection(vec![4, 5, 9, 10], Region::Surface),
-            Zone::Intersection(vec![6, 7, 11, 12], Region::Surface),
-            Zone::Intersection(vec![7, 8, 12, 13], Region::Surface),
-            Zone::Intersection(vec![8, 9, 13, 14], Region::Surface),
-            Zone::Intersection(vec![9, 10, 14, 15], Region::Surface),
-            Zone::Intersection(vec![11, 12, 16, 17], Region::Surface),
-            Zone::Intersection(vec![12, 13, 17, 18], Region::Surface),
-            Zone::Intersection(vec![13, 14, 18, 19], Region::Surface),
-            Zone::Intersection(vec![14, 15, 19, 20], Region::Surface),
+            Zone::Location(Location::Intersection(vec![1, 2, 6, 7], Region::Surface)),
+            Zone::Location(Location::Intersection(vec![2, 3, 7, 8], Region::Surface)),
+            Zone::Location(Location::Intersection(vec![3, 4, 8, 9], Region::Surface)),
+            Zone::Location(Location::Intersection(vec![4, 5, 9, 10], Region::Surface)),
+            Zone::Location(Location::Intersection(vec![6, 7, 11, 12], Region::Surface)),
+            Zone::Location(Location::Intersection(vec![7, 8, 12, 13], Region::Surface)),
+            Zone::Location(Location::Intersection(vec![8, 9, 13, 14], Region::Surface)),
+            Zone::Location(Location::Intersection(vec![9, 10, 14, 15], Region::Surface)),
+            Zone::Location(Location::Intersection(
+                vec![11, 12, 16, 17],
+                Region::Surface,
+            )),
+            Zone::Location(Location::Intersection(
+                vec![12, 13, 17, 18],
+                Region::Surface,
+            )),
+            Zone::Location(Location::Intersection(
+                vec![13, 14, 18, 19],
+                Region::Surface,
+            )),
+            Zone::Location(Location::Intersection(
+                vec![14, 15, 19, 20],
+                Region::Surface,
+            )),
         ]
     }
 
     pub fn all_in_surface() -> Vec<Zone> {
         (1..=20)
-            .map(|sq| Zone::Location(sq, Region::Surface))
+            .map(|sq| Zone::Location(Location::Square(sq, Region::Surface)))
             .collect()
     }
 
     pub fn all_in_region(region: Region) -> Vec<Zone> {
         (1..=20)
-            .map(|sq| Zone::Location(sq, region.clone()))
+            .map(|sq| Zone::Location(Location::Square(sq, region.clone())))
             .collect()
     }
 
     pub fn all_realm() -> Vec<Zone> {
         (1..=20)
-            .map(|sq| Zone::Location(sq, Region::Surface))
+            .map(|sq| Zone::Location(Location::Square(sq, Region::Surface)))
             .collect()
     }
 
@@ -244,15 +322,19 @@ impl Zone {
 
     pub fn get_square(&self) -> Option<u8> {
         match self {
-            Zone::Location(sq, _) => Some(*sq),
+            Zone::Location(Location::Square(sq, _)) => Some(*sq),
             _ => None,
         }
     }
 
     pub fn with_region(&self, region: Region) -> Zone {
         match self {
-            Zone::Location(square, _) => Zone::Location(*square, region),
-            Zone::Intersection(squares, _) => Zone::Intersection(squares.clone(), region),
+            Zone::Location(Location::Square(square, _)) => {
+                Zone::Location(Location::Square(*square, region))
+            }
+            Zone::Location(Location::Intersection(squares, _)) => {
+                Zone::Location(Location::Intersection(squares.clone(), region))
+            }
             zone => zone.clone(),
         }
     }
@@ -323,7 +405,7 @@ impl Zone {
             .into_iter()
             .filter_map(|zone| {
                 let square = zone.get_square()?;
-                let void = Zone::Location(square, Region::Void);
+                let void = Zone::Location(Location::Square(square, Region::Void));
                 void.is_location(state).then_some(void)
             })
             .collect()
@@ -334,7 +416,7 @@ impl Zone {
             .into_iter()
             .filter_map(|zone| {
                 let square = zone.get_square()?;
-                let void = Zone::Location(square, Region::Void);
+                let void = Zone::Location(Location::Square(square, Region::Void));
                 void.is_location(state).then_some(void)
             })
             .collect()
@@ -344,7 +426,7 @@ impl Zone {
         let Some(square) = self.get_square() else {
             return vec![];
         };
-        let zone = Zone::Location(square, Region::Surface);
+        let zone = Zone::Location(Location::Square(square, Region::Surface));
         if include_diagonals {
             zone.get_nearby()
         } else {
@@ -354,17 +436,23 @@ impl Zone {
 
     fn is_location(&self, state: &State) -> bool {
         match self {
-            Zone::Location(_, Region::Surface) => self.get_site_at_square(state).is_some(),
-            Zone::Location(_, Region::Void) => self.get_site_at_square(state).is_none(),
-            Zone::Location(_, Region::Underground) => self
+            Zone::Location(Location::Square(_, Region::Surface)) => {
+                self.get_site_at_square(state).is_some()
+            }
+            Zone::Location(Location::Square(_, Region::Void)) => {
+                self.get_site_at_square(state).is_none()
+            }
+            Zone::Location(Location::Square(_, Region::Underground)) => self
                 .get_site_at_square(state)
                 .is_some_and(|site| site.is_land_site(state).unwrap_or_default()),
-            Zone::Location(_, Region::Underwater) => self
+            Zone::Location(Location::Square(_, Region::Underwater)) => self
                 .get_site_at_square(state)
                 .is_some_and(|site| site.is_water_site(state).unwrap_or_default()),
-            Zone::Intersection(squares, region) => squares
-                .iter()
-                .all(|square| Zone::Location(*square, region.clone()).is_location(state)),
+            Zone::Location(Location::Intersection(squares, region)) => {
+                squares.iter().all(|square| {
+                    Zone::Location(Location::Square(*square, region.clone())).is_location(state)
+                })
+            }
             _ => false,
         }
     }
@@ -382,19 +470,31 @@ impl Zone {
 
     fn step_in_direction(&self, direction: &Direction) -> Option<Self> {
         match self {
-            Zone::Location(square, region) => {
+            Zone::Location(Location::Square(square, region)) => {
                 let zone = match direction {
-                    Direction::Up => Zone::Location(square.saturating_add(5), region.clone()),
-                    Direction::Down => Zone::Location(square.saturating_sub(5), region.clone()),
-                    Direction::Left => Zone::Location(square.saturating_sub(1), region.clone()),
-                    Direction::Right => Zone::Location(square.saturating_add(1), region.clone()),
-                    Direction::TopLeft => Zone::Location(square.saturating_add(4), region.clone()),
-                    Direction::TopRight => Zone::Location(square.saturating_add(6), region.clone()),
+                    Direction::Up => {
+                        Zone::Location(Location::Square(square.saturating_add(5), region.clone()))
+                    }
+                    Direction::Down => {
+                        Zone::Location(Location::Square(square.saturating_sub(5), region.clone()))
+                    }
+                    Direction::Left => {
+                        Zone::Location(Location::Square(square.saturating_sub(1), region.clone()))
+                    }
+                    Direction::Right => {
+                        Zone::Location(Location::Square(square.saturating_add(1), region.clone()))
+                    }
+                    Direction::TopLeft => {
+                        Zone::Location(Location::Square(square.saturating_add(4), region.clone()))
+                    }
+                    Direction::TopRight => {
+                        Zone::Location(Location::Square(square.saturating_add(6), region.clone()))
+                    }
                     Direction::BottomLeft => {
-                        Zone::Location(square.saturating_sub(6), region.clone())
+                        Zone::Location(Location::Square(square.saturating_sub(6), region.clone()))
                     }
                     Direction::BottomRight => {
-                        Zone::Location(square.saturating_sub(4), region.clone())
+                        Zone::Location(Location::Square(square.saturating_sub(4), region.clone()))
                     }
                 };
 
@@ -409,20 +509,23 @@ impl Zone {
                     _ => Some(zone),
                 }
             }
-            Zone::Intersection(locs, region) => {
+            Zone::Location(Location::Intersection(locs, region)) => {
                 let new_squares: Vec<u8> = locs
                     .iter()
                     .filter_map(|sq| {
-                        let realm_zone = Zone::Location(*sq, region.clone());
+                        let realm_zone = Zone::Location(Location::Square(*sq, region.clone()));
                         realm_zone.zone_in_direction(direction, 1)?.get_square()
                     })
                     .collect();
 
                 for intersection in Zone::all_intersections() {
-                    if let Zone::Intersection(ilocs, _) = &intersection
+                    if let Zone::Location(Location::Intersection(ilocs, _)) = &intersection
                         && ilocs == &new_squares
                     {
-                        return Some(Zone::Intersection(new_squares, region.clone()));
+                        return Some(Zone::Location(Location::Intersection(
+                            new_squares,
+                            region.clone(),
+                        )));
                     }
                 }
 

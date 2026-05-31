@@ -115,7 +115,7 @@ impl Card for Nightmare {
                 player_id: controller_id,
                 card_id: minion_id,
                 from: minion_zone,
-                to: ZoneQuery::from_zone(target_zone),
+                to: LocationQuery::from_zone(target_zone),
                 tap: false,
                 region,
                 through_path: None,
