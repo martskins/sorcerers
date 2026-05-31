@@ -152,6 +152,10 @@ impl Card for Battlemage {
         Some(&mut self.avatar_base)
     }
 
+    fn get_avatar(&self) -> Option<&dyn Avatar> {
+        Some(self)
+    }
+
     fn set_data(
         &mut self,
         data: &std::sync::Arc<dyn std::any::Any + Send + Sync>,
@@ -176,6 +180,8 @@ impl Card for Battlemage {
         Ok(self.register_trigger())
     }
 }
+
+impl Avatar for Battlemage {}
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, CardConstructor) = (Battlemage::NAME, |owner_id: PlayerId| {

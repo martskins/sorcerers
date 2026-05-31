@@ -63,54 +63,7 @@ impl ActivatedAbility for GeomancerAbility {
                 let zones = picked_card.get_valid_play_zones(state, player_id, &avatar_id)?;
                 let prompt = "Pick a zone to play the site";
                 let zone = pick_zone(player_id, &zones, state, false, prompt).await?;
-                let mut effects: Vec<Effect> = vec![
-                    Effect::PlayCard {
-                        player_id: *player_id,
-                        card_id: picked_card_id,
-                        zone: zone.clone().into(),
-                        spellcaster: avatar_id,
-                    },
-                    Effect::SetTapped {
-                        card_id: *card_id,
-                        tapped: true,
-                    },
-                ];
-
-                let picked_site = state.get_card(&picked_card_id);
-                let is_earth_site = picked_site
-                    .get_resource_provider()
-                    .ok_or(anyhow::anyhow!("Not a site"))?
-                    .provided_affinity(state)?
-                    .element(&Element::Earth)
-                    > 0;
-                if is_earth_site {
-                    let card = state.get_card(card_id);
-                    let zones = card
-                        .get_zone()
-                        .get_adjacent()
-                        .iter()
-                        .filter(|z| z.get_site(state).is_none())
-                        .filter(|z| z != &&zone)
-                        .cloned()
-                        .collect::<Vec<Zone>>();
-                    if !zones.is_empty() {
-                        let picked_zone = pick_zone(
-                            player_id,
-                            &zones,
-                            state,
-                            false,
-                            "Geomancer: Pick a void to fill with a rubble",
-                        )
-                        .await?;
-                        effects.push(Effect::SummonToken {
-                            player_id: card.get_controller_id(state),
-                            token_type: TokenType::Rubble,
-                            zone: picked_zone.clone(),
-                        });
-                    }
-                }
-
-                Ok(effects)
+                geomancer_play_site_effects(card_id, player_id, state, picked_card_id, zone).await
             }
             GeomancerAbility::DrawSite => Ok(AvatarAction::DrawSite
                 .on_select(card_id, player_id, state)
@@ -158,6 +111,63 @@ impl ActivatedAbility for GeomancerAbility {
     }
 }
 
+async fn geomancer_play_site_effects(
+    geomancer_id: &uuid::Uuid,
+    player_id: &PlayerId,
+    state: &State,
+    site_id: uuid::Uuid,
+    zone: Zone,
+) -> anyhow::Result<Vec<Effect>> {
+    let mut effects = vec![
+        Effect::PlayCard {
+            player_id: *player_id,
+            card_id: site_id,
+            zone: zone.clone().into(),
+            spellcaster: *geomancer_id,
+        },
+        Effect::SetTapped {
+            card_id: *geomancer_id,
+            tapped: true,
+        },
+    ];
+
+    let picked_site = state.get_card(&site_id);
+    let is_earth_site = picked_site
+        .get_resource_provider()
+        .ok_or(anyhow::anyhow!("Not a site"))?
+        .provided_affinity(state)?
+        .element(&Element::Earth)
+        > 0;
+    if is_earth_site {
+        let geomancer = state.get_card(geomancer_id);
+        let zones = geomancer
+            .get_zone()
+            .get_adjacent()
+            .iter()
+            .filter(|z| z.get_site(state).is_none())
+            .filter(|z| z != &&zone)
+            .cloned()
+            .collect::<Vec<Zone>>();
+        if !zones.is_empty() {
+            let picked_zone = pick_zone(
+                player_id,
+                &zones,
+                state,
+                false,
+                "Geomancer: Pick a void to fill with a rubble",
+            )
+            .await?;
+            effects.push(Effect::SummonToken {
+                player_id: geomancer.get_controller_id(state),
+                token_type: TokenType::Rubble,
+                zone: picked_zone,
+            });
+        }
+    }
+
+    Ok(effects)
+}
+
 #[derive(Debug, Clone)]
 pub struct Geomancer {
     card_base: CardBase,
@@ -195,6 +205,7 @@ impl Geomancer {
     }
 }
 
+#[async_trait::async_trait]
 impl Card for Geomancer {
     fn get_name(&self) -> &str {
         Self::NAME
@@ -228,6 +239,10 @@ impl Card for Geomancer {
         Some(&mut self.avatar_base)
     }
 
+    fn get_avatar(&self) -> Option<&dyn Avatar> {
+        Some(self)
+    }
+
     fn get_activated_abilities(
         &self,
         state: &State,
@@ -241,6 +256,23 @@ impl Card for Geomancer {
         ]);
 
         Ok(actions)
+    }
+}
+
+#[async_trait::async_trait]
+impl Avatar for Geomancer {
+    fn get_play_site_ability(&self) -> Option<Box<dyn ActivatedAbility>> {
+        Some(Box::new(GeomancerAbility::PlaySite))
+    }
+
+    async fn play_site_at_zone(
+        &self,
+        state: &State,
+        player_id: &PlayerId,
+        site_id: &uuid::Uuid,
+        zone: &Zone,
+    ) -> anyhow::Result<Vec<Effect>> {
+        geomancer_play_site_effects(self.get_id(), player_id, state, *site_id, zone.clone()).await
     }
 }
 

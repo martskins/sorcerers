@@ -1843,7 +1843,13 @@ impl Game {
         let card_type = card.get_card_type();
         let zones = match card_type {
             CardType::Site => {
-                let action = AvatarAction::PlaySite;
+                let avatar = self.state.get_card(&avatar_id);
+                let Some(avatar) = avatar.get_avatar() else {
+                    return Ok(None);
+                };
+                let Some(action) = avatar.get_play_site_ability() else {
+                    return Ok(None);
+                };
                 let cost = action.get_cost(&avatar_id, &self.state)?;
                 if !cost.can_afford(&self.state, acting_player)? {
                     return Ok(None);
@@ -1900,17 +1906,37 @@ impl Game {
         }
 
         if playable.card_type == CardType::Site {
-            let action = AvatarAction::PlaySite;
+            let avatar = self.state.get_card(&playable.spellcaster_id);
+            let Some(avatar) = avatar.get_avatar() else {
+                return Ok(());
+            };
+            let Some(action) = avatar.get_play_site_ability() else {
+                return Ok(());
+            };
+            if !action.can_activate(&playable.spellcaster_id, &playable.player_id, &self.state)? {
+                return Ok(());
+            }
             let cost = action.get_cost(&playable.spellcaster_id, &self.state)?;
+            if !cost.can_afford(&self.state, playable.player_id)? {
+                return Ok(());
+            }
             cost.pay(&mut self.state, &playable.player_id).await?;
+            let effects = self
+                .state
+                .get_card(&playable.spellcaster_id)
+                .get_avatar()
+                .ok_or(anyhow::anyhow!("play site card must be an avatar"))?
+                .play_site_at_zone(&self.state, &playable.player_id, &playable.card_id, zone)
+                .await?;
+            self.state.queue(effects);
+        } else {
+            self.state.queue_one(Effect::PlayCard {
+                player_id: playable.player_id,
+                card_id: playable.card_id,
+                zone: zone.clone().into(),
+                spellcaster: playable.spellcaster_id,
+            });
         }
-
-        self.state.queue_one(Effect::PlayCard {
-            player_id: playable.player_id,
-            card_id: playable.card_id,
-            zone: zone.clone().into(),
-            spellcaster: playable.spellcaster_id,
-        });
 
         Ok(())
     }
@@ -2046,15 +2072,8 @@ impl Game {
                     let zone =
                         pick_zone(&acting_player, &playable.zones, &self.state, false, prompt)
                             .await?;
-                    let action = AvatarAction::PlaySite;
-                    let cost = action.get_cost(&playable.spellcaster_id, &self.state)?;
-                    cost.pay(&mut self.state, &acting_player).await?;
-                    self.state.queue_one(Effect::PlayCard {
-                        player_id: playable.player_id,
-                        card_id: playable.card_id,
-                        zone: zone.into(),
-                        spellcaster: playable.spellcaster_id,
-                    });
+                    self.queue_play_hand_card_at_zone(player_id, card_id, &zone)
+                        .await?;
                     return Ok(());
                 }
 

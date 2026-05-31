@@ -71,6 +71,10 @@ impl Card for Seer {
         Some(&mut self.avatar_base)
     }
 
+    fn get_avatar(&self) -> Option<&dyn Avatar> {
+        Some(self)
+    }
+
     async fn on_turn_start(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
         let original_deck = state.get_player_deck(&controller_id)?.clone();
@@ -129,6 +133,8 @@ impl Card for Seer {
         }])
     }
 }
+
+impl Avatar for Seer {}
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, CardConstructor) = (Seer::NAME, |owner_id: PlayerId| {

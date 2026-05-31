@@ -127,6 +127,10 @@ impl Card for AvatarOfWater {
         Some(&mut self.avatar_base)
     }
 
+    fn get_avatar(&self) -> Option<&dyn Avatar> {
+        Some(self)
+    }
+
     fn get_image_path(&self) -> String {
         "https://d27a44hjr9gen3.cloudfront.net/cards/alp-avatar_of_water-pd-s.png".to_string()
     }
@@ -159,6 +163,8 @@ impl Card for AvatarOfWater {
         Ok(())
     }
 }
+
+impl Avatar for AvatarOfWater {}
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, CardConstructor) =

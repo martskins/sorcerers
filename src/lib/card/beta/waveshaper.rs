@@ -165,6 +165,10 @@ impl Card for Waveshaper {
         Some(&mut self.avatar_base)
     }
 
+    fn get_avatar(&self) -> Option<&dyn Avatar> {
+        Some(self)
+    }
+
     fn get_additional_activated_abilities(
         &self,
         _state: &State,
@@ -193,6 +197,8 @@ impl Card for Waveshaper {
         Ok(())
     }
 }
+
+impl Avatar for Waveshaper {}
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, CardConstructor) = (Waveshaper::NAME, |owner_id: PlayerId| {

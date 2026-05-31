@@ -1563,6 +1563,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         None
     }
 
+    fn get_avatar(&self) -> Option<&dyn Avatar> {
+        None
+    }
+
     // Returns the site base if the card is a site, None otherwise.
     fn get_site_base(&self) -> Option<&SiteBase> {
         None
@@ -2417,6 +2421,28 @@ pub struct ArtifactBase {
     pub tapped: bool,
 }
 
+#[async_trait::async_trait]
+pub trait Avatar: Card {
+    fn get_play_site_ability(&self) -> Option<Box<dyn ActivatedAbility>> {
+        Some(Box::new(AvatarAction::PlaySite))
+    }
+
+    async fn play_site_at_zone(
+        &self,
+        _state: &State,
+        player_id: &PlayerId,
+        site_id: &uuid::Uuid,
+        zone: &Zone,
+    ) -> anyhow::Result<Vec<Effect>> {
+        Ok(vec![Effect::PlayCard {
+            player_id: *player_id,
+            card_id: *site_id,
+            zone: zone.clone().into(),
+            spellcaster: *self.get_id(),
+        }])
+    }
+}
+
 pub trait Artifact: Card {
     fn can_be_carried(&self) -> bool {
         let artifact_types = &self
@@ -2993,8 +3019,10 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
             .filter(|c| matches!(c.get_zone(), Zone::Hand))
             .count()
             > 0
+            && let Some(avatar) = self.get_avatar()
+            && let Some(play_site_ability) = avatar.get_play_site_ability()
         {
-            activated_abilities.push(Box::new(AvatarAction::PlaySite));
+            activated_abilities.push(play_site_ability);
         }
 
         Ok(activated_abilities)

@@ -86,10 +86,16 @@ impl Card for Elementalist {
         Some(&mut self.avatar_base)
     }
 
+    fn get_avatar(&self) -> Option<&dyn Avatar> {
+        Some(self)
+    }
+
     fn get_resource_provider(&self) -> Option<&dyn ResourceProvider> {
         Some(self)
     }
 }
+
+impl Avatar for Elementalist {}
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, CardConstructor) = (Elementalist::NAME, |owner_id: PlayerId| {

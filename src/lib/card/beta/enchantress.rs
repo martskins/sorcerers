@@ -70,7 +70,13 @@ impl Card for Enchantress {
     fn get_avatar_base_mut(&mut self) -> Option<&mut AvatarBase> {
         Some(&mut self.avatar_base)
     }
+
+    fn get_avatar(&self) -> Option<&dyn Avatar> {
+        Some(self)
+    }
 }
+
+impl Avatar for Enchantress {}
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, CardConstructor) = (Enchantress::NAME, |owner_id: PlayerId| {

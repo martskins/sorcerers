@@ -163,6 +163,10 @@ impl Card for Sparkmage {
         Some(&mut self.avatar_base)
     }
 
+    fn get_avatar(&self) -> Option<&dyn Avatar> {
+        Some(self)
+    }
+
     fn get_additional_activated_abilities(
         &self,
         _state: &State,
@@ -170,6 +174,8 @@ impl Card for Sparkmage {
         Ok(vec![Box::new(DealDamageAction)])
     }
 }
+
+impl Avatar for Sparkmage {}
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, CardConstructor) = (Sparkmage::NAME, |owner_id: PlayerId| {

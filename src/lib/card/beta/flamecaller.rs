@@ -142,6 +142,10 @@ impl Card for Flamecaller {
         Some(&mut self.avatar_base)
     }
 
+    fn get_avatar(&self) -> Option<&dyn Avatar> {
+        Some(self)
+    }
+
     fn get_additional_activated_abilities(
         &self,
         _state: &State,
@@ -149,6 +153,8 @@ impl Card for Flamecaller {
         Ok(vec![Box::new(ShootProjectile)])
     }
 }
+
+impl Avatar for Flamecaller {}
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, CardConstructor) = (Flamecaller::NAME, |owner_id: PlayerId| {

@@ -158,6 +158,10 @@ impl Card for Pathfinder {
         Some(&mut self.avatar_base)
     }
 
+    fn get_avatar(&self) -> Option<&dyn Avatar> {
+        Some(self)
+    }
+
     fn get_additional_activated_abilities(
         &self,
         _state: &State,
@@ -165,6 +169,8 @@ impl Card for Pathfinder {
         Ok(vec![Box::new(PathfinderSitewalk)])
     }
 }
+
+impl Avatar for Pathfinder {}
 
 #[linkme::distributed_slice(crate::card::ALL_CARDS)]
 static CONSTRUCTOR: (&'static str, CardConstructor) = (Pathfinder::NAME, |owner_id: PlayerId| {
