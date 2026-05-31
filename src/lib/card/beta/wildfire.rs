@@ -126,10 +126,13 @@ impl Card for Wildfire {
         effects.push(Effect::MoveCard {
             player_id: *self.get_owner_id(),
             card_id: *self.get_id(),
-            from: self.get_zone().clone(),
-            to: LocationQuery::from_zone(picked_zone.clone()),
+            from: self
+                .get_zone()
+                .clone()
+                .into_location()
+                .expect("Wildfire must be in a location"),
+            to: LocationQuery::from_zone(picked_zone.with_region(self.get_region(state).clone())),
             tap: false,
-            region: self.get_region(state).clone(),
             through_path: None,
         });
 

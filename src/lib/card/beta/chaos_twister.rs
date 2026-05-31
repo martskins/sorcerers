@@ -81,10 +81,11 @@ impl Card for ChaosTwister {
         let mut effects = vec![Effect::MoveCard {
             player_id: controller_id,
             card_id: target_id,
-            from: from_zone,
-            to: landing_zone.clone().into(),
+            from: from_zone
+                .into_location()
+                .expect("Chaos Twister target must be in a location"),
+            to: LocationQuery::from_zone(landing_zone.clone().with_region(region)),
             tap: false,
-            region,
             through_path: None,
         }];
 

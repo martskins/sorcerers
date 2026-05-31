@@ -198,10 +198,9 @@ pub enum Effect {
     MoveCard {
         player_id: PlayerId,
         card_id: uuid::Uuid,
-        from: Zone,
+        from: Location,
         to: LocationQuery,
         tap: bool,
-        region: Region,
         through_path: Option<Vec<Zone>>,
     },
     DrawCard {
@@ -213,7 +212,7 @@ pub enum Effect {
         player_id: PlayerId,
         card_id: uuid::Uuid,
         caster_id: uuid::Uuid,
-        from: Zone,
+        from: Location,
     },
     PlayCard {
         player_id: PlayerId,
@@ -222,7 +221,7 @@ pub enum Effect {
         spellcaster: uuid::Uuid,
     },
     SummonCards {
-        cards: Vec<(PlayerId, uuid::Uuid, Zone)>,
+        cards: Vec<(PlayerId, uuid::Uuid, Location)>,
     },
     SetTapped {
         card_id: uuid::Uuid,
@@ -528,7 +527,7 @@ impl Effect {
             } => {
                 let card = state.get_card(card_id);
                 // If the card is still at `from`, the move was a no-op — don't log it
-                if card.get_zone() == from {
+                if card.get_zone().location() == Some(from) {
                     return Ok(None);
                 }
 
@@ -600,12 +599,12 @@ impl Effect {
                 } else {
                     let parts: Vec<String> = cards
                         .iter()
-                        .map(|(player_id, card_id, zone)| {
+                        .map(|(player_id, card_id, location)| {
                             format!(
                                 "{} summons {} in {}",
                                 player_name(player_id, state),
                                 state.get_card(card_id).get_name(),
-                                zone
+                                location
                             )
                         })
                         .collect();
@@ -1006,7 +1005,13 @@ impl Effect {
                     state.cards.insert(token_id, token);
                     state.invalidate_runtime_caches();
                     state.queue_one(Effect::SummonCards {
-                        cards: vec![(*player_id, token_id, zone.clone())],
+                        cards: vec![(
+                            *player_id,
+                            token_id,
+                            zone.clone()
+                                .into_location()
+                                .ok_or(anyhow::anyhow!("token summon zone must be a location"))?,
+                        )],
                     });
                 } else {
                     // Non-unit tokens are just placed directly onto the board without going through
@@ -1142,12 +1147,11 @@ impl Effect {
                 from,
                 to,
                 tap,
-                region,
                 through_path,
             } => {
                 let card = state.get_card(card_id);
                 // Skip the move if the card is no longer in the same zone as it was originally.
-                if card.get_zone() != from {
+                if card.get_zone().location() != Some(from) {
                     return Ok(());
                 }
 
@@ -1215,7 +1219,7 @@ impl Effect {
                     }
                     None => {
                         let snapshot = state.clone();
-                        let zone = to.pick(player_id, state).await?.with_region(region.clone()).into_zone();
+                        let zone = to.pick(player_id, state).await?.into_zone();
                         let card = state.get_card_mut(card_id);
                         let from_zone = card.get_zone().clone();
                         card.set_zone(zone.clone());
@@ -1228,11 +1232,10 @@ impl Effect {
                         for cid in &carried_cards {
                             let carried_card = state.get_card_mut(cid);
                             carried_card.set_zone(zone.clone());
-                            carried_card.set_region(region.clone());
                         }
 
                         let card = state.get_card(card_id);
-                        let path = vec![from.clone(), zone.clone()];
+                        let path = vec![from.clone().into_zone(), zone.clone()];
                         let mut effects = if can_use_special_abilities(&snapshot, card_id) {
                             card.on_move(&snapshot, &path).await?
                         } else {
@@ -1380,7 +1383,12 @@ impl Effect {
                     // Minions are put into play via SummonCards, which handles zone
                     // placement, SummoningSickness, on_summon, and genesis in one place.
                     state.queue_one(Effect::SummonCards {
-                        cards: vec![(*player_id, *card_id, zone)],
+                        cards: vec![(
+                            *player_id,
+                            *card_id,
+                            zone.into_location()
+                                .ok_or(anyhow::anyhow!("play zone must be a location"))?,
+                        )],
                     });
                 } else {
                     let (from_zone, cast_effects) = {
@@ -1410,7 +1418,8 @@ impl Effect {
             }
             Effect::SummonCards { cards } => {
                 let snapshot = state.clone();
-                for (player_id, card_id, zone) in cards {
+                for (player_id, card_id, location) in cards {
+                    let zone = location.clone().into_zone();
                     let has_charge = state.get_card(card_id).has_ability(state, &Ability::Charge);
                     let original_zone = state.get_card(card_id).get_zone().clone();
                     let owner_id = *state.get_card(card_id).get_owner_id();
@@ -1452,13 +1461,14 @@ impl Effect {
                 crate::game::force_sync_all(state).await?;
 
                 let mut effects = vec![];
-                for (_, card_id, zone) in cards {
+                for (_, card_id, location) in cards {
+                    let zone = location.clone().into_zone();
                     let card = state.get_card(card_id);
                     let from_zone = snapshot.get_card(card_id).get_zone().clone();
                     effects.extend(card.on_summon(state)?);
                     effects.extend(card.genesis(state).await?);
                     if can_use_special_abilities(state, card_id) {
-                        effects.extend(card.on_visit_zone(state, &from_zone, zone).await?);
+                        effects.extend(card.on_visit_zone(state, &from_zone, &zone).await?);
                     }
                     if let Some(site) = zone.get_site_at_square(state)
                         && can_use_special_abilities(state, site.get_id())
@@ -1656,7 +1666,6 @@ impl Effect {
                         .get_power(state)?
                         .ok_or(anyhow::anyhow!("attacker has no power"))?;
                     let attacker_zone = attacker.get_zone().clone();
-                    let attacker_region = attacker.get_region(state).clone();
                     let attacker_has_fs = attacker.has_ability(state, &Ability::FirstStrike);
 
                     let mut assigned_damage = HashMap::new();
@@ -1691,10 +1700,13 @@ impl Effect {
                                     Effect::MoveCard {
                                         player_id: defending_card.get_controller_id(state),
                                         card_id: *defending_id,
-                                        from: defending_card.get_zone().clone(),
+                                        from: defending_card
+                                            .get_zone()
+                                            .clone()
+                                            .into_location()
+                                            .expect("MoveCard source must be a location"),
                                         to: LocationQuery::from_zone(attacker_zone.clone()),
                                         tap: true,
-                                        region: attacker_region.clone(),
                                         through_path: None,
                                     }
                                 }
@@ -1828,10 +1840,13 @@ impl Effect {
                 effects.push(Effect::MoveCard {
                     player_id: attacker.get_controller_id(state),
                     card_id: *attacker_id,
-                    from: attacker.get_zone().clone(),
+                    from: attacker
+                        .get_zone()
+                        .clone()
+                        .into_location()
+                        .expect("MoveCard source must be a location"),
                     to: defender.get_zone().into(),
                     tap: true,
-                    region: attacker.get_region(state).clone(),
                     through_path: None,
                 });
 
@@ -2065,10 +2080,13 @@ impl Effect {
                 state.queue_one(Effect::MoveCard {
                     player_id: *player_id,
                     card_id: *card_id,
-                    from: card.get_zone().clone(),
+                    from: card
+                        .get_zone()
+                        .clone()
+                        .into_location()
+                        .expect("MoveCard source must be a location"),
                     to: LocationQuery::from_location(to_location.clone()),
                     tap: false,
-                    region: Region::Surface,
                     through_path: None,
                 });
             }

@@ -1,5 +1,3 @@
-#[cfg(test)]
-use crate::prelude::Location;
 use crate::{
     card::{Ability, Card, CardData, CardStatus, CardType, Costs, DodgeRoll, SiteType},
     deck::Deck,
@@ -949,17 +947,24 @@ impl State {
                     Effect::MoveCard {
                         player_id: attacker_controller,
                         card_id: *attacker_id,
-                        from: attacker.get_zone().clone(),
+                        from: attacker
+                            .get_zone()
+                            .clone()
+                            .into_location()
+                            .expect("Dodge Roll attacker must be in a location"),
                         to: LocationQuery::from_zone(defender.get_zone().clone()),
                         tap: true,
-                        region: attacker.get_region(self).clone(),
                         through_path: None,
                     },
                     Effect::PlayMagic {
                         player_id: defender_controller,
                         card_id: dodge_rolls_in_hand[0],
                         caster_id: avatar_id,
-                        from: avatar.get_zone().clone(),
+                        from: avatar
+                            .get_zone()
+                            .clone()
+                            .into_location()
+                            .expect("Dodge Roll caster must be in a location"),
                     },
                 ]))
             }
@@ -1828,6 +1833,7 @@ impl State {
     #[cfg(any(test, feature = "benchmark"))]
     pub fn new_mock_state(zones_with_sites: impl AsRef<[u8]>) -> State {
         use crate::card::{AridDesert, Sorcerer, from_name_and_zone};
+        use crate::zone::Location;
 
         let player_one_id = uuid::Uuid::new_v4();
         let player_two_id = uuid::Uuid::new_v4();

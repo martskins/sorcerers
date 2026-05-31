@@ -39,10 +39,9 @@ impl ActivatedAbility for Constrict {
                 effects.push(Effect::MoveCard {
                     player_id: *player_id,
                     card_id: *card_id,
-                    from: constrictor.get_zone().clone(),
-                    to: LocationQuery::from_zone(picked_zone.clone()),
+                    from: (constrictor.get_zone().clone()).into_location().expect("MoveCard source must be a location"),
+                    to: LocationQuery::from_zone((picked_zone.clone()).with_region(constrictor.get_region(state).clone())),
                     tap: true,
-                    region: constrictor.get_region(state).clone(),
                     through_path: None,
                 });
                 constrict_zone = picked_zone;

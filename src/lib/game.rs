@@ -1501,10 +1501,13 @@ impl ActivatedAbility for UnitAction {
                                     Effect::MoveCard {
                                         player_id: opponent.id,
                                         card_id: defender_id,
-                                        from: defender.get_zone().clone(),
+                                        from: defender
+                                            .get_zone()
+                                            .clone()
+                                            .into_location()
+                                            .expect("defender must be in a location"),
                                         to: LocationQuery::from_zone(attacker.get_zone().clone()),
                                         tap: true,
-                                        region: attacker.get_region(state).clone(),
                                         through_path: None,
                                     },
                                 ]);
@@ -1637,10 +1640,12 @@ impl ActivatedAbility for UnitAction {
                     effects.push(Effect::MoveCard {
                         player_id: *player_id,
                         card_id: *card_id,
-                        from: zone.clone(),
+                        from: zone
+                            .clone()
+                            .into_location()
+                            .expect("move path step must be a location"),
                         to: LocationQuery::from_zone(to_zone.clone()),
                         tap: true,
-                        region: card.get_region(state).clone(),
                         through_path: Some(path.clone()),
                     });
                 }
@@ -2102,7 +2107,11 @@ impl Game {
                             player_id: acting_player,
                             card_id: *card_id,
                             caster_id,
-                            from: caster.get_zone().clone(),
+                            from: caster
+                                .get_zone()
+                                .clone()
+                                .into_location()
+                                .expect("spell caster must be in a location"),
                         });
                     }
                     // Sites are not playable by clicking, they have to be played through avatar
@@ -2294,17 +2303,9 @@ impl Game {
                 square = 18;
             }
 
-            effects.push(Effect::MoveCard {
-                player_id: *player_id,
+            effects.push(Effect::SetCardZone {
                 card_id: avatar_id,
-                from: Zone::Spellbook,
-                to: LocationQuery::from_zone(Zone::Location(Location::Square(
-                    square,
-                    Region::Surface,
-                ))),
-                tap: false,
-                region: Region::Surface,
-                through_path: None,
+                zone: Zone::Location(Location::Square(square, Region::Surface)),
             });
         }
         effects

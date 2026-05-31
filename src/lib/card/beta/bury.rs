@@ -70,10 +70,13 @@ impl Card for Bury {
         Ok(vec![Effect::MoveCard {
             player_id: self.get_controller_id(state),
             card_id: picked_card_id,
-            from: picked_card.get_zone().clone(),
-            to: LocationQuery::from_zone(picked_card.get_zone().clone()),
+            from: picked_card
+                .get_zone()
+                .clone()
+                .into_location()
+                .expect("Bury target must be in a location"),
+            to: LocationQuery::from_zone(picked_card.get_zone().with_region(Region::Underground)),
             tap: false,
-            region: Region::Underground,
             through_path: None,
         }])
     }

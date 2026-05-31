@@ -87,7 +87,14 @@ impl Card for Battlefield {
         };
 
         Ok(vec![Effect::SummonCards {
-            cards: vec![(controller_id, picked_card_id, self.get_zone().clone())],
+            cards: vec![(
+                controller_id,
+                picked_card_id,
+                self.get_zone()
+                    .clone()
+                    .into_location()
+                    .expect("Battlefield must be in a location"),
+            )],
         }])
     }
 }

@@ -67,10 +67,13 @@ impl ActivatedAbility for TapMoveAndStrike {
             effects.push(Effect::MoveCard {
                 player_id: *player_id,
                 card_id: *card_id,
-                from: start_zone,
-                to: LocationQuery::from_zone(final_zone.clone()),
+                from: start_zone
+                    .into_location()
+                    .expect("Bull Demons of Adum must start in a location"),
+                to: LocationQuery::from_zone(
+                    final_zone.with_region(state.get_card(card_id).get_region(state).clone()),
+                ),
                 tap: false,
-                region: state.get_card(card_id).get_region(state).clone(),
                 through_path: Some(path),
             });
         }

@@ -138,10 +138,9 @@ impl Card for ClamorOfHarpies {
         let mut effects = vec![Effect::MoveCard {
             player_id: self.get_controller_id(state),
             card_id,
-            from: card.get_zone().clone(),
-            to: LocationQuery::from_zone(self.get_zone().clone()),
+            from: (card.get_zone().clone()).into_location().expect("MoveCard source must be a location"),
+            to: LocationQuery::from_zone((self.get_zone().clone()).with_region(self.get_region(state).clone())),
             tap: false,
-            region: self.get_region(state).clone(),
             through_path: None,
         }];
         effects.extend(

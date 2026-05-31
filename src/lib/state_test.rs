@@ -116,10 +116,9 @@ async fn test_carried_minion_follows_carrier() {
     let move_effect = Effect::MoveCard {
         player_id,
         card_id: carrier_id,
-        from: Zone::Location(Location::Square(1, Region::Surface)),
-        to: LocationQuery::from_zone(Zone::Location(Location::Square(2, Region::Surface))),
+        from: Location::Square(1, Region::Surface),
+        to: LocationQuery::from_zone((Zone::Location(Location::Square(2, Region::Surface))).with_region(crate::card::Region::Surface)),
         tap: false,
-        region: crate::card::Region::Surface,
         through_path: None,
     };
 
@@ -229,10 +228,9 @@ async fn test_carried_minion_moves_independently_and_clears_bearer() {
     let move_effect = Effect::MoveCard {
         player_id,
         card_id: passenger_id,
-        from: Zone::Location(Location::Square(1, Region::Surface)),
-        to: LocationQuery::from_zone(Zone::Location(Location::Square(2, Region::Surface))),
+        from: Location::Square(1, Region::Surface),
+        to: LocationQuery::from_zone((Zone::Location(Location::Square(2, Region::Surface))).with_region(crate::card::Region::Surface)),
         tap: false,
-        region: crate::card::Region::Surface,
         through_path: None,
     };
 
@@ -273,10 +271,9 @@ async fn test_carried_minion_moves_independently_through_path_and_clears_bearer(
     let move_effect = Effect::MoveCard {
         player_id,
         card_id: passenger_id,
-        from: Zone::Location(Location::Square(1, Region::Surface)),
-        to: LocationQuery::from_zone(Zone::Location(Location::Square(3, Region::Surface))),
+        from: Location::Square(1, Region::Surface),
+        to: LocationQuery::from_zone((Zone::Location(Location::Square(3, Region::Surface))).with_region(crate::card::Region::Surface)),
         tap: false,
-        region: crate::card::Region::Surface,
         through_path: Some(vec![
             Zone::Location(Location::Square(1, Region::Surface)),
             Zone::Location(Location::Square(2, Region::Surface)),
@@ -329,10 +326,9 @@ async fn test_conferred_abilities() {
     let move_effect = Effect::MoveCard {
         player_id,
         card_id: passenger_id,
-        from: Zone::Location(Location::Square(1, Region::Surface)),
-        to: LocationQuery::from_zone(Zone::Location(Location::Square(2, Region::Surface))),
+        from: Location::Square(1, Region::Surface),
+        to: LocationQuery::from_zone((Zone::Location(Location::Square(2, Region::Surface))).with_region(crate::card::Region::Surface)),
         tap: false,
-        region: crate::card::Region::Surface,
         through_path: None,
     };
 

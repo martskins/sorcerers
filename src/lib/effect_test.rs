@@ -580,10 +580,9 @@ async fn test_vaults_of_zul_triggers_on_stop_not_intermediate_enter() {
     Effect::MoveCard {
         player_id,
         card_id: avatar_id,
-        from: Zone::Location(Location::Square(1, Region::Surface)),
-        to: LocationQuery::from_zone(Zone::Location(Location::Square(3, Region::Surface))),
+        from: Location::Square(1, Region::Surface),
+        to: LocationQuery::from_zone((Zone::Location(Location::Square(3, Region::Surface))).with_region(Region::Surface)),
         tap: false,
-        region: Region::Surface,
         through_path: Some(vec![
             Zone::Location(Location::Square(2, Region::Surface)),
             Zone::Location(Location::Square(3, Region::Surface)),
@@ -610,10 +609,9 @@ async fn test_vaults_of_zul_triggers_on_stop_not_intermediate_enter() {
     Effect::MoveCard {
         player_id,
         card_id: avatar_id,
-        from: Zone::Location(Location::Square(1, Region::Surface)),
-        to: LocationQuery::from_zone(Zone::Location(Location::Square(3, Region::Surface))),
+        from: Location::Square(1, Region::Surface),
+        to: LocationQuery::from_zone((Zone::Location(Location::Square(3, Region::Surface))).with_region(Region::Surface)),
         tap: false,
-        region: Region::Surface,
         through_path: Some(vec![
             Zone::Location(Location::Square(2, Region::Surface)),
             Zone::Location(Location::Square(3, Region::Surface)),
@@ -650,7 +648,7 @@ async fn test_enter_site_triggers_when_card_is_summoned_there() {
         cards: vec![(
             player_id,
             ogre_id,
-            Zone::Location(Location::Square(1, Region::Surface)),
+            Location::Square(1, Region::Surface),
         )],
     });
     drain_effects(&mut state).await;
@@ -678,10 +676,9 @@ async fn test_phase_assassin_keeps_stealth_after_entering_void() {
     state.queue_one(Effect::MoveCard {
         player_id,
         card_id: assassin_id,
-        from: Zone::Location(Location::Square(1, Region::Surface)),
-        to: LocationQuery::from_zone(Zone::Location(Location::Square(2, Region::Surface))),
+        from: Location::Square(1, Region::Surface),
+        to: LocationQuery::from_zone((Zone::Location(Location::Square(2, Region::Surface))).with_region(Region::Surface)),
         tap: false,
-        region: Region::Surface,
         through_path: None,
     });
     drain_effects(&mut state).await;
@@ -696,10 +693,9 @@ async fn test_phase_assassin_keeps_stealth_after_entering_void() {
     state.queue_one(Effect::MoveCard {
         player_id,
         card_id: assassin_id,
-        from: Zone::Location(Location::Square(2, Region::Surface)),
-        to: LocationQuery::from_zone(Zone::Location(Location::Square(3, Region::Surface))),
+        from: Location::Square(2, Region::Surface),
+        to: LocationQuery::from_zone((Zone::Location(Location::Square(3, Region::Surface))).with_region(Region::Surface)),
         tap: false,
-        region: Region::Surface,
         through_path: None,
     });
     drain_effects(&mut state).await;
@@ -753,10 +749,9 @@ async fn test_region_changes_enter_location_but_not_site() {
     let effect = Effect::MoveCard {
         player_id,
         card_id,
-        from: Zone::Location(Location::Square(1, Region::Surface)),
-        to: LocationQuery::from_zone(Zone::Location(Location::Square(1, Region::Underground))),
+        from: Location::Square(1, Region::Surface),
+        to: LocationQuery::from_zone((Zone::Location(Location::Square(1, Region::Underground))).with_region(Region::Underground)),
         tap: false,
-        region: Region::Underground,
         through_path: None,
     };
 
@@ -787,10 +782,9 @@ async fn test_minion_without_burrowing_dies_underground() {
     state.queue_one(Effect::MoveCard {
         player_id,
         card_id: apprentice_wizard_id,
-        from: Zone::Location(Location::Square(1, Region::Surface)),
-        to: LocationQuery::from_zone(Zone::Location(Location::Square(1, Region::Surface))),
+        from: Location::Square(1, Region::Surface),
+        to: LocationQuery::from_zone((Zone::Location(Location::Square(1, Region::Surface))).with_region(Region::Underground)),
         tap: false,
-        region: Region::Underground,
         through_path: None,
     });
     drain_effects(&mut state).await;
@@ -811,7 +805,7 @@ async fn test_minion_without_voidwalk_is_banished_in_void() {
         cards: vec![(
             player_id,
             apprentice_wizard_id,
-            Zone::Location(Location::Square(1, Region::Void)),
+            Location::Square(1, Region::Void),
         )],
     });
     drain_effects(&mut state).await;
@@ -1049,7 +1043,7 @@ async fn test_summon_card_puts_minion_in_target_zone() {
         cards: vec![(
             player_id,
             id,
-            Zone::Location(Location::Square(1, Region::Surface)),
+            Location::Square(1, Region::Surface),
         )],
     }
     .apply(&mut state)
@@ -1075,7 +1069,7 @@ async fn test_summon_card_adds_summoning_sickness_to_minion() {
         cards: vec![(
             player_id,
             id,
-            Zone::Location(Location::Square(1, Region::Surface)),
+            Location::Square(1, Region::Surface),
         )],
     }
     .apply(&mut state)
@@ -1104,7 +1098,7 @@ async fn test_summon_card_no_summoning_sickness_with_charge() {
         cards: vec![(
             player_id,
             id,
-            Zone::Location(Location::Square(1, Region::Surface)),
+            Location::Square(1, Region::Surface),
         )],
     }
     .apply(&mut state)
@@ -1133,7 +1127,7 @@ async fn test_summon_card_queues_genesis_effects() {
         cards: vec![(
             player_id,
             id,
-            Zone::Location(Location::Square(1, Region::Surface)),
+            Location::Square(1, Region::Surface),
         )],
     }
     .apply(&mut state)
@@ -1169,7 +1163,7 @@ async fn test_summon_card_applies_on_summon_effects() {
         cards: vec![(
             player_id,
             id,
-            Zone::Location(Location::Square(1, Region::Surface)),
+            Location::Square(1, Region::Surface),
         )],
     }
     .apply(&mut state)

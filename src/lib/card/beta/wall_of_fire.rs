@@ -86,7 +86,7 @@ impl Card for WallOfFire {
             return Ok(vec![]);
         }
 
-        let mut path = vec![from.clone()];
+        let mut path = vec![from.clone().into_zone()];
         match through_path {
             Some(steps) => path.extend(steps.clone()),
             None => path.push(to.pick(player_id, state).await?.into_zone()),

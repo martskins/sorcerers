@@ -142,17 +142,12 @@ impl ActivatedAbility for GeomancerAbility {
                         Effect::BanishCard {
                             card_id: *rubble.get_id(),
                         },
-                        Effect::MoveCard {
-                            player_id: card.get_controller_id(state),
+                        Effect::SetCardZone {
                             card_id: *site_id,
-                            from: Zone::Atlasbook,
-                            to: LocationQuery::from_zone(rubble.get_zone().clone()),
-                            tap: false,
-                            region: Region::Surface,
-                            through_path: None,
+                            zone: rubble.get_zone().clone(),
                         },
                         Effect::SetTapped {
-                            card_id: *rubble.get_id(),
+                            card_id: *card_id,
                             tapped: true,
                         },
                     ]),
@@ -235,13 +230,17 @@ impl Card for Geomancer {
 
     fn get_activated_abilities(
         &self,
-        _state: &State,
+        state: &State,
     ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
-        Ok(vec![
-            Box::new(GeomancerAbility::PlaySite),
-            Box::new(GeomancerAbility::DrawSite),
-            Box::new(GeomancerAbility::ReplaceRubble),
-        ])
+        let mut actions: Vec<Box<dyn ActivatedAbility>> =
+            self.base_unit_activated_abilities(state)?;
+        actions.extend(vec![
+            Box::new(GeomancerAbility::PlaySite) as Box<dyn ActivatedAbility>,
+            Box::new(GeomancerAbility::DrawSite) as Box<dyn ActivatedAbility>,
+            Box::new(GeomancerAbility::ReplaceRubble) as Box<dyn ActivatedAbility>,
+        ]);
+
+        Ok(actions)
     }
 }
 

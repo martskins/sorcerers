@@ -38,7 +38,12 @@ impl ActivatedAbility for AdeptIllusionistAction {
 
         Ok(vec![
             Effect::SummonCards {
-                cards: vec![(*player_id, picked_card_id, zone.clone())],
+                cards: vec![(
+                    *player_id,
+                    picked_card_id,
+                    zone.into_location()
+                        .expect("Adept Illusionist target must be a location"),
+                )],
             },
             Effect::ShuffleDeck {
                 player_id: *player_id,

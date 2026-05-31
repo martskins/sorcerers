@@ -126,7 +126,13 @@ impl Card for ScourgeZombies {
 
                             Ok(vec![
                                 Effect::SummonCards {
-                                    cards: vec![(self_controller, self_id, died_here)],
+                                    cards: vec![(
+                                        self_controller,
+                                        self_id,
+                                        died_here
+                                            .into_location()
+                                            .expect("Scourge Zombies trigger must have a location"),
+                                    )],
                                 },
                                 Effect::SetTapped {
                                     card_id: self_id,

@@ -105,10 +105,9 @@ impl Card for GiantShark {
                             effects.push(Effect::MoveCard {
                                 player_id: shark.get_controller_id(state),
                                 card_id: shark_id,
-                                from: shark_zone,
-                                to: LocationQuery::from_zone(target_zone),
+                                from: (shark_zone).into_location().expect("MoveCard source must be a location"),
+                                to: LocationQuery::from_zone((target_zone).with_region(Region::Underwater)),
                                 tap: false,
-                                region: Region::Underwater,
                                 through_path: None,
                             });
                         }

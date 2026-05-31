@@ -235,19 +235,14 @@ pub async fn entered_zones(
             card_id,
             from,
             to,
-            region,
             through_path,
             ..
         } => {
             let mut entered = vec![];
-            let mut previous_zone = from.clone();
+            let mut previous_zone = from.clone().into_zone();
             let zones = match through_path {
                 Some(path) => path.clone(),
-                None => vec![to
-                    .pick(player_id, state)
-                    .await?
-                    .with_region(region.clone())
-                    .into_zone()],
+                None => vec![to.pick(player_id, state).await?.into_zone()],
             };
 
             for zone in zones {
@@ -261,7 +256,7 @@ pub async fn entered_zones(
         }
         Effect::SummonCards { cards } => Ok(cards
             .iter()
-            .map(|(_, card_id, zone)| (*card_id, zone.clone()))
+            .map(|(_, card_id, location)| (*card_id, location.clone().into_zone()))
             .collect()),
         _ => Ok(vec![]),
     }
@@ -277,19 +272,14 @@ pub async fn entered_sites(
             card_id,
             from,
             to,
-            region,
             through_path,
             ..
         } => {
             let mut entered = vec![];
-            let mut previous_zone = from.clone();
+            let mut previous_zone = from.clone().into_zone();
             let zones = match through_path {
                 Some(path) => path.clone(),
-                None => vec![to
-                    .pick(player_id, state)
-                    .await?
-                    .with_region(region.clone())
-                    .into_zone()],
+                None => vec![to.pick(player_id, state).await?.into_zone()],
             };
 
             for zone in zones {
@@ -303,8 +293,11 @@ pub async fn entered_sites(
         }
         Effect::SummonCards { cards } => Ok(cards
             .iter()
-            .filter_map(|(_, card_id, zone)| {
-                zone.get_site_at_square(state)
+            .filter_map(|(_, card_id, location)| {
+                location
+                    .clone()
+                    .into_zone()
+                    .get_site_at_square(state)
                     .map(|site| (*card_id, site.get_zone().clone()))
             })
             .collect()),

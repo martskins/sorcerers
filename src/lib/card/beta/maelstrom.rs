@@ -104,10 +104,9 @@ impl Card for Maelström {
                 effects.push(Effect::MoveCard {
                     card_id: minion_id,
                     player_id: controller_id,
-                    from: minion.get_zone().clone(),
-                    to: picked_zone.into(),
+                    from: (minion.get_zone().clone()).into_location().expect("MoveCard source must be a location"),
+                    to: LocationQuery::from_zone((picked_zone).with_region(minion.get_region(state).clone())),
                     tap: false,
-                    region: minion.get_region(state).clone(),
                     through_path: None,
                 });
             }

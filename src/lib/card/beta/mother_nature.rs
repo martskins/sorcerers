@@ -95,7 +95,14 @@ impl Card for MotherNature {
 
                 if summon {
                     return Ok(vec![Effect::SummonCards {
-                        cards: vec![(controller_id, *top_card_id, self.get_zone().clone())],
+                        cards: vec![(
+                            controller_id,
+                            *top_card_id,
+                            self.get_zone()
+                                .clone()
+                                .into_location()
+                                .expect("Mother Nature must be in a location"),
+                        )],
                     }]);
                 }
             } else {

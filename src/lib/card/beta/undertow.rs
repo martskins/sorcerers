@@ -98,11 +98,10 @@ impl Card for Undertow {
         .await?;
         Ok(vec![Effect::MoveCard {
             card_id: unit_id,
-            to: LocationQuery::from_zone(picked_zone),
+            to: LocationQuery::from_zone((picked_zone).with_region(unit.get_region(state).clone())),
             player_id,
-            from: unit.get_zone().clone(),
+            from: (unit.get_zone().clone()).into_location().expect("MoveCard source must be a location"),
             tap: false,
-            region: unit.get_region(state).clone(),
             through_path: None,
         }])
     }

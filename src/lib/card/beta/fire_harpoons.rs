@@ -102,10 +102,15 @@ impl Card for FireHarpoons {
             Effect::MoveCard {
                 player_id: controller_id,
                 card_id: target_id,
-                from: target.get_zone().clone(),
-                to: LocationQuery::from_zone(caster_zone),
+                from: target
+                    .get_zone()
+                    .clone()
+                    .into_location()
+                    .expect("Fire Harpoons target must be in a location"),
+                to: LocationQuery::from_zone(
+                    caster_zone.with_region(target.get_region(state).clone()),
+                ),
                 tap: false,
-                region: target.get_region(state).clone(),
                 through_path: None,
             },
             Effect::DrawCard {

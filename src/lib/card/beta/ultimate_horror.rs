@@ -79,7 +79,12 @@ impl Card for UltimateHorror {
             )
             .await?;
             effects.push(Effect::SummonCards {
-                cards: vec![(controller_id, card_id, zone)],
+                cards: vec![(
+                    controller_id,
+                    card_id,
+                    zone.into_location()
+                        .expect("Ultimate Horror target must be a location"),
+                )],
             });
         }
         Ok(effects)

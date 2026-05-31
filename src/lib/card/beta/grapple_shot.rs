@@ -94,10 +94,9 @@ impl Card for GrappleShot {
             let mut effects = vec![Effect::MoveCard {
                 player_id: controller_id,
                 card_id: ally_id,
-                from: ally_zone.clone(),
-                to: cur_zone.clone().into(),
+                from: (ally_zone.clone()).into_location().expect("MoveCard source must be a location"),
+                to: LocationQuery::from_zone((cur_zone.clone()).with_region(ally_card.get_region(state).clone())),
                 tap: false,
-                region: ally_card.get_region(state).clone(),
                 through_path: None,
             }];
             // 5. Ask if you want to strike the hit unit

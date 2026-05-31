@@ -90,10 +90,9 @@ impl Card for MagneticMuzzle {
             Effect::MoveCard {
                 player_id,
                 card_id: *self.get_id(),
-                from: self.get_zone().clone(),
-                to: LocationQuery::from_zone(target.get_zone().clone()),
+                from: (self.get_zone().clone()).into_location().expect("MoveCard source must be a location"),
+                to: LocationQuery::from_zone((target.get_zone().clone()).with_region(target.get_region(state).clone())),
                 tap: false,
-                region: target.get_region(state).clone(),
                 through_path: None,
             },
             Effect::SetBearer {

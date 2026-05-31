@@ -89,10 +89,12 @@ impl Card for WhirlingBlades {
             effects.push(Effect::MoveCard {
                 player_id: controller_id,
                 card_id: ally_id,
-                from: from_zone.clone(),
-                to: LocationQuery::from_zone(destination),
+                from: from_zone
+                    .clone()
+                    .into_location()
+                    .expect("Whirling Blades ally must be in a location"),
+                to: LocationQuery::from_zone(destination.with_region(ally.get_region(state).clone())),
                 tap: false,
-                region: ally.get_region(state).clone(),
                 through_path: None,
             });
         }

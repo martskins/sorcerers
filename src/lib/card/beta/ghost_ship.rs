@@ -89,7 +89,13 @@ impl Card for GhostShip {
         };
 
         Ok(vec![Effect::SummonCards {
-            cards: vec![(player_id, target_spirit, to.clone())],
+            cards: vec![(
+                player_id,
+                target_spirit,
+                to.clone()
+                    .into_location()
+                    .expect("Ghost Ship target must be a location"),
+            )],
         }])
     }
 }

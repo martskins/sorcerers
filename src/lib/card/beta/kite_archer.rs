@@ -89,10 +89,9 @@ impl Card for KiteArcher {
         Ok(vec![Effect::MoveCard {
             player_id: *self.get_owner_id(),
             card_id: *self.get_id(),
-            from: self.get_zone().clone(),
-            to: LocationQuery::from_zone(picked_zone.clone()),
+            from: (self.get_zone().clone()).into_location().expect("MoveCard source must be a location"),
+            to: LocationQuery::from_zone((picked_zone.clone()).with_region(self.get_region(state).clone())),
             tap: false,
-            region: self.get_region(state).clone(),
             through_path: None,
         }])
     }

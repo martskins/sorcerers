@@ -120,10 +120,15 @@ impl Card for GuileSirens {
             return Ok(vec![Effect::MoveCard {
                 player_id: opponent_id,
                 card_id: picked_card_id,
-                from: picked_card.get_zone().clone(),
-                to: LocationQuery::from_zone(picked_zone),
+                from: picked_card
+                    .get_zone()
+                    .clone()
+                    .into_location()
+                    .expect("Guile Sirens target must be in a location"),
+                to: LocationQuery::from_zone(
+                    picked_zone.with_region(picked_card.get_region(state).clone()),
+                ),
                 tap: false,
-                region: picked_card.get_region(state).clone(),
                 through_path: None,
             }]);
         }

@@ -85,13 +85,12 @@ impl Card for Thunderstorm {
         let mut effects = vec![Effect::MoveCard {
             player_id: self.get_controller_id(state),
             card_id: *self.get_id(),
-            from: self.get_zone().clone(),
+            from: (self.get_zone().clone()).into_location().expect("MoveCard source must be a location"),
             to: LocationQuery::from_options(
                 zones,
                 Some("Pick a zone to move Thunderstorm to".to_string()),
             ),
             tap: false,
-            region: self.get_region(state).clone(),
             through_path: None,
         }];
 

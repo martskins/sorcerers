@@ -100,10 +100,9 @@ impl Card for LeapAttack {
             effects.push(Effect::MoveCard {
                 player_id: controller_id,
                 card_id: leaper_id,
-                from: current_zone.clone(),
-                to: dest_zone.clone().into(),
+                from: (current_zone.clone()).into_location().expect("MoveCard source must be a location"),
+                to: LocationQuery::from_zone((dest_zone.clone()).with_region(leaper.get_region(state).clone())),
                 tap: false,
-                region: leaper.get_region(state).clone(),
                 through_path: None,
             });
         }

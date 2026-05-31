@@ -93,7 +93,10 @@ impl Card for BoneRabble {
                                     cards: vec![(
                                         owner_id,
                                         bone_rabble_id,
-                                        site.get_zone().clone(),
+                                        site.get_zone()
+                                            .clone()
+                                            .into_location()
+                                            .expect("played site must be a location"),
                                     )],
                                 }])
                             } else {

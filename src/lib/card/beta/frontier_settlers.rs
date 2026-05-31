@@ -71,14 +71,19 @@ impl ActivatedAbility for SettleAction {
             Effect::MoveCard {
                 player_id: *player_id,
                 card_id: *card_id,
-                from: state.get_card(card_id).get_zone().clone(),
+                from: (state.get_card(card_id).get_zone().clone()).into_location().expect("MoveCard source must be a location"),
                 to: crate::query::LocationQuery::from_zone(chosen_zone.clone()),
                 tap: false,
-                region: Region::Surface,
                 through_path: None,
             },
             Effect::SummonCards {
-                cards: vec![(*player_id, site_id, chosen_zone.clone())],
+                cards: vec![(
+                    *player_id,
+                    site_id,
+                    chosen_zone
+                        .into_location()
+                        .expect("Frontier Settlers target must be a location"),
+                )],
             },
             Effect::SetCardData {
                 card_id: *card_id,

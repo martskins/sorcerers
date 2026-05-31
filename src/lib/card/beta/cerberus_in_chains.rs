@@ -105,15 +105,17 @@ impl Card for CerberusInChains {
                             return Ok(vec![]);
                         }
 
-                        let from = cerberus.get_zone().clone();
                         let region = cerberus.get_region(state).clone();
                         Ok(vec![Effect::MoveCard {
                             player_id: owner_id,
                             card_id: cerberus_id,
-                            from,
-                            to: LocationQuery::from_zone(new_zone),
+                            from: cerberus
+                                .get_zone()
+                                .clone()
+                                .into_location()
+                                .expect("Cerberus must be in a location"),
+                            to: LocationQuery::from_zone(new_zone.with_region(region)),
                             tap: false,
-                            region,
                             through_path: None,
                         }])
                     })

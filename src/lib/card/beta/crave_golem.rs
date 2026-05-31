@@ -128,11 +128,10 @@ impl Card for CraveGolem {
                 {
                     return Ok(vec![Effect::MoveCard {
                         card_id: *self.get_id(),
-                        to: LocationQuery::from_zone(target_zone),
+                        to: LocationQuery::from_zone((target_zone).with_region(self.get_region(state).clone())),
                         player_id: self.get_controller_id(state),
-                        from: self_zone,
+                        from: (self_zone).into_location().expect("MoveCard source must be a location"),
                         tap: true,
-                        region: self.get_region(state).clone(),
                         through_path: None,
                     }]);
                 }

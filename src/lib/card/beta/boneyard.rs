@@ -100,7 +100,12 @@ impl Card for Boneyard {
             )
             .await?;
 
-            cards.push((player_id, picked_minion_id, zone.clone()));
+            cards.push((
+                player_id,
+                picked_minion_id,
+                zone.into_location()
+                    .expect("Boneyard summon target must be a location"),
+            ));
         }
 
         Ok(vec![Effect::SummonCards { cards }])

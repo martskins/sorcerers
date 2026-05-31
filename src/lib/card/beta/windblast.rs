@@ -83,10 +83,9 @@ impl Card for Windblast {
             effects.push(Effect::MoveCard {
                 player_id: unit.get_controller_id(state),
                 card_id: unit_id,
-                from: unit.get_zone().clone(),
-                to: LocationQuery::from_zone(to_zone),
+                from: (unit.get_zone().clone()).into_location().expect("MoveCard source must be a location"),
+                to: LocationQuery::from_zone((to_zone).with_region(Region::Surface)),
                 tap: false,
-                region: Region::Surface,
                 through_path: None,
             });
         }

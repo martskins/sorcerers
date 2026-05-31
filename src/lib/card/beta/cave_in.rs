@@ -89,10 +89,13 @@ impl Card for CaveIn {
             .map(|card_id| Effect::MoveCard {
                 player_id: self.get_controller_id(state),
                 card_id: *card_id,
-                from: picked_site.get_zone().clone(),
-                to: LocationQuery::from_zone(picked_site.get_zone().clone()),
+                from: picked_site
+                    .get_zone()
+                    .clone()
+                    .into_location()
+                    .expect("Cave In target must be in a location"),
+                to: LocationQuery::from_zone(picked_site.get_zone().with_region(Region::Underground)),
                 tap: false,
-                region: Region::Underground,
                 through_path: None,
             })
             .collect())

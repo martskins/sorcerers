@@ -49,11 +49,10 @@ impl ActivatedAbility for RollBoulder {
             for unit in units {
                 effects.push(Effect::MoveCard {
                     card_id: *boulder.get_id(),
-                    from: last_zone.clone(),
-                    to: LocationQuery::from_zone(zone.clone()),
+                    from: (last_zone.clone()).into_location().expect("MoveCard source must be a location"),
+                    to: LocationQuery::from_zone((zone.clone()).with_region(boulder.get_region(state).clone())),
                     player_id: boulder.get_controller_id(state),
                     tap: false,
-                    region: boulder.get_region(state).clone(),
                     through_path: None,
                 });
                 effects.push(Effect::TakeDamage {
