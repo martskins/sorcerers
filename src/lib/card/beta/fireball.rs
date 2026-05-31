@@ -57,7 +57,7 @@ impl Card for Fireball {
             &CARDINAL_DIRECTIONS,
             state,
             prompt,
-            Some(*self.get_id()),
+            Some(*caster_id),
         )
         .await?;
         Ok(vec![Effect::ShootProjectile {

@@ -57,7 +57,7 @@ impl Card for IceLance {
             &CARDINAL_DIRECTIONS,
             state,
             prompt,
-            Some(*self.get_id()),
+            Some(*caster_id),
         )
         .await?;
         let caster = state.get_card(caster_id);

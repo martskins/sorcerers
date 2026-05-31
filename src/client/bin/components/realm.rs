@@ -516,6 +516,44 @@ impl RealmComponent {
         )
     }
 
+    fn clamp_direction_origin(
+        origin: Pos2,
+        directions: &[Direction],
+        radius: f32,
+        button_size: f32,
+        bounds: Rect,
+    ) -> Pos2 {
+        if directions.is_empty() {
+            return origin;
+        }
+
+        let margin = button_size * 0.5 + 8.0;
+        let mut min_offset = vec2(f32::INFINITY, f32::INFINITY);
+        let mut max_offset = vec2(f32::NEG_INFINITY, f32::NEG_INFINITY);
+        for direction in directions {
+            let offset = Self::direction_vector(direction) * radius;
+            min_offset.x = min_offset.x.min(offset.x - margin);
+            min_offset.y = min_offset.y.min(offset.y - margin);
+            max_offset.x = max_offset.x.max(offset.x + margin);
+            max_offset.y = max_offset.y.max(offset.y + margin);
+        }
+
+        let clamp_axis = |value: f32, min_bound: f32, max_bound: f32, min_offset: f32, max_offset: f32| {
+            let min_value = min_bound - min_offset;
+            let max_value = max_bound - max_offset;
+            if min_value <= max_value {
+                value.clamp(min_value, max_value)
+            } else {
+                (min_value + max_value) * 0.5
+            }
+        };
+
+        pos2(
+            clamp_axis(origin.x, bounds.min.x, bounds.max.x, min_offset.x, max_offset.x),
+            clamp_axis(origin.y, bounds.min.y, bounds.max.y, min_offset.y, max_offset.y),
+        )
+    }
+
     fn render_direction_picker(
         &mut self,
         ui: &mut egui::Ui,
@@ -531,10 +569,17 @@ impl RealmComponent {
             return Ok(());
         };
 
-        let origin = self.direction_origin(data, *source_card_id);
+        let raw_origin = self.direction_origin(data, *source_card_id);
         let board = Rect::from_points(&board_corners(&self.rect));
         let radius = (board.width().min(board.height()) * 0.24).clamp(58.0, 128.0);
         let button_size = (board.width().min(board.height()) * 0.11).clamp(42.0, 58.0);
+        let origin = Self::clamp_direction_origin(
+            raw_origin,
+            directions,
+            radius,
+            button_size,
+            ui.clip_rect(),
+        );
         let mut picked = None;
 
         painter.circle_stroke(
