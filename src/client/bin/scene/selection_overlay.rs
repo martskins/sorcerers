@@ -253,11 +253,7 @@ impl SelectionOverlay {
         self.pickable_cards.contains(card_id)
     }
 
-    fn handle_card_click(
-        &mut self,
-        card_id: &CardId,
-        data: &mut GameData,
-    ) -> anyhow::Result<()> {
+    fn handle_card_click(&mut self, card_id: &CardId, data: &mut GameData) -> anyhow::Result<()> {
         match self.behaviour {
             SelectionOverlayBehaviour::Preview => {
                 self.client.send(ClientMessage::ClickCard {

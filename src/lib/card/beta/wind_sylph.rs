@@ -139,7 +139,9 @@ impl Card for WindSylph {
         Ok(vec![Effect::MoveCard {
             player_id: controller_id,
             card_id: unit_id,
-            from: (unit.get_zone().clone()).into_location().expect("MoveCard source must be a location"),
+            from: (unit.get_zone().clone())
+                .into_location()
+                .expect("MoveCard source must be a location"),
             to: LocationQuery::from_zone((target_zone).with_region(unit.get_region(state).clone())),
             tap: false,
             through_path: None,

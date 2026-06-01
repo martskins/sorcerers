@@ -89,8 +89,7 @@ fn side_stat(
             } else {
                 Color32::from_rgba_unmultiplied(30, 40, 52, 190)
             };
-            ui.painter()
-                .rect_filled(rect, CornerRadius::same(5), fill);
+            ui.painter().rect_filled(rect, CornerRadius::same(5), fill);
             ui.painter().rect_stroke(
                 rect,
                 CornerRadius::same(5),
@@ -132,7 +131,11 @@ fn life_vial(ui: &mut Ui, health: u16, deaths_door: bool) {
     let (rect, _) = ui.allocate_exact_size(vec2(46.0, 62.0), egui::Sense::hover());
     let painter = ui.painter();
     let rounding = CornerRadius::same(8);
-    painter.rect_filled(rect, rounding, Color32::from_rgba_unmultiplied(28, 18, 22, 230));
+    painter.rect_filled(
+        rect,
+        rounding,
+        Color32::from_rgba_unmultiplied(28, 18, 22, 230),
+    );
     painter.rect_stroke(
         rect,
         rounding,
@@ -300,7 +303,11 @@ impl Component for PlayerStatusComponent {
                                 grave_count,
                                 Color32::from_rgb(170, 170, 190),
                                 &ctx,
-                                if self.player { "grave_self" } else { "grave_opp" },
+                                if self.player {
+                                    "grave_self"
+                                } else {
+                                    "grave_opp"
+                                },
                                 true,
                             )
                             .clicked()
@@ -313,7 +320,11 @@ impl Component for PlayerStatusComponent {
                                 banish_count,
                                 Color32::from_rgb(170, 170, 190),
                                 &ctx,
-                                if self.player { "banish_self" } else { "banish_opp" },
+                                if self.player {
+                                    "banish_self"
+                                } else {
+                                    "banish_opp"
+                                },
                                 true,
                             )
                             .clicked()
@@ -342,7 +353,11 @@ impl Component for PlayerStatusComponent {
                                     "log".to_string()
                                 };
                                 if ui
-                                    .link(egui::RichText::new(label).color(Color32::from_rgb(100, 200, 255)).size(11.0))
+                                    .link(
+                                        egui::RichText::new(label)
+                                            .color(Color32::from_rgb(100, 200, 255))
+                                            .size(11.0),
+                                    )
                                     .clicked()
                                 {
                                     open_log = true;

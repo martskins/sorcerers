@@ -61,11 +61,7 @@ pub enum EffectQuery {
 }
 
 impl EffectQuery {
-    pub async fn source_ids(
-        &self,
-        effect: &Effect,
-        state: &State,
-    ) -> anyhow::Result<Vec<CardId>> {
+    pub async fn source_ids(&self, effect: &Effect, state: &State) -> anyhow::Result<Vec<CardId>> {
         match (self, effect) {
             (EffectQuery::OneOf(queries), _) => {
                 let mut source_ids = vec![];

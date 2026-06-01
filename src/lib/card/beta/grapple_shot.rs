@@ -94,8 +94,12 @@ impl Card for GrappleShot {
             let mut effects = vec![Effect::MoveCard {
                 player_id: controller_id,
                 card_id: ally_id,
-                from: (ally_zone.clone()).into_location().expect("MoveCard source must be a location"),
-                to: LocationQuery::from_zone((cur_zone.clone()).with_region(ally_card.get_region(state).clone())),
+                from: (ally_zone.clone())
+                    .into_location()
+                    .expect("MoveCard source must be a location"),
+                to: LocationQuery::from_zone(
+                    (cur_zone.clone()).with_region(ally_card.get_region(state).clone()),
+                ),
                 tap: false,
                 through_path: None,
             }];

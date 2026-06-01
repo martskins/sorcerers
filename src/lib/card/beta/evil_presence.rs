@@ -73,26 +73,24 @@ impl Card for EvilPresence {
                         .including_not_in_play(),
                 },
                 expires_on_effect: None,
-                on_effect: Arc::new(
-                    move |_state: &State, card_id: &CardId, _effect: &Effect| {
-                        Box::pin(async move {
-                            Ok(vec![
-                                Effect::SetCardZone {
-                                    card_id: evil_presence_id,
-                                    zone: Zone::Hand,
+                on_effect: Arc::new(move |_state: &State, card_id: &CardId, _effect: &Effect| {
+                    Box::pin(async move {
+                        Ok(vec![
+                            Effect::SetCardZone {
+                                card_id: evil_presence_id,
+                                zone: Zone::Hand,
+                            },
+                            Effect::AddAbilityCounter {
+                                card_id: *card_id,
+                                counter: AbilityCounter {
+                                    id: uuid::Uuid::new_v4(),
+                                    ability: Ability::Charge,
+                                    expires_on_effect: None,
                                 },
-                                Effect::AddAbilityCounter {
-                                    card_id: *card_id,
-                                    counter: AbilityCounter {
-                                        id: uuid::Uuid::new_v4(),
-                                        ability: Ability::Charge,
-                                        expires_on_effect: None,
-                                    },
-                                },
-                            ])
-                        })
-                    },
-                ),
+                            },
+                        ])
+                    })
+                }),
                 multitrigger: false,
             },
         }])

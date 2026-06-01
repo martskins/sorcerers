@@ -1383,10 +1383,7 @@ impl State {
             .expect("continuous effect index should be initialized"))
     }
 
-    pub fn ability_modifiers_from_area_modifiers(
-        &self,
-        card_id: &CardId,
-    ) -> Vec<AbilityModifier> {
+    pub fn ability_modifiers_from_area_modifiers(&self, card_id: &CardId) -> Vec<AbilityModifier> {
         self.with_area_modifier_index(|index| {
             index
                 .ability_modifiers
@@ -1437,10 +1434,7 @@ impl State {
         })
     }
 
-    pub fn granted_statuses_from_continuous_effects(
-        &self,
-        card_id: &CardId,
-    ) -> Vec<CardStatus> {
+    pub fn granted_statuses_from_continuous_effects(&self, card_id: &CardId) -> Vec<CardStatus> {
         self.with_continuous_effect_index(|index| {
             index
                 .grants_statuses

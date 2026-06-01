@@ -64,29 +64,25 @@ impl Card for CriticalStrike {
                 expires_on_effect: Some(EffectQuery::TurnEnd {
                     player_id: Some(controller_id),
                 }),
-                on_effect: Arc::new(
-                    move |_state: &State, _card_id: &CardId, effect: &Effect| {
-                        Box::pin(async move {
-                            if let Effect::TakeDamage {
-                                card_id,
-                                from,
-                                damage,
-                            } = effect
-                            {
-                                Ok(vec![Effect::TakeDamage {
-                                    card_id: *card_id,
-                                    from: *from,
-                                    damage: damage.clone(),
-                                }])
-                            } else {
-                                Ok(vec![])
-                            }
-                        })
-                            as Pin<
-                                Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>,
-                            >
-                    },
-                ),
+                on_effect: Arc::new(move |_state: &State, _card_id: &CardId, effect: &Effect| {
+                    Box::pin(async move {
+                        if let Effect::TakeDamage {
+                            card_id,
+                            from,
+                            damage,
+                        } = effect
+                        {
+                            Ok(vec![Effect::TakeDamage {
+                                card_id: *card_id,
+                                from: *from,
+                                damage: damage.clone(),
+                            }])
+                        } else {
+                            Ok(vec![])
+                        }
+                    })
+                        as Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>>
+                }),
                 multitrigger: false,
             },
         }])

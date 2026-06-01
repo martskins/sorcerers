@@ -63,7 +63,9 @@ impl ActivatedAbility for HarpoonPull {
             Effect::MoveCard {
                 player_id: *player_id,
                 card_id: target_id,
-                from: (target_zone).into_location().expect("MoveCard source must be a location"),
+                from: (target_zone)
+                    .into_location()
+                    .expect("MoveCard source must be a location"),
                 to: LocationQuery::from_zone((my_zone).with_region(target_region)),
                 tap: false,
                 through_path: None,

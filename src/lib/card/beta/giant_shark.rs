@@ -73,49 +73,51 @@ impl Card for GiantShark {
                 card: CardQuery::new().units(),
                 site: ZoneQuery::from_options(body_of_water.clone(), None),
             },
-            on_effect: Arc::new(
-                move |state: &State, card_id: &CardId, effect: &Effect| {
-                    let body_of_water = body_of_water.clone();
-                    Box::pin(async move {
-                        if card_id == &shark_id {
-                            return Ok(vec![]);
-                        }
+            on_effect: Arc::new(move |state: &State, card_id: &CardId, effect: &Effect| {
+                let body_of_water = body_of_water.clone();
+                Box::pin(async move {
+                    if card_id == &shark_id {
+                        return Ok(vec![]);
+                    }
 
-                        let entered_this_body = entered_sites(effect, state)
-                            .await?
-                            .into_iter()
-                            .filter(|(entered_card_id, _)| entered_card_id == card_id)
-                            .any(|(_, site_zone)| body_of_water.contains(&site_zone));
+                    let entered_this_body = entered_sites(effect, state)
+                        .await?
+                        .into_iter()
+                        .filter(|(entered_card_id, _)| entered_card_id == card_id)
+                        .any(|(_, site_zone)| body_of_water.contains(&site_zone));
 
-                        if !entered_this_body {
-                            return Ok(vec![]);
-                        }
+                    if !entered_this_body {
+                        return Ok(vec![]);
+                    }
 
-                        let shark = state.get_card(&shark_id);
-                        let shark_zone = shark.get_zone().clone();
-                        let target_zone = state.get_card(card_id).get_zone().clone();
-                        let mut effects = vec![Effect::Attack {
-                            attacker_id: shark_id,
-                            defender_id: *card_id,
-                            defending_ids: vec![],
-                            damage_assignment: None,
-                        }];
+                    let shark = state.get_card(&shark_id);
+                    let shark_zone = shark.get_zone().clone();
+                    let target_zone = state.get_card(card_id).get_zone().clone();
+                    let mut effects = vec![Effect::Attack {
+                        attacker_id: shark_id,
+                        defender_id: *card_id,
+                        defending_ids: vec![],
+                        damage_assignment: None,
+                    }];
 
-                        if shark_zone != target_zone {
-                            effects.push(Effect::MoveCard {
-                                player_id: shark.get_controller_id(state),
-                                card_id: shark_id,
-                                from: (shark_zone).into_location().expect("MoveCard source must be a location"),
-                                to: LocationQuery::from_zone((target_zone).with_region(Region::Underwater)),
-                                tap: false,
-                                through_path: None,
-                            });
-                        }
+                    if shark_zone != target_zone {
+                        effects.push(Effect::MoveCard {
+                            player_id: shark.get_controller_id(state),
+                            card_id: shark_id,
+                            from: (shark_zone)
+                                .into_location()
+                                .expect("MoveCard source must be a location"),
+                            to: LocationQuery::from_zone(
+                                (target_zone).with_region(Region::Underwater),
+                            ),
+                            tap: false,
+                            through_path: None,
+                        });
+                    }
 
-                        Ok(effects)
-                    })
-                },
-            ),
+                    Ok(effects)
+                })
+            }),
         }])
     }
 }

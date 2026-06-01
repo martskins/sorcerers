@@ -31,8 +31,12 @@ impl ActivatedAbility for TapToStrikeNearbyMinions {
         effects.push(Effect::MoveCard {
             player_id: *player_id,
             card_id: *card_id,
-            from: (kraken.get_zone().clone()).into_location().expect("MoveCard source must be a location"),
-            to: LocationQuery::from_zone((kraken.get_zone().clone()).with_region(kraken.get_region(state).clone())),
+            from: (kraken.get_zone().clone())
+                .into_location()
+                .expect("MoveCard source must be a location"),
+            to: LocationQuery::from_zone(
+                (kraken.get_zone().clone()).with_region(kraken.get_region(state).clone()),
+            ),
             tap: false,
             through_path: None,
         });

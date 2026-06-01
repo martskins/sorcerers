@@ -93,7 +93,9 @@ impl Card for WhirlingBlades {
                     .clone()
                     .into_location()
                     .expect("Whirling Blades ally must be in a location"),
-                to: LocationQuery::from_zone(destination.with_region(ally.get_region(state).clone())),
+                to: LocationQuery::from_zone(
+                    destination.with_region(ally.get_region(state).clone()),
+                ),
                 tap: false,
                 through_path: None,
             });

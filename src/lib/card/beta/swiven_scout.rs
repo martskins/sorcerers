@@ -118,11 +118,9 @@ impl Card for SwivenScout {
             trigger_on_effect: EffectQuery::MoveCard {
                 card: CardQuery::new().units(),
             },
-            on_effect: Arc::new(
-                move |state: &State, _card_id: &CardId, _effect: &Effect| {
-                    Box::pin(async move { reveal_enemy_hands_in_range(scout_id, state).await })
-                },
-            ),
+            on_effect: Arc::new(move |state: &State, _card_id: &CardId, _effect: &Effect| {
+                Box::pin(async move { reveal_enemy_hands_in_range(scout_id, state).await })
+            }),
         }])
     }
 }

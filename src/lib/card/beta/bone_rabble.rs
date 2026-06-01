@@ -76,38 +76,34 @@ impl Card for BoneRabble {
                 expires_on_effect: Some(EffectQuery::SummonCard {
                     card: self.get_id().into(),
                 }),
-                on_effect: Arc::new(
-                    move |state: &State, card_id: &CardId, _effect: &Effect| {
-                        let owner_id = owner_id;
-                        Box::pin(async move {
-                            let site = state.get_card(card_id);
-                            let summon_bone_rabble = yes_or_no_source(
-                                &owner_id,
-                                state,
-                                "Summon Bone Rabble atop the played site?",
-                                Some(bone_rabble_id),
-                            )
-                            .await?;
-                            if summon_bone_rabble {
-                                Ok(vec![Effect::SummonCards {
-                                    cards: vec![(
-                                        owner_id,
-                                        bone_rabble_id,
-                                        site.get_zone()
-                                            .clone()
-                                            .into_location()
-                                            .expect("played site must be a location"),
-                                    )],
-                                }])
-                            } else {
-                                Ok(vec![])
-                            }
-                        })
-                            as Pin<
-                                Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>,
-                            >
-                    },
-                ),
+                on_effect: Arc::new(move |state: &State, card_id: &CardId, _effect: &Effect| {
+                    let owner_id = owner_id;
+                    Box::pin(async move {
+                        let site = state.get_card(card_id);
+                        let summon_bone_rabble = yes_or_no_source(
+                            &owner_id,
+                            state,
+                            "Summon Bone Rabble atop the played site?",
+                            Some(bone_rabble_id),
+                        )
+                        .await?;
+                        if summon_bone_rabble {
+                            Ok(vec![Effect::SummonCards {
+                                cards: vec![(
+                                    owner_id,
+                                    bone_rabble_id,
+                                    site.get_zone()
+                                        .clone()
+                                        .into_location()
+                                        .expect("played site must be a location"),
+                                )],
+                            }])
+                        } else {
+                            Ok(vec![])
+                        }
+                    })
+                        as Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>>
+                }),
                 multitrigger: false,
             },
         }]

@@ -76,8 +76,12 @@ impl ActivatedAbility for ThrowArtifactAbility {
             Effect::MoveCard {
                 player_id: *player_id,
                 card_id: artifact_id,
-                from: (artifact.get_zone().clone()).into_location().expect("MoveCard source must be a location"),
-                to: LocationQuery::from_zone((target.get_zone().clone()).with_region(target.get_region(state).clone())),
+                from: (artifact.get_zone().clone())
+                    .into_location()
+                    .expect("MoveCard source must be a location"),
+                to: LocationQuery::from_zone(
+                    (target.get_zone().clone()).with_region(target.get_region(state).clone()),
+                ),
                 tap: false,
                 through_path: None,
             },

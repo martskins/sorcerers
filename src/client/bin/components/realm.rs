@@ -620,8 +620,8 @@ impl RealmComponent {
 
     fn render_projectile_flights(&mut self, ui: &mut Ui, painter: &Painter, now: f64) {
         self.projectile_flights.retain(|flight| {
-            let progress = ((now - flight.started_at) / PROJECTILE_FLIGHT_DURATION)
-                .clamp(0.0, 1.0) as f32;
+            let progress =
+                ((now - flight.started_at) / PROJECTILE_FLIGHT_DURATION).clamp(0.0, 1.0) as f32;
             let eased = 1.0 - (1.0 - progress) * (1.0 - progress);
             let (pos, dir) = Self::sample_projectile_path(&flight.points, eased);
             let dir = if dir.length_sq() > 0.0 {
@@ -643,13 +643,23 @@ impl RealmComponent {
             let tail = pos - dir * 42.0;
             painter.line_segment(
                 [tail, pos - dir * 8.0],
-                Stroke::new(5.0, Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), 56)),
+                Stroke::new(
+                    5.0,
+                    Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), 56),
+                ),
             );
             painter.line_segment(
                 [tail + dir * 12.0, pos - dir * 5.0],
-                Stroke::new(2.0, Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), 190)),
+                Stroke::new(
+                    2.0,
+                    Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), 190),
+                ),
             );
-            painter.circle_filled(pos, 8.0, Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), 85));
+            painter.circle_filled(
+                pos,
+                8.0,
+                Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), 85),
+            );
             painter.circle_filled(pos, 4.0, core);
 
             if progress < 1.0 {
@@ -722,19 +732,32 @@ impl RealmComponent {
             max_offset.y = max_offset.y.max(offset.y + margin);
         }
 
-        let clamp_axis = |value: f32, min_bound: f32, max_bound: f32, min_offset: f32, max_offset: f32| {
-            let min_value = min_bound - min_offset;
-            let max_value = max_bound - max_offset;
-            if min_value <= max_value {
-                value.clamp(min_value, max_value)
-            } else {
-                (min_value + max_value) * 0.5
-            }
-        };
+        let clamp_axis =
+            |value: f32, min_bound: f32, max_bound: f32, min_offset: f32, max_offset: f32| {
+                let min_value = min_bound - min_offset;
+                let max_value = max_bound - max_offset;
+                if min_value <= max_value {
+                    value.clamp(min_value, max_value)
+                } else {
+                    (min_value + max_value) * 0.5
+                }
+            };
 
         pos2(
-            clamp_axis(origin.x, bounds.min.x, bounds.max.x, min_offset.x, max_offset.x),
-            clamp_axis(origin.y, bounds.min.y, bounds.max.y, min_offset.y, max_offset.y),
+            clamp_axis(
+                origin.x,
+                bounds.min.x,
+                bounds.max.x,
+                min_offset.x,
+                max_offset.x,
+            ),
+            clamp_axis(
+                origin.y,
+                bounds.min.y,
+                bounds.max.y,
+                min_offset.y,
+                max_offset.y,
+            ),
         )
     }
 
@@ -1383,10 +1406,7 @@ impl Component for RealmComponent {
                 Sense::HOVER
             };
             let resp = ui.allocate_rect(card_rect.rect, sense);
-            if resp.hovered()
-                && card_clicks_enabled
-                && card_rect.card.card_type == CardType::Aura
-            {
+            if resp.hovered() && card_clicks_enabled && card_rect.card.card_type == CardType::Aura {
                 match data.aura_affected_zones.get(&card_rect.card.id) {
                     Some(Some(zones)) if !zones.is_empty() => {
                         Self::draw_affected_zone_highlight(

@@ -97,8 +97,12 @@ impl Card for PurgeJuggernaut {
         let mut effects = vec![Effect::MoveCard {
             player_id: controller_id,
             card_id: self_id,
-            from: (self.get_zone().clone()).into_location().expect("MoveCard source must be a location"),
-            to: LocationQuery::from_zone((target_zone.clone()).with_region(self.get_region(state).clone())),
+            from: (self.get_zone().clone())
+                .into_location()
+                .expect("MoveCard source must be a location"),
+            to: LocationQuery::from_zone(
+                (target_zone.clone()).with_region(self.get_region(state).clone()),
+            ),
             tap: true,
             through_path: None,
         }];

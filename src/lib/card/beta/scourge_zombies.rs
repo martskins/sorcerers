@@ -66,85 +66,81 @@ impl Card for ScourgeZombies {
                     target: Some(CardQuery::new().minions().minion_type(&MinionType::Mortal)),
                 },
                 expires_on_effect: None,
-                on_effect: Arc::new(
-                    move |state: &State, damaged_id: &CardId, effect: &Effect| {
-                        let damaged_id = *damaged_id;
-                        Box::pin(async move {
-                            let Effect::TakeDamage { from, .. } = effect else {
-                                return Ok(vec![]);
-                            };
+                on_effect: Arc::new(move |state: &State, damaged_id: &CardId, effect: &Effect| {
+                    let damaged_id = *damaged_id;
+                    Box::pin(async move {
+                        let Effect::TakeDamage { from, .. } = effect else {
+                            return Ok(vec![]);
+                        };
 
-                            let self_card = state.get_card(&self_id);
-                            if *self_card.get_zone() != Zone::Cemetery {
-                                return Ok(vec![]);
-                            }
+                        let self_card = state.get_card(&self_id);
+                        if *self_card.get_zone() != Zone::Cemetery {
+                            return Ok(vec![]);
+                        }
 
-                            let self_controller = self_card.get_controller_id(state);
-                            let damaged_card = state.get_card(&damaged_id);
-                            if damaged_card.get_controller_id(state) != self_controller {
-                                return Ok(vec![]);
-                            }
-                            if damaged_card.get_region(state) != &Region::Surface {
-                                return Ok(vec![]);
-                            }
+                        let self_controller = self_card.get_controller_id(state);
+                        let damaged_card = state.get_card(&damaged_id);
+                        if damaged_card.get_controller_id(state) != self_controller {
+                            return Ok(vec![]);
+                        }
+                        if damaged_card.get_region(state) != &Region::Surface {
+                            return Ok(vec![]);
+                        }
 
-                            let died_here = damaged_card.get_zone().clone();
-                            if !died_here.is_in_play() {
-                                return Ok(vec![]);
-                            }
+                        let died_here = damaged_card.get_zone().clone();
+                        if !died_here.is_in_play() {
+                            return Ok(vec![]);
+                        }
 
-                            let died = state.effects.iter().any(|queued| {
-                                matches!(queued, Effect::KillMinion { card_id, .. }
+                        let died = state.effects.iter().any(|queued| {
+                            matches!(queued, Effect::KillMinion { card_id, .. }
                                     if *card_id == damaged_id)
+                        });
+                        if !died {
+                            return Ok(vec![]);
+                        }
+
+                        let attacker = state.get_card(from);
+                        let has_lethal_target =
+                            damaged_card.has_ability(state, &Ability::LethalTarget);
+                        let will_die = attacker.has_ability(state, &Ability::Lethal)
+                            || has_lethal_target
+                            || damaged_card.get_unit_base().is_some_and(|ub| {
+                                ub.damage >= damaged_card.get_toughness(state).unwrap_or(0)
                             });
-                            if !died {
-                                return Ok(vec![]);
-                            }
+                        if !will_die {
+                            return Ok(vec![]);
+                        }
 
-                            let attacker = state.get_card(from);
-                            let has_lethal_target =
-                                damaged_card.has_ability(state, &Ability::LethalTarget);
-                            let will_die = attacker.has_ability(state, &Ability::Lethal)
-                                || has_lethal_target
-                                || damaged_card.get_unit_base().is_some_and(|ub| {
-                                    ub.damage >= damaged_card.get_toughness(state).unwrap_or(0)
-                                });
-                            if !will_die {
-                                return Ok(vec![]);
-                            }
+                        if !yes_or_no_source(
+                            &self_controller,
+                            state,
+                            "Summon Scourge Zombies to the fallen Mortal's location tapped?",
+                            Some(self_id),
+                        )
+                        .await?
+                        {
+                            return Ok(vec![]);
+                        }
 
-                            if !yes_or_no_source(
-                                &self_controller,
-                                state,
-                                "Summon Scourge Zombies to the fallen Mortal's location tapped?",
-                                Some(self_id),
-                            )
-                            .await?
-                            {
-                                return Ok(vec![]);
-                            }
-
-                            Ok(vec![
-                                Effect::SummonCards {
-                                    cards: vec![(
-                                        self_controller,
-                                        self_id,
-                                        died_here
-                                            .into_location()
-                                            .expect("Scourge Zombies trigger must have a location"),
-                                    )],
-                                },
-                                Effect::SetTapped {
-                                    card_id: self_id,
-                                    tapped: true,
-                                },
-                            ])
-                        })
-                            as Pin<
-                                Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>,
-                            >
-                    },
-                ),
+                        Ok(vec![
+                            Effect::SummonCards {
+                                cards: vec![(
+                                    self_controller,
+                                    self_id,
+                                    died_here
+                                        .into_location()
+                                        .expect("Scourge Zombies trigger must have a location"),
+                                )],
+                            },
+                            Effect::SetTapped {
+                                card_id: self_id,
+                                tapped: true,
+                            },
+                        ])
+                    })
+                        as Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>>
+                }),
                 multitrigger: true,
             },
         }])

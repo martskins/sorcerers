@@ -49,44 +49,41 @@ impl AwakenedMummies {
             expires_on_effect: Some(EffectQuery::BuryCard {
                 card: self.get_id().into(),
             }),
-            on_effect: Arc::new(
-                move |state: &State, card_id: &CardId, effect: &Effect| {
-                    let mummy_id = mummy_id;
-                    let zone = zone.clone();
-                    Box::pin(async move {
-                        let mummy = state.get_card(&mummy_id);
-                        if mummy.get_region(state) != &Region::Underground {
-                            return Ok(vec![]);
-                        }
+            on_effect: Arc::new(move |state: &State, card_id: &CardId, effect: &Effect| {
+                let mummy_id = mummy_id;
+                let zone = zone.clone();
+                Box::pin(async move {
+                    let mummy = state.get_card(&mummy_id);
+                    if mummy.get_region(state) != &Region::Underground {
+                        return Ok(vec![]);
+                    }
 
-                        let entered_ground_above = entered_zones(effect, state)
-                            .await?
-                            .into_iter()
-                            .any(|(entered_card_id, entered_zone)| {
-                                entered_card_id == *card_id
-                                    && entered_zone == zone.with_region(Region::Surface)
-                            });
+                    let entered_ground_above = entered_zones(effect, state).await?.into_iter().any(
+                        |(entered_card_id, entered_zone)| {
+                            entered_card_id == *card_id
+                                && entered_zone == zone.with_region(Region::Surface)
+                        },
+                    );
 
-                        if !entered_ground_above {
-                            return Ok(vec![]);
-                        }
+                    if !entered_ground_above {
+                        return Ok(vec![]);
+                    }
 
-                        Ok(vec![
-                            Effect::SetCardRegion {
-                                card_id: mummy_id,
-                                region: Region::Surface,
-                                tap: false,
-                            },
-                            Effect::Attack {
-                                attacker_id: mummy_id,
-                                defender_id: *card_id,
-                                defending_ids: vec![],
-                                damage_assignment: None,
-                            },
-                        ])
-                    })
-                },
-            ),
+                    Ok(vec![
+                        Effect::SetCardRegion {
+                            card_id: mummy_id,
+                            region: Region::Surface,
+                            tap: false,
+                        },
+                        Effect::Attack {
+                            attacker_id: mummy_id,
+                            defender_id: *card_id,
+                            defending_ids: vec![],
+                            damage_assignment: None,
+                        },
+                    ])
+                })
+            }),
             multitrigger: true,
         })
     }

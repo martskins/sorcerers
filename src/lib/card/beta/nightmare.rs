@@ -114,7 +114,9 @@ impl Card for Nightmare {
             effects.push(Effect::MoveCard {
                 player_id: controller_id,
                 card_id: minion_id,
-                from: (minion_zone).into_location().expect("MoveCard source must be a location"),
+                from: (minion_zone)
+                    .into_location()
+                    .expect("MoveCard source must be a location"),
                 to: LocationQuery::from_zone(target_zone.with_region(region)),
                 tap: false,
                 through_path: None,

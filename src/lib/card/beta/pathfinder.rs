@@ -78,8 +78,12 @@ impl ActivatedAbility for PathfinderSitewalk {
             Effect::MoveCard {
                 player_id: *player_id,
                 card_id: *card_id,
-                from: (pathfinder.get_zone().clone()).into_location().expect("MoveCard source must be a location"),
-                to: LocationQuery::from_zone((zone).with_region(pathfinder.get_region(state).clone())),
+                from: (pathfinder.get_zone().clone())
+                    .into_location()
+                    .expect("MoveCard source must be a location"),
+                to: LocationQuery::from_zone(
+                    (zone).with_region(pathfinder.get_region(state).clone()),
+                ),
                 tap: false,
                 through_path: None,
             },

@@ -633,7 +633,9 @@ async fn test_vaults_of_zul_triggers_on_stop_not_intermediate_enter() {
         player_id,
         card_id: avatar_id,
         from: Location::Square(1, Region::Surface),
-        to: LocationQuery::from_zone((Zone::Location(Location::Square(3, Region::Surface))).with_region(Region::Surface)),
+        to: LocationQuery::from_zone(
+            (Zone::Location(Location::Square(3, Region::Surface))).with_region(Region::Surface),
+        ),
         tap: false,
         through_path: Some(vec![
             Zone::Location(Location::Square(2, Region::Surface)),
@@ -662,7 +664,9 @@ async fn test_vaults_of_zul_triggers_on_stop_not_intermediate_enter() {
         player_id,
         card_id: avatar_id,
         from: Location::Square(1, Region::Surface),
-        to: LocationQuery::from_zone((Zone::Location(Location::Square(3, Region::Surface))).with_region(Region::Surface)),
+        to: LocationQuery::from_zone(
+            (Zone::Location(Location::Square(3, Region::Surface))).with_region(Region::Surface),
+        ),
         tap: false,
         through_path: Some(vec![
             Zone::Location(Location::Square(2, Region::Surface)),
@@ -697,11 +701,7 @@ async fn test_enter_site_triggers_when_card_is_summoned_there() {
     state.cards.insert(ogre_id, Box::new(ogre));
 
     state.queue_one(Effect::SummonCards {
-        cards: vec![(
-            player_id,
-            ogre_id,
-            Location::Square(1, Region::Surface),
-        )],
+        cards: vec![(player_id, ogre_id, Location::Square(1, Region::Surface))],
     });
     drain_effects(&mut state).await;
 
@@ -729,7 +729,9 @@ async fn test_phase_assassin_keeps_stealth_after_entering_void() {
         player_id,
         card_id: assassin_id,
         from: Location::Square(1, Region::Surface),
-        to: LocationQuery::from_zone((Zone::Location(Location::Square(2, Region::Surface))).with_region(Region::Surface)),
+        to: LocationQuery::from_zone(
+            (Zone::Location(Location::Square(2, Region::Surface))).with_region(Region::Surface),
+        ),
         tap: false,
         through_path: None,
     });
@@ -746,7 +748,9 @@ async fn test_phase_assassin_keeps_stealth_after_entering_void() {
         player_id,
         card_id: assassin_id,
         from: Location::Square(2, Region::Surface),
-        to: LocationQuery::from_zone((Zone::Location(Location::Square(3, Region::Surface))).with_region(Region::Surface)),
+        to: LocationQuery::from_zone(
+            (Zone::Location(Location::Square(3, Region::Surface))).with_region(Region::Surface),
+        ),
         tap: false,
         through_path: None,
     });
@@ -802,7 +806,10 @@ async fn test_region_changes_enter_location_but_not_site() {
         player_id,
         card_id,
         from: Location::Square(1, Region::Surface),
-        to: LocationQuery::from_zone((Zone::Location(Location::Square(1, Region::Underground))).with_region(Region::Underground)),
+        to: LocationQuery::from_zone(
+            (Zone::Location(Location::Square(1, Region::Underground)))
+                .with_region(Region::Underground),
+        ),
         tap: false,
         through_path: None,
     };
@@ -829,19 +836,26 @@ async fn test_minion_without_burrowing_dies_underground() {
     let mut apprentice_wizard = ApprenticeWizard::new(player_id);
     let apprentice_wizard_id = *apprentice_wizard.get_id();
     apprentice_wizard.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    state.cards.insert(apprentice_wizard_id, Box::new(apprentice_wizard));
+    state
+        .cards
+        .insert(apprentice_wizard_id, Box::new(apprentice_wizard));
 
     state.queue_one(Effect::MoveCard {
         player_id,
         card_id: apprentice_wizard_id,
         from: Location::Square(1, Region::Surface),
-        to: LocationQuery::from_zone((Zone::Location(Location::Square(1, Region::Surface))).with_region(Region::Underground)),
+        to: LocationQuery::from_zone(
+            (Zone::Location(Location::Square(1, Region::Surface))).with_region(Region::Underground),
+        ),
         tap: false,
         through_path: None,
     });
     drain_effects(&mut state).await;
 
-    assert_eq!(state.get_card(&apprentice_wizard_id).get_zone(), &Zone::Cemetery);
+    assert_eq!(
+        state.get_card(&apprentice_wizard_id).get_zone(),
+        &Zone::Cemetery
+    );
 }
 
 #[tokio::test]
@@ -851,7 +865,9 @@ async fn test_minion_without_voidwalk_is_banished_in_void() {
 
     let apprentice_wizard = ApprenticeWizard::new(player_id);
     let apprentice_wizard_id = *apprentice_wizard.get_id();
-    state.cards.insert(apprentice_wizard_id, Box::new(apprentice_wizard));
+    state
+        .cards
+        .insert(apprentice_wizard_id, Box::new(apprentice_wizard));
 
     state.queue_one(Effect::SummonCards {
         cards: vec![(
@@ -862,7 +878,10 @@ async fn test_minion_without_voidwalk_is_banished_in_void() {
     });
     drain_effects(&mut state).await;
 
-    assert_eq!(state.get_card(&apprentice_wizard_id).get_zone(), &Zone::Banish);
+    assert_eq!(
+        state.get_card(&apprentice_wizard_id).get_zone(),
+        &Zone::Banish
+    );
 }
 
 #[tokio::test]
@@ -874,7 +893,9 @@ async fn test_location_survival_is_checked_when_site_type_changes() {
     let apprentice_wizard_id = *apprentice_wizard.get_id();
     apprentice_wizard.add_ability(Ability::Burrowing);
     apprentice_wizard.set_zone(Zone::Location(Location::Square(1, Region::Underground)));
-    state.cards.insert(apprentice_wizard_id, Box::new(apprentice_wizard));
+    state
+        .cards
+        .insert(apprentice_wizard_id, Box::new(apprentice_wizard));
 
     state.queue_one(Effect::AddTemporaryEffect {
         effect: TemporaryEffect::FloodSites {
@@ -884,7 +905,10 @@ async fn test_location_survival_is_checked_when_site_type_changes() {
     });
     drain_effects(&mut state).await;
 
-    assert_eq!(state.get_card(&apprentice_wizard_id).get_zone(), &Zone::Cemetery);
+    assert_eq!(
+        state.get_card(&apprentice_wizard_id).get_zone(),
+        &Zone::Cemetery
+    );
 }
 
 #[tokio::test]
@@ -901,7 +925,9 @@ async fn test_submerged_minion_dies_when_water_site_becomes_land() {
     let apprentice_wizard_id = *apprentice_wizard.get_id();
     apprentice_wizard.add_ability(Ability::Submerge);
     apprentice_wizard.set_zone(Zone::Location(Location::Square(1, Region::Underwater)));
-    state.cards.insert(apprentice_wizard_id, Box::new(apprentice_wizard));
+    state
+        .cards
+        .insert(apprentice_wizard_id, Box::new(apprentice_wizard));
 
     let mut drought = Drought::new(player_id);
     let drought_id = *drought.get_id();
@@ -914,7 +940,10 @@ async fn test_submerged_minion_dies_when_water_site_becomes_land() {
     });
     drain_effects(&mut state).await;
 
-    assert_eq!(state.get_card(&apprentice_wizard_id).get_zone(), &Zone::Cemetery);
+    assert_eq!(
+        state.get_card(&apprentice_wizard_id).get_zone(),
+        &Zone::Cemetery
+    );
 }
 
 #[tokio::test]
@@ -1166,11 +1195,7 @@ async fn test_summon_card_puts_minion_in_target_zone() {
     state.cards.insert(id, Box::new(minion));
 
     Effect::SummonCards {
-        cards: vec![(
-            player_id,
-            id,
-            Location::Square(1, Region::Surface),
-        )],
+        cards: vec![(player_id, id, Location::Square(1, Region::Surface))],
     }
     .apply(&mut state)
     .await
@@ -1192,11 +1217,7 @@ async fn test_summon_card_adds_summoning_sickness_to_minion() {
     state.cards.insert(id, Box::new(minion));
 
     Effect::SummonCards {
-        cards: vec![(
-            player_id,
-            id,
-            Location::Square(1, Region::Surface),
-        )],
+        cards: vec![(player_id, id, Location::Square(1, Region::Surface))],
     }
     .apply(&mut state)
     .await
@@ -1221,11 +1242,7 @@ async fn test_summon_card_no_summoning_sickness_with_charge() {
     state.cards.insert(id, Box::new(minion));
 
     Effect::SummonCards {
-        cards: vec![(
-            player_id,
-            id,
-            Location::Square(1, Region::Surface),
-        )],
+        cards: vec![(player_id, id, Location::Square(1, Region::Surface))],
     }
     .apply(&mut state)
     .await
@@ -1250,11 +1267,7 @@ async fn test_summon_card_queues_genesis_effects() {
     state.cards.insert(id, Box::new(wizard));
 
     Effect::SummonCards {
-        cards: vec![(
-            player_id,
-            id,
-            Location::Square(1, Region::Surface),
-        )],
+        cards: vec![(player_id, id, Location::Square(1, Region::Surface))],
     }
     .apply(&mut state)
     .await
@@ -1286,11 +1299,7 @@ async fn test_summon_card_applies_on_summon_effects() {
     state.cards.insert(id, Box::new(sea_raider));
 
     Effect::SummonCards {
-        cards: vec![(
-            player_id,
-            id,
-            Location::Square(1, Region::Surface),
-        )],
+        cards: vec![(player_id, id, Location::Square(1, Region::Surface))],
     }
     .apply(&mut state)
     .await
