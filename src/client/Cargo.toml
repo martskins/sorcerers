@@ -12,17 +12,13 @@ name-entry = []
 
 [dependencies]
 anyhow.workspace = true
-async-channel.workspace = true
 chrono.workspace = true
 eframe.workspace = true
 egui.workspace = true
-egui_extras.workspace = true
 image.workspace = true
 kira.workspace = true
 rand.workspace = true
 reqwest.workspace = true
-rmp-serde.workspace = true
-serde_json.workspace = true
 sorcerers.workspace = true
 tokio.workspace = true
 unidecode.workspace = true
