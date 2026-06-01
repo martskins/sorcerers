@@ -55,6 +55,7 @@ pub enum AbilityModifier {
 pub enum AbilityRemoval {
     Exact(Vec<Ability>),
     AllAbilities,
+    AllAbilitiesExcept(Vec<Ability>),
     SpecialAbilities,
 }
 
@@ -68,14 +69,47 @@ impl AbilityRemoval {
     }
 
     pub fn removes_special_abilities(&self) -> bool {
-        matches!(self, Self::AllAbilities | Self::SpecialAbilities)
+        matches!(
+            self,
+            Self::AllAbilities | Self::AllAbilitiesExcept(_) | Self::SpecialAbilities
+        )
     }
 
     pub fn removes(&self, ability: &Ability) -> bool {
         match self {
             Self::Exact(abilities) => abilities.contains(ability),
             Self::AllAbilities => ability.is_card_ability(),
+            Self::AllAbilitiesExcept(exceptions) => {
+                ability.is_card_ability() && !exceptions.contains(ability)
+            }
             Self::SpecialAbilities => ability.is_special_ability(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum AffinityModifier {
+    Set(Thresholds),
+    AddMinimum(Thresholds),
+    Remove(Thresholds),
+}
+
+impl AffinityModifier {
+    pub fn apply(&self, affinities: &mut Thresholds) {
+        match self {
+            Self::Set(new_affinities) => *affinities = new_affinities.clone(),
+            Self::AddMinimum(minimums) => {
+                affinities.fire = affinities.fire.max(minimums.fire);
+                affinities.air = affinities.air.max(minimums.air);
+                affinities.earth = affinities.earth.max(minimums.earth);
+                affinities.water = affinities.water.max(minimums.water);
+            }
+            Self::Remove(to_remove) => {
+                affinities.fire = affinities.fire.saturating_sub(to_remove.fire);
+                affinities.air = affinities.air.saturating_sub(to_remove.air);
+                affinities.earth = affinities.earth.saturating_sub(to_remove.earth);
+                affinities.water = affinities.water.saturating_sub(to_remove.water);
+            }
         }
     }
 }
@@ -89,7 +123,6 @@ pub struct TimedOngoingEffect {
 
 #[derive(Debug, Default, Clone)]
 pub struct ContinuousEffectIndex {
-    pub grants_abilities: HashMap<CardId, Vec<Ability>>,
     pub grants_statuses: HashMap<CardId, Vec<CardStatus>>,
     pub grants_activated_abilities: HashMap<CardId, Vec<Box<dyn ActivatedAbility>>>,
     pub power_diffs: HashMap<CardId, i16>,
@@ -134,18 +167,6 @@ impl ContinuousEffectIndex {
                         }
                     }
                 }
-                ContinuousEffect::GrantAbility {
-                    ability,
-                    affected_cards,
-                } => {
-                    for card_id in affected_cards.all(state) {
-                        index
-                            .grants_abilities
-                            .entry(card_id)
-                            .or_default()
-                            .push(ability.clone());
-                    }
-                }
                 ContinuousEffect::ModifyPower {
                     power_diff,
                     affected_cards,
@@ -178,6 +199,7 @@ impl AreaModifierIndex {
     fn build(state: &State) -> Self {
         let mut index = Self::default();
         let mut inactive_sources = HashSet::new();
+        let mut flooded_removals = Vec::new();
 
         for effect in state.ordered_ongoing_effects() {
             if effect
@@ -223,6 +245,9 @@ impl AreaModifierIndex {
                     if removal.removes_special_abilities() {
                         inactive_sources.extend(affected_cards.iter().copied());
                     }
+                    if removal.removes(&Ability::Flooded) {
+                        flooded_removals.extend(affected_cards.iter().copied());
+                    }
                     for card_id in affected_cards {
                         index
                             .ability_modifiers
@@ -248,17 +273,40 @@ impl AreaModifierIndex {
                     affected_cards,
                 } => {
                     for card_id in affected_cards.all(state) {
-                        if !state.get_card(&card_id).is_flooded_site(state) {
-                            index
-                                .grants_counters
-                                .entry(card_id)
-                                .or_default()
-                                .push(counter.clone());
-                        }
+                        index
+                            .grants_counters
+                            .entry(card_id)
+                            .or_default()
+                            .push(counter.clone());
                     }
                 }
                 _ => {}
             }
+        }
+
+        for effect in state.temporary_effects() {
+            if let TemporaryEffect::GrantAbility {
+                ability,
+                affected_cards,
+                ..
+            } = effect
+            {
+                for card_id in affected_cards.all(state) {
+                    index
+                        .ability_modifiers
+                        .entry(card_id)
+                        .or_default()
+                        .push(AbilityModifier::Grant(ability.clone()));
+                }
+            }
+        }
+
+        for card_id in flooded_removals {
+            index
+                .ability_modifiers
+                .entry(card_id)
+                .or_default()
+                .push(AbilityModifier::Remove(AbilityRemoval::exact(Ability::Flooded)));
         }
 
         index
@@ -305,12 +353,6 @@ pub enum OngoingEffect {
         power_per_card: i16,
         affected_cards: CardQuery,
         matching_cards: CardQuery,
-    },
-    FloodSites {
-        affected_sites: CardQuery,
-    },
-    DroughtSites {
-        affected_sites: CardQuery,
     },
     MakeZoneUnvisitable {
         affected_zone: Zone,
@@ -370,7 +412,7 @@ pub enum OngoingEffect {
         affected_cards: CardQuery,
     },
     ModifyProvidedAffinities {
-        new_affinities: Thresholds,
+        modifier: AffinityModifier,
         affected_sites: CardQuery,
     },
     ModifyProvidedMana {
@@ -406,8 +448,6 @@ impl OngoingEffect {
             Self::ModifyPowerForEach { power_per_card, .. } => {
                 format!("Power {:+} for each matching card", power_per_card)
             }
-            Self::FloodSites { .. } => "Floods sites".to_string(),
-            Self::DroughtSites { .. } => "Droughts sites".to_string(),
             Self::MakeZoneUnvisitable { affected_zone, .. } => {
                 format!("Makes {} unvisitable", affected_zone)
             }
@@ -444,6 +484,9 @@ impl OngoingEffect {
                     format!("Removes {} abilities", abilities.len())
                 }
                 AbilityRemoval::AllAbilities => "Removes all abilities".to_string(),
+                AbilityRemoval::AllAbilitiesExcept(exceptions) => {
+                    format!("Removes all abilities except {}", exceptions.len())
+                }
                 AbilityRemoval::SpecialAbilities => "Removes special abilities".to_string(),
             },
             Self::GrantActivatedAbility { ability, .. } => {
@@ -452,7 +495,9 @@ impl OngoingEffect {
             Self::GrantCounter { counter, .. } => {
                 format!("Grants {:?} counter", counter)
             }
-            Self::ModifyProvidedAffinities { .. } => "Modifies provided affinities".to_string(),
+            Self::ModifyProvidedAffinities { modifier, .. } => {
+                format!("Modifies provided affinities: {:?}", modifier)
+            }
             Self::ModifyProvidedMana { mana_diff, .. } => {
                 format!("Provided mana {:+}", mana_diff)
             }
@@ -486,9 +531,7 @@ impl OngoingEffect {
             | Self::ModifyProvidedMana { affected_cards, .. }
             | Self::OverrideValidPlayZone { affected_cards, .. }
             | Self::ModifyManaCost { affected_cards, .. } => affected_cards.all(state),
-            Self::FloodSites { affected_sites }
-            | Self::DroughtSites { affected_sites }
-            | Self::ChangeSiteType { affected_sites, .. }
+            Self::ChangeSiteType { affected_sites, .. }
             | Self::ModifyProvidedAffinities { affected_sites, .. } => affected_sites.all(state),
             Self::TriggeredEffect { .. } => Vec::new(),
         }
@@ -523,8 +566,6 @@ impl std::fmt::Debug for OngoingEffect {
                 .debug_struct("ModifyPowerForEach")
                 .field("power_per_card", power_per_card)
                 .finish(),
-            Self::FloodSites { .. } => f.debug_struct("FloodSites").finish(),
-            Self::DroughtSites { .. } => f.debug_struct("DroughtSites").finish(),
             Self::MakeZoneUnvisitable { affected_zone, .. } => f
                 .debug_struct("MakeZoneUnvisitable")
                 .field("affected_zone", affected_zone)
@@ -577,9 +618,9 @@ impl std::fmt::Debug for OngoingEffect {
                 .debug_struct("GrantCounter")
                 .field("counter", counter)
                 .finish(),
-            Self::ModifyProvidedAffinities { new_affinities, .. } => f
+            Self::ModifyProvidedAffinities { modifier, .. } => f
                 .debug_struct("ModifyProvidedAffinities")
-                .field("new_affinities", new_affinities)
+                .field("modifier", modifier)
                 .finish(),
             Self::ModifyProvidedMana { mana_diff, .. } => f
                 .debug_struct("ModifyProvidedMana")
@@ -1141,9 +1182,7 @@ impl State {
                 ..
             } => 2,
             ContinuousEffect::RemoveAbilities { .. } => 2,
-            ContinuousEffect::FloodSites { .. }
-            | ContinuousEffect::DroughtSites { .. }
-            | ContinuousEffect::GrantAbility { .. }
+            ContinuousEffect::GrantAbility { .. }
             | ContinuousEffect::GrantStatus { .. }
             | ContinuousEffect::GrantActivatedAbility { .. }
             | ContinuousEffect::GrantCounter { .. } => 5,
@@ -1424,16 +1463,6 @@ impl State {
         })
     }
 
-    pub fn granted_abilities_from_continuous_effects(&self, card_id: &CardId) -> Vec<Ability> {
-        self.with_continuous_effect_index(|index| {
-            index
-                .grants_abilities
-                .get(card_id)
-                .cloned()
-                .unwrap_or_default()
-        })
-    }
-
     pub fn granted_statuses_from_continuous_effects(&self, card_id: &CardId) -> Vec<CardStatus> {
         self.with_continuous_effect_index(|index| {
             index
@@ -1461,26 +1490,6 @@ impl State {
         self.with_continuous_effect_index(|index| {
             index.power_diffs.get(card_id).copied().unwrap_or_default()
         })
-    }
-
-    pub fn water_site_status_from_continuous_effects(&self, card_id: &CardId) -> Option<bool> {
-        let mut status = None;
-        for effect in self.active_continuous_effects() {
-            match effect {
-                ContinuousEffect::FloodSites { affected_sites }
-                    if affected_sites.matches(card_id, self) =>
-                {
-                    status = Some(true);
-                }
-                ContinuousEffect::DroughtSites { affected_sites }
-                    if affected_sites.matches(card_id, self) =>
-                {
-                    status = Some(false);
-                }
-                _ => {}
-            }
-        }
-        status
     }
 
     pub fn get_thresholds_for_player(&self, player_id: &PlayerId) -> Thresholds {

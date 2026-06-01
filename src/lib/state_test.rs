@@ -976,6 +976,80 @@ async fn test_flood_and_drought_use_timestamp_order_for_water_affinity() {
 }
 
 #[tokio::test]
+async fn test_flood_grants_flooded_ability() {
+    let mut state = State::new_mock_state(vec![]);
+    let player_id = state.players[0].id;
+    let site_id = insert_realm_card(
+        &mut state,
+        Box::new(AridDesert::new(player_id)),
+        Zone::Location(Location::Square(7, Region::Surface)),
+    )
+    .await;
+
+    state.ongoing_effects.push(TimedOngoingEffect {
+        effect: ContinuousEffect::GrantAbility {
+            ability: Ability::Flooded,
+            affected_cards: CardQuery::from_id(site_id),
+        },
+        source: None,
+        timestamp: 1,
+    });
+    state.invalidate_runtime_caches();
+
+    let site = state.get_card(&site_id);
+    assert!(site.has_ability(&state, &Ability::Flooded));
+    assert_eq!(
+        site.get_resource_provider()
+            .unwrap()
+            .provided_affinity(&state)
+            .unwrap()
+            .water,
+        1
+    );
+}
+
+#[tokio::test]
+async fn test_removing_abilities_removes_flooded() {
+    let mut state = State::new_mock_state(vec![]);
+    let player_id = state.players[0].id;
+    let site_id = insert_realm_card(
+        &mut state,
+        Box::new(AridDesert::new(player_id)),
+        Zone::Location(Location::Square(7, Region::Surface)),
+    )
+    .await;
+
+    state.ongoing_effects.push(TimedOngoingEffect {
+        effect: ContinuousEffect::GrantAbility {
+            ability: Ability::Flooded,
+            affected_cards: CardQuery::from_id(site_id),
+        },
+        source: None,
+        timestamp: 1,
+    });
+    state.ongoing_effects.push(TimedOngoingEffect {
+        effect: ContinuousEffect::RemoveAbilities {
+            removal: AbilityRemoval::AllAbilities,
+            affected_cards: CardQuery::from_id(site_id),
+        },
+        source: None,
+        timestamp: 2,
+    });
+    state.invalidate_runtime_caches();
+
+    let site = state.get_card(&site_id);
+    assert!(!site.has_ability(&state, &Ability::Flooded));
+    assert_eq!(
+        site.get_resource_provider()
+            .unwrap()
+            .provided_affinity(&state)
+            .unwrap()
+            .water,
+        0
+    );
+}
+
+#[tokio::test]
 async fn test_passive_ongoing_effect_lifecycle_tracks_realm_entry_and_exit() {
     let (mut state, _rx) = setup_carrying_state();
     let player_id = state.players[0].id;

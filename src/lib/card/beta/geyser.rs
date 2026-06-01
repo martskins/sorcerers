@@ -74,8 +74,9 @@ impl Card for Geyser {
                 kind: DrawKind::Choice,
             },
             Effect::AddTemporaryEffect {
-                effect: TemporaryEffect::FloodSites {
-                    affected_sites: target_site_id.into(),
+                effect: TemporaryEffect::GrantAbility {
+                    ability: Ability::Flooded,
+                    affected_cards: target_site_id.into(),
                     expires_on_effect: EffectQuery::TurnEnd {
                         player_id: Some(player_id),
                     },

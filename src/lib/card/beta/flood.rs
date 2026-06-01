@@ -63,8 +63,9 @@ impl Card for Flood {
         &self,
         _state: &State,
     ) -> anyhow::Result<Vec<ContinuousEffect>> {
-        Ok(vec![ContinuousEffect::FloodSites {
-            affected_sites: CardQuery::new()
+        Ok(vec![ContinuousEffect::GrantAbility {
+            ability: Ability::Flooded,
+            affected_cards: CardQuery::new()
                 .in_affected_zones_of_card(self.get_id())
                 .sites(),
         }])

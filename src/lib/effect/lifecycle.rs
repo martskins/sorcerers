@@ -1,4 +1,5 @@
 use crate::{
+    card::Ability,
     effect::Effect,
     game::CardId,
     query::{CardQuery, EffectQuery},
@@ -47,8 +48,9 @@ impl std::fmt::Debug for DeferredEffect {
 #[allow(clippy::large_enum_variant)]
 #[derive(Clone)]
 pub enum TemporaryEffect {
-    FloodSites {
-        affected_sites: CardQuery,
+    GrantAbility {
+        ability: Ability,
+        affected_cards: CardQuery,
         expires_on_effect: EffectQuery,
     },
     MakePlayable {
@@ -90,7 +92,7 @@ impl std::fmt::Debug for TemporaryEffect {
 impl TemporaryEffect {
     pub fn affected_cards(&self, state: &State) -> Vec<CardId> {
         match self {
-            TemporaryEffect::FloodSites { affected_sites, .. } => affected_sites.all(state),
+            TemporaryEffect::GrantAbility { affected_cards, .. } => affected_cards.all(state),
             TemporaryEffect::MakePlayable { affected_cards, .. } => {
                 affected_cards.clone().including_not_in_play().all(state)
             }
@@ -104,7 +106,7 @@ impl TemporaryEffect {
 
     pub fn expires_on_effect(&self) -> Option<&EffectQuery> {
         match self {
-            TemporaryEffect::FloodSites {
+            TemporaryEffect::GrantAbility {
                 expires_on_effect, ..
             }
             | TemporaryEffect::MakePlayable {

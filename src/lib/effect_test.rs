@@ -898,8 +898,9 @@ async fn test_location_survival_is_checked_when_site_type_changes() {
         .insert(apprentice_wizard_id, Box::new(apprentice_wizard));
 
     state.queue_one(Effect::AddTemporaryEffect {
-        effect: TemporaryEffect::FloodSites {
-            affected_sites: CardQuery::new().sites(),
+        effect: TemporaryEffect::GrantAbility {
+            ability: Ability::Flooded,
+            affected_cards: CardQuery::new().sites(),
             expires_on_effect: EffectQuery::TurnEnd { player_id: None },
         },
     });
@@ -1170,8 +1171,9 @@ async fn test_temporary_expiry_removes_after_matching_resolved_effect() {
 
     state
         .temporary_effects_mut()
-        .push(TemporaryEffect::FloodSites {
-            affected_sites: CardQuery::from_id(site_id),
+        .push(TemporaryEffect::GrantAbility {
+            ability: Ability::Flooded,
+            affected_cards: CardQuery::from_id(site_id),
             expires_on_effect: EffectQuery::DrawCard { player_id: None },
         });
 

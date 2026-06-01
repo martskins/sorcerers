@@ -1216,16 +1216,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         None
     }
 
-    fn is_flooded_site(&self, state: &State) -> bool {
-        if !self.is_site() {
-            return false;
-        }
-
-        self.get_site()
-            .and_then(|site| site.is_flooded(state).ok())
-            .unwrap_or(false)
-    }
-
     // Returns the amount of damage taken by the card. Defaults to 0 for non-unit cards.
     fn get_damage_taken(&self) -> anyhow::Result<u16> {
         if self.is_unit() {
@@ -2119,40 +2109,43 @@ impl<T: Card + ?Sized> ResourceProviderBaseMethods for T {
                 let site_base = self
                     .get_site_base()
                     .ok_or(anyhow::anyhow!("site card has no base"))?;
-                let site = self
-                    .get_site()
-                    .ok_or(anyhow::anyhow!("site card does not implement site"))?;
                 let mut thresholds = site_base.provided_thresholds.clone();
-                match state.water_site_status_from_continuous_effects(self.get_id()) {
-                    Some(true) => {
-                        thresholds.fire = 0;
-                        thresholds.air = 0;
-                        thresholds.earth = 0;
-                        thresholds.water = std::cmp::max(1, thresholds.water);
-                    }
-                    Some(false) => thresholds.water = 0,
-                    None if site.is_flooded(state)? => {
-                        thresholds.fire = 0;
-                        thresholds.air = 0;
-                        thresholds.earth = 0;
-                        thresholds.water = std::cmp::max(1, thresholds.water);
-                    }
-                    None => {}
-                }
 
                 state
                     .active_continuous_effects()
                     .into_iter()
                     .for_each(|ce| {
-                        if let ContinuousEffect::ModifyProvidedAffinities {
-                            new_affinities,
-                            affected_sites,
-                        } = ce
-                            && affected_sites.matches(self.get_id(), state)
-                        {
-                            thresholds = new_affinities.clone();
+                        match ce {
+                            ContinuousEffect::GrantAbility {
+                                ability: Ability::Flooded,
+                                affected_cards,
+                            } if affected_cards.matches(self.get_id(), state)
+                                && self.has_ability(state, &Ability::Flooded) =>
+                            {
+                                thresholds.water = std::cmp::max(1, thresholds.water);
+                            }
+                            ContinuousEffect::ModifyProvidedAffinities {
+                                modifier,
+                                affected_sites,
+                            } if affected_sites.matches(self.get_id(), state) => {
+                                modifier.apply(&mut thresholds);
+                            }
+                            _ => {}
                         }
                     });
+
+                state.temporary_effects().iter().for_each(|effect| {
+                    if let TemporaryEffect::GrantAbility {
+                        ability: Ability::Flooded,
+                        affected_cards,
+                        ..
+                    } = effect
+                        && affected_cards.matches(self.get_id(), state)
+                        && self.has_ability(state, &Ability::Flooded)
+                    {
+                        thresholds.water = std::cmp::max(1, thresholds.water);
+                    }
+                });
 
                 Ok(thresholds)
             }
@@ -2246,23 +2239,11 @@ pub trait Site: Card + ResourceProvider {
     }
 
     fn is_flooded(&self, state: &State) -> anyhow::Result<bool> {
-        let temporarily_flooded = state
-            .temporary_effects()
-            .iter()
-            .filter(|te| te.affected_cards(state).contains(self.get_id()))
-            .find(|te| matches!(te, TemporaryEffect::FloodSites { .. }))
-            .is_some();
-        if temporarily_flooded {
-            return Ok(true);
-        }
-
-        Ok(state
-            .water_site_status_from_continuous_effects(self.get_id())
-            .unwrap_or(false))
+        Ok(self.has_ability(state, &Ability::Flooded))
     }
 
     fn is_droughted(&self, state: &State) -> anyhow::Result<bool> {
-        Ok(state.water_site_status_from_continuous_effects(self.get_id()) == Some(false))
+        Ok(self.provided_affinity(state)?.water == 0)
     }
 }
 
@@ -2307,6 +2288,7 @@ pub enum Ability {
     CarryMinions(usize),
     SplashDamage,
     CannotDefend,
+    Flooded,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -2345,7 +2327,8 @@ impl Ability {
             | Ability::LethalTarget
             | Ability::CarryMinions(_)
             | Ability::SplashDamage
-            | Ability::CannotDefend => AbilityCategory::Keyword,
+            | Ability::CannotDefend
+            | Ability::Flooded => AbilityCategory::Keyword,
         }
     }
 
@@ -2734,8 +2717,6 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
                     }
                 }
 
-                modifiers.extend(state.granted_abilities_from_continuous_effects(self.get_id()));
-
                 if self.has_status(state, &CardStatus::Silenced) {
                     modifiers.retain(|ability| !ability.is_special_ability());
                 }
@@ -2752,8 +2733,6 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
                     &mut modifiers,
                     state.ability_modifiers_from_area_modifiers(self.get_id()),
                 );
-                modifiers.extend(state.granted_abilities_from_continuous_effects(self.get_id()));
-
                 if self.has_status(state, &CardStatus::Silenced)
                     || self.has_status(state, &CardStatus::Disabled)
                 {
@@ -2815,15 +2794,7 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
         match self.get_card_type() {
             CardType::Minion => {
                 // Check LethalTarget before the mutable borrow of unit_base.
-                let has_lethal_target = self.get_unit_base().is_some_and(|ub| {
-                    ub.abilities.contains(&Ability::LethalTarget)
-                        || ub
-                            .ability_counters
-                            .iter()
-                            .any(|c| c.ability == Ability::LethalTarget)
-                }) || state
-                    .granted_abilities_from_continuous_effects(self.get_id())
-                    .contains(&Ability::LethalTarget);
+                let has_lethal_target = self.has_ability(state, &Ability::LethalTarget);
 
                 let ub = self
                     .get_unit_base_mut()

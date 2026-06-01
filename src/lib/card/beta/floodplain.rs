@@ -18,8 +18,9 @@ impl ActivatedAbility for FloodAdjacentSite {
         let card = state.get_card(card_id);
         Ok(vec![
             Effect::AddTemporaryEffect {
-                effect: TemporaryEffect::FloodSites {
-                    affected_sites: CardQuery::new()
+                effect: TemporaryEffect::GrantAbility {
+                    ability: Ability::Flooded,
+                    affected_cards: CardQuery::new()
                         .sites()
                         .adjacent_to(card.get_zone())
                         .with_prompt("Pick an adjacent site to flood")

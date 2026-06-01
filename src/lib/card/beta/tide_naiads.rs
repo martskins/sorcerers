@@ -67,8 +67,9 @@ impl Card for TideNaiads {
             .get_site(state)
             .map(|site| site.get_id())
             .cloned();
-        Ok(vec![ContinuousEffect::FloodSites {
-            affected_sites: site_id.as_ref().unwrap().into(),
+        Ok(vec![ContinuousEffect::GrantAbility {
+            ability: Ability::Flooded,
+            affected_cards: site_id.as_ref().unwrap().into(),
         }])
     }
 }

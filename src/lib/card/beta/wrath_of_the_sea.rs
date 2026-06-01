@@ -83,8 +83,9 @@ impl Card for WrathOfTheSea {
             })
             .collect::<Vec<Effect>>();
         effects.push(Effect::AddTemporaryEffect {
-            effect: TemporaryEffect::FloodSites {
-                affected_sites: sites,
+            effect: TemporaryEffect::GrantAbility {
+                ability: Ability::Flooded,
+                affected_cards: sites,
                 expires_on_effect: EffectQuery::TurnEnd { player_id: None },
             },
         });

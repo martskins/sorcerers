@@ -29,8 +29,9 @@ impl ActivatedAbility for FloodSite {
                     .expect("Expected to pick a site");
                 let mut effects = vec![Effect::SetCardData {
                     card_id: *card_id,
-                    data: std::sync::Arc::new(ContinuousEffect::FloodSites {
-                        affected_sites: picked_site_id.into(),
+                    data: std::sync::Arc::new(ContinuousEffect::GrantAbility {
+                        ability: Ability::Flooded,
+                        affected_cards: picked_site_id.into(),
                     }),
                 }];
                 let teleport = yes_or_no_source(

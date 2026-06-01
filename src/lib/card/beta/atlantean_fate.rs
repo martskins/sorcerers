@@ -79,15 +79,16 @@ impl Card for AtlanteanFate {
         }
 
         Ok(vec![
-            ContinuousEffect::FloodSites {
-                affected_sites: CardQuery::from_ids(flooded_sites.clone()),
+            ContinuousEffect::GrantAbility {
+                ability: Ability::Flooded,
+                affected_cards: CardQuery::from_ids(flooded_sites.clone()),
             },
             ContinuousEffect::ModifyProvidedAffinities {
-                new_affinities: Thresholds::parse("W"),
+                modifier: AffinityModifier::Set(Thresholds::parse("W")),
                 affected_sites: CardQuery::from_ids(flooded_sites.clone()),
             },
             ContinuousEffect::RemoveAbilities {
-                removal: AbilityRemoval::AllAbilities,
+                removal: AbilityRemoval::AllAbilitiesExcept(vec![Ability::Flooded]),
                 affected_cards: CardQuery::from_ids(flooded_sites),
             },
         ])

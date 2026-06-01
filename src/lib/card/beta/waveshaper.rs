@@ -44,8 +44,9 @@ impl ActivatedAbility for WaveshaperFlood {
         let picked_site = state.get_card(&picked_site_id);
         let mut effects = vec![Effect::SetCardData {
             card_id: *card_id,
-            data: std::sync::Arc::new(ContinuousEffect::FloodSites {
-                affected_sites: CardQuery::from_id(picked_site_id),
+            data: std::sync::Arc::new(ContinuousEffect::GrantAbility {
+                ability: Ability::Flooded,
+                affected_cards: CardQuery::from_id(picked_site_id),
             }),
         }];
 
