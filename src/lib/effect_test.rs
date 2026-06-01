@@ -296,6 +296,58 @@ async fn test_ranged_projectile_damage_is_distinct_from_regular_projectile_damag
 }
 
 #[tokio::test]
+async fn test_effect_description_can_use_removed_card_lookup() {
+    let (mut state, _rx) = make_state(vec![]);
+    let player_id = state.players[0].id;
+
+    let mut attacker = ApprenticeWizard::new(player_id);
+    let attacker_id = *attacker.get_id();
+    attacker.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    state.cards.insert(attacker_id, Box::new(attacker));
+
+    let mut token = FootSoldier::new(player_id);
+    let token_id = *token.get_id();
+    token.set_zone(Zone::Location(Location::Square(2, Region::Surface)));
+    state.cards.insert(token_id, Box::new(token));
+
+    state.queue_one(Effect::RemoveCardFromGame { card_id: token_id });
+    drain_effects(&mut state).await;
+
+    let description = Effect::TakeDamage {
+        card_id: token_id,
+        from: attacker_id,
+        damage: Damage::basic(1),
+    }
+    .description(&state)
+    .await
+    .unwrap();
+
+    assert_eq!(
+        description,
+        Some("Foot Soldier takes 1 damage from Apprentice Wizard".to_string())
+    );
+}
+
+#[tokio::test]
+async fn test_bury_token_removes_token_after_cleanup_effects() {
+    let (mut state, _rx) = make_state(vec![]);
+    let player_id = state.players[0].id;
+
+    let mut token = FootSoldier::new(player_id);
+    let token_id = *token.get_id();
+    token.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    state.cards.insert(token_id, Box::new(token));
+
+    state.queue_one(Effect::BuryCard { card_id: token_id });
+    drain_effects(&mut state).await;
+
+    assert!(
+        !state.cards.contains_key(&token_id),
+        "token should be removed after its cleanup effects have resolved"
+    );
+}
+
+#[tokio::test]
 async fn test_disabled_unit_does_not_counterstrike_when_attacked() {
     let (mut state, _rx) = make_state(vec![]);
     let player_id = state.players[0].id;

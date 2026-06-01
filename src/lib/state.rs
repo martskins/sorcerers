@@ -726,6 +726,7 @@ pub struct State {
     pub players: Vec<Player>,
     pub turns: usize,
     pub cards: HashMap<CardId, Box<dyn Card>>,
+    pub(crate) removed_cards: HashMap<CardId, Box<dyn Card>>,
     pub decks: HashMap<PlayerId, Deck>,
     pub phase: Phase,
     pub curr_turn: TurnIterator,
@@ -770,6 +771,7 @@ impl State {
             game_id,
             players,
             cards: cards.into_iter().map(|c| (*c.get_id(), c)).collect(),
+            removed_cards: HashMap::new(),
             decks,
             turns: 0,
             phase: Phase::Mulligan,
@@ -1802,7 +1804,11 @@ impl State {
     }
 
     pub fn get_card(&self, card_id: &CardId) -> &dyn Card {
-        &**self.cards.get(card_id).expect("card to exist")
+        self.cards
+            .get(card_id)
+            .or_else(|| self.removed_cards.get(card_id))
+            .map(|card| &**card)
+            .expect("card to exist")
     }
 
     pub fn get_player(&self, player_id: &PlayerId) -> anyhow::Result<&Player> {

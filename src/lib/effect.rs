@@ -2075,6 +2075,13 @@ impl Effect {
                 let controller_id = card.get_controller_id(state);
                 let effects = card.deathrite(state, &original_zone);
                 state.queue(effects);
+
+                // Effects are drained from the back of the queue, so enqueue removal before any
+                // cleanup effects that still need to reference the token.
+                if is_token {
+                    state.queue_one(Effect::RemoveCardFromGame { card_id: *card_id });
+                }
+
                 state.queue_one(Effect::SetBearer {
                     card_id: *card_id,
                     bearer_id: None,
@@ -2094,10 +2101,6 @@ impl Effect {
                 let borne_cards = CardQuery::new().carried_by(card_id).all(state);
                 for borne_card_id in borne_cards {
                     state.get_card_mut(&borne_card_id).set_bearer_id(None);
-                }
-
-                if is_token {
-                    state.queue_one(Effect::RemoveCardFromGame { card_id: *card_id });
                 }
             }
             Effect::AddCounter {
@@ -2354,7 +2357,9 @@ impl Effect {
             }
             Effect::RemoveCardFromGame { card_id } => {
                 state.remove_ongoing_effects_from_source(card_id);
-                state.cards.retain(|_, c| c.get_id() != card_id);
+                if let Some(card) = state.cards.remove(card_id) {
+                    state.removed_cards.insert(*card_id, card);
+                }
                 state.invalidate_runtime_caches();
             }
         }
