@@ -1289,6 +1289,94 @@ async fn test_summon_card_queues_genesis_effects() {
 }
 
 #[tokio::test]
+async fn test_played_site_genesis_can_target_itself() {
+    QueryCache::init();
+
+    let game_id = uuid::Uuid::new_v4();
+    let player_one_id = uuid::Uuid::new_v4();
+    let player_two_id = uuid::Uuid::new_v4();
+
+    let mut desert = AridDesert::new(player_one_id);
+    let desert_id = *desert.get_id();
+    desert.set_zone(Zone::Hand);
+
+    let avatar_one = Enchantress::new(player_one_id);
+    let avatar_one_id = *avatar_one.get_id();
+    let avatar_two = Enchantress::new(player_two_id);
+    let avatar_two_id = *avatar_two.get_id();
+
+    let player1 = PlayerWithDeck {
+        player: Player {
+            id: player_one_id,
+            name: "Player 1".to_string(),
+        },
+        deck: Deck::new(
+            &player_one_id,
+            "Test".to_string(),
+            vec![],
+            vec![],
+            avatar_one_id,
+        ),
+        cards: vec![Box::new(desert), Box::new(avatar_one)],
+    };
+    let player2 = PlayerWithDeck {
+        player: Player {
+            id: player_two_id,
+            name: "Player 2".to_string(),
+        },
+        deck: Deck::new(
+            &player_two_id,
+            "Test".to_string(),
+            vec![],
+            vec![],
+            avatar_two_id,
+        ),
+        cards: vec![Box::new(avatar_two)],
+    };
+
+    let (server_tx, server_rx) = async_channel::unbounded();
+    let (client_tx, client_rx) = async_channel::unbounded();
+    let mut state = State::new(game_id, vec![player1, player2], server_tx, client_rx);
+
+    tokio::spawn(async move {
+        let mut answered_pick = false;
+        while let Ok(message) = server_rx.recv().await {
+            match message {
+                ServerMessage::PickCard {
+                    player_id, cards, ..
+                } => {
+                    assert!(
+                        cards.contains(&desert_id),
+                        "Genesis target choices should include the site that just entered"
+                    );
+                    client_tx
+                        .send(crate::networking::message::ClientMessage::PickCard {
+                            game_id,
+                            player_id,
+                            card_id: desert_id,
+                        })
+                        .await
+                        .unwrap();
+                    answered_pick = true;
+                }
+                ServerMessage::Resume { .. } if answered_pick => break,
+                _ => {}
+            }
+        }
+    });
+
+    Effect::PlayCard {
+        player_id: player_one_id,
+        card_id: desert_id,
+        zone: ZoneQuery::from_zone(Zone::Location(Location::Square(1, Region::Surface))),
+        spellcaster: avatar_one_id,
+    }
+    .apply(&mut state)
+    .await
+    .unwrap();
+}
+
+#[tokio::test]
 async fn test_summon_card_applies_on_summon_effects() {
     // Sea Raider on_summon → AddDeferredEffect
     let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);

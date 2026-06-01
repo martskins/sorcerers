@@ -1454,11 +1454,16 @@ impl Effect {
                         card.set_zone(zone.clone());
                         (from_zone, cast_effects)
                     };
+
+                    // Sync state for all palyers so that genesis effects see the card in the board
+                    // when it triggers.
+                    crate::game::force_sync_all(state).await?;
+
                     state
                         .add_passive_ongoing_effects_for_source(card_id)
                         .await?;
                     let card = state.get_card(card_id);
-                    let mut effects = card.genesis(&snapshot).await?;
+                    let mut effects = card.genesis(state).await?;
                     if !from_zone.is_in_play()
                         && zone.is_in_play()
                         && let Some(mana_effect) =
@@ -1467,7 +1472,7 @@ impl Effect {
                         effects.push(mana_effect);
                     }
                     if can_use_special_abilities(state, card_id) {
-                        effects.extend(card.on_visit_zone(&snapshot, &from_zone, &zone).await?);
+                        effects.extend(card.on_visit_zone(state, &from_zone, &zone).await?);
                     }
                     effects.extend(location_survival_effects_for_realm(state));
                     state.queue(effects);
@@ -1489,6 +1494,11 @@ impl Effect {
                             card.add_status(CardStatus::SummoningSickness);
                         }
                     }
+
+                    // Sync state for all palyers so that genesis effects see the card in the board
+                    // when it triggers.
+                    crate::game::force_sync_all(state).await?;
+
                     if !original_zone.is_in_play() && zone.is_in_play() {
                         state
                             .add_passive_ongoing_effects_for_source(card_id)
