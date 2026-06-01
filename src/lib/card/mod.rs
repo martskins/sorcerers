@@ -1974,11 +1974,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             return Ok(vec![]);
         }
 
-        // TODO: What even is this?
-        if self.is_site() && self.is_flooded_site(state) {
-            return Ok(vec![]);
-        }
-
         let mut abilities = if self.is_avatar() {
             let mut abilities = self.base_avatar_activated_abilities(state)?;
             if !state.card_has_special_abilities_removed(self.get_id()) {

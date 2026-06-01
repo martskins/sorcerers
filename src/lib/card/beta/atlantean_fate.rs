@@ -84,7 +84,11 @@ impl Card for AtlanteanFate {
             },
             ContinuousEffect::ModifyProvidedAffinities {
                 new_affinities: Thresholds::parse("W"),
-                affected_sites: CardQuery::from_ids(flooded_sites),
+                affected_sites: CardQuery::from_ids(flooded_sites.clone()),
+            },
+            ContinuousEffect::RemoveAbilities {
+                removal: AbilityRemoval::AllAbilities,
+                affected_cards: CardQuery::from_ids(flooded_sites),
             },
         ])
     }
