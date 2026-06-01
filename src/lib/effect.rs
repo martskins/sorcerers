@@ -508,13 +508,15 @@ impl Effect {
                 direction,
                 ..
             } => {
-                let shooter_card = state.get_card(shooter).get_name();
+                let shooter_card = state.get_card(shooter);
+                let shooter_name = shooter_card.get_name();
+                let board_flipped = shooter_card.get_controller_id(state) != state.player_one;
                 Some(format!(
                     "{} shoots a projectile for {} damage from {} in direction {}",
                     player_name(player_id, state),
                     damage,
-                    shooter_card,
-                    direction.get_name()
+                    shooter_name,
+                    direction.normalise(board_flipped).get_name()
                 ))
             }
             Effect::AddAbilityCounter { .. } => None,

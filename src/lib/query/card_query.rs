@@ -106,8 +106,8 @@ impl<'a> PreparedCardQuery<'a> {
                     .cards
                     .get(card_id)
                     .map(|card| {
-                        let board_flipped =
-                            *normalise_for_owner && card.get_owner_id() != &state.player_one;
+                        let board_flipped = *normalise_for_owner
+                            && card.get_controller_id(state) != state.player_one;
                         let mut zones = vec![card.get_zone().clone()];
                         if let Some(zone) = card
                             .get_zone()
