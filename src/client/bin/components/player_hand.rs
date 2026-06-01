@@ -312,7 +312,23 @@ impl Component for PlayerHandComponent {
 
         let mut clicked_card: Option<(uuid::Uuid, Rect, Pos2)> = None;
         let mut dropped_card: Option<(uuid::Uuid, egui::Pos2)> = None;
-        let suppress_preview = matches!(data.status, Status::SelectingAction { .. });
+        let can_click_cards = matches!(
+            data.status,
+            Status::Idle | Status::Mulligan | Status::SelectingCard { preview: false, .. }
+        );
+        let can_drag_cards = matches!(data.status, Status::Idle);
+        let suppress_preview = matches!(
+            data.status,
+            Status::SelectingAction { .. }
+                | Status::SelectingDirection { .. }
+                | Status::SelectingPath { .. }
+                | Status::SelectingZone { .. }
+                | Status::SelectingZoneGroup { .. }
+                | Status::SelectingAmount { .. }
+                | Status::Waiting { .. }
+                | Status::GameAborted { .. }
+                | Status::GameOver { .. }
+        );
         let drag_painter = ui.ctx().layer_painter(egui::LayerId::new(
             egui::Order::Tooltip,
             egui::Id::new("dragged_hand_card"),
@@ -323,7 +339,12 @@ impl Component for PlayerHandComponent {
             let mut fan_card = (*card_rect).clone();
             fan_card.rect = rect;
 
-            let resp = ui.allocate_rect(fan_card.rect, Sense::HOVER | Sense::CLICK | Sense::DRAG);
+            let sense = if can_click_cards || can_drag_cards {
+                Sense::HOVER | Sense::CLICK | Sense::DRAG
+            } else {
+                Sense::HOVER
+            };
+            let resp = ui.allocate_rect(fan_card.rect, sense);
             let is_dragging_this_card = self.dragging_card == Some(fan_card.card.id);
             let draw_rect = if is_dragging_this_card {
                 pointer
@@ -345,14 +366,14 @@ impl Component for PlayerHandComponent {
                     fan_card.card.is_site(),
                 );
             }
-            if resp.clicked() {
+            if can_click_cards && resp.clicked() {
                 let click_pos = resp
                     .interact_pointer_pos()
                     .unwrap_or(fan_card.rect.center());
                 clicked_card = Some((fan_card.card.id, fan_card.rect, click_pos));
             }
 
-            if resp.drag_started() {
+            if can_drag_cards && resp.drag_started() {
                 self.dragging_card = Some(fan_card.card.id);
                 self.drag_visual_pos = pointer;
                 self.client.send(ClientMessage::RequestPlayableZones {

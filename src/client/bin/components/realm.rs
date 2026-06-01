@@ -1329,7 +1329,22 @@ impl Component for RealmComponent {
         let mut clicked_card = None;
         let mut move_delta = Vec2::default();
         let mut moved_card_id = None;
-        let suppress_preview = matches!(data.status, Status::SelectingAction { .. });
+        let card_clicks_enabled = matches!(
+            data.status,
+            Status::Idle | Status::SelectingCard { preview: false, .. }
+        );
+        let suppress_preview = matches!(
+            data.status,
+            Status::SelectingAction { .. }
+                | Status::SelectingDirection { .. }
+                | Status::SelectingPath { .. }
+                | Status::SelectingZone { .. }
+                | Status::SelectingZoneGroup { .. }
+                | Status::SelectingAmount { .. }
+                | Status::Waiting { .. }
+                | Status::GameAborted { .. }
+                | Status::GameOver { .. }
+        );
         let realm_rect = self.rect;
         let mirrored = self.mirrored;
         let card_filter = self.card_filter;
@@ -1362,8 +1377,16 @@ impl Component for RealmComponent {
                 continue;
             }
 
-            let resp = ui.allocate_rect(card_rect.rect, Sense::HOVER | Sense::CLICK | Sense::DRAG);
-            if resp.hovered() && card_rect.card.card_type == CardType::Aura {
+            let sense = if card_clicks_enabled {
+                Sense::HOVER | Sense::CLICK | Sense::DRAG
+            } else {
+                Sense::HOVER
+            };
+            let resp = ui.allocate_rect(card_rect.rect, sense);
+            if resp.hovered()
+                && card_clicks_enabled
+                && card_rect.card.card_type == CardType::Aura
+            {
                 match data.aura_affected_zones.get(&card_rect.card.id) {
                     Some(Some(zones)) if !zones.is_empty() => {
                         Self::draw_affected_zone_highlight(
@@ -1429,7 +1452,7 @@ impl Component for RealmComponent {
                 }
             }
 
-            if resp.clicked() {
+            if card_clicks_enabled && resp.clicked() {
                 let click_pos = resp.interact_pointer_pos().unwrap_or(visual_rect.center());
                 clicked_card = Some((card_rect.card.id, visual_rect, click_pos));
             }
@@ -1457,7 +1480,8 @@ impl Component for RealmComponent {
                 _ => None,
             };
 
-            if resp.dragged()
+            if card_clicks_enabled
+                && resp.dragged()
                 && let Some(cell) = cell
             {
                 let card_id = card_rect.card.id;
