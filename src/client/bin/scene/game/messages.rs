@@ -13,6 +13,24 @@ impl Game {
                 }
                 None
             }
+            ServerMessage::ProjectileFired {
+                shooter,
+                from_zone,
+                direction,
+                range,
+                ranged_strike,
+                ..
+            } => {
+                self.data.pending_projectiles.push(PendingProjectileAnimation {
+                    id: uuid::Uuid::new_v4(),
+                    shooter: *shooter,
+                    from_zone: from_zone.clone(),
+                    direction: direction.clone(),
+                    range: *range,
+                    ranged_strike: *ranged_strike,
+                });
+                None
+            }
             ServerMessage::PlayerDisconnected { player_id, .. } => {
                 self.data.status = Status::GameAborted {
                     reason: format!("Player {} disconnected.", player_id),

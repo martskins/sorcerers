@@ -16,7 +16,6 @@ impl ShiftingSands {
             site_base: SiteBase {
                 provided_mana: 1,
                 provided_thresholds: Thresholds::parse("F"),
-                types: vec![SiteType::Desert],
                 tapped: false,
                 ..Default::default()
             },

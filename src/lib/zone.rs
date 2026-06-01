@@ -1,8 +1,7 @@
 use crate::{
     card::{Ability, CardType, Region, Rubble, Site},
     game::{
-        CardId, Direction, PlayerId, are_adjacent, are_nearby, get_adjacent_zones,
-        get_nearby_zones,
+        CardId, Direction, PlayerId, are_adjacent, are_nearby, get_adjacent_zones, get_nearby_zones,
     },
     query::CardQuery,
     state::{ContinuousEffect, State},

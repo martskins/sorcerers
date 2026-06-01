@@ -31,6 +31,7 @@ static OCCUPIED_ZONE_BACKGROUND_COLOR: Color32 =
     Color32::from_rgba_unmultiplied_const(255, 255, 255, 22);
 
 const CARD_FLIGHT_DURATION: f64 = 0.28;
+const PROJECTILE_FLIGHT_DURATION: f64 = 0.42;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum RealmCardFilter {
@@ -103,6 +104,15 @@ impl std::fmt::Debug for CardFlight {
     }
 }
 
+#[derive(Debug, Clone)]
+struct ProjectileFlight {
+    id: uuid::Uuid,
+    points: Vec<Pos2>,
+    direction: Direction,
+    started_at: f64,
+    ranged_strike: bool,
+}
+
 #[derive(Debug)]
 pub struct RealmComponent {
     game_id: uuid::Uuid,
@@ -116,6 +126,7 @@ pub struct RealmComponent {
     rect: Rect,
     last_mouse_pos: Pos2,
     card_flights: Vec<CardFlight>,
+    projectile_flights: Vec<ProjectileFlight>,
     card_filter: RealmCardFilter,
 }
 
@@ -158,6 +169,7 @@ impl RealmComponent {
             rect,
             last_mouse_pos: pos2(0.0, 0.0),
             card_flights: Vec::new(),
+            projectile_flights: Vec::new(),
             card_filter: RealmCardFilter::All,
         }
     }
@@ -475,6 +487,178 @@ impl RealmComponent {
             Direction::BottomLeft => vec2(-1.0, 1.0).normalized(),
             Direction::BottomRight => vec2(1.0, 1.0).normalized(),
         }
+    }
+
+    fn zone_center(&self, zone: &Zone) -> Option<Pos2> {
+        match zone {
+            Zone::Location(Location::Square(cell_id, _)) => self
+                .cell_rects
+                .iter()
+                .find(|cell| cell.id == *cell_id)
+                .map(|cell| cell.rect.center()),
+            Zone::Location(Location::Intersection(locations, _)) => self
+                .intersection_rects
+                .iter()
+                .find(|intersection| intersection.locations == *locations)
+                .map(|intersection| intersection.rect.center()),
+            _ => None,
+        }
+    }
+
+    fn projectile_points(
+        &self,
+        data: &GameData,
+        shooter: CardId,
+        from_zone: &Zone,
+        direction: &Direction,
+        range: Option<u8>,
+    ) -> Vec<Pos2> {
+        let mut points = Vec::new();
+        let fallback_start = data
+            .cards
+            .iter()
+            .find(|card| card.id == shooter)
+            .and_then(|card| self.zone_center(&card.zone));
+        let Some(start) = self.zone_center(from_zone).or(fallback_start) else {
+            return points;
+        };
+        points.push(start);
+
+        let mut current_zone = from_zone.clone();
+        let mut steps = 0u8;
+        loop {
+            if let Some(max_range) = range
+                && steps >= max_range
+            {
+                break;
+            }
+
+            let Some(next_zone) = current_zone.zone_in_direction(direction, 1) else {
+                break;
+            };
+            if let Some(point) = self.zone_center(&next_zone) {
+                points.push(point);
+            }
+            current_zone = next_zone;
+            steps = steps.saturating_add(1);
+        }
+
+        if points.len() == 1 {
+            let board = Rect::from_points(&board_corners(&self.rect));
+            let vector = Self::direction_vector(direction);
+            let far = start + vector * board.width().max(board.height());
+            let clipped = pos2(
+                far.x.clamp(board.min.x, board.max.x),
+                far.y.clamp(board.min.y, board.max.y),
+            );
+            points.push(clipped);
+        }
+
+        points
+    }
+
+    fn start_pending_projectiles(&mut self, data: &mut GameData, ctx: &Context) {
+        let started_at = ctx.input(|i| i.time);
+        let pending = std::mem::take(&mut data.pending_projectiles);
+        for projectile in pending {
+            if self
+                .projectile_flights
+                .iter()
+                .any(|flight| flight.id == projectile.id)
+            {
+                continue;
+            }
+
+            let points = self.projectile_points(
+                data,
+                projectile.shooter,
+                &projectile.from_zone,
+                &projectile.direction,
+                projectile.range,
+            );
+            if points.len() < 2 {
+                continue;
+            }
+
+            self.projectile_flights.push(ProjectileFlight {
+                id: projectile.id,
+                points,
+                direction: projectile.direction,
+                started_at,
+                ranged_strike: projectile.ranged_strike,
+            });
+        }
+    }
+
+    fn sample_projectile_path(points: &[Pos2], progress: f32) -> (Pos2, Vec2) {
+        let total_len = points
+            .windows(2)
+            .map(|pair| (pair[1] - pair[0]).length())
+            .sum::<f32>()
+            .max(1.0);
+        let mut target_len = total_len * progress.clamp(0.0, 1.0);
+
+        for pair in points.windows(2) {
+            let segment = pair[1] - pair[0];
+            let len = segment.length();
+            if target_len <= len {
+                let t = if len > 0.0 { target_len / len } else { 0.0 };
+                return (pair[0] + segment * t, segment.normalized());
+            }
+            target_len -= len;
+        }
+
+        let last = *points.last().unwrap_or(&pos2(0.0, 0.0));
+        let prev = points
+            .iter()
+            .rev()
+            .nth(1)
+            .copied()
+            .unwrap_or(last - vec2(0.0, 1.0));
+        (last, (last - prev).normalized())
+    }
+
+    fn render_projectile_flights(&mut self, ui: &mut Ui, painter: &Painter, now: f64) {
+        self.projectile_flights.retain(|flight| {
+            let progress = ((now - flight.started_at) / PROJECTILE_FLIGHT_DURATION)
+                .clamp(0.0, 1.0) as f32;
+            let eased = 1.0 - (1.0 - progress) * (1.0 - progress);
+            let (pos, dir) = Self::sample_projectile_path(&flight.points, eased);
+            let dir = if dir.length_sq() > 0.0 {
+                dir
+            } else {
+                Self::direction_vector(&flight.direction)
+            };
+
+            let color = if flight.ranged_strike {
+                Color32::from_rgb(255, 224, 92)
+            } else {
+                Color32::from_rgb(98, 190, 255)
+            };
+            let core = if flight.ranged_strike {
+                Color32::from_rgb(255, 255, 210)
+            } else {
+                Color32::from_rgb(220, 245, 255)
+            };
+            let tail = pos - dir * 42.0;
+            painter.line_segment(
+                [tail, pos - dir * 8.0],
+                Stroke::new(5.0, Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), 56)),
+            );
+            painter.line_segment(
+                [tail + dir * 12.0, pos - dir * 5.0],
+                Stroke::new(2.0, Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), 190)),
+            );
+            painter.circle_filled(pos, 8.0, Color32::from_rgba_unmultiplied(color.r(), color.g(), color.b(), 85));
+            painter.circle_filled(pos, 4.0, core);
+
+            if progress < 1.0 {
+                ui.ctx().request_repaint();
+                true
+            } else {
+                false
+            }
+        });
     }
 
     fn direction_origin(&self, data: &GameData, source_card_id: Option<CardId>) -> Pos2 {
@@ -1084,6 +1268,7 @@ impl Component for RealmComponent {
     fn update(&mut self, data: &mut GameData, ctx: &Context) -> anyhow::Result<()> {
         self.refresh_geometry();
         self.compute_rects(&data.cards, ctx)?;
+        self.start_pending_projectiles(data, ctx);
 
         // If a card was clicked within the last 3 seconds, find it and animate it flying to its new
         // position.
@@ -1393,6 +1578,7 @@ impl Component for RealmComponent {
                 false
             }
         });
+        self.render_projectile_flights(ui, painter, now);
 
         self.render_paths(ui, data, painter);
         self.render_direction_picker(ui, data, painter)?;

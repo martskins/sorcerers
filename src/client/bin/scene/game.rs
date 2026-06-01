@@ -138,6 +138,16 @@ fn component_rect(component_type: ComponentType) -> anyhow::Result<Rect> {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct PendingProjectileAnimation {
+    pub id: uuid::Uuid,
+    pub shooter: CardId,
+    pub from_zone: Zone,
+    pub direction: Direction,
+    pub range: Option<u8>,
+    pub ranged_strike: bool,
+}
+
 #[derive(Debug)]
 pub struct GameData {
     pub player_id: PlayerId,
@@ -160,6 +170,7 @@ pub struct GameData {
     pub last_clicked_cursor_pos: Option<egui::Pos2>,
     pub last_clicked_card_id: Option<CardId>,
     pub last_clicked_card_time: Option<f64>,
+    pub pending_projectiles: Vec<PendingProjectileAnimation>,
 }
 
 impl GameData {
@@ -184,6 +195,7 @@ impl GameData {
             last_clicked_cursor_pos: None,
             last_clicked_card_id: None,
             last_clicked_card_time: None,
+            pending_projectiles: Vec::new(),
         }
     }
 }

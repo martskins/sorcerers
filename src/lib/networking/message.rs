@@ -70,6 +70,14 @@ pub enum ServerMessage {
         player_id: Option<PlayerId>,
         sound_effect: SoundEffect,
     },
+    ProjectileFired {
+        player_id: PlayerId,
+        shooter: CardId,
+        from_zone: Zone,
+        direction: Direction,
+        range: Option<u8>,
+        ranged_strike: bool,
+    },
     PlayerDisconnected {
         player_id: PlayerId,
     },
@@ -198,6 +206,7 @@ impl ServerMessage {
             ServerMessage::LogEvent { .. } => uuid::Uuid::nil(),
             ServerMessage::CardPlayed { .. } => uuid::Uuid::nil(),
             ServerMessage::PlaySoundEffect { player_id, .. } => player_id.unwrap_or_default(),
+            ServerMessage::ProjectileFired { player_id, .. } => *player_id,
             ServerMessage::Resume { player_id, .. } => *player_id,
             ServerMessage::Wait { player_id, .. } => *player_id,
             ServerMessage::PickDirection { player_id, .. } => *player_id,

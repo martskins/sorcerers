@@ -8,6 +8,7 @@ impl EffectEngine {
             let effect = game.state.effects.pop_back();
             if let Some(effect) = effect {
                 let eliminated_before = game.state.eliminated_players.clone();
+
                 match effect.apply(&mut game.state).await {
                     Ok(_) => {}
                     Err(e) => {
@@ -15,7 +16,7 @@ impl EffectEngine {
                     }
                 }
 
-                EffectLogEmitter::emit(game, effect).await?;
+                EffectLogEmitter::emit(game, effect.clone()).await?;
 
                 Game::dispell_auras(&mut game.state).await?;
                 game.broadcast(&game.make_sync()?).await?;
