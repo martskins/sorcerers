@@ -2272,6 +2272,15 @@ impl Game {
         Ok(())
     }
 
+    pub async fn send_to_player(&self, message: &ServerMessage) -> anyhow::Result<()> {
+        let player_id = message.player_id();
+        let stream = self
+            .streams
+            .get(&player_id)
+            .ok_or(anyhow::anyhow!("failed to get stream for player"))?;
+        Client::send_to_stream(message, Arc::clone(stream)).await
+    }
+
     /// Build a `Sync` message for the current state.  When `debug_eval` is
     /// enabled the message also carries a full board evaluation.
     pub(crate) fn make_sync(&self) -> anyhow::Result<ServerMessage> {
@@ -2286,13 +2295,20 @@ impl Game {
         Ok(sync)
     }
 
-    pub(crate) fn game_over_message(&self) -> Option<ServerMessage> {
+    pub(crate) fn game_over_messages(&self) -> Option<Vec<ServerMessage>> {
         let winner = self.state.winner_if_game_over()?;
 
-        Some(ServerMessage::GameOver {
-            winner_id: winner.id,
-            winner_name: winner.name.clone(),
-        })
+        Some(
+            self.state
+                .players
+                .iter()
+                .map(|player| ServerMessage::GameOver {
+                    player_id: player.id,
+                    winner_id: winner.id,
+                    winner_name: winner.name.clone(),
+                })
+                .collect(),
+        )
     }
 
     pub fn draw_initial_six(&self) -> Vec<Effect> {

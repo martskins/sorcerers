@@ -21,9 +21,11 @@ impl EffectEngine {
                 Game::dispell_auras(&mut game.state).await?;
                 game.broadcast(&game.make_sync()?).await?;
                 if game.state.eliminated_players != eliminated_before
-                    && let Some(message) = game.game_over_message()
+                    && let Some(messages) = game.game_over_messages()
                 {
-                    game.broadcast(&message).await?;
+                    for message in messages {
+                        game.send_to_player(&message).await?;
+                    }
                 }
             }
         }

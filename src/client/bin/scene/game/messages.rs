@@ -42,6 +42,7 @@ impl Game {
             ServerMessage::GameOver {
                 winner_id,
                 winner_name,
+                ..
             } => {
                 self.data.status = Status::GameOver {
                     winner_id: *winner_id,

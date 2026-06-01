@@ -497,6 +497,13 @@ impl Game {
         } else {
             "Defeat"
         };
+        let winner_text = if winner_id == self.data.player_id {
+            "You win".to_string()
+        } else if winner_name.trim().is_empty() {
+            "Opponent wins".to_string()
+        } else {
+            format!("{winner_name} wins")
+        };
 
         egui::Area::new(egui::Id::new("game_over_window"))
             .fixed_pos(origin)
@@ -525,7 +532,7 @@ impl Game {
                             ));
                             ui.add_space(8.0);
                             ui.label(
-                                RichText::new(format!("{winner_name} wins"))
+                                RichText::new(winner_text.as_str())
                                     .size(16.0)
                                     .color(theme::TEXT_BRIGHT),
                             );
