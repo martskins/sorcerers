@@ -6,7 +6,7 @@ use egui::{
 use sorcerers::deck::precon::PreconDeck;
 use sorcerers::game::PlayerId;
 use sorcerers::{
-    card::{ALL_CARDS, CardType, Rarity},
+    card::{ALL_CARDS, CardType, Edition, Rarity},
     game::Element,
     networking,
     zone::Zone,
@@ -17,7 +17,7 @@ use unidecode::unidecode;
 mod save;
 mod types;
 
-use types::{CardEntry, ElemFilter, TypeFilter};
+use types::{CardEntry, ElemFilter, SetFilter, TypeFilter};
 
 // ── Colors ──────────────────────────────────────────────────────────────────
 const BG: Color32 = Color32::from_rgb(8, 8, 14);
@@ -53,6 +53,7 @@ pub struct DeckBuilder {
 
     // Filters
     search: String,
+    set_filter: SetFilter,
     elem_filter: ElemFilter,
     type_filter: TypeFilter,
 
@@ -110,6 +111,7 @@ impl DeckBuilder {
             let base = card.get_base();
             let entry = CardEntry {
                 name: card.get_name().to_string(),
+                edition: base.edition.clone(),
                 card_type: card.get_card_type(),
                 zone: base.zone.clone(),
                 rarity: base.rarity.clone(),
@@ -161,6 +163,7 @@ impl DeckBuilder {
             selected_avatar,
             deck_name,
             search: String::new(),
+            set_filter: SetFilter::All,
             elem_filter: ElemFilter::All,
             type_filter: TypeFilter::All,
             save_error: None,
@@ -349,13 +352,14 @@ impl DeckBuilder {
         let pad = 8.0;
 
         // Filter row
-        let filter_h = 40.0;
+        let filter_h = 48.0;
         let filter_rect = Rect::from_min_size(
             rect.min + vec2(pad, pad),
             vec2(rect.width() - pad * 2.0, filter_h),
         );
 
         let search_lower = unidecode(&self.search).to_lowercase();
+        let set_filter = self.set_filter.clone();
         let elem_filter = self.elem_filter.clone();
         let type_filter = self.type_filter.clone();
 
@@ -366,6 +370,11 @@ impl DeckBuilder {
             .filter(|c| {
                 if !search_lower.is_empty()
                     && !unidecode(&c.name).to_lowercase().contains(&search_lower)
+                {
+                    return false;
+                }
+                if let SetFilter::Edition(edition) = &set_filter
+                    && &c.edition != edition
                 {
                     return false;
                 }
@@ -424,6 +433,35 @@ impl DeckBuilder {
                 .font(egui::FontId::proportional(14.0));
             ui.add(te);
             ui.add_space(8.0);
+
+            ui.scope(|ui| {
+                ui.spacing_mut().interact_size.y = 26.0;
+                egui::ComboBox::from_id_salt("deck_builder_set_filter")
+                    .selected_text(self.set_filter.label())
+                    .width(104.0)
+                    .show_ui(ui, |ui| {
+                        ui.selectable_value(
+                            &mut self.set_filter,
+                            SetFilter::All,
+                            SetFilter::All.label(),
+                        );
+                        for edition in [
+                            Edition::Beta,
+                            Edition::Alpha,
+                            Edition::ArthurianLegends,
+                            Edition::Dragonlord,
+                            Edition::Gothic,
+                        ] {
+                            let filter = SetFilter::Edition(edition);
+                            ui.selectable_value(
+                                &mut self.set_filter,
+                                filter.clone(),
+                                filter.label(),
+                            );
+                        }
+                    });
+            });
+            ui.add_space(6.0);
 
             // Element buttons — "All" as text, elements as triangle icons
             let btn_sz = vec2(30.0, 26.0);

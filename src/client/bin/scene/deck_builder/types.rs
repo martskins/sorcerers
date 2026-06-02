@@ -21,9 +21,29 @@ pub(super) enum TypeFilter {
     Spell,
 }
 
+#[derive(Clone, PartialEq)]
+pub(super) enum SetFilter {
+    All,
+    Edition(Edition),
+}
+
+impl SetFilter {
+    pub(super) fn label(&self) -> &'static str {
+        match self {
+            Self::All => "All Sets",
+            Self::Edition(Edition::Alpha) => "Alpha",
+            Self::Edition(Edition::Beta) => "Beta",
+            Self::Edition(Edition::ArthurianLegends) => "Arthurian",
+            Self::Edition(Edition::Dragonlord) => "Dragonlord",
+            Self::Edition(Edition::Gothic) => "Gothic",
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct CardEntry {
     pub name: String,
+    pub edition: Edition,
     pub card_type: CardType,
     pub zone: Zone,
     pub rarity: Rarity,
@@ -51,7 +71,7 @@ impl CardEntry {
             owner_id: PlayerId::nil(),
             controller_id: PlayerId::nil(),
             tapped: false,
-            edition: Edition::Beta,
+            edition: self.edition.clone(),
             zone: Zone::Spellbook,
             region: Region::Surface,
             card_type: self.card_type.clone(),
