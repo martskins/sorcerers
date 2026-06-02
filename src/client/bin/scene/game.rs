@@ -227,14 +227,152 @@ pub struct Game {
     opponent_id: PlayerId,
     client: networking::client::Client,
     current_player: PlayerId,
-    overlay: Option<Box<dyn Component>>,
-    components: Vec<Box<dyn Component>>,
+    overlay: Option<GameOverlay>,
+    components: GameComponents,
     data: GameData,
     audio_manager: AudioManager<DefaultBackend>,
     selected_value: Option<Box<dyn std::any::Any>>,
     card_toast: Vec<CardToast>,
     prompt_stack_pos: Option<egui::Pos2>,
     controlled_hand_opened_for: Option<PlayerId>,
+}
+
+enum GameOverlay {
+    Action(ActionOverlay),
+    Selection(SelectionOverlay),
+    CombatResolution(CombatResolutionOverlay),
+}
+
+impl GameOverlay {
+    fn update(&mut self, data: &mut GameData, ctx: &Context) -> anyhow::Result<()> {
+        match self {
+            Self::Action(overlay) => overlay.update(data, ctx),
+            Self::Selection(overlay) => overlay.update(data, ctx),
+            Self::CombatResolution(overlay) => overlay.update(data, ctx),
+        }
+    }
+
+    fn render(
+        &mut self,
+        data: &mut GameData,
+        ui: &mut Ui,
+        painter: &Painter,
+    ) -> anyhow::Result<Option<ComponentCommand>> {
+        match self {
+            Self::Action(overlay) => overlay.render(data, ui, painter),
+            Self::Selection(overlay) => overlay.render(data, ui, painter),
+            Self::CombatResolution(overlay) => overlay.render(data, ui, painter),
+        }
+    }
+}
+
+struct GameComponents {
+    opponent_status: PlayerStatusComponent,
+    player_status: PlayerStatusComponent,
+    realm: RealmComponent,
+    hand: PlayerHandComponent,
+    event_log: EventLogComponent,
+    card_viewer: CardViewerComponent,
+}
+
+impl GameComponents {
+    fn new(
+        game_id: &uuid::Uuid,
+        player_id: &PlayerId,
+        opponent_id: &PlayerId,
+        is_player_one: bool,
+        client: networking::client::Client,
+    ) -> Self {
+        let player_status_rect = component_rect(ComponentType::PlayerStatus).unwrap_or(Rect::ZERO);
+        let realm_r = component_rect(ComponentType::Realm).unwrap_or(Rect::ZERO);
+        let hand_r = component_rect(ComponentType::PlayerHand).unwrap_or(Rect::ZERO);
+        let log_rect = event_log_rect();
+
+        Self {
+            opponent_status: PlayerStatusComponent::new(player_status_rect, *opponent_id, false),
+            player_status: PlayerStatusComponent::new(player_status_rect, *player_id, true),
+            realm: RealmComponent::new(game_id, player_id, !is_player_one, client.clone(), realm_r),
+            hand: PlayerHandComponent::new(game_id, player_id, client.clone(), hand_r),
+            event_log: EventLogComponent::new(log_rect),
+            card_viewer: CardViewerComponent::new(game_id, player_id, client),
+        }
+    }
+
+    fn update(&mut self, data: &mut GameData, ctx: &Context) {
+        Self::update_component(&mut self.opponent_status, data, ctx);
+        Self::update_component(&mut self.player_status, data, ctx);
+        Self::update_component(&mut self.realm, data, ctx);
+        Self::update_component(&mut self.hand, data, ctx);
+        Self::update_component(&mut self.event_log, data, ctx);
+        Self::update_component(&mut self.card_viewer, data, ctx);
+    }
+
+    fn render(
+        &mut self,
+        data: &mut GameData,
+        ui: &mut Ui,
+        painter: &Painter,
+    ) -> Vec<ComponentCommand> {
+        let mut actions = Vec::new();
+        Self::render_component(&mut self.opponent_status, data, ui, painter, &mut actions);
+        Self::render_component(&mut self.player_status, data, ui, painter, &mut actions);
+        Self::render_component(&mut self.realm, data, ui, painter, &mut actions);
+        Self::render_component(&mut self.hand, data, ui, painter, &mut actions);
+        Self::render_component(&mut self.event_log, data, ui, painter, &mut actions);
+        Self::render_component(&mut self.card_viewer, data, ui, painter, &mut actions);
+        actions
+    }
+
+    fn process_command(
+        &mut self,
+        command: &ComponentCommand,
+        data: &mut GameData,
+    ) -> anyhow::Result<()> {
+        self.opponent_status.process_command(command, data)?;
+        self.player_status.process_command(command, data)?;
+        self.realm.process_command(command, data)?;
+        self.hand.process_command(command, data)?;
+        self.event_log.process_command(command, data)?;
+        self.card_viewer.process_command(command, data)?;
+        Ok(())
+    }
+
+    fn update_component<C: Component>(
+        component: &mut C,
+        data: &mut GameData,
+        ctx: &Context,
+    ) {
+        if let Err(e) = component.update(data, ctx) {
+            eprintln!("Error updating component: {}", e);
+        }
+        if let Ok(rect) = component_rect(component.get_component_type()) {
+            let _ = component.process_command(
+                &ComponentCommand::SetRect {
+                    component_type: component.get_component_type(),
+                    rect,
+                },
+                data,
+            );
+        }
+    }
+
+    fn render_component<C: Component>(
+        component: &mut C,
+        data: &mut GameData,
+        ui: &mut Ui,
+        painter: &Painter,
+        actions: &mut Vec<ComponentCommand>,
+    ) {
+        if !component.is_visible() {
+            return;
+        }
+
+        match component.render(data, ui, painter) {
+            Ok(Some(action)) => actions.push(action),
+            Ok(None) => {}
+            Err(e) => eprintln!("Error rendering component: {}", e),
+        }
+    }
 }
 
 impl Game {
@@ -247,11 +385,6 @@ impl Game {
         client: networking::client::Client,
         audio_manager: AudioManager<DefaultBackend>,
     ) -> Self {
-        let player_status_rect = component_rect(ComponentType::PlayerStatus).unwrap_or(Rect::ZERO);
-        let realm_r = component_rect(ComponentType::Realm).unwrap_or(Rect::ZERO);
-        let hand_r = component_rect(ComponentType::PlayerHand).unwrap_or(Rect::ZERO);
-        let log_rect = event_log_rect();
-
         Self {
             game_id,
             player_id,
@@ -259,37 +392,13 @@ impl Game {
             client: client.clone(),
             current_player: uuid::Uuid::nil(),
             overlay: None,
-            components: vec![
-                Box::new(PlayerStatusComponent::new(
-                    player_status_rect,
-                    opponent_id,
-                    false,
-                )),
-                Box::new(PlayerStatusComponent::new(
-                    player_status_rect,
-                    player_id,
-                    true,
-                )),
-                Box::new(RealmComponent::new(
-                    &game_id,
-                    &player_id,
-                    !is_player_one,
-                    client.clone(),
-                    realm_r,
-                )),
-                Box::new(PlayerHandComponent::new(
-                    &game_id,
-                    &player_id,
-                    client.clone(),
-                    hand_r,
-                )),
-                Box::new(EventLogComponent::new(log_rect)),
-                Box::new(CardViewerComponent::new(
-                    &game_id,
-                    &player_id,
-                    client.clone(),
-                )),
-            ],
+            components: GameComponents::new(
+                &game_id,
+                &player_id,
+                &opponent_id,
+                is_player_one,
+                client.clone(),
+            ),
             data: GameData::new(&player_id, cards),
             audio_manager,
             selected_value: None,
@@ -309,20 +418,7 @@ impl Game {
     }
 
     pub fn update(&mut self, ctx: &Context) {
-        for component in &mut self.components {
-            if let Err(e) = component.update(&mut self.data, ctx) {
-                eprintln!("Error updating component: {}", e);
-            }
-            if let Ok(rect) = component_rect(component.get_component_type()) {
-                let _ = component.process_command(
-                    &ComponentCommand::SetRect {
-                        component_type: component.get_component_type(),
-                        rect,
-                    },
-                    &mut self.data,
-                );
-            }
-        }
+        self.components.update(&mut self.data, ctx);
 
         if let Status::ViewingCards {
             cards,
@@ -337,7 +433,7 @@ impl Game {
                 .iter()
                 .filter(|c| cards.contains(&c.id))
                 .collect();
-            self.overlay = Some(Box::new(SelectionOverlay::new(
+            self.overlay = Some(GameOverlay::Selection(SelectionOverlay::new(
                 self.client.clone(),
                 &self.game_id,
                 &self.data.player_id,
@@ -375,23 +471,10 @@ impl Game {
             return None;
         }
 
-        let mut component_actions: Vec<ComponentCommand> = Vec::new();
-        for component in &mut self.components {
-            if !component.is_visible() {
-                continue;
-            }
-
-            match component.render(&mut self.data, ui, &painter) {
-                Ok(Some(action)) => component_actions.push(action),
-                Ok(None) => {}
-                Err(e) => eprintln!("Error rendering component: {}", e),
-            }
-        }
+        let component_actions = self.components.render(&mut self.data, ui, &painter);
 
         for action in component_actions {
-            for component in &mut self.components {
-                let _ = component.process_command(&action, &mut self.data);
-            }
+            let _ = self.components.process_command(&action, &mut self.data);
         }
         let new_scene = self.render_gui(ui, &painter);
         self.render_prompt_stack(ui);
@@ -485,10 +568,8 @@ impl Game {
     }
 
     fn broadcast_command(&mut self, command: &ComponentCommand) {
-        for component in &mut self.components {
-            if let Err(e) = component.process_command(command, &mut self.data) {
-                eprintln!("Error processing component command: {}", e);
-            }
+        if let Err(e) = self.components.process_command(command, &mut self.data) {
+            eprintln!("Error processing component command: {}", e);
         }
     }
 
@@ -645,9 +726,6 @@ impl Game {
     }
 
     fn broadcast_command_result(&mut self, command: &ComponentCommand) -> anyhow::Result<()> {
-        for component in &mut self.components {
-            component.process_command(command, &mut self.data)?;
-        }
-        Ok(())
+        self.components.process_command(command, &mut self.data)
     }
 }

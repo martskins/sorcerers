@@ -156,7 +156,7 @@ impl Game {
                     .iter()
                     .filter(|c| cards.contains(&c.id))
                     .collect();
-                self.overlay = Some(Box::new(ActionOverlay::new(
+                self.overlay = Some(GameOverlay::Action(ActionOverlay::new(
                     self.client.clone(),
                     &self.game_id,
                     renderables,
@@ -196,7 +196,7 @@ impl Game {
                         .iter()
                         .filter(|c| cards.contains(&c.id))
                         .collect();
-                    self.overlay = Some(Box::new(SelectionOverlay::new(
+                    self.overlay = Some(GameOverlay::Selection(SelectionOverlay::new(
                         self.client.clone(),
                         &self.game_id,
                         &self.data.player_id,
@@ -230,7 +230,7 @@ impl Game {
                 if let Some(attacker_data) =
                     self.data.cards.iter().find(|c| c.id == *attacker).cloned()
                 {
-                    self.overlay = Some(Box::new(CombatResolutionOverlay::new(
+                    self.overlay = Some(GameOverlay::CombatResolution(CombatResolutionOverlay::new(
                         self.client.clone(),
                         &self.game_id,
                         player_id,
@@ -268,7 +268,7 @@ impl Game {
                         .iter()
                         .filter(|c| cards.contains(&c.id))
                         .collect();
-                    self.overlay = Some(Box::new(SelectionOverlay::new(
+                    self.overlay = Some(GameOverlay::Selection(SelectionOverlay::new(
                         self.client.clone(),
                         &self.game_id,
                         &self.data.player_id,
