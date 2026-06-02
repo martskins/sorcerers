@@ -1445,7 +1445,7 @@ impl ActivatedAbility for UnitAction {
                 let possible_defenders = if attacker_has_stealth {
                     vec![]
                 } else {
-                    state.get_defenders_for_attack(&picked_card_id)
+                    state.get_defenders_for_attack(card_id, &picked_card_id)
                 };
                 if !possible_defenders.is_empty() {
                     wait_for_opponent(
@@ -1472,9 +1472,17 @@ impl ActivatedAbility for UnitAction {
                             &opponent.id,
                             &possible_defenders,
                             state,
-                            "Pick units to defend with",
+                            "Pick defenders",
                         )
                         .await?;
+                        let mut defend_declared_effects = vec![];
+                        for defender_id in &defenders {
+                            defend_declared_effects.extend(
+                                state
+                                    .get_card(defender_id)
+                                    .on_defend_declared(state, card_id)?,
+                            );
+                        }
                         match defenders.len() {
                             // If no defenders are picked, proceed with the original attack.
                             0 => {
@@ -1490,7 +1498,7 @@ impl ActivatedAbility for UnitAction {
                             1 => {
                                 let defender_id = defenders[0];
                                 let defender = state.get_card(&defender_id);
-                                return Ok(vec![
+                                let mut effects = vec![
                                     // Return the attack effect first so that MoveCard is applied
                                     // before attack and the attack happens on the correct zone.
                                     Effect::Attack {
@@ -1511,7 +1519,9 @@ impl ActivatedAbility for UnitAction {
                                         tap: true,
                                         through_path: None,
                                     },
-                                ]);
+                                ];
+                                effects.extend(defend_declared_effects);
+                                return Ok(effects);
                             }
                             _ => {
                                 wait_for_opponent(
@@ -1531,12 +1541,14 @@ impl ActivatedAbility for UnitAction {
                                 .await?;
 
                                 resume(&opponent.id, state).await?;
-                                return Ok(vec![Effect::Attack {
+                                let mut effects = vec![Effect::Attack {
                                     attacker_id: *card_id,
                                     defender_id: picked_card_id,
                                     defending_ids: defenders,
                                     damage_assignment: Some(damage_distribution),
-                                }]);
+                                }];
+                                effects.extend(defend_declared_effects);
+                                return Ok(effects);
                             }
                         }
                     }
@@ -2016,7 +2028,7 @@ impl Game {
 
                     let unit_disabled =
                         card.has_status(&self.state, &CardStatus::SummoningSickness);
-                    if card.is_unit() && unit_disabled {
+                    if self.state.is_unit_card(card.get_id()) && unit_disabled {
                         return Ok(());
                     }
 

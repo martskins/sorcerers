@@ -1,8 +1,8 @@
 use crate::{
     card::{
         Ability, ApprenticeWizard, AridDesert, BottomlessPit, Card, CardStatus, Damage, Drought,
-        Enchantress, FootSoldier, OgreGoons, PhaseAssassin, Region, SeaRaider, SpringRiver,
-        VaultsOfZul, YourkeCrossbowmen, from_name_and_zone,
+        Enchantress, FootSoldier, OgreGoons, PhaseAssassin, PitVipers, Region, SeaRaider, Silence,
+        SpringRiver, VaultsOfZul, YourkeCrossbowmen, from_name_and_zone,
     },
     deck::Deck,
     effect::{
@@ -10,7 +10,7 @@ use crate::{
         TemporaryEffect, TokenType,
     },
     game::Direction,
-    networking::message::ServerMessage,
+    networking::message::{ClientMessage, ServerMessage},
     query::{
         CardQuery, EffectQuery, LocationQuery, QueryCache, ZoneQuery, entered_sites, entered_zones,
     },
@@ -22,6 +22,17 @@ use std::{collections::HashMap, sync::Arc};
 /// Creates a test state with proper avatar cards and a live server-message receiver so
 /// that `force_sync` calls inside effects do not fail.
 fn make_state(zones: Vec<Zone>) -> (State, async_channel::Receiver<ServerMessage>) {
+    let (state, server_rx, _client_tx) = make_state_with_client(zones);
+    (state, server_rx)
+}
+
+fn make_state_with_client(
+    zones: Vec<Zone>,
+) -> (
+    State,
+    async_channel::Receiver<ServerMessage>,
+    async_channel::Sender<ClientMessage>,
+) {
     QueryCache::init();
 
     let player_one_id = uuid::Uuid::new_v4();
@@ -68,14 +79,14 @@ fn make_state(zones: Vec<Zone>) -> (State, async_channel::Receiver<ServerMessage
     };
 
     let (server_tx, server_rx) = async_channel::unbounded();
-    let (_, client_rx) = async_channel::unbounded();
+    let (client_tx, client_rx) = async_channel::unbounded();
     let state = State::new(
         uuid::Uuid::new_v4(),
         vec![player1, player2],
         server_tx,
         client_rx,
     );
-    (state, server_rx)
+    (state, server_rx, client_tx)
 }
 
 /// Pops and applies all queued effects (mirrors the game loop's `pop_back` order).
@@ -477,7 +488,9 @@ fn test_disabled_units_cannot_defend_or_intercept() {
         Zone::Location(Location::Square(3, Region::Surface)),
     ]);
     let player_id = state.players[0].id;
+    let opponent_id = state.players[1].id;
     let avatar_id = state.get_player_avatar_id(&player_id).unwrap();
+    let attacker_id = state.get_player_avatar_id(&opponent_id).unwrap();
     state
         .get_card_mut(&avatar_id)
         .set_zone(Zone::Location(Location::Square(1, Region::Surface)));
@@ -497,7 +510,7 @@ fn test_disabled_units_cannot_defend_or_intercept() {
         .cards
         .insert(able_defender_id, Box::new(able_defender));
 
-    let defenders = state.get_defenders_for_attack(&avatar_id);
+    let defenders = state.get_defenders_for_attack(&attacker_id, &avatar_id);
     assert!(
         !defenders.contains(&disabled_defender_id),
         "disabled units should not be valid defenders"
@@ -507,7 +520,6 @@ fn test_disabled_units_cannot_defend_or_intercept() {
         "able nearby units should remain valid defenders"
     );
 
-    let opponent_id = state.players[1].id;
     let opponent_avatar_id = state.get_player_avatar_id(&opponent_id).unwrap();
     state
         .get_card_mut(&opponent_avatar_id)
@@ -1437,6 +1449,80 @@ async fn test_play_card_minion_ends_in_target_zone() {
         state.get_card(&ogre_id).get_zone(),
         &Zone::Location(Location::Square(1, Region::Surface)),
         "minion should end in the chosen zone"
+    );
+}
+
+#[tokio::test]
+async fn test_enchantress_triggers_when_controlled_spellcaster_plays_minion() {
+    let zone = Zone::Location(Location::Square(1, Region::Surface));
+    let (mut state, server_rx, client_tx) = make_state_with_client(vec![zone.clone()]);
+    let game_id = state.game_id;
+    let player_id = state.players[0].id;
+    *state.get_player_mana_mut(&player_id) = 1;
+    state.reconcile_ongoing_effects_for_test().await.unwrap();
+
+    let mut aura = Silence::new(player_id);
+    let aura_id = *aura.get_id();
+    aura.set_zone(zone.clone());
+    state.cards.insert(aura_id, Box::new(aura));
+
+    let mut caster = ApprenticeWizard::new(player_id);
+    let caster_id = *caster.get_id();
+    caster.set_zone(zone.clone());
+    state.cards.insert(caster_id, Box::new(caster));
+
+    let mut spell = PitVipers::new(player_id);
+    let spell_id = *spell.get_id();
+    spell.set_zone(Zone::Hand);
+    state.cards.insert(spell_id, Box::new(spell));
+
+    tokio::spawn(async move {
+        while let Ok(message) = server_rx.recv().await {
+            match message {
+                ServerMessage::PickAction {
+                    player_id, actions, ..
+                } => {
+                    assert_eq!(actions[0], "Yes");
+                    client_tx
+                        .send(ClientMessage::PickAction {
+                            game_id,
+                            player_id,
+                            action_idx: 0,
+                        })
+                        .await
+                        .unwrap();
+                }
+                ServerMessage::PickCard {
+                    player_id, cards, ..
+                } if cards.contains(&aura_id) => {
+                    client_tx
+                        .send(ClientMessage::PickCard {
+                            game_id,
+                            player_id,
+                            card_id: aura_id,
+                        })
+                        .await
+                        .unwrap();
+                }
+                _ => {}
+            }
+        }
+    });
+
+    Effect::PlayCard {
+        player_id,
+        card_id: spell_id,
+        zone: ZoneQuery::from_zone(zone),
+        spellcaster: caster_id,
+    }
+    .apply(&mut state)
+    .await
+    .unwrap();
+    drain_effects(&mut state).await;
+
+    assert!(
+        state.is_minion_card(&aura_id),
+        "Enchantress should trigger from a minion spell played by another controlled spellcaster"
     );
 }
 

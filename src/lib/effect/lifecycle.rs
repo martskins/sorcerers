@@ -1,5 +1,5 @@
 use crate::{
-    card::Ability,
+    card::{Ability, UnitBase},
     effect::Effect,
     game::CardId,
     query::{CardQuery, EffectQuery},
@@ -48,6 +48,11 @@ impl std::fmt::Debug for DeferredEffect {
 #[allow(clippy::large_enum_variant)]
 #[derive(Clone)]
 pub enum TemporaryEffect {
+    Animate {
+        card_id: CardId,
+        unit_base: UnitBase,
+        expires_on_effect: EffectQuery,
+    },
     GrantAbility {
         ability: Ability,
         affected_cards: CardQuery,
@@ -78,13 +83,62 @@ pub enum TemporaryEffect {
 impl std::fmt::Debug for TemporaryEffect {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::Animate {
+                card_id,
+                unit_base,
+                expires_on_effect,
+            } => f
+                .debug_struct("Animate")
+                .field("card_id", card_id)
+                .field("unit_base", unit_base)
+                .field("expires_on_effect", expires_on_effect)
+                .finish(),
+            Self::GrantAbility {
+                ability,
+                affected_cards,
+                expires_on_effect,
+            } => f
+                .debug_struct("GrantAbility")
+                .field("ability", ability)
+                .field("affected_cards", affected_cards)
+                .field("expires_on_effect", expires_on_effect)
+                .finish(),
+            Self::MakePlayable {
+                affected_cards,
+                expires_on_effect,
+                by_player,
+            } => f
+                .debug_struct("MakePlayable")
+                .field("affected_cards", affected_cards)
+                .field("expires_on_effect", expires_on_effect)
+                .field("by_player", by_player)
+                .finish(),
+            Self::IgnoreCostThresholds {
+                affected_cards,
+                expires_on_effect,
+                for_player,
+            } => f
+                .debug_struct("IgnoreCostThresholds")
+                .field("affected_cards", affected_cards)
+                .field("expires_on_effect", expires_on_effect)
+                .field("for_player", for_player)
+                .finish(),
             Self::ModifyEffect {
                 trigger_on_effect, ..
             } => f
                 .debug_struct("ModifyEffect")
                 .field("trigger_on_effect", trigger_on_effect)
                 .finish(),
-            _ => std::fmt::Debug::fmt(self, f),
+            Self::ConnectSites {
+                sites,
+                affected_cards,
+                expires_on_effect,
+            } => f
+                .debug_struct("ConnectSites")
+                .field("sites", sites)
+                .field("affected_cards", affected_cards)
+                .field("expires_on_effect", expires_on_effect)
+                .finish(),
         }
     }
 }
@@ -92,6 +146,7 @@ impl std::fmt::Debug for TemporaryEffect {
 impl TemporaryEffect {
     pub fn affected_cards(&self, state: &State) -> Vec<CardId> {
         match self {
+            TemporaryEffect::Animate { card_id, .. } => vec![*card_id],
             TemporaryEffect::GrantAbility { affected_cards, .. } => affected_cards.all(state),
             TemporaryEffect::MakePlayable { affected_cards, .. } => {
                 affected_cards.clone().including_not_in_play().all(state)
@@ -106,7 +161,10 @@ impl TemporaryEffect {
 
     pub fn expires_on_effect(&self) -> Option<&EffectQuery> {
         match self {
-            TemporaryEffect::GrantAbility {
+            TemporaryEffect::Animate {
+                expires_on_effect, ..
+            }
+            | TemporaryEffect::GrantAbility {
                 expires_on_effect, ..
             }
             | TemporaryEffect::MakePlayable {

@@ -1,9 +1,9 @@
 use crate::{
     card::{
         Ability, AridDesert, BeastOfBurden, Card, CardStatus, CauldronCrones, CourtesanThais,
-        DonnybrookInn, Drought, Enchantress, Flood, FootSoldier, HeadlessHaunt, KiteArcher,
-        NimbusJinn, Region, RimlandNomads, Rubble, SistersOfSilence, SkyBaron, SmokestacksOfGnaak,
-        SneakThief, from_name_and_zone,
+        DonnybrookInn, Drought, Enchantress, Flood, FootSoldier, FreeCity, HeadlessHaunt,
+        KiteArcher, NimbusJinn, Region, RimlandNomads, Rubble, Silence, SistersOfSilence,
+        SkyBaron, SmokestacksOfGnaak, SneakThief, UnitBase, from_name_and_zone,
     },
     deck::Deck,
     effect::Effect,
@@ -85,6 +85,87 @@ async fn insert_realm_card(state: &mut State, mut card: Box<dyn Card>, zone: Zon
         .await
         .unwrap();
     card_id
+}
+
+#[tokio::test]
+async fn test_animate_makes_aura_a_minion_until_expiry() {
+    let (mut state, _rx) = setup_carrying_state();
+    let player_id = state.players[0].id;
+    let aura_id = insert_realm_card(
+        &mut state,
+        Box::new(Silence::new(player_id)),
+        Zone::Location(Location::Square(1, Region::Surface)),
+    )
+    .await;
+
+    Effect::Animate {
+        card_id: aura_id,
+        unit_base: UnitBase {
+            power: 2,
+            toughness: 2,
+            ..Default::default()
+        },
+        expires_on_effect: EffectQuery::TurnStart {
+            player_id: Some(player_id),
+        },
+    }
+    .apply(&mut state)
+    .await
+    .unwrap();
+
+    assert!(state.get_card(&aura_id).is_aura());
+    assert!(!state.get_card(&aura_id).is_minion());
+    assert!(state.is_minion_card(&aura_id));
+    assert!(CardQuery::new().auras().all(&state).contains(&aura_id));
+    assert!(CardQuery::new().minions().all(&state).contains(&aura_id));
+
+    Effect::StartTurn { player_id }
+        .apply(&mut state)
+        .await
+        .unwrap();
+
+    assert!(state.get_card(&aura_id).is_aura());
+    assert!(!state.get_card(&aura_id).is_minion());
+    assert!(!state.is_minion_card(&aura_id));
+    assert!(!CardQuery::new().minions().all(&state).contains(&aura_id));
+}
+
+#[tokio::test]
+async fn test_free_city_is_not_a_unit_before_animation() {
+    let (mut state, _rx) = setup_carrying_state();
+    let player_id = state.players[0].id;
+    let free_city_id = insert_realm_card(
+        &mut state,
+        Box::new(FreeCity::new(player_id)),
+        Zone::Location(Location::Square(1, Region::Surface)),
+    )
+    .await;
+
+    assert!(state.get_card(&free_city_id).is_site());
+    assert!(!state.get_card(&free_city_id).is_unit());
+    assert!(!CardQuery::new().units().all(&state).contains(&free_city_id));
+}
+
+#[tokio::test]
+async fn test_free_city_can_be_chosen_to_defend_before_animation() {
+    let (mut state, _rx) = setup_carrying_state();
+    let player_id = state.players[0].id;
+    let opponent_id = state.players[1].id;
+    let zone = Zone::Location(Location::Square(1, Region::Surface));
+
+    let avatar_id = state.get_player_avatar_id(&player_id).unwrap();
+    state.get_card_mut(&avatar_id).set_zone(zone.clone());
+    let free_city_id =
+        insert_realm_card(&mut state, Box::new(FreeCity::new(player_id)), zone.clone()).await;
+    let attacker_id =
+        insert_realm_card(&mut state, Box::new(FootSoldier::new(opponent_id)), zone).await;
+
+    assert!(!state.get_card(&free_city_id).is_unit());
+    let defenders = state.get_defenders_for_attack(&attacker_id, &avatar_id);
+    assert!(
+        defenders.contains(&free_city_id),
+        "Free City should be a defender candidate before it animates"
+    );
 }
 
 fn passive_ongoing_timestamps_for_source(state: &State, source_id: &uuid::Uuid) -> Vec<u64> {

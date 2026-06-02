@@ -68,6 +68,13 @@ impl ActivatedAbility for FreeCityAttack {
                 card_id: *card_id,
                 data: std::sync::Arc::new(true),
             },
+            Effect::Animate {
+                card_id: *card_id,
+                unit_base: FreeCity::animated_unit_base(),
+                expires_on_effect: EffectQuery::TurnStart {
+                    player_id: Some(*player_id),
+                },
+            },
         ])
     }
 }
@@ -75,13 +82,10 @@ impl ActivatedAbility for FreeCityAttack {
 #[derive(Debug, Clone)]
 pub struct FreeCity {
     site_base: SiteBase,
-    unit_base: UnitBase,
     card_base: CardBase,
     used_ability: bool,
 }
 
-// TODO: This implementation is not correct in that it would be incldued in CardQuery queries that
-// are looking for units or minions, if it hasn't attacked or defended yet.
 impl FreeCity {
     pub const NAME: &'static str = "Free City";
     pub const DESCRIPTION: &'static str =
@@ -93,12 +97,6 @@ impl FreeCity {
                 provided_mana: 3,
                 provided_thresholds: Thresholds::new(),
                 types: vec![],
-                tapped: false,
-                ..Default::default()
-            },
-            unit_base: UnitBase {
-                power: 3,
-                toughness: 3,
                 tapped: false,
                 ..Default::default()
             },
@@ -114,6 +112,15 @@ impl FreeCity {
                 ..Default::default()
             },
             used_ability: false,
+        }
+    }
+
+    fn animated_unit_base() -> UnitBase {
+        UnitBase {
+            power: 3,
+            toughness: 3,
+            tapped: false,
+            ..Default::default()
         }
     }
 }
@@ -151,22 +158,6 @@ impl Card for FreeCity {
 
     fn get_site(&self) -> Option<&dyn Site> {
         Some(self)
-    }
-
-    fn get_unit_base(&self) -> Option<&UnitBase> {
-        if !self.used_ability {
-            return None;
-        }
-
-        Some(&self.unit_base)
-    }
-
-    fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
-        if !self.used_ability {
-            return None;
-        }
-
-        Some(&mut self.unit_base)
     }
 
     fn get_resource_provider(&self) -> Option<&dyn ResourceProvider> {
@@ -210,11 +201,44 @@ impl Card for FreeCity {
         self.get_additional_activated_abilities(state)
     }
 
-    fn on_defend(&self, _state: &State, _attacker_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
-        Ok(vec![Effect::SetCardData {
-            card_id: *self.get_id(),
-            data: std::sync::Arc::new(true),
-        }])
+    fn can_defend_attack(
+        &self,
+        state: &State,
+        attacker_id: &CardId,
+        _defender_id: &CardId,
+    ) -> bool {
+        if self.used_ability
+            || self.is_tapped()
+            || self.has_status(state, &CardStatus::Disabled)
+            || self.has_ability(state, &Ability::CannotDefend)
+        {
+            return false;
+        }
+
+        let attacker = state.get_card(attacker_id);
+        state.is_unit_card(attacker_id)
+            && attacker.get_controller_id(state) != self.get_controller_id(state)
+            && attacker.get_zone() == self.get_zone()
+    }
+
+    fn on_defend_declared(
+        &self,
+        state: &State,
+        _attacker_id: &CardId,
+    ) -> anyhow::Result<Vec<Effect>> {
+        Ok(vec![
+            Effect::SetCardData {
+                card_id: *self.get_id(),
+                data: std::sync::Arc::new(true),
+            },
+            Effect::Animate {
+                card_id: *self.get_id(),
+                unit_base: Self::animated_unit_base(),
+                expires_on_effect: EffectQuery::TurnStart {
+                    player_id: Some(self.get_controller_id(state)),
+                },
+            },
+        ])
     }
 
     fn area_modifiers(&self, _state: &State) -> Vec<ContinuousEffect> {

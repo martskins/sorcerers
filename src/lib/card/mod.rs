@@ -960,7 +960,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     fn strikes_back(&self, state: &State) -> anyhow::Result<bool> {
-        if !self.is_unit() || self.has_status(state, &CardStatus::Disabled) {
+        if !state.is_unit_card(self.get_id()) || self.has_status(state, &CardStatus::Disabled) {
             return Ok(false);
         }
 
@@ -970,6 +970,23 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     // Returns a list of effects that must be applied when this card is defending against an
     // attack.
     fn on_defend(&self, _state: &State, _attacker_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
+        Ok(vec![])
+    }
+
+    fn can_defend_attack(
+        &self,
+        _state: &State,
+        _attacker_id: &CardId,
+        _defender_id: &CardId,
+    ) -> bool {
+        false
+    }
+
+    fn on_defend_declared(
+        &self,
+        _state: &State,
+        _attacker_id: &CardId,
+    ) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![])
     }
 
@@ -1120,7 +1137,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             }
         }
 
-        if self.is_unit() && !self.has_ability(state, &Ability::Voidwalk) {
+        if state.is_unit_card(self.get_id()) && !self.has_ability(state, &Ability::Voidwalk) {
             visited = visited
                 .iter()
                 .filter(|z| {
@@ -1145,7 +1162,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         from: &Zone,
         to: &Zone,
     ) -> anyhow::Result<bool> {
-        if !self.is_unit() {
+        if !state.is_unit_card(self.get_id()) {
             return Ok(true);
         }
 
@@ -1190,7 +1207,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     fn location_survival_effect(&self, state: &State) -> Option<Effect> {
-        if !self.is_minion() || !self.get_zone().is_in_play() {
+        if !state.is_minion_card(self.get_id()) || !self.get_zone().is_in_play() {
             return None;
         }
 
@@ -1439,7 +1456,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             .filter(|target| {
                 // Only enemy units or sites
                 target.get_controller_id(state) != self.get_controller_id(state)
-                    && (target.is_unit() || target.is_site())
+                    && (state.is_unit_card(target.get_id()) || target.is_site())
             })
             .filter(|target| {
                 target
@@ -1490,7 +1507,9 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     fn can_attack(&self, state: &State) -> bool {
-        self.is_unit() && !self.has_status(state, &CardStatus::Disabled) && !self.is_tapped()
+        state.is_unit_card(self.get_id())
+            && !self.has_status(state, &CardStatus::Disabled)
+            && !self.is_tapped()
     }
 
     // Returns the valid attack targets for this card.
@@ -1500,7 +1519,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     // Returns the toughness of the card. Returns None for non-unit cards.
     fn get_toughness(&self, state: &State) -> Option<u16> {
-        match self.get_unit_base() {
+        match self
+            .get_unit_base()
+            .or_else(|| state.animated_unit_base(self.get_id()))
+        {
             Some(base) => {
                 let mut toughness = base.toughness;
                 for counter in &base.power_counters {
@@ -1789,12 +1811,24 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(vec![])
     }
 
-    /// Called on the Spellcaster unit after it successfully casts a spell.
-    /// `spell_id` is the UUID of the spell card just cast.
+    /// Called on the Spellcaster unit after it successfully plays a spell.
+    /// Spells include minions, artifacts, auras, and magics.
+    /// `spell_id` is the UUID of the spell card just played.
     async fn on_cast_spell(
         &self,
         _state: &State,
         _spell_id: &uuid::Uuid,
+    ) -> anyhow::Result<Vec<Effect>> {
+        Ok(vec![])
+    }
+
+    /// Called on the player's avatar after any spell is successfully played by a spellcaster they
+    /// control.
+    async fn on_play_spell(
+        &self,
+        _state: &State,
+        _spell_id: &uuid::Uuid,
+        _caster_id: &uuid::Uuid,
     ) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![])
     }
@@ -1970,7 +2004,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 abilities.extend(self.get_additional_activated_abilities(state)?);
             }
             abilities
-        } else if self.is_unit() {
+        } else if state.is_unit_card(self.get_id()) {
             let mut abilities = self.base_unit_activated_abilities(state)?;
             if !state.card_has_special_abilities_removed(self.get_id()) {
                 abilities.extend(self.get_additional_activated_abilities(state)?);
@@ -2659,7 +2693,10 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
     }
 
     fn base_get_power(&self, state: &State) -> Option<u16> {
-        match self.get_unit_base() {
+        match self
+            .get_unit_base()
+            .or_else(|| state.animated_unit_base(self.get_id()))
+        {
             Some(base) => {
                 let mut power = base.power;
                 for counter in &base.power_counters {
@@ -2683,65 +2720,64 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
     }
 
     fn base_get_abilities(&self, state: &State) -> Vec<Ability> {
-        match self.get_card_type() {
-            CardType::Minion | CardType::Avatar => {
-                let base = self
-                    .get_unit_base()
-                    .expect("minions and avatars to have a unit base");
-                let mut modifiers = base.abilities.clone();
-                for counter in &base.ability_counters {
-                    modifiers.push(counter.ability.clone());
-                }
+        if state.is_unit_card(self.get_id()) {
+            let base = self
+                .get_unit_base()
+                .or_else(|| state.animated_unit_base(self.get_id()))
+                .expect("units to have a unit base");
+            let mut modifiers = base.abilities.clone();
+            for counter in &base.ability_counters {
+                modifiers.push(counter.ability.clone());
+            }
 
-                apply_ability_modifiers(
-                    &mut modifiers,
-                    state.ability_modifiers_from_area_modifiers(self.get_id()),
-                );
+            apply_ability_modifiers(
+                &mut modifiers,
+                state.ability_modifiers_from_area_modifiers(self.get_id()),
+            );
 
-                // Units that can carry other units confer Airborne, Burrowing, Submerge, and/or
-                // Voidwalk to the carried units while they're carried.
-                if let Some(bearer_id) = self.get_bearer_id().ok().flatten() {
-                    let bearer = state.get_card(&bearer_id);
-                    for ability in [
-                        Ability::Airborne,
-                        Ability::Burrowing,
-                        Ability::Submerge,
-                        Ability::Voidwalk,
-                    ] {
-                        if bearer
-                            .get_abilities(state)
-                            .is_ok_and(|abilities| abilities.contains(&ability))
-                        {
-                            modifiers.push(ability);
-                        }
+            // Units that can carry other units confer Airborne, Burrowing, Submerge, and/or
+            // Voidwalk to the carried units while they're carried.
+            if let Some(bearer_id) = self.get_bearer_id().ok().flatten() {
+                let bearer = state.get_card(&bearer_id);
+                for ability in [
+                    Ability::Airborne,
+                    Ability::Burrowing,
+                    Ability::Submerge,
+                    Ability::Voidwalk,
+                ] {
+                    if bearer
+                        .get_abilities(state)
+                        .is_ok_and(|abilities| abilities.contains(&ability))
+                    {
+                        modifiers.push(ability);
                     }
                 }
-
-                if self.has_status(state, &CardStatus::Silenced) {
-                    modifiers.retain(|ability| !ability.is_special_ability());
-                }
-                if self.has_status(state, &CardStatus::Disabled) {
-                    modifiers.retain(|ability| ability.persists_while_disabled());
-                }
-
-                modifiers
             }
-            CardType::Site => {
-                let base = self.get_site_base().expect("site to have a site base");
-                let mut modifiers = base.abilities.clone();
-                apply_ability_modifiers(
-                    &mut modifiers,
-                    state.ability_modifiers_from_area_modifiers(self.get_id()),
-                );
-                if self.has_status(state, &CardStatus::Silenced)
-                    || self.has_status(state, &CardStatus::Disabled)
-                {
-                    modifiers.retain(|ability| !ability.is_special_ability());
-                }
 
-                modifiers
+            if self.has_status(state, &CardStatus::Silenced) {
+                modifiers.retain(|ability| !ability.is_special_ability());
             }
-            _ => vec![],
+            if self.has_status(state, &CardStatus::Disabled) {
+                modifiers.retain(|ability| ability.persists_while_disabled());
+            }
+
+            modifiers
+        } else if self.is_site() {
+            let base = self.get_site_base().expect("site to have a site base");
+            let mut modifiers = base.abilities.clone();
+            apply_ability_modifiers(
+                &mut modifiers,
+                state.ability_modifiers_from_area_modifiers(self.get_id()),
+            );
+            if self.has_status(state, &CardStatus::Silenced)
+                || self.has_status(state, &CardStatus::Disabled)
+            {
+                modifiers.retain(|ability| !ability.is_special_ability());
+            }
+
+            modifiers
+        } else {
+            vec![]
         }
     }
 
@@ -2791,116 +2827,117 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
                 remaining.saturating_sub(*amount)
             });
 
-        match self.get_card_type() {
-            CardType::Minion => {
-                // Check LethalTarget before the mutable borrow of unit_base.
-                let has_lethal_target = self.has_ability(state, &Ability::LethalTarget);
-
-                let ub = self
-                    .get_unit_base_mut()
-                    .ok_or(anyhow::anyhow!("unit card has no unit base"))?;
-                ub.damage += reduced_damage;
-
-                let mut effects = vec![];
-                let dealer = state.get_card(from);
-                let killer_id = if dealer.is_magic() {
-                    state.find_caster(from).expect("magic to have a caster")
-                } else {
-                    *from
-                };
-                // Zero damage is not any damage at all (rulebook). Only apply kill conditions
-                // when actual damage was dealt.
-                if reduced_damage > 0
-                    && (ub.damage >= self.get_toughness(state).unwrap_or(0)
-                        || damage.is_lethal
-                        || dealer.has_ability(state, &Ability::Lethal)
-                        || has_lethal_target)
-                {
-                    effects.push(Effect::KillMinion {
-                        card_id: *self.get_id(),
-                        killer_id,
-                        from_attack: damage.is_attack,
-                    });
-                }
-
-                // Lifesteal: if the defender is a unit, heal the attacker's controller.
-                let defender = state.get_card(self.get_id());
-                if dealer.has_ability(state, &Ability::Lifesteal) && defender.is_unit() {
-                    let controller_id = dealer.get_controller_id(state);
-                    if let Ok(avatar_id) = state.get_player_avatar_id(&controller_id) {
-                        let heal = dealer.get_power(state)?.unwrap_or(0);
-                        if heal > 0 {
-                            effects.push(Effect::Heal {
-                                card_id: avatar_id,
-                                amount: heal,
-                            });
-                        }
-                    }
-                }
-
-                Ok(effects)
+        if self.is_avatar() {
+            let ab = self
+                .get_avatar_base()
+                .ok_or(anyhow::anyhow!("avatar card has no avatar base"))?;
+            if ab.deaths_door && !ab.can_die {
+                return Ok(vec![]);
             }
-            CardType::Avatar => {
+
+            if ab.deaths_door && ab.can_die && reduced_damage > 0 {
+                return Ok(vec![Effect::PlayerLost {
+                    player_id: self.get_controller_id(state),
+                }]);
+            }
+
+            let ub = self
+                .get_unit_base_mut()
+                .ok_or(anyhow::anyhow!("unit card has no unit base"))?;
+            ub.damage += reduced_damage;
+
+            if ub.damage >= self.get_toughness(state).unwrap_or(0) {
                 let ab = self
-                    .get_avatar_base()
+                    .get_avatar_base_mut()
                     .ok_or(anyhow::anyhow!("avatar card has no avatar base"))?;
-                if ab.deaths_door && !ab.can_die {
-                    return Ok(vec![]);
-                }
+                ab.deaths_door = true;
+            }
 
-                if ab.deaths_door && ab.can_die && reduced_damage > 0 {
-                    return Ok(vec![Effect::PlayerLost {
-                        player_id: self.get_controller_id(state),
-                    }]);
-                }
-
-                let ub = self
-                    .get_unit_base_mut()
-                    .ok_or(anyhow::anyhow!("unit card has no unit base"))?;
-                ub.damage += reduced_damage;
-
-                if ub.damage >= self.get_toughness(state).unwrap_or(0) {
-                    let ab = self
-                        .get_avatar_base_mut()
-                        .ok_or(anyhow::anyhow!("avatar card has no avatar base"))?;
-                    ab.deaths_door = true;
-                }
-
-                let attacker = state.get_card(from);
-                let mut effects = vec![];
-                // Lifesteal: if the defender is a unit, heal the attacker's controller.
-                let defender = state.get_card(self.get_id());
-                if attacker.has_ability(state, &Ability::Lifesteal) && defender.is_unit() {
-                    let controller_id = attacker.get_controller_id(state);
-                    if let Ok(avatar_id) = state.get_player_avatar_id(&controller_id) {
-                        let heal = attacker.get_power(state)?.unwrap_or(0);
-                        if heal > 0 {
-                            effects.push(Effect::Heal {
-                                card_id: avatar_id,
-                                amount: heal,
-                            });
-                        }
+            let attacker = state.get_card(from);
+            let mut effects = vec![];
+            // Lifesteal: if the defender is a unit, heal the attacker's controller.
+            let defender = state.get_card(self.get_id());
+            if attacker.has_ability(state, &Ability::Lifesteal)
+                && state.is_unit_card(defender.get_id())
+            {
+                let controller_id = attacker.get_controller_id(state);
+                if let Ok(avatar_id) = state.get_player_avatar_id(&controller_id) {
+                    let heal = attacker.get_power(state)?.unwrap_or(0);
+                    if heal > 0 {
+                        effects.push(Effect::Heal {
+                            card_id: avatar_id,
+                            amount: heal,
+                        });
                     }
                 }
-
-                Ok(effects)
             }
-            CardType::Site => {
-                let controller_id = self.get_controller_id(state);
-                let avatar_id = state.get_player_avatar_id(&controller_id)?;
-                let avatar = state.get_card(&avatar_id);
-                let unit_base = avatar
-                    .get_unit_base()
-                    .ok_or(anyhow::anyhow!("avatar has no unit base"))?;
-                let current_life = unit_base.toughness.saturating_sub(unit_base.damage);
 
-                // Attacking sites causes life loss, not damage.
-                Ok(vec![Effect::SetAvatarLife {
-                    player_id: controller_id,
-                    life: current_life.saturating_sub(reduced_damage),
-                }])
+            Ok(effects)
+        } else if self.get_unit_base().is_some() {
+            // Check LethalTarget before the mutable borrow of unit_base.
+            let has_lethal_target = self.has_ability(state, &Ability::LethalTarget);
+
+            let ub = self
+                .get_unit_base_mut()
+                .ok_or(anyhow::anyhow!("unit card has no unit base"))?;
+            ub.damage += reduced_damage;
+
+            let mut effects = vec![];
+            let dealer = state.get_card(from);
+            let killer_id = if dealer.is_magic() {
+                state.find_caster(from).expect("magic to have a caster")
+            } else {
+                *from
+            };
+            // Zero damage is not any damage at all (rulebook). Only apply kill conditions
+            // when actual damage was dealt.
+            if reduced_damage > 0
+                && (ub.damage >= self.get_toughness(state).unwrap_or(0)
+                    || damage.is_lethal
+                    || dealer.has_ability(state, &Ability::Lethal)
+                    || has_lethal_target)
+            {
+                effects.push(Effect::KillMinion {
+                    card_id: *self.get_id(),
+                    killer_id,
+                    from_attack: damage.is_attack,
+                });
             }
-            _ => Ok(vec![]),
+
+            // Lifesteal: if the defender is a unit, heal the attacker's controller.
+            let defender = state.get_card(self.get_id());
+            if dealer.has_ability(state, &Ability::Lifesteal)
+                && state.is_unit_card(defender.get_id())
+            {
+                let controller_id = dealer.get_controller_id(state);
+                if let Ok(avatar_id) = state.get_player_avatar_id(&controller_id) {
+                    let heal = dealer.get_power(state)?.unwrap_or(0);
+                    if heal > 0 {
+                        effects.push(Effect::Heal {
+                            card_id: avatar_id,
+                            amount: heal,
+                        });
+                    }
+                }
+            }
+
+            Ok(effects)
+        } else if self.is_site() {
+            let controller_id = self.get_controller_id(state);
+            let avatar_id = state.get_player_avatar_id(&controller_id)?;
+            let avatar = state.get_card(&avatar_id);
+            let unit_base = avatar
+                .get_unit_base()
+                .ok_or(anyhow::anyhow!("avatar has no unit base"))?;
+            let current_life = unit_base.toughness.saturating_sub(unit_base.damage);
+
+            // Attacking sites causes life loss, not damage.
+            Ok(vec![Effect::SetAvatarLife {
+                player_id: controller_id,
+                life: current_life.saturating_sub(reduced_damage),
+            }])
+        } else {
+            Ok(vec![])
         }
     }
 
@@ -2911,7 +2948,7 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
     async fn base_valid_move_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {
         // If the card is not a unit, it might be an aura, in which case the result of
         // get_zones_within_steps should be returned as is.
-        if !self.is_unit() {
+        if !state.is_unit_card(self.get_id()) {
             return Ok(self.get_zones_within_steps(state, self.get_steps_per_movement(state)?));
         }
 

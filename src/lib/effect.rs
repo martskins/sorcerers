@@ -289,6 +289,11 @@ pub enum Effect {
     BuryCard {
         card_id: CardId,
     },
+    Animate {
+        card_id: CardId,
+        unit_base: UnitBase,
+        expires_on_effect: EffectQuery,
+    },
     SetCardData {
         card_id: CardId,
         data: std::sync::Arc<dyn std::any::Any + Send + Sync>,
@@ -417,6 +422,7 @@ impl Effect {
             Effect::BanishCard { card_id, .. } => Some(card_id),
             Effect::KillMinion { card_id, .. } => Some(card_id),
             Effect::BuryCard { card_id, .. } => Some(card_id),
+            Effect::Animate { card_id, .. } => Some(card_id),
             Effect::SetCardData { card_id, .. } => Some(card_id),
             Effect::TeleportCard { player_id, .. } => Some(player_id),
             Effect::RearrangeDeck { .. } => None,
@@ -709,6 +715,10 @@ impl Effect {
                     player_name(&player, state),
                     card.get_name()
                 ))
+            }
+            Effect::Animate { card_id, .. } => {
+                let card = state.get_card(card_id);
+                Some(format!("{} becomes a minion", card.get_name()))
             }
             Effect::SetCardData { .. } => None,
             Effect::TeleportCard {
@@ -1400,12 +1410,17 @@ impl Effect {
                 let caster = state.get_card(caster_id);
                 let spell_triggered = caster.on_cast_spell(state, card_id).await?;
                 state.queue(spell_triggered);
+
+                let avatar_id = state.get_player_avatar_id(player_id)?;
+                let avatar = state.get_card(&avatar_id);
+                let avatar_triggered = avatar.on_play_spell(state, card_id, caster_id).await?;
+                state.queue(avatar_triggered);
             }
             Effect::PlayCard {
                 card_id,
                 player_id,
                 zone,
-                ..
+                spellcaster,
             } => {
                 let zone = zone.pick(player_id, state).await?;
                 let costs = state.get_effective_costs(card_id, Some(&zone), player_id)?;
@@ -1477,6 +1492,21 @@ impl Effect {
                     effects.extend(location_survival_effects_for_realm(state));
                     state.queue(effects);
                     state.queue(cast_effects);
+                }
+
+                let card = state.get_card(card_id);
+                if !card.is_site() {
+                    // Notify the Spellcaster unit that it played a spell. In Sorcery, spells are
+                    // minions, artifacts, auras, and magics; sites are the non-spell exception.
+                    let caster = state.get_card(spellcaster);
+                    let spell_triggered = caster.on_cast_spell(state, card_id).await?;
+                    state.queue(spell_triggered);
+
+                    let avatar_id = state.get_player_avatar_id(player_id)?;
+                    let avatar = state.get_card(&avatar_id);
+                    let avatar_triggered =
+                        avatar.on_play_spell(state, card_id, spellcaster).await?;
+                    state.queue(avatar_triggered);
                 }
             }
             Effect::SummonCards { cards } => {
@@ -1681,6 +1711,11 @@ impl Effect {
                     card.get_unit_base_mut()
                         .ok_or(anyhow::anyhow!("card has no unit base component"))?
                         .damage = 0;
+                }
+                for effect in state.temporary_effects_mut() {
+                    if let TemporaryEffect::Animate { unit_base, .. } = effect {
+                        unit_base.damage = 0;
+                    }
                 }
                 state.invalidate_runtime_caches();
 
@@ -2014,9 +2049,74 @@ impl Effect {
                         if affected_cards.matches(card_id, &snapshot) && !(*except_strikes && damage.is_strike))
                 });
                 let multiplier: u16 = if takes_double_damage { 2 } else { 1 };
-                let card = state.get_card_mut(card_id);
-                let mut effects = if can_use_special_abilities(&snapshot, card_id) {
-                    card.on_take_damage(&snapshot, from, damage * multiplier)?
+                let adjusted_damage = damage * multiplier;
+                let mut effects = if snapshot.animated_unit_base(card_id).is_some()
+                    && !snapshot.get_card(card_id).is_unit()
+                {
+                    let dealer = snapshot.get_card(from);
+                    let has_lethal_target =
+                        snapshot.get_card(card_id).has_ability(&snapshot, &Ability::LethalTarget);
+                    let reduced_damage = snapshot
+                        .active_continuous_effects()
+                        .into_iter()
+                        .filter_map(|ce| match ce {
+                            ContinuousEffect::ReduceDamageTaken {
+                                amount,
+                                affected_cards,
+                            } if affected_cards.matches(card_id, &snapshot) => Some(amount),
+                            _ => None,
+                        })
+                        .fold(adjusted_damage.amount, |remaining, amount| {
+                            remaining.saturating_sub(*amount)
+                        });
+                    let toughness = snapshot
+                        .get_card(card_id)
+                        .get_toughness(&snapshot)
+                        .unwrap_or(0);
+                    let new_damage = {
+                        let base = state
+                            .animated_unit_base_mut(card_id)
+                            .ok_or(anyhow::anyhow!("animated card has no unit base"))?;
+                        base.damage += reduced_damage;
+                        base.damage
+                    };
+
+                    let mut effects = vec![];
+                    let killer_id = if dealer.is_magic() {
+                        state.find_caster(from).expect("magic to have a caster")
+                    } else {
+                        *from
+                    };
+                    if reduced_damage > 0
+                        && (new_damage >= toughness
+                            || adjusted_damage.is_lethal
+                            || dealer.has_ability(&snapshot, &Ability::Lethal)
+                            || has_lethal_target)
+                    {
+                        effects.push(Effect::KillMinion {
+                            card_id: *card_id,
+                            killer_id,
+                            from_attack: adjusted_damage.is_attack,
+                        });
+                    }
+
+                    if dealer.has_ability(&snapshot, &Ability::Lifesteal) {
+                        let controller_id = dealer.get_controller_id(&snapshot);
+                        if let Ok(avatar_id) = snapshot.get_player_avatar_id(&controller_id) {
+                            let heal = dealer.get_power(&snapshot)?.unwrap_or(0);
+                            if heal > 0 {
+                                effects.push(Effect::Heal {
+                                    card_id: avatar_id,
+                                    amount: heal,
+                                });
+                            }
+                        }
+                    }
+
+                    effects
+                } else if can_use_special_abilities(&snapshot, card_id) {
+                    let card = state.get_card_mut(card_id);
+                    card.on_take_damage(&snapshot, from, adjusted_damage)?
                 } else {
                     vec![]
                 };
@@ -2115,6 +2215,18 @@ impl Effect {
                     state.get_card_mut(&borne_card_id).set_bearer_id(None);
                 }
             }
+            Effect::Animate {
+                card_id,
+                unit_base,
+                expires_on_effect,
+            } => {
+                state.temporary_effects_mut().push(TemporaryEffect::Animate {
+                    card_id: *card_id,
+                    unit_base: unit_base.clone(),
+                    expires_on_effect: expires_on_effect.clone(),
+                });
+                state.queue(location_survival_effects_for_realm(state));
+            }
             Effect::AddCounter {
                 card_id, counter, ..
             } => {
@@ -2123,6 +2235,8 @@ impl Effect {
                     let base = card
                         .get_unit_base_mut()
                         .ok_or(anyhow::anyhow!("card has no unit base"))?;
+                    base.power_counters.push(counter.clone());
+                } else if let Some(base) = state.animated_unit_base_mut(card_id) {
                     base.power_counters.push(counter.clone());
                 }
             }
@@ -2134,6 +2248,8 @@ impl Effect {
                     let base = card
                         .get_unit_base_mut()
                         .ok_or(anyhow::anyhow!("card has no unit base"))?;
+                    base.ability_counters.push(counter.clone());
+                } else if let Some(base) = state.animated_unit_base_mut(card_id) {
                     base.ability_counters.push(counter.clone());
                 }
             }

@@ -1,5 +1,5 @@
 use crate::{
-    card::{Ability, Card, CardData, CardStatus, CardType, Costs, DodgeRoll, SiteType},
+    card::{Ability, Card, CardData, CardStatus, CardType, Costs, DodgeRoll, SiteType, UnitBase},
     deck::Deck,
     effect::Counter,
     effect::{Effect, EffectCallback, EffectEngine, EffectState},
@@ -951,7 +951,7 @@ impl State {
                 ..
             } => {
                 let defender = self.get_card(defender_id);
-                if !defender.is_unit() {
+                if !self.is_unit_card(defender_id) {
                     return Ok(None);
                 }
 
@@ -1108,6 +1108,38 @@ impl State {
     pub fn temporary_effects_mut(&mut self) -> &mut Vec<TemporaryEffect> {
         self.invalidate_runtime_caches();
         self.effects.temporary_mut()
+    }
+
+    pub fn animated_unit_base(&self, card_id: &CardId) -> Option<&UnitBase> {
+        self.temporary_effects().iter().find_map(|effect| match effect {
+            TemporaryEffect::Animate {
+                card_id: animated_id,
+                unit_base,
+                ..
+            } if animated_id == card_id => Some(unit_base),
+            _ => None,
+        })
+    }
+
+    pub fn animated_unit_base_mut(&mut self, card_id: &CardId) -> Option<&mut UnitBase> {
+        self.temporary_effects_mut()
+            .iter_mut()
+            .find_map(|effect| match effect {
+                TemporaryEffect::Animate {
+                    card_id: animated_id,
+                    unit_base,
+                    ..
+                } if animated_id == card_id => Some(unit_base),
+                _ => None,
+            })
+    }
+
+    pub fn is_unit_card(&self, card_id: &CardId) -> bool {
+        self.get_card(card_id).is_unit() || self.animated_unit_base(card_id).is_some()
+    }
+
+    pub fn is_minion_card(&self, card_id: &CardId) -> bool {
+        self.is_unit_card(card_id) && !self.get_card(card_id).is_avatar()
     }
 
     pub fn deferred_effects(&self) -> &[DeferredEffect] {
@@ -1670,17 +1702,29 @@ impl State {
         (living_players.len() == 1).then_some(living_players[0])
     }
 
-    pub fn get_defenders_for_attack(&self, defender_id: &CardId) -> Vec<CardId> {
+    pub fn get_defenders_for_attack(&self, attacker_id: &CardId, defender_id: &CardId) -> Vec<CardId> {
         let defender = self.get_card(defender_id);
-        CardQuery::new()
+        let controller_id = defender.get_controller_id(self);
+        let mut defenders = CardQuery::new()
             .units()
             .near_to(defender.get_zone())
             .without_ability(&Ability::CannotDefend)
             .without_status(&CardStatus::Disabled)
             .untapped()
             .id_not(defender_id)
-            .controlled_by(&defender.get_controller_id(self))
-            .all(self)
+            .controlled_by(&controller_id)
+            .all(self);
+
+        let extra_defenders: Vec<CardId> =
+            self.cards
+                .values()
+                .filter(|card| card.get_controller_id(self) == controller_id)
+                .filter(|card| !defenders.contains(card.get_id()))
+                .filter(|card| card.can_defend_attack(self, attacker_id, defender_id))
+                .map(|card| *card.get_id())
+                .collect();
+        defenders.extend(extra_defenders);
+        defenders
     }
 
     pub fn get_interceptors_for_move(
@@ -1706,7 +1750,7 @@ impl State {
             if &card.get_controller_id(self) != controller_id {
                 continue;
             }
-            if !card.is_unit() {
+            if !self.is_unit_card(card.get_id()) {
                 continue;
             }
             if !card.get_zone().is_in_play() {
