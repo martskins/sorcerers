@@ -1,8 +1,9 @@
 use crate::{
     card::{
         Ability, ApprenticeWizard, AridDesert, BottomlessPit, Card, CardStatus, Damage, Drought,
-        Enchantress, FootSoldier, OgreGoons, PhaseAssassin, PitVipers, Region, SeaRaider, Silence,
-        SpringRiver, VaultsOfZul, YourkeCrossbowmen, from_name_and_zone,
+        Enchantress, FootSoldier, OgreGoons, PhaseAssassin, PitVipers, Region, Sandstorm,
+        SeaRaider, Silence, SpringRiver, UnitBase, VaultsOfZul, YourkeCrossbowmen,
+        from_name_and_zone,
     },
     deck::Deck,
     effect::{
@@ -1512,7 +1513,7 @@ async fn test_enchantress_triggers_when_controlled_spellcaster_plays_minion() {
     Effect::PlayCard {
         player_id,
         card_id: spell_id,
-        zone: ZoneQuery::from_zone(zone),
+        zone: ZoneQuery::from_zone(zone.clone()),
         spellcaster: caster_id,
     }
     .apply(&mut state)
@@ -1523,6 +1524,307 @@ async fn test_enchantress_triggers_when_controlled_spellcaster_plays_minion() {
     assert!(
         state.is_minion_card(&aura_id),
         "Enchantress should trigger from a minion spell played by another controlled spellcaster"
+    );
+    assert_eq!(
+        state.get_card(&aura_id).get_zone(),
+        &zone,
+        "the animated aura should remain in the realm after location survival checks"
+    );
+}
+
+#[tokio::test]
+async fn test_enchantress_triggers_when_enchantress_plays_minion() {
+    let zone = Zone::Location(Location::Square(1, Region::Surface));
+    let intersection = Zone::Location(Location::Intersection(vec![1, 2, 6, 7], Region::Surface));
+    let (mut state, server_rx, client_tx) = make_state_with_client(vec![
+        zone.clone(),
+        Zone::Location(Location::Square(2, Region::Surface)),
+        Zone::Location(Location::Square(6, Region::Surface)),
+        Zone::Location(Location::Square(7, Region::Surface)),
+    ]);
+    let game_id = state.game_id;
+    let player_id = state.players[0].id;
+    *state.get_player_mana_mut(&player_id) = 1;
+    state.reconcile_ongoing_effects_for_test().await.unwrap();
+
+    let mut aura = Silence::new(player_id);
+    let aura_id = *aura.get_id();
+    aura.set_zone(intersection.clone());
+    state.cards.insert(aura_id, Box::new(aura));
+    assert!(
+        CardQuery::new().auras().in_play().all(&state).contains(&aura_id),
+        "CardQuery::in_play should include auras on intersections"
+    );
+
+    let mut spell = PitVipers::new(player_id);
+    let spell_id = *spell.get_id();
+    spell.set_zone(Zone::Hand);
+    state.cards.insert(spell_id, Box::new(spell));
+
+    let avatar_id = state.get_player_avatar_id(&player_id).unwrap();
+    tokio::spawn(async move {
+        while let Ok(message) = server_rx.recv().await {
+            match message {
+                ServerMessage::PickAction {
+                    player_id, actions, ..
+                } => {
+                    assert_eq!(actions[0], "Yes");
+                    client_tx
+                        .send(ClientMessage::PickAction {
+                            game_id,
+                            player_id,
+                            action_idx: 0,
+                        })
+                        .await
+                        .unwrap();
+                }
+                ServerMessage::PickCard {
+                    player_id, cards, ..
+                } if cards.contains(&aura_id) => {
+                    client_tx
+                        .send(ClientMessage::PickCard {
+                            game_id,
+                            player_id,
+                            card_id: aura_id,
+                        })
+                        .await
+                        .unwrap();
+                }
+                _ => {}
+            }
+        }
+    });
+
+    Effect::PlayCard {
+        player_id,
+        card_id: spell_id,
+        zone: ZoneQuery::from_zone(zone),
+        spellcaster: avatar_id,
+    }
+    .apply(&mut state)
+    .await
+    .unwrap();
+    drain_effects(&mut state).await;
+
+    assert!(
+        state.is_minion_card(&aura_id),
+        "Enchantress should trigger when she is the implicit spellcaster"
+    );
+    assert_eq!(
+        state.get_card(&aura_id).get_zone(),
+        &intersection,
+        "the animated aura should remain in the realm after location survival checks"
+    );
+}
+
+#[tokio::test]
+async fn test_enchantress_does_not_see_aura_spell_before_it_enters() {
+    let zone = Zone::Location(Location::Intersection(vec![1, 2, 6, 7], Region::Surface));
+    let (mut state, _server_rx, _client_tx) = make_state_with_client(vec![Zone::Location(
+        Location::Square(1, Region::Surface),
+    )]);
+    let player_id = state.players[0].id;
+    *state.get_player_mana_mut(&player_id) = 1;
+    state.reconcile_ongoing_effects_for_test().await.unwrap();
+
+    let mut aura = Sandstorm::new(player_id);
+    let aura_id = *aura.get_id();
+    aura.set_zone(Zone::Hand);
+    state.cards.insert(aura_id, Box::new(aura));
+
+    let avatar_id = state.get_player_avatar_id(&player_id).unwrap();
+    let play = Effect::PlayCard {
+        player_id,
+        card_id: aura_id,
+        zone: ZoneQuery::from_zone(zone),
+        spellcaster: avatar_id,
+    };
+
+    tokio::time::timeout(std::time::Duration::from_millis(100), play.apply(&mut state))
+        .await
+        .expect("Enchantress should not prompt for the aura spell before it enters")
+        .unwrap();
+    drain_effects(&mut state).await;
+
+    assert!(
+        CardQuery::new().auras().in_play().all(&state).contains(&aura_id),
+        "the aura spell should resolve into play"
+    );
+    assert!(
+        !state.is_minion_card(&aura_id),
+        "Enchantress should not animate the aura spell that caused the trigger"
+    );
+}
+
+#[tokio::test]
+async fn test_animated_intersection_aura_gets_unit_actions_and_stays_on_intersection_attack() {
+    let intersection = Zone::Location(Location::Intersection(vec![1, 2, 6, 7], Region::Surface));
+    let (mut state, _server_rx, _client_tx) = make_state_with_client(vec![
+        Zone::Location(Location::Square(1, Region::Surface)),
+        Zone::Location(Location::Square(2, Region::Surface)),
+        Zone::Location(Location::Square(6, Region::Surface)),
+        Zone::Location(Location::Square(7, Region::Surface)),
+        Zone::Location(Location::Square(3, Region::Surface)),
+        Zone::Location(Location::Square(8, Region::Surface)),
+    ]);
+    let player_id = state.players[0].id;
+    let opponent_id = state.players[1].id;
+
+    let mut aura = Silence::new(player_id);
+    let aura_id = *aura.get_id();
+    aura.set_zone(intersection.clone());
+    state.cards.insert(aura_id, Box::new(aura));
+
+    let mut target = FootSoldier::new(opponent_id);
+    let target_id = *target.get_id();
+    target.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    state.cards.insert(target_id, Box::new(target));
+
+    Effect::Animate {
+        card_id: aura_id,
+        unit_base: UnitBase {
+            power: 0,
+            toughness: 2,
+            ..Default::default()
+        },
+        expires_on_effect: EffectQuery::TurnStart {
+            player_id: Some(player_id),
+        },
+    }
+    .apply(&mut state)
+    .await
+    .unwrap();
+    drain_effects(&mut state).await;
+
+    assert_eq!(
+        state.get_card(&aura_id).get_zone(),
+        &intersection,
+        "animated intersection auras over sites should survive location checks"
+    );
+
+    let action_names = state
+        .get_card(&aura_id)
+        .get_activated_abilities(&state)
+        .unwrap()
+        .into_iter()
+        .map(|ability| ability.get_name())
+        .collect::<Vec<_>>();
+    assert!(action_names.contains(&"Attack".to_string()));
+    assert!(action_names.contains(&"Move".to_string()));
+
+    let move_zones = state
+        .get_card(&aura_id)
+        .get_valid_move_zones(&state)
+        .await
+        .unwrap();
+    assert!(
+        move_zones
+            .iter()
+            .all(|zone| matches!(zone, Zone::Location(Location::Intersection(_, _)))),
+        "animated intersection auras should move from intersection to intersection"
+    );
+    assert!(
+        !move_zones.contains(&Zone::Location(Location::Square(1, Region::Surface))),
+        "animated intersection auras should not move to a constituent square"
+    );
+
+    let attack_targets = state
+        .get_card(&aura_id)
+        .get_valid_attack_targets(&state, false);
+    assert!(
+        attack_targets.contains(&target_id),
+        "animated intersection auras should be able to attack units in occupied squares"
+    );
+
+    state.queue_one(Effect::Attack {
+        attacker_id: aura_id,
+        defender_id: target_id,
+        defending_ids: vec![],
+        damage_assignment: None,
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(
+        state.get_card(&aura_id).get_zone(),
+        &intersection,
+        "attacking a unit in an occupied square should not move the intersection aura"
+    );
+}
+
+#[tokio::test]
+async fn test_animated_intersection_aura_in_void_is_banished_without_voidwalk() {
+    let intersection = Zone::Location(Location::Intersection(vec![1, 2, 6, 7], Region::Surface));
+    let (mut state, _server_rx, _client_tx) = make_state_with_client(vec![Zone::Location(
+        Location::Square(1, Region::Surface),
+    )]);
+    let player_id = state.players[0].id;
+
+    let mut aura = Silence::new(player_id);
+    let aura_id = *aura.get_id();
+    aura.set_zone(intersection);
+    state.cards.insert(aura_id, Box::new(aura));
+
+    Effect::Animate {
+        card_id: aura_id,
+        unit_base: UnitBase {
+            power: 1,
+            toughness: 1,
+            ..Default::default()
+        },
+        expires_on_effect: EffectQuery::TurnStart {
+            player_id: Some(player_id),
+        },
+    }
+    .apply(&mut state)
+    .await
+    .unwrap();
+    drain_effects(&mut state).await;
+
+    assert_eq!(state.get_card(&aura_id).get_zone(), &Zone::Banish);
+}
+
+#[tokio::test]
+async fn test_animated_intersection_aura_query_does_not_recurse_with_unit_modifier() {
+    let intersection = Zone::Location(Location::Intersection(vec![1, 2, 6, 7], Region::Surface));
+    let (mut state, _server_rx, _client_tx) = make_state_with_client(vec![Zone::Location(
+        Location::Square(1, Region::Surface),
+    )]);
+    let player_id = state.players[0].id;
+
+    let mut aura = Silence::new(player_id);
+    let aura_id = *aura.get_id();
+    aura.set_zone(intersection);
+    state.cards.insert(aura_id, Box::new(aura));
+
+    Effect::Animate {
+        card_id: aura_id,
+        unit_base: UnitBase {
+            power: 1,
+            toughness: 1,
+            ..Default::default()
+        },
+        expires_on_effect: EffectQuery::TurnStart {
+            player_id: Some(player_id),
+        },
+    }
+    .apply(&mut state)
+    .await
+    .unwrap();
+
+    state.temporary_effects_mut().push(TemporaryEffect::GrantAbility {
+        ability: Ability::Airborne,
+        affected_cards: CardQuery::new().units().in_play(),
+        expires_on_effect: EffectQuery::TurnStart {
+            player_id: Some(player_id),
+        },
+    });
+
+    let units = CardQuery::new().units().in_play().all(&state);
+    assert!(units.contains(&aura_id));
+    assert!(
+        state
+            .get_card(&aura_id)
+            .has_ability(&state, &Ability::Airborne)
     );
 }
 

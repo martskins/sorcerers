@@ -25,6 +25,27 @@ fn can_use_special_abilities(state: &State, card_id: &CardId) -> bool {
     !state.card_has_special_abilities_removed(card_id)
 }
 
+async fn spell_played_effects(
+    state: &State,
+    spell_id: &CardId,
+    caster_id: &CardId,
+) -> anyhow::Result<Vec<Effect>> {
+    let card_ids = state
+        .cards
+        .values()
+        .filter(|card| can_use_special_abilities(state, card.get_id()))
+        .map(|card| *card.get_id())
+        .collect::<Vec<_>>();
+
+    let mut effects = vec![];
+    for card_id in card_ids {
+        let card = state.get_card(&card_id);
+        effects.extend(card.on_play_spell(state, spell_id, caster_id).await?);
+    }
+
+    Ok(effects)
+}
+
 fn location_survival_effects_for_cards(
     state: &State,
     card_ids: impl IntoIterator<Item = CardId>,
@@ -1396,6 +1417,7 @@ impl Effect {
 
                 let costs = state.get_effective_costs(card_id, None, player_id)?;
                 let paid_cost = costs.pay(state, player_id).await?;
+                state.queue(spell_played_effects(state, card_id, caster_id).await?);
 
                 let snapshot = state.clone();
                 let card = state.get_card_mut(card_id);
@@ -1410,11 +1432,6 @@ impl Effect {
                 let caster = state.get_card(caster_id);
                 let spell_triggered = caster.on_cast_spell(state, card_id).await?;
                 state.queue(spell_triggered);
-
-                let avatar_id = state.get_player_avatar_id(player_id)?;
-                let avatar = state.get_card(&avatar_id);
-                let avatar_triggered = avatar.on_play_spell(state, card_id, caster_id).await?;
-                state.queue(avatar_triggered);
             }
             Effect::PlayCard {
                 card_id,
@@ -1425,6 +1442,14 @@ impl Effect {
                 let zone = zone.pick(player_id, state).await?;
                 let costs = state.get_effective_costs(card_id, Some(&zone), player_id)?;
                 Box::pin(costs.pay(state, player_id)).await?;
+                let card = state.get_card(card_id);
+                let is_spell = !card.is_site();
+                let is_minion = card.is_minion();
+                if is_spell {
+                    // Notify cards before the play effect resolves, so the spell being played is
+                    // not visible as in-play to the trigger that was caused by playing it.
+                    state.queue(spell_played_effects(state, card_id, spellcaster).await?);
+                }
                 let snapshot = state.clone();
 
                 // If playing a site and there is a rubble on that zone, remove it.
@@ -1444,8 +1469,7 @@ impl Effect {
                     }
                 }
 
-                let card = state.get_card(card_id);
-                if card.is_minion() {
+                if is_minion {
                     // Minions are put into play via SummonCards, which handles zone
                     // placement, SummoningSickness, on_summon, and genesis in one place.
                     state.queue_one(Effect::SummonCards {
@@ -1494,19 +1518,12 @@ impl Effect {
                     state.queue(cast_effects);
                 }
 
-                let card = state.get_card(card_id);
-                if !card.is_site() {
+                if is_spell {
                     // Notify the Spellcaster unit that it played a spell. In Sorcery, spells are
                     // minions, artifacts, auras, and magics; sites are the non-spell exception.
                     let caster = state.get_card(spellcaster);
                     let spell_triggered = caster.on_cast_spell(state, card_id).await?;
                     state.queue(spell_triggered);
-
-                    let avatar_id = state.get_player_avatar_id(player_id)?;
-                    let avatar = state.get_card(&avatar_id);
-                    let avatar_triggered =
-                        avatar.on_play_spell(state, card_id, spellcaster).await?;
-                    state.queue(avatar_triggered);
                 }
             }
             Effect::SummonCards { cards } => {
@@ -1947,18 +1964,20 @@ impl Effect {
                     return Ok(());
                 }
 
-                effects.push(Effect::MoveCard {
-                    player_id: attacker.get_controller_id(state),
-                    card_id: *attacker_id,
-                    from: attacker
-                        .get_zone()
-                        .clone()
-                        .into_location()
-                        .expect("MoveCard source must be a location"),
-                    to: defender.get_zone().into(),
-                    tap: true,
-                    through_path: None,
-                });
+                if !attacker.occupies_zone(state, defender.get_zone()) {
+                    effects.push(Effect::MoveCard {
+                        player_id: attacker.get_controller_id(state),
+                        card_id: *attacker_id,
+                        from: attacker
+                            .get_zone()
+                            .clone()
+                            .into_location()
+                            .expect("MoveCard source must be a location"),
+                        to: defender.get_zone().into(),
+                        tap: true,
+                        through_path: None,
+                    });
+                }
 
                 let attacker_has_fs = attacker.has_ability(state, &Ability::FirstStrike);
                 let defender_has_fs = defender.has_ability(state, &Ability::FirstStrike);

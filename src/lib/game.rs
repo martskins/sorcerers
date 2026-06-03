@@ -350,7 +350,7 @@ pub async fn pick_card_source(
         ClientMessage::PlayerDisconnected { player_id, .. } => {
             Err(GameError::PlayerDisconnected(player_id).into())
         }
-        _ => unreachable!(),
+        n => unreachable!("expected PickCard, got {:?}", n),
     };
 
     resume(&opponent_id, state).await?;
@@ -1468,13 +1468,9 @@ impl ActivatedAbility for UnitAction {
                     resume(player_id, state).await?;
 
                     if defend {
-                        let defenders = pick_cards(
-                            &opponent.id,
-                            &possible_defenders,
-                            state,
-                            "Pick defenders",
-                        )
-                        .await?;
+                        let defenders =
+                            pick_cards(&opponent.id, &possible_defenders, state, "Pick defenders")
+                                .await?;
                         let mut defend_declared_effects = vec![];
                         for defender_id in &defenders {
                             defend_declared_effects.extend(
@@ -2021,7 +2017,7 @@ impl Game {
                 }
 
                 let acting_player = self.state.current_player();
-                if matches!(card.get_zone(), Zone::Location(Location::Square(_, _))) {
+                if card.get_zone().is_in_play() {
                     if card.get_controller_id(&self.state) != acting_player {
                         return Ok(());
                     }

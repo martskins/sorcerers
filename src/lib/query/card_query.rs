@@ -430,17 +430,17 @@ impl<'a> PreparedCardQuery<'a> {
     }
 
     fn card_occupies_zone(&self, card: &dyn Card, zone: &Zone) -> bool {
-        if card.get_zone() == zone {
-            return true;
+        match (zone, card.get_zone()) {
+            (
+                Zone::Location(Location::Square(sq, _)),
+                Zone::Location(Location::Square(card_square, _)),
+            ) => sq == card_square,
+            (
+                Zone::Location(Location::Square(sq, _)),
+                Zone::Location(Location::Intersection(card_squares, _)),
+            ) => card_squares.contains(sq),
+            _ => card.get_zone() == zone,
         }
-
-        if let Zone::Location(Location::Intersection(sub_zones, _)) = card.get_zone()
-            && let Zone::Location(Location::Square(square, _)) = zone
-        {
-            return sub_zones.contains(square) && card.is_oversized(self.state);
-        }
-
-        false
     }
 }
 
@@ -720,7 +720,7 @@ impl CardQuery {
 
     pub fn in_play(self) -> Self {
         Self {
-            in_zones: Some(Zone::all_realm()),
+            in_zones: Some(Zone::all_board()),
             include_not_in_play: Some(false),
             ..self
         }

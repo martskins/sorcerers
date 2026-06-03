@@ -1137,7 +1137,11 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             }
         }
 
-        if state.is_unit_card(self.get_id()) && !self.has_ability(state, &Ability::Voidwalk) {
+        if state.is_unit_card(self.get_id())
+            && matches!(zone, Zone::Location(Location::Intersection(_, _)))
+        {
+            visited.retain(|z| matches!(z, Zone::Location(Location::Intersection(_, _))));
+        } else if state.is_unit_card(self.get_id()) && !self.has_ability(state, &Ability::Voidwalk) {
             visited = visited
                 .iter()
                 .filter(|z| {
@@ -1331,7 +1335,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         if self.get_zone() == zone {
             return true;
         }
-        if self.is_oversized(state)
+        if (self.get_unit_base().is_some() || state.animated_unit_base(self.get_id()).is_some())
             && let Zone::Location(Location::Intersection(sub_zones, _)) = self.get_zone()
             && let Zone::Location(Location::Square(sq, _)) = zone
         {
@@ -1474,8 +1478,18 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 let target_region = target.get_region(state);
                 let target_is_airborne = target.has_ability(state, &Ability::Airborne);
 
-                // Airborne units can attack nearby, others only adjacent
-                let in_range = if attacker_is_airborne {
+                let shares_occupied_square =
+                    matches!(zone, Zone::Location(Location::Intersection(_, _)))
+                        && zone
+                            .squares()
+                            .iter()
+                            .any(|square| target.get_zone().squares().contains(square));
+
+                // Airborne units can attack nearby, others only adjacent. Units occupying an
+                // intersection are already in each constituent square.
+                let in_range = if shares_occupied_square {
+                    true
+                } else if attacker_is_airborne {
                     zone.is_nearby(target.get_zone())
                 } else {
                     zone.is_adjacent(target.get_zone())
@@ -1822,8 +1836,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(vec![])
     }
 
-    /// Called on the player's avatar after any spell is successfully played by a spellcaster they
-    /// control.
+    /// Called on every eligible card after any spell is successfully played by a spellcaster.
     async fn on_play_spell(
         &self,
         _state: &State,
@@ -2953,7 +2966,18 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
         }
 
         let mut zones: Vec<Zone> = vec![];
+        let starts_in_intersection =
+            matches!(self.get_zone(), Zone::Location(Location::Intersection(_, _)));
         for zone in &self.get_zones_within_steps(state, self.get_steps_per_movement(state)?) {
+            if starts_in_intersection {
+                if matches!(zone, Zone::Location(Location::Intersection(_, _)))
+                    && zone != self.get_zone()
+                {
+                    zones.push(zone.clone());
+                }
+                continue;
+            }
+
             if !zone.can_be_entered_by(state, self.get_id())? {
                 continue;
             }

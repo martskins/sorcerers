@@ -1,7 +1,7 @@
 use crate::{
     card::{
         Ability, AdditionalCost, ApprenticeWizard, AridDesert, AstralAlcazar, Card, Cost,
-        GreatWall, OgreGoons, Region, RimlandNomads, SpectralStalker,
+        Drought, GreatWall, OgreGoons, Region, RimlandNomads, SpectralStalker,
     },
     query::CardQuery,
     state::State,
@@ -578,6 +578,60 @@ fn test_get_valid_play_zones_site_second_site() {
     ];
     expected.sort();
     assert_eq!(zones, expected);
+}
+
+#[test]
+fn test_auras_can_be_played_at_any_surface_intersection() {
+    let mut state = State::new_mock_state(vec![1, 2]);
+    let player_id = state.players[0].id;
+    *state.get_player_mana_mut(&player_id) = 4;
+
+    let mut card = Drought::new(player_id);
+    card.set_zone(Zone::Hand);
+    state.cards.insert(*card.get_id(), Box::new(card.clone()));
+
+    let avatar_id = state
+        .get_player_avatar_id(&player_id)
+        .expect("avatar id to be some");
+    let mut zones = card
+        .get_valid_play_zones(&state, &player_id, &avatar_id)
+        .expect("zones to be computed");
+    zones.sort();
+    let mut expected = Zone::all_intersections();
+    expected.sort();
+    assert_eq!(zones, expected);
+}
+
+#[test]
+fn test_auras_can_only_be_played_surface_or_void() {
+    let mut state = State::new_mock_state(vec![1, 2]);
+    let player_id = state.players[0].id;
+
+    let mut card = Drought::new(player_id);
+    card.set_zone(Zone::Hand);
+    let card_id = *card.get_id();
+    state.cards.insert(card_id, Box::new(card));
+
+    assert!(
+        Zone::Location(Location::Intersection(vec![1, 2, 6, 7], Region::Surface))
+            .is_valid_play_zone_for(&state, &card_id, &player_id)
+            .expect("surface intersection should validate")
+    );
+    assert!(
+        Zone::Location(Location::Intersection(vec![1, 2, 6, 7], Region::Void))
+            .is_valid_play_zone_for(&state, &card_id, &player_id)
+            .expect("void intersection should validate")
+    );
+    assert!(
+        !Zone::Location(Location::Intersection(vec![1, 2, 6, 7], Region::Underground))
+            .is_valid_play_zone_for(&state, &card_id, &player_id)
+            .expect("underground intersection should validate")
+    );
+    assert!(
+        !Zone::Location(Location::Intersection(vec![1, 2, 6, 7], Region::Underwater))
+            .is_valid_play_zone_for(&state, &card_id, &player_id)
+            .expect("underwater intersection should validate")
+    );
 }
 
 #[test]

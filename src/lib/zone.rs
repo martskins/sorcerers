@@ -252,7 +252,7 @@ impl Zone {
                     _ => Ok(card.has_ability(state, &Ability::Voidwalk)),
                 }
             }
-            Zone::Location(Location::Intersection(sqs, _)) => {
+            Zone::Location(Location::Intersection(sqs, region)) => {
                 let card = state.get_card(card_id);
                 match card.get_card_type() {
                     CardType::Minion => {
@@ -270,17 +270,7 @@ impl Zone {
                             .collect();
                         Ok(sqs.iter().any(|sq| site_squares.contains(sq)))
                     }
-                    CardType::Aura => {
-                        let site_squares: Vec<u8> = CardQuery::new()
-                            .sites()
-                            .in_play()
-                            .controlled_by(player_id)
-                            .all(state)
-                            .into_iter()
-                            .filter_map(|cid| state.get_card(&cid).get_zone().get_square())
-                            .collect();
-                        Ok(sqs.iter().any(|sq| site_squares.contains(sq)))
-                    }
+                    CardType::Aura => Ok(matches!(region, Region::Surface | Region::Void)),
                     _ => Ok(false),
                 }
             }

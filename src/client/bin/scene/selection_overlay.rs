@@ -357,10 +357,6 @@ impl Component for SelectionOverlay {
             }
         }
 
-        if let Some(card_id) = clicked_card {
-            self.handle_card_click(&card_id, data)?;
-        }
-
         // Draw zone-group headers above each group's cards.
         for (label, centre) in &self.zone_group_headers {
             let galley = ui.fonts_mut(|f| {
@@ -410,6 +406,11 @@ impl Component for SelectionOverlay {
                         self.close = true;
                     }
                 });
+        }
+
+        if let Some(card_id) = clicked_card {
+            self.handle_card_click(&card_id, data)?;
+            return Ok(Some(ComponentCommand::CloseOverlay));
         }
 
         Ok(None)

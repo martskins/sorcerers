@@ -1001,13 +1001,20 @@ impl RealmComponent {
             };
             if let Some(zones) = playable_preview_zones {
                 let rect = intersection.rect;
-                let can_pick = zones.iter().any(|z| match z {
+                let pickable_zone = zones.iter().find(|z| match z {
                     Zone::Location(Location::Intersection(locations, _)) => {
                         locations == &intersection.locations
                     }
                     _ => false,
                 });
-                if can_pick {
+                if let Some(zone) = pickable_zone {
+                    if matches!(data.status, Status::SelectingZone { .. }) {
+                        let resp = ui.allocate_rect(rect, Sense::click());
+                        if resp.clicked() {
+                            clicked_zone = Some(zone.clone());
+                        }
+                    }
+
                     painter.rect_stroke(
                         rect,
                         4.0,
@@ -1419,12 +1426,15 @@ impl Component for RealmComponent {
                     }
                     Some(_) => {}
                     None => {
-                        data.aura_affected_zones.insert(card_rect.card.id, None);
-                        self.client.send(ClientMessage::RequestAuraAffectedZones {
-                            player_id: self.player_id,
-                            game_id: self.game_id,
-                            card_id: card_rect.card.id,
-                        })?;
+                        // Do not request aura affected zones if waiting for any other message.
+                        if data.status == Status::Idle {
+                            data.aura_affected_zones.insert(card_rect.card.id, None);
+                            self.client.send(ClientMessage::RequestAuraAffectedZones {
+                                player_id: self.player_id,
+                                game_id: self.game_id,
+                                card_id: card_rect.card.id,
+                            })?;
+                        }
                     }
                 }
             }
