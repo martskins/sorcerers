@@ -1141,7 +1141,8 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             && matches!(zone, Zone::Location(Location::Intersection(_, _)))
         {
             visited.retain(|z| matches!(z, Zone::Location(Location::Intersection(_, _))));
-        } else if state.is_unit_card(self.get_id()) && !self.has_ability(state, &Ability::Voidwalk) {
+        } else if state.is_unit_card(self.get_id()) && !self.has_ability(state, &Ability::Voidwalk)
+        {
             visited = visited
                 .iter()
                 .filter(|z| {
@@ -2063,6 +2064,26 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     ) -> anyhow::Result<Vec<ContinuousEffect>> {
         Ok(vec![])
     }
+
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![])
+    }
+}
+
+pub struct Hook {
+    pub trigger: EffectQuery,
+    pub timing: HookTiming,
+    pub action: HookAction,
+}
+
+pub enum HookTiming {
+    Before,
+    After,
+}
+
+pub enum HookAction {
+    Effects(Vec<Effect>),
+    Replace(Vec<Effect>),
 }
 
 fn apply_ability_modifiers(modifiers: &mut Vec<Ability>, changes: Vec<AbilityModifier>) {
@@ -2171,24 +2192,20 @@ impl<T: Card + ?Sized> ResourceProviderBaseMethods for T {
 
                 active_continuous_effects
                     .into_iter()
-                    .for_each(|ce| {
-                        match ce {
-                            ContinuousEffect::GrantAbility {
-                                ability: Ability::Flooded,
-                                affected_cards,
-                            } if !flooded_removed
-                                && affected_cards.matches(self.get_id(), state) =>
-                            {
-                                thresholds.water = std::cmp::max(1, thresholds.water);
-                            }
-                            ContinuousEffect::ModifyProvidedAffinities {
-                                modifier,
-                                affected_sites,
-                            } if affected_sites.matches(self.get_id(), state) => {
-                                modifier.apply(&mut thresholds);
-                            }
-                            _ => {}
+                    .for_each(|ce| match ce {
+                        ContinuousEffect::GrantAbility {
+                            ability: Ability::Flooded,
+                            affected_cards,
+                        } if !flooded_removed && affected_cards.matches(self.get_id(), state) => {
+                            thresholds.water = std::cmp::max(1, thresholds.water);
                         }
+                        ContinuousEffect::ModifyProvidedAffinities {
+                            modifier,
+                            affected_sites,
+                        } if affected_sites.matches(self.get_id(), state) => {
+                            modifier.apply(&mut thresholds);
+                        }
+                        _ => {}
                     });
 
                 state.temporary_effects().iter().for_each(|effect| {
@@ -2976,8 +2993,10 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
         }
 
         let mut zones: Vec<Zone> = vec![];
-        let starts_in_intersection =
-            matches!(self.get_zone(), Zone::Location(Location::Intersection(_, _)));
+        let starts_in_intersection = matches!(
+            self.get_zone(),
+            Zone::Location(Location::Intersection(_, _))
+        );
         for zone in &self.get_zones_within_steps(state, self.get_steps_per_movement(state)?) {
             if starts_in_intersection {
                 if matches!(zone, Zone::Location(Location::Intersection(_, _)))

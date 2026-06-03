@@ -1,8 +1,8 @@
 use async_channel::Sender;
 use sorcerers::{
     card::{
-        self, ApprenticeWizard, AramosMercenaries, AridDesert, CaptainBaldassare, Drought,
-        FelbogFrogMen, HumbleVillage, Region, WillsOTheWisp,
+        self, AlbespinePikemen, ApprenticeWizard, AramosMercenaries, AridDesert, CaptainBaldassare,
+        Drought, FelbogFrogMen, HumbleVillage, Region,
     },
     deck::precon::ALL_PRECONS,
     game::Game,
@@ -219,7 +219,7 @@ impl Server {
         let player_two = game.state.players[1].id;
         let card = card::from_name_and_zone(Drought::NAME, &player_one, Zone::Hand);
         game.state.cards.insert(*card.get_id(), card);
-        let card = card::from_name_and_zone(WillsOTheWisp::NAME, &player_one, Zone::Hand);
+        let card = card::from_name_and_zone(AlbespinePikemen::NAME, &player_one, Zone::Hand);
         game.state.cards.insert(*card.get_id(), card);
         let card = card::from_name_and_zone(
             HumbleVillage::NAME,

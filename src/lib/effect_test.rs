@@ -1036,10 +1036,7 @@ async fn test_played_site_generates_mana_once() {
 
 #[tokio::test]
 async fn test_playing_site_under_flood_does_not_recurse() {
-    let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(
-        2,
-        Region::Surface,
-    ))]);
+    let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(2, Region::Surface))]);
     let player_id = state.players[0].id;
 
     let mut flood = Flood::new(player_id);
@@ -1074,6 +1071,26 @@ async fn test_playing_site_under_flood_does_not_recurse() {
         .get_resource_provider()
         .expect("Spring River should be a resource provider");
     assert_eq!(site.provided_affinity(&state).unwrap().water, 1);
+}
+
+#[tokio::test]
+async fn test_temporary_effect_grants_ability() {
+    let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
+    let player_id = state.players[0].id;
+
+    let unit = FootSoldier::new(player_id);
+    let unit_id = *unit.get_id();
+    state.cards.insert(unit_id, Box::new(unit.clone()));
+    state
+        .temporary_effects_mut()
+        .push(TemporaryEffect::GrantAbility {
+            ability: Ability::FirstStrike,
+            affected_cards: unit_id.into(),
+            expires_on_effect: EffectQuery::TurnEnd { player_id: None },
+        });
+
+    let has_first_strike = unit.has_ability(&state, &Ability::FirstStrike);
+    assert!(has_first_strike);
 }
 
 #[tokio::test]
@@ -1594,7 +1611,11 @@ async fn test_enchantress_triggers_when_enchantress_plays_minion() {
     aura.set_zone(intersection.clone());
     state.cards.insert(aura_id, Box::new(aura));
     assert!(
-        CardQuery::new().auras().in_play().all(&state).contains(&aura_id),
+        CardQuery::new()
+            .auras()
+            .in_play()
+            .all(&state)
+            .contains(&aura_id),
         "CardQuery::in_play should include auras on intersections"
     );
 
@@ -1662,9 +1683,8 @@ async fn test_enchantress_triggers_when_enchantress_plays_minion() {
 #[tokio::test]
 async fn test_enchantress_does_not_see_aura_spell_before_it_enters() {
     let zone = Zone::Location(Location::Intersection(vec![1, 2, 6, 7], Region::Surface));
-    let (mut state, _server_rx, _client_tx) = make_state_with_client(vec![Zone::Location(
-        Location::Square(1, Region::Surface),
-    )]);
+    let (mut state, _server_rx, _client_tx) =
+        make_state_with_client(vec![Zone::Location(Location::Square(1, Region::Surface))]);
     let player_id = state.players[0].id;
     *state.get_player_mana_mut(&player_id) = 1;
     state.reconcile_ongoing_effects_for_test().await.unwrap();
@@ -1682,14 +1702,21 @@ async fn test_enchantress_does_not_see_aura_spell_before_it_enters() {
         spellcaster: avatar_id,
     };
 
-    tokio::time::timeout(std::time::Duration::from_millis(100), play.apply(&mut state))
-        .await
-        .expect("Enchantress should not prompt for the aura spell before it enters")
-        .unwrap();
+    tokio::time::timeout(
+        std::time::Duration::from_millis(100),
+        play.apply(&mut state),
+    )
+    .await
+    .expect("Enchantress should not prompt for the aura spell before it enters")
+    .unwrap();
     drain_effects(&mut state).await;
 
     assert!(
-        CardQuery::new().auras().in_play().all(&state).contains(&aura_id),
+        CardQuery::new()
+            .auras()
+            .in_play()
+            .all(&state)
+            .contains(&aura_id),
         "the aura spell should resolve into play"
     );
     assert!(
@@ -1796,9 +1823,8 @@ async fn test_animated_intersection_aura_gets_unit_actions_and_stays_on_intersec
 #[tokio::test]
 async fn test_animated_intersection_aura_in_void_is_banished_without_voidwalk() {
     let intersection = Zone::Location(Location::Intersection(vec![1, 2, 6, 7], Region::Surface));
-    let (mut state, _server_rx, _client_tx) = make_state_with_client(vec![Zone::Location(
-        Location::Square(1, Region::Surface),
-    )]);
+    let (mut state, _server_rx, _client_tx) =
+        make_state_with_client(vec![Zone::Location(Location::Square(1, Region::Surface))]);
     let player_id = state.players[0].id;
 
     let mut aura = Silence::new(player_id);
@@ -1828,9 +1854,8 @@ async fn test_animated_intersection_aura_in_void_is_banished_without_voidwalk() 
 #[tokio::test]
 async fn test_animated_intersection_aura_query_does_not_recurse_with_unit_modifier() {
     let intersection = Zone::Location(Location::Intersection(vec![1, 2, 6, 7], Region::Surface));
-    let (mut state, _server_rx, _client_tx) = make_state_with_client(vec![Zone::Location(
-        Location::Square(1, Region::Surface),
-    )]);
+    let (mut state, _server_rx, _client_tx) =
+        make_state_with_client(vec![Zone::Location(Location::Square(1, Region::Surface))]);
     let player_id = state.players[0].id;
 
     let mut aura = Silence::new(player_id);
@@ -1853,13 +1878,15 @@ async fn test_animated_intersection_aura_query_does_not_recurse_with_unit_modifi
     .await
     .unwrap();
 
-    state.temporary_effects_mut().push(TemporaryEffect::GrantAbility {
-        ability: Ability::Airborne,
-        affected_cards: CardQuery::new().units().in_play(),
-        expires_on_effect: EffectQuery::TurnStart {
-            player_id: Some(player_id),
-        },
-    });
+    state
+        .temporary_effects_mut()
+        .push(TemporaryEffect::GrantAbility {
+            ability: Ability::Airborne,
+            affected_cards: CardQuery::new().units().in_play(),
+            expires_on_effect: EffectQuery::TurnStart {
+                player_id: Some(player_id),
+            },
+        });
 
     let units = CardQuery::new().units().in_play().all(&state);
     assert!(units.contains(&aura_id));

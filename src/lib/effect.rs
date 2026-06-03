@@ -2073,8 +2073,9 @@ impl Effect {
                     && !snapshot.get_card(card_id).is_unit()
                 {
                     let dealer = snapshot.get_card(from);
-                    let has_lethal_target =
-                        snapshot.get_card(card_id).has_ability(&snapshot, &Ability::LethalTarget);
+                    let has_lethal_target = snapshot
+                        .get_card(card_id)
+                        .has_ability(&snapshot, &Ability::LethalTarget);
                     let reduced_damage = snapshot
                         .active_continuous_effects()
                         .into_iter()
@@ -2239,11 +2240,13 @@ impl Effect {
                 unit_base,
                 expires_on_effect,
             } => {
-                state.temporary_effects_mut().push(TemporaryEffect::Animate {
-                    card_id: *card_id,
-                    unit_base: unit_base.clone(),
-                    expires_on_effect: expires_on_effect.clone(),
-                });
+                state
+                    .temporary_effects_mut()
+                    .push(TemporaryEffect::Animate {
+                        card_id: *card_id,
+                        unit_base: unit_base.clone(),
+                        expires_on_effect: expires_on_effect.clone(),
+                    });
                 state.queue(location_survival_effects_for_realm(state));
             }
             Effect::AddCounter {

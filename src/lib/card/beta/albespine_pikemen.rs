@@ -15,7 +15,6 @@ impl AlbespinePikemen {
             unit_base: UnitBase {
                 power: 3,
                 toughness: 3,
-                abilities: vec![Ability::FirstStrike],
                 types: vec![MinionType::Mortal],
                 tapped: false,
                 ..Default::default()
@@ -59,6 +58,33 @@ impl Card for AlbespinePikemen {
 
     fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
         Some(&mut self.unit_base)
+    }
+
+    fn on_attack(&self, _state: &State, _defender_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
+        Ok(vec![Effect::AddTemporaryEffect {
+            effect: TemporaryEffect::GrantAbility {
+                ability: Ability::FirstStrike,
+                affected_cards: self.get_id().into(),
+                expires_on_effect: EffectQuery::TurnEnd { player_id: None },
+            },
+        }])
+    }
+
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            trigger: EffectQuery::Attack {
+                attacker: self.get_id().into(),
+            },
+            timing: HookTiming::Before,
+            action: HookAction::Effects(vec![Effect::AddTemporaryEffect {
+                effect: TemporaryEffect::GrantAbility {
+                    ability: Ability::FirstStrike,
+                    affected_cards: self.get_id().into(),
+                    // TODO: Change none to end of battle
+                    expires_on_effect: EffectQuery::TurnEnd { player_id: None },
+                },
+            }]),
+        }])
     }
 }
 

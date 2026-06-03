@@ -23,8 +23,8 @@ pub(crate) mod prelude {
     pub use crate::card::{
         Ability, AdditionalCost, Artifact, ArtifactBase, ArtifactType, Aura, AuraBase, Avatar,
         AvatarBase, Card, CardBase, CardBaseMethods, CardConstructor, CardStatus, CardType, Cost,
-        CostType, Costs, Damage, Edition, MinionType, Rarity, Region, ResourceProvider,
-        ResourceProviderBaseMethods, Rubble, Site, SiteBase, SiteType, UnitBase,
+        CostType, Costs, Damage, Edition, Hook, HookAction, HookTiming, MinionType, Rarity, Region,
+        ResourceProvider, ResourceProviderBaseMethods, Rubble, Site, SiteBase, SiteType, UnitBase,
     };
     pub use crate::effect::{AbilityCounter, Counter, DrawKind, Effect, StatusCounter, TokenType};
     pub use crate::game::{

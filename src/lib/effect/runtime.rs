@@ -1,13 +1,43 @@
-use crate::{effect::EffectLogEmitter, game::Game, state::State};
+use crate::{
+    card::{HookAction, HookTiming},
+    effect::EffectLogEmitter,
+    game::Game,
+    state::State,
+};
 
 pub struct EffectEngine;
 
 impl EffectEngine {
     pub async fn drain_with_log(game: &mut Game) -> anyhow::Result<()> {
         while !game.state.effects.is_empty() {
-            let effect = game.state.effects.pop_back();
-            if let Some(effect) = effect {
+            if let Some(effect) = game.state.effects.pop_back() {
+                // Gather hooks into a before and after vec.
+                let mut before_hooks = vec![];
+                let mut after_hooks = vec![];
+                for card in game.state.cards.values() {
+                    for hook in card.hooks(&game.state).await? {
+                        if !hook.trigger.matches(&effect, &game.state).await? {
+                            continue;
+                        }
+
+                        match hook.timing {
+                            HookTiming::Before => before_hooks.push(hook.action),
+                            HookTiming::After => after_hooks.push(hook.action),
+                        }
+                    }
+                }
+
                 let eliminated_before = game.state.eliminated_players.clone();
+                for hook_action in &before_hooks {
+                    match hook_action {
+                        HookAction::Effects(effects) => {
+                            for effect in effects {
+                                Box::pin(effect.apply(&mut game.state)).await?;
+                            }
+                        }
+                        HookAction::Replace(_effects) => todo!(),
+                    }
+                }
 
                 match effect.apply(&mut game.state).await {
                     Ok(_) => {}
@@ -17,6 +47,17 @@ impl EffectEngine {
                 }
 
                 EffectLogEmitter::emit(game, effect.clone()).await?;
+
+                for hook_action in &after_hooks {
+                    match hook_action {
+                        HookAction::Effects(effects) => {
+                            for effect in effects {
+                                Box::pin(effect.apply(&mut game.state)).await?;
+                            }
+                        }
+                        HookAction::Replace(_effects) => todo!(),
+                    }
+                }
 
                 Game::dispell_auras(&mut game.state).await?;
                 game.broadcast(&game.make_sync()?).await?;
