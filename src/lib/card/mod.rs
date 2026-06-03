@@ -2157,17 +2157,27 @@ impl<T: Card + ?Sized> ResourceProviderBaseMethods for T {
                     .get_site_base()
                     .ok_or(anyhow::anyhow!("site card has no base"))?;
                 let mut thresholds = site_base.provided_thresholds.clone();
+                let active_continuous_effects = state.active_continuous_effects();
+                let flooded_removed = active_continuous_effects.iter().any(|ce| {
+                    matches!(
+                        ce,
+                        ContinuousEffect::RemoveAbilities {
+                            removal,
+                            affected_cards,
+                        } if removal.removes(&Ability::Flooded)
+                            && affected_cards.matches(self.get_id(), state)
+                    )
+                });
 
-                state
-                    .active_continuous_effects()
+                active_continuous_effects
                     .into_iter()
                     .for_each(|ce| {
                         match ce {
                             ContinuousEffect::GrantAbility {
                                 ability: Ability::Flooded,
                                 affected_cards,
-                            } if affected_cards.matches(self.get_id(), state)
-                                && self.has_ability(state, &Ability::Flooded) =>
+                            } if !flooded_removed
+                                && affected_cards.matches(self.get_id(), state) =>
                             {
                                 thresholds.water = std::cmp::max(1, thresholds.water);
                             }
@@ -2187,8 +2197,8 @@ impl<T: Card + ?Sized> ResourceProviderBaseMethods for T {
                         affected_cards,
                         ..
                     } = effect
+                        && !flooded_removed
                         && affected_cards.matches(self.get_id(), state)
-                        && self.has_ability(state, &Ability::Flooded)
                     {
                         thresholds.water = std::cmp::max(1, thresholds.water);
                     }

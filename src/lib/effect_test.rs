@@ -1,7 +1,7 @@
 use crate::{
     card::{
         Ability, ApprenticeWizard, AridDesert, BottomlessPit, Card, CardStatus, Damage, Drought,
-        Enchantress, FootSoldier, OgreGoons, PhaseAssassin, PitVipers, Region, Sandstorm,
+        Enchantress, Flood, FootSoldier, OgreGoons, PhaseAssassin, PitVipers, Region, Sandstorm,
         SeaRaider, Silence, SpringRiver, UnitBase, VaultsOfZul, YourkeCrossbowmen,
         from_name_and_zone,
     },
@@ -1032,6 +1032,48 @@ async fn test_played_site_generates_mana_once() {
         1,
         "playing a site should use the generic realm-entry mana path exactly once"
     );
+}
+
+#[tokio::test]
+async fn test_playing_site_under_flood_does_not_recurse() {
+    let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(
+        2,
+        Region::Surface,
+    ))]);
+    let player_id = state.players[0].id;
+
+    let mut flood = Flood::new(player_id);
+    let flood_id = *flood.get_id();
+    flood.set_zone(Zone::Location(Location::Intersection(
+        vec![1, 2, 6, 7],
+        Region::Surface,
+    )));
+    state.cards.insert(flood_id, Box::new(flood));
+    state.reconcile_ongoing_effects_for_test().await.unwrap();
+
+    let spring_river = SpringRiver::new(player_id);
+    let spring_river_id = *spring_river.get_id();
+    state.cards.insert(spring_river_id, Box::new(spring_river));
+
+    let avatar_id = state
+        .get_player_avatar_id(&player_id)
+        .expect("avatar id to be some");
+    Effect::PlayCard {
+        player_id,
+        card_id: spring_river_id,
+        zone: ZoneQuery::from_zone(Zone::Location(Location::Square(1, Region::Surface))),
+        spellcaster: avatar_id,
+    }
+    .apply(&mut state)
+    .await
+    .unwrap();
+    drain_effects(&mut state).await;
+
+    let site = state
+        .get_card(&spring_river_id)
+        .get_resource_provider()
+        .expect("Spring River should be a resource provider");
+    assert_eq!(site.provided_affinity(&state).unwrap().water, 1);
 }
 
 #[tokio::test]
