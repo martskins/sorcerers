@@ -1,5 +1,22 @@
 use super::*;
 
+fn retain_aura_affected_zones(
+    cache: &mut HashMap<uuid::Uuid, Option<Vec<Zone>>>,
+    previous_cards: &[CardData],
+    next_cards: &[CardData],
+) {
+    cache.retain(|card_id, _| {
+        let previous = previous_cards.iter().find(|card| card.id == *card_id);
+        let next = next_cards.iter().find(|card| card.id == *card_id);
+
+        matches!(
+            (previous, next),
+            (Some(previous), Some(next))
+                if next.card_type == CardType::Aura && previous.zone == next.zone
+        )
+    });
+}
+
 impl Game {
     pub fn process_message(&mut self, message: &ServerMessage) -> Option<Scene> {
         match message {
@@ -316,13 +333,17 @@ impl Game {
                 health,
                 ..
             } => {
+                retain_aura_affected_zones(
+                    &mut self.data.aura_affected_zones,
+                    &self.data.cards,
+                    cards,
+                );
                 self.data.cards = sort_cards(cards);
                 self.current_player = *current_player;
                 self.data.current_player = *current_player;
                 self.data.turn_player = *turn_player;
                 self.data.resources = resources.clone();
                 self.data.avatar_health = health.clone();
-                self.data.aura_affected_zones.clear();
                 self.data.ongoing_effects = None;
                 self.data.highlighted_ongoing_effect = None;
                 self.open_controlled_hand_viewer();
@@ -336,13 +357,17 @@ impl Game {
                 health,
                 ..
             } => {
+                retain_aura_affected_zones(
+                    &mut self.data.aura_affected_zones,
+                    &self.data.cards,
+                    cards,
+                );
                 self.data.cards = sort_cards(cards);
                 self.current_player = *current_player;
                 self.data.current_player = *current_player;
                 self.data.turn_player = *turn_player;
                 self.data.resources = resources.clone();
                 self.data.avatar_health = health.clone();
-                self.data.aura_affected_zones.clear();
                 self.data.ongoing_effects = None;
                 self.data.highlighted_ongoing_effect = None;
                 self.open_controlled_hand_viewer();

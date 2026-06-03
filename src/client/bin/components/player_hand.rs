@@ -267,6 +267,10 @@ impl Component for PlayerHandComponent {
             .collect();
         let dragging = self.dragging_card.is_some();
         let hover_card = pointer.is_some_and(|pos| {
+            if self.expansion > 0.05 && collapsed_strip.contains(pos) {
+                return true;
+            }
+
             hand_cards.iter().enumerate().any(|(idx, card_rect)| {
                 let (rect, _) =
                     self.fan_rect_and_rotation(card_rect, idx, hand_cards.len(), self.expansion);
