@@ -64,6 +64,7 @@ impl Card for WitherwingHero {
             effect: DeferredEffect {
                 trigger_on_effect: EffectQuery::Attack {
                     attacker: CardQuery::new(),
+                    defender: None,
                 },
                 expires_on_effect: Some(EffectQuery::BuryCard {
                     card: CardQuery::from_id(self_id),

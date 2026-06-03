@@ -54,6 +54,7 @@ pub enum EffectQuery {
     },
     Attack {
         attacker: CardQuery,
+        defender: Option<CardQuery>,
     },
     DrawCard {
         player_id: Option<PlayerId>,
@@ -195,8 +196,25 @@ impl EffectQuery {
                 Ok(card.matches(card_id, state)
                     && region.as_ref().is_none_or(|r| r == effect_region))
             }
-            (EffectQuery::Attack { attacker }, Effect::Attack { attacker_id, .. }) => {
-                Ok(attacker.matches(attacker_id, state))
+            (
+                EffectQuery::Attack { attacker, defender },
+                Effect::Attack {
+                    attacker_id,
+                    defender_id,
+                    ..
+                },
+            ) => {
+                if !attacker.matches(attacker_id, state) {
+                    return Ok(false);
+                }
+
+                if let Some(defender) = defender
+                    && !defender.matches(defender_id, state)
+                {
+                    return Ok(false);
+                }
+
+                Ok(true)
             }
             (
                 EffectQuery::DrawCard {

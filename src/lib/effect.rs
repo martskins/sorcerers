@@ -1783,11 +1783,7 @@ impl Effect {
                 let attacker = state.get_card(attacker_id);
                 let defender = state.get_card(defender_id);
 
-                let mut effects = if can_use_special_abilities(state, attacker_id) {
-                    attacker.on_attack(state, defender_id)?
-                } else {
-                    vec![]
-                };
+                let mut effects = vec![];
                 if !defending_ids.is_empty() || damage_assignment.is_some() {
                     let attacker_power = attacker
                         .get_power(state)?

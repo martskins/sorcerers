@@ -1085,7 +1085,7 @@ async fn test_temporary_effect_grants_ability() {
         .temporary_effects_mut()
         .push(TemporaryEffect::GrantAbility {
             ability: Ability::FirstStrike,
-            affected_cards: unit_id.into(),
+            affected_cards: CardQuery::from_id(unit_id).including_not_in_play(),
             expires_on_effect: EffectQuery::TurnEnd { player_id: None },
         });
 

@@ -1,3 +1,5 @@
+use std::{future::Future, pin::Pin, sync::Arc};
+
 use crate::prelude::*;
 
 #[derive(Debug, Clone)]
@@ -60,52 +62,68 @@ impl Card for CaptainBaldassare {
         Some(&mut self.unit_base)
     }
 
-    fn on_attack(&self, state: &State, defender_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
-        let defender = state.get_card(defender_id);
-        let defending_player = defender.get_controller_id(state);
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        let self_id = *self.get_id();
+        Ok(vec![Hook {
+            trigger: EffectQuery::Attack {
+                attacker: self.get_id().into(),
+                defender: None,
+            },
+            timing: HookTiming::Before,
+            action: HookAction::Callback(Arc::new(move |state: &State, effect: &Effect| {
+                Box::pin(async move {
+                    let Effect::Attack { defender_id, .. } = effect else {
+                        return Ok(vec![]);
+                    };
 
-        // Discard top 3 spells from the defending player's deck.
-        let deck = state
-            .decks
-            .get(&defending_player)
-            .ok_or_else(|| anyhow::anyhow!("No deck for player {:?}", defending_player))?;
-        let top_three: Vec<&uuid::Uuid> = deck.peek_spells(3);
-        let mut effects: Vec<Effect> = top_three
-            .iter()
-            .map(|spell_id| Effect::DiscardCard {
-                player_id: defending_player,
-                card_id: **spell_id,
-            })
-            .collect();
+                    let baldassare = state.get_card(&self_id);
+                    let defender = state.get_card(defender_id);
+                    let defending_player = defender.get_controller_id(state);
 
-        for card_id in top_three {
-            let effects_expiry = EffectQuery::OneOf(vec![
-                EffectQuery::TurnEnd { player_id: None },
-                EffectQuery::PlayCard {
-                    card: card_id.into(),
-                },
-            ]);
+                    let deck = state.decks.get(&defending_player).ok_or_else(|| {
+                        anyhow::anyhow!("No deck for player {:?}", defending_player)
+                    })?;
+                    let top_three: Vec<&uuid::Uuid> = deck.peek_spells(3);
+                    let mut effects: Vec<Effect> = top_three
+                        .iter()
+                        .map(|spell_id| Effect::DiscardCard {
+                            player_id: defending_player,
+                            card_id: **spell_id,
+                        })
+                        .collect();
 
-            effects.push(Effect::AddTemporaryEffect {
-                effect: TemporaryEffect::MakePlayable {
-                    affected_cards: std::convert::Into::<CardQuery>::into(card_id)
-                        .including_not_in_play(),
-                    expires_on_effect: effects_expiry.clone(),
-                    by_player: self.get_controller_id(state),
-                },
-            });
+                    for card_id in top_three {
+                        let effects_expiry = EffectQuery::OneOf(vec![
+                            EffectQuery::TurnEnd { player_id: None },
+                            EffectQuery::PlayCard {
+                                card: card_id.into(),
+                            },
+                        ]);
 
-            effects.push(Effect::AddTemporaryEffect {
-                effect: TemporaryEffect::IgnoreCostThresholds {
-                    affected_cards: std::convert::Into::<CardQuery>::into(card_id)
-                        .including_not_in_play(),
-                    expires_on_effect: effects_expiry.clone(),
-                    for_player: self.get_controller_id(state),
-                },
-            });
-        }
+                        effects.push(Effect::AddTemporaryEffect {
+                            effect: TemporaryEffect::MakePlayable {
+                                affected_cards: std::convert::Into::<CardQuery>::into(card_id)
+                                    .including_not_in_play(),
+                                expires_on_effect: effects_expiry.clone(),
+                                by_player: baldassare.get_controller_id(state),
+                            },
+                        });
 
-        Ok(effects)
+                        effects.push(Effect::AddTemporaryEffect {
+                            effect: TemporaryEffect::IgnoreCostThresholds {
+                                affected_cards: std::convert::Into::<CardQuery>::into(card_id)
+                                    .including_not_in_play(),
+                                expires_on_effect: effects_expiry.clone(),
+                                for_player: baldassare.get_controller_id(state),
+                            },
+                        });
+                    }
+
+                    Ok(effects)
+                })
+                    as Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>>
+            })),
+        }])
     }
 }
 

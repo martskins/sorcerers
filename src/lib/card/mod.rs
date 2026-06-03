@@ -23,7 +23,7 @@ use crate::{
 };
 use linkme::distributed_slice;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fmt::Debug, sync::LazyLock};
+use std::{collections::HashMap, fmt::Debug, future::Future, pin::Pin, sync::Arc, sync::LazyLock};
 use strum_macros::EnumIter;
 
 pub type CardConstructor = fn(PlayerId) -> Box<dyn Card>;
@@ -952,10 +952,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     async fn after_ranged_attack(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
-        Ok(vec![])
-    }
-
-    fn on_attack(&self, _state: &State, _defender_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![])
     }
 
@@ -2081,8 +2077,18 @@ pub enum HookTiming {
     After,
 }
 
+pub type HookCallback = Arc<
+    dyn for<'a> Fn(
+            &'a State,
+            &'a Effect,
+        ) -> Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + 'a>>
+        + Send
+        + Sync,
+>;
+
 pub enum HookAction {
     Effects(Vec<Effect>),
+    Callback(HookCallback),
     Replace(Vec<Effect>),
 }
 
