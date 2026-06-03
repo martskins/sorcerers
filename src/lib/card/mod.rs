@@ -963,12 +963,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(true)
     }
 
-    // Returns a list of effects that must be applied when this card is defending against an
-    // attack.
-    fn on_defend(&self, _state: &State, _attacker_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
-        Ok(vec![])
-    }
-
     fn can_defend_attack(
         &self,
         _state: &State,

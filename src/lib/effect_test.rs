@@ -1,8 +1,9 @@
 use crate::{
     card::{
-        Ability, ApprenticeWizard, AridDesert, BottomlessPit, Card, CardStatus, Damage, Drought,
-        Enchantress, Flood, FootSoldier, OgreGoons, PhaseAssassin, PitVipers, Region, Sandstorm,
-        SeaRaider, Silence, SpringRiver, UnitBase, VaultsOfZul, YourkeCrossbowmen,
+        Ability, ApprenticeWizard, AridDesert, BottomlessPit, BridgeTroll, Card, CardStatus,
+        Damage, Drought, Enchantress, Flood, FootSoldier, OgreGoons, PhaseAssassin, PitVipers,
+        Region, Sandstorm, SeaRaider, Silence, SpringRiver, UnitBase, VaultsOfZul,
+        YourkeCrossbowmen,
         from_name_and_zone,
     },
     deck::Deck,
@@ -547,6 +548,40 @@ fn test_disabled_units_cannot_defend_or_intercept() {
     assert!(
         interceptors.contains(&able_defender_id),
         "able units at the final location should remain valid interceptors"
+    );
+}
+
+#[tokio::test]
+async fn test_silenced_bridge_troll_hook_does_not_trigger() {
+    let (mut state, _rx) = make_state(vec![]);
+    let player_id = state.players[0].id;
+    let opponent_id = state.players[1].id;
+
+    let mut bridge_troll = BridgeTroll::new(player_id);
+    let bridge_troll_id = *bridge_troll.get_id();
+    bridge_troll.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    bridge_troll.add_status(CardStatus::Silenced);
+    state.cards.insert(bridge_troll_id, Box::new(bridge_troll));
+
+    let mut attacker = ApprenticeWizard::new(opponent_id);
+    let attacker_id = *attacker.get_id();
+    attacker.set_zone(Zone::Location(Location::Square(2, Region::Surface)));
+    state.cards.insert(attacker_id, Box::new(attacker));
+
+    *state.get_player_mana_mut(&opponent_id) = 5;
+
+    state.queue_one(Effect::Attack {
+        attacker_id,
+        defender_id: bridge_troll_id,
+        defending_ids: vec![],
+        damage_assignment: None,
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(
+        *state.get_player_mana_mut(&opponent_id),
+        5,
+        "silenced Bridge Troll should not drain the attacker's mana"
     );
 }
 

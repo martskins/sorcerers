@@ -1947,14 +1947,6 @@ impl Effect {
                             }
                         }
                     }
-
-                    for defending_id in defending_ids {
-                        let defender = state.get_card(defending_id);
-                        if can_use_special_abilities(state, defending_id) {
-                            effects.extend(defender.on_defend(state, attacker_id)?);
-                        }
-                    }
-
                     effects.reverse();
                     state.queue(effects);
                     return Ok(());
@@ -1990,9 +1982,6 @@ impl Effect {
                             from: *first_attacker.get_id(),
                             damage: Damage::strike(power, false),
                         });
-                        if can_use_special_abilities(&sim, defender_id) {
-                            sim.queue(defender.on_defend(&sim, attacker_id)?);
-                        }
                         Box::pin(sim.apply_effects_without_log()).await?;
                         sim.get_card(first_defender.get_id()).get_zone() != &Zone::Cemetery
                     };
@@ -2005,10 +1994,6 @@ impl Effect {
                         from: *first_attacker.get_id(),
                         damage: Damage::strike(power, false),
                     });
-
-                    if can_use_special_abilities(state, defender_id) {
-                        effects.extend(defender.on_defend(state, attacker_id)?);
-                    }
 
                     if first_defender_survived && first_defender.strikes_back(state)? {
                         let power = first_defender
@@ -2040,9 +2025,6 @@ impl Effect {
                             from: *defender_id,
                             damage: Damage::strike(defender_power, false),
                         });
-                    }
-                    if can_use_special_abilities(state, defender_id) {
-                        effects.extend(defender.on_defend(state, attacker_id)?);
                     }
                 }
 

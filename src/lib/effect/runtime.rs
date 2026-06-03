@@ -15,6 +15,10 @@ impl EffectEngine {
         let mut before_hooks = vec![];
         let mut after_hooks = vec![];
         for card in state.cards.values() {
+            if state.card_has_special_abilities_removed(card.get_id()) {
+                continue;
+            }
+
             for hook in card.hooks(state).await? {
                 if !hook.trigger.matches(effect, state).await? {
                     continue;

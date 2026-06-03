@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{future::Future, pin::Pin, sync::Arc};
 
 use crate::prelude::*;
 
@@ -63,37 +63,61 @@ impl Card for BridgeTroll {
         Some(&mut self.unit_base)
     }
 
-    fn on_defend(&self, state: &State, attacker_id: &uuid::Uuid) -> anyhow::Result<Vec<Effect>> {
-        let attacker = state.get_card(attacker_id);
-        let attacker_controller = attacker.get_controller_id(state);
-        let my_controller = self.get_controller_id(state);
-
-        let opponent_mana = *state.player_mana.get(&attacker_controller).unwrap_or(&0) as i8;
-        let effects = vec![
-            Effect::AdjustMana {
-                player_id: attacker_controller,
-                mana: -opponent_mana,
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        let self_id = *self.get_id();
+        Ok(vec![Hook {
+            trigger: EffectQuery::Attack {
+                attacker: CardQuery::new(),
+                defender: Some(self.get_id().into()),
             },
-            Effect::AddDeferredEffect {
-                effect: DeferredEffect {
-                    trigger_on_effect: EffectQuery::TurnStart {
-                        player_id: Some(my_controller),
-                    },
-                    expires_on_effect: None,
-                    on_effect: Arc::new(move |_: &State, _: &uuid::Uuid, _: &Effect| {
-                        Box::pin(async move {
-                            Ok(vec![Effect::AdjustMana {
-                                player_id: my_controller,
-                                mana: opponent_mana,
-                            }])
-                        })
-                    }),
-                    multitrigger: false,
-                },
-            },
-        ];
+            timing: HookTiming::Before,
+            action: HookAction::Callback(Arc::new(move |state: &State, effect: &Effect| {
+                Box::pin(async move {
+                    let Effect::Attack { attacker_id, .. } = effect else {
+                        return Ok(vec![]);
+                    };
 
-        Ok(effects)
+                    if state.card_has_special_abilities_removed(&self_id) {
+                        return Ok(vec![]);
+                    }
+
+                    let attacker = state.get_card(attacker_id);
+                    let attacker_controller = attacker.get_controller_id(state);
+                    let bridge_troll = state.get_card(&self_id);
+                    let my_controller = bridge_troll.get_controller_id(state);
+
+                    let opponent_mana =
+                        *state.player_mana.get(&attacker_controller).unwrap_or(&0) as i8;
+
+                    Ok(vec![
+                        Effect::AdjustMana {
+                            player_id: attacker_controller,
+                            mana: -opponent_mana,
+                        },
+                        Effect::AddDeferredEffect {
+                            effect: DeferredEffect {
+                                trigger_on_effect: EffectQuery::TurnStart {
+                                    player_id: Some(my_controller),
+                                },
+                                expires_on_effect: None,
+                                on_effect: Arc::new(
+                                    move |_: &State, _: &uuid::Uuid, _: &Effect| {
+                                        Box::pin(async move {
+                                            Ok(vec![Effect::AdjustMana {
+                                                player_id: my_controller,
+                                                mana: opponent_mana,
+                                            }])
+                                        })
+                                    },
+                                ),
+                                multitrigger: false,
+                            },
+                        },
+                    ])
+                })
+                    as Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>>
+            })),
+        }])
     }
 }
 
