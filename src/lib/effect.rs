@@ -1396,23 +1396,17 @@ impl Effect {
                 // Set zone after on_cast so that the card is not in the cemetery during casting.
                 card.set_zone(Zone::Cemetery);
                 state.queue(effects);
-
-                // Notify the Spellcaster unit that it cast a spell.
-                let caster = state.get_card(caster_id);
-                let spell_triggered = caster.on_cast_spell(state, card_id).await?;
-                state.queue(spell_triggered);
             }
             Effect::PlayCard {
                 card_id,
                 player_id,
                 zone,
-                spellcaster,
+                ..
             } => {
                 let zone = zone.pick(player_id, state).await?;
                 let costs = state.get_effective_costs(card_id, Some(&zone), player_id)?;
                 Box::pin(costs.pay(state, player_id)).await?;
                 let card = state.get_card(card_id);
-                let is_spell = !card.is_site();
                 let is_minion = card.is_minion();
                 let snapshot = state.clone();
 
@@ -1480,14 +1474,6 @@ impl Effect {
                     effects.extend(location_survival_effects_for_realm(state));
                     state.queue(effects);
                     state.queue(cast_effects);
-                }
-
-                if is_spell {
-                    // Notify the Spellcaster unit that it played a spell. In Sorcery, spells are
-                    // minions, artifacts, auras, and magics; sites are the non-spell exception.
-                    let caster = state.get_card(spellcaster);
-                    let spell_triggered = caster.on_cast_spell(state, card_id).await?;
-                    state.queue(spell_triggered);
                 }
             }
             Effect::SummonCards { cards } => {

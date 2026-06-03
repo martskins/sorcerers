@@ -106,6 +106,7 @@ impl Card for SeaRaider {
                             },
                             EffectQuery::PlayCard {
                                 card: CardQuery::from_id(spell_id),
+                                spellcaster: None,
                             },
                         ]);
 

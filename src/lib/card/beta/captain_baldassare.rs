@@ -97,6 +97,7 @@ impl Card for CaptainBaldassare {
                             EffectQuery::TurnEnd { player_id: None },
                             EffectQuery::PlayCard {
                                 card: card_id.into(),
+                                spellcaster: None,
                             },
                         ]);
 

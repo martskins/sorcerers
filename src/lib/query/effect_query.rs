@@ -41,6 +41,7 @@ pub enum EffectQuery {
     },
     PlayCard {
         card: CardQuery,
+        spellcaster: Option<CardId>,
     },
     SummonCard {
         card: CardQuery,
@@ -176,11 +177,29 @@ impl EffectQuery {
             (EffectQuery::SummonCard { card }, Effect::SummonCards { cards }) => Ok(cards
                 .iter()
                 .any(|(_, card_id, _)| card.matches(card_id, state))),
-            (EffectQuery::PlayCard { card }, Effect::PlayMagic { card_id, .. }) => {
-                Ok(card.matches(card_id, state))
+            (
+                EffectQuery::PlayCard { card, spellcaster },
+                Effect::PlayMagic {
+                    card_id, caster_id, ..
+                },
+            ) => {
+                let spellcaster_matches = spellcaster.is_none_or(|sp| sp == *caster_id);
+                Ok(spellcaster_matches && card.matches(card_id, state))
             }
-            (EffectQuery::PlayCard { card }, Effect::PlayCard { card_id, .. }) => {
-                Ok(card.matches(card_id, state))
+            (
+                EffectQuery::PlayCard {
+                    card,
+                    spellcaster: target_spellcaster,
+                },
+                Effect::PlayCard {
+                    card_id,
+                    spellcaster: actual_spellcaster,
+                    ..
+                },
+            ) => {
+                let spellcaster_matches =
+                    target_spellcaster.is_none_or(|sp| sp == *actual_spellcaster);
+                Ok(spellcaster_matches && card.matches(card_id, state))
             }
             (EffectQuery::BuryCard { card }, Effect::BuryCard { card_id, .. }) => {
                 Ok(card.matches(card_id, state))

@@ -72,6 +72,7 @@ impl Card for BoneRabble {
                         .with_element(Element::Earth)
                         .controlled_by(&owner_id)
                         .sites(),
+                    spellcaster: None,
                 },
                 expires_on_effect: Some(EffectQuery::SummonCard {
                     card: self.get_id().into(),

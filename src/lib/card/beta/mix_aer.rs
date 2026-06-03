@@ -30,6 +30,7 @@ impl ActivatedAbility for SacrificeForAirSpell {
                             .with_element(Element::Air)
                             .card_types(vec![CardType::Magic])
                             .including_not_in_play(),
+                        spellcaster: None,
                     },
                     for_player: *player_id,
                 },

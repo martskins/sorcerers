@@ -82,6 +82,7 @@ impl Card for Enchantress {
         Ok(vec![Hook {
             trigger: EffectQuery::PlayCard {
                 card: CardQuery::new().including_not_in_play(),
+                spellcaster: None,
             },
             timing: HookTiming::Before,
             action: HookAction::Callback(Arc::new(move |state: &State, effect: &Effect| {
