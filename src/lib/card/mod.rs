@@ -1828,15 +1828,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     /// Called on every eligible card after any spell is successfully played by a spellcaster.
-    async fn on_play_spell(
-        &self,
-        _state: &State,
-        _spell_id: &uuid::Uuid,
-        _caster_id: &uuid::Uuid,
-    ) -> anyhow::Result<Vec<Effect>> {
-        Ok(vec![])
-    }
-
     async fn on_effect(&self, _state: &State, _effect: &Effect) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![])
     }

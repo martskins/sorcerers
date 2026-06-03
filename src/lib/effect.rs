@@ -25,27 +25,6 @@ fn can_use_special_abilities(state: &State, card_id: &CardId) -> bool {
     !state.card_has_special_abilities_removed(card_id)
 }
 
-async fn spell_played_effects(
-    state: &State,
-    spell_id: &CardId,
-    caster_id: &CardId,
-) -> anyhow::Result<Vec<Effect>> {
-    let card_ids = state
-        .cards
-        .values()
-        .filter(|card| can_use_special_abilities(state, card.get_id()))
-        .map(|card| *card.get_id())
-        .collect::<Vec<_>>();
-
-    let mut effects = vec![];
-    for card_id in card_ids {
-        let card = state.get_card(&card_id);
-        effects.extend(card.on_play_spell(state, spell_id, caster_id).await?);
-    }
-
-    Ok(effects)
-}
-
 fn location_survival_effects_for_cards(
     state: &State,
     card_ids: impl IntoIterator<Item = CardId>,
@@ -1417,7 +1396,6 @@ impl Effect {
 
                 let costs = state.get_effective_costs(card_id, None, player_id)?;
                 let paid_cost = costs.pay(state, player_id).await?;
-                state.queue(spell_played_effects(state, card_id, caster_id).await?);
 
                 let snapshot = state.clone();
                 let card = state.get_card_mut(card_id);
@@ -1445,11 +1423,6 @@ impl Effect {
                 let card = state.get_card(card_id);
                 let is_spell = !card.is_site();
                 let is_minion = card.is_minion();
-                if is_spell {
-                    // Notify cards before the play effect resolves, so the spell being played is
-                    // not visible as in-play to the trigger that was caused by playing it.
-                    state.queue(spell_played_effects(state, card_id, spellcaster).await?);
-                }
                 let snapshot = state.clone();
 
                 // If playing a site and there is a rubble on that zone, remove it.

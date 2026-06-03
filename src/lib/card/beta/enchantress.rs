@@ -1,3 +1,5 @@
+use std::{future::Future, pin::Pin, sync::Arc};
+
 use crate::prelude::*;
 
 #[derive(Debug, Clone)]
@@ -75,60 +77,86 @@ impl Card for Enchantress {
         Some(self)
     }
 
-    async fn on_play_spell(
-        &self,
-        state: &State,
-        _spell_id: &uuid::Uuid,
-        caster_id: &uuid::Uuid,
-    ) -> anyhow::Result<Vec<Effect>> {
-        let controller_id = self.get_controller_id(state);
-        let caster = state.get_card(caster_id);
-        if caster.get_controller_id(state) != controller_id {
-            return Ok(vec![]);
-        }
-
-        let auras = CardQuery::new()
-            .auras()
-            .in_play()
-            .can_be_targeted_by_player(&controller_id)
-            .all(state);
-
-        if auras.is_empty() {
-            return Ok(vec![]);
-        }
-
-        let want = yes_or_no_source(
-            &controller_id,
-            state,
-            "Animate target aura until your next turn?",
-            Some(*self.get_id()),
-        )
-        .await?;
-        if !want {
-            return Ok(vec![]);
-        }
-
-        let aura_id = pick_card(
-            &controller_id,
-            &auras,
-            state,
-            "Enchantress: Pick an aura to animate",
-        )
-        .await?;
-        let aura = state.get_card(&aura_id);
-        let power = aura.get_costs(state)?.mana_value() as u16;
-
-        Ok(vec![Effect::Animate {
-            card_id: aura_id,
-            unit_base: UnitBase {
-                power,
-                toughness: power,
-                tapped: false,
-                ..Default::default()
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        let self_id = *self.get_id();
+        Ok(vec![Hook {
+            trigger: EffectQuery::PlayCard {
+                card: CardQuery::new().including_not_in_play(),
             },
-            expires_on_effect: EffectQuery::TurnStart {
-                player_id: Some(controller_id),
-            },
+            timing: HookTiming::Before,
+            action: HookAction::Callback(Arc::new(move |state: &State, effect: &Effect| {
+                Box::pin(async move {
+                    let (spell_id, caster_id) = match effect {
+                        Effect::PlayMagic {
+                            card_id, caster_id, ..
+                        } => (*card_id, *caster_id),
+                        Effect::PlayCard {
+                            card_id,
+                            spellcaster,
+                            ..
+                        } => {
+                            if state.get_card(card_id).is_site() {
+                                return Ok(vec![]);
+                            }
+                            (*card_id, *spellcaster)
+                        }
+                        _ => return Ok(vec![]),
+                    };
+
+                    let enchantress = state.get_card(&self_id);
+                    let controller_id = enchantress.get_controller_id(state);
+                    let caster = state.get_card(&caster_id);
+                    if caster.get_controller_id(state) != controller_id {
+                        return Ok(vec![]);
+                    }
+
+                    let auras = CardQuery::new()
+                        .auras()
+                        .in_play()
+                        .can_be_targeted_by_player(&controller_id)
+                        .id_not(&spell_id)
+                        .all(state);
+
+                    if auras.is_empty() {
+                        return Ok(vec![]);
+                    }
+
+                    let want = yes_or_no_source(
+                        &controller_id,
+                        state,
+                        "Animate target aura until your next turn?",
+                        Some(self_id),
+                    )
+                    .await?;
+                    if !want {
+                        return Ok(vec![]);
+                    }
+
+                    let aura_id = pick_card(
+                        &controller_id,
+                        &auras,
+                        state,
+                        "Enchantress: Pick an aura to animate",
+                    )
+                    .await?;
+                    let aura = state.get_card(&aura_id);
+                    let power = aura.get_costs(state)?.mana_value() as u16;
+
+                    Ok(vec![Effect::Animate {
+                        card_id: aura_id,
+                        unit_base: UnitBase {
+                            power,
+                            toughness: power,
+                            tapped: false,
+                            ..Default::default()
+                        },
+                        expires_on_effect: EffectQuery::TurnStart {
+                            player_id: Some(controller_id),
+                        },
+                    }])
+                })
+                    as Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>>
+            })),
         }])
     }
 }

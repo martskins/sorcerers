@@ -1604,15 +1604,12 @@ async fn test_enchantress_triggers_when_controlled_spellcaster_plays_minion() {
         }
     });
 
-    Effect::PlayCard {
+    state.queue_one(Effect::PlayCard {
         player_id,
         card_id: spell_id,
         zone: ZoneQuery::from_zone(zone.clone()),
         spellcaster: caster_id,
-    }
-    .apply(&mut state)
-    .await
-    .unwrap();
+    });
     drain_effects(&mut state).await;
 
     assert!(
@@ -1693,15 +1690,12 @@ async fn test_enchantress_triggers_when_enchantress_plays_minion() {
         }
     });
 
-    Effect::PlayCard {
+    state.queue_one(Effect::PlayCard {
         player_id,
         card_id: spell_id,
         zone: ZoneQuery::from_zone(zone),
         spellcaster: avatar_id,
-    }
-    .apply(&mut state)
-    .await
-    .unwrap();
+    });
     drain_effects(&mut state).await;
 
     assert!(
@@ -1730,21 +1724,19 @@ async fn test_enchantress_does_not_see_aura_spell_before_it_enters() {
     state.cards.insert(aura_id, Box::new(aura));
 
     let avatar_id = state.get_player_avatar_id(&player_id).unwrap();
-    let play = Effect::PlayCard {
+    state.queue_one(Effect::PlayCard {
         player_id,
         card_id: aura_id,
         zone: ZoneQuery::from_zone(zone),
         spellcaster: avatar_id,
-    };
+    });
 
     tokio::time::timeout(
         std::time::Duration::from_millis(100),
-        play.apply(&mut state),
+        drain_effects(&mut state),
     )
     .await
-    .expect("Enchantress should not prompt for the aura spell before it enters")
-    .unwrap();
-    drain_effects(&mut state).await;
+    .expect("Enchantress should not prompt for the aura spell before it enters");
 
     assert!(
         CardQuery::new()

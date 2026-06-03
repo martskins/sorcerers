@@ -16,7 +16,7 @@ impl BridgeTroll {
         Self {
             unit_base: UnitBase {
                 power: 3,
-                toughness: 4,
+                toughness: 3,
                 abilities: vec![],
                 types: vec![MinionType::Mortal],
                 tapped: false,
