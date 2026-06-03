@@ -1744,10 +1744,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(false)
     }
 
-    async fn on_move(&self, _state: &State, _path: &[Zone]) -> anyhow::Result<Vec<Effect>> {
-        Ok(vec![])
-    }
-
     async fn on_visit_zone(
         &self,
         _state: &State,
@@ -2066,7 +2062,8 @@ pub type HookCallback = Arc<
     dyn for<'a> Fn(
             &'a State,
             &'a Effect,
-        ) -> Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + 'a>>
+        )
+            -> Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + 'a>>
         + Send
         + Sync,
 >;

@@ -1242,11 +1242,7 @@ impl Effect {
 
                             let card = state.get_card(card_id);
                             let moved = from_zone != zone;
-                            let mut effects = if can_use_special_abilities(&snapshot, card_id) {
-                                card.on_move(&snapshot, path).await?
-                            } else {
-                                vec![]
-                            };
+                            let mut effects = vec![];
                             if moved {
                                 if can_use_special_abilities(&snapshot, card_id) {
                                     effects.extend(
@@ -1296,12 +1292,7 @@ impl Effect {
                         }
 
                         let card = state.get_card(card_id);
-                        let path = vec![from.clone().into_zone(), zone.clone()];
-                        let mut effects = if can_use_special_abilities(&snapshot, card_id) {
-                            card.on_move(&snapshot, &path).await?
-                        } else {
-                            vec![]
-                        };
+                        let mut effects = vec![];
                         if from_zone != zone {
                             if can_use_special_abilities(&snapshot, card_id) {
                                 effects.extend(
