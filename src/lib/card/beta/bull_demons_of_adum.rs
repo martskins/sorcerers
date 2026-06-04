@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+const STRIKE_OCCUPANTS_HOOK: HookId = 1;
+
 const CARDINAL_DIRECTIONS: &[Direction] = &[
     Direction::Up,
     Direction::Down,
@@ -154,28 +156,38 @@ impl Card for BullDemonsOfAdum {
         Ok(vec![Box::new(TapMoveAndStrike)])
     }
 
-    async fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
-        let effects = CardQuery::new()
-            .units()
-            .untapped()
-            .in_zone(self.get_zone())
-            .all(state)
-            .into_iter()
-            .map(|target_id| Effect::Strike {
-                striker_id: *self.get_id(),
-                target_id,
-            })
-            .collect();
-
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
+            id: STRIKE_OCCUPANTS_HOOK,
             trigger: EffectQuery::EnterZone {
                 card: self.get_id().into(),
                 zone: ZoneQuery::new(),
                 from: None,
             },
             timing: HookTiming::After,
-            action: HookAction::Effects(effects),
         }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            STRIKE_OCCUPANTS_HOOK => Ok(CardQuery::new()
+                .units()
+                .untapped()
+                .in_zone(self.get_zone())
+                .all(state)
+                .into_iter()
+                .map(|target_id| Effect::Strike {
+                    striker_id: *self.get_id(),
+                    target_id,
+                })
+                .collect()),
+            _ => Ok(vec![]),
+        }
     }
 }
 

@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+const VISIT_CORNER_HOOK: HookId = 1;
+
 #[derive(Debug, Clone)]
 pub struct WayfaringPilgrim {
     unit_base: UnitBase,
@@ -74,7 +76,7 @@ impl Card for WayfaringPilgrim {
         Ok(())
     }
 
-    async fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         let corner_squares = [1, 5, 16, 20];
         let corners = corner_squares
             .into_iter()
@@ -89,35 +91,56 @@ impl Card for WayfaringPilgrim {
             .map(Zone::Location)
             .collect();
 
-        let mut corners_visited = self.corners_visited.clone();
         let Some(square) = self.get_zone().get_square() else {
             return Ok(vec![]);
         };
 
-        if corners_visited.contains(&square) {
+        if self.corners_visited.contains(&square) {
             return Ok(vec![]);
         }
 
-        corners_visited.push(square);
         Ok(vec![Hook {
+            id: VISIT_CORNER_HOOK,
             trigger: EffectQuery::EnterZone {
                 card: self.get_id().into(),
                 zone: ZoneQuery::from_options(corners, None),
                 from: None,
             },
             timing: HookTiming::After,
-            action: HookAction::Effects(vec![
-                Effect::DrawCard {
-                    player_id: self.get_controller_id(state),
-                    count: 1,
-                    kind: DrawKind::Choice,
-                },
-                Effect::SetCardData {
-                    card_id: *self.get_id(),
-                    data: std::sync::Arc::new(corners_visited),
-                },
-            ]),
         }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            VISIT_CORNER_HOOK => {
+                let Some(square) = self.get_zone().get_square() else {
+                    return Ok(vec![]);
+                };
+                if self.corners_visited.contains(&square) {
+                    return Ok(vec![]);
+                }
+
+                let mut corners_visited = self.corners_visited.clone();
+                corners_visited.push(square);
+                Ok(vec![
+                    Effect::DrawCard {
+                        player_id: self.get_controller_id(state),
+                        count: 1,
+                        kind: DrawKind::Choice,
+                    },
+                    Effect::SetCardData {
+                        card_id: *self.get_id(),
+                        data: std::sync::Arc::new(corners_visited),
+                    },
+                ])
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 

@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+const PUSH_UNIT_HOOK: HookId = 1;
+
 const PUSH_DIRECTIONS: [Direction; 8] = [
     Direction::Up,
     Direction::Down,
@@ -72,10 +74,10 @@ impl Card for WindSylph {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         let self_id = *self.get_id();
-        let controller_id = self.get_controller_id(state);
         Ok(vec![Hook {
+            id: PUSH_UNIT_HOOK,
             trigger: EffectQuery::PlayCard {
                 card: CardQuery::new()
                     .card_types(vec![
@@ -88,85 +90,91 @@ impl Card for WindSylph {
                 spellcaster: Some(self_id),
             },
             timing: HookTiming::After,
-            action: HookAction::Callback(Arc::new(move |state: &State, _effect: &Effect| {
-                Box::pin(async move {
-                    let wind_sylph = state.get_card(&self_id);
-                    let units_here = CardQuery::new()
-                        .units()
-                        .in_zone(wind_sylph.get_zone())
-                        .all(state);
-                    if units_here.is_empty()
-                        || !yes_or_no_source(
-                            &controller_id,
-                            state,
-                            "Push a unit here one step?",
-                            Some(self_id),
-                        )
-                        .await?
-                    {
-                        return Ok(vec![]);
-                    }
-
-                    let unit_id = pick_card(
-                        &controller_id,
-                        &units_here,
-                        state,
-                        "Wind Sylph: Pick a unit here to push",
-                    )
-                    .await?;
-                    let unit = state.get_card(&unit_id);
-                    let mut valid_zones = vec![];
-                    for dir in &PUSH_DIRECTIONS {
-                        let Some(zone) = unit.get_zone().zone_in_direction(dir, 1) else {
-                            continue;
-                        };
-
-                        let can_enter = match zone.get_site(state) {
-                            Some(site) => site.can_be_entered_by(
-                                &unit_id,
-                                unit.get_zone(),
-                                unit.get_region(state),
-                                state,
-                            )?,
-                            None => {
-                                unit.has_ability(state, &Ability::Voidwalk)
-                                    && zone.can_be_entered_by(state, &unit_id)?
-                            }
-                        };
-
-                        if can_enter {
-                            valid_zones.push(zone);
-                        }
-                    }
-                    valid_zones.sort();
-                    valid_zones.dedup();
-                    if valid_zones.is_empty() {
-                        return Ok(vec![]);
-                    }
-
-                    let target_zone = pick_zone(
-                        &controller_id,
-                        &valid_zones,
-                        state,
-                        false,
-                        "Wind Sylph: Pick a zone to push that unit to",
-                    )
-                    .await?;
-                    Ok(vec![Effect::MoveCard {
-                        player_id: controller_id,
-                        card_id: unit_id,
-                        from: (unit.get_zone().clone())
-                            .into_location()
-                            .expect("MoveCard source must be a location"),
-                        to: LocationQuery::from_zone(
-                            (target_zone).with_region(unit.get_region(state).clone()),
-                        ),
-                        tap: false,
-                        through_path: None,
-                    }])
-                })
-            })),
         }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            PUSH_UNIT_HOOK => {
+                let controller_id = self.get_controller_id(state);
+                let units_here = CardQuery::new().units().in_zone(self.get_zone()).all(state);
+                if units_here.is_empty()
+                    || !yes_or_no_source(
+                        &controller_id,
+                        state,
+                        "Push a unit here one step?",
+                        Some(*self.get_id()),
+                    )
+                    .await?
+                {
+                    return Ok(vec![]);
+                }
+
+                let unit_id = pick_card(
+                    &controller_id,
+                    &units_here,
+                    state,
+                    "Wind Sylph: Pick a unit here to push",
+                )
+                .await?;
+                let unit = state.get_card(&unit_id);
+                let mut valid_zones = vec![];
+                for dir in &PUSH_DIRECTIONS {
+                    let Some(zone) = unit.get_zone().zone_in_direction(dir, 1) else {
+                        continue;
+                    };
+
+                    let can_enter = match zone.get_site(state) {
+                        Some(site) => site.can_be_entered_by(
+                            &unit_id,
+                            unit.get_zone(),
+                            unit.get_region(state),
+                            state,
+                        )?,
+                        None => {
+                            unit.has_ability(state, &Ability::Voidwalk)
+                                && zone.can_be_entered_by(state, &unit_id)?
+                        }
+                    };
+
+                    if can_enter {
+                        valid_zones.push(zone);
+                    }
+                }
+                valid_zones.sort();
+                valid_zones.dedup();
+                if valid_zones.is_empty() {
+                    return Ok(vec![]);
+                }
+
+                let target_zone = pick_zone(
+                    &controller_id,
+                    &valid_zones,
+                    state,
+                    false,
+                    "Wind Sylph: Pick a zone to push that unit to",
+                )
+                .await?;
+                Ok(vec![Effect::MoveCard {
+                    player_id: controller_id,
+                    card_id: unit_id,
+                    from: (unit.get_zone().clone())
+                        .into_location()
+                        .expect("MoveCard source must be a location"),
+                    to: LocationQuery::from_zone(
+                        (target_zone).with_region(unit.get_region(state).clone()),
+                    ),
+                    tap: false,
+                    through_path: None,
+                }])
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 

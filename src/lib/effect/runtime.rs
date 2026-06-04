@@ -1,17 +1,23 @@
 use crate::{
-    card::{HookAction, HookTiming},
-    effect::EffectLogEmitter,
-    game::Game,
+    card::{HookId, HookTiming},
+    effect::{Effect, EffectLogEmitter},
+    game::{CardId, Game},
     state::State,
 };
 
 pub struct EffectEngine;
 
+struct PendingHook {
+    source_id: CardId,
+    hook_id: HookId,
+}
+
 impl EffectEngine {
-    async fn post_hooks(
+    async fn collect_hooks(
         state: &State,
-        effect: &crate::effect::Effect,
-    ) -> anyhow::Result<Vec<HookAction>> {
+        effect: &Effect,
+        timing: HookTiming,
+    ) -> anyhow::Result<Vec<PendingHook>> {
         let mut hooks = vec![];
         for card in state.cards.values() {
             if state.card_has_special_abilities_removed(card.get_id()) {
@@ -23,8 +29,11 @@ impl EffectEngine {
                     continue;
                 }
 
-                if let HookTiming::After = hook.timing {
-                    hooks.push(hook.action);
+                if hook.timing == timing {
+                    hooks.push(PendingHook {
+                        source_id: *card.get_id(),
+                        hook_id: hook.id,
+                    });
                 }
             }
         }
@@ -32,74 +41,23 @@ impl EffectEngine {
         Ok(hooks)
     }
 
-    async fn pre_hooks(
-        state: &State,
-        effect: &crate::effect::Effect,
-    ) -> anyhow::Result<Vec<HookAction>> {
-        let mut hooks = vec![];
-        for card in state.cards.values() {
-            if state.card_has_special_abilities_removed(card.get_id()) {
-                continue;
-            }
-
-            for hook in card.hooks(state).await? {
-                if !hook.trigger.matches(effect, state).await? {
-                    continue;
-                }
-
-                if let HookTiming::Before = hook.timing {
-                    hooks.push(hook.action);
-                }
-            }
-        }
-
-        Ok(hooks)
-    }
-
-    async fn matching_hooks(
-        state: &State,
-        effect: &crate::effect::Effect,
-    ) -> anyhow::Result<(Vec<HookAction>, Vec<HookAction>)> {
-        let mut before_hooks = vec![];
-        let mut after_hooks = vec![];
-        for card in state.cards.values() {
-            if state.card_has_special_abilities_removed(card.get_id()) {
-                continue;
-            }
-
-            for hook in card.hooks(state).await? {
-                if !hook.trigger.matches(effect, state).await? {
-                    continue;
-                }
-
-                match hook.timing {
-                    HookTiming::Before => before_hooks.push(hook.action),
-                    HookTiming::After => after_hooks.push(hook.action),
-                }
-            }
-        }
-
-        Ok((before_hooks, after_hooks))
-    }
-
-    async fn apply_hook_action(
+    async fn resolve_hooks(
         state: &mut State,
-        effect: &crate::effect::Effect,
-        hook_action: &HookAction,
+        effect: &Effect,
+        hooks: &[PendingHook],
     ) -> anyhow::Result<()> {
-        match hook_action {
-            HookAction::Effects(effects) => {
-                for effect in effects {
-                    Box::pin(effect.apply(state)).await?;
-                }
+        for hook in hooks {
+            let Some(source) = state.cards.get(&hook.source_id) else {
+                continue;
+            };
+            if state.card_has_special_abilities_removed(&hook.source_id) {
+                continue;
             }
-            HookAction::Callback(callback) => {
-                let effects = callback(state, effect).await?;
-                for effect in effects {
-                    Box::pin(effect.apply(state)).await?;
-                }
+
+            let effects = source.resolve_hook(hook.hook_id, state, effect).await?;
+            for effect in effects {
+                Box::pin(effect.apply(state)).await?;
             }
-            HookAction::Replace(_effects) => todo!(),
         }
 
         Ok(())
@@ -109,15 +67,9 @@ impl EffectEngine {
         while !game.state.effects.is_empty() {
             if let Some(effect) = game.state.effects.pop_back() {
                 let eliminated_before = game.state.eliminated_players.clone();
-                // TODO: This has an issue in that we are computing the pre-hooks all with the same
-                // state, when in reality one of the hooks might modify the state. Even new cards
-                // might come into play due to one of these hooks.
-                // Need to check if there's something in the codex that could help us shape this in
-                // a better way.
-                let before_hooks = Self::pre_hooks(&game.state, &effect).await?;
-                for hook_action in &before_hooks {
-                    Self::apply_hook_action(&mut game.state, &effect, hook_action).await?;
-                }
+                let before_hooks =
+                    Self::collect_hooks(&game.state, &effect, HookTiming::Before).await?;
+                Self::resolve_hooks(&mut game.state, &effect, &before_hooks).await?;
 
                 match effect.apply(&mut game.state).await {
                     Ok(_) => {}
@@ -131,10 +83,9 @@ impl EffectEngine {
                 // Gather post hooks after effects are applied so that we get the latest state and
                 // any state query done on the hooks function reflects the correct state of all
                 // cards.
-                let after_hooks = Self::post_hooks(&game.state, &effect).await?;
-                for hook_action in &after_hooks {
-                    Self::apply_hook_action(&mut game.state, &effect, hook_action).await?;
-                }
+                let after_hooks =
+                    Self::collect_hooks(&game.state, &effect, HookTiming::After).await?;
+                Self::resolve_hooks(&mut game.state, &effect, &after_hooks).await?;
 
                 Game::dispell_auras(&mut game.state).await?;
                 game.broadcast(&game.make_sync()?).await?;
@@ -154,16 +105,13 @@ impl EffectEngine {
     pub async fn drain_without_log(state: &mut State) -> anyhow::Result<()> {
         while !state.effects.is_empty() {
             if let Some(effect) = state.effects.pop_back() {
-                let (before_hooks, after_hooks) = Self::matching_hooks(state, &effect).await?;
-                for hook_action in &before_hooks {
-                    Self::apply_hook_action(state, &effect, hook_action).await?;
-                }
+                let before_hooks = Self::collect_hooks(state, &effect, HookTiming::Before).await?;
+                Self::resolve_hooks(state, &effect, &before_hooks).await?;
 
                 effect.apply(state).await?;
 
-                for hook_action in &after_hooks {
-                    Self::apply_hook_action(state, &effect, hook_action).await?;
-                }
+                let after_hooks = Self::collect_hooks(state, &effect, HookTiming::After).await?;
+                Self::resolve_hooks(state, &effect, &after_hooks).await?;
             }
         }
 

@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+const SUMMON_SPIRIT_HOOK: HookId = 1;
+
 #[derive(Debug, Clone)]
 pub struct GhostShip {
     unit_base: UnitBase,
@@ -61,37 +63,51 @@ impl Card for GhostShip {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
-        let player_id = self.get_controller_id(state);
-        let Some(target_spirit) = CardQuery::new()
-            .dead()
-            .minions()
-            .minion_type(&MinionType::Spirit)
-            .pick(&player_id, state, false)
-            .await?
-        else {
-            return Ok(vec![]);
-        };
-
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
+            id: SUMMON_SPIRIT_HOOK,
             trigger: EffectQuery::EnterZone {
                 card: self.get_id().into(),
                 zone: ZoneQuery::any_site(None, None),
                 from: Some(ZoneQuery::any_void()),
             },
             timing: HookTiming::After,
-            action: HookAction::Effects(vec![Effect::SummonCards {
-                cards: vec![(
-                    player_id,
-                    target_spirit,
-                    Zone::Cemetery,
-                    self.get_zone()
-                        .clone()
-                        .into_location()
-                        .expect("Ghost Ship target must be a location"),
-                )],
-            }]),
         }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            SUMMON_SPIRIT_HOOK => {
+                let player_id = self.get_controller_id(state);
+                let Some(target_spirit) = CardQuery::new()
+                    .dead()
+                    .minions()
+                    .minion_type(&MinionType::Spirit)
+                    .pick(&player_id, state, false)
+                    .await?
+                else {
+                    return Ok(vec![]);
+                };
+
+                Ok(vec![Effect::SummonCards {
+                    cards: vec![(
+                        player_id,
+                        target_spirit,
+                        Zone::Cemetery,
+                        self.get_zone()
+                            .clone()
+                            .into_location()
+                            .expect("Ghost Ship target must be a location"),
+                    )],
+                }])
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 

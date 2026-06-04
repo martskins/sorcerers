@@ -1,6 +1,6 @@
-use std::sync::Arc;
-
 use crate::prelude::*;
+
+const TRIGGER_RIVER_GENESIS_HOOK: HookId = 1;
 
 #[derive(Debug, Clone)]
 pub struct FenvaleMuse {
@@ -63,51 +63,60 @@ impl Card for FenvaleMuse {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         let self_id = *self.get_id();
-        let controller_id = self.get_controller_id(state);
         Ok(vec![Hook {
+            id: TRIGGER_RIVER_GENESIS_HOOK,
             trigger: EffectQuery::PlayCard {
                 card: CardQuery::new().including_not_in_play(),
                 spellcaster: Some(self_id),
             },
             timing: HookTiming::After,
-            action: HookAction::Callback(Arc::new(move |state: &State, _effect: &Effect| {
-                Box::pin(async move {
-                    let fenvale_muse = state.get_card(&self_id);
-                    let nearby_rivers = CardQuery::new()
-                        .sites()
-                        .near_to(fenvale_muse.get_zone())
-                        .site_types(vec![SiteType::River])
-                        .all(state);
-
-                    if nearby_rivers.is_empty() {
-                        return Ok(vec![]);
-                    }
-
-                    let want = yes_or_no_source(
-                        &controller_id,
-                        state,
-                        "Trigger the Genesis of a nearby River?",
-                        Some(self_id),
-                    )
-                    .await?;
-                    if !want {
-                        return Ok(vec![]);
-                    }
-
-                    let river_id = pick_card(
-                        &controller_id,
-                        &nearby_rivers,
-                        state,
-                        "Fenvale Muse: Pick a nearby River to trigger",
-                    )
-                    .await?;
-                    let river = state.get_card(&river_id);
-                    river.genesis(state).await
-                })
-            })),
         }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            TRIGGER_RIVER_GENESIS_HOOK => {
+                let controller_id = self.get_controller_id(state);
+                let nearby_rivers = CardQuery::new()
+                    .sites()
+                    .near_to(self.get_zone())
+                    .site_types(vec![SiteType::River])
+                    .all(state);
+
+                if nearby_rivers.is_empty() {
+                    return Ok(vec![]);
+                }
+
+                let want = yes_or_no_source(
+                    &controller_id,
+                    state,
+                    "Trigger the Genesis of a nearby River?",
+                    Some(*self.get_id()),
+                )
+                .await?;
+                if !want {
+                    return Ok(vec![]);
+                }
+
+                let river_id = pick_card(
+                    &controller_id,
+                    &nearby_rivers,
+                    state,
+                    "Fenvale Muse: Pick a nearby River to trigger",
+                )
+                .await?;
+                let river = state.get_card(&river_id);
+                river.genesis(state).await
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 

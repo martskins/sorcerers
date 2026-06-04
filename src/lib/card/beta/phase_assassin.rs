@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+const GAIN_STEALTH_HOOK: HookId = 1;
+
 #[derive(Debug, Clone)]
 pub struct PhaseAssassin {
     unit_base: UnitBase,
@@ -64,13 +66,24 @@ impl Card for PhaseAssassin {
 
     async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
+            id: GAIN_STEALTH_HOOK,
             trigger: EffectQuery::EnterZone {
                 card: self.get_id().into(),
                 zone: ZoneQuery::any_void(),
                 from: Some(ZoneQuery::any_site(None, None)),
             },
             timing: HookTiming::After,
-            action: HookAction::Effects(vec![Effect::AddAbilityCounter {
+        }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        _state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            GAIN_STEALTH_HOOK => Ok(vec![Effect::AddAbilityCounter {
                 card_id: *self.get_id(),
                 counter: AbilityCounter {
                     id: uuid::Uuid::new_v4(),
@@ -78,7 +91,8 @@ impl Card for PhaseAssassin {
                     expires_on_effect: None,
                 },
             }]),
-        }])
+            _ => Ok(vec![]),
+        }
     }
 }
 

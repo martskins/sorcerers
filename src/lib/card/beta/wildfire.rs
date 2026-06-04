@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+const TRACK_VISITED_SITE_HOOK: HookId = 1;
+
 #[derive(Debug, Clone)]
 pub struct Wildfire {
     aura_base: AuraBase,
@@ -70,9 +72,8 @@ impl Card for Wildfire {
     }
 
     async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
-        let mut sites_visited = self.sites_visited.clone();
-        sites_visited.push(self.get_zone().clone());
         Ok(vec![Hook {
+            id: TRACK_VISITED_SITE_HOOK,
             // TODO: EnterZone is not triggered when summoning auras. We need to handle this the same
             // way we do for summon minions.
             trigger: EffectQuery::EnterZone {
@@ -81,11 +82,26 @@ impl Card for Wildfire {
                 from: None,
             },
             timing: HookTiming::After,
-            action: HookAction::Effects(vec![Effect::SetCardData {
-                card_id: *self.get_id(),
-                data: std::sync::Arc::new(sites_visited),
-            }]),
         }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        _state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            TRACK_VISITED_SITE_HOOK => {
+                let mut sites_visited = self.sites_visited.clone();
+                sites_visited.push(self.get_zone().clone());
+                Ok(vec![Effect::SetCardData {
+                    card_id: *self.get_id(),
+                    data: std::sync::Arc::new(sites_visited),
+                }])
+            }
+            _ => Ok(vec![]),
+        }
     }
 
     async fn on_turn_end(&self, state: &State) -> anyhow::Result<Vec<Effect>> {

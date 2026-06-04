@@ -23,7 +23,7 @@ use crate::{
 };
 use linkme::distributed_slice;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fmt::Debug, future::Future, pin::Pin, sync::Arc, sync::LazyLock};
+use std::{collections::HashMap, fmt::Debug, sync::LazyLock};
 use strum_macros::EnumIter;
 
 pub type CardConstructor = fn(PlayerId) -> Box<dyn Card>;
@@ -2025,33 +2025,29 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![])
     }
+
+    async fn resolve_hook(
+        &self,
+        _hook: HookId,
+        _state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        Ok(vec![])
+    }
 }
+
+pub type HookId = u16;
 
 pub struct Hook {
+    pub id: HookId,
     pub trigger: EffectQuery,
     pub timing: HookTiming,
-    pub action: HookAction,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HookTiming {
     Before,
     After,
-}
-
-pub type HookCallback = Arc<
-    dyn for<'a> Fn(
-            &'a State,
-            &'a Effect,
-        )
-            -> Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + 'a>>
-        + Send
-        + Sync,
->;
-
-pub enum HookAction {
-    Effects(Vec<Effect>),
-    Callback(HookCallback),
-    Replace(Vec<Effect>),
 }
 
 fn apply_ability_modifiers(modifiers: &mut Vec<Ability>, changes: Vec<AbilityModifier>) {

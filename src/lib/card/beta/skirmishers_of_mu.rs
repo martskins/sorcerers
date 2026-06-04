@@ -1,5 +1,6 @@
 use crate::prelude::*;
-use std::sync::Arc;
+
+const RANGED_STRIKE_HOOK: HookId = 1;
 
 #[derive(Debug, Clone)]
 pub struct SkirmishersOfMu {
@@ -62,90 +63,93 @@ impl Card for SkirmishersOfMu {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
-        let self_id = *self.get_id();
-        let controller_id = self.get_controller_id(state);
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
+            id: RANGED_STRIKE_HOOK,
             trigger: EffectQuery::MoveCard {
                 card: self.get_id().into(),
             },
             timing: HookTiming::After,
-            action: HookAction::Callback(Arc::new(move |state: &State, effect: &Effect| {
-                Box::pin(async move {
-                    let Effect::MoveCard {
-                        player_id,
-                        from,
-                        to,
-                        through_path,
-                        ..
-                    } = effect
-                    else {
-                        return Ok(vec![]);
-                    };
-
-                    let skirmishers = state.get_card(&self_id);
-                    let to = to.pick(player_id, state).await?.into_zone();
-                    let mut path = vec![from.clone().into_zone(), to];
-                    if let Some(through_path) = through_path {
-                        path = through_path.to_vec();
-                    }
-
-                    let options = [BaseOption::Yes, BaseOption::No];
-                    let option_labels = options.iter().map(|o| o.to_string()).collect::<Vec<_>>();
-                    let picked_option = pick_option(
-                        controller_id,
-                        &option_labels,
-                        state,
-                        "Ranged strike?",
-                        false,
-                    )
-                    .await?;
-                    if options[picked_option] == BaseOption::No {
-                        return Ok(vec![]);
-                    }
-
-                    let picked_zone = pick_zone(
-                        controller_id,
-                        &path,
-                        state,
-                        false,
-                        "Skirmishers of Mu: Pick a zone to perform a ranged strike from",
-                    )
-                    .await?;
-
-                    let direction = pick_direction_source(
-                        controller_id,
-                        &CARDINAL_DIRECTIONS,
-                        state,
-                        "Skirmishers of Mu: Pick a direction for ranged strike",
-                        Some(self_id),
-                    )
-                    .await?;
-
-                    let mut effects = skirmishers.after_ranged_attack(state).await?;
-                    effects.push(Effect::ShootProjectile {
-                        id: uuid::Uuid::new_v4(),
-                        range: Some(skirmishers.ranged_range(state)?.unwrap_or(1)),
-                        player_id: controller_id,
-                        shooter: self_id,
-                        from_zone: picked_zone,
-                        direction,
-                        damage: skirmishers
-                            .get_power(state)?
-                            .ok_or(anyhow::anyhow!("ranged attacker has no power"))?,
-                        ranged_strike: true,
-                        piercing: false,
-                        splash_damage: None,
-                    });
-                    effects.push(Effect::RemoveAbility {
-                        card_id: self_id,
-                        modifier: Ability::Stealth,
-                    });
-
-                    Ok(effects)
-                })
-            })),
         }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        state: &State,
+        effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            RANGED_STRIKE_HOOK => {
+                let Effect::MoveCard {
+                    player_id,
+                    from,
+                    to,
+                    through_path,
+                    ..
+                } = effect
+                else {
+                    return Ok(vec![]);
+                };
+
+                let controller_id = self.get_controller_id(state);
+                let to = to.pick(player_id, state).await?.into_zone();
+                let mut path = vec![from.clone().into_zone(), to];
+                if let Some(through_path) = through_path {
+                    path = through_path.to_vec();
+                }
+
+                let options = [BaseOption::Yes, BaseOption::No];
+                let option_labels = options.iter().map(|o| o.to_string()).collect::<Vec<_>>();
+                let picked_option =
+                    pick_option(controller_id, &option_labels, state, "Ranged strike?", false)
+                        .await?;
+                if options[picked_option] == BaseOption::No {
+                    return Ok(vec![]);
+                }
+
+                let picked_zone = pick_zone(
+                    controller_id,
+                    &path,
+                    state,
+                    false,
+                    "Skirmishers of Mu: Pick a zone to perform a ranged strike from",
+                )
+                .await?;
+
+                let direction = pick_direction_source(
+                    controller_id,
+                    &CARDINAL_DIRECTIONS,
+                    state,
+                    "Skirmishers of Mu: Pick a direction for ranged strike",
+                    Some(*self.get_id()),
+                )
+                .await?;
+
+                let mut effects = self.after_ranged_attack(state).await?;
+                effects.push(Effect::ShootProjectile {
+                    id: uuid::Uuid::new_v4(),
+                    range: Some(self.ranged_range(state)?.unwrap_or(1)),
+                    player_id: controller_id,
+                    shooter: *self.get_id(),
+                    from_zone: picked_zone,
+                    direction,
+                    damage: self
+                        .get_power(state)?
+                        .ok_or(anyhow::anyhow!("ranged attacker has no power"))?,
+                    ranged_strike: true,
+                    piercing: false,
+                    splash_damage: None,
+                });
+                effects.push(Effect::RemoveAbility {
+                    card_id: *self.get_id(),
+                    modifier: Ability::Stealth,
+                });
+
+                Ok(effects)
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 
