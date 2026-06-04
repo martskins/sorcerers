@@ -33,6 +33,7 @@ pub struct CardQuery {
     artifact_types: Option<Vec<ArtifactType>>,
     rarity: Option<Rarity>,
     mana_cost: Option<u8>,
+    min_power: Option<u16>,
     site_types: Option<Vec<SiteType>>,
     site_is_water: Option<bool>,
     with_affinity: Option<Vec<Element>>,
@@ -399,6 +400,12 @@ impl<'a> PreparedCardQuery<'a> {
             } else {
                 return false;
             }
+        }
+
+        if let Some(min_power) = query.min_power
+            && card.get_power(state).ok().flatten().unwrap_or(0) < min_power
+        {
+            return false;
         }
 
         // Very expensive filters (Cross-card or dynamic)
@@ -1091,6 +1098,13 @@ impl CardQuery {
     pub fn mana_cost_less_than_or_equal_to(self, mc: u8) -> Self {
         Self {
             mana_cost: Some(mc),
+            ..self
+        }
+    }
+
+    pub fn with_min_power(self, power: u16) -> Self {
+        Self {
+            min_power: Some(power),
             ..self
         }
     }

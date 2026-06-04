@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+const KILL_ALLIES_ON_DEATH: HookId = 1;
+
 #[derive(Debug, Clone)]
 pub struct AccursedAlbatross {
     unit_base: UnitBase,
@@ -63,38 +65,52 @@ impl Card for AccursedAlbatross {
         Some(&mut self.unit_base)
     }
 
-    fn on_take_damage(
-        &mut self,
-        state: &State,
-        from: &CardId,
-        damage: Damage,
-    ) -> anyhow::Result<Vec<Effect>> {
-        let damage_effects = self.base_take_damage(state, from, damage)?;
-        let mut was_killed = false;
-        for effect in damage_effects {
-            if matches!(effect, Effect::BuryCard { .. }) {
-                was_killed = true;
-                break;
-            }
-        }
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: KILL_ALLIES_ON_DEATH,
+            trigger: EffectQuery::UnitKilled {
+                unit: self.get_id().into(),
+                killer: None,
+            },
+            timing: HookTiming::After,
+        }])
+    }
 
-        let mut effects = vec![];
-        if was_killed {
-            let killer = state.get_card(from);
-            let allies = CardQuery::new()
-                .controlled_by(&killer.get_controller_id(state))
-                .near_to(killer.get_zone())
-                .all(state);
-            for ally in allies {
-                if &ally == self.get_id() {
-                    continue;
+    async fn resolve_hook(
+        &self,
+        hook_id: HookId,
+        state: &State,
+        effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook_id {
+            KILL_ALLIES_ON_DEATH => {
+                let Effect::KillMinion { killer_id, .. } = effect else {
+                    return Ok(vec![]);
+                };
+
+                let mut effects = vec![];
+                let killer = state.get_card(killer_id);
+                let allies = CardQuery::new()
+                    .minions()
+                    .controlled_by(&killer.get_controller_id(state))
+                    .near_to(killer.get_zone())
+                    .all(state);
+                for ally in allies {
+                    if &ally == self.get_id() {
+                        continue;
+                    }
+
+                    effects.push(Effect::KillMinion {
+                        card_id: ally,
+                        killer_id: *self.get_id(),
+                        from_attack: false,
+                    });
                 }
 
-                effects.push(Effect::BuryCard { card_id: ally });
+                Ok(effects)
             }
+            _ => Ok(vec![]),
         }
-
-        Ok(effects)
     }
 }
 

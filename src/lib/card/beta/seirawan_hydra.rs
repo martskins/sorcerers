@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+const HEAL_NONLETHAL_DAMAGE_HOOK: HookId = 1;
+
 #[derive(Debug, Clone)]
 pub struct SeirawanHydra {
     unit_base: UnitBase,
@@ -55,27 +57,45 @@ impl Card for SeirawanHydra {
         Some(&mut self.unit_base)
     }
 
-    fn on_take_damage(
-        &mut self,
-        state: &State,
-        from: &CardId,
-        damage: Damage,
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: HEAL_NONLETHAL_DAMAGE_HOOK,
+            trigger: EffectQuery::DamageDealt {
+                source: None,
+                target: Some(self.get_id().into()),
+            },
+            timing: HookTiming::After,
+        }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook_id: HookId,
+        _state: &State,
+        effect: &Effect,
     ) -> anyhow::Result<Vec<Effect>> {
-        let damage_before = self.get_damage_taken()?;
-        let mut effects = self.base_take_damage(state, from, damage)?;
-        let damage_after = self.get_damage_taken()?;
+        match hook_id {
+            // TODO: Not sure this behaves as it should. Write a test for it.
+            HEAL_NONLETHAL_DAMAGE_HOOK => {
+                let Effect::TakeDamage { damage, .. } = effect else {
+                    return Ok(vec![]);
+                };
+                if damage.amount == 0 {
+                    return Ok(vec![]);
+                }
 
-        let survived = !effects
-            .iter()
-            .any(|effect| matches!(effect, Effect::KillMinion { card_id, .. } if card_id == self.get_id()));
-        if survived && damage_after > damage_before {
-            effects.push(Effect::Heal {
-                card_id: *self.get_id(),
-                amount: damage_after - damage_before,
-            });
+                let damage_taken = self.get_damage_taken()?;
+                if damage_taken == 0 {
+                    return Ok(vec![]);
+                }
+
+                Ok(vec![Effect::Heal {
+                    card_id: *self.get_id(),
+                    amount: damage_taken,
+                }])
+            }
+            _ => Ok(vec![]),
         }
-
-        Ok(effects)
     }
 }
 

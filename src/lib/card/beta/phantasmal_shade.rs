@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+const DESTROY_ON_STRIKE: HookId = 1;
+
 #[derive(Debug, Clone)]
 pub struct PhantasmalShade {
     unit_base: UnitBase,
@@ -61,19 +63,32 @@ impl Card for PhantasmalShade {
         Some(&mut self.unit_base)
     }
 
-    fn on_take_damage(
-        &mut self,
-        _state: &State,
-        _from: &uuid::Uuid,
-        damage: Damage,
-    ) -> anyhow::Result<Vec<Effect>> {
-        if !damage.is_strike {
-            return Ok(vec![]);
-        }
-
-        Ok(vec![Effect::BuryCard {
-            card_id: *self.get_id(),
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: DESTROY_ON_STRIKE,
+            trigger: EffectQuery::DamageDealt {
+                source: None,
+                target: Some(self.get_id().into()),
+            },
+            timing: HookTiming::After,
         }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook_id: HookId,
+        _state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook_id {
+            // TODO: Should this be a BuryCard instead?
+            DESTROY_ON_STRIKE => Ok(vec![Effect::KillMinion {
+                card_id: *self.get_id(),
+                killer_id: *self.get_id(),
+                from_attack: false,
+            }]),
+            _ => Ok(vec![]),
+        }
     }
 }
 

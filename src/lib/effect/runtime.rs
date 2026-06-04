@@ -63,10 +63,40 @@ impl EffectEngine {
         Ok(())
     }
 
+    async fn resolve_hook_replacements(
+        state: &mut State,
+        effect: &Effect,
+        hooks: &[PendingHook],
+    ) -> anyhow::Result<Vec<Effect>> {
+        let mut replacements = vec![];
+        for hook in hooks {
+            let Some(source) = state.cards.get(&hook.source_id) else {
+                continue;
+            };
+            if state.card_has_special_abilities_removed(&hook.source_id) {
+                continue;
+            }
+
+            replacements.extend(source.resolve_hook(hook.hook_id, state, effect).await?);
+        }
+
+        Ok(replacements)
+    }
+
     pub async fn drain_with_log(game: &mut Game) -> anyhow::Result<()> {
         while !game.state.effects.is_empty() {
             if let Some(effect) = game.state.effects.pop_back() {
                 let eliminated_before = game.state.eliminated_players.clone();
+                let replace_hooks =
+                    Self::collect_hooks(&game.state, &effect, HookTiming::Replace).await?;
+                let replacements =
+                    Self::resolve_hook_replacements(&mut game.state, &effect, &replace_hooks)
+                        .await?;
+                if !replacements.is_empty() {
+                    game.state.queue(replacements);
+                    continue;
+                }
+
                 let before_hooks =
                     Self::collect_hooks(&game.state, &effect, HookTiming::Before).await?;
                 Self::resolve_hooks(&mut game.state, &effect, &before_hooks).await?;
@@ -105,6 +135,14 @@ impl EffectEngine {
     pub async fn drain_without_log(state: &mut State) -> anyhow::Result<()> {
         while !state.effects.is_empty() {
             if let Some(effect) = state.effects.pop_back() {
+                let replace_hooks = Self::collect_hooks(state, &effect, HookTiming::Replace).await?;
+                let replacements =
+                    Self::resolve_hook_replacements(state, &effect, &replace_hooks).await?;
+                if !replacements.is_empty() {
+                    state.queue(replacements);
+                    continue;
+                }
+
                 let before_hooks = Self::collect_hooks(state, &effect, HookTiming::Before).await?;
                 Self::resolve_hooks(state, &effect, &before_hooks).await?;
 

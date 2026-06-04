@@ -1,6 +1,9 @@
 use crate::zone::{Location, Zone};
 use crate::{
-    card::{Ability, Card, CardStatus, Cost, Damage, FootSoldier, Frog, Region, Rubble, UnitBase},
+    card::{
+        Ability, Card, CardBaseMethods, CardStatus, Cost, Damage, FootSoldier, Frog, Region,
+        Rubble, UnitBase,
+    },
     game::{
         BaseAction, CardId, Direction, PlayerAction, PlayerId, SoundEffect, pick_card, pick_option,
     },
@@ -2046,11 +2049,9 @@ impl Effect {
                     }
 
                     effects
-                } else if can_use_special_abilities(&snapshot, card_id) {
-                    let card = state.get_card_mut(card_id);
-                    card.on_take_damage(&snapshot, from, adjusted_damage)?
                 } else {
-                    vec![]
+                    let card = state.get_card_mut(card_id);
+                    card.base_take_damage(&snapshot, from, adjusted_damage)?
                 };
                 if damage.is_strike {
                     let dealer = snapshot.get_card(from);

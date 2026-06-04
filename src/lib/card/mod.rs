@@ -1744,15 +1744,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(false)
     }
 
-    fn on_take_damage(
-        &mut self,
-        state: &State,
-        from: &CardId,
-        damage: Damage,
-    ) -> anyhow::Result<Vec<Effect>> {
-        self.base_take_damage(state, from, damage)
-    }
-
     async fn on_turn_start(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![])
     }
@@ -2048,6 +2039,7 @@ pub struct Hook {
 pub enum HookTiming {
     Before,
     After,
+    Replace,
 }
 
 fn apply_ability_modifiers(modifiers: &mut Vec<Ability>, changes: Vec<AbilityModifier>) {

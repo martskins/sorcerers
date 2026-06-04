@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+const PREVENT_DAMAGE_HOOK: HookId = 1;
+
 #[derive(Debug, Clone)]
 pub struct SirianTemplar {
     unit_base: UnitBase,
@@ -55,27 +57,31 @@ impl Card for SirianTemplar {
         Some(&mut self.unit_base)
     }
 
-    fn on_take_damage(
-        &mut self,
-        state: &State,
-        from: &CardId,
-        damage: Damage,
-    ) -> anyhow::Result<Vec<Effect>> {
-        let dealer = state.get_card(from);
-        if dealer.is_minion()
-            && dealer.get_unit_base().is_some_and(|unit| {
-                unit.types.iter().any(|ty| {
-                    matches!(
-                        ty,
-                        MinionType::Demon | MinionType::Spirit | MinionType::Undead
-                    )
-                })
-            })
-        {
-            return Ok(vec![]);
-        }
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: PREVENT_DAMAGE_HOOK,
+            trigger: EffectQuery::DamageDealt {
+                source: Some(CardQuery::new().minions().minion_types(vec![
+                    MinionType::Demon,
+                    MinionType::Spirit,
+                    MinionType::Undead,
+                ])),
+                target: Some(self.get_id().into()),
+            },
+            timing: HookTiming::Replace,
+        }])
+    }
 
-        self.base_take_damage(state, from, damage)
+    async fn resolve_hook(
+        &self,
+        hook_id: HookId,
+        _state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook_id {
+            PREVENT_DAMAGE_HOOK => Ok(vec![Effect::Noop]),
+            _ => Ok(vec![]),
+        }
     }
 }
 

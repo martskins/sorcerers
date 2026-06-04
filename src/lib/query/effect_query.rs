@@ -61,6 +61,14 @@ pub enum EffectQuery {
     DrawCard {
         player_id: Option<PlayerId>,
     },
+    UnitKilled {
+        unit: CardQuery,
+        killer: Option<CardQuery>,
+    },
+    StrikeCard {
+        card: CardQuery,
+        striker: Option<CardQuery>,
+    },
 }
 
 impl EffectQuery {
@@ -113,6 +121,37 @@ impl EffectQuery {
                 .filter(|(_, card_id, _, _)| card.matches(card_id, state))
                 .map(|(_, card_id, _, _)| *card_id)
                 .collect()),
+            (
+                EffectQuery::UnitKilled { unit, killer },
+                Effect::KillMinion {
+                    card_id, killer_id, ..
+                },
+            ) => {
+                let card_matches = unit.matches(card_id, state);
+                let killer_matches = killer.clone().is_none_or(|k| k.matches(killer_id, state));
+                if card_matches && killer_matches {
+                    Ok(vec![*card_id])
+                } else {
+                    Ok(vec![])
+                }
+            }
+            (
+                EffectQuery::StrikeCard { card, striker },
+                Effect::TakeDamage {
+                    card_id,
+                    from,
+                    damage,
+                },
+            ) => {
+                let card_matches = card.matches(card_id, state);
+                let striker_matches = striker.clone().is_none_or(|k| k.matches(from, state));
+                let is_strike = damage.is_strike;
+                if is_strike && card_matches && striker_matches {
+                    Ok(vec![*card_id])
+                } else {
+                    Ok(vec![])
+                }
+            }
             (_, _) => {
                 if Box::pin(self.matches(effect, state)).await? {
                     Ok(effect
@@ -262,6 +301,30 @@ impl EffectQuery {
                     }
                 }
                 Ok(false)
+            }
+
+            (
+                EffectQuery::UnitKilled { unit, killer },
+                Effect::KillMinion {
+                    card_id, killer_id, ..
+                },
+            ) => {
+                let card_matches = unit.matches(card_id, state);
+                let killer_matches = killer.clone().is_none_or(|k| k.matches(killer_id, state));
+                Ok(card_matches && killer_matches)
+            }
+            (
+                EffectQuery::StrikeCard { card, striker },
+                Effect::TakeDamage {
+                    card_id,
+                    from,
+                    damage,
+                },
+            ) => {
+                let card_matches = card.matches(card_id, state);
+                let striker_matches = striker.clone().is_none_or(|k| k.matches(from, state));
+                let is_strike = damage.is_strike;
+                Ok(is_strike && card_matches && striker_matches)
             }
             _ => Ok(false),
         }

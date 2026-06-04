@@ -117,6 +117,7 @@ impl Card for AwakenedMummies {
 
     fn on_summon(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![
+            // TODO: This is better modeled as an override on valid play zones.
             Effect::SetCardRegion {
                 card_id: *self.get_id(),
                 region: Region::Underground,

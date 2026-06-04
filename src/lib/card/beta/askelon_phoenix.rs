@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+const FIRE_DAMAGE_TO_POWER_HOOK: HookId = 1;
+
 #[derive(Debug, Clone)]
 pub struct AskelonPhoenix {
     unit_base: UnitBase,
@@ -35,6 +37,7 @@ impl AskelonPhoenix {
     }
 }
 
+#[async_trait::async_trait]
 impl Card for AskelonPhoenix {
     fn get_name(&self) -> &str {
         Self::NAME
@@ -60,22 +63,39 @@ impl Card for AskelonPhoenix {
         Some(&mut self.unit_base)
     }
 
-    fn on_take_damage(
-        &mut self,
-        state: &State,
-        from: &CardId,
-        damage: Damage,
-    ) -> anyhow::Result<Vec<Effect>> {
-        let attacker = state.get_card(from);
-        if damage.amount > 0 && attacker.get_elements(state)?.contains(&Element::Fire) {
-            return Ok(vec![Effect::AddCounter {
-                card_id: *self.get_id(),
-                counter: Counter::new(1, 1, Some(EffectQuery::TurnEnd { player_id: None })),
-            }]);
-        }
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: FIRE_DAMAGE_TO_POWER_HOOK,
+            trigger: EffectQuery::DamageDealt {
+                source: Some(CardQuery::new().with_affinity(Element::Fire)),
+                target: Some(self.get_id().into()),
+            },
+            timing: HookTiming::Replace,
+        }])
+    }
 
-        let effects = self.base_take_damage(state, from, damage)?;
-        Ok(effects)
+    async fn resolve_hook(
+        &self,
+        hook_id: HookId,
+        _state: &State,
+        effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook_id {
+            FIRE_DAMAGE_TO_POWER_HOOK => {
+                let Effect::TakeDamage { damage, .. } = effect else {
+                    return Ok(vec![]);
+                };
+                if damage.amount == 0 {
+                    return Ok(vec![]);
+                }
+
+                Ok(vec![Effect::AddCounter {
+                    card_id: *self.get_id(),
+                    counter: Counter::new(1, 1, Some(EffectQuery::TurnEnd { player_id: None })),
+                }])
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 

@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+const PREVENT_DESERT_DAMAGE_HOOK: HookId = 1;
+
 #[derive(Debug, Clone)]
 pub struct RimlandNomads {
     unit_base: UnitBase,
@@ -35,6 +37,7 @@ impl RimlandNomads {
     }
 }
 
+#[async_trait::async_trait]
 impl Card for RimlandNomads {
     fn get_name(&self) -> &str {
         Self::NAME
@@ -60,23 +63,27 @@ impl Card for RimlandNomads {
         Some(&mut self.unit_base)
     }
 
-    fn on_take_damage(
-        &mut self,
-        state: &State,
-        from: &CardId,
-        damage: Damage,
-    ) -> anyhow::Result<Vec<Effect>> {
-        let dealer = state.get_card(from);
-        let dealer_is_desert = dealer
-            .get_site_base()
-            .unwrap_or(&SiteBase::default())
-            .types
-            .contains(&SiteType::Desert);
-        if dealer_is_desert {
-            return Ok(vec![]);
-        }
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: PREVENT_DESERT_DAMAGE_HOOK,
+            trigger: EffectQuery::DamageDealt {
+                source: Some(CardQuery::new().sites().site_types(vec![SiteType::Desert])),
+                target: Some(self.get_id().into()),
+            },
+            timing: HookTiming::Replace,
+        }])
+    }
 
-        self.base_take_damage(state, from, damage)
+    async fn resolve_hook(
+        &self,
+        hook_id: HookId,
+        _state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook_id {
+            PREVENT_DESERT_DAMAGE_HOOK => Ok(vec![Effect::Noop]),
+            _ => Ok(vec![]),
+        }
     }
 }
 

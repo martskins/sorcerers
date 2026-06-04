@@ -1,9 +1,10 @@
 use crate::{
     card::{
-        Ability, ApprenticeWizard, AridDesert, BottomlessPit, BridgeTroll, Card, CardStatus,
-        Damage, Drought, Enchantress, Flood, FootSoldier, OgreGoons, PhaseAssassin, PitVipers,
-        Region, Sandstorm, SeaRaider, Silence, SpringRiver, UnitBase, VaultsOfZul,
-        YourkeCrossbowmen, from_name_and_zone,
+        Ability, ApprenticeWizard, AridDesert, AskelonPhoenix, BottomlessPit, BridgeTroll, Card,
+        CardStatus, Damage, DeadOfNightDemon, Drought, Enchantress, Flood, FootSoldier, OgreGoons,
+        PhaseAssassin, PitVipers, Region, RimlandNomads, Sandstorm, SeaRaider, SeirawanHydra,
+        Silence, SirianTemplar, SlingPixies, SpringRiver, UnitBase, VaultsOfZul, YourkeCrossbowmen,
+        from_name_and_zone,
     },
     deck::Deck,
     effect::{
@@ -305,6 +306,140 @@ async fn test_ranged_projectile_damage_is_distinct_from_regular_projectile_damag
         1,
         "Yourke should prevent the ranged-strike damage carried by a projectile"
     );
+}
+
+#[tokio::test]
+async fn test_replace_hook_replaces_original_effect() {
+    let (mut state, _rx) = make_state(vec![]);
+    let player_id = state.players[0].id;
+    let opponent_id = state.players[1].id;
+
+    let mut demon = DeadOfNightDemon::new(opponent_id);
+    let demon_id = *demon.get_id();
+    demon.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    state.cards.insert(demon_id, Box::new(demon));
+
+    let mut templar = SirianTemplar::new(player_id);
+    let templar_id = *templar.get_id();
+    templar.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    state.cards.insert(templar_id, Box::new(templar));
+
+    state.queue_one(Effect::TakeDamage {
+        card_id: templar_id,
+        from: demon_id,
+        damage: Damage::basic(1),
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(
+        state.get_card(&templar_id).get_damage_taken().unwrap(),
+        0,
+        "Sirian Templar should replace damage from Demon minions"
+    );
+}
+
+#[tokio::test]
+async fn test_rimland_nomads_replace_desert_damage() {
+    let (mut state, _rx) = make_state(vec![]);
+    let player_id = state.players[0].id;
+
+    let mut desert = AridDesert::new(player_id);
+    let desert_id = *desert.get_id();
+    desert.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    state.cards.insert(desert_id, Box::new(desert));
+
+    let mut nomads = RimlandNomads::new(player_id);
+    let nomads_id = *nomads.get_id();
+    nomads.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    state.cards.insert(nomads_id, Box::new(nomads));
+
+    state.queue_one(Effect::TakeDamage {
+        card_id: nomads_id,
+        from: desert_id,
+        damage: Damage::basic(1),
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(state.get_card(&nomads_id).get_damage_taken().unwrap(), 0);
+}
+
+#[tokio::test]
+async fn test_askelon_phoenix_replaces_fire_damage_with_power_counter() {
+    let (mut state, _rx) = make_state(vec![]);
+    let player_id = state.players[0].id;
+
+    let mut desert = AridDesert::new(player_id);
+    let desert_id = *desert.get_id();
+    desert.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    state.cards.insert(desert_id, Box::new(desert));
+
+    let mut phoenix = AskelonPhoenix::new(player_id);
+    let phoenix_id = *phoenix.get_id();
+    phoenix.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    state.cards.insert(phoenix_id, Box::new(phoenix));
+
+    state.queue_one(Effect::TakeDamage {
+        card_id: phoenix_id,
+        from: desert_id,
+        damage: Damage::basic(1),
+    });
+    drain_effects(&mut state).await;
+
+    let phoenix = state.get_card(&phoenix_id);
+    assert_eq!(phoenix.get_damage_taken().unwrap(), 0);
+    assert_eq!(phoenix.get_power(&state).unwrap(), Some(5));
+}
+
+#[tokio::test]
+async fn test_sling_pixies_replace_damage_from_units_with_four_or_more_power() {
+    let (mut state, _rx) = make_state(vec![]);
+    let player_id = state.players[0].id;
+    let opponent_id = state.players[1].id;
+
+    let mut phoenix = AskelonPhoenix::new(opponent_id);
+    let phoenix_id = *phoenix.get_id();
+    phoenix.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    state.cards.insert(phoenix_id, Box::new(phoenix));
+
+    let mut pixies = SlingPixies::new(player_id);
+    let pixies_id = *pixies.get_id();
+    pixies.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    state.cards.insert(pixies_id, Box::new(pixies));
+
+    state.queue_one(Effect::TakeDamage {
+        card_id: pixies_id,
+        from: phoenix_id,
+        damage: Damage::basic(1),
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(state.get_card(&pixies_id).get_damage_taken().unwrap(), 0);
+}
+
+#[tokio::test]
+async fn test_seirawan_hydra_heals_nonlethal_damage_after_taking_it() {
+    let (mut state, _rx) = make_state(vec![]);
+    let player_id = state.players[0].id;
+    let opponent_id = state.players[1].id;
+
+    let mut source = FootSoldier::new(opponent_id);
+    let source_id = *source.get_id();
+    source.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    state.cards.insert(source_id, Box::new(source));
+
+    let mut hydra = SeirawanHydra::new(player_id);
+    let hydra_id = *hydra.get_id();
+    hydra.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    state.cards.insert(hydra_id, Box::new(hydra));
+
+    state.queue_one(Effect::TakeDamage {
+        card_id: hydra_id,
+        from: source_id,
+        damage: Damage::basic(1),
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(state.get_card(&hydra_id).get_damage_taken().unwrap(), 0);
 }
 
 #[tokio::test]
