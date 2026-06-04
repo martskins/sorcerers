@@ -49,8 +49,15 @@ impl Card for PactWithTheDevil {
         &self.card_base
     }
 
-    async fn on_cast(
-        &mut self,
+    fn get_magic(&self) -> Option<&dyn Magic> {
+        Some(self)
+    }
+}
+
+#[async_trait::async_trait]
+impl Magic for PactWithTheDevil {
+    async fn resolve_magic(
+        &self,
         state: &State,
         _caster_id: &uuid::Uuid,
         _cost_paid: Cost,

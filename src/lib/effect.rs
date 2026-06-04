@@ -1383,9 +1383,13 @@ impl Effect {
                 let snapshot = state.clone();
                 let card = state.get_card_mut(card_id);
                 card.set_controller_id(player_id);
-                let effects = card.on_cast(&snapshot, caster_id, paid_cost).await?;
+                let effects = card
+                    .get_magic()
+                    .ok_or(anyhow::anyhow!("magic card does not implement magic"))?
+                    .resolve_magic(&snapshot, caster_id, paid_cost)
+                    .await?;
 
-                // Set zone after on_cast so that the card is not in the cemetery during casting.
+                // Set zone after resolving so that the card is not in the cemetery during casting.
                 card.set_zone(Zone::Cemetery);
                 state.queue(effects);
             }
@@ -2334,7 +2338,11 @@ impl Effect {
                 copy.get_base_mut().owner_id = *player_id;
                 copy.get_base_mut().controller_id = *player_id;
                 copy.get_base_mut().is_token = true;
-                let effects = copy.on_cast(state, caster_id, Cost::ZERO.clone()).await?;
+                let effects = copy
+                    .get_magic()
+                    .ok_or(anyhow::anyhow!("magic card does not implement magic"))?
+                    .resolve_magic(state, caster_id, Cost::ZERO.clone())
+                    .await?;
                 state.queue(effects);
             }
             Effect::CopyArtifact {

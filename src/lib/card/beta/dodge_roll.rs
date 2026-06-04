@@ -44,8 +44,15 @@ impl Card for DodgeRoll {
         &self.card_base
     }
 
-    async fn on_cast(
-        &mut self,
+    fn get_magic(&self) -> Option<&dyn Magic> {
+        Some(self)
+    }
+}
+
+#[async_trait::async_trait]
+impl Magic for DodgeRoll {
+    async fn resolve_magic(
+        &self,
         _state: &State,
         _caster_id: &uuid::Uuid,
         _cost_paid: Cost,

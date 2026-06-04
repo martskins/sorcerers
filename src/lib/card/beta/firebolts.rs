@@ -45,8 +45,15 @@ impl Card for Firebolts {
         &self.card_base
     }
 
-    async fn on_cast(
-        &mut self,
+    fn get_magic(&self) -> Option<&dyn Magic> {
+        Some(self)
+    }
+}
+
+#[async_trait::async_trait]
+impl Magic for Firebolts {
+    async fn resolve_magic(
+        &self,
         state: &State,
         caster_id: &uuid::Uuid,
         _cost_paid: Cost,

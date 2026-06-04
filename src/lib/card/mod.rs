@@ -1619,6 +1619,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         None
     }
 
+    fn get_magic(&self) -> Option<&dyn Magic> {
+        None
+    }
+
     fn get_unit_base(&self) -> Option<&UnitBase> {
         None
     }
@@ -1775,15 +1779,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     fn add_status(&mut self, status: CardStatus) {
         self.get_base_mut().statuses.push(status);
-    }
-
-    async fn on_cast(
-        &mut self,
-        _state: &State,
-        _caster_id: &uuid::Uuid,
-        _cost_paid: Cost,
-    ) -> anyhow::Result<Vec<Effect>> {
-        Ok(vec![])
     }
 
     /// Called on every eligible card after any spell is successfully played by a spellcaster.
@@ -2521,6 +2516,16 @@ pub trait Aura: Card {
     fn get_affected_zones(&self, state: &State) -> Vec<Zone> {
         self.base_get_affected_zones(state)
     }
+}
+
+#[async_trait::async_trait]
+pub trait Magic: Card {
+    async fn resolve_magic(
+        &self,
+        state: &State,
+        caster_id: &CardId,
+        cost_paid: Cost,
+    ) -> anyhow::Result<Vec<Effect>>;
 }
 
 #[derive(Debug, Clone)]

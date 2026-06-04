@@ -45,8 +45,15 @@ impl Card for MinorExplosion {
         &self.card_base
     }
 
-    async fn on_cast(
-        &mut self,
+    fn get_magic(&self) -> Option<&dyn Magic> {
+        Some(self)
+    }
+}
+
+#[async_trait::async_trait]
+impl Magic for MinorExplosion {
+    async fn resolve_magic(
+        &self,
         state: &State,
         caster_id: &uuid::Uuid,
         _cost_paid: Cost,
