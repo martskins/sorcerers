@@ -75,7 +75,6 @@ impl Card for WindSylph {
     }
 
     async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
-        let self_id = *self.get_id();
         Ok(vec![Hook {
             id: PUSH_UNIT_HOOK,
             trigger: EffectQuery::PlayCard {
@@ -87,7 +86,7 @@ impl Card for WindSylph {
                         CardType::Magic,
                     ])
                     .including_not_in_play(),
-                spellcaster: Some(self_id),
+                spellcaster: Some(self.get_id().into()),
             },
             timing: HookTiming::After,
         }])

@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+const CARD_PLAYED_HOOK: HookId = 1;
+
 #[derive(Debug, Clone)]
 pub struct TheImmortalThrone {
     artifact_base: ArtifactBase,
@@ -79,40 +81,35 @@ impl Card for TheImmortalThrone {
         }
     }
 
-    async fn on_effect(&self, state: &State, effect: &Effect) -> anyhow::Result<Vec<Effect>> {
-        let winning_effects = self.winning_effects(state);
-        if !winning_effects.is_empty() {
-            return Ok(winning_effects);
-        }
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: CARD_PLAYED_HOOK,
+            trigger: EffectQuery::PlayCard {
+                card: CardQuery::new().with_mana_cost(self.level_counters),
+                spellcaster: None,
+            },
+            timing: HookTiming::After,
+        }])
+    }
 
-        match effect {
-            Effect::PlayCard {
-                player_id, card_id, ..
-            } => {
-                let card = state.get_card(card_id);
-                if card.get_costs(state)?.mana_value() != self.level_counters {
-                    return Ok(vec![]);
+    async fn resolve_hook(
+        &self,
+        hook_id: HookId,
+        state: &State,
+        effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook_id {
+            CARD_PLAYED_HOOK => {
+                let winning_effects = self.winning_effects(state);
+                if !winning_effects.is_empty() {
+                    return Ok(winning_effects);
                 }
 
-                Ok(vec![
-                    Effect::DrawCard {
-                        player_id: *player_id,
-                        count: 1,
-                        kind: DrawKind::Choice,
-                    },
-                    Effect::SetCardData {
-                        card_id: *self.get_id(),
-                        data: std::sync::Arc::new(self.level_counters + 1),
-                    },
-                ])
-            }
-            Effect::PlayMagic {
-                player_id, card_id, ..
-            } => {
-                let card = state.get_card(card_id);
-                if card.get_costs(state)?.mana_value() != self.level_counters {
-                    return Ok(vec![]);
-                }
+                let player_id = match effect {
+                    Effect::PlayCard { player_id, .. } => player_id,
+                    Effect::PlayMagic { player_id, .. } => player_id,
+                    _ => return Ok(vec![]),
+                };
 
                 Ok(vec![
                     Effect::DrawCard {

@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+const GENESIS_ARE_DEATHRITE_HOOK: HookId = 1;
+
 #[derive(Debug, Clone)]
 pub struct TheGeistwood {
     site_base: SiteBase,
@@ -65,16 +67,33 @@ impl Card for TheGeistwood {
         Some(self)
     }
 
-    async fn on_effect(&self, state: &State, effect: &Effect) -> anyhow::Result<Vec<Effect>> {
-        let Effect::BuryCard { card_id } = effect else {
-            return Ok(vec![]);
-        };
-        let card = state.get_card(card_id);
-        if card_id == self.get_id() || card.get_zone() != self.get_zone() {
-            return Ok(vec![]);
-        }
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: GENESIS_ARE_DEATHRITE_HOOK,
+            trigger: EffectQuery::BuryCard {
+                card: CardQuery::new().in_zone_of_card(self.get_id()),
+            },
+            timing: HookTiming::After,
+        }])
+    }
 
-        card.genesis(state).await
+    async fn resolve_hook(
+        &self,
+        hook_id: HookId,
+        state: &State,
+        effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook_id {
+            GENESIS_ARE_DEATHRITE_HOOK => {
+                let Effect::BuryCard { card_id } = effect else {
+                    return Ok(vec![]);
+                };
+
+                let card = state.get_card(card_id);
+                card.genesis(state).await
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 

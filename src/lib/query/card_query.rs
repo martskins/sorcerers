@@ -32,7 +32,7 @@ pub struct CardQuery {
     minion_types: Option<Vec<MinionType>>,
     artifact_types: Option<Vec<ArtifactType>>,
     rarity: Option<Rarity>,
-    mana_cost: Option<u8>,
+    mana_cost: Option<ManaCostFilter>,
     min_power: Option<u16>,
     site_types: Option<Vec<SiteType>>,
     site_is_water: Option<bool>,
@@ -51,6 +51,25 @@ pub struct CardQuery {
     prompt: Option<String>,
     source_card_id: Option<CardId>,
     bearer_of: Option<CardId>,
+}
+
+#[derive(Debug, Clone)]
+enum ManaCostFilter {
+    GreaterThan(u8),
+    LessThan(u8),
+    LessThanOrEqualTo(u8),
+    EqualTo(u8),
+}
+
+impl ManaCostFilter {
+    fn matches(&self, mc: u8) -> bool {
+        match self {
+            ManaCostFilter::GreaterThan(val) => mc > *val,
+            ManaCostFilter::LessThan(val) => mc < *val,
+            ManaCostFilter::LessThanOrEqualTo(val) => mc <= *val,
+            ManaCostFilter::EqualTo(val) => mc == *val,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -288,7 +307,7 @@ impl<'a> PreparedCardQuery<'a> {
         // Complex/Computed filters
         if let Some(mc) = &query.mana_cost
             && let Ok(costs) = card.get_costs(state)
-            && costs.mana_value() > *mc
+            && !mc.matches(costs.mana_value())
         {
             return false;
         }
@@ -725,6 +744,13 @@ impl CardQuery {
         Self::default()
     }
 
+    pub fn with_mana_cost(self, mana_cost: u8) -> Self {
+        Self {
+            mana_cost: Some(ManaCostFilter::EqualTo(mana_cost)),
+            ..self
+        }
+    }
+
     pub fn in_play(self) -> Self {
         Self {
             in_zones: Some(Zone::all_board()),
@@ -1081,6 +1107,13 @@ impl CardQuery {
         }
     }
 
+    pub fn magics(self) -> Self {
+        Self {
+            card_types: Some(vec![CardType::Magic]),
+            ..self
+        }
+    }
+
     pub fn units(self) -> Self {
         Self {
             card_types: Some(vec![CardType::Minion, CardType::Avatar]),
@@ -1097,7 +1130,7 @@ impl CardQuery {
 
     pub fn mana_cost_less_than_or_equal_to(self, mc: u8) -> Self {
         Self {
-            mana_cost: Some(mc),
+            mana_cost: Some(ManaCostFilter::LessThanOrEqualTo(mc)),
             ..self
         }
     }

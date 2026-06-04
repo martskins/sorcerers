@@ -64,12 +64,11 @@ impl Card for FenvaleMuse {
     }
 
     async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
-        let self_id = *self.get_id();
         Ok(vec![Hook {
             id: TRIGGER_RIVER_GENESIS_HOOK,
             trigger: EffectQuery::PlayCard {
                 card: CardQuery::new().including_not_in_play(),
-                spellcaster: Some(self_id),
+                spellcaster: Some(self.get_id().into()),
             },
             timing: HookTiming::After,
         }])

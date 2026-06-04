@@ -42,7 +42,7 @@ pub enum EffectQuery {
     },
     PlayCard {
         card: CardQuery,
-        spellcaster: Option<CardId>,
+        spellcaster: Option<CardQuery>,
     },
     SummonCard {
         card: CardQuery,
@@ -292,7 +292,9 @@ impl EffectQuery {
                     card_id, caster_id, ..
                 },
             ) => {
-                let spellcaster_matches = spellcaster.is_none_or(|sp| sp == *caster_id);
+                let spellcaster_matches = spellcaster
+                    .as_ref()
+                    .is_none_or(|sp| sp.matches(caster_id, state));
                 Ok(spellcaster_matches && card.matches(card_id, state))
             }
             (
@@ -306,8 +308,9 @@ impl EffectQuery {
                     ..
                 },
             ) => {
-                let spellcaster_matches =
-                    target_spellcaster.is_none_or(|sp| sp == *actual_spellcaster);
+                let spellcaster_matches = target_spellcaster
+                    .as_ref()
+                    .is_none_or(|sp| sp.matches(actual_spellcaster, state));
                 Ok(spellcaster_matches && card.matches(card_id, state))
             }
             (EffectQuery::BuryCard { card }, Effect::BuryCard { card_id, .. }) => {

@@ -2384,15 +2384,6 @@ impl Effect {
             .collect();
         state.queue(area_effects);
 
-        for card in state
-            .cards
-            .values()
-            .filter(|c| can_use_special_abilities(state, c.get_id()))
-        {
-            let replace_effects = card.on_effect(state, self).await?;
-            effects.extend(replace_effects);
-        }
-
         self.expire_counters(state).await?;
         EffectLifecycle::after_resolved_effect(state, self).await?;
 

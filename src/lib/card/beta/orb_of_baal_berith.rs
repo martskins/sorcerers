@@ -1,6 +1,8 @@
 use crate::prelude::*;
 use std::sync::Arc;
 
+const CREATE_COPY_HOOK: HookId = 1;
+
 #[derive(Debug, Clone)]
 pub struct OrbOfBaalBerith {
     artifact_base: ArtifactBase,
@@ -74,38 +76,54 @@ impl Card for OrbOfBaalBerith {
         }
     }
 
-    async fn on_effect(&self, state: &State, effect: &Effect) -> anyhow::Result<Vec<Effect>> {
-        let Effect::PlayMagic {
-            player_id,
-            card_id,
-            caster_id,
-            ..
-        } = effect
-        else {
-            return Ok(vec![]);
-        };
-
-        let caster = state.get_card(caster_id);
-        if !caster.get_zone().is_nearby(self.get_zone()) {
-            return Ok(vec![]);
-        }
-
-        if self.already_copied_magic_this_turn {
-            return Ok(vec![]);
-        }
-
-        Ok(vec![
-            Effect::CopyMagic {
-                source_id: *self.get_id(),
-                player_id: *player_id,
-                card_id: *card_id,
-                caster_id: *caster_id,
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: CREATE_COPY_HOOK,
+            trigger: EffectQuery::PlayCard {
+                card: CardQuery::new().magics(),
+                spellcaster: Some(CardQuery::new().units().nearby_zones_to_card(self.get_id())),
             },
-            Effect::SetCardData {
-                card_id: *self.get_id(),
-                data: Arc::new(true),
-            },
-        ])
+            timing: HookTiming::After,
+        }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook_id: HookId,
+        _state: &State,
+        effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook_id {
+            CREATE_COPY_HOOK => {
+                let Effect::PlayMagic {
+                    player_id,
+                    card_id,
+                    caster_id,
+                    ..
+                } = effect
+                else {
+                    return Ok(vec![]);
+                };
+
+                if self.already_copied_magic_this_turn {
+                    return Ok(vec![]);
+                }
+
+                Ok(vec![
+                    Effect::CopyMagic {
+                        source_id: *self.get_id(),
+                        player_id: *player_id,
+                        card_id: *card_id,
+                        caster_id: *caster_id,
+                    },
+                    Effect::SetCardData {
+                        card_id: *self.get_id(),
+                        data: Arc::new(true),
+                    },
+                ])
+            }
+            _ => Ok(vec![]),
+        }
     }
 
     async fn on_turn_start(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {

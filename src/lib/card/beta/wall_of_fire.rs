@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+const MOVE_THROUGH_HERE_HOOK: HookId = 1;
+
 #[derive(Debug, Clone)]
 pub struct WallOfFire {
     aura_base: AuraBase,
@@ -69,54 +71,57 @@ impl Card for WallOfFire {
         Ok(border_zones_of_controlled_sites(state, player_id))
     }
 
-    async fn on_effect(&self, state: &State, effect: &Effect) -> anyhow::Result<Vec<Effect>> {
-        let Effect::MoveCard {
-            player_id,
-            card_id,
-            from,
-            to,
-            through_path,
-            ..
-        } = effect
-        else {
-            return Ok(vec![]);
-        };
-
-        if !state.get_card(card_id).is_unit() {
-            return Ok(vec![]);
-        }
-
-        let mut path = vec![from.clone().into_zone()];
-        match through_path {
-            Some(steps) => path.extend(steps.clone()),
-            None => path.push(to.pick(player_id, state).await?.into_zone()),
-        }
-
-        if path
-            .windows(2)
-            .any(|zones| zones_cross_border(&zones[0], &zones[1], self.get_zone()))
-        {
-            return Ok(vec![Effect::TakeDamage {
-                card_id: *card_id,
-                from: *self.get_id(),
-                damage: Damage::basic(3),
-            }]);
-        }
-
-        Ok(vec![])
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: MOVE_THROUGH_HERE_HOOK,
+            trigger: EffectQuery::MoveCard {
+                card: CardQuery::new().units(),
+            },
+            timing: HookTiming::After,
+        }])
     }
-}
 
-fn zones_cross_border(from: &Zone, to: &Zone, border: &Zone) -> bool {
-    let (Some(from_square), Some(to_square)) = (from.get_square(), to.get_square()) else {
-        return false;
-    };
+    async fn resolve_hook(
+        &self,
+        hook_id: HookId,
+        state: &State,
+        effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook_id {
+            MOVE_THROUGH_HERE_HOOK => {
+                let Effect::MoveCard {
+                    player_id,
+                    card_id,
+                    through_path,
+                    to,
+                    ..
+                } = effect
+                else {
+                    return Ok(vec![]);
+                };
 
-    match border {
-        Zone::Location(Location::Intersection(squares, _)) => {
-            squares.contains(&from_square) && squares.contains(&to_square)
+                // Unit must pass through Wall of Fire
+                if to.pick(player_id, state).await?.into_zone() == *self.get_zone() {
+                    return Ok(vec![]);
+                }
+
+                if through_path
+                    .as_ref()
+                    .is_none_or(|tp| !tp.contains(self.get_zone()))
+                {
+                    return Ok(vec![]);
+                }
+
+                // TODO: Finish this implementation
+
+                Ok(vec![Effect::TakeDamage {
+                    card_id: *card_id,
+                    from: *self.get_id(),
+                    damage: Damage::basic(3),
+                }])
+            }
+            _ => Ok(vec![]),
         }
-        _ => false,
     }
 }
 
