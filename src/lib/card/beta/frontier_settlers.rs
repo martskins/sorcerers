@@ -82,6 +82,7 @@ impl ActivatedAbility for SettleAction {
                 cards: vec![(
                     *player_id,
                     site_id,
+                    Zone::Atlasbook,
                     chosen_zone
                         .into_location()
                         .expect("Frontier Settlers target must be a location"),

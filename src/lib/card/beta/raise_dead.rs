@@ -67,6 +67,7 @@ impl Card for RaiseDead {
             cards: vec![(
                 *self.get_owner_id(),
                 minion_id,
+                Zone::Cemetery,
                 picked_zone
                     .into_location()
                     .expect("Raise Dead target must be a location"),

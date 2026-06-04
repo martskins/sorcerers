@@ -98,6 +98,7 @@ impl Card for MotherNature {
                         cards: vec![(
                             controller_id,
                             *top_card_id,
+                            Zone::Spellbook,
                             self.get_zone()
                                 .clone()
                                 .into_location()

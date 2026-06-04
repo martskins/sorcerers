@@ -62,27 +62,22 @@ impl Card for PhaseAssassin {
         Some(&mut self.unit_base)
     }
 
-    async fn on_visit_zone(
-        &self,
-        state: &State,
-        from: &Zone,
-        to: &Zone,
-    ) -> anyhow::Result<Vec<Effect>> {
-        if from == to || to.get_site(state).is_some() || !to.is_in_play() {
-            return Ok(vec![]);
-        }
-
-        if self.has_ability(state, &Ability::Stealth) {
-            return Ok(vec![]);
-        }
-
-        Ok(vec![Effect::AddAbilityCounter {
-            card_id: *self.get_id(),
-            counter: AbilityCounter {
-                id: uuid::Uuid::new_v4(),
-                ability: Ability::Stealth,
-                expires_on_effect: None,
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            trigger: EffectQuery::EnterZone {
+                card: self.get_id().into(),
+                zone: ZoneQuery::any_void(),
+                from: Some(ZoneQuery::any_site(None, None)),
             },
+            timing: HookTiming::After,
+            action: HookAction::Effects(vec![Effect::AddAbilityCounter {
+                card_id: *self.get_id(),
+                counter: AbilityCounter {
+                    id: uuid::Uuid::new_v4(),
+                    ability: Ability::Stealth,
+                    expires_on_effect: None,
+                },
+            }]),
         }])
     }
 }

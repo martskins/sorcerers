@@ -90,6 +90,7 @@ impl Card for Battlefield {
             cards: vec![(
                 controller_id,
                 picked_card_id,
+                Zone::Cemetery,
                 self.get_zone()
                     .clone()
                     .into_location()

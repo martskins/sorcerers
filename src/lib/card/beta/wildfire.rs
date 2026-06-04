@@ -69,25 +69,27 @@ impl Card for Wildfire {
         Ok(())
     }
 
-    async fn on_visit_zone(
-        &self,
-        _state: &State,
-        _from: &Zone,
-        to: &Zone,
-    ) -> anyhow::Result<Vec<Effect>> {
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         let mut sites_visited = self.sites_visited.clone();
-        if sites_visited.is_empty() {
-            sites_visited.push(self.get_zone().clone());
-        }
-
-        sites_visited.push(to.clone());
-        Ok(vec![Effect::SetCardData {
-            card_id: *self.get_id(),
-            data: std::sync::Arc::new(sites_visited),
+        sites_visited.push(self.get_zone().clone());
+        Ok(vec![Hook {
+            // TODO: EnterZone is not triggered when summoning auras. We need to handle this the same
+            // way we do for summon minions.
+            trigger: EffectQuery::EnterZone {
+                card: self.get_id().into(),
+                zone: ZoneQuery::new(),
+                from: None,
+            },
+            timing: HookTiming::After,
+            action: HookAction::Effects(vec![Effect::SetCardData {
+                card_id: *self.get_id(),
+                data: std::sync::Arc::new(sites_visited),
+            }]),
         }])
     }
 
     async fn on_turn_end(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+        // TODO: Wildfire moves to adjacent locations, so it cannot move to a different region.
         let zones = self
             .get_zone()
             .get_adjacent()

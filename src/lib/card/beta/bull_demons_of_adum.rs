@@ -154,23 +154,28 @@ impl Card for BullDemonsOfAdum {
         Ok(vec![Box::new(TapMoveAndStrike)])
     }
 
-    async fn on_visit_zone(
-        &self,
-        state: &State,
-        _from: &Zone,
-        to: &Zone,
-    ) -> anyhow::Result<Vec<Effect>> {
-        Ok(CardQuery::new()
+    async fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
+        let effects = CardQuery::new()
             .units()
             .untapped()
-            .in_zone(to)
+            .in_zone(self.get_zone())
             .all(state)
             .into_iter()
             .map(|target_id| Effect::Strike {
                 striker_id: *self.get_id(),
                 target_id,
             })
-            .collect())
+            .collect();
+
+        Ok(vec![Hook {
+            trigger: EffectQuery::EnterZone {
+                card: self.get_id().into(),
+                zone: ZoneQuery::new(),
+                from: None,
+            },
+            timing: HookTiming::After,
+            action: HookAction::Effects(effects),
+        }])
     }
 }
 

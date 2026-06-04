@@ -103,6 +103,7 @@ impl Card for Boneyard {
             cards.push((
                 player_id,
                 picked_minion_id,
+                Zone::Cemetery,
                 zone.into_location()
                     .expect("Boneyard summon target must be a location"),
             ));

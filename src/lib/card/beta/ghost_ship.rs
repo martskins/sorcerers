@@ -61,22 +61,7 @@ impl Card for GhostShip {
         Some(&mut self.unit_base)
     }
 
-    async fn on_visit_zone(
-        &self,
-        state: &State,
-        from: &Zone,
-        to: &Zone,
-    ) -> anyhow::Result<Vec<Effect>> {
-        // Only trigger if entering a site from the void.
-        if from.get_site(state).is_some() {
-            return Ok(vec![]);
-        }
-
-        // Only trigger if entering a site.
-        if to.get_site(state).is_none() {
-            return Ok(vec![]);
-        }
-
+    async fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
         let player_id = self.get_controller_id(state);
         let Some(target_spirit) = CardQuery::new()
             .dead()
@@ -88,14 +73,24 @@ impl Card for GhostShip {
             return Ok(vec![]);
         };
 
-        Ok(vec![Effect::SummonCards {
-            cards: vec![(
-                player_id,
-                target_spirit,
-                to.clone()
-                    .into_location()
-                    .expect("Ghost Ship target must be a location"),
-            )],
+        Ok(vec![Hook {
+            trigger: EffectQuery::EnterZone {
+                card: self.get_id().into(),
+                zone: ZoneQuery::any_site(None, None),
+                from: Some(ZoneQuery::any_void()),
+            },
+            timing: HookTiming::After,
+            action: HookAction::Effects(vec![Effect::SummonCards {
+                cards: vec![(
+                    player_id,
+                    target_spirit,
+                    Zone::Cemetery,
+                    self.get_zone()
+                        .clone()
+                        .into_location()
+                        .expect("Ghost Ship target must be a location"),
+                )],
+            }]),
         }])
     }
 }

@@ -128,6 +128,7 @@ impl Card for ScourgeZombies {
                                 cards: vec![(
                                     self_controller,
                                     self_id,
+                                    Zone::Cemetery,
                                     died_here
                                         .into_location()
                                         .expect("Scourge Zombies trigger must have a location"),

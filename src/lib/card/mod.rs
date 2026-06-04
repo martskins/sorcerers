@@ -1744,15 +1744,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(false)
     }
 
-    async fn on_visit_zone(
-        &self,
-        _state: &State,
-        _from: &Zone,
-        _to: &Zone,
-    ) -> anyhow::Result<Vec<Effect>> {
-        Ok(vec![])
-    }
-
     fn on_take_damage(
         &mut self,
         state: &State,

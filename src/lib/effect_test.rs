@@ -3,8 +3,7 @@ use crate::{
         Ability, ApprenticeWizard, AridDesert, BottomlessPit, BridgeTroll, Card, CardStatus,
         Damage, Drought, Enchantress, Flood, FootSoldier, OgreGoons, PhaseAssassin, PitVipers,
         Region, Sandstorm, SeaRaider, Silence, SpringRiver, UnitBase, VaultsOfZul,
-        YourkeCrossbowmen,
-        from_name_and_zone,
+        YourkeCrossbowmen, from_name_and_zone,
     },
     deck::Deck,
     effect::{
@@ -749,7 +748,12 @@ async fn test_enter_site_triggers_when_card_is_summoned_there() {
     state.cards.insert(ogre_id, Box::new(ogre));
 
     state.queue_one(Effect::SummonCards {
-        cards: vec![(player_id, ogre_id, Location::Square(1, Region::Surface))],
+        cards: vec![(
+            player_id,
+            ogre_id,
+            Zone::Cemetery,
+            Location::Square(1, Region::Surface),
+        )],
     });
     drain_effects(&mut state).await;
 
@@ -866,6 +870,7 @@ async fn test_region_changes_enter_location_but_not_site() {
         entered_zones(&effect, &state).await.unwrap(),
         vec![(
             card_id,
+            Zone::Location(Location::Square(1, Region::Surface)),
             Zone::Location(Location::Square(1, Region::Underground))
         )],
         "changing regions on the same realm square should count as entering a new location"
@@ -921,6 +926,7 @@ async fn test_minion_without_voidwalk_is_banished_in_void() {
         cards: vec![(
             player_id,
             apprentice_wizard_id,
+            Zone::Hand,
             Location::Square(1, Region::Void),
         )],
     });
@@ -1304,7 +1310,12 @@ async fn test_summon_card_puts_minion_in_target_zone() {
     state.cards.insert(id, Box::new(minion));
 
     Effect::SummonCards {
-        cards: vec![(player_id, id, Location::Square(1, Region::Surface))],
+        cards: vec![(
+            player_id,
+            id,
+            Zone::Hand,
+            Location::Square(1, Region::Surface),
+        )],
     }
     .apply(&mut state)
     .await
@@ -1326,7 +1337,12 @@ async fn test_summon_card_adds_summoning_sickness_to_minion() {
     state.cards.insert(id, Box::new(minion));
 
     Effect::SummonCards {
-        cards: vec![(player_id, id, Location::Square(1, Region::Surface))],
+        cards: vec![(
+            player_id,
+            id,
+            Zone::Hand,
+            Location::Square(1, Region::Surface),
+        )],
     }
     .apply(&mut state)
     .await
@@ -1351,7 +1367,12 @@ async fn test_summon_card_no_summoning_sickness_with_charge() {
     state.cards.insert(id, Box::new(minion));
 
     Effect::SummonCards {
-        cards: vec![(player_id, id, Location::Square(1, Region::Surface))],
+        cards: vec![(
+            player_id,
+            id,
+            Zone::Hand,
+            Location::Square(1, Region::Surface),
+        )],
     }
     .apply(&mut state)
     .await
@@ -1376,7 +1397,12 @@ async fn test_summon_card_queues_genesis_effects() {
     state.cards.insert(id, Box::new(wizard));
 
     Effect::SummonCards {
-        cards: vec![(player_id, id, Location::Square(1, Region::Surface))],
+        cards: vec![(
+            player_id,
+            id,
+            Zone::Hand,
+            Location::Square(1, Region::Surface),
+        )],
     }
     .apply(&mut state)
     .await
@@ -1496,7 +1522,12 @@ async fn test_summon_card_applies_on_summon_effects() {
     state.cards.insert(id, Box::new(sea_raider));
 
     Effect::SummonCards {
-        cards: vec![(player_id, id, Location::Square(1, Region::Surface))],
+        cards: vec![(
+            player_id,
+            id,
+            Zone::Hand,
+            Location::Square(1, Region::Surface),
+        )],
     }
     .apply(&mut state)
     .await

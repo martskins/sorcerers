@@ -88,6 +88,7 @@ impl Card for HighlandFalconer {
             cards: vec![(
                 controller_id,
                 chosen,
+                Zone::Spellbook,
                 self.get_zone()
                     .clone()
                     .into_location()

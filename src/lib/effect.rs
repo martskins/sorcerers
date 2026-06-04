@@ -247,7 +247,7 @@ pub enum Effect {
         spellcaster: CardId,
     },
     SummonCards {
-        cards: Vec<(PlayerId, uuid::Uuid, Location)>,
+        cards: Vec<(PlayerId, CardId, Zone, Location)>,
     },
     SetTapped {
         card_id: CardId,
@@ -342,6 +342,8 @@ pub enum Effect {
     },
     /// Creates a token copy of the named card for the given player and summons it in the target
     /// zone. The copy triggers its Genesis, then is automatically banished afterwards.
+    // TODO: This effect shouldn't banish it. We should queue a second effect in Deathspeaker to
+    // banish it, so we can reuse this effect in other cards.
     SummonCopy {
         card_name: String,
         player_id: PlayerId,
@@ -633,7 +635,7 @@ impl Effect {
                 } else {
                     let parts: Vec<String> = cards
                         .iter()
-                        .map(|(player_id, card_id, location)| {
+                        .map(|(player_id, card_id, _from_zone, location)| {
                             format!(
                                 "{} summons {} in {}",
                                 player_name(player_id, state),
@@ -1051,6 +1053,7 @@ impl Effect {
                         cards: vec![(
                             *player_id,
                             token_id,
+                            Zone::None,
                             zone.clone()
                                 .into_location()
                                 .ok_or(anyhow::anyhow!("token summon zone must be a location"))?,
@@ -1222,7 +1225,6 @@ impl Effect {
                 match through_path {
                     Some(path) => {
                         for (idx, path_zone) in path.iter().enumerate() {
-                            let snapshot = state.clone();
                             let zone = ZoneQuery::from_zone(path_zone.clone())
                                 .pick(player_id, state)
                                 .await?;
@@ -1240,15 +1242,9 @@ impl Effect {
                                 carried_card.set_zone(zone.clone());
                             }
 
-                            let card = state.get_card(card_id);
                             let moved = from_zone != zone;
                             let mut effects = vec![];
                             if moved {
-                                if can_use_special_abilities(&snapshot, card_id) {
-                                    effects.extend(
-                                        card.on_visit_zone(&snapshot, &from_zone, &zone).await?,
-                                    );
-                                }
                                 if let Some(site_zone) = entered_site(&from_zone, &zone, state)
                                     && let Some(site) = site_zone.get_site(state)
                                     && can_use_special_abilities(state, site.get_id())
@@ -1275,7 +1271,6 @@ impl Effect {
                         }
                     }
                     None => {
-                        let snapshot = state.clone();
                         let zone = to.pick(player_id, state).await?.into_zone();
                         let card = state.get_card_mut(card_id);
                         let from_zone = card.get_zone().clone();
@@ -1291,14 +1286,8 @@ impl Effect {
                             carried_card.set_zone(zone.clone());
                         }
 
-                        let card = state.get_card(card_id);
                         let mut effects = vec![];
                         if from_zone != zone {
-                            if can_use_special_abilities(&snapshot, card_id) {
-                                effects.extend(
-                                    card.on_visit_zone(&snapshot, &from_zone, &zone).await?,
-                                );
-                            }
                             if let Some(site_zone) = entered_site(&from_zone, &zone, state)
                                 && let Some(site) = site_zone.get_site(state)
                                 && can_use_special_abilities(state, site.get_id())
@@ -1434,6 +1423,7 @@ impl Effect {
                         cards: vec![(
                             *player_id,
                             *card_id,
+                            Zone::Hand,
                             zone.into_location()
                                 .ok_or(anyhow::anyhow!("play zone must be a location"))?,
                         )],
@@ -1468,9 +1458,6 @@ impl Effect {
                     {
                         effects.push(mana_effect);
                     }
-                    if can_use_special_abilities(state, card_id) {
-                        effects.extend(card.on_visit_zone(state, &from_zone, &zone).await?);
-                    }
                     effects.extend(location_survival_effects_for_realm(state));
                     state.queue(effects);
                     state.queue(cast_effects);
@@ -1478,7 +1465,7 @@ impl Effect {
             }
             Effect::SummonCards { cards } => {
                 let snapshot = state.clone();
-                for (player_id, card_id, location) in cards {
+                for (player_id, card_id, _from_zone, location) in cards {
                     let zone = location.clone().into_zone();
                     let has_charge = state.get_card(card_id).has_ability(state, &Ability::Charge);
                     let original_zone = state.get_card(card_id).get_zone().clone();
@@ -1526,7 +1513,7 @@ impl Effect {
                 crate::game::force_sync_all(state).await?;
 
                 let mut effects = vec![];
-                for (_, card_id, location) in cards {
+                for (_, card_id, _from_zone, location) in cards {
                     let zone = location.clone().into_zone();
                     let card = state.get_card(card_id);
                     let from_zone = snapshot.get_card(card_id).get_zone().clone();
@@ -1538,9 +1525,6 @@ impl Effect {
                             mana_effect_for_resource_entering_realm(state, card_id)?
                     {
                         effects.push(mana_effect);
-                    }
-                    if can_use_special_abilities(state, card_id) {
-                        effects.extend(card.on_visit_zone(state, &from_zone, &zone).await?);
                     }
                     if let Some(site) = zone.get_site_at_square(state)
                         && can_use_special_abilities(state, site.get_id())
@@ -2382,16 +2366,8 @@ impl Effect {
                     state.queue(effects);
                 } else {
                     let copy = state.get_card(&copy_id);
-                    let bearer_id = copy.get_bearer_id()?.unwrap();
-                    let bearer = state.get_card(&bearer_id);
                     let mut effects = copy.on_summon(state)?;
                     effects.extend(copy.genesis(state).await?);
-                    if can_use_special_abilities(state, &copy_id) {
-                        effects.extend(
-                            copy.on_visit_zone(state, &Zone::Spellbook, bearer.get_zone())
-                                .await?,
-                        );
-                    }
                     state.queue(effects);
                 }
             }
@@ -2408,15 +2384,12 @@ impl Effect {
                 state.cards.insert(copy_id, copy);
                 state.invalidate_runtime_caches();
 
-                let from_zone = {
-                    let card = state.get_card_mut(&copy_id);
-                    let from_zone = card.get_zone().clone();
-                    card.set_zone(zone.clone());
-                    if !has_charge {
-                        card.add_status(CardStatus::SummoningSickness);
-                    }
-                    from_zone
-                };
+                let card = state.get_card_mut(&copy_id);
+                card.set_zone(zone.clone());
+                if !has_charge {
+                    card.add_status(CardStatus::SummoningSickness);
+                }
+
                 state
                     .add_passive_ongoing_effects_for_source(&copy_id)
                     .await?;
@@ -2427,9 +2400,6 @@ impl Effect {
                 let mut effects: Vec<Effect> = vec![];
                 effects.extend(card.on_summon(state)?);
                 effects.extend(card.genesis(state).await?);
-                if can_use_special_abilities(state, &copy_id) {
-                    effects.extend(card.on_visit_zone(state, &from_zone, zone).await?);
-                }
                 effects.push(Effect::BanishCard { card_id: copy_id });
                 state.queue(effects);
             }

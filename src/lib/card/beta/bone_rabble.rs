@@ -93,6 +93,7 @@ impl Card for BoneRabble {
                                 cards: vec![(
                                     owner_id,
                                     bone_rabble_id,
+                                    Zone::Cemetery,
                                     site.get_zone()
                                         .clone()
                                         .into_location()

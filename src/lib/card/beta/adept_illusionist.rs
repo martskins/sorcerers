@@ -41,6 +41,7 @@ impl ActivatedAbility for AdeptIllusionistAction {
                 cards: vec![(
                     *player_id,
                     picked_card_id,
+                    Zone::Spellbook,
                     zone.into_location()
                         .expect("Adept Illusionist target must be a location"),
                 )],

@@ -14,6 +14,7 @@ pub enum EffectQuery {
     EnterZone {
         card: CardQuery,
         zone: ZoneQuery,
+        from: Option<ZoneQuery>,
     },
     EnterSite {
         card: CardQuery,
@@ -76,15 +77,24 @@ impl EffectQuery {
                 }
                 Ok(source_ids)
             }
-            (EffectQuery::EnterZone { card, zone }, _) => {
+            (EffectQuery::EnterZone { card, zone, from }, _) => {
                 let zones = zone.options(state);
                 Ok(entered_zones(effect, state)
                     .await?
                     .into_iter()
-                    .filter(|(card_id, entered_zone)| {
+                    .filter(|(card_id, _from_zone, entered_zone)| {
                         card.matches(card_id, state) && zones.contains(entered_zone)
                     })
-                    .map(|(card_id, _)| card_id)
+                    .filter(|(_, from_zone, _)| {
+                        if let Some(from) = from
+                            && !from.matches(state, from_zone)
+                        {
+                            return false;
+                        }
+
+                        true
+                    })
+                    .map(|(card_id, _, _)| card_id)
                     .collect())
             }
             (EffectQuery::EnterSite { card, site }, _) => {
@@ -100,8 +110,8 @@ impl EffectQuery {
             }
             (EffectQuery::SummonCard { card }, Effect::SummonCards { cards }) => Ok(cards
                 .iter()
-                .filter(|(_, card_id, _)| card.matches(card_id, state))
-                .map(|(_, card_id, _)| *card_id)
+                .filter(|(_, card_id, _, _)| card.matches(card_id, state))
+                .map(|(_, card_id, _, _)| *card_id)
                 .collect()),
             (_, _) => {
                 if Box::pin(self.matches(effect, state)).await? {
@@ -176,7 +186,7 @@ impl EffectQuery {
             }
             (EffectQuery::SummonCard { card }, Effect::SummonCards { cards }) => Ok(cards
                 .iter()
-                .any(|(_, card_id, _)| card.matches(card_id, state))),
+                .any(|(_, card_id, _, _)| card.matches(card_id, state))),
             (
                 EffectQuery::PlayCard { card, spellcaster },
                 Effect::PlayMagic {
@@ -261,7 +271,7 @@ impl EffectQuery {
 pub async fn entered_zones(
     effect: &Effect,
     state: &State,
-) -> anyhow::Result<Vec<(uuid::Uuid, Zone)>> {
+) -> anyhow::Result<Vec<(uuid::Uuid, Zone, Zone)>> {
     match effect {
         Effect::MoveCard {
             player_id,
@@ -280,7 +290,7 @@ pub async fn entered_zones(
 
             for zone in zones {
                 if previous_zone != zone {
-                    entered.push((*card_id, zone.clone()));
+                    entered.push((*card_id, previous_zone.clone(), zone.clone()));
                 }
                 previous_zone = zone;
             }
@@ -289,7 +299,9 @@ pub async fn entered_zones(
         }
         Effect::SummonCards { cards } => Ok(cards
             .iter()
-            .map(|(_, card_id, location)| (*card_id, location.clone().into_zone()))
+            .map(|(_, card_id, from_zone, location)| {
+                (*card_id, from_zone.clone(), location.clone().into_zone())
+            })
             .collect()),
         _ => Ok(vec![]),
     }
@@ -326,7 +338,7 @@ pub async fn entered_sites(
         }
         Effect::SummonCards { cards } => Ok(cards
             .iter()
-            .filter_map(|(_, card_id, location)| {
+            .filter_map(|(_, card_id, _, location)| {
                 location
                     .clone()
                     .into_zone()

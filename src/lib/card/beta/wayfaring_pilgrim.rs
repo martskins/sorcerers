@@ -4,7 +4,7 @@ use crate::prelude::*;
 pub struct WayfaringPilgrim {
     unit_base: UnitBase,
     card_base: CardBase,
-    corners_visited: Vec<Zone>,
+    corners_visited: Vec<u8>,
 }
 
 impl WayfaringPilgrim {
@@ -67,55 +67,57 @@ impl Card for WayfaringPilgrim {
         &mut self,
         data: &std::sync::Arc<dyn std::any::Any + Send + Sync>,
     ) -> anyhow::Result<()> {
-        if let Some(corners_visited) = data.downcast_ref::<Vec<Zone>>() {
+        if let Some(corners_visited) = data.downcast_ref::<Vec<u8>>() {
             self.corners_visited = corners_visited.clone();
         }
 
         Ok(())
     }
 
-    async fn on_visit_zone(
-        &self,
-        state: &State,
-        _from: &Zone,
-        to: &Zone,
-    ) -> anyhow::Result<Vec<Effect>> {
-        if !to.is_in_play() {
-            return Ok(vec![]);
-        }
-
-        let is_corner = [1, 5, 16, 20].contains(&to.get_square().unwrap());
-        if !is_corner {
-            return Ok(vec![]);
-        }
+    async fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
+        let corner_squares = [1, 5, 16, 20];
+        let corners = corner_squares
+            .into_iter()
+            .flat_map(|sq| {
+                vec![
+                    Location::Square(sq, Region::Surface),
+                    Location::Square(sq, Region::Underwater),
+                    Location::Square(sq, Region::Underground),
+                    Location::Square(sq, Region::Void),
+                ]
+            })
+            .map(Zone::Location)
+            .collect();
 
         let mut corners_visited = self.corners_visited.clone();
-        if corners_visited.contains(to) {
+        let Some(square) = self.get_zone().get_square() else {
+            return Ok(vec![]);
+        };
+
+        if corners_visited.contains(&square) {
             return Ok(vec![]);
         }
 
-        corners_visited.push(to.clone());
-        let options: Vec<BaseAction> = vec![BaseAction::DrawSite, BaseAction::DrawSpell];
-        let option_labels: Vec<String> = options.iter().map(|a| a.get_name().to_string()).collect();
-        let prompt = "Draw a card";
-        let picked_option_idx = pick_option_source(
-            self.get_controller_id(state),
-            &option_labels,
-            state,
-            prompt,
-            false,
-            Some(*self.get_id()),
-        )
-        .await?;
-        let mut effects = options[picked_option_idx]
-            .on_select(&self.get_controller_id(state), state)
-            .await?;
-
-        effects.push(Effect::SetCardData {
-            card_id: *self.get_id(),
-            data: std::sync::Arc::new(corners_visited),
-        });
-        Ok(effects)
+        corners_visited.push(square);
+        Ok(vec![Hook {
+            trigger: EffectQuery::EnterZone {
+                card: self.get_id().into(),
+                zone: ZoneQuery::from_options(corners, None),
+                from: None,
+            },
+            timing: HookTiming::After,
+            action: HookAction::Effects(vec![
+                Effect::DrawCard {
+                    player_id: self.get_controller_id(state),
+                    count: 1,
+                    kind: DrawKind::Choice,
+                },
+                Effect::SetCardData {
+                    card_id: *self.get_id(),
+                    data: std::sync::Arc::new(corners_visited),
+                },
+            ]),
+        }])
     }
 }
 

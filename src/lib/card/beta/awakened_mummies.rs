@@ -59,7 +59,7 @@ impl AwakenedMummies {
                     }
 
                     let entered_ground_above = entered_zones(effect, state).await?.into_iter().any(
-                        |(entered_card_id, entered_zone)| {
+                        |(entered_card_id, _from_zone, entered_zone)| {
                             entered_card_id == *card_id
                                 && entered_zone == zone.with_region(Region::Surface)
                         },

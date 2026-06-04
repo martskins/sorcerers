@@ -82,6 +82,7 @@ impl Card for UltimateHorror {
                 cards: vec![(
                     controller_id,
                     card_id,
+                    Zone::Cemetery,
                     zone.into_location()
                         .expect("Ultimate Horror target must be a location"),
                 )],

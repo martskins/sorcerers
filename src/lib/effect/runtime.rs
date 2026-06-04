@@ -8,6 +8,54 @@ use crate::{
 pub struct EffectEngine;
 
 impl EffectEngine {
+    async fn post_hooks(
+        state: &State,
+        effect: &crate::effect::Effect,
+    ) -> anyhow::Result<Vec<HookAction>> {
+        let mut hooks = vec![];
+        for card in state.cards.values() {
+            if state.card_has_special_abilities_removed(card.get_id()) {
+                continue;
+            }
+
+            for hook in card.hooks(state).await? {
+                if !hook.trigger.matches(effect, state).await? {
+                    continue;
+                }
+
+                if let HookTiming::After = hook.timing {
+                    hooks.push(hook.action);
+                }
+            }
+        }
+
+        Ok(hooks)
+    }
+
+    async fn pre_hooks(
+        state: &State,
+        effect: &crate::effect::Effect,
+    ) -> anyhow::Result<Vec<HookAction>> {
+        let mut hooks = vec![];
+        for card in state.cards.values() {
+            if state.card_has_special_abilities_removed(card.get_id()) {
+                continue;
+            }
+
+            for hook in card.hooks(state).await? {
+                if !hook.trigger.matches(effect, state).await? {
+                    continue;
+                }
+
+                if let HookTiming::Before = hook.timing {
+                    hooks.push(hook.action);
+                }
+            }
+        }
+
+        Ok(hooks)
+    }
+
     async fn matching_hooks(
         state: &State,
         effect: &crate::effect::Effect,
@@ -60,10 +108,13 @@ impl EffectEngine {
     pub async fn drain_with_log(game: &mut Game) -> anyhow::Result<()> {
         while !game.state.effects.is_empty() {
             if let Some(effect) = game.state.effects.pop_back() {
-                let (before_hooks, after_hooks) =
-                    Self::matching_hooks(&game.state, &effect).await?;
-
                 let eliminated_before = game.state.eliminated_players.clone();
+                // TODO: This has an issue in that we are computing the pre-hooks all with the same
+                // state, when in reality one of the hooks might modify the state. Even new cards
+                // might come into play due to one of these hooks.
+                // Need to check if there's something in the codex that could help us shape this in
+                // a better way.
+                let before_hooks = Self::pre_hooks(&game.state, &effect).await?;
                 for hook_action in &before_hooks {
                     Self::apply_hook_action(&mut game.state, &effect, hook_action).await?;
                 }
@@ -77,6 +128,10 @@ impl EffectEngine {
 
                 EffectLogEmitter::emit(game, effect.clone()).await?;
 
+                // Gather post hooks after effects are applied so that we get the latest state and
+                // any state query done on the hooks function reflects the correct state of all
+                // cards.
+                let after_hooks = Self::post_hooks(&game.state, &effect).await?;
                 for hook_action in &after_hooks {
                     Self::apply_hook_action(&mut game.state, &effect, hook_action).await?;
                 }

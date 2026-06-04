@@ -24,6 +24,8 @@ pub struct ZoneQuery {
     pub(super) random: bool,
     /// When true, the option pool is restricted to in-play site zones.
     pub(super) sites_only: bool,
+    /// When true, the option pool is restricted to voids only.
+    pub(super) voids_only: bool,
     /// Optionally filter `sites_only` results to zones controlled by this player.
     pub(super) controlled_by: Option<PlayerId>,
     pub(super) prompt: Option<String>,
@@ -39,6 +41,7 @@ impl Default for ZoneQuery {
             options: None,
             random: false,
             sites_only: false,
+            voids_only: false,
             controlled_by: None,
             prompt: None,
             source_card_id: None,
@@ -100,6 +103,13 @@ impl ZoneQuery {
         self
     }
 
+    /// Player picks from in-play site zones, optionally filtered by controller.
+    pub fn any_void() -> Self {
+        Self {
+            voids_only: true,
+            ..Self::default()
+        }
+    }
     /// Player picks from in-play site zones, optionally filtered by controller.
     pub fn any_site(controlled_by: Option<PlayerId>, prompt: Option<String>) -> Self {
         Self {
@@ -196,8 +206,14 @@ impl ZoneQuery {
                 .collect();
             sites.dedup();
             (sites, self.spatial_filters.as_slice())
+        } else if self.voids_only {
+            let all_voids = Zone::all_realm()
+                .into_iter()
+                .filter(|z| z.get_site(state).is_none())
+                .collect();
+            (all_voids, self.spatial_filters.as_slice())
         } else {
-            (Zone::all_realm(), self.spatial_filters.as_slice())
+            (Zone::all_board(), self.spatial_filters.as_slice())
         };
 
         for filter in filters_to_apply {
@@ -206,6 +222,10 @@ impl ZoneQuery {
         }
 
         zones
+    }
+
+    pub fn matches(&self, state: &State, zone: &Zone) -> bool {
+        self.options(state).contains(zone)
     }
 
     /// Resolves the query, prompting the player if needed. Caches the result.
