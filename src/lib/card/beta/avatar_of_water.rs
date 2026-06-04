@@ -29,7 +29,7 @@ impl ActivatedAbility for FloodSite {
                     .expect("Expected to pick a site");
                 let mut effects = vec![Effect::SetCardData {
                     card_id: *card_id,
-                    data: std::sync::Arc::new(ContinuousEffect::GrantAbility {
+                    data: std::sync::Arc::new(OngoingEffect::GrantAbility {
                         ability: Ability::Flooded,
                         affected_cards: picked_site_id.into(),
                     }),
@@ -65,7 +65,7 @@ pub struct AvatarOfWater {
     card_base: CardBase,
     unit_base: UnitBase,
     avatar_base: AvatarBase,
-    flood_effect: Option<ContinuousEffect>,
+    flood_effect: Option<OngoingEffect>,
 }
 
 impl AvatarOfWater {
@@ -143,10 +143,7 @@ impl Card for AvatarOfWater {
         Ok(vec![Box::new(FloodSite)])
     }
 
-    async fn get_continuous_effects(
-        &self,
-        _state: &State,
-    ) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         match &self.flood_effect {
             Some(effect) => Ok(vec![effect.clone()]),
             None => Ok(vec![]),
@@ -157,7 +154,7 @@ impl Card for AvatarOfWater {
         &mut self,
         data: &std::sync::Arc<dyn std::any::Any + Send + Sync>,
     ) -> anyhow::Result<()> {
-        if let Some(effect) = data.downcast_ref::<ContinuousEffect>() {
+        if let Some(effect) = data.downcast_ref::<OngoingEffect>() {
             self.flood_effect = Some(effect.clone());
         }
 

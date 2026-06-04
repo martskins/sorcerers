@@ -64,15 +64,12 @@ impl Card for BlackObelisk {
         Some(self)
     }
 
-    async fn get_continuous_effects(
-        &self,
-        _state: &State,
-    ) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         if !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }
 
-        Ok(vec![ContinuousEffect::ModifyProvidedMana {
+        Ok(vec![OngoingEffect::ModifyProvidedMana {
             mana_diff: 2,
             affected_cards: CardQuery::new().in_zone_of_card(self.get_id()).sites(),
         }])

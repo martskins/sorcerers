@@ -58,21 +58,18 @@ impl Card for AllTerrainVestments {
         Some(self)
     }
 
-    async fn get_continuous_effects(
-        &self,
-        _state: &State,
-    ) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         let affected_cards = CardQuery::new().minions().bearer_of_card(self.get_id());
         Ok(vec![
-            ContinuousEffect::GrantAbility {
+            OngoingEffect::GrantAbility {
                 ability: Ability::Burrowing,
                 affected_cards: affected_cards.clone(),
             },
-            ContinuousEffect::GrantAbility {
+            OngoingEffect::GrantAbility {
                 ability: Ability::Submerge,
                 affected_cards: affected_cards.clone(),
             },
-            ContinuousEffect::GrantAbility {
+            OngoingEffect::GrantAbility {
                 ability: Ability::Voidwalk,
                 affected_cards,
             },

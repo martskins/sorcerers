@@ -4,7 +4,7 @@ use crate::{
         CardId, Direction, PlayerId, are_adjacent, are_nearby, get_adjacent_zones, get_nearby_zones,
     },
     query::CardQuery,
-    state::{ContinuousEffect, State},
+    state::{OngoingEffect, State},
 };
 use serde::{Deserialize, Serialize};
 
@@ -163,7 +163,7 @@ impl Zone {
         let mut can_enter = true;
         for ce in state.active_continuous_effects() {
             match ce {
-                ContinuousEffect::MakeZoneUnvisitable {
+                OngoingEffect::MakeZoneUnvisitable {
                     affected_zone,
                     affected_cards,
                 } if affected_zone == self && affected_cards.matches(card_id, state) => {
@@ -191,7 +191,7 @@ impl Zone {
             .active_continuous_effects()
             .into_iter()
             .filter(|e| match e {
-                ContinuousEffect::OverrideValidPlayZone {
+                OngoingEffect::OverrideValidPlayZone {
                     affected_zones,
                     affected_cards,
                     ..

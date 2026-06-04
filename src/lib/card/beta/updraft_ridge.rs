@@ -65,8 +65,8 @@ impl Card for UpdraftRidge {
         Some(&mut self.site_base)
     }
 
-    fn area_modifiers(&self, _state: &State) -> Vec<ContinuousEffect> {
-        vec![ContinuousEffect::GrantAbility {
+    fn area_modifiers(&self, _state: &State) -> Vec<OngoingEffect> {
+        vec![OngoingEffect::GrantAbility {
             ability: Ability::Movement(1),
             affected_cards: CardQuery::new()
                 .units()

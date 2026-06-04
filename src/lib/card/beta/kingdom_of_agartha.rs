@@ -73,7 +73,7 @@ impl Card for KingdomOfAgartha {
         Some(self)
     }
 
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         if !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }
@@ -84,7 +84,7 @@ impl Card for KingdomOfAgartha {
             return Ok(vec![]);
         }
 
-        Ok(vec![ContinuousEffect::GrantAbility {
+        Ok(vec![OngoingEffect::GrantAbility {
             ability: Ability::Burrowing,
             affected_cards: CardQuery::new().minions(),
         }])

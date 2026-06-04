@@ -59,17 +59,17 @@ impl Card for Crusade {
         Some(self)
     }
 
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         let controller_id = self.get_controller_id(state);
         Ok(vec![
-            ContinuousEffect::OverrideValidPlayZone {
+            OngoingEffect::OverrideValidPlayZone {
                 affected_zones: ZoneQuery::new().affected_zones_of_card(self.get_id()),
                 affected_cards: CardQuery::new()
                     .minions()
                     .with_affinity(Element::Earth)
                     .including_not_in_play(),
             },
-            ContinuousEffect::ModifyPower {
+            OngoingEffect::ModifyPower {
                 power_diff: 1,
                 affected_cards: CardQuery::new()
                     .in_affected_zones_of_card(self.get_id())

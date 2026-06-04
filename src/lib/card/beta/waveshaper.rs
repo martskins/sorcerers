@@ -44,7 +44,7 @@ impl ActivatedAbility for WaveshaperFlood {
         let picked_site = state.get_card(&picked_site_id);
         let mut effects = vec![Effect::SetCardData {
             card_id: *card_id,
-            data: std::sync::Arc::new(ContinuousEffect::GrantAbility {
+            data: std::sync::Arc::new(OngoingEffect::GrantAbility {
                 ability: Ability::Flooded,
                 affected_cards: CardQuery::from_id(picked_site_id),
             }),
@@ -98,7 +98,7 @@ pub struct Waveshaper {
     card_base: CardBase,
     unit_base: UnitBase,
     avatar_base: AvatarBase,
-    flood_effect: Option<ContinuousEffect>,
+    flood_effect: Option<OngoingEffect>,
 }
 
 impl Waveshaper {
@@ -177,10 +177,7 @@ impl Card for Waveshaper {
         Ok(vec![Box::new(WaveshaperFlood)])
     }
 
-    async fn get_continuous_effects(
-        &self,
-        _state: &State,
-    ) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         match &self.flood_effect {
             Some(effect) => Ok(vec![effect.clone()]),
             None => Ok(vec![]),
@@ -191,7 +188,7 @@ impl Card for Waveshaper {
         &mut self,
         data: &std::sync::Arc<dyn std::any::Any + Send + Sync>,
     ) -> anyhow::Result<()> {
-        if let Some(effect) = data.downcast_ref::<ContinuousEffect>() {
+        if let Some(effect) = data.downcast_ref::<OngoingEffect>() {
             self.flood_effect = Some(effect.clone());
         }
 

@@ -61,8 +61,8 @@ impl Card for HouseArnBannerman {
         Some(&mut self.unit_base)
     }
 
-    fn area_modifiers(&self, _state: &State) -> Vec<ContinuousEffect> {
-        vec![ContinuousEffect::GrantCounter {
+    fn area_modifiers(&self, _state: &State) -> Vec<OngoingEffect> {
+        vec![OngoingEffect::GrantCounter {
             counter: Counter::new(1, 0, None),
             affected_cards: CardQuery::new()
                 .units()

@@ -72,22 +72,22 @@ impl Card for AtlanteanFate {
         Some(self)
     }
 
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         let flooded_sites = self.flooded_site_ids(state);
         if flooded_sites.is_empty() {
             return Ok(vec![]);
         }
 
         Ok(vec![
-            ContinuousEffect::GrantAbility {
+            OngoingEffect::GrantAbility {
                 ability: Ability::Flooded,
                 affected_cards: CardQuery::from_ids(flooded_sites.clone()),
             },
-            ContinuousEffect::ModifyProvidedAffinities {
+            OngoingEffect::ModifyProvidedAffinities {
                 modifier: AffinityModifier::Set(Thresholds::parse("W")),
                 affected_sites: CardQuery::from_ids(flooded_sites.clone()),
             },
-            ContinuousEffect::RemoveAbilities {
+            OngoingEffect::RemoveAbilities {
                 removal: AbilityRemoval::AllAbilitiesExcept(vec![Ability::Flooded]),
                 affected_cards: CardQuery::from_ids(flooded_sites),
             },

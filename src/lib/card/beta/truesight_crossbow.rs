@@ -63,16 +63,13 @@ impl Card for TruesightCrossbow {
         Some(self)
     }
 
-    async fn get_continuous_effects(
-        &self,
-        _state: &State,
-    ) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         Ok(vec![
-            ContinuousEffect::GrantAbility {
+            OngoingEffect::GrantAbility {
                 ability: Ability::Ranged(1),
                 affected_cards: CardQuery::new().bearer_of_card(self.get_id()),
             },
-            ContinuousEffect::GrantAbility {
+            OngoingEffect::GrantAbility {
                 ability: Ability::CanSeeStealthed,
                 affected_cards: CardQuery::new().bearer_of_card(self.get_id()),
             },

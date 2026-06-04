@@ -81,7 +81,7 @@ impl Card for GreatOldOne {
         Ok(())
     }
 
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         if !self.flooded {
             return Ok(vec![]);
         }
@@ -89,7 +89,7 @@ impl Card for GreatOldOne {
         if all_sites.is_empty() {
             return Ok(vec![]);
         }
-        Ok(vec![ContinuousEffect::GrantAbility {
+        Ok(vec![OngoingEffect::GrantAbility {
             ability: Ability::Flooded,
             affected_cards: CardQuery::from_ids(all_sites),
         }])

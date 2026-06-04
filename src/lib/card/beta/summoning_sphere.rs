@@ -54,12 +54,12 @@ impl Card for SummoningSphere {
         Some(self)
     }
 
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         if !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }
         let controller_id = self.get_controller_id(state);
-        Ok(vec![ContinuousEffect::OverrideValidPlayZone {
+        Ok(vec![OngoingEffect::OverrideValidPlayZone {
             affected_zones: ZoneQuery::new().affected_zones_of_card(self.get_id()),
             affected_cards: CardQuery::new()
                 .minions()

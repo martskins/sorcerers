@@ -19,7 +19,7 @@ use crate::{
         UnitAction, pick_amount, pick_card, pick_option, pick_zone,
     },
     query::{CardQuery, ZoneQuery},
-    state::{AbilityModifier, ContinuousEffect, LoggedEffect, State, TemporaryEffect},
+    state::{AbilityModifier, LoggedEffect, OngoingEffect, State, TemporaryEffect},
 };
 use linkme::distributed_slice;
 use serde::{Deserialize, Serialize};
@@ -926,7 +926,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         }
 
         for we in state.active_continuous_effects() {
-            if let ContinuousEffect::ControllerOverride {
+            if let OngoingEffect::ControllerOverride {
                 controller_id,
                 affected_cards,
             } = we
@@ -1026,7 +1026,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 .active_continuous_effects()
                 .into_iter()
                 .any(|ce| match ce {
-                    ContinuousEffect::ConnectTopBottomEdges { affected_cards } => {
+                    OngoingEffect::ConnectTopBottomEdges { affected_cards } => {
                         affected_cards.matches(self.get_id(), state)
                     }
                     _ => false,
@@ -1037,7 +1037,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 .active_continuous_effects()
                 .into_iter()
                 .any(|ce| match ce {
-                    ContinuousEffect::ConnectLeftRightEdges { affected_cards } => {
+                    OngoingEffect::ConnectLeftRightEdges { affected_cards } => {
                         affected_cards.matches(self.get_id(), state)
                     }
                     _ => false,
@@ -1162,7 +1162,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         }
 
         for ce in state.active_continuous_effects() {
-            if let ContinuousEffect::BlockMovementThrough {
+            if let OngoingEffect::BlockMovementThrough {
                 border,
                 affected_cards,
             } = ce
@@ -1980,7 +1980,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     // Returns the area-based ongoing effects that this card provides to other cards.
-    fn area_modifiers(&self, _state: &State) -> Vec<ContinuousEffect> {
+    fn area_modifiers(&self, _state: &State) -> Vec<OngoingEffect> {
         vec![]
     }
 
@@ -1988,10 +1988,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(vec![])
     }
 
-    async fn get_continuous_effects(
-        &self,
-        _state: &State,
-    ) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         Ok(vec![])
     }
 
@@ -2091,13 +2088,13 @@ impl<T: Card + ?Sized> ResourceProviderBaseMethods for T {
             .active_continuous_effects()
             .into_iter()
             .filter(|ce| match ce {
-                ContinuousEffect::ModifyProvidedMana { affected_cards, .. } => {
+                OngoingEffect::ModifyProvidedMana { affected_cards, .. } => {
                     affected_cards.matches(self.get_id(), state)
                 }
                 _ => false,
             })
             .for_each(|ce| {
-                if let ContinuousEffect::ModifyProvidedMana { mana_diff, .. } = ce {
+                if let OngoingEffect::ModifyProvidedMana { mana_diff, .. } = ce {
                     mana = mana.saturating_add_signed(*mana_diff);
                 }
             });
@@ -2120,7 +2117,7 @@ impl<T: Card + ?Sized> ResourceProviderBaseMethods for T {
                 let flooded_removed = active_continuous_effects.iter().any(|ce| {
                     matches!(
                         ce,
-                        ContinuousEffect::RemoveAbilities {
+                        OngoingEffect::RemoveAbilities {
                             removal,
                             affected_cards,
                         } if removal.removes(&Ability::Flooded)
@@ -2131,13 +2128,13 @@ impl<T: Card + ?Sized> ResourceProviderBaseMethods for T {
                 active_continuous_effects
                     .into_iter()
                     .for_each(|ce| match ce {
-                        ContinuousEffect::GrantAbility {
+                        OngoingEffect::GrantAbility {
                             ability: Ability::Flooded,
                             affected_cards,
                         } if !flooded_removed && affected_cards.matches(self.get_id(), state) => {
                             thresholds.water = std::cmp::max(1, thresholds.water);
                         }
-                        ContinuousEffect::ModifyProvidedAffinities {
+                        OngoingEffect::ModifyProvidedAffinities {
                             modifier,
                             affected_sites,
                         } if affected_sites.matches(self.get_id(), state) => {
@@ -2789,7 +2786,7 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
                 .active_continuous_effects()
                 .into_iter()
                 .any(|ce| match ce {
-                    ContinuousEffect::PreventDamageFromMagic { affected_cards } => {
+                    OngoingEffect::PreventDamageFromMagic { affected_cards } => {
                         affected_cards.matches(self.get_id(), state)
                     }
                     _ => false,
@@ -2809,7 +2806,7 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
             .active_continuous_effects()
             .into_iter()
             .filter_map(|ce| match ce {
-                ContinuousEffect::ReduceDamageTaken {
+                OngoingEffect::ReduceDamageTaken {
                     amount,
                     affected_cards,
                 } if affected_cards.matches(self.get_id(), state) => Some(amount),
@@ -2989,7 +2986,7 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
         }
 
         for ce in state.active_continuous_effects() {
-            if let ContinuousEffect::RestrictMoveToZones {
+            if let OngoingEffect::RestrictMoveToZones {
                 affected_cards,
                 allowed_zones,
             } = ce
@@ -3149,7 +3146,7 @@ fn continuously_connected_zones(state: &State, card_id: &CardId) -> Vec<Zone> {
         .active_continuous_effects()
         .into_iter()
         .filter_map(|effect| match effect {
-            ContinuousEffect::ConnectZones {
+            OngoingEffect::ConnectZones {
                 connected_zones,
                 affected_cards,
             } if affected_cards.matches(card_id, state) => Some(connected_zones.clone()),
@@ -3164,7 +3161,7 @@ fn is_continuously_connected_zone(state: &State, card_id: &CardId, zone: &Zone) 
         .active_continuous_effects()
         .into_iter()
         .any(|effect| match effect {
-            ContinuousEffect::ConnectZones {
+            OngoingEffect::ConnectZones {
                 connected_zones,
                 affected_cards,
             } => affected_cards.matches(card_id, state) && connected_zones.contains(zone),

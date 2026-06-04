@@ -66,15 +66,12 @@ impl Card for SmokestacksOfGnaak {
         Some(self)
     }
 
-    async fn get_continuous_effects(
-        &self,
-        _state: &State,
-    ) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         if !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }
 
-        Ok(vec![ContinuousEffect::GrantStatus {
+        Ok(vec![OngoingEffect::GrantStatus {
             status: CardStatus::Disabled,
             affected_cards: CardQuery::new()
                 .sites()

@@ -60,8 +60,8 @@ impl Card for MasterTracker {
         Some(&mut self.unit_base)
     }
 
-    fn area_modifiers(&self, _state: &State) -> Vec<ContinuousEffect> {
-        vec![ContinuousEffect::RemoveAbilities {
+    fn area_modifiers(&self, _state: &State) -> Vec<OngoingEffect> {
+        vec![OngoingEffect::RemoveAbilities {
             removal: AbilityRemoval::exact(Ability::Stealth),
             affected_cards: CardQuery::new()
                 .in_play()

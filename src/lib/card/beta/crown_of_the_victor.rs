@@ -63,7 +63,7 @@ impl Card for CrownOfTheVictor {
         Some(self)
     }
 
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         let bearer_id = self
             .get_artifact()
             .expect("CrownOfTheVictor should have an artifact base")
@@ -78,7 +78,7 @@ impl Card for CrownOfTheVictor {
             return Ok(vec![]);
         }
 
-        Ok(vec![ContinuousEffect::ModifyPower {
+        Ok(vec![OngoingEffect::ModifyPower {
             power_diff: 3,
             affected_cards: CardQuery::new().bearer_of_card(self.get_id()),
         }])

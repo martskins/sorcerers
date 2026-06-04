@@ -74,11 +74,8 @@ impl Card for IronShackles {
         Some(self)
     }
 
-    async fn get_continuous_effects(
-        &self,
-        _state: &State,
-    ) -> anyhow::Result<Vec<ContinuousEffect>> {
-        Ok(vec![ContinuousEffect::GrantStatus {
+    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+        Ok(vec![OngoingEffect::GrantStatus {
             status: CardStatus::Disabled,
             affected_cards: CardQuery::new().bearer_of_card(self.get_id()),
         }])

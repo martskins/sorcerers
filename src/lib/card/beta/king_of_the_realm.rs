@@ -62,16 +62,16 @@ impl Card for KingOfTheRealm {
         Some(&mut self.unit_base)
     }
 
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         Ok(vec![
-            ContinuousEffect::ModifyPower {
+            OngoingEffect::ModifyPower {
                 power_diff: 1,
                 affected_cards: CardQuery::new()
                     .minion_types(vec![MinionType::Mortal])
                     .in_play()
                     .id_not_in(vec![*self.get_id()]),
             },
-            ContinuousEffect::ControllerOverride {
+            OngoingEffect::ControllerOverride {
                 controller_id: self.get_controller_id(state),
                 affected_cards: CardQuery::new()
                     .minion_types(vec![MinionType::Mortal])

@@ -64,7 +64,7 @@ impl Card for MaddeningBells {
         Some(self)
     }
 
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         if !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }
@@ -111,7 +111,7 @@ impl Card for MaddeningBells {
             return Ok(vec![]);
         }
 
-        Ok(vec![ContinuousEffect::ModifyManaCost {
+        Ok(vec![OngoingEffect::ModifyManaCost {
             mana_diff: 2,
             affected_cards: CardQuery::from_ids(affected_spell_ids),
             zones: None,

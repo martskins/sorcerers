@@ -63,11 +63,11 @@ impl Card for SkyBaron {
     fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
         Some(&mut self.unit_base)
     }
-    fn area_modifiers(&self, _state: &State) -> Vec<ContinuousEffect> {
+    fn area_modifiers(&self, _state: &State) -> Vec<OngoingEffect> {
         if !self.get_zone().is_in_play() {
             return vec![];
         }
-        vec![ContinuousEffect::RemoveAbilities {
+        vec![OngoingEffect::RemoveAbilities {
             removal: AbilityRemoval::exact(Ability::Airborne),
             affected_cards: CardQuery::new().units().id_not(self.get_id()),
         }]

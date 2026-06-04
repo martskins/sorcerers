@@ -55,15 +55,12 @@ impl Card for TragedyWorrywart {
         Some(&mut self.unit_base)
     }
 
-    async fn get_continuous_effects(
-        &self,
-        _state: &State,
-    ) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         if !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }
 
-        Ok(vec![ContinuousEffect::PreventDamageFromMagic {
+        Ok(vec![OngoingEffect::PreventDamageFromMagic {
             affected_cards: CardQuery::new()
                 .units()
                 .nearby_locations_to_card(self.get_id()),

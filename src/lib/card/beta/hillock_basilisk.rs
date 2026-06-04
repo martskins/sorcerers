@@ -61,8 +61,8 @@ impl Card for HillockBasilisk {
         Some(&mut self.unit_base)
     }
 
-    fn area_modifiers(&self, _state: &State) -> Vec<ContinuousEffect> {
-        vec![ContinuousEffect::GrantStatus {
+    fn area_modifiers(&self, _state: &State) -> Vec<OngoingEffect> {
+        vec![OngoingEffect::GrantStatus {
             status: CardStatus::Disabled,
             affected_cards: CardQuery::new()
                 .units()

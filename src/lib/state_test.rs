@@ -2,8 +2,8 @@ use crate::{
     card::{
         Ability, AridDesert, BeastOfBurden, Card, CardStatus, CauldronCrones, CourtesanThais,
         DonnybrookInn, Drought, Enchantress, Flood, FootSoldier, FreeCity, HeadlessHaunt,
-        KiteArcher, NimbusJinn, Region, RimlandNomads, Rubble, Silence, SistersOfSilence,
-        SkyBaron, SmokestacksOfGnaak, SneakThief, UnitBase, from_name_and_zone,
+        KiteArcher, NimbusJinn, Region, RimlandNomads, Rubble, Silence, SistersOfSilence, SkyBaron,
+        SmokestacksOfGnaak, SneakThief, UnitBase, from_name_and_zone,
     },
     deck::Deck,
     effect::Effect,
@@ -11,7 +11,7 @@ use crate::{
     networking::message::ServerMessage,
     query::{CardQuery, EffectQuery, LocationQuery, QueryCache, ZoneQuery},
     state::{
-        AbilityRemoval, ContinuousEffect, Player, PlayerWithDeck, State, TemporaryEffect,
+        AbilityRemoval, OngoingEffect, Player, PlayerWithDeck, State, TemporaryEffect,
         TimedOngoingEffect, Turn, TurnIterator,
     },
     zone::{Location, Zone},
@@ -878,7 +878,7 @@ async fn test_loses_all_abilities_keeps_disabled_status() {
     .await;
 
     state.ongoing_effects.push(TimedOngoingEffect {
-        effect: ContinuousEffect::RemoveAbilities {
+        effect: OngoingEffect::RemoveAbilities {
             removal: AbilityRemoval::AllAbilities,
             affected_cards: CardQuery::from_id(target_id),
         },
@@ -1068,7 +1068,7 @@ async fn test_flood_grants_flooded_ability() {
     .await;
 
     state.ongoing_effects.push(TimedOngoingEffect {
-        effect: ContinuousEffect::GrantAbility {
+        effect: OngoingEffect::GrantAbility {
             ability: Ability::Flooded,
             affected_cards: CardQuery::from_id(site_id),
         },
@@ -1101,7 +1101,7 @@ async fn test_removing_abilities_removes_flooded() {
     .await;
 
     state.ongoing_effects.push(TimedOngoingEffect {
-        effect: ContinuousEffect::GrantAbility {
+        effect: OngoingEffect::GrantAbility {
             ability: Ability::Flooded,
             affected_cards: CardQuery::from_id(site_id),
         },
@@ -1109,7 +1109,7 @@ async fn test_removing_abilities_removes_flooded() {
         timestamp: 1,
     });
     state.ongoing_effects.push(TimedOngoingEffect {
-        effect: ContinuousEffect::RemoveAbilities {
+        effect: OngoingEffect::RemoveAbilities {
             removal: AbilityRemoval::AllAbilities,
             affected_cards: CardQuery::from_id(site_id),
         },

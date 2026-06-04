@@ -109,12 +109,9 @@ impl Card for SwivenScout {
         reveal_enemy_hands_in_range(*self.get_id(), state).await
     }
 
-    async fn get_continuous_effects(
-        &self,
-        _state: &State,
-    ) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         let scout_id = *self.get_id();
-        Ok(vec![ContinuousEffect::TriggeredEffect {
+        Ok(vec![OngoingEffect::TriggeredEffect {
             trigger_on_effect: EffectQuery::MoveCard {
                 card: CardQuery::new().units(),
             },

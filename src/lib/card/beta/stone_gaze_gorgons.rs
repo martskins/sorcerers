@@ -62,7 +62,7 @@ impl Card for StoneGazeGorgons {
         Some(&mut self.unit_base)
     }
 
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         if !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }
@@ -75,7 +75,7 @@ impl Card for StoneGazeGorgons {
 
         Ok(resting_minions
             .into_iter()
-            .map(|card_id| ContinuousEffect::GrantStatus {
+            .map(|card_id| OngoingEffect::GrantStatus {
                 status: CardStatus::Disabled,
                 affected_cards: card_id.into(),
             })

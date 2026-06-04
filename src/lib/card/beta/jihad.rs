@@ -60,7 +60,7 @@ impl Card for Jihad {
         Some(self)
     }
 
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         let controller_id = self.get_controller_id(state);
 
         let affected_minions = CardQuery::new()
@@ -70,14 +70,14 @@ impl Card for Jihad {
             .with_affinity(Element::Fire);
 
         Ok(vec![
-            ContinuousEffect::OverrideValidPlayZone {
+            OngoingEffect::OverrideValidPlayZone {
                 affected_zones: ZoneQuery::new().affected_zones_of_card(self.get_id()),
                 affected_cards: CardQuery::new()
                     .minions()
                     .with_affinity(Element::Fire)
                     .including_not_in_play(),
             },
-            ContinuousEffect::ModifyPower {
+            OngoingEffect::ModifyPower {
                 power_diff: 1,
                 affected_cards: affected_minions,
             },

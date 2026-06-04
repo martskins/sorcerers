@@ -61,13 +61,13 @@ impl Card for TideNaiads {
         Some(&mut self.unit_base)
     }
 
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         let site_id = self
             .get_zone()
             .get_site(state)
             .map(|site| site.get_id())
             .cloned();
-        Ok(vec![ContinuousEffect::GrantAbility {
+        Ok(vec![OngoingEffect::GrantAbility {
             ability: Ability::Flooded,
             affected_cards: site_id.as_ref().unwrap().into(),
         }])

@@ -241,12 +241,12 @@ impl Card for FreeCity {
         ])
     }
 
-    fn area_modifiers(&self, _state: &State) -> Vec<ContinuousEffect> {
+    fn area_modifiers(&self, _state: &State) -> Vec<OngoingEffect> {
         if !self.used_ability {
             return vec![];
         }
 
-        vec![ContinuousEffect::GrantAbility {
+        vec![OngoingEffect::GrantAbility {
             ability: Ability::CannotDefend,
             affected_cards: CardQuery::from_id(*self.get_id()),
         }]

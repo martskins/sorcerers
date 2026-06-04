@@ -122,13 +122,13 @@ pub struct TimedOngoingEffect {
 }
 
 #[derive(Debug, Default, Clone)]
-pub struct ContinuousEffectIndex {
+pub struct OngoingEffectIndex {
     pub grants_statuses: HashMap<CardId, Vec<CardStatus>>,
     pub grants_activated_abilities: HashMap<CardId, Vec<Box<dyn ActivatedAbility>>>,
     pub power_diffs: HashMap<CardId, i16>,
 }
 
-impl ContinuousEffectIndex {
+impl OngoingEffectIndex {
     fn build(state: &State) -> Self {
         let mut index = Self::default();
         let mut inactive_sources = HashSet::new();
@@ -142,7 +142,7 @@ impl ContinuousEffectIndex {
             }
 
             match &effect.effect {
-                ContinuousEffect::GrantStatus {
+                OngoingEffect::GrantStatus {
                     status,
                     affected_cards,
                 } => {
@@ -157,7 +157,7 @@ impl ContinuousEffectIndex {
                         }
                     }
                 }
-                ContinuousEffect::RemoveAbilities {
+                OngoingEffect::RemoveAbilities {
                     removal,
                     affected_cards,
                 } => {
@@ -167,7 +167,7 @@ impl ContinuousEffectIndex {
                         }
                     }
                 }
-                ContinuousEffect::ModifyPower {
+                OngoingEffect::ModifyPower {
                     power_diff,
                     affected_cards,
                 } => {
@@ -175,7 +175,7 @@ impl ContinuousEffectIndex {
                         *index.power_diffs.entry(card_id).or_default() += *power_diff;
                     }
                 }
-                ContinuousEffect::ModifyPowerForEach {
+                OngoingEffect::ModifyPowerForEach {
                     power_per_card,
                     affected_cards,
                     matching_cards,
@@ -210,7 +210,7 @@ impl AreaModifierIndex {
             }
 
             match &effect.effect {
-                ContinuousEffect::GrantAbility {
+                OngoingEffect::GrantAbility {
                     ability,
                     affected_cards,
                 } => {
@@ -222,7 +222,7 @@ impl AreaModifierIndex {
                             .push(AbilityModifier::Grant(ability.clone()));
                     }
                 }
-                ContinuousEffect::GrantStatus {
+                OngoingEffect::GrantStatus {
                     status,
                     affected_cards,
                 } => {
@@ -237,7 +237,7 @@ impl AreaModifierIndex {
                         }
                     }
                 }
-                ContinuousEffect::RemoveAbilities {
+                OngoingEffect::RemoveAbilities {
                     removal,
                     affected_cards,
                 } => {
@@ -256,7 +256,7 @@ impl AreaModifierIndex {
                             .push(AbilityModifier::Remove(removal.clone()));
                     }
                 }
-                ContinuousEffect::GrantActivatedAbility {
+                OngoingEffect::GrantActivatedAbility {
                     ability,
                     affected_cards,
                 } => {
@@ -268,7 +268,7 @@ impl AreaModifierIndex {
                             .push(ability.clone());
                     }
                 }
-                ContinuousEffect::GrantCounter {
+                OngoingEffect::GrantCounter {
                     counter,
                     affected_cards,
                 } => {
@@ -306,7 +306,9 @@ impl AreaModifierIndex {
                 .ability_modifiers
                 .entry(card_id)
                 .or_default()
-                .push(AbilityModifier::Remove(AbilityRemoval::exact(Ability::Flooded)));
+                .push(AbilityModifier::Remove(AbilityRemoval::exact(
+                    Ability::Flooded,
+                )));
         }
 
         index
@@ -316,7 +318,7 @@ impl AreaModifierIndex {
 #[derive(Debug, Default)]
 pub struct StateRuntimeCache {
     area_modifier_index: RwLock<Option<AreaModifierIndex>>,
-    continuous_effect_index: RwLock<Option<ContinuousEffectIndex>>,
+    continuous_effect_index: RwLock<Option<OngoingEffectIndex>>,
 }
 
 impl Clone for StateRuntimeCache {
@@ -433,8 +435,6 @@ pub enum OngoingEffect {
         on_effect: EffectCallback,
     },
 }
-
-pub type ContinuousEffect = OngoingEffect;
 
 impl OngoingEffect {
     fn display_description(&self) -> String {
@@ -1040,7 +1040,7 @@ impl State {
             .active_continuous_effects()
             .into_iter()
             .filter_map(|ce| match ce {
-                ContinuousEffect::ModifyManaCost {
+                OngoingEffect::ModifyManaCost {
                     mana_diff,
                     affected_cards,
                     zones,
@@ -1111,14 +1111,16 @@ impl State {
     }
 
     pub fn animated_unit_base(&self, card_id: &CardId) -> Option<&UnitBase> {
-        self.temporary_effects().iter().find_map(|effect| match effect {
-            TemporaryEffect::Animate {
-                card_id: animated_id,
-                unit_base,
-                ..
-            } if animated_id == card_id => Some(unit_base),
-            _ => None,
-        })
+        self.temporary_effects()
+            .iter()
+            .find_map(|effect| match effect {
+                TemporaryEffect::Animate {
+                    card_id: animated_id,
+                    unit_base,
+                    ..
+                } if animated_id == card_id => Some(unit_base),
+                _ => None,
+            })
     }
 
     pub fn animated_unit_base_mut(&mut self, card_id: &CardId) -> Option<&mut UnitBase> {
@@ -1207,17 +1209,17 @@ impl State {
 
     fn ongoing_effect_layer(effect: &TimedOngoingEffect) -> u8 {
         match &effect.effect {
-            ContinuousEffect::ControllerOverride { .. } => 3,
-            ContinuousEffect::ModifyPower { .. } | ContinuousEffect::ModifyPowerForEach { .. } => 6,
-            ContinuousEffect::GrantStatus {
+            OngoingEffect::ControllerOverride { .. } => 3,
+            OngoingEffect::ModifyPower { .. } | OngoingEffect::ModifyPowerForEach { .. } => 6,
+            OngoingEffect::GrantStatus {
                 status: CardStatus::Disabled | CardStatus::Silenced,
                 ..
             } => 2,
-            ContinuousEffect::RemoveAbilities { .. } => 2,
-            ContinuousEffect::GrantAbility { .. }
-            | ContinuousEffect::GrantStatus { .. }
-            | ContinuousEffect::GrantActivatedAbility { .. }
-            | ContinuousEffect::GrantCounter { .. } => 5,
+            OngoingEffect::RemoveAbilities { .. } => 2,
+            OngoingEffect::GrantAbility { .. }
+            | OngoingEffect::GrantStatus { .. }
+            | OngoingEffect::GrantActivatedAbility { .. }
+            | OngoingEffect::GrantCounter { .. } => 5,
             _ => 5,
         }
     }
@@ -1230,7 +1232,7 @@ impl State {
         effects.into_iter().map(|(_, effect)| effect).collect()
     }
 
-    pub fn active_continuous_effects(&self) -> Vec<&ContinuousEffect> {
+    pub fn active_continuous_effects(&self) -> Vec<&OngoingEffect> {
         let mut inactive_sources = HashSet::new();
         self.ordered_ongoing_effects()
             .into_iter()
@@ -1420,7 +1422,7 @@ impl State {
             .expect("area modifier index should be initialized"))
     }
 
-    fn with_continuous_effect_index<T>(&self, f: impl FnOnce(&ContinuousEffectIndex) -> T) -> T {
+    fn with_continuous_effect_index<T>(&self, f: impl FnOnce(&OngoingEffectIndex) -> T) -> T {
         {
             let index = self
                 .runtime_cache
@@ -1433,7 +1435,7 @@ impl State {
         }
 
         {
-            let index = ContinuousEffectIndex::build(self);
+            let index = OngoingEffectIndex::build(self);
             let mut cached = self
                 .runtime_cache
                 .continuous_effect_index
@@ -1702,7 +1704,11 @@ impl State {
         (living_players.len() == 1).then_some(living_players[0])
     }
 
-    pub fn get_defenders_for_attack(&self, attacker_id: &CardId, defender_id: &CardId) -> Vec<CardId> {
+    pub fn get_defenders_for_attack(
+        &self,
+        attacker_id: &CardId,
+        defender_id: &CardId,
+    ) -> Vec<CardId> {
         let defender = self.get_card(defender_id);
         let controller_id = defender.get_controller_id(self);
         let mut defenders = CardQuery::new()
@@ -1715,14 +1721,14 @@ impl State {
             .controlled_by(&controller_id)
             .all(self);
 
-        let extra_defenders: Vec<CardId> =
-            self.cards
-                .values()
-                .filter(|card| card.get_controller_id(self) == controller_id)
-                .filter(|card| !defenders.contains(card.get_id()))
-                .filter(|card| card.can_defend_attack(self, attacker_id, defender_id))
-                .map(|card| *card.get_id())
-                .collect();
+        let extra_defenders: Vec<CardId> = self
+            .cards
+            .values()
+            .filter(|card| card.get_controller_id(self) == controller_id)
+            .filter(|card| !defenders.contains(card.get_id()))
+            .filter(|card| card.can_defend_attack(self, attacker_id, defender_id))
+            .map(|card| *card.get_id())
+            .collect();
         defenders.extend(extra_defenders);
         defenders
     }

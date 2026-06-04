@@ -57,8 +57,8 @@ impl Card for MagneticMuzzle {
         Some(self)
     }
 
-    fn area_modifiers(&self, _state: &State) -> Vec<ContinuousEffect> {
-        vec![ContinuousEffect::GrantStatus {
+    fn area_modifiers(&self, _state: &State) -> Vec<OngoingEffect> {
+        vec![OngoingEffect::GrantStatus {
             status: CardStatus::Silenced,
             affected_cards: CardQuery::new().bearer_of_card(self.get_id()),
         }]

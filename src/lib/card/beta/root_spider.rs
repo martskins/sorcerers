@@ -64,7 +64,7 @@ impl Card for RootSpider {
     fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
         Some(&mut self.unit_base)
     }
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         if !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }
@@ -74,7 +74,7 @@ impl Card for RootSpider {
         let surface_minions = CardQuery::new()
             .units()
             .in_zone(&self.get_zone().with_region(Region::Surface));
-        Ok(vec![ContinuousEffect::GrantStatus {
+        Ok(vec![OngoingEffect::GrantStatus {
             status: CardStatus::Disabled,
             affected_cards: surface_minions,
         }])

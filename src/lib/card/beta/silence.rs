@@ -54,11 +54,11 @@ impl Card for Silence {
         Some(self)
     }
 
-    fn area_modifiers(&self, _state: &State) -> Vec<ContinuousEffect> {
+    fn area_modifiers(&self, _state: &State) -> Vec<OngoingEffect> {
         if !self.get_zone().is_in_play() {
             return vec![];
         }
-        vec![ContinuousEffect::GrantStatus {
+        vec![OngoingEffect::GrantStatus {
             status: CardStatus::Silenced,
             affected_cards: CardQuery::new()
                 .units()

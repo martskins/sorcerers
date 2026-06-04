@@ -56,15 +56,12 @@ impl Card for PolarExplorers {
         Some(&mut self.unit_base)
     }
 
-    async fn get_continuous_effects(
-        &self,
-        _state: &State,
-    ) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         if !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }
 
-        Ok(vec![ContinuousEffect::ConnectTopBottomEdges {
+        Ok(vec![OngoingEffect::ConnectTopBottomEdges {
             affected_cards: CardQuery::new()
                 .units()
                 .controlled_by_same_controller_as_card(self.get_id())

@@ -72,22 +72,19 @@ impl Card for DomeOfOsiros {
         Some(self)
     }
 
-    async fn get_continuous_effects(
-        &self,
-        _state: &State,
-    ) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         if !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }
 
         Ok(vec![
             // The site itself cannot be attacked.
-            ContinuousEffect::GrantAbility {
+            OngoingEffect::GrantAbility {
                 ability: Ability::Unattackable,
                 affected_cards: self.get_id().into(),
             },
             // Minions here cannot be attacked.
-            ContinuousEffect::GrantAbility {
+            OngoingEffect::GrantAbility {
                 ability: Ability::Unattackable,
                 affected_cards: CardQuery::new().in_zone_of_card(self.get_id()).minions(),
             },

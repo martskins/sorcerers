@@ -9,7 +9,7 @@ use crate::{
     },
     networking::message::ServerMessage,
     query::{CardQuery, EffectQuery, LocationQuery, QueryCache, ZoneQuery},
-    state::{ContinuousEffect, Phase, State, Turn},
+    state::{OngoingEffect, Phase, State, Turn},
 };
 use std::{collections::HashMap, fmt::Debug};
 
@@ -1938,7 +1938,7 @@ impl Effect {
                 let snapshot = state.clone();
                 // Check if this card has DoubleDamageTaken applied to it.
                 let takes_double_damage = snapshot.active_continuous_effects().into_iter().any(|ce| {
-                    matches!(ce, ContinuousEffect::DoubleDamageTaken { affected_cards, except_strikes }
+                    matches!(ce, OngoingEffect::DoubleDamageTaken { affected_cards, except_strikes }
                         if affected_cards.matches(card_id, &snapshot) && !(*except_strikes && damage.is_strike))
                 });
                 let multiplier: u16 = if takes_double_damage { 2 } else { 1 };
@@ -1954,7 +1954,7 @@ impl Effect {
                         .active_continuous_effects()
                         .into_iter()
                         .filter_map(|ce| match ce {
-                            ContinuousEffect::ReduceDamageTaken {
+                            OngoingEffect::ReduceDamageTaken {
                                 amount,
                                 affected_cards,
                             } if affected_cards.matches(card_id, &snapshot) => Some(amount),

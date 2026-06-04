@@ -74,13 +74,13 @@ impl Card for AstralAlcazar {
         Some(self)
     }
 
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         let connected_zones = Zone::all_in_region(Region::Void)
             .into_iter()
             .filter(|zone| zone.get_site_at_square(state).is_none())
             .collect();
 
-        Ok(vec![ContinuousEffect::ConnectZones {
+        Ok(vec![OngoingEffect::ConnectZones {
             connected_zones,
             affected_cards: CardQuery::new().units().in_zone_of_card(self.get_id()),
         }])

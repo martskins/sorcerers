@@ -38,7 +38,7 @@ pub(crate) mod prelude {
     };
     pub use crate::query::{CardQuery, EffectQuery, LocationQuery, ZoneQuery};
     pub use crate::state::{
-        AbilityRemoval, AffinityModifier, ContinuousEffect, DeferredEffect, LoggedEffect, State,
+        AbilityRemoval, AffinityModifier, DeferredEffect, LoggedEffect, OngoingEffect, State,
         TemporaryEffect,
     };
     pub use crate::zone::{Location, Zone};

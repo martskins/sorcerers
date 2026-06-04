@@ -55,15 +55,12 @@ impl Card for SistersOfSilence {
         Some(&mut self.unit_base)
     }
 
-    async fn get_continuous_effects(
-        &self,
-        _state: &State,
-    ) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         if !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }
 
-        Ok(vec![ContinuousEffect::GrantStatus {
+        Ok(vec![OngoingEffect::GrantStatus {
             status: CardStatus::Silenced,
             affected_cards: CardQuery::new()
                 .minions()

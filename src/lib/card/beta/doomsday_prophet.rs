@@ -61,15 +61,12 @@ impl Card for DoomsdayProphet {
         Some(&mut self.unit_base)
     }
 
-    async fn get_continuous_effects(
-        &self,
-        _state: &State,
-    ) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         if !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }
 
-        Ok(vec![ContinuousEffect::DoubleDamageTaken {
+        Ok(vec![OngoingEffect::DoubleDamageTaken {
             affected_cards: CardQuery::new()
                 .nearby_locations_to_card(self.get_id())
                 .units()

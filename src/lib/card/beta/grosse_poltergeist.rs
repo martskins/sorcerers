@@ -133,7 +133,7 @@ impl Card for GrossePoltergeist {
         Ok(vec![Box::new(PossessArtifact)])
     }
 
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         let Some(artifact_id) = self.controlled_artifact else {
             return Ok(vec![]);
         };
@@ -142,7 +142,7 @@ impl Card for GrossePoltergeist {
             return Ok(vec![]);
         }
 
-        Ok(vec![ContinuousEffect::ControllerOverride {
+        Ok(vec![OngoingEffect::ControllerOverride {
             controller_id: self.get_controller_id(state),
             affected_cards: CardQuery::from_id(artifact_id),
         }])

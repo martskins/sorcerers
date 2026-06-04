@@ -94,10 +94,7 @@ impl Card for PuppetMaster {
         }])
     }
 
-    async fn get_continuous_effects(
-        &self,
-        _state: &State,
-    ) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         if !self.get_zone().is_in_play() || self.data.controlled_minions.is_empty() {
             return Ok(vec![]);
         }
@@ -106,7 +103,7 @@ impl Card for PuppetMaster {
             return Ok(vec![]);
         };
 
-        Ok(vec![ContinuousEffect::ControllerOverride {
+        Ok(vec![OngoingEffect::ControllerOverride {
             controller_id,
             affected_cards: CardQuery::from_ids(self.data.controlled_minions.clone()),
         }])

@@ -56,11 +56,11 @@ impl Card for WickedWitch {
         Some(&mut self.unit_base)
     }
 
-    fn area_modifiers(&self, _state: &State) -> Vec<ContinuousEffect> {
+    fn area_modifiers(&self, _state: &State) -> Vec<OngoingEffect> {
         if !self.get_zone().is_in_play() {
             return vec![];
         }
-        vec![ContinuousEffect::GrantCounter {
+        vec![OngoingEffect::GrantCounter {
             counter: Counter::new(-2, 0, None),
             affected_cards: CardQuery::new()
                 .minions()

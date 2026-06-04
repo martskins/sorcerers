@@ -73,17 +73,14 @@ impl Card for DonnybrookInn {
         Some(self)
     }
 
-    async fn get_continuous_effects(
-        &self,
-        _state: &State,
-    ) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         Ok(vec![
-            ContinuousEffect::ModifyManaCost {
+            OngoingEffect::ModifyManaCost {
                 mana_diff: -1,
                 affected_cards: CardQuery::new().minions().including_not_in_play(),
                 zones: Some(ZoneQuery::new().zone_of_card(self.get_id())),
             },
-            ContinuousEffect::OverrideValidPlayZone {
+            OngoingEffect::OverrideValidPlayZone {
                 affected_zones: ZoneQuery::new().zone_of_card(self.get_id()),
                 affected_cards: CardQuery::new().minions().including_not_in_play(),
             },

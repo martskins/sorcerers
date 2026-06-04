@@ -56,13 +56,13 @@ impl Card for MazeMinotaur {
         Some(&mut self.unit_base)
     }
 
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         if !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }
 
         let allowed_zones = self.get_zone().get_nearby();
-        Ok(vec![ContinuousEffect::RestrictMoveToZones {
+        Ok(vec![OngoingEffect::RestrictMoveToZones {
             affected_cards: CardQuery::new()
                 .minions()
                 .controlled_by(&state.get_opponent_id(&self.get_controller_id(state))?)

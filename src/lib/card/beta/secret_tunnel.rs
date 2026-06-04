@@ -66,7 +66,7 @@ impl Card for SecretTunnel {
         Some(self)
     }
 
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         let controller_id = self.get_controller_id(state);
         let connected_zones = CardQuery::new()
             .sites()
@@ -78,7 +78,7 @@ impl Card for SecretTunnel {
             .map(|site_id| state.get_card(&site_id).get_zone().clone())
             .collect();
 
-        Ok(vec![ContinuousEffect::ConnectZones {
+        Ok(vec![OngoingEffect::ConnectZones {
             connected_zones,
             affected_cards: CardQuery::new()
                 .units()

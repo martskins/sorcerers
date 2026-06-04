@@ -63,7 +63,7 @@ impl Card for LandDeed {
         Some(self)
     }
 
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         let bearer_id = self
             .get_artifact()
             .expect("LandDeed should have an artifact base")
@@ -80,7 +80,7 @@ impl Card for LandDeed {
             None => return Ok(vec![]),
         };
 
-        Ok(vec![ContinuousEffect::ControllerOverride {
+        Ok(vec![OngoingEffect::ControllerOverride {
             controller_id: bearer.get_controller_id(state),
             affected_cards: site_id.into(),
         }])

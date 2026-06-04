@@ -83,11 +83,8 @@ impl Card for SeasonedSellsword {
     fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
         Some(&mut self.unit_base)
     }
-    async fn get_continuous_effects(
-        &self,
-        _state: &State,
-    ) -> anyhow::Result<Vec<ContinuousEffect>> {
-        Ok(vec![ContinuousEffect::GrantActivatedAbility {
+    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+        Ok(vec![OngoingEffect::GrantActivatedAbility {
             ability: Box::new(DiscardToGainControlAbility),
             affected_cards: CardQuery::new().avatars().in_play(),
         }])

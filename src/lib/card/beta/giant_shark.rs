@@ -62,13 +62,13 @@ impl Card for GiantShark {
         Some(&mut self.unit_base)
     }
 
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<ContinuousEffect>> {
+    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         let shark_id = *self.get_id();
         let Some(body_of_water) = state.get_body_of_water_at(self.get_zone()) else {
             return Ok(vec![]);
         };
 
-        Ok(vec![ContinuousEffect::TriggeredEffect {
+        Ok(vec![OngoingEffect::TriggeredEffect {
             trigger_on_effect: EffectQuery::EnterZone {
                 card: CardQuery::new().units(),
                 zone: ZoneQuery::from_options(body_of_water.clone(), None),
