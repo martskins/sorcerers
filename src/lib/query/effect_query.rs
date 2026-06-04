@@ -20,6 +20,10 @@ pub enum EffectQuery {
         card: CardQuery,
         site: ZoneQuery,
     },
+    StopAtSite {
+        card: CardQuery,
+        site: ZoneQuery,
+    },
     DamageDealt {
         source: Option<CardQuery>,
         target: Option<CardQuery>,
@@ -116,6 +120,17 @@ impl EffectQuery {
                     .map(|(card_id, _)| card_id)
                     .collect())
             }
+            (EffectQuery::StopAtSite { card, site }, _) => {
+                let sites = site.options(state);
+                Ok(stopped_at_sites(effect, state)
+                    .await?
+                    .into_iter()
+                    .filter(|(card_id, stopped_site)| {
+                        card.matches(card_id, state) && sites.contains(stopped_site)
+                    })
+                    .map(|(card_id, _)| card_id)
+                    .collect())
+            }
             (EffectQuery::SummonCard { card }, Effect::SummonCards { cards }) => Ok(cards
                 .iter()
                 .filter(|(_, card_id, _, _)| card.matches(card_id, state))
@@ -171,6 +186,9 @@ impl EffectQuery {
                 Ok(!self.source_ids(effect, state).await?.is_empty())
             }
             (EffectQuery::EnterSite { .. }, _) => {
+                Ok(!self.source_ids(effect, state).await?.is_empty())
+            }
+            (EffectQuery::StopAtSite { .. }, _) => {
                 Ok(!self.source_ids(effect, state).await?.is_empty())
             }
             (
@@ -409,6 +427,43 @@ pub async fn entered_sites(
                     .map(|site| (*card_id, site.get_zone().clone()))
             })
             .collect()),
+        _ => Ok(vec![]),
+    }
+}
+
+pub async fn stopped_at_sites(
+    effect: &Effect,
+    state: &State,
+) -> anyhow::Result<Vec<(uuid::Uuid, Zone)>> {
+    match effect {
+        Effect::MoveCard {
+            player_id,
+            card_id,
+            from,
+            to,
+            through_path,
+            ..
+        } => {
+            let final_zone = match through_path {
+                Some(path) => path.last().cloned(),
+                None => Some(to.pick(player_id, state).await?.into_zone()),
+            };
+            let Some(final_zone) = final_zone else {
+                return Ok(vec![]);
+            };
+            if from.clone().into_zone() == final_zone {
+                return Ok(vec![]);
+            }
+            let Some(site) = final_zone.get_site_at_square(state) else {
+                return Ok(vec![]);
+            };
+
+            let stopped_cards = std::iter::once(*card_id)
+                .chain(CardQuery::new().carried_by(card_id).all(state))
+                .map(|stopped_id| (stopped_id, site.get_zone().clone()))
+                .collect();
+            Ok(stopped_cards)
+        }
         _ => Ok(vec![]),
     }
 }

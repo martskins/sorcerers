@@ -1227,7 +1227,7 @@ impl Effect {
 
                 match through_path {
                     Some(path) => {
-                        for (idx, path_zone) in path.iter().enumerate() {
+                        for path_zone in path.iter() {
                             let zone = ZoneQuery::from_zone(path_zone.clone())
                                 .pick(player_id, state)
                                 .await?;
@@ -1255,15 +1255,6 @@ impl Effect {
                                     effects.extend(site.on_card_enter(state, card_id));
                                 }
 
-                                if idx + 1 == path.len()
-                                    && let Some(site) = zone.get_site_at_square(state)
-                                    && can_use_special_abilities(state, site.get_id())
-                                {
-                                    effects.extend(site.on_card_stop(state, card_id));
-                                    for cid in &carried_cards {
-                                        effects.extend(site.on_card_stop(state, cid));
-                                    }
-                                }
                             }
                             effects.extend(location_survival_effects_for_cards(
                                 state,
@@ -1296,14 +1287,6 @@ impl Effect {
                                 && can_use_special_abilities(state, site.get_id())
                             {
                                 effects.extend(site.on_card_enter(state, card_id));
-                            }
-                            if let Some(site) = zone.get_site_at_square(state)
-                                && can_use_special_abilities(state, site.get_id())
-                            {
-                                effects.extend(site.on_card_stop(state, card_id));
-                                for cid in &carried_cards {
-                                    effects.extend(site.on_card_stop(state, cid));
-                                }
                             }
                         }
                         effects.extend(location_survival_effects_for_cards(

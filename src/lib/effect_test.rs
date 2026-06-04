@@ -799,7 +799,8 @@ async fn test_site_damage_after_deaths_door_is_not_death_blow() {
 
 #[tokio::test]
 async fn test_vaults_of_zul_triggers_on_stop_not_intermediate_enter() {
-    let (mut state, _rx) = make_state(vec![]);
+    let (mut state, server_rx, client_tx) = make_state_with_client(vec![]);
+    let game_id = state.game_id;
     let player_id = state.players[0].id;
     let avatar_id = state.get_player_avatar_id(&player_id).unwrap();
     state
@@ -811,7 +812,7 @@ async fn test_vaults_of_zul_triggers_on_stop_not_intermediate_enter() {
     vaults.set_zone(Zone::Location(Location::Square(2, Region::Surface)));
     state.cards.insert(vaults_id, Box::new(vaults));
 
-    Effect::MoveCard {
+    state.queue_one(Effect::MoveCard {
         player_id,
         card_id: avatar_id,
         from: Location::Square(1, Region::Surface),
@@ -823,16 +824,11 @@ async fn test_vaults_of_zul_triggers_on_stop_not_intermediate_enter() {
             Zone::Location(Location::Square(2, Region::Surface)),
             Zone::Location(Location::Square(3, Region::Surface)),
         ]),
-    }
-    .apply(&mut state)
-    .await
-    .unwrap();
+    });
+    drain_effects(&mut state).await;
 
     assert!(
-        !state
-            .effects
-            .iter()
-            .any(|effect| matches!(effect, Effect::SkipNextTurn { player_id: skipped } if skipped == &player_id)),
+        !state.eliminated_players.contains(&player_id),
         "Vaults of Zul should not trigger when an Avatar only enters it mid-movement"
     );
 
@@ -842,7 +838,23 @@ async fn test_vaults_of_zul_triggers_on_stop_not_intermediate_enter() {
     state
         .get_card_mut(&avatar_id)
         .set_zone(Zone::Location(Location::Square(1, Region::Surface)));
-    Effect::MoveCard {
+
+    tokio::spawn(async move {
+        while let Ok(message) = server_rx.recv().await {
+            if let ServerMessage::PickAction { player_id, .. } = message {
+                client_tx
+                    .send(ClientMessage::PickAction {
+                        game_id,
+                        player_id,
+                        action_idx: 0,
+                    })
+                    .await
+                    .unwrap();
+            }
+        }
+    });
+
+    state.queue_one(Effect::MoveCard {
         player_id,
         card_id: avatar_id,
         from: Location::Square(1, Region::Surface),
@@ -854,16 +866,11 @@ async fn test_vaults_of_zul_triggers_on_stop_not_intermediate_enter() {
             Zone::Location(Location::Square(2, Region::Surface)),
             Zone::Location(Location::Square(3, Region::Surface)),
         ]),
-    }
-    .apply(&mut state)
-    .await
-    .unwrap();
+    });
+    drain_effects(&mut state).await;
 
     assert!(
-        state
-            .effects
-            .iter()
-            .any(|effect| matches!(effect, Effect::SkipNextTurn { player_id: skipped } if skipped == &player_id)),
+        state.eliminated_players.contains(&player_id),
         "Vaults of Zul should trigger when an Avatar stops there"
     );
 }
