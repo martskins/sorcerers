@@ -55,7 +55,9 @@ pub struct CardQuery {
 
 #[derive(Debug, Clone)]
 enum ManaCostFilter {
+    #[allow(dead_code)]
     GreaterThan(u8),
+    #[allow(dead_code)]
     LessThan(u8),
     LessThanOrEqualTo(u8),
     EqualTo(u8),
