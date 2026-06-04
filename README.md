@@ -17,7 +17,8 @@ Sorcerers lets you play Sorcery: Contested Realm with friends in a multiplayer e
 
 Sorcerers is very much a work in progress. Bugs and incomplete features are to be expected.
 
-<img width="1728" height="1117" alt="image" src="https://github.com/user-attachments/assets/2ff52288-1121-4d83-ac2f-fb786b469ba8" />
+<img width="1728" height="1117" alt="image" src="https://github.com/user-attachments/assets/bc4de05a-9f7d-412d-9353-6b56fb14cad6" />
+
 
 ## Getting Started
 
