@@ -69,9 +69,10 @@ impl Card for GiantShark {
         };
 
         Ok(vec![ContinuousEffect::TriggeredEffect {
-            trigger_on_effect: EffectQuery::EnterSite {
+            trigger_on_effect: EffectQuery::EnterZone {
                 card: CardQuery::new().units(),
-                site: ZoneQuery::from_options(body_of_water.clone(), None),
+                zone: ZoneQuery::from_options(body_of_water.clone(), None),
+                from: None,
             },
             on_effect: Arc::new(move |state: &State, card_id: &CardId, effect: &Effect| {
                 let body_of_water = body_of_water.clone();

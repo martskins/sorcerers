@@ -2,7 +2,7 @@ use crate::{
     card::{
         Ability, ApprenticeWizard, AridDesert, AskelonPhoenix, BottomlessPit, BridgeTroll, Card,
         CardStatus, Damage, DeadOfNightDemon, Drought, Enchantress, Flood, FootSoldier, OgreGoons,
-        PhaseAssassin, PitVipers, Region, RimlandNomads, RootSpider, Sandstorm, SeaRaider,
+        PhaseAssassin, PitVipers, PlanarGate, Region, RimlandNomads, RootSpider, Sandstorm, SeaRaider,
         SeirawanHydra, Silence, SimpleVillage, SirianTemplar, SlingPixies, SpringRiver, UnitBase,
         VaultsOfZul, YourkeCrossbowmen, from_name_and_zone,
     },
@@ -903,6 +903,57 @@ async fn test_enter_site_triggers_when_card_is_summoned_there() {
         state.get_card(&ogre_id).get_zone(),
         &Zone::Cemetery,
         "Bottomless Pit should trigger when a minion is summoned into it"
+    );
+}
+
+#[tokio::test]
+async fn test_planar_gate_grants_voidwalk_only_while_minion_is_there() {
+    let (mut state, _rx) = make_state(vec![]);
+    let player_id = state.players[0].id;
+
+    let mut gate = PlanarGate::new(player_id);
+    let gate_id = *gate.get_id();
+    gate.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    state.cards.insert(gate_id, Box::new(gate));
+    state
+        .add_passive_ongoing_effects_for_source(&gate_id)
+        .await
+        .unwrap();
+
+    let mut destination = AridDesert::new(player_id);
+    let destination_id = *destination.get_id();
+    destination.set_zone(Zone::Location(Location::Square(2, Region::Surface)));
+    state.cards.insert(destination_id, Box::new(destination));
+
+    let mut foot_soldier = FootSoldier::new(player_id);
+    let foot_soldier_id = *foot_soldier.get_id();
+    foot_soldier.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    state.cards.insert(foot_soldier_id, Box::new(foot_soldier));
+
+    assert!(
+        state
+            .get_card(&foot_soldier_id)
+            .has_ability(&state, &Ability::Voidwalk),
+        "Planar Gate should grant Voidwalk to minions at the site"
+    );
+
+    state.queue_one(Effect::MoveCard {
+        player_id,
+        card_id: foot_soldier_id,
+        from: Location::Square(1, Region::Surface),
+        to: LocationQuery::from_zone(
+            (Zone::Location(Location::Square(2, Region::Surface))).with_region(Region::Surface),
+        ),
+        tap: false,
+        through_path: None,
+    });
+    drain_effects(&mut state).await;
+
+    assert!(
+        !state
+            .get_card(&foot_soldier_id)
+            .has_ability(&state, &Ability::Voidwalk),
+        "Planar Gate should stop granting Voidwalk once the minion leaves"
     );
 }
 

@@ -101,9 +101,10 @@ impl Card for MarinersCurse {
                     .collect::<Vec<_>>();
                 Ok(vec![Effect::AddDeferredEffect {
                     effect: DeferredEffect {
-                        trigger_on_effect: EffectQuery::EnterSite {
+                        trigger_on_effect: EffectQuery::EnterZone {
                             card: CardQuery::new().minions(),
-                            site: ZoneQuery::from_options(zones, None),
+                            zone: ZoneQuery::from_options(zones, None),
+                            from: None,
                         },
                         expires_on_effect: Some(EffectQuery::BuryCard {
                             card: aura_id.into(),

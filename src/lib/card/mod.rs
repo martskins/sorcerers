@@ -2217,10 +2217,6 @@ pub trait Site: Card + ResourceProvider {
         Ok(false)
     }
 
-    fn on_card_enter(&self, _state: &State, _card_id: &CardId) -> Vec<Effect> {
-        vec![]
-    }
-
     fn base_can_be_entered_by(
         &self,
         card: &uuid::Uuid,

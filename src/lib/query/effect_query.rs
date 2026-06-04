@@ -16,13 +16,9 @@ pub enum EffectQuery {
         zone: ZoneQuery,
         from: Option<ZoneQuery>,
     },
-    EnterSite {
+    StopAtZone {
         card: CardQuery,
-        site: ZoneQuery,
-    },
-    StopAtSite {
-        card: CardQuery,
-        site: ZoneQuery,
+        zone: ZoneQuery,
     },
     DamageDealt {
         source: Option<CardQuery>,
@@ -89,38 +85,47 @@ impl EffectQuery {
                 }
                 Ok(source_ids)
             }
-            (EffectQuery::EnterZone { card, zone, from }, _) => {
-                let zones = zone.options(state);
-                Ok(entered_zones(effect, state)
-                    .await?
-                    .into_iter()
-                    .filter(|(card_id, _from_zone, entered_zone)| {
-                        card.matches(card_id, state) && zones.contains(entered_zone)
-                    })
-                    .filter(|(_, from_zone, _)| {
-                        if let Some(from) = from
-                            && !from.matches(state, from_zone)
-                        {
-                            return false;
-                        }
+            (
+                EffectQuery::EnterZone {
+                    card: card_query,
+                    zone: zone_query,
+                    ..
+                },
+                Effect::SummonCards { cards },
+            ) => {
+                for (_, card, _, loc) in cards {
+                    let card_matches = card_query.matches(card, state);
+                    let zone_matches = zone_query.matches(state, &loc.clone().into_zone());
+                    if card_matches && zone_matches {
+                        return Ok(vec![*card]);
+                    }
+                }
 
-                        true
-                    })
-                    .map(|(card_id, _, _)| card_id)
-                    .collect())
+                Ok(vec![])
             }
-            (EffectQuery::EnterSite { card, site }, _) => {
-                let sites = site.options(state);
-                Ok(entered_sites(effect, state)
-                    .await?
-                    .into_iter()
-                    .filter(|(card_id, entered_site)| {
-                        card.matches(card_id, state) && sites.contains(entered_site)
-                    })
-                    .map(|(card_id, _)| card_id)
-                    .collect())
+            (
+                EffectQuery::EnterZone {
+                    card: card_query,
+                    zone: zone_query,
+                    ..
+                },
+                Effect::MoveCard {
+                    player_id,
+                    card_id,
+                    to,
+                    ..
+                },
+            ) => {
+                let card_matches = card_query.matches(card_id, state);
+                let loc = to.pick(player_id, state).await?;
+                let zone_matches = zone_query.matches(state, &loc.into_zone());
+                if card_matches && zone_matches {
+                    return Ok(vec![*card_id]);
+                }
+
+                Ok(vec![])
             }
-            (EffectQuery::StopAtSite { card, site }, _) => {
+            (EffectQuery::StopAtZone { card, zone: site }, _) => {
                 let sites = site.options(state);
                 Ok(stopped_at_sites(effect, state)
                     .await?
@@ -182,13 +187,50 @@ impl EffectQuery {
 
     pub async fn matches(&self, effect: &Effect, state: &State) -> anyhow::Result<bool> {
         match (self, effect) {
-            (EffectQuery::EnterZone { .. }, _) => {
-                Ok(!self.source_ids(effect, state).await?.is_empty())
+            (
+                EffectQuery::EnterZone {
+                    card: card_query,
+                    zone: zone_query,
+                    ..
+                },
+                Effect::SummonCards { cards },
+            ) => {
+                for (_, card, _, loc) in cards {
+                    let card_matches = card_query.matches(card, state);
+                    let zone_matches = zone_query.matches(state, &loc.clone().into_zone());
+                    if card_matches && zone_matches {
+                        return Ok(true);
+                    }
+                }
+
+                Ok(false)
             }
-            (EffectQuery::EnterSite { .. }, _) => {
-                Ok(!self.source_ids(effect, state).await?.is_empty())
+            (
+                EffectQuery::EnterZone {
+                    card: card_query,
+                    zone: zone_query,
+                    ..
+                },
+                Effect::MoveCard {
+                    player_id,
+                    card_id,
+                    to,
+                    ..
+                },
+            ) => {
+                let card_matches = card_query.matches(card_id, state);
+                let loc = to.pick(player_id, state).await?;
+                let zone_matches = zone_query.matches(state, &loc.into_zone());
+                if card_matches && zone_matches {
+                    return Ok(true);
+                }
+
+                Ok(false)
             }
-            (EffectQuery::StopAtSite { .. }, _) => {
+            // (EffectQuery::EnterZone { .. }, _) => {
+            //     Ok(!self.source_ids(effect, state).await?.is_empty())
+            // }
+            (EffectQuery::StopAtZone { .. }, _) => {
                 Ok(!self.source_ids(effect, state).await?.is_empty())
             }
             (

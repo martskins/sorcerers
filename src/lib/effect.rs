@@ -8,7 +8,7 @@ use crate::{
         BaseAction, CardId, Direction, PlayerAction, PlayerId, SoundEffect, pick_card, pick_option,
     },
     networking::message::ServerMessage,
-    query::{CardQuery, EffectQuery, LocationQuery, QueryCache, ZoneQuery, entered_site},
+    query::{CardQuery, EffectQuery, LocationQuery, QueryCache, ZoneQuery},
     state::{ContinuousEffect, Phase, State, Turn},
 };
 use std::{collections::HashMap, fmt::Debug};
@@ -1232,7 +1232,6 @@ impl Effect {
                                 .pick(player_id, state)
                                 .await?;
                             let card = state.get_card_mut(card_id);
-                            let from_zone = card.get_zone().clone();
                             card.set_zone(zone.clone());
                             if *tap {
                                 card.set_tapped(true);
@@ -1245,17 +1244,7 @@ impl Effect {
                                 carried_card.set_zone(zone.clone());
                             }
 
-                            let moved = from_zone != zone;
                             let mut effects = vec![];
-                            if moved {
-                                if let Some(site_zone) = entered_site(&from_zone, &zone, state)
-                                    && let Some(site) = site_zone.get_site(state)
-                                    && can_use_special_abilities(state, site.get_id())
-                                {
-                                    effects.extend(site.on_card_enter(state, card_id));
-                                }
-
-                            }
                             effects.extend(location_survival_effects_for_cards(
                                 state,
                                 std::iter::once(*card_id).chain(carried_cards.iter().copied()),
@@ -1267,7 +1256,6 @@ impl Effect {
                     None => {
                         let zone = to.pick(player_id, state).await?.into_zone();
                         let card = state.get_card_mut(card_id);
-                        let from_zone = card.get_zone().clone();
                         card.set_zone(zone.clone());
                         if *tap {
                             card.set_tapped(true);
@@ -1281,14 +1269,6 @@ impl Effect {
                         }
 
                         let mut effects = vec![];
-                        if from_zone != zone {
-                            if let Some(site_zone) = entered_site(&from_zone, &zone, state)
-                                && let Some(site) = site_zone.get_site(state)
-                                && can_use_special_abilities(state, site.get_id())
-                            {
-                                effects.extend(site.on_card_enter(state, card_id));
-                            }
-                        }
                         effects.extend(location_survival_effects_for_cards(
                             state,
                             std::iter::once(*card_id).chain(carried_cards.iter().copied()),
@@ -1512,11 +1492,6 @@ impl Effect {
                             mana_effect_for_resource_entering_realm(state, card_id)?
                     {
                         effects.push(mana_effect);
-                    }
-                    if let Some(site) = zone.get_site_at_square(state)
-                        && can_use_special_abilities(state, site.get_id())
-                    {
-                        effects.extend(site.on_card_enter(state, card_id));
                     }
                     effects.extend(location_survival_effects_for_cards(
                         state,

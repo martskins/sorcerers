@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+const KILL_ENTERING_MINION_HOOK: HookId = 1;
+
 #[derive(Debug, Clone)]
 pub struct BottomlessPit {
     site_base: SiteBase,
@@ -36,20 +38,7 @@ impl BottomlessPit {
 }
 
 #[async_trait::async_trait]
-impl Site for BottomlessPit {
-    fn on_card_enter(&self, state: &State, card_id: &CardId) -> Vec<Effect> {
-        let card = state.get_card(card_id);
-        if !card.is_minion() || card.has_ability(state, &Ability::Airborne) {
-            return vec![];
-        }
-
-        vec![Effect::KillMinion {
-            card_id: *card_id,
-            killer_id: *self.get_id(),
-            from_attack: false,
-        }]
-    }
-}
+impl Site for BottomlessPit {}
 
 impl ResourceProvider for BottomlessPit {}
 
@@ -81,6 +70,47 @@ impl Card for BottomlessPit {
 
     fn get_site(&self) -> Option<&dyn Site> {
         Some(self)
+    }
+
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: KILL_ENTERING_MINION_HOOK,
+            trigger: EffectQuery::EnterZone {
+                card: CardQuery::new()
+                    .minions()
+                    .without_ability(&Ability::Airborne),
+                zone: ZoneQuery::from_zone(self.get_zone().clone()),
+                from: None,
+            },
+            timing: HookTiming::After,
+        }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook_id: HookId,
+        state: &State,
+        effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook_id {
+            KILL_ENTERING_MINION_HOOK => Ok(EffectQuery::EnterZone {
+                card: CardQuery::new()
+                    .minions()
+                    .without_ability(&Ability::Airborne),
+                zone: ZoneQuery::from_zone(self.get_zone().clone()),
+                from: None,
+            }
+            .source_ids(effect, state)
+            .await?
+            .into_iter()
+            .map(|card_id| Effect::KillMinion {
+                card_id,
+                killer_id: *self.get_id(),
+                from_attack: false,
+            })
+            .collect()),
+            _ => Ok(vec![]),
+        }
     }
 
     fn get_resource_provider(&self) -> Option<&dyn ResourceProvider> {

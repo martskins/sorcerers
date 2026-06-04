@@ -1,9 +1,8 @@
 use async_channel::Sender;
 use sorcerers::{
     card::{
-        self, AlbespinePikemen, ApprenticeWizard, AramosMercenaries, AridDesert, AwakenedMummies,
-        CaptainBaldassare, FelbogFrogMen, HumbleVillage, Region, RootSpider, WayfaringPilgrim,
-        Wildfire,
+        self, ApprenticeWizard, AramosMercenaries, AridDesert, AwakenedMummies,
+        CaptainBaldassare, FelbogFrogMen, HumbleVillage, Region, RootSpider,
     },
     deck::precon::ALL_PRECONS,
     game::Game,

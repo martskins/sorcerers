@@ -44,9 +44,10 @@ impl AwakenedMummies {
         let zone = self.get_zone().clone();
 
         Ok(DeferredEffect {
-            trigger_on_effect: EffectQuery::EnterSite {
+            trigger_on_effect: EffectQuery::EnterZone {
                 card: CardQuery::new().units().controlled_by(&opponent_id),
-                site: self.get_zone().into(),
+                zone: self.get_zone().into(),
+                from: None,
             },
             expires_on_effect: Some(EffectQuery::BuryCard {
                 card: self.get_id().into(),

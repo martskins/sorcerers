@@ -36,26 +36,7 @@ impl PlanarGate {
 }
 
 #[async_trait::async_trait]
-impl Site for PlanarGate {
-    fn on_card_enter(&self, state: &State, card_id: &CardId) -> Vec<Effect> {
-        let card = state.get_card(card_id);
-        if !card.is_minion() {
-            return vec![];
-        }
-
-        vec![Effect::AddAbilityCounter {
-            card_id: *card_id,
-            counter: AbilityCounter {
-                id: uuid::Uuid::new_v4(),
-                ability: Ability::Voidwalk,
-                expires_on_effect: Some(EffectQuery::EnterSite {
-                    card: card_id.into(),
-                    site: ZoneQuery::any_site(None, None),
-                }),
-            },
-        }]
-    }
-}
+impl Site for PlanarGate {}
 
 impl ResourceProvider for PlanarGate {}
 
@@ -87,6 +68,13 @@ impl Card for PlanarGate {
 
     fn get_site(&self) -> Option<&dyn Site> {
         Some(self)
+    }
+
+    fn area_modifiers(&self, _state: &State) -> Vec<ContinuousEffect> {
+        vec![ContinuousEffect::GrantAbility {
+            ability: Ability::Voidwalk,
+            affected_cards: CardQuery::new().minions().in_zone_of_card(self.get_id()),
+        }]
     }
 
     fn get_resource_provider(&self) -> Option<&dyn ResourceProvider> {

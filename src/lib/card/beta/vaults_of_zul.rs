@@ -77,9 +77,9 @@ impl Card for VaultsOfZul {
 
         Ok(vec![Hook {
             id: ON_CARD_STOP_HOOK,
-            trigger: EffectQuery::StopAtSite {
+            trigger: EffectQuery::StopAtZone {
                 card: CardQuery::new().avatars(),
-                site: ZoneQuery::from_zone(self.get_zone().clone()),
+                zone: ZoneQuery::from_zone(self.get_zone().clone()),
             },
             timing: HookTiming::After,
         }])
@@ -110,7 +110,10 @@ impl Card for VaultsOfZul {
                 };
                 let stopped_avatar = state.get_card(&stopped_avatar_id);
                 if !stopped_avatar.is_avatar()
-                    || stopped_avatar.get_zone().get_site_at_square(state).map(|site| site.get_id())
+                    || stopped_avatar
+                        .get_zone()
+                        .get_site_at_square(state)
+                        .map(|site| site.get_id())
                         != Some(self.get_id())
                 {
                     return Ok(vec![]);
