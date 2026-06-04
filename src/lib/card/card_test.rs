@@ -1,7 +1,8 @@
 use crate::{
     card::{
-        Ability, AdditionalCost, ApprenticeWizard, AridDesert, AstralAlcazar, Card, Cost,
-        Drought, GreatWall, OgreGoons, Region, RimlandNomads, SpectralStalker,
+        Ability, AdditionalCost, ApprenticeWizard, AridDesert, AstralAlcazar, AwakenedMummies,
+        Card, Cost, Drought, GreatWall, OgreGoons, Region, RimlandNomads, RootSpider,
+        SimpleVillage, SpectralStalker, SpringRiver,
     },
     query::CardQuery,
     state::State,
@@ -578,6 +579,84 @@ fn test_get_valid_play_zones_site_second_site() {
     ];
     expected.sort();
     assert_eq!(zones, expected);
+}
+
+#[test]
+fn test_awakened_mummies_can_be_played_underground_at_land_sites() {
+    let mut state = State::new_mock_state(vec![1, 2]);
+    let player_id = state.players[0].id;
+    *state.get_player_mana_mut(&player_id) = 1;
+
+    let water_site_id = state
+        .cards
+        .values()
+        .find(|card| {
+            card.is_site() && *card.get_zone() == Zone::Location(Location::Square(2, Region::Surface))
+        })
+        .map(|card| *card.get_id())
+        .expect("mock site should exist");
+    state.cards.remove(&water_site_id);
+
+    let mut water_site = SpringRiver::new(player_id);
+    water_site.set_zone(Zone::Location(Location::Square(2, Region::Surface)));
+    state.cards.insert(*water_site.get_id(), Box::new(water_site));
+
+    let mut card = AwakenedMummies::new(player_id);
+    card.set_zone(Zone::Hand);
+    state.cards.insert(*card.get_id(), Box::new(card.clone()));
+
+    let avatar_id = state
+        .get_player_avatar_id(&player_id)
+        .expect("avatar id to be some");
+    let zones = card
+        .get_valid_play_zones(&state, &player_id, &avatar_id)
+        .expect("zones to be computed");
+
+    assert!(zones.contains(&Zone::Location(Location::Square(
+        1,
+        Region::Underground
+    ))));
+    assert!(!zones.contains(&Zone::Location(Location::Square(
+        2,
+        Region::Underground
+    ))));
+    assert!(zones.iter().all(|zone| {
+        matches!(
+            zone,
+            Zone::Location(Location::Square(_, Region::Underground))
+        )
+    }));
+}
+
+#[test]
+fn test_burrowing_minion_can_be_played_surface_or_underground() {
+    let mut state = State::new_mock_state(vec![]);
+    let player_id = state.players[0].id;
+    *state.get_player_mana_mut(&player_id) = 3;
+
+    let mut site = SimpleVillage::new(player_id);
+    site.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    state.cards.insert(*site.get_id(), Box::new(site));
+
+    let mut card = RootSpider::new(player_id);
+    card.set_zone(Zone::Hand);
+    state.cards.insert(*card.get_id(), Box::new(card.clone()));
+
+    let avatar_id = state
+        .get_player_avatar_id(&player_id)
+        .expect("avatar id to be some");
+    let zones = card
+        .get_valid_play_zones(&state, &player_id, &avatar_id)
+        .expect("zones to be computed");
+
+    assert!(zones.contains(&Zone::Location(Location::Square(
+        1,
+        Region::Surface
+    ))));
+    assert!(zones.contains(&Zone::Location(Location::Square(
+        1,
+        Region::Underground
+    ))));
 }
 
 #[test]

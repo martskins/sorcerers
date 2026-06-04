@@ -1777,14 +1777,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         self.get_base_mut().statuses.push(status);
     }
 
-    fn on_summon(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        if self.is_site() {
-            return self.base_site_on_summon(state);
-        }
-
-        Ok(vec![])
-    }
-
     async fn on_cast(
         &mut self,
         _state: &State,
@@ -2631,7 +2623,6 @@ pub trait CardBaseMethods: Card {
         from: &CardId,
         damage: Damage,
     ) -> anyhow::Result<Vec<Effect>>;
-    fn base_site_on_summon(&self, state: &State) -> anyhow::Result<Vec<Effect>>;
     async fn base_valid_move_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>>;
     fn base_avatar_activated_abilities(
         &self,
@@ -2657,7 +2648,20 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
         player_id: &PlayerId,
         _caster_id: &uuid::Uuid,
     ) -> anyhow::Result<Vec<Zone>> {
-        Ok(Zone::all_board()
+        let mut candidate_zones = Zone::all_board();
+        if self.has_ability(state, &Ability::Burrowing) {
+            candidate_zones.extend(Zone::all_in_region(Region::Underground));
+        }
+        if self.has_ability(state, &Ability::Submerge) {
+            candidate_zones.extend(Zone::all_in_region(Region::Underwater));
+        }
+        if self.has_ability(state, &Ability::Voidwalk) {
+            candidate_zones.extend(Zone::all_in_region(Region::Void));
+        }
+        candidate_zones.sort();
+        candidate_zones.dedup();
+
+        Ok(candidate_zones
             .into_iter()
             .filter(|z| {
                 let costs = state
@@ -2935,10 +2939,6 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
         } else {
             Ok(vec![])
         }
-    }
-
-    fn base_site_on_summon(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
-        Ok(vec![])
     }
 
     async fn base_valid_move_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {

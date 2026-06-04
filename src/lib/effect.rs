@@ -1043,7 +1043,7 @@ impl Effect {
 
                 if token.is_unit() {
                     // Unit tokens are summoned via SummonCards so that zone placement,
-                    // SummoningSickness, on_summon, and genesis all happen in one place.
+                    // SummoningSickness, summon hooks, and genesis all happen in one place.
                     let token: Box<dyn Card> = match token_type {
                         TokenType::FootSoldier => Box::new(FootSoldier::new(*player_id)),
                         TokenType::Frog => Box::new(Frog::new(*player_id)),
@@ -1064,7 +1064,7 @@ impl Effect {
                     });
                 } else {
                     // Non-unit tokens are just placed directly onto the board without going through
-                    // SummonCards, since they don't need to trigger any on_summon or genesis effects.
+                    // SummonCards, since they don't need to trigger any summon hooks or genesis effects.
                     let mut token = token;
                     let token_id = *token.get_id();
                     token.set_zone(zone.clone());
@@ -1421,7 +1421,7 @@ impl Effect {
 
                 if is_minion {
                     // Minions are put into play via SummonCards, which handles zone
-                    // placement, SummoningSickness, on_summon, and genesis in one place.
+                    // placement, SummoningSickness, summon hooks, and genesis in one place.
                     state.queue_one(Effect::SummonCards {
                         cards: vec![(
                             *player_id,
@@ -1432,7 +1432,7 @@ impl Effect {
                         )],
                     });
                 } else {
-                    let (from_zone, cast_effects) = {
+                    let from_zone = {
                         let card = state
                             .cards
                             .values_mut()
@@ -1440,9 +1440,8 @@ impl Effect {
                             .expect("to find card");
                         card.set_controller_id(player_id);
                         let from_zone = card.get_zone().clone();
-                        let cast_effects = card.on_summon(&snapshot)?;
                         card.set_zone(zone.clone());
-                        (from_zone, cast_effects)
+                        from_zone
                     };
 
                     // Sync state for all palyers so that genesis effects see the card in the board
@@ -1463,7 +1462,6 @@ impl Effect {
                     }
                     effects.extend(location_survival_effects_for_realm(state));
                     state.queue(effects);
-                    state.queue(cast_effects);
                 }
             }
             Effect::SummonCards { cards } => {
@@ -1512,7 +1510,7 @@ impl Effect {
                 state.invalidate_runtime_caches();
 
                 // Force sync after all cards have been put on their zones, so that players see them
-                // on the board while resolving effects from on_summon, genesis and on_visit_zone.
+                // on the board while resolving effects from summon hooks, genesis and on_visit_zone.
                 crate::game::force_sync_all(state).await?;
 
                 let mut effects = vec![];
@@ -1520,7 +1518,6 @@ impl Effect {
                     let zone = location.clone().into_zone();
                     let card = state.get_card(card_id);
                     let from_zone = snapshot.get_card(card_id).get_zone().clone();
-                    effects.extend(card.on_summon(state)?);
                     effects.extend(card.genesis(state).await?);
                     if !from_zone.is_in_play()
                         && zone.is_in_play()
@@ -2367,8 +2364,7 @@ impl Effect {
                     state.queue(effects);
                 } else {
                     let copy = state.get_card(&copy_id);
-                    let mut effects = copy.on_summon(state)?;
-                    effects.extend(copy.genesis(state).await?);
+                    let effects = copy.genesis(state).await?;
                     state.queue(effects);
                 }
             }
@@ -2399,7 +2395,6 @@ impl Effect {
 
                 let card = state.get_card(&copy_id);
                 let mut effects: Vec<Effect> = vec![];
-                effects.extend(card.on_summon(state)?);
                 effects.extend(card.genesis(state).await?);
                 effects.push(Effect::BanishCard { card_id: copy_id });
                 state.queue(effects);

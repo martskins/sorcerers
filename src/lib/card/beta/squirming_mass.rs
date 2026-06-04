@@ -2,6 +2,8 @@ use std::{future::Future, pin::Pin, sync::Arc};
 
 use crate::prelude::*;
 
+const ON_SUMMON_HOOK: HookId = 1;
+
 #[derive(Debug, Clone)]
 pub struct SquirmingMass {
     unit_base: UnitBase,
@@ -58,45 +60,69 @@ impl Card for SquirmingMass {
         Some(&mut self.unit_base)
     }
 
-    fn on_summon(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
-        let self_id = *self.get_id();
-        Ok(vec![Effect::AddDeferredEffect {
-            effect: DeferredEffect {
-                trigger_on_effect: EffectQuery::BuryCard {
-                    card: CardQuery::new().minions(),
-                },
-                expires_on_effect: Some(EffectQuery::BuryCard {
-                    card: CardQuery::from_id(self_id),
-                }),
-                on_effect: Arc::new(
-                    move |state: &State, buried_id: &uuid::Uuid, _effect: &Effect| {
-                        let buried_id = *buried_id;
-                        Box::pin(async move {
-                            let self_card = state.get_card(&self_id);
-                            if !self_card.get_zone().is_in_play() {
-                                return Ok(vec![]);
-                            }
-                            let buried_card = state.get_card(&buried_id);
-                            let power = buried_card
-                                .get_unit_base()
-                                .map(|ub| ub.power as i16)
-                                .unwrap_or(0);
-                            if power <= 0 {
-                                return Ok(vec![]);
-                            }
-                            Ok(vec![Effect::AddCounter {
-                                card_id: self_id,
-                                counter: Counter::new(power, 0, None),
-                            }])
-                        })
-                            as Pin<
-                                Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>,
-                            >
-                    },
-                ),
-                multitrigger: true,
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: ON_SUMMON_HOOK,
+            trigger: EffectQuery::SummonCard {
+                card: self.get_id().into(),
             },
+            timing: HookTiming::After,
         }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook_id: HookId,
+        _state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook_id {
+            ON_SUMMON_HOOK => {
+                let self_id = *self.get_id();
+                Ok(vec![Effect::AddDeferredEffect {
+                    effect: DeferredEffect {
+                        trigger_on_effect: EffectQuery::BuryCard {
+                            card: CardQuery::new().minions(),
+                        },
+                        expires_on_effect: Some(EffectQuery::BuryCard {
+                            card: CardQuery::from_id(self_id),
+                        }),
+                        on_effect: Arc::new(
+                            move |state: &State, buried_id: &uuid::Uuid, _effect: &Effect| {
+                                let buried_id = *buried_id;
+                                Box::pin(async move {
+                                    let self_card = state.get_card(&self_id);
+                                    if !self_card.get_zone().is_in_play() {
+                                        return Ok(vec![]);
+                                    }
+                                    let buried_card = state.get_card(&buried_id);
+                                    let power = buried_card
+                                        .get_unit_base()
+                                        .map(|ub| ub.power as i16)
+                                        .unwrap_or(0);
+                                    if power <= 0 {
+                                        return Ok(vec![]);
+                                    }
+                                    Ok(vec![Effect::AddCounter {
+                                        card_id: self_id,
+                                        counter: Counter::new(power, 0, None),
+                                    }])
+                                })
+                                    as Pin<
+                                        Box<
+                                            dyn Future<Output = anyhow::Result<Vec<Effect>>>
+                                                + Send
+                                                + '_,
+                                        >,
+                                    >
+                            },
+                        ),
+                        multitrigger: true,
+                    },
+                }])
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 

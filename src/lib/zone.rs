@@ -388,6 +388,10 @@ impl Zone {
     }
 
     pub fn get_site<'a>(&self, state: &'a State) -> Option<&'a dyn Site> {
+        if matches!(self, Zone::Location(Location::Square(_, _))) {
+            return self.get_site_at_square(state);
+        }
+
         CardQuery::new()
             .sites()
             .in_zone(self)

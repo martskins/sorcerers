@@ -2,6 +2,8 @@ use std::{future::Future, pin::Pin, sync::Arc};
 
 use crate::prelude::*;
 
+const ON_SUMMON_HOOK: HookId = 1;
+
 #[derive(Debug, Clone)]
 pub struct GrimReaper {
     unit_base: UnitBase,
@@ -63,67 +65,91 @@ impl Card for GrimReaper {
         Some(&mut self.unit_base)
     }
 
-    fn on_summon(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
-        let grim_reaper_id = *self.get_id();
-
-        let deferred = DeferredEffect {
-            trigger_on_effect: EffectQuery::BuryCard {
-                card: CardQuery::new().minions(),
-            },
-            expires_on_effect: Some(EffectQuery::BuryCard {
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: ON_SUMMON_HOOK,
+            trigger: EffectQuery::SummonCard {
                 card: self.get_id().into(),
-            }),
-            on_effect: Arc::new(
-                move |state: &State, buried_card_id: &CardId, _effect: &Effect| {
-                    let buried_card_id = *buried_card_id;
-                    Box::pin(async move {
-                        // Check if Grim Reaper was the killer.
-                        let was_killed_by_reaper = state.effect_log().iter().rev().any(|le| {
-                            matches!(le.effect, Effect::KillMinion { ref card_id, ref killer_id, .. }
+            },
+            timing: HookTiming::After,
+        }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook_id: HookId,
+        _state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook_id {
+            ON_SUMMON_HOOK => {
+                let grim_reaper_id = *self.get_id();
+
+                let deferred = DeferredEffect {
+                    trigger_on_effect: EffectQuery::BuryCard {
+                        card: CardQuery::new().minions(),
+                    },
+                    expires_on_effect: Some(EffectQuery::BuryCard {
+                        card: self.get_id().into(),
+                    }),
+                    on_effect: Arc::new(
+                        move |state: &State, buried_card_id: &CardId, _effect: &Effect| {
+                            let buried_card_id = *buried_card_id;
+                            Box::pin(async move {
+                                // Check if Grim Reaper was the killer.
+                                let was_killed_by_reaper =
+                                    state.effect_log().iter().rev().any(|le| {
+                                        matches!(le.effect, Effect::KillMinion { ref card_id, ref killer_id, .. }
                                 if card_id == &buried_card_id && killer_id == &grim_reaper_id)
-                        });
+                                    });
 
-                        if !was_killed_by_reaper {
-                            return Ok(vec![]);
-                        }
+                                if !was_killed_by_reaper {
+                                    return Ok(vec![]);
+                                }
 
-                        // Get the name of the buried card to banish all copies.
-                        let buried_name = state.get_card(&buried_card_id).get_name().to_string();
-                        let buried_owner_id =
-                            state.get_card(&buried_card_id).get_controller_id(state);
+                                // Get the name of the buried card to banish all copies.
+                                let buried_name =
+                                    state.get_card(&buried_card_id).get_name().to_string();
+                                let buried_owner_id =
+                                    state.get_card(&buried_card_id).get_controller_id(state);
 
-                        // Banish the killed minion.
-                        let mut effects = vec![Effect::BanishCard {
-                            card_id: buried_card_id,
-                        }];
+                                // Banish the killed minion.
+                                let mut effects = vec![Effect::BanishCard {
+                                    card_id: buried_card_id,
+                                }];
 
-                        // Find all copies of that card (by name) in any zone belonging to its owner.
-                        let copies: Vec<CardId> = state
-                            .cards
-                            .values()
-                            .filter(|c| c.get_name().eq_ignore_ascii_case(&buried_name))
-                            .filter(|c| c.get_id() != &buried_card_id)
-                            .filter(|c| c.get_controller_id(state) == buried_owner_id)
-                            .map(|c| *c.get_id())
-                            .collect();
+                                // Find all copies of that card (by name) in any zone belonging to its owner.
+                                let copies: Vec<CardId> = state
+                                    .cards
+                                    .values()
+                                    .filter(|c| c.get_name().eq_ignore_ascii_case(&buried_name))
+                                    .filter(|c| c.get_id() != &buried_card_id)
+                                    .filter(|c| c.get_controller_id(state) == buried_owner_id)
+                                    .map(|c| *c.get_id())
+                                    .collect();
 
-                        for copy_id in copies {
-                            effects.push(Effect::BanishCard { card_id: copy_id });
-                        }
+                                for copy_id in copies {
+                                    effects.push(Effect::BanishCard { card_id: copy_id });
+                                }
 
-                        effects.push(Effect::ShuffleDeck {
-                            player_id: buried_owner_id,
-                        });
+                                effects.push(Effect::ShuffleDeck {
+                                    player_id: buried_owner_id,
+                                });
 
-                        Ok(effects)
-                    })
-                        as Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>>
-                },
-            ),
-            multitrigger: true,
-        };
+                                Ok(effects)
+                            })
+                                as Pin<
+                                    Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>,
+                                >
+                        },
+                    ),
+                    multitrigger: true,
+                };
 
-        Ok(vec![Effect::AddDeferredEffect { effect: deferred }])
+                Ok(vec![Effect::AddDeferredEffect { effect: deferred }])
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 

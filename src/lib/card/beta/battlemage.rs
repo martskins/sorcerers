@@ -2,6 +2,8 @@ use std::{future::Future, pin::Pin, sync::Arc};
 
 use crate::prelude::*;
 
+const ON_SUMMON_HOOK: HookId = 1;
+
 #[derive(Debug, Clone)]
 pub struct Battlemage {
     card_base: CardBase,
@@ -168,8 +170,26 @@ impl Card for Battlemage {
         }
     }
 
-    fn on_summon(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
-        Ok(self.register_trigger())
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: ON_SUMMON_HOOK,
+            trigger: EffectQuery::SummonCard {
+                card: self.get_id().into(),
+            },
+            timing: HookTiming::After,
+        }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook_id: HookId,
+        _state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook_id {
+            ON_SUMMON_HOOK => Ok(self.register_trigger()),
+            _ => Ok(vec![]),
+        }
     }
 
     async fn on_turn_start(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {

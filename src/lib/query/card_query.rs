@@ -439,13 +439,13 @@ impl<'a> PreparedCardQuery<'a> {
     fn card_occupies_zone(&self, card: &dyn Card, zone: &Zone) -> bool {
         match (zone, card.get_zone()) {
             (
-                Zone::Location(Location::Square(sq, _)),
-                Zone::Location(Location::Square(card_square, _)),
-            ) => sq == card_square,
+                Zone::Location(Location::Square(sq, region)),
+                Zone::Location(Location::Square(card_square, card_region)),
+            ) => sq == card_square && region == card_region,
             (
-                Zone::Location(Location::Square(sq, _)),
-                Zone::Location(Location::Intersection(card_squares, _)),
-            ) => card_squares.contains(sq),
+                Zone::Location(Location::Square(sq, region)),
+                Zone::Location(Location::Intersection(card_squares, card_region)),
+            ) => card_squares.contains(sq) && region == card_region,
             _ => card.get_zone() == zone,
         }
     }

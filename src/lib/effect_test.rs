@@ -2,9 +2,9 @@ use crate::{
     card::{
         Ability, ApprenticeWizard, AridDesert, AskelonPhoenix, BottomlessPit, BridgeTroll, Card,
         CardStatus, Damage, DeadOfNightDemon, Drought, Enchantress, Flood, FootSoldier, OgreGoons,
-        PhaseAssassin, PitVipers, Region, RimlandNomads, Sandstorm, SeaRaider, SeirawanHydra,
-        Silence, SirianTemplar, SlingPixies, SpringRiver, UnitBase, VaultsOfZul, YourkeCrossbowmen,
-        from_name_and_zone,
+        PhaseAssassin, PitVipers, Region, RimlandNomads, RootSpider, Sandstorm, SeaRaider,
+        SeirawanHydra, Silence, SimpleVillage, SirianTemplar, SlingPixies, SpringRiver, UnitBase,
+        VaultsOfZul, YourkeCrossbowmen, from_name_and_zone,
     },
     deck::Deck,
     effect::{
@@ -1647,8 +1647,8 @@ async fn test_played_site_genesis_can_target_itself() {
 }
 
 #[tokio::test]
-async fn test_summon_card_applies_on_summon_effects() {
-    // Sea Raider on_summon → AddDeferredEffect
+async fn test_summon_card_applies_summon_hooks() {
+    // Sea Raider summon hook -> AddDeferredEffect
     let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
     let player_id = state.players[0].id;
 
@@ -1656,22 +1656,19 @@ async fn test_summon_card_applies_on_summon_effects() {
     let id = *sea_raider.get_id();
     state.cards.insert(id, Box::new(sea_raider));
 
-    Effect::SummonCards {
+    state.queue_one(Effect::SummonCards {
         cards: vec![(
             player_id,
             id,
             Zone::Hand,
             Location::Square(1, Region::Surface),
         )],
-    }
-    .apply(&mut state)
-    .await
-    .unwrap();
+    });
     drain_effects(&mut state).await;
 
     assert!(
         !state.deferred_effects().is_empty(),
-        "on_summon should have registered a deferred effect for Sea Raider"
+        "summon hook should have registered a deferred effect for Sea Raider"
     );
 }
 
@@ -1710,6 +1707,42 @@ async fn test_play_card_minion_ends_in_target_zone() {
         state.get_card(&ogre_id).get_zone(),
         &Zone::Location(Location::Square(1, Region::Surface)),
         "minion should end in the chosen zone"
+    );
+}
+
+#[tokio::test]
+async fn test_play_card_burrowing_minion_can_enter_underground() {
+    let (mut state, _rx) = make_state(vec![]);
+    let player_id = state.players[0].id;
+    *state.get_player_mana_mut(&player_id) = 3;
+
+    let mut site = SimpleVillage::new(player_id);
+    site.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    state.cards.insert(*site.get_id(), Box::new(site));
+
+    let mut spider = RootSpider::new(player_id);
+    let spider_id = *spider.get_id();
+    spider.set_zone(Zone::Hand);
+    state.cards.insert(spider_id, Box::new(spider));
+
+    let avatar_id = state
+        .get_player_avatar_id(&player_id)
+        .expect("avatar id to be some");
+    Effect::PlayCard {
+        player_id,
+        card_id: spider_id,
+        zone: ZoneQuery::from_zone(Zone::Location(Location::Square(1, Region::Underground))),
+        spellcaster: avatar_id,
+    }
+    .apply(&mut state)
+    .await
+    .unwrap();
+    drain_effects(&mut state).await;
+
+    assert_eq!(
+        state.get_card(&spider_id).get_zone(),
+        &Zone::Location(Location::Square(1, Region::Underground)),
+        "burrowing minion should survive underground below a land site"
     );
 }
 

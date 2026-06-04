@@ -113,6 +113,19 @@ struct ProjectileFlight {
     ranged_strike: bool,
 }
 
+#[derive(Debug, Clone)]
+enum PendingZoneChoiceAction {
+    PickZone,
+    PlayHandCard { card_id: CardId },
+}
+
+#[derive(Debug, Clone)]
+struct PendingZoneChoice {
+    pos: Pos2,
+    zones: Vec<Zone>,
+    action: PendingZoneChoiceAction,
+}
+
 #[derive(Debug)]
 pub struct RealmComponent {
     game_id: uuid::Uuid,
@@ -128,6 +141,7 @@ pub struct RealmComponent {
     card_flights: Vec<CardFlight>,
     projectile_flights: Vec<ProjectileFlight>,
     card_filter: RealmCardFilter,
+    pending_zone_choice: Option<PendingZoneChoice>,
 }
 
 impl RealmComponent {
@@ -171,6 +185,7 @@ impl RealmComponent {
             card_flights: Vec::new(),
             projectile_flights: Vec::new(),
             card_filter: RealmCardFilter::All,
+            pending_zone_choice: None,
         }
     }
 
@@ -191,6 +206,168 @@ impl RealmComponent {
                 _ => None,
             })
             .collect();
+    }
+
+    fn region_sort_key(zone: &Zone) -> u8 {
+        match zone {
+            Zone::Location(Location::Square(_, region))
+            | Zone::Location(Location::Intersection(_, region)) => match region {
+                Region::Surface => 0,
+                Region::Underground => 1,
+                Region::Underwater => 2,
+                Region::Void => 3,
+            },
+            _ => 4,
+        }
+    }
+
+    fn zone_choice_label(zone: &Zone) -> String {
+        match zone {
+            Zone::Location(Location::Square(_, region))
+            | Zone::Location(Location::Intersection(_, region)) => region.to_string(),
+            _ => zone.to_string(),
+        }
+    }
+
+    fn sorted_zone_choices(mut zones: Vec<Zone>) -> Vec<Zone> {
+        zones.sort_by(|a, b| {
+            Self::region_sort_key(a)
+                .cmp(&Self::region_sort_key(b))
+                .then_with(|| a.to_string().cmp(&b.to_string()))
+        });
+        zones.dedup();
+        zones
+    }
+
+    fn square_zone_choices(zones: &[Zone], cell_id: u8) -> Vec<Zone> {
+        Self::sorted_zone_choices(
+            zones
+                .iter()
+                .filter(|zone| {
+                    matches!(zone, Zone::Location(Location::Square(id, _)) if *id == cell_id)
+                })
+                .cloned()
+                .collect(),
+        )
+    }
+
+    fn intersection_zone_choices(zones: &[Zone], intersection_locations: &[u8]) -> Vec<Zone> {
+        Self::sorted_zone_choices(
+            zones
+                .iter()
+                .filter(|zone| {
+                    matches!(
+                        zone,
+                        Zone::Location(Location::Intersection(locations, _))
+                            if locations == intersection_locations
+                    )
+                })
+                .cloned()
+                .collect(),
+        )
+    }
+
+    fn resolve_zone_choice(
+        &mut self,
+        zone: &Zone,
+        action: PendingZoneChoiceAction,
+        data: &mut GameData,
+    ) -> anyhow::Result<()> {
+        match action {
+            PendingZoneChoiceAction::PickZone => {
+                self.client.send(ClientMessage::PickZone {
+                    player_id: self.player_id,
+                    game_id: self.game_id,
+                    zone: zone.clone(),
+                })?;
+            }
+            PendingZoneChoiceAction::PlayHandCard { card_id } => {
+                self.client.send(ClientMessage::PlayCardAtZone {
+                    player_id: self.player_id,
+                    game_id: self.game_id,
+                    card_id,
+                    zone: zone.clone(),
+                })?;
+            }
+        }
+
+        self.pending_zone_choice = None;
+        data.status = Status::Idle;
+        Ok(())
+    }
+
+    fn choose_zone_or_prompt(
+        &mut self,
+        zones: Vec<Zone>,
+        pos: Pos2,
+        action: PendingZoneChoiceAction,
+        data: &mut GameData,
+    ) -> anyhow::Result<()> {
+        match zones.as_slice() {
+            [] => {}
+            [zone] => self.resolve_zone_choice(zone, action, data)?,
+            _ => {
+                self.pending_zone_choice = Some(PendingZoneChoice { pos, zones, action });
+            }
+        }
+
+        Ok(())
+    }
+
+    fn pending_zone_choice_is_valid(&self, choice: &PendingZoneChoice, data: &GameData) -> bool {
+        match (&choice.action, &data.status) {
+            (PendingZoneChoiceAction::PickZone, Status::SelectingZone { zones, .. }) => {
+                choice.zones.iter().all(|zone| zones.contains(zone))
+            }
+            (
+                PendingZoneChoiceAction::PlayHandCard { card_id },
+                Status::PreviewingPlayableZones {
+                    card_id: preview_card_id,
+                    zones,
+                },
+            ) => card_id == preview_card_id && choice.zones.iter().all(|zone| zones.contains(zone)),
+            _ => false,
+        }
+    }
+
+    fn render_zone_choice_picker(
+        &mut self,
+        ui: &mut Ui,
+        data: &mut GameData,
+    ) -> anyhow::Result<()> {
+        let Some(choice) = self.pending_zone_choice.clone() else {
+            return Ok(());
+        };
+        if !self.pending_zone_choice_is_valid(&choice, data) {
+            self.pending_zone_choice = None;
+            return Ok(());
+        }
+
+        let mut selected_zone = None;
+        egui::Area::new(egui::Id::new("realm_zone_choice_picker"))
+            .fixed_pos(choice.pos)
+            .order(egui::Order::Foreground)
+            .show(ui.ctx(), |ui| {
+                egui::Frame::popup(ui.style()).show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        for zone in &choice.zones {
+                            if ui
+                                .button(Self::zone_choice_label(zone))
+                                .on_hover_text(zone.to_string())
+                                .clicked()
+                            {
+                                selected_zone = Some(zone.clone());
+                            }
+                        }
+                    });
+                });
+            });
+
+        if let Some(zone) = selected_zone {
+            self.resolve_zone_choice(&zone, choice.action, data)?;
+        }
+
+        Ok(())
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -943,7 +1120,7 @@ impl RealmComponent {
 
         self.draw_playmat(painter);
 
-        let mut clicked_zone = None;
+        let mut clicked_zone_choices = None;
         for cell in &self.cell_rects {
             let rect = cell.rect;
 
@@ -955,14 +1132,12 @@ impl RealmComponent {
                 _ => None,
             };
             if let Some(zones) = playable_preview_zones {
-                if let Some(zone) = zones
-                    .iter()
-                    .find(|zone| matches!(zone, Zone::Location(Location::Square(id, _)) if *id == cell.id))
-                {
+                let choices = Self::square_zone_choices(zones, cell.id);
+                if !choices.is_empty() {
                     if matches!(data.status, Status::SelectingZone { .. }) {
                         let resp = ui.allocate_rect(rect, Sense::click());
                         if resp.clicked() {
-                            clicked_zone = Some(zone.clone());
+                            clicked_zone_choices = Some((choices.clone(), rect.center()));
                         }
                     }
 
@@ -1001,17 +1176,12 @@ impl RealmComponent {
             };
             if let Some(zones) = playable_preview_zones {
                 let rect = intersection.rect;
-                let pickable_zone = zones.iter().find(|z| match z {
-                    Zone::Location(Location::Intersection(locations, _)) => {
-                        locations == &intersection.locations
-                    }
-                    _ => false,
-                });
-                if let Some(zone) = pickable_zone {
+                let choices = Self::intersection_zone_choices(zones, &intersection.locations);
+                if !choices.is_empty() {
                     if matches!(data.status, Status::SelectingZone { .. }) {
                         let resp = ui.allocate_rect(rect, Sense::click());
                         if resp.clicked() {
-                            clicked_zone = Some(zone.clone());
+                            clicked_zone_choices = Some((choices.clone(), rect.center()));
                         }
                     }
 
@@ -1044,8 +1214,8 @@ impl RealmComponent {
             }
         }
 
-        if let Some(zone) = clicked_zone {
-            self.zone_clicked(&zone, data)?;
+        if let Some((zones, pos)) = clicked_zone_choices {
+            self.choose_zone_or_prompt(zones, pos, PendingZoneChoiceAction::PickZone, data)?;
         }
 
         let mut clicked_group_idx = None;
@@ -1270,28 +1440,6 @@ impl RealmComponent {
         Ok(())
     }
 
-    fn zone_clicked(&mut self, zone: &Zone, data: &mut GameData) -> anyhow::Result<()> {
-        let mut reset_status = false;
-        if let Status::SelectingZone { zones, .. } = &data.status.clone() {
-            if !zones.iter().any(|z| z == zone) {
-                return Ok(());
-            }
-
-            self.client.send(ClientMessage::PickZone {
-                player_id: self.player_id,
-                game_id: self.game_id,
-                zone: zone.clone(),
-            })?;
-
-            reset_status = true;
-        }
-
-        if reset_status {
-            data.status = Status::Idle;
-        }
-
-        Ok(())
-    }
 }
 
 impl Component for RealmComponent {
@@ -1637,6 +1785,7 @@ impl Component for RealmComponent {
         self.render_paths(ui, data, painter);
         self.render_direction_picker(ui, data, painter)?;
         data.highlighted_ongoing_effect = self.render_view_controls(data, ui)?;
+        self.render_zone_choice_picker(ui, data)?;
 
         Ok(None)
     }
@@ -1687,39 +1836,36 @@ impl Component for RealmComponent {
                 } = &data.status.clone()
                     && preview_card_id == card_id
                 {
-                    let dropped_zone = self
+                    let dropped_zone_choices = self
                         .cell_rects
                         .iter()
                         .find(|cell| cell.rect.contains(*pos))
-                        .and_then(|cell| {
-                            zones.iter().find(
-                                |zone| matches!(zone, Zone::Location(Location::Square(id, _)) if *id == cell.id),
-                            )
-                        })
+                        .map(|cell| (Self::square_zone_choices(zones, cell.id), cell.rect.center()))
                         .or_else(|| {
                             self.intersection_rects
                                 .iter()
                                 .find(|intersection| intersection.rect.contains(*pos))
-                                .and_then(|intersection| {
-                                    zones.iter().find(|zone| {
-                                        matches!(
-                                            zone,
-                                            Zone::Location(Location::Intersection(locations, _))
-                                                if locations == &intersection.locations
-                                        )
-                                    })
+                                .map(|intersection| {
+                                    (
+                                        Self::intersection_zone_choices(
+                                            zones,
+                                            &intersection.locations,
+                                        ),
+                                        intersection.rect.center(),
+                                    )
                                 })
                         });
 
-                    if let Some(zone) = dropped_zone {
-                        self.client.send(ClientMessage::PlayCardAtZone {
-                            player_id: self.player_id,
-                            game_id: self.game_id,
-                            card_id: *card_id,
-                            zone: zone.clone(),
-                        })?;
+                    if let Some((zones, pos)) = dropped_zone_choices {
+                        self.choose_zone_or_prompt(
+                            zones,
+                            pos,
+                            PendingZoneChoiceAction::PlayHandCard { card_id: *card_id },
+                            data,
+                        )?;
+                    } else {
+                        data.status = Status::Idle;
                     }
-                    data.status = Status::Idle;
                 }
             }
             _ => {}

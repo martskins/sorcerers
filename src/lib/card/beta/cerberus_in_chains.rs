@@ -2,6 +2,8 @@ use std::{future::Future, pin::Pin, sync::Arc};
 
 use crate::prelude::*;
 
+const ON_SUMMON_HOOK: HookId = 1;
+
 #[derive(Debug, Clone)]
 pub struct CerberusInChains {
     unit_base: UnitBase,
@@ -79,53 +81,77 @@ impl Card for CerberusInChains {
         Ok(vec![self.get_zone().clone()]) // Cerberus can't move itself.
     }
 
-    fn on_summon(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        let cerberus_id = *self.get_id();
-        let controller_id = self.get_controller_id(state);
-
-        // DeferredEffect: whenever the controller's avatar moves, Cerberus follows.
-        let deferred = DeferredEffect {
-            trigger_on_effect: EffectQuery::MoveCard {
-                card: CardQuery::new().avatars().controlled_by(&controller_id),
-            },
-            expires_on_effect: Some(EffectQuery::BuryCard {
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: ON_SUMMON_HOOK,
+            trigger: EffectQuery::SummonCard {
                 card: self.get_id().into(),
-            }),
-            on_effect: Arc::new(
-                move |state: &State, avatar_card_id: &CardId, _effect: &Effect| {
-                    let cerberus_id = cerberus_id;
-                    let owner_id = controller_id;
-                    Box::pin(async move {
-                        let cerberus = state.get_card(&cerberus_id);
-                        let avatar = state.get_card(avatar_card_id);
-                        let new_zone = avatar.get_zone().clone();
+            },
+            timing: HookTiming::After,
+        }])
+    }
 
-                        // Only follow if Cerberus is in play and not already at the same zone.
-                        if !cerberus.get_zone().is_in_play() || cerberus.get_zone() == &new_zone {
-                            return Ok(vec![]);
-                        }
+    async fn resolve_hook(
+        &self,
+        hook_id: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook_id {
+            ON_SUMMON_HOOK => {
+                let cerberus_id = *self.get_id();
+                let controller_id = self.get_controller_id(state);
 
-                        let region = cerberus.get_region(state).clone();
-                        Ok(vec![Effect::MoveCard {
-                            player_id: owner_id,
-                            card_id: cerberus_id,
-                            from: cerberus
-                                .get_zone()
-                                .clone()
-                                .into_location()
-                                .expect("Cerberus must be in a location"),
-                            to: LocationQuery::from_zone(new_zone.with_region(region)),
-                            tap: false,
-                            through_path: None,
-                        }])
-                    })
-                        as Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>>
-                },
-            ),
-            multitrigger: true,
-        };
+                // DeferredEffect: whenever the controller's avatar moves, Cerberus follows.
+                let deferred = DeferredEffect {
+                    trigger_on_effect: EffectQuery::MoveCard {
+                        card: CardQuery::new().avatars().controlled_by(&controller_id),
+                    },
+                    expires_on_effect: Some(EffectQuery::BuryCard {
+                        card: self.get_id().into(),
+                    }),
+                    on_effect: Arc::new(
+                        move |state: &State, avatar_card_id: &CardId, _effect: &Effect| {
+                            let cerberus_id = cerberus_id;
+                            let owner_id = controller_id;
+                            Box::pin(async move {
+                                let cerberus = state.get_card(&cerberus_id);
+                                let avatar = state.get_card(avatar_card_id);
+                                let new_zone = avatar.get_zone().clone();
 
-        Ok(vec![Effect::AddDeferredEffect { effect: deferred }])
+                                // Only follow if Cerberus is in play and not already at the same zone.
+                                if !cerberus.get_zone().is_in_play()
+                                    || cerberus.get_zone() == &new_zone
+                                {
+                                    return Ok(vec![]);
+                                }
+
+                                let region = cerberus.get_region(state).clone();
+                                Ok(vec![Effect::MoveCard {
+                                    player_id: owner_id,
+                                    card_id: cerberus_id,
+                                    from: cerberus
+                                        .get_zone()
+                                        .clone()
+                                        .into_location()
+                                        .expect("Cerberus must be in a location"),
+                                    to: LocationQuery::from_zone(new_zone.with_region(region)),
+                                    tap: false,
+                                    through_path: None,
+                                }])
+                            })
+                                as Pin<
+                                    Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>,
+                                >
+                        },
+                    ),
+                    multitrigger: true,
+                };
+
+                Ok(vec![Effect::AddDeferredEffect { effect: deferred }])
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 

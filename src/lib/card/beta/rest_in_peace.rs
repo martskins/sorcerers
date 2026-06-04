@@ -2,6 +2,8 @@ use std::{future::Future, pin::Pin, sync::Arc};
 
 use crate::prelude::*;
 
+const ON_SUMMON_HOOK: HookId = 1;
+
 #[derive(Debug, Clone)]
 pub struct RestInPeace {
     aura_base: AuraBase,
@@ -107,30 +109,56 @@ impl Card for RestInPeace {
         Some(self)
     }
 
-    fn on_summon(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
-        let aura_id = *self.get_id();
-        Ok(vec![
-            Effect::AddDeferredEffect {
-                effect: Self::burrow_trigger(
-                    aura_id,
-                    EffectQuery::SummonCard {
-                        card: CardQuery::new()
-                            .minions()
-                            .minion_types(vec![MinionType::Spirit, MinionType::Undead]),
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: ON_SUMMON_HOOK,
+            trigger: EffectQuery::OneOf(vec![
+                EffectQuery::PlayCard {
+                    card: self.get_id().into(),
+                    spellcaster: None,
+                },
+                EffectQuery::SummonCard {
+                    card: self.get_id().into(),
+                },
+            ]),
+            timing: HookTiming::After,
+        }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook_id: HookId,
+        _state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook_id {
+            ON_SUMMON_HOOK => {
+                let aura_id = *self.get_id();
+                Ok(vec![
+                    Effect::AddDeferredEffect {
+                        effect: Self::burrow_trigger(
+                            aura_id,
+                            EffectQuery::SummonCard {
+                                card: CardQuery::new()
+                                    .minions()
+                                    .minion_types(vec![MinionType::Spirit, MinionType::Undead]),
+                            },
+                        ),
                     },
-                ),
-            },
-            Effect::AddDeferredEffect {
-                effect: Self::burrow_trigger(
-                    aura_id,
-                    EffectQuery::MoveCard {
-                        card: CardQuery::new()
-                            .minions()
-                            .minion_types(vec![MinionType::Spirit, MinionType::Undead]),
+                    Effect::AddDeferredEffect {
+                        effect: Self::burrow_trigger(
+                            aura_id,
+                            EffectQuery::MoveCard {
+                                card: CardQuery::new()
+                                    .minions()
+                                    .minion_types(vec![MinionType::Spirit, MinionType::Undead]),
+                            },
+                        ),
                     },
-                ),
+                ])
             },
-        ])
+            _ => Ok(vec![]),
+        }
     }
 }
 
