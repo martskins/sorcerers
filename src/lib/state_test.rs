@@ -198,7 +198,7 @@ async fn test_free_city_can_activate_attack_before_animation() {
         .collect::<Vec<_>>();
 
     assert!(
-        action_names.contains(&"Tap to attack or defend against enemies here".to_string()),
+        action_names.contains(&"Attack or defend against enemies here".to_string()),
         "Free City should expose its attack/defend ability when an enemy unit is here"
     );
 }
@@ -284,7 +284,7 @@ async fn test_animated_free_city_gets_unit_actions() {
 
     assert!(action_names.contains(&"Attack".to_string()));
     assert!(action_names.contains(&"Move".to_string()));
-    assert!(action_names.contains(&"Tap to attack or defend against enemies here".to_string()));
+    assert!(action_names.contains(&"Attack or defend against enemies here".to_string()));
 }
 
 #[tokio::test]

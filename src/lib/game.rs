@@ -1503,7 +1503,7 @@ impl ActivatedAbility for UnitAction {
                                             .clone()
                                             .into_location()
                                             .expect("defender must be in a location"),
-                                        to: LocationQuery::from_zone(attacker.get_zone().clone()),
+                                        to: LocationQuery::from_zone(attacked.get_zone().clone()),
                                         tap: true,
                                         through_path: None,
                                     },

@@ -1731,7 +1731,7 @@ impl Effect {
                     let attacker_power = attacker
                         .get_power(state)?
                         .ok_or(anyhow::anyhow!("attacker has no power"))?;
-                    let attacker_zone = attacker.get_zone().clone();
+                    let attack_location = defender.get_zone().clone();
                     let attacker_has_fs = attacker.has_ability(state, &Ability::FirstStrike);
 
                     let mut assigned_damage = HashMap::new();
@@ -1752,12 +1752,27 @@ impl Effect {
                         }
                     }
 
+                    if !attacker.occupies_zone(state, &attack_location) {
+                        effects.push(Effect::MoveCard {
+                            player_id: attacker.get_controller_id(state),
+                            card_id: *attacker_id,
+                            from: attacker
+                                .get_zone()
+                                .clone()
+                                .into_location()
+                                .expect("MoveCard source must be a location"),
+                            to: LocationQuery::from_zone(attack_location.clone()),
+                            tap: true,
+                            through_path: None,
+                        });
+                    }
+
                     effects.extend(
                         defending_ids
                             .iter()
                             .map(|defending_id| {
                                 let defending_card = state.get_card(defending_id);
-                                if defending_card.occupies_zone(state, &attacker_zone) {
+                                if defending_card.occupies_zone(state, &attack_location) {
                                     Effect::SetTapped {
                                         card_id: *defending_id,
                                         tapped: true,
@@ -1771,7 +1786,7 @@ impl Effect {
                                             .clone()
                                             .into_location()
                                             .expect("MoveCard source must be a location"),
-                                        to: LocationQuery::from_zone(attacker_zone.clone()),
+                                        to: LocationQuery::from_zone(attack_location.clone()),
                                         tap: true,
                                         through_path: None,
                                     }

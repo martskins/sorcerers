@@ -13,7 +13,7 @@ use crate::{
         DeferredEffect, DrawKind, Effect, EffectCallback, EffectReplacementCallback,
         TemporaryEffect, TokenType,
     },
-    game::Direction,
+    game::{ActivatedAbility, Direction, UnitAction},
     networking::message::{ClientMessage, ServerMessage},
     query::{
         CardQuery, EffectQuery, LocationQuery, QueryCache, ZoneQuery, entered_sites, entered_zones,
@@ -1033,6 +1033,148 @@ async fn test_multiple_defenders_split_attack_damage() {
         state.get_card(&attacker_id).get_damage_taken().unwrap(),
         2,
         "both surviving-at-resolution defenders should strike back"
+    );
+}
+
+#[tokio::test]
+async fn test_attack_action_moves_single_defender_to_attacked_location() {
+    let attacker_zone = Zone::Location(Location::Square(1, Region::Surface));
+    let attack_location = Zone::Location(Location::Square(2, Region::Surface));
+    let (mut state, server_rx, client_tx) =
+        make_state_with_client(vec![attacker_zone.clone(), attack_location.clone()]);
+    let game_id = state.game_id;
+    let player_id = state.players[0].id;
+    let opponent_id = state.players[1].id;
+
+    let mut attacker = OgreGoons::new(player_id);
+    let attacker_id = *attacker.get_id();
+    attacker.set_zone(attacker_zone.clone());
+    state.cards.insert(attacker_id, Box::new(attacker));
+
+    let mut attacked = ApprenticeWizard::new(opponent_id);
+    let attacked_id = *attacked.get_id();
+    attacked.set_zone(attack_location.clone());
+    state.cards.insert(attacked_id, Box::new(attacked));
+
+    let mut defender = OgreGoons::new(opponent_id);
+    let defender_id = *defender.get_id();
+    defender.set_zone(attack_location.clone());
+    state.cards.insert(defender_id, Box::new(defender));
+
+    tokio::spawn(async move {
+        while let Ok(message) = server_rx.recv().await {
+            match message {
+                ServerMessage::PickCard {
+                    player_id, cards, ..
+                } if cards.contains(&attacked_id) => {
+                    client_tx
+                        .send(ClientMessage::PickCard {
+                            game_id,
+                            player_id,
+                            card_id: attacked_id,
+                        })
+                        .await
+                        .unwrap();
+                }
+                ServerMessage::PickAction {
+                    player_id, actions, ..
+                } if actions == ["Yes", "No"] => {
+                    client_tx
+                        .send(ClientMessage::PickAction {
+                            game_id,
+                            player_id,
+                            action_idx: 0,
+                        })
+                        .await
+                        .unwrap();
+                }
+                ServerMessage::PickCards {
+                    player_id, cards, ..
+                } if cards.contains(&defender_id) => {
+                    client_tx
+                        .send(ClientMessage::PickCards {
+                            game_id,
+                            player_id,
+                            card_ids: vec![defender_id],
+                        })
+                        .await
+                        .unwrap();
+                }
+                _ => {}
+            }
+        }
+    });
+
+    let effects = UnitAction::Attack
+        .on_select(&attacker_id, &player_id, &state)
+        .await
+        .expect("attack action should resolve prompts");
+
+    assert!(
+        effects.iter().any(|effect| {
+            matches!(
+                effect,
+                Effect::MoveCard {
+                    card_id,
+                    to,
+                    ..
+                } if *card_id == defender_id
+                    && to.options(&state).contains(&attack_location.clone().into_location().unwrap())
+            )
+        }),
+        "the chosen defender should move to the attacked location, not the attacker's starting location"
+    );
+}
+
+#[tokio::test]
+async fn test_multiple_defenders_fight_at_attacked_location() {
+    let attacker_zone = Zone::Location(Location::Square(1, Region::Surface));
+    let attack_location = Zone::Location(Location::Square(2, Region::Surface));
+    let defender_one_start = Zone::Location(Location::Square(3, Region::Surface));
+    let defender_two_start = Zone::Location(Location::Square(4, Region::Surface));
+    let (mut state, _rx) = make_state(vec![
+        attacker_zone.clone(),
+        attack_location.clone(),
+        defender_one_start.clone(),
+        defender_two_start.clone(),
+    ]);
+    let player_id = state.players[0].id;
+    let opponent_id = state.players[1].id;
+
+    let mut attacker = OgreGoons::new(player_id);
+    let attacker_id = *attacker.get_id();
+    attacker.set_zone(attacker_zone);
+    state.cards.insert(attacker_id, Box::new(attacker));
+
+    let mut attacked = ApprenticeWizard::new(opponent_id);
+    let attacked_id = *attacked.get_id();
+    attacked.set_zone(attack_location.clone());
+    state.cards.insert(attacked_id, Box::new(attacked));
+
+    let mut defender_one = OgreGoons::new(opponent_id);
+    let defender_one_id = *defender_one.get_id();
+    defender_one.set_zone(defender_one_start);
+    state.cards.insert(defender_one_id, Box::new(defender_one));
+
+    let mut defender_two = OgreGoons::new(opponent_id);
+    let defender_two_id = *defender_two.get_id();
+    defender_two.set_zone(defender_two_start);
+    state.cards.insert(defender_two_id, Box::new(defender_two));
+
+    state.queue_one(Effect::Attack {
+        attacker_id,
+        defender_id: attacked_id,
+        defending_ids: vec![defender_one_id, defender_two_id],
+        damage_assignment: Some(HashMap::from([(defender_one_id, 1), (defender_two_id, 2)])),
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(state.get_card(&defender_one_id).get_zone(), &attack_location);
+    assert_eq!(state.get_card(&defender_two_id).get_zone(), &attack_location);
+    assert_eq!(
+        state.get_card(&attacker_id).get_zone(),
+        &Zone::Cemetery,
+        "the defenders should strike back from the attacked location"
     );
 }
 
