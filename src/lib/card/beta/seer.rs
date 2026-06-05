@@ -37,6 +37,8 @@ impl Seer {
     }
 }
 
+const TURN_START_HOOK: HookId = 1;
+
 #[async_trait::async_trait]
 impl Card for Seer {
     fn get_name(&self) -> &str {
@@ -75,7 +77,23 @@ impl Card for Seer {
         Some(self)
     }
 
-    async fn on_turn_start(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: TURN_START_HOOK,
+            trigger: EffectQuery::TurnStart { player_id: None },
+            timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
+        }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            TURN_START_HOOK => {
         let controller_id = self.get_controller_id(state);
         let original_deck = state.get_player_deck(&controller_id)?.clone();
         let mut choices = vec![];
@@ -131,6 +149,10 @@ impl Card for Seer {
             spells: deck.spells,
             sites: deck.sites,
         }])
+    
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 

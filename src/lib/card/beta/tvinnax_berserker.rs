@@ -1,6 +1,7 @@
 use crate::prelude::*;
 
 const UNTAP_AFTER_KILL_HOOK: HookId = 1;
+const TURN_START_HOOK: HookId = 2;
 
 #[derive(Debug, Clone)]
 pub struct TvinnaxBerserker {
@@ -57,48 +58,30 @@ impl Card for TvinnaxBerserker {
         Some(&mut self.unit_base)
     }
 
-    async fn on_turn_start(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        if !self.can_attack(state) {
-            return Ok(vec![]);
-        }
-
-        let valid_targets = self.get_valid_attack_targets(state, false);
-        if valid_targets.is_empty() {
-            return Ok(vec![]);
-        }
-
-        let player_id = self.get_controller_id(state);
-        let picked_card_id = pick_card(
-            player_id,
-            &valid_targets,
-            state,
-            "Tvinnax Berserker: Choose a unit to attack",
-        )
-        .await?;
-        Ok(vec![Effect::Attack {
-            attacker_id: *self.get_id(),
-            defender_id: picked_card_id,
-            defending_ids: vec![],
-            damage_assignment: None,
-        }])
-    }
-
     async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         if !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }
 
-        Ok(vec![Hook {
-            id: UNTAP_AFTER_KILL_HOOK,
-            trigger: EffectQuery::UnitKilled {
-                unit: CardQuery::new()
-                    .minions()
-                    .controlled_by_different_controller_than_card(self.get_id()),
-                killer: Some(self.get_id().into()),
+        Ok(vec![
+            Hook {
+                id: UNTAP_AFTER_KILL_HOOK,
+                trigger: EffectQuery::UnitKilled {
+                    unit: CardQuery::new()
+                        .minions()
+                        .controlled_by_different_controller_than_card(self.get_id()),
+                    killer: Some(self.get_id().into()),
+                },
+                timing: HookTiming::After,
+                source_zones: HookSourceZones::InPlay,
             },
-            timing: HookTiming::After,
-            source_zones: HookSourceZones::InPlay,
-        }])
+            Hook {
+                id: TURN_START_HOOK,
+                trigger: EffectQuery::TurnStart { player_id: None },
+                timing: HookTiming::After,
+                source_zones: HookSourceZones::InPlay,
+            },
+        ])
     }
 
     async fn resolve_hook(
@@ -126,6 +109,31 @@ impl Card for TvinnaxBerserker {
                 }
 
                 Ok(vec![])
+            }
+            TURN_START_HOOK => {
+                if !self.can_attack(state) {
+                    return Ok(vec![]);
+                }
+
+                let valid_targets = self.get_valid_attack_targets(state, false);
+                if valid_targets.is_empty() {
+                    return Ok(vec![]);
+                }
+
+                let player_id = self.get_controller_id(state);
+                let picked_card_id = pick_card(
+                    player_id,
+                    &valid_targets,
+                    state,
+                    "Tvinnax Berserker: Choose a unit to attack",
+                )
+                .await?;
+                Ok(vec![Effect::Attack {
+                    attacker_id: *self.get_id(),
+                    defender_id: picked_card_id,
+                    defending_ids: vec![],
+                    damage_assignment: None,
+                }])
             }
             _ => Ok(vec![]),
         }

@@ -1,6 +1,7 @@
 use crate::prelude::*;
 
 const PREVENT_FIRST_DAMAGE_HOOK: HookId = 1;
+const TURN_START_HOOK: HookId = 2;
 
 #[derive(Debug, Clone)]
 pub struct TuftedTurtles {
@@ -72,19 +73,23 @@ impl Card for TuftedTurtles {
         }
     }
 
-    async fn on_turn_start(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
-        Ok(vec![Effect::SetCardData {
-            card_id: *self.get_id(),
-            data: std::sync::Arc::new(false),
-        }])
-    }
-
     async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
-        if self.damage_prevented || !self.get_zone().is_in_play() {
+        if !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }
 
-        Ok(vec![Hook {
+        let mut hooks = vec![Hook {
+            id: TURN_START_HOOK,
+            trigger: EffectQuery::TurnStart { player_id: None },
+            timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
+        }];
+
+        if self.damage_prevented {
+            return Ok(hooks);
+        }
+
+        hooks.push(Hook {
             id: PREVENT_FIRST_DAMAGE_HOOK,
             trigger: EffectQuery::DamageDealt {
                 source: None,
@@ -92,7 +97,9 @@ impl Card for TuftedTurtles {
             },
             timing: HookTiming::Replace,
             source_zones: HookSourceZones::InPlay,
-        }])
+        });
+
+        Ok(hooks)
     }
 
     async fn resolve_hook(
@@ -121,6 +128,10 @@ impl Card for TuftedTurtles {
 
                 Ok(vec![])
             }
+            TURN_START_HOOK => Ok(vec![Effect::SetCardData {
+                card_id: *self.get_id(),
+                data: std::sync::Arc::new(false),
+            }]),
             _ => Ok(vec![]),
         }
     }

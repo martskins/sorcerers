@@ -7,6 +7,7 @@ pub struct MonasteryGargoyle {
 }
 
 const TURN_END_HOOK: HookId = 1;
+const TURN_START_HOOK: HookId = 2;
 
 impl MonasteryGargoyle {
     pub const NAME: &'static str = "Monastery Gargoyle";
@@ -108,24 +109,21 @@ impl Card for MonasteryGargoyle {
         Some(&mut self.unit_base)
     }
 
-    async fn on_turn_start(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        let controller_id = self.get_controller_id(state);
-        if state.current_player() != controller_id {
-            return Ok(vec![]);
-        }
-        if !self.get_zone().is_in_play() {
-            return Ok(vec![]);
-        }
-        Self::toggle_form(*self.get_id(), controller_id, state).await
-    }
-
     async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
-        Ok(vec![Hook {
-            id: TURN_END_HOOK,
-            trigger: EffectQuery::TurnEnd { player_id: None },
-            timing: HookTiming::After,
-            source_zones: HookSourceZones::InPlay,
-        }])
+        Ok(vec![
+            Hook {
+                id: TURN_END_HOOK,
+                trigger: EffectQuery::TurnEnd { player_id: None },
+                timing: HookTiming::After,
+                source_zones: HookSourceZones::InPlay,
+            },
+            Hook {
+                id: TURN_START_HOOK,
+                trigger: EffectQuery::TurnStart { player_id: None },
+                timing: HookTiming::After,
+                source_zones: HookSourceZones::InPlay,
+            },
+        ])
     }
 
     async fn resolve_hook(
@@ -135,7 +133,7 @@ impl Card for MonasteryGargoyle {
         _effect: &Effect,
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
-            TURN_END_HOOK => {
+            TURN_END_HOOK | TURN_START_HOOK => {
         let controller_id = self.get_controller_id(state);
         if state.current_player() != controller_id {
             return Ok(vec![]);

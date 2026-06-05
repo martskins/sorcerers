@@ -35,6 +35,8 @@ impl HeadlessHaunt {
     }
 }
 
+const TURN_START_HOOK: HookId = 1;
+
 #[async_trait::async_trait]
 impl Card for HeadlessHaunt {
     fn get_name(&self) -> &str {
@@ -61,13 +63,29 @@ impl Card for HeadlessHaunt {
         Some(&mut self.unit_base)
     }
 
-    async fn on_turn_start(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: TURN_START_HOOK,
+            trigger: EffectQuery::TurnStart { player_id: None },
+            timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
+        }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            TURN_START_HOOK => {
         if !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }
 
         // Only fires on the owner's turn.
-        if _state.current_player() != *self.get_owner_id() {
+        if state.current_player() != *self.get_owner_id() {
             return Ok(vec![]);
         }
 
@@ -81,6 +99,10 @@ impl Card for HeadlessHaunt {
             tap: false,
             through_path: None,
         }])
+    
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 

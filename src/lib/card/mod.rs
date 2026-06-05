@@ -1742,11 +1742,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(false)
     }
 
-    // TODO: Migrate to hooks.
-    async fn on_turn_start(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
-        Ok(vec![])
-    }
-
     fn remove_modifier(&mut self, modifier: &Ability) {
         if let Some(ub) = self.get_unit_base_mut() {
             ub.abilities.retain(|a| a != modifier);

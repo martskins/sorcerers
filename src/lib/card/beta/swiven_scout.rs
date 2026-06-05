@@ -84,6 +84,8 @@ impl SwivenScout {
     }
 }
 
+const TURN_START_HOOK: HookId = 1;
+
 #[async_trait::async_trait]
 impl Card for SwivenScout {
     fn get_name(&self) -> &str {
@@ -105,8 +107,28 @@ impl Card for SwivenScout {
         Some(&mut self.unit_base)
     }
 
-    async fn on_turn_start(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: TURN_START_HOOK,
+            trigger: EffectQuery::TurnStart { player_id: None },
+            timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
+        }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            TURN_START_HOOK => {
         reveal_enemy_hands_in_range(*self.get_id(), state).await
+    
+            }
+            _ => Ok(vec![]),
+        }
     }
 
     async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {

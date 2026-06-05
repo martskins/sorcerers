@@ -2,6 +2,7 @@ use crate::prelude::*;
 use std::sync::Arc;
 
 const CREATE_COPY_HOOK: HookId = 1;
+const TURN_START_HOOK: HookId = 2;
 
 #[derive(Debug, Clone)]
 pub struct OrbOfBaalBerith {
@@ -77,15 +78,23 @@ impl Card for OrbOfBaalBerith {
     }
 
     async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
-        Ok(vec![Hook {
-            id: CREATE_COPY_HOOK,
-            trigger: EffectQuery::PlayCard {
-                card: CardQuery::new().magics(),
-                spellcaster: Some(CardQuery::new().units().nearby_zones_to_card(self.get_id())),
+        Ok(vec![
+            Hook {
+                id: CREATE_COPY_HOOK,
+                trigger: EffectQuery::PlayCard {
+                    card: CardQuery::new().magics(),
+                    spellcaster: Some(CardQuery::new().units().nearby_zones_to_card(self.get_id())),
+                },
+                timing: HookTiming::After,
+                source_zones: HookSourceZones::InPlay,
             },
-            timing: HookTiming::After,
-            source_zones: HookSourceZones::InPlay,
-        }])
+            Hook {
+                id: TURN_START_HOOK,
+                trigger: EffectQuery::TurnStart { player_id: None },
+                timing: HookTiming::After,
+                source_zones: HookSourceZones::InPlay,
+            },
+        ])
     }
 
     async fn resolve_hook(
@@ -123,15 +132,12 @@ impl Card for OrbOfBaalBerith {
                     },
                 ])
             }
+            TURN_START_HOOK => Ok(vec![Effect::SetCardData {
+                card_id: *self.get_id(),
+                data: Arc::new(false),
+            }]),
             _ => Ok(vec![]),
         }
-    }
-
-    async fn on_turn_start(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
-        Ok(vec![Effect::SetCardData {
-            card_id: *self.get_id(),
-            data: Arc::new(false),
-        }])
     }
 }
 

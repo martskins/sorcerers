@@ -3,6 +3,7 @@ use std::{future::Future, pin::Pin, sync::Arc};
 use crate::prelude::*;
 
 const ON_SUMMON_HOOK: HookId = 1;
+const TURN_START_HOOK: HookId = 2;
 
 #[derive(Debug, Clone)]
 pub struct Battlemage {
@@ -171,14 +172,22 @@ impl Card for Battlemage {
     }
 
     async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
-        Ok(vec![Hook {
-            id: ON_SUMMON_HOOK,
-            trigger: EffectQuery::SummonCard {
-                card: self.get_id().into(),
+        Ok(vec![
+            Hook {
+                id: ON_SUMMON_HOOK,
+                trigger: EffectQuery::SummonCard {
+                    card: self.get_id().into(),
+                },
+                timing: HookTiming::After,
+                source_zones: HookSourceZones::InPlay,
             },
-            timing: HookTiming::After,
-            source_zones: HookSourceZones::InPlay,
-        }])
+            Hook {
+                id: TURN_START_HOOK,
+                trigger: EffectQuery::TurnStart { player_id: None },
+                timing: HookTiming::After,
+                source_zones: HookSourceZones::InPlay,
+            },
+        ])
     }
 
     async fn resolve_hook(
@@ -189,16 +198,15 @@ impl Card for Battlemage {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook_id {
             ON_SUMMON_HOOK => Ok(self.register_trigger()),
+            TURN_START_HOOK => {
+                if self.trigger_registered {
+                    return Ok(vec![]);
+                }
+
+                Ok(self.register_trigger())
+            }
             _ => Ok(vec![]),
         }
-    }
-
-    async fn on_turn_start(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
-        if self.trigger_registered {
-            return Ok(vec![]);
-        }
-
-        Ok(self.register_trigger())
     }
 }
 

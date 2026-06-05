@@ -269,6 +269,10 @@ pub enum Effect {
     StartTurn {
         player_id: PlayerId,
     },
+    FinishStartTurn {
+        player_id: PlayerId,
+        previous_controller: PlayerId,
+    },
     AdjustMana {
         player_id: PlayerId,
         mana: i8,
@@ -428,6 +432,7 @@ impl Effect {
             Effect::EndTurn { player_id } => Some(player_id),
             Effect::FinishEndTurn { player_id } => Some(player_id),
             Effect::StartTurn { player_id } => Some(player_id),
+            Effect::FinishStartTurn { player_id, .. } => Some(player_id),
             Effect::AdjustMana { player_id, .. } => Some(player_id),
             Effect::Strike { striker_id, .. } => Some(striker_id),
             Effect::Attack { attacker_id, .. } => Some(attacker_id),
@@ -678,6 +683,7 @@ impl Effect {
                 "--- {}'s turn begins ---",
                 player_name(player_id, state)
             )),
+            Effect::FinishStartTurn { .. } => None,
             Effect::AdjustMana { .. } => None,
             Effect::Strike {
                 striker_id,
@@ -1543,8 +1549,7 @@ impl Effect {
             }
             Effect::StartTurn { player_id, .. } => {
                 let previous_controller = state.current_turn_controller();
-                let turn = state.advance_to_turn(player_id)?;
-                let turn_controller = turn.controller_id();
+                state.advance_to_turn(player_id)?;
                 state
                     .get_sender()
                     .send(ServerMessage::Wait {
@@ -1583,15 +1588,16 @@ impl Effect {
                 let player_mana = state.get_player_mana_mut(player_id);
                 *player_mana = available_mana;
 
-                let mut all_effects: Vec<Effect> = vec![];
-                for card in state.cards.values().filter(|c| {
-                    c.get_zone().is_in_play() && can_use_special_abilities(state, c.get_id())
-                }) {
-                    let effects = card.on_turn_start(state).await?;
-                    all_effects.extend(effects);
-                }
-                state.queue(all_effects);
-
+                state.queue_front(Effect::FinishStartTurn {
+                    player_id: *player_id,
+                    previous_controller,
+                });
+            }
+            Effect::FinishStartTurn {
+                player_id,
+                previous_controller,
+            } => {
+                let turn_controller = state.current_turn_controller();
                 // The first player skips their draw on the very first turn of the game.
                 let is_first_players_first_turn =
                     state.turns == 0 && player_id == &state.player_one;
@@ -1613,7 +1619,7 @@ impl Effect {
                 state
                     .get_sender()
                     .send(ServerMessage::Resume {
-                        player_id: previous_controller,
+                        player_id: *previous_controller,
                     })
                     .await?;
             }
