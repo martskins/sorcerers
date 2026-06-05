@@ -67,6 +67,7 @@ impl Card for SquirmingMass {
                 card: self.get_id().into(),
             },
             timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
         }])
     }
 

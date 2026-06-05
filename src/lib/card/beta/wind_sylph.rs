@@ -89,6 +89,7 @@ impl Card for WindSylph {
                 spellcaster: Some(self.get_id().into()),
             },
             timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
         }])
     }
 

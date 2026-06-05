@@ -69,6 +69,7 @@ impl Card for SirianTemplar {
                 target: Some(self.get_id().into()),
             },
             timing: HookTiming::Replace,
+            source_zones: HookSourceZones::InPlay,
         }])
     }
 

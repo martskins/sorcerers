@@ -85,6 +85,7 @@ impl Card for Enchantress {
                 spellcaster: None,
             },
             timing: HookTiming::Before,
+            source_zones: HookSourceZones::InPlay,
         }])
     }
 

@@ -165,6 +165,7 @@ impl Card for BullDemonsOfAdum {
                 from: None,
             },
             timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
         }])
     }
 

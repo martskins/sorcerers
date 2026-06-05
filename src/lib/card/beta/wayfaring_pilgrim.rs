@@ -107,6 +107,7 @@ impl Card for WayfaringPilgrim {
                 from: None,
             },
             timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
         }])
     }
 

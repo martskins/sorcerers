@@ -154,6 +154,7 @@ impl Card for AwakenedMummies {
                 card: self.get_id().into(),
             },
             timing: HookTiming::After,
+            source_zones: HookSourceZones::Zone(Zone::Cemetery),
         }])
     }
 

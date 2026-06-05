@@ -106,6 +106,7 @@ impl Card for BuriedTreasure {
                 destination: Some(Region::Surface),
             },
             timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
         }])
     }
 

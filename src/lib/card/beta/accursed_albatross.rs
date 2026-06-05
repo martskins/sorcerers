@@ -73,6 +73,7 @@ impl Card for AccursedAlbatross {
                 killer: None,
             },
             timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
         }])
     }
 

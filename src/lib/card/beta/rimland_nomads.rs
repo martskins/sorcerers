@@ -71,6 +71,7 @@ impl Card for RimlandNomads {
                 target: Some(self.get_id().into()),
             },
             timing: HookTiming::Replace,
+            source_zones: HookSourceZones::InPlay,
         }])
     }
 

@@ -122,6 +122,7 @@ impl Card for RestInPeace {
                 },
             ]),
             timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
         }])
     }
 

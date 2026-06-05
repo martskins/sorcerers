@@ -73,6 +73,7 @@ impl Card for PhaseAssassin {
                 from: Some(ZoneQuery::any_site(None, None)),
             },
             timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
         }])
     }
 

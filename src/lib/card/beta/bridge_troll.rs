@@ -71,6 +71,7 @@ impl Card for BridgeTroll {
                 defender: Some(self.get_id().into()),
             },
             timing: HookTiming::Before,
+            source_zones: HookSourceZones::InPlay,
         }])
     }
 

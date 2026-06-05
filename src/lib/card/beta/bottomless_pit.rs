@@ -83,6 +83,7 @@ impl Card for BottomlessPit {
                 from: None,
             },
             timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
         }])
     }
 

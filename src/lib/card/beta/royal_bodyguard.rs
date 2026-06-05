@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+const TAKE_DAMAGE_INSTEAD_HOOK: HookId = 1;
+
 #[derive(Debug, Clone)]
 pub struct RoyalBodyguard {
     unit_base: UnitBase,
@@ -55,25 +57,43 @@ impl Card for RoyalBodyguard {
         Some(&mut self.unit_base)
     }
 
-    async fn replace_effect(
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: TAKE_DAMAGE_INSTEAD_HOOK,
+            trigger: EffectQuery::DamageDealt {
+                source: None,
+                target: Some(CardQuery::new()),
+            },
+            timing: HookTiming::Replace,
+            source_zones: HookSourceZones::InPlay,
+        }])
+    }
+
+    async fn resolve_hook(
         &self,
+        hook_id: HookId,
         state: &State,
         effect: &Effect,
-    ) -> anyhow::Result<Option<Vec<Effect>>> {
-        match effect {
-            Effect::TakeDamage {
-                card_id,
-                from,
-                damage,
-            } => {
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook_id {
+            TAKE_DAMAGE_INSTEAD_HOOK => {
+                let Effect::TakeDamage {
+                    card_id,
+                    from,
+                    damage,
+                } = effect
+                else {
+                    return Ok(vec![]);
+                };
+
                 let target = state.get_card(card_id);
                 let is_nearby = self.get_zone().is_nearby(target.get_zone());
                 if !is_nearby {
-                    return Ok(None);
+                    return Ok(vec![]);
                 }
 
                 if card_id == self.get_id() || damage.amount == 0 {
-                    return Ok(None);
+                    return Ok(vec![]);
                 }
 
                 let is_royalty = target.is_minion()
@@ -83,7 +103,7 @@ impl Card for RoyalBodyguard {
                 let is_avatar = target.is_avatar();
                 let is_royalty_or_avatar = is_royalty || is_avatar;
                 if !is_royalty_or_avatar {
-                    return Ok(None);
+                    return Ok(vec![]);
                 }
 
                 let redirect = yes_or_no_source(
@@ -94,16 +114,16 @@ impl Card for RoyalBodyguard {
                 )
                 .await?;
                 if !redirect {
-                    return Ok(None);
+                    return Ok(vec![]);
                 }
 
-                Ok(Some(vec![Effect::TakeDamage {
+                Ok(vec![Effect::TakeDamage {
                     card_id: *self.get_id(),
                     from: *from,
                     damage: damage.clone(),
-                }]))
+                }])
             }
-            _ => Ok(None),
+            _ => Ok(vec![]),
         }
     }
 }

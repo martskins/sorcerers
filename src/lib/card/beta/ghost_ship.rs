@@ -72,6 +72,7 @@ impl Card for GhostShip {
                 from: Some(ZoneQuery::any_void()),
             },
             timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
         }])
     }
 

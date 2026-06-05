@@ -107,6 +107,7 @@ impl Card for SunkenTreasure {
                 destination: Some(Region::Surface),
             },
             timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
         }])
     }
 

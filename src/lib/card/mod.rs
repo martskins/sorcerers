@@ -881,17 +881,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         None
     }
 
-    // When resolving an effect, this methods allows a card in play to replace that event with a
-    // different set of effects.
-    // TODO: Replace with hooks.
-    async fn replace_effect(
-        &self,
-        _state: &State,
-        _effect: &Effect,
-    ) -> anyhow::Result<Option<Vec<Effect>>> {
-        Ok(None)
-    }
-
     // Removes the power counter with the given ID from the card.
     fn remove_power_counter(&mut self, id: &uuid::Uuid) {
         if let Some(ub) = self.get_unit_base_mut() {
@@ -2010,6 +1999,26 @@ pub struct Hook {
     pub id: HookId,
     pub trigger: EffectQuery,
     pub timing: HookTiming,
+    pub source_zones: HookSourceZones,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum HookSourceZones {
+    InPlay,
+    Any,
+    Zones(Vec<Zone>),
+    Zone(Zone),
+}
+
+impl HookSourceZones {
+    pub fn matches(&self, zone: &Zone) -> bool {
+        match self {
+            HookSourceZones::InPlay => zone.is_in_play(),
+            HookSourceZones::Any => true,
+            HookSourceZones::Zones(zones) => zones.contains(zone),
+            HookSourceZones::Zone(z) => z == zone,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

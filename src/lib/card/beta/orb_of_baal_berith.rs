@@ -84,6 +84,7 @@ impl Card for OrbOfBaalBerith {
                 spellcaster: Some(CardQuery::new().units().nearby_zones_to_card(self.get_id())),
             },
             timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
         }])
     }
 

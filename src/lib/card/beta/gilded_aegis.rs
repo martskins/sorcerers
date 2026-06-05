@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+const SAVE_BEARER_HOOK: HookId = 1;
+
 #[derive(Debug, Clone)]
 pub struct GildedAegis {
     artifact_base: ArtifactBase,
@@ -64,40 +66,54 @@ impl Card for GildedAegis {
         Some(self)
     }
 
-    async fn replace_effect(
+    async fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
+        if !self.get_zone().is_in_play() {
+            return Ok(vec![]);
+        }
+
+        let Some(bearer_id) = self.get_bearer_id()? else {
+            return Ok(vec![]);
+        };
+        if !state.get_card(&bearer_id).is_minion() {
+            return Ok(vec![]);
+        }
+
+        Ok(vec![Hook {
+            id: SAVE_BEARER_HOOK,
+            trigger: EffectQuery::UnitKilled {
+                unit: bearer_id.into(),
+                killer: None,
+            },
+            timing: HookTiming::Replace,
+            source_zones: HookSourceZones::InPlay,
+        }])
+    }
+
+    async fn resolve_hook(
         &self,
+        hook_id: HookId,
         state: &State,
         effect: &Effect,
-    ) -> anyhow::Result<Option<Vec<Effect>>> {
-        let new_effects = match effect {
-            Effect::KillMinion { card_id, .. } => {
-                let Some(bearer_id) = self.get_bearer_id()? else {
-                    return Ok(None);
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook_id {
+            SAVE_BEARER_HOOK => {
+                let Effect::KillMinion { card_id, .. } = effect else {
+                    return Ok(vec![]);
                 };
 
-                if card_id != &bearer_id {
-                    return Ok(None);
-                }
-
-                let bearer = state.get_card(&bearer_id);
-                if !bearer.is_minion() {
-                    return Ok(None);
-                }
-
-                Some(vec![
+                let bearer = state.get_card(card_id);
+                Ok(vec![
                     Effect::BanishCard {
                         card_id: *self.get_id(),
                     },
                     Effect::Heal {
-                        card_id: bearer_id,
+                        card_id: *card_id,
                         amount: bearer.get_toughness(state).unwrap_or_default(),
                     },
                 ])
             }
-            _ => None,
-        };
-
-        Ok(new_effects)
+            _ => Ok(vec![]),
+        }
     }
 }
 

@@ -922,22 +922,8 @@ impl Effect {
     pub async fn apply(&self, state: &mut State) -> anyhow::Result<()> {
         state.invalidate_runtime_caches();
 
-        let mut effects: Vec<Effect> = vec![];
-        for card in state
-            .cards
-            .values()
-            .filter(|card| can_use_special_abilities(state, card.get_id()))
-        {
-            let replace_effects = card.replace_effect(state, self).await?.unwrap_or_default();
-            effects.extend(replace_effects);
-        }
-
         if let Some(replaced_effects) = state.replace_effect(self).await? {
-            effects = replaced_effects;
-        }
-
-        if !effects.is_empty() {
-            state.queue(effects);
+            state.queue(replaced_effects);
             return Ok(());
         }
 
@@ -2200,9 +2186,14 @@ impl Effect {
                     card.set_tapped(true);
                 }
 
+                let carried_cards = CardQuery::new().carried_by(card_id).all(state);
+                for carried_card_id in &carried_cards {
+                    state.get_card_mut(carried_card_id).set_region(region.clone());
+                }
+
                 state.queue(location_survival_effects_for_cards(
                     state,
-                    std::iter::once(*card_id),
+                    std::iter::once(*card_id).chain(carried_cards),
                 ));
             }
             Effect::SetBearer { card_id, bearer_id } => {

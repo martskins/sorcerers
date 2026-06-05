@@ -78,6 +78,7 @@ impl Card for WallOfFire {
                 card: CardQuery::new().units(),
             },
             timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
         }])
     }
 

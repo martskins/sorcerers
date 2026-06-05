@@ -70,6 +70,7 @@ impl Card for AlbespinePikemen {
                 defender: None,
             },
             timing: HookTiming::Before,
+            source_zones: HookSourceZones::InPlay,
         }])
     }
 

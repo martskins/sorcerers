@@ -82,6 +82,7 @@ impl Card for VaultsOfZul {
                 zone: ZoneQuery::from_zone(self.get_zone().clone()),
             },
             timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
         }])
     }
 

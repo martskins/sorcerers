@@ -1,10 +1,12 @@
 use crate::{
     card::{
         Ability, ApprenticeWizard, AridDesert, AskelonPhoenix, BottomlessPit, BridgeTroll, Card,
-        CardStatus, Damage, DeadOfNightDemon, Drought, Enchantress, Flood, FootSoldier, OgreGoons,
-        PhaseAssassin, PitVipers, PlanarGate, Region, RimlandNomads, RootSpider, Sandstorm, SeaRaider,
-        SeirawanHydra, Silence, SimpleVillage, SirianTemplar, SlingPixies, SpringRiver, UnitBase,
-        VaultsOfZul, WallOfFire, YourkeCrossbowmen, from_name_and_zone,
+        CardBase, CardStatus, Damage, DeadOfNightDemon, Drought, Enchantress, Flood, FootSoldier,
+        GildedAegis, Hook, HookId, HookSourceZones, HookTiming, OgreGoons, PhaseAssassin,
+        PitVipers, PlanarGate, Region, RimlandNomads, RootSpider, RoyalBodyguard, Sandstorm,
+        ScourgeZombies, SeaRaider, SeirawanHydra, Silence, SimpleVillage, SirianTemplar,
+        SlingPixies, SpringRiver, TuftedTurtles, TvinnaxBerserker, UnitBase, VaultsOfZul,
+        WallOfFire, YourkeCrossbowmen, from_name_and_zone,
     },
     deck::Deck,
     effect::{
@@ -20,6 +22,72 @@ use crate::{
     zone::{Location, Zone},
 };
 use std::{collections::HashMap, sync::Arc};
+
+const TEST_HOOK_SOURCE_ID: HookId = 1;
+
+#[derive(Debug, Clone)]
+struct TestHookSource {
+    card_base: CardBase,
+    source_zones: HookSourceZones,
+}
+
+impl TestHookSource {
+    fn new(owner_id: uuid::Uuid, source_zones: HookSourceZones) -> Self {
+        Self {
+            card_base: CardBase {
+                id: uuid::Uuid::new_v4(),
+                owner_id,
+                controller_id: owner_id,
+                zone: Zone::Hand,
+                ..Default::default()
+            },
+            source_zones,
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl Card for TestHookSource {
+    fn get_name(&self) -> &str {
+        "Test Hook Source"
+    }
+
+    fn get_description(&self) -> &str {
+        ""
+    }
+
+    fn get_base_mut(&mut self) -> &mut CardBase {
+        &mut self.card_base
+    }
+
+    fn get_base(&self) -> &CardBase {
+        &self.card_base
+    }
+
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: TEST_HOOK_SOURCE_ID,
+            trigger: EffectQuery::DrawCard { player_id: None },
+            timing: HookTiming::After,
+            source_zones: self.source_zones.clone(),
+        }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook_id: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook_id {
+            TEST_HOOK_SOURCE_ID => Ok(vec![Effect::AdjustMana {
+                player_id: self.get_controller_id(state),
+                mana: 1,
+            }]),
+            _ => Ok(vec![]),
+        }
+    }
+}
 
 /// Creates a test state with proper avatar cards and a live server-message receiver so
 /// that `force_sync` calls inside effects do not fail.
@@ -339,6 +407,93 @@ async fn test_replace_hook_replaces_original_effect() {
 }
 
 #[tokio::test]
+async fn test_hook_source_zones_control_out_of_play_triggers() {
+    let (mut state, _rx) = make_state(vec![]);
+    let player_id = state.players[0].id;
+
+    let in_play_only = TestHookSource::new(player_id, HookSourceZones::InPlay);
+    let in_play_only_id = *in_play_only.get_id();
+    state.cards.insert(in_play_only_id, Box::new(in_play_only));
+
+    let any_zone = TestHookSource::new(player_id, HookSourceZones::Any);
+    let any_zone_id = *any_zone.get_id();
+    state.cards.insert(any_zone_id, Box::new(any_zone));
+
+    let hand_zone = TestHookSource::new(player_id, HookSourceZones::Zones(vec![Zone::Hand]));
+    let hand_zone_id = *hand_zone.get_id();
+    state.cards.insert(hand_zone_id, Box::new(hand_zone));
+
+    state.queue_one(Effect::DrawCard {
+        player_id,
+        count: 0,
+        kind: DrawKind::Spell,
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(
+        *state.get_player_mana_mut(&player_id),
+        2,
+        "only Any and explicit Hand hook sources should trigger from hand"
+    );
+}
+
+#[tokio::test]
+async fn test_scourge_zombies_triggers_from_cemetery() {
+    let (mut state, server_rx, client_tx) =
+        make_state_with_client(vec![Zone::Location(Location::Square(1, Region::Surface))]);
+    let game_id = state.game_id;
+    let player_id = state.players[0].id;
+    let opponent_id = state.players[1].id;
+
+    let mut source = FootSoldier::new(opponent_id);
+    let source_id = *source.get_id();
+    source.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    state.cards.insert(source_id, Box::new(source));
+
+    let mut mortal = FootSoldier::new(player_id);
+    let mortal_id = *mortal.get_id();
+    mortal.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    state.cards.insert(mortal_id, Box::new(mortal));
+
+    let mut scourge = ScourgeZombies::new(player_id);
+    let scourge_id = *scourge.get_id();
+    scourge.set_zone(Zone::Cemetery);
+    state.cards.insert(scourge_id, Box::new(scourge));
+
+    tokio::spawn(async move {
+        while let Ok(message) = server_rx.recv().await {
+            if let ServerMessage::PickAction {
+                player_id, actions, ..
+            } = message
+            {
+                assert_eq!(actions[0], "Yes");
+                client_tx
+                    .send(ClientMessage::PickAction {
+                        game_id,
+                        player_id,
+                        action_idx: 0,
+                    })
+                    .await
+                    .unwrap();
+            }
+        }
+    });
+
+    state.queue_one(Effect::KillMinion {
+        card_id: mortal_id,
+        killer_id: source_id,
+        from_attack: false,
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(
+        state.get_card(&scourge_id).get_zone(),
+        &Zone::Location(Location::Square(1, Region::Surface))
+    );
+    assert!(state.get_card(&scourge_id).is_tapped());
+}
+
+#[tokio::test]
 async fn test_rimland_nomads_replace_desert_damage() {
     let (mut state, _rx) = make_state(vec![]);
     let player_id = state.players[0].id;
@@ -414,6 +569,156 @@ async fn test_sling_pixies_replace_damage_from_units_with_four_or_more_power() {
     drain_effects(&mut state).await;
 
     assert_eq!(state.get_card(&pixies_id).get_damage_taken().unwrap(), 0);
+}
+
+#[tokio::test]
+async fn test_tufted_turtles_replace_first_damage_each_turn() {
+    let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
+    let player_id = state.players[0].id;
+    let opponent_id = state.players[1].id;
+
+    let mut source = FootSoldier::new(opponent_id);
+    let source_id = *source.get_id();
+    source.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    state.cards.insert(source_id, Box::new(source));
+
+    let mut turtles = TuftedTurtles::new(player_id);
+    let turtles_id = *turtles.get_id();
+    turtles.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    state.cards.insert(turtles_id, Box::new(turtles));
+
+    state.queue_one(Effect::TakeDamage {
+        card_id: turtles_id,
+        from: source_id,
+        damage: Damage::basic(1),
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(state.get_card(&turtles_id).get_damage_taken().unwrap(), 0);
+
+    state.queue_one(Effect::TakeDamage {
+        card_id: turtles_id,
+        from: source_id,
+        damage: Damage::basic(1),
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(state.get_card(&turtles_id).get_damage_taken().unwrap(), 1);
+}
+
+#[tokio::test]
+async fn test_gilded_aegis_replace_bearer_death() {
+    let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
+    let player_id = state.players[0].id;
+    let opponent_id = state.players[1].id;
+
+    let mut source = FootSoldier::new(opponent_id);
+    let source_id = *source.get_id();
+    source.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    state.cards.insert(source_id, Box::new(source));
+
+    let mut bearer = FootSoldier::new(player_id);
+    let bearer_id = *bearer.get_id();
+    bearer.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    state.cards.insert(bearer_id, Box::new(bearer));
+
+    let mut aegis = GildedAegis::new(player_id);
+    let aegis_id = *aegis.get_id();
+    aegis.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    aegis.set_bearer_id(Some(bearer_id));
+    state.cards.insert(aegis_id, Box::new(aegis));
+
+    state.queue_one(Effect::KillMinion {
+        card_id: bearer_id,
+        killer_id: source_id,
+        from_attack: false,
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(
+        state.get_card(&bearer_id).get_zone(),
+        &Zone::Location(Location::Square(1, Region::Surface))
+    );
+    assert_eq!(state.get_card(&aegis_id).get_zone(), &Zone::Banish);
+}
+
+#[tokio::test]
+async fn test_tvinnax_berserker_untaps_after_attack_kill_without_replacing_kill() {
+    let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
+    let player_id = state.players[0].id;
+    let opponent_id = state.players[1].id;
+
+    let mut tvinnax = TvinnaxBerserker::new(player_id);
+    let tvinnax_id = *tvinnax.get_id();
+    tvinnax.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    tvinnax.set_tapped(true);
+    state.cards.insert(tvinnax_id, Box::new(tvinnax));
+
+    let mut target = FootSoldier::new(opponent_id);
+    let target_id = *target.get_id();
+    target.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    state.cards.insert(target_id, Box::new(target));
+
+    state.queue_one(Effect::KillMinion {
+        card_id: target_id,
+        killer_id: tvinnax_id,
+        from_attack: true,
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(state.get_card(&target_id).get_zone(), &Zone::Cemetery);
+    assert!(!state.get_card(&tvinnax_id).is_tapped());
+}
+
+#[tokio::test]
+async fn test_royal_bodyguard_replace_nearby_avatar_damage() {
+    let (mut state, server_rx, client_tx) =
+        make_state_with_client(vec![Zone::Location(Location::Square(1, Region::Surface))]);
+    let game_id = state.game_id;
+    let player_id = state.players[0].id;
+    let opponent_id = state.players[1].id;
+    let avatar_id = state.get_player_avatar_id(&player_id).unwrap();
+    state
+        .get_card_mut(&avatar_id)
+        .set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+
+    let mut source = FootSoldier::new(opponent_id);
+    let source_id = *source.get_id();
+    source.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    state.cards.insert(source_id, Box::new(source));
+
+    let mut bodyguard = RoyalBodyguard::new(player_id);
+    let bodyguard_id = *bodyguard.get_id();
+    bodyguard.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    state.cards.insert(bodyguard_id, Box::new(bodyguard));
+
+    tokio::spawn(async move {
+        while let Ok(message) = server_rx.recv().await {
+            if let ServerMessage::PickAction {
+                player_id, actions, ..
+            } = message
+            {
+                assert_eq!(actions[0], "Yes");
+                client_tx
+                    .send(ClientMessage::PickAction {
+                        game_id,
+                        player_id,
+                        action_idx: 0,
+                    })
+                    .await
+                    .unwrap();
+            }
+        }
+    });
+
+    state.queue_one(Effect::TakeDamage {
+        card_id: avatar_id,
+        from: source_id,
+        damage: Damage::basic(1),
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(state.get_card(&bodyguard_id).get_damage_taken().unwrap(), 1);
 }
 
 #[tokio::test]

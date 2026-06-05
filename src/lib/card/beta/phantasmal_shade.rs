@@ -71,6 +71,7 @@ impl Card for PhantasmalShade {
                 target: Some(self.get_id().into()),
             },
             timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
         }])
     }
 

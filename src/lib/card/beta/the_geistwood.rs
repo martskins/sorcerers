@@ -74,6 +74,7 @@ impl Card for TheGeistwood {
                 card: CardQuery::new().in_zone_of_card(self.get_id()),
             },
             timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
         }])
     }
 

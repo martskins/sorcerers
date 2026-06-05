@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+const PREVENT_FIRST_DAMAGE_HOOK: HookId = 1;
+
 #[derive(Debug, Clone)]
 pub struct TuftedTurtles {
     unit_base: UnitBase,
@@ -77,28 +79,50 @@ impl Card for TuftedTurtles {
         }])
     }
 
-    async fn replace_effect(
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        if self.damage_prevented || !self.get_zone().is_in_play() {
+            return Ok(vec![]);
+        }
+
+        Ok(vec![Hook {
+            id: PREVENT_FIRST_DAMAGE_HOOK,
+            trigger: EffectQuery::DamageDealt {
+                source: None,
+                target: Some(self.get_id().into()),
+            },
+            timing: HookTiming::Replace,
+            source_zones: HookSourceZones::InPlay,
+        }])
+    }
+
+    async fn resolve_hook(
         &self,
+        hook_id: HookId,
         _state: &State,
         effect: &Effect,
-    ) -> anyhow::Result<Option<Vec<Effect>>> {
-        if self.damage_prevented {
-            return Ok(None);
-        }
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook_id {
+            PREVENT_FIRST_DAMAGE_HOOK => {
+                if self.damage_prevented {
+                    return Ok(vec![]);
+                }
 
-        if let Effect::TakeDamage {
-            card_id, damage, ..
-        } = effect
-            && card_id == self.get_id()
-            && damage.amount > 0
-        {
-            return Ok(Some(vec![Effect::SetCardData {
-                card_id: *self.get_id(),
-                data: std::sync::Arc::new(true),
-            }]));
-        }
+                if let Effect::TakeDamage {
+                    card_id, damage, ..
+                } = effect
+                    && card_id == self.get_id()
+                    && damage.amount > 0
+                {
+                    return Ok(vec![Effect::SetCardData {
+                        card_id: *self.get_id(),
+                        data: std::sync::Arc::new(true),
+                    }]);
+                }
 
-        Ok(None)
+                Ok(vec![])
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 

@@ -77,6 +77,7 @@ impl Card for MarinersCurse {
                 },
             ]),
             timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
         }])
     }
 

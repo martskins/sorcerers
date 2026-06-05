@@ -82,6 +82,7 @@ impl Card for Wildfire {
                 from: None,
             },
             timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
         }])
     }
 

@@ -80,6 +80,7 @@ impl Card for ScreamingSkull {
                 },
             ]),
             timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
         }])
     }
 

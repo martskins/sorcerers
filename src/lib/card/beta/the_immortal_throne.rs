@@ -89,6 +89,7 @@ impl Card for TheImmortalThrone {
                 spellcaster: None,
             },
             timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
         }])
     }
 

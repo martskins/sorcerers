@@ -70,6 +70,7 @@ impl Card for CaptainBaldassare {
                 defender: None,
             },
             timing: HookTiming::Before,
+            source_zones: HookSourceZones::InPlay,
         }])
     }
 

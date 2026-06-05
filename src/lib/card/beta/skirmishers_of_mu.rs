@@ -70,6 +70,7 @@ impl Card for SkirmishersOfMu {
                 card: self.get_id().into(),
             },
             timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
         }])
     }
 

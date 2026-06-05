@@ -1,5 +1,5 @@
 use crate::{
-    card::{HookId, HookTiming},
+    card::{HookId, HookSourceZones, HookTiming},
     effect::{Effect, EffectLogEmitter},
     game::{CardId, Game},
     state::State,
@@ -10,6 +10,7 @@ pub struct EffectEngine;
 struct PendingHook {
     source_id: CardId,
     hook_id: HookId,
+    source_zones: HookSourceZones,
 }
 
 impl EffectEngine {
@@ -20,11 +21,17 @@ impl EffectEngine {
     ) -> anyhow::Result<Vec<PendingHook>> {
         let mut hooks = vec![];
         for card in state.cards.values() {
-            if state.card_has_special_abilities_removed(card.get_id()) {
+            if card.get_zone().is_in_play()
+                && state.card_has_special_abilities_removed(card.get_id())
+            {
                 continue;
             }
 
             for hook in card.hooks(state).await? {
+                if !hook.source_zones.matches(card.get_zone()) {
+                    continue;
+                }
+
                 if !hook.trigger.matches(effect, state).await? {
                     continue;
                 }
@@ -33,6 +40,7 @@ impl EffectEngine {
                     hooks.push(PendingHook {
                         source_id: *card.get_id(),
                         hook_id: hook.id,
+                        source_zones: hook.source_zones,
                     });
                 }
             }
@@ -50,7 +58,12 @@ impl EffectEngine {
             let Some(source) = state.cards.get(&hook.source_id) else {
                 continue;
             };
-            if state.card_has_special_abilities_removed(&hook.source_id) {
+            if !hook.source_zones.matches(source.get_zone()) {
+                continue;
+            }
+            if source.get_zone().is_in_play()
+                && state.card_has_special_abilities_removed(&hook.source_id)
+            {
                 continue;
             }
 
@@ -73,7 +86,12 @@ impl EffectEngine {
             let Some(source) = state.cards.get(&hook.source_id) else {
                 continue;
             };
-            if state.card_has_special_abilities_removed(&hook.source_id) {
+            if !hook.source_zones.matches(source.get_zone()) {
+                continue;
+            }
+            if source.get_zone().is_in_play()
+                && state.card_has_special_abilities_removed(&hook.source_id)
+            {
                 continue;
             }
 
@@ -135,7 +153,8 @@ impl EffectEngine {
     pub async fn drain_without_log(state: &mut State) -> anyhow::Result<()> {
         while !state.effects.is_empty() {
             if let Some(effect) = state.effects.pop_back() {
-                let replace_hooks = Self::collect_hooks(state, &effect, HookTiming::Replace).await?;
+                let replace_hooks =
+                    Self::collect_hooks(state, &effect, HookTiming::Replace).await?;
                 let replacements =
                     Self::resolve_hook_replacements(state, &effect, &replace_hooks).await?;
                 if !replacements.is_empty() {
