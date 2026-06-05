@@ -7,6 +7,8 @@ pub struct DoomsdayDevice {
     doom_counters: u8,
 }
 
+const TURN_END_HOOK: HookId = 1;
+
 impl DoomsdayDevice {
     pub const NAME: &'static str = "Doomsday Device";
     pub const DESCRIPTION: &'static str = "Doomsday Device enters the realm with 6 counters. At the end of each player's turn, remove a counter. When the last is removed, it detonates! Deals damage to each unit at affected locations:";
@@ -82,7 +84,23 @@ impl Card for DoomsdayDevice {
         }])
     }
 
-    async fn on_turn_end(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: TURN_END_HOOK,
+            trigger: EffectQuery::TurnEnd { player_id: None },
+            timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
+        }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            TURN_END_HOOK => {
         if !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }
@@ -119,6 +137,10 @@ impl Card for DoomsdayDevice {
             card_id: self_id,
             data: std::sync::Arc::new(self.doom_counters - 1),
         }])
+    
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 

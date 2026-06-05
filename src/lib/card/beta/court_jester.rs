@@ -6,6 +6,8 @@ pub struct CourtJester {
     card_base: CardBase,
 }
 
+const TURN_END_HOOK: HookId = 1;
+
 impl CourtJester {
     pub const NAME: &'static str = "Court Jester";
     pub const DESCRIPTION: &'static str =
@@ -61,7 +63,23 @@ impl Card for CourtJester {
         Some(&mut self.unit_base)
     }
 
-    async fn on_turn_end(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: TURN_END_HOOK,
+            trigger: EffectQuery::TurnEnd { player_id: None },
+            timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
+        }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            TURN_END_HOOK => {
         let controller_id = self.get_controller_id(state);
 
         // Only trigger at the end of the controller's turn.
@@ -98,6 +116,10 @@ impl Card for CourtJester {
         }
 
         Ok(effects)
+    
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 

@@ -1,6 +1,7 @@
 use crate::prelude::*;
 
 const TRACK_VISITED_SITE_HOOK: HookId = 1;
+const TURN_END_HOOK: HookId = 2;
 
 #[derive(Debug, Clone)]
 pub struct Wildfire {
@@ -72,24 +73,32 @@ impl Card for Wildfire {
     }
 
     async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
-        Ok(vec![Hook {
-            id: TRACK_VISITED_SITE_HOOK,
-            // TODO: EnterZone is not triggered when summoning auras. We need to handle this the same
-            // way we do for summon minions.
-            trigger: EffectQuery::EnterZone {
-                card: self.get_id().into(),
-                zone: ZoneQuery::new(),
-                from: None,
+        Ok(vec![
+            Hook {
+                id: TRACK_VISITED_SITE_HOOK,
+                // TODO: EnterZone is not triggered when summoning auras. We need to handle this the same
+                // way we do for summon minions.
+                trigger: EffectQuery::EnterZone {
+                    card: self.get_id().into(),
+                    zone: ZoneQuery::new(),
+                    from: None,
+                },
+                timing: HookTiming::After,
+                source_zones: HookSourceZones::InPlay,
             },
-            timing: HookTiming::After,
-            source_zones: HookSourceZones::InPlay,
-        }])
+            Hook {
+                id: TURN_END_HOOK,
+                trigger: EffectQuery::TurnEnd { player_id: None },
+                timing: HookTiming::After,
+                source_zones: HookSourceZones::InPlay,
+            },
+        ])
     }
 
     async fn resolve_hook(
         &self,
         hook: HookId,
-        _state: &State,
+        state: &State,
         _effect: &Effect,
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
@@ -101,61 +110,62 @@ impl Card for Wildfire {
                     data: std::sync::Arc::new(sites_visited),
                 }])
             }
+            TURN_END_HOOK => {
+                // TODO: Wildfire moves to adjacent locations, so it cannot move to a different region.
+                let zones = self
+                    .get_zone()
+                    .get_adjacent()
+                    .iter()
+                    .filter(|z| !self.sites_visited.contains(z))
+                    .cloned()
+                    .collect::<Vec<Zone>>();
+                if zones.is_empty() {
+                    return Ok(vec![Effect::BuryCard {
+                        card_id: *self.get_id(),
+                    }]);
+                }
+
+                let mut effects = CardQuery::new()
+                    .units()
+                    .in_zone(self.get_zone())
+                    .all(state)
+                    .into_iter()
+                    .map(|id| Effect::TakeDamage {
+                        card_id: id,
+                        from: *self.get_id(),
+                        damage: Damage::basic(3),
+                    })
+                    .collect::<Vec<Effect>>();
+
+                let prompt = "Pick a zone to move to";
+                let picked_zone = pick_zone_source(
+                    self.get_owner_id(),
+                    &zones,
+                    state,
+                    false,
+                    prompt,
+                    Some(*self.get_id()),
+                )
+                .await?;
+                effects.push(Effect::MoveCard {
+                    player_id: *self.get_owner_id(),
+                    card_id: *self.get_id(),
+                    from: self
+                        .get_zone()
+                        .clone()
+                        .into_location()
+                        .expect("Wildfire must be in a location"),
+                    to: LocationQuery::from_zone(
+                        picked_zone.with_region(self.get_region(state).clone()),
+                    ),
+                    tap: false,
+                    through_path: None,
+                });
+
+                Ok(effects)
+            }
             _ => Ok(vec![]),
         }
-    }
-
-    async fn on_turn_end(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        // TODO: Wildfire moves to adjacent locations, so it cannot move to a different region.
-        let zones = self
-            .get_zone()
-            .get_adjacent()
-            .iter()
-            .filter(|z| !self.sites_visited.contains(z))
-            .cloned()
-            .collect::<Vec<Zone>>();
-        if zones.is_empty() {
-            return Ok(vec![Effect::BuryCard {
-                card_id: *self.get_id(),
-            }]);
-        }
-
-        let mut effects = CardQuery::new()
-            .units()
-            .in_zone(self.get_zone())
-            .all(state)
-            .into_iter()
-            .map(|id| Effect::TakeDamage {
-                card_id: id,
-                from: *self.get_id(),
-                damage: Damage::basic(3),
-            })
-            .collect::<Vec<Effect>>();
-
-        let prompt = "Pick a zone to move to";
-        let picked_zone = pick_zone_source(
-            self.get_owner_id(),
-            &zones,
-            state,
-            false,
-            prompt,
-            Some(*self.get_id()),
-        )
-        .await?;
-        effects.push(Effect::MoveCard {
-            player_id: *self.get_owner_id(),
-            card_id: *self.get_id(),
-            from: self
-                .get_zone()
-                .clone()
-                .into_location()
-                .expect("Wildfire must be in a location"),
-            to: LocationQuery::from_zone(picked_zone.with_region(self.get_region(state).clone())),
-            tap: false,
-            through_path: None,
-        });
-
-        Ok(effects)
     }
 
     fn get_valid_play_zones(

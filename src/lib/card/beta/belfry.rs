@@ -6,6 +6,8 @@ pub struct Belfry {
     card_base: CardBase,
 }
 
+const TURN_END_HOOK: HookId = 1;
+
 impl Belfry {
     pub const NAME: &'static str = "Belfry";
     pub const DESCRIPTION: &'static str = "At the end of your turn, untap all nearby allies.";
@@ -63,7 +65,23 @@ impl Card for Belfry {
         Some(self)
     }
 
-    async fn on_turn_end(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: TURN_END_HOOK,
+            trigger: EffectQuery::TurnEnd { player_id: None },
+            timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
+        }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            TURN_END_HOOK => {
         if self.get_controller_id(state) != state.current_player() {
             return Ok(vec![]);
         }
@@ -81,6 +99,10 @@ impl Card for Belfry {
                 tapped: false,
             })
             .collect())
+    
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 

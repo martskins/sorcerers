@@ -6,6 +6,8 @@ pub struct DevilSEgg {
     card_base: CardBase,
 }
 
+const TURN_END_HOOK: HookId = 1;
+
 impl DevilSEgg {
     pub const NAME: &'static str = "Devil's Egg";
     pub const DESCRIPTION: &'static str =
@@ -64,24 +66,41 @@ impl Card for DevilSEgg {
         Some(self)
     }
 
-    async fn on_turn_end(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        if !self.get_zone().is_in_play() {
-            return Ok(vec![]);
-        }
-
-        let site = match self.get_zone().get_site(state) {
-            Some(s) => s,
-            None => return Ok(vec![]),
-        };
-
-        let site_controller_id = site.get_controller_id(state);
-        let avatar_id = state.get_player_avatar_id(&site_controller_id)?;
-
-        Ok(vec![Effect::TakeDamage {
-            card_id: avatar_id,
-            from: *self.get_id(),
-            damage: Damage::basic(1),
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: TURN_END_HOOK,
+            trigger: EffectQuery::TurnEnd { player_id: None },
+            timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
         }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            TURN_END_HOOK => {
+                if !self.get_zone().is_in_play() {
+                    return Ok(vec![]);
+                }
+
+                let site = match self.get_zone().get_site(state) {
+                    Some(s) => s,
+                    None => return Ok(vec![]),
+                };
+
+                let site_controller_id = site.get_controller_id(state);
+
+                Ok(vec![Effect::AdjustAvatarLife {
+                    player_id: site_controller_id,
+                    amount: -1,
+                }])
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 

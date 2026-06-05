@@ -78,7 +78,6 @@ impl Card for PillarOfZeiros {
 
     async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        let avatar_id = state.get_player_avatar_id(&controller_id)?;
 
         let dead_minions = CardQuery::new().minions().dead().all(state);
         let count = dead_minions.len() as u32;
@@ -89,8 +88,8 @@ impl Card for PillarOfZeiros {
             .collect();
 
         for _ in 0..count {
-            effects.push(Effect::Heal {
-                card_id: avatar_id,
+            effects.push(Effect::AdjustAvatarLife {
+                player_id: controller_id,
                 amount: 1,
             });
         }

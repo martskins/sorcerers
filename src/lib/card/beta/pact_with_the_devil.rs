@@ -71,12 +71,12 @@ impl Magic for PactWithTheDevil {
         let damage_taken = avatar.get_unit_base().map(|ub| ub.damage).unwrap_or(0);
         let current_hp = max_hp.saturating_sub(damage_taken);
         let half_hp = current_hp.div_ceil(2);
+        let life_loss = i16::try_from(half_hp).unwrap_or(i16::MAX);
 
         Ok(vec![
-            Effect::TakeDamage {
-                card_id: avatar_id,
-                from: *self.get_id(),
-                damage: Damage::basic(half_hp),
+            Effect::AdjustAvatarLife {
+                player_id: controller_id,
+                amount: -life_loss,
             },
             Effect::DrawCard {
                 player_id: controller_id,

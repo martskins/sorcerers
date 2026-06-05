@@ -6,6 +6,8 @@ pub struct QuarrelsomeKobolds {
     card_base: CardBase,
 }
 
+const TURN_END_HOOK: HookId = 1;
+
 impl QuarrelsomeKobolds {
     pub const NAME: &'static str = "Quarrelsome Kobolds";
     pub const DESCRIPTION: &'static str = "At the end of your turn, Quarrelsome Kobolds strike themselves or another target adjacent unit.";
@@ -61,7 +63,23 @@ impl Card for QuarrelsomeKobolds {
         Some(&mut self.unit_base)
     }
 
-    async fn on_turn_end(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: TURN_END_HOOK,
+            trigger: EffectQuery::TurnEnd { player_id: None },
+            timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
+        }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            TURN_END_HOOK => {
         if state.current_player() != self.get_controller_id(state) {
             return Ok(vec![]);
         }
@@ -93,6 +111,10 @@ impl Card for QuarrelsomeKobolds {
             from: *self.get_id(),
             damage: Damage::basic(self.get_power(state)?.unwrap_or(0)),
         }])
+    
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 

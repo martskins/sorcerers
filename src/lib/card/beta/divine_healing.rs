@@ -57,9 +57,8 @@ impl Magic for DivineHealing {
         _caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
-        let avatar_id = state.get_player_avatar_id(&self.get_controller_id(state))?;
-        Ok(vec![Effect::Heal {
-            card_id: avatar_id,
+        Ok(vec![Effect::AdjustAvatarLife {
+            player_id: self.get_controller_id(state),
             amount: 7,
         }])
     }

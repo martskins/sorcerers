@@ -1173,6 +1173,69 @@ async fn test_direct_avatar_damage_after_deaths_door_loses_game() {
 }
 
 #[tokio::test]
+async fn test_adjust_avatar_life_changes_life_without_damage_death_blow() {
+    let (mut state, _rx) = make_state(vec![]);
+    let player_id = state.players[0].id;
+    let avatar_id = state.get_player_avatar_id(&player_id).unwrap();
+
+    state.queue_one(Effect::AdjustAvatarLife {
+        player_id,
+        amount: -5,
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(
+        state.get_card(&avatar_id).get_damage_taken().unwrap(),
+        5,
+        "losing life should lower avatar life without going through TakeDamage"
+    );
+
+    state.queue_one(Effect::AdjustAvatarLife {
+        player_id,
+        amount: 2,
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(
+        state.get_card(&avatar_id).get_damage_taken().unwrap(),
+        3,
+        "gaining life should increase avatar life up to its maximum"
+    );
+
+    state.queue_one(Effect::AdjustAvatarLife {
+        player_id,
+        amount: -20,
+    });
+    drain_effects(&mut state).await;
+
+    assert!(
+        state
+            .get_card(&avatar_id)
+            .get_avatar_base()
+            .unwrap()
+            .deaths_door,
+        "life loss to 0 should put an avatar at Death's Door"
+    );
+
+    state
+        .get_card_mut(&avatar_id)
+        .get_avatar_base_mut()
+        .unwrap()
+        .can_die = true;
+
+    state.queue_one(Effect::AdjustAvatarLife {
+        player_id,
+        amount: -1,
+    });
+    drain_effects(&mut state).await;
+
+    assert!(
+        !state.eliminated_players.contains(&player_id),
+        "life loss after Death's Door should not be treated as direct damage death blow"
+    );
+}
+
+#[tokio::test]
 async fn test_site_damage_after_deaths_door_is_not_death_blow() {
     let (mut state, _rx) = make_state(vec![]);
     let player_id = state.players[0].id;

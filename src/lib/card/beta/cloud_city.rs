@@ -80,6 +80,8 @@ impl ActivatedAbility for FlyToVoid {
     }
 }
 
+const TURN_END_HOOK: HookId = 1;
+
 #[derive(Debug, Clone)]
 pub struct CloudCity {
     site_base: SiteBase,
@@ -148,7 +150,23 @@ impl Card for CloudCity {
         Some(&mut self.site_base)
     }
 
-    async fn on_turn_end(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: TURN_END_HOOK,
+            trigger: EffectQuery::TurnEnd { player_id: None },
+            timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
+        }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        _state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            TURN_END_HOOK => {
         if self.moved_this_turn {
             return Ok(vec![Effect::SetCardData {
                 card_id: *self.get_id(),
@@ -157,6 +175,10 @@ impl Card for CloudCity {
         }
 
         Ok(vec![])
+    
+            }
+            _ => Ok(vec![]),
+        }
     }
 
     fn get_additional_activated_abilities(

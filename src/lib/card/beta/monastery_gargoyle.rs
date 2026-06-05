@@ -6,6 +6,8 @@ pub struct MonasteryGargoyle {
     card_base: CardBase,
 }
 
+const TURN_END_HOOK: HookId = 1;
+
 impl MonasteryGargoyle {
     pub const NAME: &'static str = "Monastery Gargoyle";
     pub const DESCRIPTION: &'static str = "At the start and end of your turn, choose whether Monastery Gargoyle has Airborne or is a Monument.";
@@ -117,7 +119,23 @@ impl Card for MonasteryGargoyle {
         Self::toggle_form(*self.get_id(), controller_id, state).await
     }
 
-    async fn on_turn_end(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: TURN_END_HOOK,
+            trigger: EffectQuery::TurnEnd { player_id: None },
+            timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
+        }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            TURN_END_HOOK => {
         let controller_id = self.get_controller_id(state);
         if state.current_player() != controller_id {
             return Ok(vec![]);
@@ -126,6 +144,10 @@ impl Card for MonasteryGargoyle {
             return Ok(vec![]);
         }
         Self::toggle_form(*self.get_id(), controller_id, state).await
+    
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 

@@ -6,6 +6,8 @@ pub struct InfernalLegion {
     card_base: CardBase,
 }
 
+const TURN_END_HOOK: HookId = 1;
+
 impl InfernalLegion {
     pub const NAME: &'static str = "Infernal Legion";
     pub const DESCRIPTION: &'static str =
@@ -62,7 +64,23 @@ impl Card for InfernalLegion {
         Some(&mut self.unit_base)
     }
 
-    async fn on_turn_end(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: TURN_END_HOOK,
+            trigger: EffectQuery::TurnEnd { player_id: None },
+            timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
+        }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            TURN_END_HOOK => {
         let adjacent_units = CardQuery::new()
             .units()
             .adjacent_to(self.get_zone())
@@ -76,6 +94,10 @@ impl Card for InfernalLegion {
             });
         }
         Ok(effects)
+    
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 

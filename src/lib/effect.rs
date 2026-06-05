@@ -164,6 +164,10 @@ pub enum Effect {
         player_id: PlayerId,
         life: u16,
     },
+    AdjustAvatarLife {
+        player_id: PlayerId,
+        amount: i16,
+    },
     SummonToken {
         player_id: PlayerId,
         token_type: TokenType,
@@ -400,6 +404,7 @@ impl Effect {
             Effect::SkipNextTurn { player_id } => Some(player_id),
             Effect::OverrideNextTurn { .. } => None,
             Effect::SetAvatarLife { player_id, .. } => Some(player_id),
+            Effect::AdjustAvatarLife { player_id, .. } => Some(player_id),
             Effect::SummonToken { player_id, .. } => Some(player_id),
             Effect::Heal { card_id, .. } => Some(card_id),
             Effect::ShootProjectile { player_id, .. } => Some(player_id),
@@ -480,6 +485,14 @@ impl Effect {
                 player_name(player_id, state),
                 life
             )),
+            Effect::AdjustAvatarLife { player_id, amount } => {
+                let player = player_name(player_id, state);
+                if *amount >= 0 {
+                    Some(format!("{} gains {} life", player, amount))
+                } else {
+                    Some(format!("{} loses {} life", player, amount.saturating_abs()))
+                }
+            }
             Effect::SetCardRegion {
                 card_id,
                 destination: region,
@@ -949,6 +962,35 @@ impl Effect {
                     .get_unit_base_mut()
                     .ok_or(anyhow::anyhow!("avatar has no unit base component"))?;
                 unit_base.damage = unit_base.toughness.saturating_sub(*life);
+                if unit_base.damage >= unit_base.toughness {
+                    let avatar_base = avatar
+                        .get_avatar_base_mut()
+                        .ok_or(anyhow::anyhow!("avatar has no avatar base component"))?;
+                    avatar_base.deaths_door = true;
+                }
+            }
+            Effect::AdjustAvatarLife { player_id, amount } => {
+                let avatar_id = state.get_player_avatar_id(player_id)?;
+                let avatar = state.get_card_mut(&avatar_id);
+                if avatar
+                    .get_avatar_base()
+                    .is_some_and(|avatar_base| avatar_base.deaths_door)
+                {
+                    return Ok(());
+                }
+
+                let unit_base = avatar
+                    .get_unit_base_mut()
+                    .ok_or(anyhow::anyhow!("avatar has no unit base component"))?;
+                let current_life = unit_base.toughness.saturating_sub(unit_base.damage);
+                let new_life = if *amount >= 0 {
+                    current_life.saturating_add(*amount as u16)
+                } else {
+                    current_life.saturating_sub(amount.saturating_abs() as u16)
+                }
+                .min(unit_base.toughness);
+
+                unit_base.damage = unit_base.toughness.saturating_sub(new_life);
                 if unit_base.damage >= unit_base.toughness {
                     let avatar_base = avatar
                         .get_avatar_base_mut()
@@ -1577,15 +1619,6 @@ impl Effect {
                 *player_mana = ((*player_mana as i8) + *mana) as u8;
             }
             Effect::EndTurn { player_id, .. } => {
-                let mut all_effects: Vec<Effect> = vec![];
-                for card in state.cards.values().filter(|c| {
-                    c.get_zone().is_in_play() && can_use_special_abilities(state, c.get_id())
-                }) {
-                    let effects = card.on_turn_end(state).await?;
-                    all_effects.extend(effects);
-                }
-                state.queue(all_effects);
-
                 let player_mana = state.get_player_mana_mut(player_id);
                 *player_mana = 0;
                 state.phase = Phase::Main;

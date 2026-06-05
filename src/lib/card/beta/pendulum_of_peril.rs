@@ -6,6 +6,8 @@ pub struct PendulumOfPeril {
     card_base: CardBase,
 }
 
+const TURN_END_HOOK: HookId = 1;
+
 impl PendulumOfPeril {
     pub const NAME: &'static str = "Pendulum of Peril";
     pub const DESCRIPTION: &'static str = "At the end of each player's turn, Pendulum of Peril kills all minions at its current location and another adjacent location of that player's choice.";
@@ -63,7 +65,23 @@ impl Card for PendulumOfPeril {
         Some(self)
     }
 
-    async fn on_turn_end(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: TURN_END_HOOK,
+            trigger: EffectQuery::TurnEnd { player_id: None },
+            timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
+        }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            TURN_END_HOOK => {
         let zone = self.get_zone();
         if !zone.is_in_play() {
             return Ok(vec![]);
@@ -105,6 +123,10 @@ impl Card for PendulumOfPeril {
                 from_attack: false,
             })
             .collect())
+    
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 

@@ -89,11 +89,9 @@ impl Card for BlackObelisk {
             return Ok(vec![]);
         }
 
-        let avatar_id = state.get_player_avatar_id(&controller_id)?;
-        Ok(vec![Effect::TakeDamage {
-            card_id: avatar_id,
-            from: *site.get_id(),
-            damage: Damage::basic(2),
+        Ok(vec![Effect::AdjustAvatarLife {
+            player_id: controller_id,
+            amount: -2,
         }])
     }
 }

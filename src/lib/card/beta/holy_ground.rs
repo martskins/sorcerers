@@ -75,8 +75,8 @@ impl Card for HolyGround {
             .card_types(vec![CardType::Avatar])
             .all(state)
             .iter()
-            .map(|a| Effect::Heal {
-                card_id: *a,
+            .map(|a| Effect::AdjustAvatarLife {
+                player_id: state.get_card(a).get_controller_id(state),
                 amount: 3,
             })
             .collect();

@@ -1747,11 +1747,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(vec![])
     }
 
-    // TODO: Migrate to hooks.
-    async fn on_turn_end(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
-        Ok(vec![])
-    }
-
     fn remove_modifier(&mut self, modifier: &Ability) {
         if let Some(ub) = self.get_unit_base_mut() {
             ub.abilities.retain(|a| a != modifier);
@@ -2920,17 +2915,12 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
             Ok(effects)
         } else if self.is_site() {
             let controller_id = self.get_controller_id(state);
-            let avatar_id = state.get_player_avatar_id(&controller_id)?;
-            let avatar = state.get_card(&avatar_id);
-            let unit_base = avatar
-                .get_unit_base()
-                .ok_or(anyhow::anyhow!("avatar has no unit base"))?;
-            let current_life = unit_base.toughness.saturating_sub(unit_base.damage);
+            let life_loss = i16::try_from(reduced_damage).unwrap_or(i16::MAX);
 
             // Attacking sites causes life loss, not damage.
-            Ok(vec![Effect::SetAvatarLife {
+            Ok(vec![Effect::AdjustAvatarLife {
                 player_id: controller_id,
-                life: current_life.saturating_sub(reduced_damage),
+                amount: -life_loss,
             }])
         } else {
             Ok(vec![])

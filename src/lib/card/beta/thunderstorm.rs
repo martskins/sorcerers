@@ -6,6 +6,8 @@ pub struct Thunderstorm {
     card_base: CardBase,
 }
 
+const TURN_END_HOOK: HookId = 1;
+
 impl Thunderstorm {
     pub const NAME: &'static str = "Thunderstorm";
     pub const DESCRIPTION: &'static str = "At the end of your turn, deal 3 damage to a random unit atop affected sites, then you may move Thunderstorm one step.\r \r Lasts 3 of your turns.";
@@ -67,7 +69,23 @@ impl Card for Thunderstorm {
         Some(&mut self.aura_base)
     }
 
-    async fn on_turn_end(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: TURN_END_HOOK,
+            trigger: EffectQuery::TurnEnd { player_id: None },
+            timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
+        }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            TURN_END_HOOK => {
         if state.current_player() != self.get_controller_id(state) {
             return Ok(vec![]);
         }
@@ -105,6 +123,10 @@ impl Card for Thunderstorm {
         };
 
         Ok(effects)
+    
+            }
+            _ => Ok(vec![]),
+        }
     }
 
     fn get_aura(&self) -> Option<&dyn Aura> {
