@@ -287,6 +287,10 @@ pub enum Effect {
         defending_ids: Vec<CardId>,
         damage_assignment: Option<HashMap<CardId, u16>>,
     },
+    DeclareDefender {
+        attacker_id: CardId,
+        defender_id: CardId,
+    },
     TakeDamage {
         card_id: CardId,
         from: CardId,
@@ -436,6 +440,7 @@ impl Effect {
             Effect::AdjustMana { player_id, .. } => Some(player_id),
             Effect::Strike { striker_id, .. } => Some(striker_id),
             Effect::Attack { attacker_id, .. } => Some(attacker_id),
+            Effect::DeclareDefender { defender_id, .. } => Some(defender_id),
             Effect::RemoveCardFromGame { card_id } => Some(card_id),
             Effect::TakeDamage { card_id, .. } => Some(card_id),
             Effect::BanishCard { card_id, .. } => Some(card_id),
@@ -709,6 +714,7 @@ impl Effect {
                     attacker.get_name()
                 ))
             }
+            Effect::DeclareDefender { .. } => None,
             Effect::TakeDamage {
                 card_id,
                 from,
@@ -1968,6 +1974,7 @@ impl Effect {
                 effects.reverse();
                 state.queue(effects);
             }
+            Effect::DeclareDefender { .. } => {}
             Effect::TakeDamage {
                 card_id,
                 damage,
@@ -2197,6 +2204,7 @@ impl Effect {
             Effect::SetCardData { card_id, data, .. } => {
                 let card = state.get_card_mut(card_id);
                 card.set_data(data)?;
+                state.add_passive_ongoing_effects_for_source(card_id).await?;
                 state.queue(location_survival_effects_for_realm(state));
             }
             Effect::TeleportCard {

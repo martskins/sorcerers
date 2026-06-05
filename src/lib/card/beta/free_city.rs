@@ -6,11 +6,11 @@ struct FreeCityAttack;
 #[async_trait::async_trait]
 impl ActivatedAbility for FreeCityAttack {
     fn get_name(&self) -> String {
-        "Tap to attack or defend against enemies here".to_string()
+        "Attack or defend against enemies here".to_string()
     }
 
-    fn get_cost(&self, card_id: &CardId, _state: &State) -> anyhow::Result<Cost> {
-        Ok(Cost::additional_only(AdditionalCost::tap(card_id)))
+    fn get_cost(&self, _card_id: &CardId, _state: &State) -> anyhow::Result<Cost> {
+        Ok(Cost::ZERO.clone())
     }
 
     fn can_activate(
@@ -131,6 +131,7 @@ impl Site for FreeCity {}
 impl ResourceProvider for FreeCity {}
 
 const TURN_START_HOOK: HookId = 1;
+const DEFEND_DECLARED_HOOK: HookId = 2;
 
 #[async_trait::async_trait]
 impl Card for FreeCity {
@@ -179,28 +180,49 @@ impl Card for FreeCity {
     }
 
     async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
-        Ok(vec![Hook {
-            id: TURN_START_HOOK,
-            trigger: EffectQuery::TurnStart { player_id: None },
-            timing: HookTiming::After,
-            source_zones: HookSourceZones::InPlay,
-        }])
+        Ok(vec![
+            Hook {
+                id: TURN_START_HOOK,
+                trigger: EffectQuery::TurnStart { player_id: None },
+                timing: HookTiming::After,
+                source_zones: HookSourceZones::InPlay,
+            },
+            Hook {
+                id: DEFEND_DECLARED_HOOK,
+                trigger: EffectQuery::DefendDeclared {
+                    attacker: CardQuery::new(),
+                    defender: self.get_id().into(),
+                },
+                timing: HookTiming::After,
+                source_zones: HookSourceZones::InPlay,
+            },
+        ])
     }
 
     async fn resolve_hook(
         &self,
         hook: HookId,
-        _state: &State,
+        state: &State,
         _effect: &Effect,
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
-            TURN_START_HOOK => {
-        Ok(vec![Effect::SetCardData {
-            card_id: *self.get_id(),
-            data: std::sync::Arc::new(false),
-        }])
-    
-            }
+            TURN_START_HOOK => Ok(vec![Effect::SetCardData {
+                card_id: *self.get_id(),
+                data: std::sync::Arc::new(false),
+            }]),
+            DEFEND_DECLARED_HOOK => Ok(vec![
+                Effect::SetCardData {
+                    card_id: *self.get_id(),
+                    data: std::sync::Arc::new(true),
+                },
+                Effect::Animate {
+                    card_id: *self.get_id(),
+                    unit_base: Self::animated_unit_base(),
+                    expires_on_effect: EffectQuery::TurnStart {
+                        player_id: Some(self.get_controller_id(state)),
+                    },
+                },
+            ]),
             _ => Ok(vec![]),
         }
     }
@@ -214,13 +236,6 @@ impl Card for FreeCity {
         }
 
         Ok(vec![Box::new(FreeCityAttack)])
-    }
-
-    fn get_activated_abilities(
-        &self,
-        state: &State,
-    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
-        self.get_additional_activated_abilities(state)
     }
 
     fn can_defend_attack(
@@ -241,26 +256,6 @@ impl Card for FreeCity {
         state.is_unit_card(attacker_id)
             && attacker.get_controller_id(state) != self.get_controller_id(state)
             && attacker.get_zone() == self.get_zone()
-    }
-
-    fn on_defend_declared(
-        &self,
-        state: &State,
-        _attacker_id: &CardId,
-    ) -> anyhow::Result<Vec<Effect>> {
-        Ok(vec![
-            Effect::SetCardData {
-                card_id: *self.get_id(),
-                data: std::sync::Arc::new(true),
-            },
-            Effect::Animate {
-                card_id: *self.get_id(),
-                unit_base: Self::animated_unit_base(),
-                expires_on_effect: EffectQuery::TurnStart {
-                    player_id: Some(self.get_controller_id(state)),
-                },
-            },
-        ])
     }
 
     fn area_modifiers(&self, _state: &State) -> Vec<OngoingEffect> {

@@ -168,6 +168,169 @@ async fn test_free_city_can_be_chosen_to_defend_before_animation() {
     );
 }
 
+#[tokio::test]
+async fn test_free_city_can_activate_attack_before_animation() {
+    let (mut state, _rx) = setup_carrying_state();
+    let player_id = state.players[0].id;
+    let opponent_id = state.players[1].id;
+    let zone = Zone::Location(Location::Square(1, Region::Surface));
+
+    let free_city_id =
+        insert_realm_card(&mut state, Box::new(FreeCity::new(player_id)), zone.clone()).await;
+    insert_realm_card(&mut state, Box::new(FootSoldier::new(opponent_id)), zone).await;
+
+    assert!(!state.is_unit_card(&free_city_id));
+    let action_names = state
+        .get_card(&free_city_id)
+        .get_activated_abilities(&state)
+        .unwrap()
+        .into_iter()
+        .filter(|action| {
+            action
+                .get_cost(&free_city_id, &state)
+                .and_then(|cost| cost.can_afford(&state, &player_id))
+                .unwrap_or_default()
+                && action
+                    .can_activate(&free_city_id, &player_id, &state)
+                    .unwrap_or_default()
+        })
+        .map(|action| action.get_name())
+        .collect::<Vec<_>>();
+
+    assert!(
+        action_names.contains(&"Tap to attack or defend against enemies here".to_string()),
+        "Free City should expose its attack/defend ability when an enemy unit is here"
+    );
+}
+
+#[tokio::test]
+async fn test_free_city_animates_when_declared_as_defender() {
+    let (mut state, _rx) = setup_carrying_state();
+    let player_id = state.players[0].id;
+    let opponent_id = state.players[1].id;
+    let zone = Zone::Location(Location::Square(1, Region::Surface));
+
+    let avatar_id = state.get_player_avatar_id(&player_id).unwrap();
+    state.get_card_mut(&avatar_id).set_zone(zone.clone());
+    let free_city_id =
+        insert_realm_card(&mut state, Box::new(FreeCity::new(player_id)), zone.clone()).await;
+    let attacker_id =
+        insert_realm_card(&mut state, Box::new(FootSoldier::new(opponent_id)), zone).await;
+
+    assert!(!state.get_card(&free_city_id).is_unit());
+    assert!(
+        state
+            .get_defenders_for_attack(&attacker_id, &avatar_id)
+            .contains(&free_city_id)
+    );
+
+    state.queue_one(Effect::DeclareDefender {
+        attacker_id,
+        defender_id: free_city_id,
+    });
+    state.apply_effects_without_log().await.unwrap();
+
+    assert!(state.is_unit_card(&free_city_id));
+    assert!(
+        !state
+            .get_defenders_for_attack(&attacker_id, &avatar_id)
+            .contains(&free_city_id),
+        "Free City should be marked used after defending"
+    );
+
+    state.queue_one(Effect::StartTurn { player_id });
+    state.apply_effects_without_log().await.unwrap();
+
+    assert!(!state.is_unit_card(&free_city_id));
+    assert!(
+        state
+            .get_defenders_for_attack(&attacker_id, &avatar_id)
+            .contains(&free_city_id),
+        "Free City should reset on its controller's next turn start"
+    );
+}
+
+#[tokio::test]
+async fn test_animated_free_city_gets_unit_actions() {
+    let (mut state, _rx) = setup_carrying_state();
+    let player_id = state.players[0].id;
+    let opponent_id = state.players[1].id;
+    let zone = Zone::Location(Location::Square(1, Region::Surface));
+
+    let free_city_id =
+        insert_realm_card(&mut state, Box::new(FreeCity::new(player_id)), zone.clone()).await;
+    insert_realm_card(&mut state, Box::new(FootSoldier::new(opponent_id)), zone).await;
+
+    state.queue_one(Effect::Animate {
+        card_id: free_city_id,
+        unit_base: UnitBase {
+            power: 3,
+            toughness: 3,
+            ..Default::default()
+        },
+        expires_on_effect: EffectQuery::TurnStart {
+            player_id: Some(player_id),
+        },
+    });
+    state.apply_effects_without_log().await.unwrap();
+
+    let action_names = state
+        .get_card(&free_city_id)
+        .get_activated_abilities(&state)
+        .unwrap()
+        .into_iter()
+        .map(|action| action.get_name())
+        .collect::<Vec<_>>();
+
+    assert!(action_names.contains(&"Attack".to_string()));
+    assert!(action_names.contains(&"Move".to_string()));
+    assert!(action_names.contains(&"Tap to attack or defend against enemies here".to_string()));
+}
+
+#[tokio::test]
+async fn test_free_city_defender_declaration_resolves_before_move_and_attack() {
+    let (mut state, _rx) = setup_carrying_state();
+    let player_id = state.players[0].id;
+    let opponent_id = state.players[1].id;
+    let zone = Zone::Location(Location::Square(1, Region::Surface));
+
+    let avatar_id = state.get_player_avatar_id(&player_id).unwrap();
+    state.get_card_mut(&avatar_id).set_zone(zone.clone());
+    let free_city_id =
+        insert_realm_card(&mut state, Box::new(FreeCity::new(player_id)), zone.clone()).await;
+    let attacker_id =
+        insert_realm_card(&mut state, Box::new(FootSoldier::new(opponent_id)), zone.clone()).await;
+
+    state.queue(vec![
+        Effect::Attack {
+            attacker_id,
+            defender_id: free_city_id,
+            defending_ids: vec![],
+            damage_assignment: None,
+        },
+        Effect::MoveCard {
+            player_id,
+            card_id: free_city_id,
+            from: zone
+                .clone()
+                .into_location()
+                .expect("test zone must be a location"),
+            to: LocationQuery::from_zone(zone),
+            tap: true,
+            through_path: None,
+        },
+        Effect::DeclareDefender {
+            attacker_id,
+            defender_id: free_city_id,
+        },
+    ]);
+
+    state.apply_effects_without_log().await.unwrap();
+
+    assert!(state.is_unit_card(&free_city_id));
+    assert_eq!(state.get_card(&attacker_id).get_zone(), &Zone::Cemetery);
+}
+
 fn passive_ongoing_timestamps_for_source(state: &State, source_id: &uuid::Uuid) -> Vec<u64> {
     state
         .ongoing_effects

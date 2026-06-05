@@ -61,6 +61,10 @@ pub enum EffectQuery {
         attacker: CardQuery,
         defender: Option<CardQuery>,
     },
+    DefendDeclared {
+        attacker: CardQuery,
+        defender: CardQuery,
+    },
     DrawCard {
         player_id: Option<PlayerId>,
     },
@@ -189,6 +193,19 @@ impl EffectQuery {
                 }
 
                 Ok(vec![])
+            }
+            (
+                EffectQuery::DefendDeclared { attacker, defender },
+                Effect::DeclareDefender {
+                    attacker_id,
+                    defender_id,
+                },
+            ) => {
+                if attacker.matches(attacker_id, state) && defender.matches(defender_id, state) {
+                    Ok(vec![*defender_id])
+                } else {
+                    Ok(vec![])
+                }
             }
             (_, _) => {
                 if Box::pin(self.matches(effect, state)).await? {
@@ -366,6 +383,13 @@ impl EffectQuery {
 
                 Ok(true)
             }
+            (
+                EffectQuery::DefendDeclared { attacker, defender },
+                Effect::DeclareDefender {
+                    attacker_id,
+                    defender_id,
+                },
+            ) => Ok(attacker.matches(attacker_id, state) && defender.matches(defender_id, state)),
             (
                 EffectQuery::DrawCard {
                     player_id: query_pid,

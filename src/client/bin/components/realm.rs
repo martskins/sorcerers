@@ -1543,7 +1543,15 @@ impl Component for RealmComponent {
                 continue;
             }
 
-            if !card_filter.includes(&card_rect.card) {
+            let pickable_in_current_prompt = matches!(
+                &data.status,
+                Status::SelectingCard {
+                    cards,
+                    preview: false,
+                    ..
+                } if cards.contains(&card_rect.card.id)
+            );
+            if !card_filter.includes(&card_rect.card) && !pickable_in_current_prompt {
                 continue;
             }
 

@@ -958,15 +958,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         false
     }
 
-    // TODO: Replace with hooks.
-    fn on_defend_declared(
-        &self,
-        _state: &State,
-        _attacker_id: &CardId,
-    ) -> anyhow::Result<Vec<Effect>> {
-        Ok(vec![])
-    }
-
     // Sets custom data for the card. By default, this method returns an error indicating that
     // the operation is not implemented for the specific card type.
     // If a card needs to hold specific data, and you need to modify it, override this method with

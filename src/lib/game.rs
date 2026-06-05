@@ -1464,14 +1464,13 @@ impl ActivatedAbility for UnitAction {
                         let defenders =
                             pick_cards(&opponent.id, &possible_defenders, state, "Pick defenders")
                                 .await?;
-                        let mut defend_declared_effects = vec![];
-                        for defender_id in &defenders {
-                            defend_declared_effects.extend(
-                                state
-                                    .get_card(defender_id)
-                                    .on_defend_declared(state, card_id)?,
-                            );
-                        }
+                        let defend_declared_effects: Vec<Effect> = defenders
+                            .iter()
+                            .map(|defender_id| Effect::DeclareDefender {
+                                attacker_id: *card_id,
+                                defender_id: *defender_id,
+                            })
+                            .collect();
                         match defenders.len() {
                             // If no defenders are picked, proceed with the original attack.
                             0 => {
