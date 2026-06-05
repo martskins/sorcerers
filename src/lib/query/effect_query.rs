@@ -54,6 +54,9 @@ pub enum EffectQuery {
         card: CardQuery,
         destination: Option<Region>,
     },
+    RangedStrike {
+        striker: CardQuery,
+    },
     Attack {
         attacker: CardQuery,
         defender: Option<CardQuery>,
@@ -171,6 +174,21 @@ impl EffectQuery {
                 } else {
                     Ok(vec![])
                 }
+            }
+            (
+                EffectQuery::RangedStrike { striker },
+                Effect::ShootProjectile {
+                    shooter,
+                    ranged_strike,
+                    ..
+                },
+            ) => {
+                let striker_matches = striker.matches(shooter, state);
+                if *ranged_strike && striker_matches {
+                    return Ok(vec![*shooter]);
+                }
+
+                Ok(vec![])
             }
             (_, _) => {
                 if Box::pin(self.matches(effect, state)).await? {
@@ -389,6 +407,17 @@ impl EffectQuery {
                 let striker_matches = striker.clone().is_none_or(|k| k.matches(from, state));
                 let is_strike = damage.is_strike;
                 Ok(is_strike && card_matches && striker_matches)
+            }
+            (
+                EffectQuery::RangedStrike { striker },
+                Effect::ShootProjectile {
+                    shooter,
+                    ranged_strike,
+                    ..
+                },
+            ) => {
+                let striker_matches = striker.matches(shooter, state);
+                Ok(*ranged_strike && striker_matches)
             }
             _ => Ok(false),
         }

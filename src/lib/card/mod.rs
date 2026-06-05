@@ -941,11 +941,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         self.get_base_mut().bearer = bearer_id;
     }
 
-    // TODO: Replace with hooks.
-    async fn after_ranged_attack(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
-        Ok(vec![])
-    }
-
     fn strikes_back(&self, state: &State) -> anyhow::Result<bool> {
         if !state.is_unit_card(self.get_id()) || self.has_status(state, &CardStatus::Disabled) {
             return Ok(false);

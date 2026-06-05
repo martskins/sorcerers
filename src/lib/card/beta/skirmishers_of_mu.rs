@@ -102,9 +102,14 @@ impl Card for SkirmishersOfMu {
 
                 let options = [BaseOption::Yes, BaseOption::No];
                 let option_labels = options.iter().map(|o| o.to_string()).collect::<Vec<_>>();
-                let picked_option =
-                    pick_option(controller_id, &option_labels, state, "Ranged strike?", false)
-                        .await?;
+                let picked_option = pick_option(
+                    controller_id,
+                    &option_labels,
+                    state,
+                    "Ranged strike?",
+                    false,
+                )
+                .await?;
                 if options[picked_option] == BaseOption::No {
                     return Ok(vec![]);
                 }
@@ -127,8 +132,7 @@ impl Card for SkirmishersOfMu {
                 )
                 .await?;
 
-                let mut effects = self.after_ranged_attack(state).await?;
-                effects.push(Effect::ShootProjectile {
+                Ok(vec![Effect::ShootProjectile {
                     id: uuid::Uuid::new_v4(),
                     range: Some(self.ranged_range(state)?.unwrap_or(1)),
                     player_id: controller_id,
@@ -141,13 +145,7 @@ impl Card for SkirmishersOfMu {
                     ranged_strike: true,
                     piercing: false,
                     splash_damage: None,
-                });
-                effects.push(Effect::RemoveAbility {
-                    card_id: *self.get_id(),
-                    modifier: Ability::Stealth,
-                });
-
-                Ok(effects)
+                }])
             }
             _ => Ok(vec![]),
         }

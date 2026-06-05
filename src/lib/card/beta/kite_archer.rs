@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+const RANGED_STRIKE_HOOK: HookId = 1;
+
 #[derive(Debug, Clone)]
 pub struct KiteArcher {
     unit_base: UnitBase,
@@ -62,42 +64,63 @@ impl Card for KiteArcher {
         Some(&mut self.unit_base)
     }
 
-    async fn after_ranged_attack(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
-        let options = [BaseOption::Yes, BaseOption::No];
-        let option_labels = options.iter().map(|o| o.to_string()).collect::<Vec<_>>();
-        let picked_action = pick_option(
-            self.get_controller_id(state),
-            &option_labels,
-            state,
-            "Take Step",
-            false,
-        )
-        .await?;
-        if options[picked_action] == BaseOption::No {
-            return Ok(vec![]);
-        }
-
-        let zones = self.get_zone().get_adjacent();
-        let picked_zone = pick_zone(
-            self.get_owner_id(),
-            &zones,
-            state,
-            false,
-            "Choose to step to",
-        )
-        .await?;
-        Ok(vec![Effect::MoveCard {
-            player_id: *self.get_owner_id(),
-            card_id: *self.get_id(),
-            from: (self.get_zone().clone())
-                .into_location()
-                .expect("MoveCard source must be a location"),
-            to: LocationQuery::from_zone(
-                (picked_zone.clone()).with_region(self.get_region(state).clone()),
-            ),
-            tap: false,
-            through_path: None,
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: RANGED_STRIKE_HOOK,
+            trigger: EffectQuery::RangedStrike {
+                striker: self.get_id().into(),
+            },
+            timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
         }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook_id: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook_id {
+            RANGED_STRIKE_HOOK => {
+                let options = [BaseOption::Yes, BaseOption::No];
+                let option_labels = options.iter().map(|o| o.to_string()).collect::<Vec<_>>();
+                let picked_action = pick_option(
+                    self.get_controller_id(state),
+                    &option_labels,
+                    state,
+                    "Take Step",
+                    false,
+                )
+                .await?;
+                if options[picked_action] == BaseOption::No {
+                    return Ok(vec![]);
+                }
+
+                let zones = self.get_zone().get_adjacent();
+                let picked_zone = pick_zone(
+                    self.get_owner_id(),
+                    &zones,
+                    state,
+                    false,
+                    "Choose to step to",
+                )
+                .await?;
+                Ok(vec![Effect::MoveCard {
+                    player_id: *self.get_owner_id(),
+                    card_id: *self.get_id(),
+                    from: (self.get_zone().clone())
+                        .into_location()
+                        .expect("MoveCard source must be a location"),
+                    to: LocationQuery::from_zone(
+                        (picked_zone.clone()).with_region(self.get_region(state).clone()),
+                    ),
+                    tap: false,
+                    through_path: None,
+                }])
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 

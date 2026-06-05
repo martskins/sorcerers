@@ -1406,8 +1406,7 @@ impl ActivatedAbility for UnitAction {
                     Some(*card_id),
                 )
                 .await?;
-                let mut effects = card.after_ranged_attack(state).await?;
-                effects.push(Effect::ShootProjectile {
+                Ok(vec![Effect::ShootProjectile {
                     id: uuid::Uuid::new_v4(),
                     range: Some(card.ranged_range(state)?.unwrap_or(1)),
                     player_id: *player_id,
@@ -1420,13 +1419,7 @@ impl ActivatedAbility for UnitAction {
                     ranged_strike: true,
                     piercing: false,
                     splash_damage: None,
-                });
-                // Ranged striking is an interaction: the striker loses Stealth.
-                effects.push(Effect::RemoveAbility {
-                    card_id: *card_id,
-                    modifier: Ability::Stealth,
-                });
-                Ok(effects)
+                }])
             }
             UnitAction::Attack => {
                 let attacker = state.get_card(card_id);

@@ -1164,6 +1164,15 @@ impl Effect {
                     .await?;
 
                 let mut effects = vec![];
+                if state
+                    .get_card(shooter)
+                    .has_ability(state, &Ability::Stealth)
+                {
+                    effects.push(Effect::RemoveAbility {
+                        card_id: *shooter,
+                        modifier: Ability::Stealth,
+                    });
+                }
                 let mut next_zone = Some(from_zone.clone());
                 let mut is_starting_location = true;
                 let mut range: Option<u8> = *range;
@@ -2232,7 +2241,9 @@ impl Effect {
 
                 let carried_cards = CardQuery::new().carried_by(card_id).all(state);
                 for carried_card_id in &carried_cards {
-                    state.get_card_mut(carried_card_id).set_region(region.clone());
+                    state
+                        .get_card_mut(carried_card_id)
+                        .set_region(region.clone());
                 }
 
                 state.queue(location_survival_effects_for_cards(
