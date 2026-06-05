@@ -5,6 +5,8 @@ pub struct DodgeRoll {
     card_base: CardBase,
 }
 
+const EVADE_ATTACK_HOOK: HookId = 1;
+
 impl DodgeRoll {
     pub const NAME: &'static str = "Dodge Roll";
     pub const DESCRIPTION: &'static str = "May be cast when an ally is attacked.\r \r An attacked ally may move to another adjacent location to evade the attack.";
@@ -47,6 +49,108 @@ impl Card for DodgeRoll {
     fn get_magic(&self) -> Option<&dyn Magic> {
         Some(self)
     }
+
+    async fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
+        let controller_id = self.get_controller_id(state);
+        let dodge_rolls_in_hand = CardQuery::new()
+            .cards_named(DodgeRoll::NAME)
+            .controlled_by(&controller_id)
+            .including_not_in_play()
+            .in_zone(&Zone::Hand)
+            .all(state);
+        if dodge_rolls_in_hand.first() != Some(self.get_id()) {
+            return Ok(vec![]);
+        }
+
+        Ok(vec![Hook {
+            id: EVADE_ATTACK_HOOK,
+            trigger: EffectQuery::Attack {
+                attacker: CardQuery::new().units(),
+                defender: Some(CardQuery::new().units().controlled_by(&controller_id)),
+            },
+            timing: HookTiming::Replace,
+            source_zones: HookSourceZones::Zone(Zone::Hand),
+        }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook_id: HookId,
+        state: &State,
+        effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook_id {
+            EVADE_ATTACK_HOOK => {
+                let Effect::Attack {
+                    defender_id,
+                    attacker_id,
+                    ..
+                } = effect
+                else {
+                    return Ok(vec![]);
+                };
+
+                let defender = state.get_card(defender_id);
+                let defender_controller = defender.get_controller_id(state);
+                let prompt = format!(
+                    "Use Dodge Roll to evade the attack on {}?",
+                    defender.get_name()
+                );
+                let use_dodge_roll =
+                    yes_or_no_source(defender_controller, state, prompt, Some(*self.get_id()))
+                        .await?;
+                if !use_dodge_roll {
+                    return Ok(vec![]);
+                }
+
+                let avatar_id = state.get_player_avatar_id(&defender_controller)?;
+                let avatar = state.get_card(&avatar_id);
+                let adjacent_zones = defender.get_zone().get_adjacent();
+                let prompt = "Dodge Roll: Pick an adjacent site to move to";
+                let picked_site = pick_zone_source(
+                    defender_controller,
+                    &adjacent_zones,
+                    state,
+                    true,
+                    prompt,
+                    Some(*self.get_id()),
+                )
+                .await?;
+
+                let attacker = state.get_card(attacker_id);
+                let attacker_controller = attacker.get_controller_id(state);
+                Ok(vec![
+                    Effect::SetCardZone {
+                        card_id: *defender_id,
+                        zone: picked_site,
+                    },
+                    Effect::MoveCard {
+                        player_id: attacker_controller,
+                        card_id: *attacker_id,
+                        from: attacker
+                            .get_zone()
+                            .clone()
+                            .into_location()
+                            .expect("Dodge Roll attacker must be in a location"),
+                        to: LocationQuery::from_zone(defender.get_zone().clone()),
+                        tap: true,
+                        through_path: None,
+                    },
+                    Effect::PlayMagic {
+                        player_id: defender_controller,
+                        card_id: *self.get_id(),
+                        caster_id: avatar_id,
+                        from: avatar
+                            .get_zone()
+                            .clone()
+                            .into_location()
+                            .expect("Dodge Roll caster must be in a location"),
+                    },
+                ])
+            }
+            _ => Ok(vec![]),
+        }
+    }
 }
 
 #[async_trait::async_trait]
@@ -57,8 +161,6 @@ impl Magic for DodgeRoll {
         _caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
-        // Dodge Roll effect is implement on State::replace_effect, so as to ask the player wether
-        // to play it only once, even if they have multiple Dodge Roll cards in hand.
         Ok(vec![])
     }
 }

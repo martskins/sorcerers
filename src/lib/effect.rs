@@ -922,11 +922,6 @@ impl Effect {
     pub async fn apply(&self, state: &mut State) -> anyhow::Result<()> {
         state.invalidate_runtime_caches();
 
-        if let Some(replaced_effects) = state.replace_effect(self).await? {
-            state.queue(replaced_effects);
-            return Ok(());
-        }
-
         let mut effect = self.clone();
         EffectLifecycle::modify_effect(state, &mut effect).await?;
 

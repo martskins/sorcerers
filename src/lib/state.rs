@@ -1,14 +1,13 @@
 use crate::{
-    card::{Ability, Card, CardData, CardStatus, CardType, Costs, DodgeRoll, SiteType, UnitBase},
+    card::{Ability, Card, CardData, CardStatus, CardType, Costs, SiteType, UnitBase},
     deck::Deck,
     effect::Counter,
     effect::{Effect, EffectCallback, EffectEngine, EffectState},
     game::{
-        ActivatedAbility, CardId, PlayerId, Resources, Thresholds, ThresholdsDiff, pick_zone,
-        yes_or_no,
+        ActivatedAbility, CardId, PlayerId, Resources, Thresholds, ThresholdsDiff,
     },
     networking::message::{ClientMessage, OngoingEffectData, ServerMessage},
-    query::{CardQuery, EffectQuery, LocationQuery, ZoneQuery},
+    query::{CardQuery, EffectQuery, ZoneQuery},
     zone::Zone,
 };
 use async_channel::{Receiver, Sender};
@@ -941,79 +940,6 @@ impl State {
 
     pub fn skip_next_turn_for(&mut self, player_id: &PlayerId) {
         self.curr_turn.skip_next_for(player_id);
-    }
-
-    pub async fn replace_effect(&self, effect: &Effect) -> anyhow::Result<Option<Vec<Effect>>> {
-        match effect {
-            Effect::Attack {
-                defender_id,
-                attacker_id,
-                ..
-            } => {
-                let defender = self.get_card(defender_id);
-                if !self.is_unit_card(defender_id) {
-                    return Ok(None);
-                }
-
-                let defender_controller = defender.get_controller_id(self);
-                let dodge_rolls_in_hand = CardQuery::new()
-                    .cards_named(DodgeRoll::NAME)
-                    .controlled_by(&defender_controller)
-                    .in_zone(&Zone::Hand)
-                    .all(self);
-                if dodge_rolls_in_hand.is_empty() {
-                    return Ok(None);
-                }
-
-                let prompt = format!(
-                    "Use Dodge Roll to evade the attack on {}?",
-                    defender.get_name()
-                );
-                let use_dodge_roll = yes_or_no(defender_controller, self, prompt).await?;
-                if !use_dodge_roll {
-                    return Ok(None);
-                }
-
-                let avatar_id = self.get_player_avatar_id(&defender_controller)?;
-                let avatar = self.get_card(&avatar_id);
-                let adjacent_zones = defender.get_zone().get_adjacent();
-                let prompt = "Dodge Roll: Pick an adjacent site to move to";
-                let picked_site =
-                    pick_zone(defender_controller, &adjacent_zones, self, true, prompt).await?;
-
-                let attacker = self.get_card(attacker_id);
-                let attacker_controller = attacker.get_controller_id(self);
-                Ok(Some(vec![
-                    Effect::SetCardZone {
-                        card_id: *defender_id,
-                        zone: picked_site,
-                    },
-                    Effect::MoveCard {
-                        player_id: attacker_controller,
-                        card_id: *attacker_id,
-                        from: attacker
-                            .get_zone()
-                            .clone()
-                            .into_location()
-                            .expect("Dodge Roll attacker must be in a location"),
-                        to: LocationQuery::from_zone(defender.get_zone().clone()),
-                        tap: true,
-                        through_path: None,
-                    },
-                    Effect::PlayMagic {
-                        player_id: defender_controller,
-                        card_id: dodge_rolls_in_hand[0],
-                        caster_id: avatar_id,
-                        from: avatar
-                            .get_zone()
-                            .clone()
-                            .into_location()
-                            .expect("Dodge Roll caster must be in a location"),
-                    },
-                ]))
-            }
-            _ => Ok(None),
-        }
     }
 
     pub fn get_player_mana_mut(&mut self, player_id: &PlayerId) -> &mut u8 {

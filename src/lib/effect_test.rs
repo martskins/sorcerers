@@ -1,12 +1,12 @@
 use crate::{
     card::{
         Ability, ApprenticeWizard, AridDesert, AskelonPhoenix, BottomlessPit, BridgeTroll, Card,
-        CardBase, CardStatus, Damage, DeadOfNightDemon, Drought, Enchantress, Flood, FootSoldier,
-        GildedAegis, Hook, HookId, HookSourceZones, HookTiming, OgreGoons, PhaseAssassin,
-        PitVipers, PlanarGate, Region, RimlandNomads, RootSpider, RoyalBodyguard, Sandstorm,
-        ScourgeZombies, SeaRaider, SeirawanHydra, Silence, SimpleVillage, SirianTemplar,
-        SlingPixies, SpringRiver, TuftedTurtles, TvinnaxBerserker, UnitBase, VaultsOfZul,
-        WallOfFire, YourkeCrossbowmen, from_name_and_zone,
+        CardBase, CardStatus, Damage, DeadOfNightDemon, DodgeRoll, Drought, Enchantress, Flood,
+        FootSoldier, GildedAegis, Hook, HookId, HookSourceZones, HookTiming, OgreGoons,
+        PhaseAssassin, PitVipers, PlanarGate, Region, RimlandNomads, RootSpider, RoyalBodyguard,
+        Sandstorm, ScourgeZombies, SeaRaider, SeirawanHydra, Silence, SimpleVillage,
+        SirianTemplar, SlingPixies, SpringRiver, TuftedTurtles, TvinnaxBerserker, UnitBase,
+        VaultsOfZul, WallOfFire, YourkeCrossbowmen, from_name_and_zone,
     },
     deck::Deck,
     effect::{
@@ -668,6 +668,115 @@ async fn test_tvinnax_berserker_untaps_after_attack_kill_without_replacing_kill(
 
     assert_eq!(state.get_card(&target_id).get_zone(), &Zone::Cemetery);
     assert!(!state.get_card(&tvinnax_id).is_tapped());
+}
+
+#[tokio::test]
+async fn test_dodge_roll_replacement_triggers_once_for_multiple_copies() {
+    let (mut state, server_rx, client_tx) = make_state_with_client(vec![
+        Zone::Location(Location::Square(1, Region::Surface)),
+        Zone::Location(Location::Square(2, Region::Surface)),
+    ]);
+    let game_id = state.game_id;
+    let player_id = state.players[0].id;
+    let opponent_id = state.players[1].id;
+    let origin = Zone::Location(Location::Square(1, Region::Surface));
+    let destination = Zone::Location(Location::Square(2, Region::Surface));
+
+    let avatar_id = state.get_player_avatar_id(&player_id).unwrap();
+    state.get_card_mut(&avatar_id).set_zone(origin.clone());
+
+    let mut attacker = FootSoldier::new(opponent_id);
+    let attacker_id = *attacker.get_id();
+    attacker.set_zone(origin.clone());
+    state.cards.insert(attacker_id, Box::new(attacker));
+
+    let mut defender = FootSoldier::new(player_id);
+    let defender_id = *defender.get_id();
+    defender.set_zone(origin.clone());
+    state.cards.insert(defender_id, Box::new(defender));
+
+    let mut first_dodge_roll = DodgeRoll::new(player_id);
+    let first_dodge_roll_id = *first_dodge_roll.get_id();
+    first_dodge_roll.set_zone(Zone::Hand);
+    state
+        .cards
+        .insert(first_dodge_roll_id, Box::new(first_dodge_roll));
+
+    let mut second_dodge_roll = DodgeRoll::new(player_id);
+    let second_dodge_roll_id = *second_dodge_roll.get_id();
+    second_dodge_roll.set_zone(Zone::Hand);
+    state
+        .cards
+        .insert(second_dodge_roll_id, Box::new(second_dodge_roll));
+
+    let picked_destination = destination.clone();
+    tokio::spawn(async move {
+        while let Ok(message) = server_rx.recv().await {
+            match message {
+                ServerMessage::PickAction {
+                    player_id, actions, ..
+                } => {
+                    assert_eq!(actions[0], "Yes");
+                    client_tx
+                        .send(ClientMessage::PickAction {
+                            game_id,
+                            player_id,
+                            action_idx: 0,
+                        })
+                        .await
+                        .unwrap();
+                }
+                ServerMessage::PickZone {
+                    player_id, zones, ..
+                } => {
+                    assert!(zones.contains(&picked_destination));
+                    client_tx
+                        .send(ClientMessage::PickZone {
+                            game_id,
+                            player_id,
+                            zone: picked_destination.clone(),
+                        })
+                        .await
+                        .unwrap();
+                }
+                _ => {}
+            }
+        }
+    });
+
+    state.queue_one(Effect::Attack {
+        attacker_id,
+        defender_id,
+        defending_ids: vec![],
+        damage_assignment: None,
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(state.get_card(&defender_id).get_zone(), &destination);
+    assert_eq!(state.get_card(&attacker_id).get_zone(), &origin);
+
+    let dodge_roll_zones = [
+        state.get_card(&first_dodge_roll_id).get_zone().clone(),
+        state.get_card(&second_dodge_roll_id).get_zone().clone(),
+    ];
+    let cemetery_count = dodge_roll_zones
+        .iter()
+        .filter(|zone| **zone == Zone::Cemetery)
+        .count();
+    let hand_count = dodge_roll_zones
+        .iter()
+        .filter(|zone| **zone == Zone::Hand)
+        .count();
+    assert_eq!(
+        cemetery_count,
+        1,
+        "only one Dodge Roll should be cast for a single attack"
+    );
+    assert_eq!(
+        hand_count,
+        1,
+        "extra Dodge Roll copies should not also resolve the same attack"
+    );
 }
 
 #[tokio::test]
@@ -2156,6 +2265,8 @@ async fn test_enchantress_triggers_when_controlled_spellcaster_plays_minion() {
     let game_id = state.game_id;
     let player_id = state.players[0].id;
     *state.get_player_mana_mut(&player_id) = 1;
+    let avatar_id = state.get_player_avatar_id(&player_id).unwrap();
+    state.get_card_mut(&avatar_id).set_zone(zone.clone());
     state.reconcile_ongoing_effects_for_test().await.unwrap();
 
     let mut aura = Silence::new(player_id);
@@ -2238,6 +2349,8 @@ async fn test_enchantress_triggers_when_enchantress_plays_minion() {
     let game_id = state.game_id;
     let player_id = state.players[0].id;
     *state.get_player_mana_mut(&player_id) = 1;
+    let avatar_id = state.get_player_avatar_id(&player_id).unwrap();
+    state.get_card_mut(&avatar_id).set_zone(zone.clone());
     state.reconcile_ongoing_effects_for_test().await.unwrap();
 
     let mut aura = Silence::new(player_id);
@@ -2258,7 +2371,6 @@ async fn test_enchantress_triggers_when_enchantress_plays_minion() {
     spell.set_zone(Zone::Hand);
     state.cards.insert(spell_id, Box::new(spell));
 
-    let avatar_id = state.get_player_avatar_id(&player_id).unwrap();
     tokio::spawn(async move {
         while let Ok(message) = server_rx.recv().await {
             match message {
