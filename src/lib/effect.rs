@@ -263,6 +263,9 @@ pub enum Effect {
     EndTurn {
         player_id: PlayerId,
     },
+    FinishEndTurn {
+        player_id: PlayerId,
+    },
     StartTurn {
         player_id: PlayerId,
     },
@@ -423,6 +426,7 @@ impl Effect {
             Effect::SummonCards { .. } => None,
             Effect::SetTapped { card_id, .. } => Some(card_id),
             Effect::EndTurn { player_id } => Some(player_id),
+            Effect::FinishEndTurn { player_id } => Some(player_id),
             Effect::StartTurn { player_id } => Some(player_id),
             Effect::AdjustMana { player_id, .. } => Some(player_id),
             Effect::Strike { striker_id, .. } => Some(striker_id),
@@ -669,6 +673,7 @@ impl Effect {
             Effect::EndTurn { player_id, .. } => {
                 Some(format!("{} passes the turn", player_name(player_id, state)))
             }
+            Effect::FinishEndTurn { .. } => None,
             Effect::StartTurn { player_id } => Some(format!(
                 "--- {}'s turn begins ---",
                 player_name(player_id, state)
@@ -1623,6 +1628,11 @@ impl Effect {
                 *player_mana = 0;
                 state.phase = Phase::Main;
 
+                state.queue_front(Effect::FinishEndTurn {
+                    player_id: *player_id,
+                });
+            }
+            Effect::FinishEndTurn { .. } => {
                 let cards = state.cards.values_mut().filter(|c| c.is_unit());
                 for card in cards {
                     card.remove_status(&CardStatus::SummoningSickness);

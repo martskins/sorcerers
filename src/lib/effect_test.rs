@@ -1,12 +1,12 @@
 use crate::{
     card::{
         Ability, ApprenticeWizard, AridDesert, AskelonPhoenix, BottomlessPit, BridgeTroll, Card,
-        CardBase, CardStatus, Damage, DeadOfNightDemon, DodgeRoll, Drought, Enchantress, Flood,
-        FootSoldier, GildedAegis, Hook, HookId, HookSourceZones, HookTiming, OgreGoons,
-        PhaseAssassin, PitVipers, PlanarGate, Region, RimlandNomads, RootSpider, RoyalBodyguard,
-        Sandstorm, ScourgeZombies, SeaRaider, SeirawanHydra, Silence, SimpleVillage,
-        SirianTemplar, SlingPixies, SpringRiver, TuftedTurtles, TvinnaxBerserker, UnitBase,
-        VaultsOfZul, WallOfFire, YourkeCrossbowmen, from_name_and_zone,
+        CardBase, CardStatus, ColickyDragonettes, Damage, DeadOfNightDemon, DodgeRoll, Drought,
+        Enchantress, Flood, FootSoldier, GildedAegis, Hook, HookId, HookSourceZones, HookTiming,
+        OgreGoons, PhaseAssassin, PitVipers, PlanarGate, Region, RimlandNomads, RootSpider,
+        RoyalBodyguard, Sandstorm, ScourgeZombies, SeaRaider, SeirawanHydra, Silence,
+        SimpleVillage, SirianTemplar, SlingPixies, SpringRiver, TuftedTurtles, TvinnaxBerserker,
+        UnitBase, VaultsOfZul, WallOfFire, YourkeCrossbowmen, from_name_and_zone,
     },
     deck::Deck,
     effect::{
@@ -403,6 +403,64 @@ async fn test_replace_hook_replaces_original_effect() {
         state.get_card(&templar_id).get_damage_taken().unwrap(),
         0,
         "Sirian Templar should replace damage from Demon minions"
+    );
+}
+
+#[tokio::test]
+async fn test_turn_end_projectile_damage_is_cleared_before_next_turn() {
+    let (mut state, server_rx, client_tx) = make_state_with_client(vec![
+        Zone::Location(Location::Square(1, Region::Surface)),
+        Zone::Location(Location::Square(2, Region::Surface)),
+    ]);
+    let game_id = state.game_id;
+    let player_id = state.players[0].id;
+    let opponent_id = state.players[1].id;
+
+    let mut dragonettes = ColickyDragonettes::new(player_id);
+    let dragonettes_id = *dragonettes.get_id();
+    dragonettes.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    state.cards.insert(dragonettes_id, Box::new(dragonettes));
+
+    let mut target = OgreGoons::new(opponent_id);
+    let target_id = *target.get_id();
+    target.set_zone(Zone::Location(Location::Square(2, Region::Surface)));
+    state.cards.insert(target_id, Box::new(target));
+
+    tokio::spawn(async move {
+        while let Ok(message) = server_rx.recv().await {
+            match message {
+                ServerMessage::PickDirection { player_id, .. } => {
+                    client_tx
+                        .send(ClientMessage::PickDirection {
+                            game_id,
+                            player_id,
+                            direction: Direction::Right,
+                        })
+                        .await
+                        .unwrap();
+                }
+                ServerMessage::PickAction { player_id, .. } => {
+                    client_tx
+                        .send(ClientMessage::PickAction {
+                            game_id,
+                            player_id,
+                            action_idx: 0,
+                        })
+                        .await
+                        .unwrap();
+                }
+                _ => {}
+            }
+        }
+    });
+
+    state.queue_one(Effect::EndTurn { player_id });
+    drain_effects(&mut state).await;
+
+    assert_eq!(
+        state.get_card(&target_id).get_damage_taken().unwrap(),
+        0,
+        "damage from end-turn projectiles should not persist into the next turn"
     );
 }
 
