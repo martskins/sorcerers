@@ -309,7 +309,7 @@ impl CostType {
                                 CostAction::Sacrifice => Effect::BuryCard { card_id: *card_id },
                                 CostAction::Surface => Effect::SetCardRegion {
                                     card_id: *card_id,
-                                    region: Region::Surface,
+                                    destination: Region::Surface,
                                     tap: false,
                                 },
                             }
@@ -334,7 +334,7 @@ impl CostType {
                                 CostAction::Sacrifice => Effect::BuryCard { card_id },
                                 CostAction::Surface => Effect::SetCardRegion {
                                     card_id,
-                                    region: Region::Surface,
+                                    destination: Region::Surface,
                                     tap: true,
                                 },
                             }
@@ -883,6 +883,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     // When resolving an effect, this methods allows a card in play to replace that event with a
     // different set of effects.
+    // TODO: Replace with hooks.
     async fn replace_effect(
         &self,
         _state: &State,
@@ -951,6 +952,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         self.get_base_mut().bearer = bearer_id;
     }
 
+    // TODO: Replace with hooks.
     async fn after_ranged_attack(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![])
     }
@@ -972,6 +974,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         false
     }
 
+    // TODO: Replace with hooks.
     fn on_defend_declared(
         &self,
         _state: &State,
@@ -1191,13 +1194,11 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     // Retuns the region the card is currently on. If the card is not in a zone with a site, it is
     // in the void.
     fn get_region(&self, _state: &State) -> &Region {
-        static VOID: Region = Region::Void;
-
         let zone = &self.get_base().zone;
         match zone {
             Zone::Location(Location::Square(_, region)) => region,
             Zone::Location(Location::Intersection(_, region)) => region,
-            _ => &VOID,
+            _ => &Region::Void,
         }
     }
 
@@ -1594,6 +1595,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         None
     }
 
+    // TODO: There's probably a better way to do this.
     fn provides_no_resources(&self, _state: &State) -> anyhow::Result<bool> {
         Ok(false)
     }
@@ -1655,6 +1657,9 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         self.get_base_mut().zone = zone;
     }
 
+    // TODO: Should genesis and deathrite be modelled as hooks as well? Doing it would mean the
+    // logic for determining whether it must trigger or not (say because the card is disabled) is
+    // centralised in a single place. It does feel like it would be very repetitive though.
     async fn genesis(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![])
     }
@@ -1748,10 +1753,12 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(false)
     }
 
+    // TODO: Migrate to hooks.
     async fn on_turn_start(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![])
     }
 
+    // TODO: Migrate to hooks.
     async fn on_turn_end(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![])
     }
@@ -1922,15 +1929,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             }
             _ => Ok(vec![]),
         }
-    }
-
-    fn on_region_change(
-        &self,
-        _state: &State,
-        _from: &Region,
-        _to: &Region,
-    ) -> anyhow::Result<Vec<Effect>> {
-        Ok(vec![])
     }
 
     // Returns the available actions for this card, given the current game state.
@@ -3110,7 +3108,7 @@ pub fn from_name_and_zone(name: &str, player_id: &PlayerId, zone: Zone) -> Box<d
     card
 }
 
-fn zones_cross_border(from: &Zone, to: &Zone, border: &Zone) -> bool {
+pub(crate) fn zones_cross_border(from: &Zone, to: &Zone, border: &Zone) -> bool {
     let (Some(from_square), Some(to_square)) = (from.get_square(), to.get_square()) else {
         return false;
     };

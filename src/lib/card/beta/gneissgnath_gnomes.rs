@@ -69,7 +69,7 @@ impl Card for GneissgnathGnomes {
         match burrow {
             true => Ok(vec![Effect::SetCardRegion {
                 card_id: *self.get_id(),
-                region: Region::Underground,
+                destination: Region::Underground,
                 tap: false,
             }]),
             false => Ok(vec![]),

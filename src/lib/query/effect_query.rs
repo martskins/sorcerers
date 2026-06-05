@@ -52,7 +52,7 @@ pub enum EffectQuery {
     },
     SetCardRegion {
         card: CardQuery,
-        region: Option<Region>,
+        destination: Option<Region>,
     },
     Attack {
         attacker: CardQuery,
@@ -227,9 +227,6 @@ impl EffectQuery {
 
                 Ok(false)
             }
-            // (EffectQuery::EnterZone { .. }, _) => {
-            //     Ok(!self.source_ids(effect, state).await?.is_empty())
-            // }
             (EffectQuery::StopAtZone { .. }, _) => {
                 Ok(!self.source_ids(effect, state).await?.is_empty())
             }
@@ -317,15 +314,19 @@ impl EffectQuery {
                 Ok(card.matches(card_id, state))
             }
             (
-                EffectQuery::SetCardRegion { card, region },
+                EffectQuery::SetCardRegion {
+                    card,
+                    destination: target_dest,
+                },
                 Effect::SetCardRegion {
                     card_id,
-                    region: effect_region,
+                    destination: actual_dest,
                     ..
                 },
             ) => {
-                Ok(card.matches(card_id, state)
-                    && region.as_ref().is_none_or(|r| r == effect_region))
+                let card_matches = card.matches(card_id, state);
+                let dest_matches = target_dest.as_ref().is_none_or(|r| r == actual_dest);
+                Ok(card_matches && dest_matches)
             }
             (
                 EffectQuery::Attack { attacker, defender },

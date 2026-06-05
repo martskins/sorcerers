@@ -84,7 +84,7 @@ impl Card for UnlandEel {
                     effect: DeferredEffect {
                         trigger_on_effect: EffectQuery::SetCardRegion {
                             card: CardQuery::from_id(self_id),
-                            region: Some(Region::Underwater),
+                            destination: Some(Region::Underwater),
                         },
                         expires_on_effect: Some(EffectQuery::BuryCard {
                             card: CardQuery::from_id(self_id),
@@ -135,7 +135,7 @@ impl Card for UnlandEel {
                                                 expires_on_effect: Some(
                                                     EffectQuery::SetCardRegion {
                                                         card: CardQuery::from_id(target_id),
-                                                        region: Some(Region::Surface),
+                                                        destination: Some(Region::Surface),
                                                     },
                                                 ),
                                             },
@@ -143,7 +143,7 @@ impl Card for UnlandEel {
                                     }
                                     effects.push(Effect::SetCardRegion {
                                         card_id: target_id,
-                                        region: Region::Underwater,
+                                        destination: Region::Underwater,
                                         tap: false,
                                     });
                                     Ok(effects)

@@ -1039,6 +1039,7 @@ impl CardQuery {
 
     pub fn land_sites(self) -> Self {
         Self {
+            card_types: Some(vec![CardType::Site]),
             site_is_water: Some(false),
             ..self
         }

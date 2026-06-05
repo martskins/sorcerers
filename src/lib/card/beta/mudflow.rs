@@ -103,7 +103,7 @@ impl Card for Mudflow {
             .into_iter()
             .map(|minion_id| Effect::SetCardRegion {
                 card_id: minion_id,
-                region: Region::Surface,
+                destination: Region::Surface,
                 tap: false,
             })
             .collect();

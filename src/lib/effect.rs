@@ -213,7 +213,7 @@ pub enum Effect {
     },
     SetCardRegion {
         card_id: CardId,
-        region: Region,
+        destination: Region,
         tap: bool,
     },
     SetCardZone {
@@ -481,7 +481,9 @@ impl Effect {
                 life
             )),
             Effect::SetCardRegion {
-                card_id, region, ..
+                card_id,
+                destination: region,
+                ..
             } => {
                 let card = state.get_card(card_id).get_name();
                 Some(format!("{} changes region to {}", card, region))
@@ -2189,26 +2191,9 @@ impl Effect {
             }
             Effect::SetCardRegion {
                 card_id,
-                region,
+                destination: region,
                 tap,
             } => {
-                let card = state.get_card(card_id);
-                let from_region = card.get_region(state);
-                // Compute change region effects before updating the card's region.
-                let mut change_region_effects =
-                    card.on_region_change(state, from_region, region)?;
-
-                let carried_cards = CardQuery::new().carried_by(card_id).all(state);
-                // Append these to the change_region_effects so that the effects of changing
-                // region are applied after the region change itself.
-                change_region_effects.extend(carried_cards.into_iter().map(|carried_card_id| {
-                    Effect::SetCardRegion {
-                        card_id: carried_card_id,
-                        region: region.clone(),
-                        tap: false,
-                    }
-                }));
-
                 let card = state.get_card_mut(card_id);
                 card.set_region(region.clone());
                 if *tap {
@@ -2219,8 +2204,6 @@ impl Effect {
                     state,
                     std::iter::once(*card_id),
                 ));
-
-                state.queue(change_region_effects);
             }
             Effect::SetBearer { card_id, bearer_id } => {
                 if let Some(target) = state.cards.get_mut(card_id) {

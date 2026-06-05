@@ -73,7 +73,7 @@ impl Magic for StormySeas {
         for card_id in units {
             effects.push(Effect::SetCardRegion {
                 card_id,
-                region: Region::Underwater,
+                destination: Region::Underwater,
                 tap: false,
             });
         }
@@ -81,7 +81,7 @@ impl Magic for StormySeas {
         for card_id in artifacts {
             effects.push(Effect::SetCardRegion {
                 card_id,
-                region: Region::Underwater,
+                destination: Region::Underwater,
                 tap: false,
             });
         }

@@ -4,7 +4,7 @@ use crate::{
         CardStatus, Damage, DeadOfNightDemon, Drought, Enchantress, Flood, FootSoldier, OgreGoons,
         PhaseAssassin, PitVipers, PlanarGate, Region, RimlandNomads, RootSpider, Sandstorm, SeaRaider,
         SeirawanHydra, Silence, SimpleVillage, SirianTemplar, SlingPixies, SpringRiver, UnitBase,
-        VaultsOfZul, YourkeCrossbowmen, from_name_and_zone,
+        VaultsOfZul, WallOfFire, YourkeCrossbowmen, from_name_and_zone,
     },
     deck::Deck,
     effect::{
@@ -954,6 +954,46 @@ async fn test_planar_gate_grants_voidwalk_only_while_minion_is_there() {
             .get_card(&foot_soldier_id)
             .has_ability(&state, &Ability::Voidwalk),
         "Planar Gate should stop granting Voidwalk once the minion leaves"
+    );
+}
+
+#[tokio::test]
+async fn test_wall_of_fire_damages_unit_crossing_its_border() {
+    let (mut state, _rx) = make_state(vec![
+        Zone::Location(Location::Square(1, Region::Surface)),
+        Zone::Location(Location::Square(2, Region::Surface)),
+    ]);
+    let player_id = state.players[0].id;
+
+    let mut wall = WallOfFire::new(player_id);
+    let wall_id = *wall.get_id();
+    wall.set_zone(Zone::Location(Location::Intersection(
+        vec![1, 2, 6, 7],
+        Region::Surface,
+    )));
+    state.cards.insert(wall_id, Box::new(wall));
+
+    let mut foot_soldier = FootSoldier::new(player_id);
+    let foot_soldier_id = *foot_soldier.get_id();
+    foot_soldier.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    state.cards.insert(foot_soldier_id, Box::new(foot_soldier));
+
+    state.queue_one(Effect::MoveCard {
+        player_id,
+        card_id: foot_soldier_id,
+        from: Location::Square(1, Region::Surface),
+        to: LocationQuery::from_zone(
+            (Zone::Location(Location::Square(2, Region::Surface))).with_region(Region::Surface),
+        ),
+        tap: false,
+        through_path: None,
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(
+        state.get_card(&foot_soldier_id).get_zone(),
+        &Zone::Cemetery,
+        "Wall of Fire should damage a unit that crosses its border"
     );
 }
 

@@ -75,7 +75,7 @@ impl AwakenedMummies {
                     Ok(vec![
                         Effect::SetCardRegion {
                             card_id: mummy_id,
-                            region: Region::Surface,
+                            destination: Region::Surface,
                             tap: false,
                         },
                         Effect::Attack {

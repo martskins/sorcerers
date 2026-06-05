@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::{card::zones_cross_border, prelude::*};
 
 const MOVE_THROUGH_HERE_HOOK: HookId = 1;
 
@@ -92,6 +92,7 @@ impl Card for WallOfFire {
                 let Effect::MoveCard {
                     player_id,
                     card_id,
+                    from,
                     through_path,
                     to,
                     ..
@@ -100,25 +101,40 @@ impl Card for WallOfFire {
                     return Ok(vec![]);
                 };
 
-                // Unit must pass through Wall of Fire
-                if to.pick(player_id, state).await?.into_zone() == *self.get_zone() {
+                let final_zone = match through_path {
+                    Some(path) => path.last().cloned(),
+                    None => Some(to.pick(player_id, state).await?.into_zone()),
+                };
+                let Some(final_zone) = final_zone else {
+                    return Ok(vec![]);
+                };
+
+                // Unit must pass through Wall of Fire, not merely stop on it.
+                if final_zone == *self.get_zone() {
                     return Ok(vec![]);
                 }
 
-                if through_path
-                    .as_ref()
-                    .is_none_or(|tp| !tp.contains(self.get_zone()))
+                let mut path = vec![from.clone().into_zone()];
+                match through_path {
+                    Some(through_path) => path.extend(through_path.iter().cloned()),
+                    None => path.push(final_zone),
+                }
+
+                if !path
+                    .windows(2)
+                    .any(|step| zones_cross_border(&step[0], &step[1], self.get_zone()))
                 {
                     return Ok(vec![]);
                 }
 
-                // TODO: Finish this implementation
-
-                Ok(vec![Effect::TakeDamage {
-                    card_id: *card_id,
-                    from: *self.get_id(),
-                    damage: Damage::basic(3),
-                }])
+                Ok(std::iter::once(*card_id)
+                    .chain(CardQuery::new().carried_by(card_id).units().all(state))
+                    .map(|damaged_id| Effect::TakeDamage {
+                        card_id: damaged_id,
+                        from: *self.get_id(),
+                        damage: Damage::basic(3),
+                    })
+                    .collect())
             }
             _ => Ok(vec![]),
         }

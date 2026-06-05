@@ -71,7 +71,7 @@ impl RestInPeace {
                         }
                         Ok(vec![Effect::SetCardRegion {
                             card_id: minion_id,
-                            region: Region::Underground,
+                            destination: Region::Underground,
                             tap: false,
                         }])
                     })
@@ -156,7 +156,7 @@ impl Card for RestInPeace {
                         ),
                     },
                 ])
-            },
+            }
             _ => Ok(vec![]),
         }
     }

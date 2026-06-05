@@ -106,8 +106,8 @@ impl Card for UndertakerEngine {
                         id: uuid::Uuid::new_v4(),
                         ability: Ability::Burrowing,
                         expires_on_effect: Some(EffectQuery::SetCardRegion {
-                            card: CardQuery::from_id(card_id),
-                            region: Some(Region::Surface),
+                            card: card_id.into(),
+                            destination: Some(Region::Surface),
                         }),
                     },
                 });
@@ -115,7 +115,7 @@ impl Card for UndertakerEngine {
 
             effects.push(Effect::SetCardRegion {
                 card_id,
-                region: to_region,
+                destination: to_region,
                 tap: false,
             });
         }

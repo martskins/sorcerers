@@ -147,7 +147,7 @@ impl Card for MarinersCurse {
                                     Ok(vec![
                                         Effect::SetCardRegion {
                                             card_id: *card_id,
-                                            region: Region::Underwater,
+                                            destination: Region::Underwater,
                                             tap: false,
                                         },
                                         Effect::SetCardZone {

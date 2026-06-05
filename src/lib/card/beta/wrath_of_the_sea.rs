@@ -85,7 +85,7 @@ impl Magic for WrathOfTheSea {
             .into_iter()
             .map(|card_id| Effect::SetCardRegion {
                 card_id,
-                region: Region::Underwater,
+                destination: Region::Underwater,
                 tap: false,
             })
             .collect::<Vec<Effect>>();

@@ -107,7 +107,7 @@ impl Card for AtlanteanFate {
             .into_iter()
             .map(|id| Effect::SetCardRegion {
                 card_id: id,
-                region: Region::Underwater,
+                destination: Region::Underwater,
                 tap: false,
             })
             .collect())

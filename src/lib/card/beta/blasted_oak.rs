@@ -65,6 +65,8 @@ impl Card for BlastedOak {
 
     // If a spell or non-basic ability can target—in order of precedence—Blasted Oak,
     // its site or location, or anything else at its site or location, it must.
+    // TODO: Revisit this. It's too specific to this card's behavious to be included as part of the
+    // Card trait.
     fn restrict_card_query_targets(
         &self,
         state: &State,

@@ -84,7 +84,7 @@ impl Magic for Earthquake {
             .into_iter()
             .map(|card_id| Effect::SetCardRegion {
                 card_id,
-                region: Region::Underground,
+                destination: Region::Underground,
                 tap: false,
             })
             .collect())

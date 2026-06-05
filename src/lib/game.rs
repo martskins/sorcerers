@@ -1673,17 +1673,17 @@ impl ActivatedAbility for UnitAction {
             }
             UnitAction::Burrow => Ok(vec![Effect::SetCardRegion {
                 card_id: *card_id,
-                region: Region::Underground,
+                destination: Region::Underground,
                 tap: true,
             }]),
             UnitAction::Submerge => Ok(vec![Effect::SetCardRegion {
                 card_id: *card_id,
-                region: Region::Underwater,
+                destination: Region::Underwater,
                 tap: true,
             }]),
             UnitAction::Surface => Ok(vec![Effect::SetCardRegion {
                 card_id: *card_id,
-                region: Region::Surface,
+                destination: Region::Surface,
                 tap: true,
             }]),
             UnitAction::PickUpArtifact { artifact_id, .. } => Ok(vec![Effect::SetBearer {

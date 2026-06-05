@@ -71,7 +71,7 @@ impl Magic for Drown {
 
         Ok(vec![Effect::SetCardRegion {
             card_id: picked_card_id,
-            region: Region::Underwater,
+            destination: Region::Underwater,
             tap: false,
         }])
     }

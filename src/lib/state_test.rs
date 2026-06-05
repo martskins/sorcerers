@@ -269,7 +269,7 @@ async fn test_carried_minion_changes_region_with_carrier() {
 
     state.queue_one(Effect::SetCardRegion {
         card_id: carrier_id,
-        region: Region::Underground,
+        destination: Region::Underground,
         tap: false,
     });
     state.apply_effects_without_log().await.unwrap();

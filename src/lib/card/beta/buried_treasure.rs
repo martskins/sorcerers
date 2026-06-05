@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+const CHANGE_REGION_HOOK: HookId = 1;
+
 #[derive(Debug, Clone)]
 pub struct BuriedTreasure {
     artifact_base: ArtifactBase,
@@ -72,10 +74,9 @@ impl Card for BuriedTreasure {
         let opponent_id = state.get_opponent_id(player_id)?;
         let Some(picked_card_id) = CardQuery::new()
             .controlled_by(player_id)
-            .sites()
+            .land_sites()
             .with_prompt("Pick a land site to place the treasure under")
             .with_source_card(*self.get_id())
-            .land_sites()
             .pick(&opponent_id, state, false)
             .await?
         else {
@@ -85,7 +86,7 @@ impl Card for BuriedTreasure {
         Ok(vec![
             Effect::SetCardRegion {
                 card_id: *self.get_id(),
-                region: Region::Underground,
+                destination: Region::Underground,
                 tap: false,
             },
             Effect::PlayCard {
@@ -97,30 +98,43 @@ impl Card for BuriedTreasure {
         ])
     }
 
-    fn on_region_change(
-        &self,
-        state: &State,
-        from: &Region,
-        to: &Region,
-    ) -> anyhow::Result<Vec<Effect>> {
-        let subsurface = from == &Region::Underwater || from == &Region::Underground;
-        let surfaced = to == &Region::Surface;
-        let carried = self.get_bearer().unwrap_or_default().is_some();
-        let carried_to_surface = subsurface && surfaced && carried;
-        if !carried_to_surface {
-            return Ok(vec![]);
-        }
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: CHANGE_REGION_HOOK,
+            trigger: EffectQuery::SetCardRegion {
+                card: self.get_id().into(),
+                destination: Some(Region::Surface),
+            },
+            timing: HookTiming::After,
+        }])
+    }
 
-        Ok(vec![
-            Effect::DrawCard {
-                player_id: self.get_controller_id(state),
-                count: 2,
-                kind: DrawKind::Choice,
-            },
-            Effect::BuryCard {
-                card_id: *self.get_id(),
-            },
-        ])
+    async fn resolve_hook(
+        &self,
+        hook_id: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook_id {
+            CHANGE_REGION_HOOK => {
+                let carried = self.get_bearer().unwrap_or_default().is_some();
+                if !carried {
+                    return Ok(vec![]);
+                }
+
+                Ok(vec![
+                    Effect::DrawCard {
+                        player_id: self.get_controller_id(state),
+                        count: 2,
+                        kind: DrawKind::Choice,
+                    },
+                    Effect::BuryCard {
+                        card_id: *self.get_id(),
+                    },
+                ])
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 
