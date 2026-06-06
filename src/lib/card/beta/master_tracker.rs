@@ -60,6 +60,8 @@ impl Card for MasterTracker {
         Some(&mut self.unit_base)
     }
 
+    // TODO: Reimplement this as a play minion hook + genesis effect.
+
     fn area_modifiers(&self, _state: &State) -> Vec<OngoingEffect> {
         vec![OngoingEffect::RemoveAbilities {
             removal: AbilityRemoval::exact(Ability::Stealth),

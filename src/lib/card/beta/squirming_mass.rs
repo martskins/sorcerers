@@ -1,8 +1,6 @@
-use std::{future::Future, pin::Pin, sync::Arc};
-
 use crate::prelude::*;
 
-const ON_SUMMON_HOOK: HookId = 1;
+const MINION_DEATH_HOOK: HookId = 1;
 
 #[derive(Debug, Clone)]
 pub struct SquirmingMass {
@@ -62,9 +60,11 @@ impl Card for SquirmingMass {
 
     async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
-            id: ON_SUMMON_HOOK,
-            trigger: EffectQuery::SummonCard {
-                card: self.get_id().into(),
+            id: MINION_DEATH_HOOK,
+            trigger: EffectQuery::BuryCard {
+                card: CardQuery::new()
+                    .minions()
+                    .nearby_locations_to_card(self.get_id()),
             },
             timing: HookTiming::After,
             source_zones: HookSourceZones::InPlay,
@@ -74,52 +74,26 @@ impl Card for SquirmingMass {
     async fn resolve_hook(
         &self,
         hook_id: HookId,
-        _state: &State,
-        _effect: &Effect,
+        state: &State,
+        effect: &Effect,
     ) -> anyhow::Result<Vec<Effect>> {
         match hook_id {
-            ON_SUMMON_HOOK => {
-                let self_id = *self.get_id();
-                Ok(vec![Effect::AddDeferredEffect {
-                    effect: DeferredEffect {
-                        trigger_on_effect: EffectQuery::BuryCard {
-                            card: CardQuery::new().minions(),
-                        },
-                        expires_on_effect: Some(EffectQuery::BuryCard {
-                            card: CardQuery::from_id(self_id),
-                        }),
-                        on_effect: Arc::new(
-                            move |state: &State, buried_id: &uuid::Uuid, _effect: &Effect| {
-                                let buried_id = *buried_id;
-                                Box::pin(async move {
-                                    let self_card = state.get_card(&self_id);
-                                    if !self_card.get_zone().is_in_play() {
-                                        return Ok(vec![]);
-                                    }
-                                    let buried_card = state.get_card(&buried_id);
-                                    let power = buried_card
-                                        .get_unit_base()
-                                        .map(|ub| ub.power as i16)
-                                        .unwrap_or(0);
-                                    if power <= 0 {
-                                        return Ok(vec![]);
-                                    }
-                                    Ok(vec![Effect::AddCounter {
-                                        card_id: self_id,
-                                        counter: Counter::new(power, 0, None),
-                                    }])
-                                })
-                                    as Pin<
-                                        Box<
-                                            dyn Future<Output = anyhow::Result<Vec<Effect>>>
-                                                + Send
-                                                + '_,
-                                        >,
-                                    >
-                            },
-                        ),
-                        multitrigger: true,
-                    },
+            MINION_DEATH_HOOK => {
+                let Effect::BuryCard { card_id } = effect else {
+                    return Ok(vec![]);
+                };
+
+                let buried_card = state.get_card(card_id);
+                let power = buried_card
+                    .get_unit_base()
+                    .map(|ub| ub.power as i16)
+                    .unwrap_or(0);
+                if power <= 0 {
+                    return Ok(vec![]);
+                }
+                Ok(vec![Effect::AddCounter {
+                    card_id: *self.get_id(),
+                    counter: Counter::new(power, power, None),
                 }])
             }
             _ => Ok(vec![]),

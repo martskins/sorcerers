@@ -1,8 +1,6 @@
-use std::{future::Future, pin::Pin, sync::Arc};
-
 use crate::prelude::*;
 
-const ON_SUMMON_HOOK: HookId = 1;
+const SUBMERGE_HOOK: HookId = 1;
 
 #[derive(Debug, Clone)]
 pub struct UnlandEel {
@@ -12,8 +10,8 @@ pub struct UnlandEel {
 
 impl UnlandEel {
     pub const NAME: &'static str = "Unland Eel";
-    pub const DESCRIPTION: &'static str =
-        "Submerge Whenever Unland Eel submerges, it may drag another minion here down with it.";
+    pub const DESCRIPTION: &'static str = "Submerge
+Whenever Unland Eel submerges, it may drag another minion here down with it.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -63,9 +61,10 @@ impl Card for UnlandEel {
 
     async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
-            id: ON_SUMMON_HOOK,
-            trigger: EffectQuery::SummonCard {
+            id: SUBMERGE_HOOK,
+            trigger: EffectQuery::SetCardRegion {
                 card: self.get_id().into(),
+                destination: Some(Region::Underwater),
             },
             timing: HookTiming::After,
             source_zones: HookSourceZones::InPlay,
@@ -75,92 +74,63 @@ impl Card for UnlandEel {
     async fn resolve_hook(
         &self,
         hook_id: HookId,
-        _state: &State,
+        state: &State,
         _effect: &Effect,
     ) -> anyhow::Result<Vec<Effect>> {
         match hook_id {
-            ON_SUMMON_HOOK => {
-                let self_id = *self.get_id();
-                Ok(vec![Effect::AddDeferredEffect {
-                    effect: DeferredEffect {
-                        trigger_on_effect: EffectQuery::SetCardRegion {
-                            card: CardQuery::from_id(self_id),
-                            destination: Some(Region::Underwater),
+            SUBMERGE_HOOK => {
+                let controller_id = self.get_controller_id(state);
+                let other_minions = CardQuery::new()
+                    .minions()
+                    .in_zone(self.get_zone())
+                    .id_not(self.get_id())
+                    .all(state);
+                if other_minions.is_empty() {
+                    return Ok(vec![]);
+                }
+
+                if !yes_or_no_source(
+                    &controller_id,
+                    state,
+                    "Drag another minion down with it?",
+                    Some(*self.get_id()),
+                )
+                .await?
+                {
+                    return Ok(vec![]);
+                }
+
+                let target_id = pick_card(
+                    &controller_id,
+                    &other_minions,
+                    state,
+                    "Unland Eel: Pick another minion here to drag down",
+                )
+                .await?;
+                let target = state.get_card(&target_id);
+
+                let mut effects = vec![];
+                if target.get_region(state) != &Region::Underwater
+                    && !target.has_ability(state, &Ability::Submerge)
+                {
+                    effects.push(Effect::AddAbilityCounter {
+                        card_id: target_id,
+                        counter: AbilityCounter {
+                            id: uuid::Uuid::new_v4(),
+                            ability: Ability::Submerge,
+                            expires_on_effect: Some(EffectQuery::SetCardRegion {
+                                card: CardQuery::from_id(target_id),
+                                destination: Some(Region::Surface),
+                            }),
                         },
-                        expires_on_effect: Some(EffectQuery::BuryCard {
-                            card: CardQuery::from_id(self_id),
-                        }),
-                        on_effect: Arc::new(
-                            move |state: &State, _card_id: &CardId, _effect: &Effect| {
-                                Box::pin(async move {
-                                    let eel = state.get_card(&self_id);
-                                    let controller_id = eel.get_controller_id(state);
-                                    let other_minions = CardQuery::new()
-                                        .minions()
-                                        .in_zone(eel.get_zone())
-                                        .id_not(&self_id)
-                                        .all(state);
-                                    if other_minions.is_empty() {
-                                        return Ok(vec![]);
-                                    }
-
-                                    if !yes_or_no_source(
-                                        &controller_id,
-                                        state,
-                                        "Drag another minion down with it?",
-                                        Some(self_id),
-                                    )
-                                    .await?
-                                    {
-                                        return Ok(vec![]);
-                                    }
-
-                                    let target_id = pick_card(
-                                        &controller_id,
-                                        &other_minions,
-                                        state,
-                                        "Unland Eel: Pick another minion here to drag down",
-                                    )
-                                    .await?;
-                                    let target = state.get_card(&target_id);
-
-                                    let mut effects = vec![];
-                                    if target.get_region(state) != &Region::Underwater
-                                        && !target.has_ability(state, &Ability::Submerge)
-                                    {
-                                        effects.push(Effect::AddAbilityCounter {
-                                            card_id: target_id,
-                                            counter: AbilityCounter {
-                                                id: uuid::Uuid::new_v4(),
-                                                ability: Ability::Submerge,
-                                                expires_on_effect: Some(
-                                                    EffectQuery::SetCardRegion {
-                                                        card: CardQuery::from_id(target_id),
-                                                        destination: Some(Region::Surface),
-                                                    },
-                                                ),
-                                            },
-                                        });
-                                    }
-                                    effects.push(Effect::SetCardRegion {
-                                        card_id: target_id,
-                                        destination: Region::Underwater,
-                                        tap: false,
-                                    });
-                                    Ok(effects)
-                                })
-                                    as Pin<
-                                        Box<
-                                            dyn Future<Output = anyhow::Result<Vec<Effect>>>
-                                                + Send
-                                                + '_,
-                                        >,
-                                    >
-                            },
-                        ),
-                        multitrigger: true,
-                    },
-                }])
+                    });
+                }
+                effects.push(Effect::SetCardRegion {
+                    card_id: target_id,
+                    destination: Region::Underwater,
+                    tap: false,
+                });
+                Ok(effects)
             }
             _ => Ok(vec![]),
         }

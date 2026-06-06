@@ -1,7 +1,6 @@
-use crate::{prelude::*, query::entered_zones};
-use std::sync::Arc;
+use crate::prelude::*;
 
-const ON_SUMMON_HOOK: HookId = 1;
+const ENTER_ZONE_HOOK: HookId = 1;
 
 #[derive(Debug, Clone)]
 pub struct AwakenedMummies {
@@ -35,60 +34,6 @@ impl AwakenedMummies {
                 ..Default::default()
             },
         }
-    }
-
-    fn burrow_trigger(&self, state: &State) -> anyhow::Result<DeferredEffect> {
-        let controller_id = self.get_controller_id(state);
-        let opponent_id = state.get_opponent_id(&controller_id)?;
-        let mummy_id = *self.get_id();
-        let zone = self.get_zone().clone();
-
-        Ok(DeferredEffect {
-            trigger_on_effect: EffectQuery::EnterZone {
-                card: CardQuery::new().units().controlled_by(&opponent_id),
-                zone: self.get_zone().into(),
-                from: None,
-            },
-            expires_on_effect: Some(EffectQuery::BuryCard {
-                card: self.get_id().into(),
-            }),
-            on_effect: Arc::new(move |state: &State, card_id: &CardId, effect: &Effect| {
-                let mummy_id = mummy_id;
-                let zone = zone.clone();
-                Box::pin(async move {
-                    let mummy = state.get_card(&mummy_id);
-                    if mummy.get_region(state) != &Region::Underground {
-                        return Ok(vec![]);
-                    }
-
-                    let entered_ground_above = entered_zones(effect, state).await?.into_iter().any(
-                        |(entered_card_id, _from_zone, entered_zone)| {
-                            entered_card_id == *card_id
-                                && entered_zone == zone.with_region(Region::Surface)
-                        },
-                    );
-
-                    if !entered_ground_above {
-                        return Ok(vec![]);
-                    }
-
-                    Ok(vec![
-                        Effect::SetCardRegion {
-                            card_id: mummy_id,
-                            destination: Region::Surface,
-                            tap: false,
-                        },
-                        Effect::Attack {
-                            attacker_id: mummy_id,
-                            defender_id: *card_id,
-                            defending_ids: vec![],
-                            damage_assignment: None,
-                        },
-                    ])
-                })
-            }),
-            multitrigger: true,
-        })
     }
 }
 
@@ -147,14 +92,18 @@ impl Card for AwakenedMummies {
             .collect())
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    async fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
+        let player_id = self.get_controller_id(state);
+        let opponent_id = state.get_opponent_id(&player_id)?;
         Ok(vec![Hook {
-            id: ON_SUMMON_HOOK,
-            trigger: EffectQuery::SummonCard {
-                card: self.get_id().into(),
+            id: ENTER_ZONE_HOOK,
+            trigger: EffectQuery::EnterZone {
+                card: CardQuery::new().minions().controlled_by(&opponent_id),
+                zone: ZoneQuery::from_zone(self.get_zone().with_region(Region::Surface)),
+                from: None,
             },
             timing: HookTiming::After,
-            source_zones: HookSourceZones::Zone(Zone::Cemetery),
+            source_zones: HookSourceZones::InPlay,
         }])
     }
 
@@ -162,12 +111,57 @@ impl Card for AwakenedMummies {
         &self,
         hook_id: HookId,
         state: &State,
-        _effect: &Effect,
+        effect: &Effect,
     ) -> anyhow::Result<Vec<Effect>> {
         match hook_id {
-            ON_SUMMON_HOOK => Ok(vec![Effect::AddDeferredEffect {
-                effect: self.burrow_trigger(state)?,
-            }]),
+            ENTER_ZONE_HOOK => {
+                let enemy_id = match effect {
+                    Effect::SummonCards { cards } => {
+                        let mut output = None;
+                        for (_, card_id, zone, location) in cards {
+                            if zone != self.get_zone() {
+                                continue;
+                            }
+
+                            if let Location::Square(_, region) = location
+                                && region != &Region::Surface
+                            {
+                                continue;
+                            }
+
+                            output = Some(*card_id);
+                        }
+
+                        match output {
+                            Some(card_id) => card_id,
+                            None => return Ok(vec![]),
+                        }
+                    }
+                    Effect::MoveCard { card_id, .. } => *card_id,
+                    _ => return Ok(vec![]),
+                };
+                let is_burrowed = self.get_region(state) == &Region::Underground;
+                if !is_burrowed {
+                    return Ok(vec![]);
+                }
+
+                Ok(vec![
+                    Effect::SetCardRegion {
+                        card_id: *self.get_id(),
+                        destination: Region::Surface,
+                        tap: false,
+                    },
+                    // TODO: We need to separate attack into declare attackers, declare defenders
+                    // and fight. After that, this should be a fight, so that no defenders can be
+                    // declared here.
+                    Effect::Attack {
+                        attacker_id: *self.get_id(),
+                        defender_id: enemy_id,
+                        defending_ids: vec![],
+                        damage_assignment: None,
+                    },
+                ])
+            }
             _ => Ok(vec![]),
         }
     }

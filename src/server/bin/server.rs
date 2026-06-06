@@ -1,10 +1,6 @@
 use async_channel::Sender;
 use sorcerers::{
-    card::{
-        self, ApprenticeWizard, AramosMercenaries, AridDesert, AwakenedMummies, BoneRabble,
-        CaptainBaldassare, ColickyDragonettes, DodgeRoll, FelbogFrogMen, FreeCity, HumbleVillage,
-        LightningBolt, LuckyCharm, Region, RootSpider, Wildfire,
-    },
+    card::{self, *},
     deck::precon::ALL_PRECONS,
     game::Game,
     networking::{

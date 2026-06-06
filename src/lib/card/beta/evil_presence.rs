@@ -1,6 +1,6 @@
-use std::sync::Arc;
-
 use crate::prelude::*;
+
+const SUMMON_SPIRIT_HOOK: HookId = 1;
 
 #[derive(Debug, Clone)]
 pub struct EvilPresence {
@@ -63,48 +63,52 @@ impl Card for EvilPresence {
     }
 
     async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
-        Ok(vec![Hook::genesis(self.get_id())])
+        Ok(vec![Hook {
+            id: SUMMON_SPIRIT_HOOK,
+            trigger: EffectQuery::SummonCard {
+                card: CardQuery::new().minions().minion_type(&MinionType::Spirit),
+            },
+            timing: HookTiming::After,
+            source_zones: HookSourceZones::Any,
+        }])
     }
 
     async fn resolve_hook(
         &self,
         hook: HookId,
-        _state: &State,
-        _effect: &Effect,
+        state: &State,
+        effect: &Effect,
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-        let evil_presence_id = *self.get_id();
-        Ok(vec![Effect::AddDeferredEffect {
-            effect: DeferredEffect {
-                trigger_on_effect: EffectQuery::SummonCard {
-                    card: CardQuery::new()
-                        .minions()
-                        .minion_type(&MinionType::Spirit)
-                        .including_not_in_play(),
-                },
-                expires_on_effect: None,
-                on_effect: Arc::new(move |_state: &State, card_id: &CardId, _effect: &Effect| {
-                    Box::pin(async move {
-                        Ok(vec![
-                            Effect::SetCardZone {
-                                card_id: evil_presence_id,
-                                zone: Zone::Hand,
-                            },
-                            Effect::AddAbilityCounter {
-                                card_id: *card_id,
-                                counter: AbilityCounter {
-                                    id: uuid::Uuid::new_v4(),
-                                    ability: Ability::Charge,
-                                    expires_on_effect: None,
-                                },
-                            },
-                        ])
-                    })
-                }),
-                multitrigger: false,
-            },
-        }])
+                let Effect::SummonCards { cards } = effect else {
+                    return Ok(vec![]);
+                };
+
+                let mut effects = vec![Effect::SetCardZone {
+                    card_id: *self.get_id(),
+                    zone: Zone::Hand,
+                }];
+                for (_, card_id, _, _) in cards {
+                    if state
+                        .get_card(card_id)
+                        .get_unit_base()
+                        .is_none_or(|ub| !ub.types.contains(&MinionType::Spirit))
+                    {
+                        continue;
+                    }
+
+                    effects.push(Effect::AddAbilityCounter {
+                        card_id: *card_id,
+                        counter: AbilityCounter {
+                            id: uuid::Uuid::new_v4(),
+                            ability: Ability::Charge,
+                            expires_on_effect: None,
+                        },
+                    });
+                }
+
+                Ok(effects)
             }
             _ => Ok(vec![]),
         }

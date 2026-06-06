@@ -12,7 +12,8 @@ pub struct WitherwingHero {
 
 impl WitherwingHero {
     pub const NAME: &'static str = "Witherwing Hero";
-    pub const DESCRIPTION: &'static str = "Airborne Whenever a weaker allied minion here is attacked, you may return it to its owner's hand.";
+    pub const DESCRIPTION: &'static str = "Airborne
+        Whenever a weaker allied minion here is attacked, you may return it to its owner's hand.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
