@@ -1,3 +1,5 @@
+use rand::seq::IndexedRandom;
+
 use crate::prelude::*;
 
 #[derive(Debug, Clone)]
@@ -79,26 +81,24 @@ impl Magic for ChaosTwister {
         let from_zone = target.get_zone().clone();
         let region = target.get_region(state).clone();
 
-        // Move the minion to a random site zone, then deal power damage to all units there.
-        // TODO: Does this count as a random output for things like Lucky Charm?
-        let landing_zone = ZoneQuery::random(Zone::all_realm())
-            .pick(&controller_id, state)
-            .await?;
-
+        let all_realm = Zone::all_realm();
+        let landing_zone = all_realm
+            .choose(&mut rand::rng())
+            .expect("choose to yield one result");
         let mut effects = vec![Effect::MoveCard {
             player_id: controller_id,
             card_id: target_id,
             from: from_zone
                 .into_location()
                 .expect("Chaos Twister target must be in a location"),
-            to: LocationQuery::from_zone(landing_zone.clone().with_region(region)),
+            to: LocationQuery::from_zone(landing_zone.with_region(region)),
             tap: false,
             through_path: None,
         }];
 
         let units = CardQuery::new()
             .units()
-            .in_zone(&landing_zone)
+            .in_zone(landing_zone)
             .id_not(&target_id)
             .all(state);
         for unit_id in units {

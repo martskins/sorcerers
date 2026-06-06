@@ -85,7 +85,7 @@ impl Card for AlbespinePikemen {
                 effect: TemporaryEffect::GrantAbility {
                     ability: Ability::FirstStrike,
                     affected_cards: self.get_id().into(),
-                    // TODO: Change none to end of battle
+                    // TODO: Add a fight ended effect and plug this hook to it.
                     expires_on_effect: EffectQuery::TurnEnd { player_id: None },
                 },
             }]),
