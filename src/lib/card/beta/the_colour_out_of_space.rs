@@ -49,7 +49,23 @@ impl TheColourOutOfSpace {
 #[async_trait::async_trait]
 impl Site for TheColourOutOfSpace {}
 
-impl ResourceProvider for TheColourOutOfSpace {}
+impl ResourceProvider for TheColourOutOfSpace {
+    fn provided_mana(&self, state: &State) -> anyhow::Result<u8> {
+        if !self.adjacent_to_void(state) {
+            Ok(0)
+        } else {
+            Ok(1)
+        }
+    }
+
+    fn provided_affinity(&self, state: &State) -> anyhow::Result<Thresholds> {
+        if !self.adjacent_to_void(state) {
+            Ok(Thresholds::ZERO)
+        } else {
+            Ok(Thresholds::parse("EFWA"))
+        }
+    }
+}
 
 #[async_trait::async_trait]
 impl Card for TheColourOutOfSpace {
@@ -76,9 +92,6 @@ impl Card for TheColourOutOfSpace {
     }
     fn get_resource_provider(&self) -> Option<&dyn ResourceProvider> {
         Some(self)
-    }
-    fn provides_no_resources(&self, state: &State) -> anyhow::Result<bool> {
-        Ok(!self.adjacent_to_void(state))
     }
 }
 

@@ -188,7 +188,7 @@ async fn test_free_city_can_activate_attack_before_animation() {
         .filter(|action| {
             action
                 .get_cost(&free_city_id, &state)
-                .and_then(|cost| cost.can_afford(&state, &player_id))
+                .and_then(|cost| cost.can_afford(&state, player_id))
                 .unwrap_or_default()
                 && action
                     .can_activate(&free_city_id, &player_id, &state)
@@ -298,8 +298,12 @@ async fn test_free_city_defender_declaration_resolves_before_move_and_attack() {
     state.get_card_mut(&avatar_id).set_zone(zone.clone());
     let free_city_id =
         insert_realm_card(&mut state, Box::new(FreeCity::new(player_id)), zone.clone()).await;
-    let attacker_id =
-        insert_realm_card(&mut state, Box::new(FootSoldier::new(opponent_id)), zone.clone()).await;
+    let attacker_id = insert_realm_card(
+        &mut state,
+        Box::new(FootSoldier::new(opponent_id)),
+        zone.clone(),
+    )
+    .await;
 
     state.queue(vec![
         Effect::Attack {

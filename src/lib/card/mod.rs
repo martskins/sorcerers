@@ -1570,11 +1570,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         None
     }
 
-    // TODO: There's probably a better way to do this.
-    fn provides_no_resources(&self, _state: &State) -> anyhow::Result<bool> {
-        Ok(false)
-    }
-
     // Upcasts a card to a site trait object if it is a site, None otherwise.
     fn get_site(&self) -> Option<&dyn Site> {
         None
@@ -2058,7 +2053,7 @@ pub trait ResourceProviderBaseMethods: Card {
 
 impl<T: Card + ?Sized> ResourceProviderBaseMethods for T {
     fn base_provided_mana(&self, state: &State) -> anyhow::Result<u8> {
-        if self.get_card_type() != CardType::Site || self.provides_no_resources(state)? {
+        if self.get_card_type() != CardType::Site {
             return Ok(0);
         }
 
@@ -2086,7 +2081,7 @@ impl<T: Card + ?Sized> ResourceProviderBaseMethods for T {
     }
 
     fn base_provided_affinity(&self, state: &State) -> anyhow::Result<Thresholds> {
-        if self.get_card_type() != CardType::Site || self.provides_no_resources(state)? {
+        if self.get_card_type() != CardType::Site {
             return Ok(Thresholds::ZERO);
         }
 
