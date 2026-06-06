@@ -13,6 +13,11 @@ impl ActivatedAbility for RollBoulder {
         Ok(Cost::additional_only(AdditionalCost::tap(card_id)))
     }
 
+    // TODO: Model interaction with Magellan Globe. The FAQs for Rolling Boulder say this:
+    //
+    // The Rolling Boulder continues until it would repeat a step (i.e. back to where it started),
+    // and then stops instead of repeating a step. It doesn't do 8 damage on the starting location,
+    // since a location is either along its path or not.
     async fn on_select(
         &self,
         card_id: &CardId,

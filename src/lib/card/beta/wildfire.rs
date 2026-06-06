@@ -32,9 +32,21 @@ impl Wildfire {
             sites_visited: vec![],
         }
     }
+
+    fn unvisited_adjacent_locations(&self, state: &State) -> Vec<Zone> {
+        self.get_zone()
+            .get_adjacent_locations(state)
+            .into_iter()
+            .filter(|z| !self.sites_visited.contains(z))
+            .collect()
+    }
 }
 
-impl Aura for Wildfire {}
+impl Aura for Wildfire {
+    fn should_dispell(&self, state: &State) -> anyhow::Result<bool> {
+        Ok(self.unvisited_adjacent_locations(state).is_empty())
+    }
+}
 
 #[async_trait::async_trait]
 impl Card for Wildfire {
@@ -76,8 +88,6 @@ impl Card for Wildfire {
         Ok(vec![
             Hook {
                 id: TRACK_VISITED_SITE_HOOK,
-                // TODO: EnterZone is not triggered when summoning auras. We need to handle this the same
-                // way we do for summon minions.
                 trigger: EffectQuery::EnterZone {
                     card: self.get_id().into(),
                     zone: ZoneQuery::new(),
@@ -111,14 +121,7 @@ impl Card for Wildfire {
                 }])
             }
             TURN_END_HOOK => {
-                // TODO: Wildfire moves to adjacent locations, so it cannot move to a different region.
-                let zones = self
-                    .get_zone()
-                    .get_adjacent()
-                    .iter()
-                    .filter(|z| !self.sites_visited.contains(z))
-                    .cloned()
-                    .collect::<Vec<Zone>>();
+                let zones = self.unvisited_adjacent_locations(state);
                 if zones.is_empty() {
                     return Ok(vec![Effect::BuryCard {
                         card_id: *self.get_id(),
@@ -155,9 +158,7 @@ impl Card for Wildfire {
                         .clone()
                         .into_location()
                         .expect("Wildfire must be in a location"),
-                    to: LocationQuery::from_zone(
-                        picked_zone.with_region(self.get_region(state).clone()),
-                    ),
+                    to: LocationQuery::from_zone(picked_zone),
                     tap: false,
                     through_path: None,
                 });
@@ -186,3 +187,24 @@ impl Card for Wildfire {
 static CONSTRUCTOR: (&'static str, CardConstructor) = (Wildfire::NAME, |owner_id: PlayerId| {
     Box::new(Wildfire::new(owner_id))
 });
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unvisited_adjacent_locations_only_uses_existing_locations() {
+        let state = State::new_mock_state(vec![8, 13]);
+        let player_id = state.players[0].id;
+        let from_zone = Zone::Location(Location::Square(13, Region::Surface));
+
+        let mut wildfire = Wildfire::new(player_id);
+        wildfire.set_zone(from_zone.clone());
+        wildfire.sites_visited = vec![from_zone];
+
+        assert_eq!(
+            wildfire.unvisited_adjacent_locations(&state),
+            vec![Zone::Location(Location::Square(8, Region::Surface))]
+        );
+    }
+}

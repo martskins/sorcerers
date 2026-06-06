@@ -138,6 +138,32 @@ impl EffectQuery {
 
                 Ok(vec![])
             }
+            (
+                EffectQuery::EnterZone {
+                    card: card_query,
+                    zone: zone_query,
+                    from,
+                },
+                Effect::PlayCard {
+                    player_id,
+                    card_id,
+                    zone,
+                    ..
+                },
+            ) => {
+                if from.is_some() {
+                    return Ok(vec![]);
+                }
+
+                let card_matches = card_query.matches(card_id, state);
+                let picked_zone = zone.pick(player_id, state).await?;
+                let zone_matches = zone_query.matches(state, &picked_zone);
+                if card_matches && zone_matches {
+                    return Ok(vec![*card_id]);
+                }
+
+                Ok(vec![])
+            }
             (EffectQuery::StopAtZone { card, zone: site }, _) => {
                 let sites = site.options(state);
                 Ok(stopped_at_sites(effect, state)
@@ -276,6 +302,32 @@ impl EffectQuery {
                 let card_matches = card_query.matches(card_id, state);
                 let loc = to.pick(player_id, state).await?;
                 let zone_matches = zone_query.matches(state, &loc.into_zone());
+                if card_matches && zone_matches {
+                    return Ok(true);
+                }
+
+                Ok(false)
+            }
+            (
+                EffectQuery::EnterZone {
+                    card: card_query,
+                    zone: zone_query,
+                    from,
+                },
+                Effect::PlayCard {
+                    player_id,
+                    card_id,
+                    zone,
+                    ..
+                },
+            ) => {
+                if from.is_some() {
+                    return Ok(false);
+                }
+
+                let card_matches = card_query.matches(card_id, state);
+                let picked_zone = zone.pick(player_id, state).await?;
+                let zone_matches = zone_query.matches(state, &picked_zone);
                 if card_matches && zone_matches {
                     return Ok(true);
                 }

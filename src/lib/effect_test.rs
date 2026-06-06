@@ -6,7 +6,7 @@ use crate::{
         OgreGoons, PhaseAssassin, PitVipers, PlanarGate, Region, RimlandNomads, RootSpider,
         RoyalBodyguard, SacredScarabs, Sandstorm, ScourgeZombies, SeaRaider, SeirawanHydra, Silence,
         SimpleVillage, SirianTemplar, SlingPixies, SpringRiver, TuftedTurtles, TvinnaxBerserker,
-        UnitBase, VaultsOfZul, WallOfFire, YourkeCrossbowmen, from_name_and_zone,
+        UnitBase, VaultsOfZul, WallOfFire, Wildfire, YourkeCrossbowmen, from_name_and_zone,
     },
     deck::Deck,
     effect::{
@@ -165,6 +165,36 @@ async fn drain_effects(state: &mut State) {
         .apply_effects_without_log()
         .await
         .expect("effect queue should drain without error");
+}
+
+#[tokio::test]
+async fn test_enter_zone_matches_played_aura() {
+    let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(
+        8,
+        Region::Surface,
+    ))]);
+    let player_id = state.players[0].id;
+    let wildfire = Wildfire::new(player_id);
+    let wildfire_id = *wildfire.get_id();
+    let zone = Zone::Location(Location::Square(8, Region::Surface));
+
+    state.cards.insert(wildfire_id, Box::new(wildfire));
+    state.get_card_mut(&wildfire_id).set_zone(zone.clone());
+
+    let effect = Effect::PlayCard {
+        player_id,
+        card_id: wildfire_id,
+        zone: ZoneQuery::from_zone(zone.clone()),
+        spellcaster: state.get_player_avatar_id(&player_id).unwrap(),
+    };
+    let query = EffectQuery::EnterZone {
+        card: CardQuery::from_id(wildfire_id),
+        zone: ZoneQuery::from_zone(zone),
+        from: None,
+    };
+
+    assert!(query.matches(&effect, &state).await.unwrap());
+    assert_eq!(query.source_ids(&effect, &state).await.unwrap(), vec![wildfire_id]);
 }
 
 #[tokio::test]
