@@ -1308,6 +1308,7 @@ impl RealmComponent {
         if data.show_ongoing_effects {
             egui::Window::new("Ongoing effects")
                 .id(egui::Id::new("ongoing_effects_window"))
+                .order(egui::Order::Tooltip)
                 .default_pos(pos2(self.rect.min.x + 18.0, self.rect.min.y + 58.0))
                 .default_width(340.0)
                 .resizable(true)

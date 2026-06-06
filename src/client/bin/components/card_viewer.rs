@@ -202,6 +202,7 @@ fn render_viewer(
     let mut open = entry.visible;
     egui::Window::new(entry.title.clone())
         .id(window_id)
+        .order(egui::Order::Tooltip)
         .open(&mut open)
         .movable(true)
         .resizable(true)

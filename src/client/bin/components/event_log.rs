@@ -58,6 +58,7 @@ impl Component for EventLogComponent {
         }
         let mut open = self.visible;
         egui::Window::new("Event Log")
+            .order(egui::Order::Tooltip)
             .open(&mut open)
             .movable(true)
             .resizable(true)
