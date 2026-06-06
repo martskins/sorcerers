@@ -1,9 +1,9 @@
 use async_channel::Sender;
 use sorcerers::{
     card::{
-        self, ApprenticeWizard, AramosMercenaries, AridDesert, AwakenedMummies, CaptainBaldassare,
-        ColickyDragonettes, DodgeRoll, FelbogFrogMen, FreeCity, HumbleVillage, LightningBolt,
-        LuckyCharm, Region, RootSpider,
+        self, ApprenticeWizard, AramosMercenaries, AridDesert, AwakenedMummies, BoneRabble,
+        CaptainBaldassare, ColickyDragonettes, DodgeRoll, FelbogFrogMen, FreeCity, HumbleVillage,
+        LightningBolt, LuckyCharm, Region, RootSpider, Wildfire,
     },
     deck::precon::ALL_PRECONS,
     game::Game,
@@ -218,7 +218,7 @@ impl Server {
         game.state.cards.insert(*card.get_id(), card);
 
         let player_two = game.state.players[1].id;
-        let card = card::from_name_and_zone(LuckyCharm::NAME, &player_one, Zone::Hand);
+        let card = card::from_name_and_zone(BoneRabble::NAME, &player_one, Zone::Cemetery);
         game.state.cards.insert(*card.get_id(), card);
         let card = card::from_name_and_zone(LightningBolt::NAME, &player_one, Zone::Hand);
         game.state.cards.insert(*card.get_id(), card);
