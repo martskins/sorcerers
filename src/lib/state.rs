@@ -13,7 +13,7 @@ use crate::{
 use async_channel::{Receiver, Sender};
 use std::{
     collections::{HashMap, HashSet, VecDeque},
-    sync::RwLock,
+    sync::{Arc, RwLock},
 };
 
 pub use crate::effect::{DeferredEffect, LoggedEffect, TemporaryEffect};
@@ -429,13 +429,95 @@ pub enum OngoingEffect {
         affected_cards: CardQuery,
         zones: Option<ZoneQuery>,
     },
+    ModifyCardQuery {
+        description: String,
+        modifier: CardQueryModifier,
+    },
+    ModifyZoneQuery {
+        description: String,
+        modifier: ZoneQueryModifier,
+    },
+    RestrictCardTargets {
+        description: String,
+        restriction: CardTargetRestriction,
+    },
     TriggeredEffect {
         trigger_on_effect: EffectQuery,
         on_effect: EffectCallback,
     },
 }
 
+pub type CardQueryModifier =
+    Arc<dyn Fn(&State, &PlayerId, &CardQuery) -> anyhow::Result<Option<CardQuery>> + Send + Sync>;
+pub type ZoneQueryModifier =
+    Arc<dyn Fn(&State, &PlayerId, &ZoneQuery) -> anyhow::Result<Option<ZoneQuery>> + Send + Sync>;
+pub type CardTargetRestriction =
+    Arc<dyn Fn(&State, &PlayerId, &CardQuery, &[CardId]) -> Option<Vec<CardId>> + Send + Sync>;
+
 impl OngoingEffect {
+    pub fn choose_from_random_card_options(
+        source_card_id: CardId,
+        prompt: impl Into<String>,
+        count: usize,
+    ) -> Self {
+        use rand::seq::IndexedRandom;
+
+        let prompt = prompt.into();
+        Self::ModifyCardQuery {
+            description: prompt.clone(),
+            modifier: Arc::new(move |state, player_id, query| {
+                if !query.is_randomised() {
+                    return Ok(None);
+                }
+                if state.get_card(&source_card_id).get_controller_id(state) != *player_id {
+                    return Ok(None);
+                }
+
+                let options = query
+                    .all(state)
+                    .choose_multiple(&mut rand::rng(), count)
+                    .cloned()
+                    .collect();
+                Ok(Some(
+                    CardQuery::from_ids(options)
+                        .with_prompt(&prompt)
+                        .with_source_card(source_card_id),
+                ))
+            }),
+        }
+    }
+
+    pub fn choose_from_random_zone_options(
+        source_card_id: CardId,
+        prompt: impl Into<String>,
+        count: usize,
+    ) -> Self {
+        use rand::seq::IndexedRandom;
+
+        let prompt = prompt.into();
+        Self::ModifyZoneQuery {
+            description: prompt.clone(),
+            modifier: Arc::new(move |state, player_id, query| {
+                if !query.is_randomised() {
+                    return Ok(None);
+                }
+                if state.get_card(&source_card_id).get_controller_id(state) != *player_id {
+                    return Ok(None);
+                }
+
+                let options = query
+                    .options(state)
+                    .choose_multiple(&mut rand::rng(), count)
+                    .cloned()
+                    .collect();
+                Ok(Some(
+                    ZoneQuery::from_options(options, Some(prompt.clone()))
+                        .with_source_card(source_card_id),
+                ))
+            }),
+        }
+    }
+
     fn display_description(&self) -> String {
         match self {
             Self::ControllerOverride { controller_id, .. } => {
@@ -504,6 +586,9 @@ impl OngoingEffect {
             Self::ModifyManaCost { mana_diff, .. } => {
                 format!("Mana cost {:+}", mana_diff)
             }
+            Self::ModifyCardQuery { description, .. }
+            | Self::ModifyZoneQuery { description, .. }
+            | Self::RestrictCardTargets { description, .. } => description.clone(),
             Self::TriggeredEffect { .. } => "Triggered ongoing effect".to_string(),
         }
     }
@@ -532,7 +617,10 @@ impl OngoingEffect {
             | Self::ModifyManaCost { affected_cards, .. } => affected_cards.all(state),
             Self::ChangeSiteType { affected_sites, .. }
             | Self::ModifyProvidedAffinities { affected_sites, .. } => affected_sites.all(state),
-            Self::TriggeredEffect { .. } => Vec::new(),
+            Self::ModifyCardQuery { .. }
+            | Self::ModifyZoneQuery { .. }
+            | Self::RestrictCardTargets { .. }
+            | Self::TriggeredEffect { .. } => Vec::new(),
         }
     }
 
@@ -632,6 +720,18 @@ impl std::fmt::Debug for OngoingEffect {
                 .debug_struct("ModifyManaCost")
                 .field("mana_diff", mana_diff)
                 .field("zones", zones)
+                .finish(),
+            Self::ModifyCardQuery { description, .. } => f
+                .debug_struct("ModifyCardQuery")
+                .field("description", description)
+                .finish(),
+            Self::ModifyZoneQuery { description, .. } => f
+                .debug_struct("ModifyZoneQuery")
+                .field("description", description)
+                .finish(),
+            Self::RestrictCardTargets { description, .. } => f
+                .debug_struct("RestrictCardTargets")
+                .field("description", description)
                 .finish(),
             Self::TriggeredEffect {
                 trigger_on_effect, ..

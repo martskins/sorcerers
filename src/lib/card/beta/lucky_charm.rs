@@ -1,5 +1,3 @@
-use rand::seq::IndexedRandom;
-
 use crate::prelude::*;
 
 #[derive(Debug, Clone)]
@@ -65,46 +63,19 @@ impl Card for LuckyCharm {
         Some(self)
     }
 
-    fn zone_query_override(
-        &self,
-        state: &State,
-        query: &ZoneQuery,
-    ) -> anyhow::Result<Option<ZoneQuery>> {
-        if !query.is_randomised() {
-            return Ok(None);
-        }
-
-        let zones = query
-            .options(state)
-            .choose_multiple(&mut rand::rng(), 2)
-            .cloned()
-            .collect();
-        Ok(Some(ZoneQuery::from_options(
-            zones,
-            Some("Lucky Charm: Choose a zone".to_string()),
-        )))
-    }
-
-    async fn card_query_override(
-        &self,
-        state: &State,
-        query: &CardQuery,
-    ) -> anyhow::Result<Option<CardQuery>> {
-        if !query.is_randomised() {
-            return Ok(None);
-        }
-
-        let query = query.clone();
-        let options = query
-            .all(state)
-            .choose_multiple(&mut rand::rng(), 2)
-            .cloned()
-            .collect();
-        Ok(Some(
-            CardQuery::from_ids(options)
-                .with_prompt("Choose a card to override random decision")
-                .with_source_card(*self.get_id()),
-        ))
+    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+        Ok(vec![
+            OngoingEffect::choose_from_random_card_options(
+                *self.get_id(),
+                "Lucky Charm: Choose a card",
+                2,
+            ),
+            OngoingEffect::choose_from_random_zone_options(
+                *self.get_id(),
+                "Lucky Charm: Choose a zone",
+                2,
+            ),
+        ])
     }
 }
 

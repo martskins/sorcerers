@@ -1,14 +1,15 @@
 use crate::{
     card::{
-        Ability, AridDesert, BeastOfBurden, Card, CardStatus, CauldronCrones, CourtesanThais,
-        DonnybrookInn, Drought, Enchantress, Flood, FootSoldier, FreeCity, HeadlessHaunt,
-        KiteArcher, NimbusJinn, Region, RimlandNomads, Rubble, Silence, SistersOfSilence, SkyBaron,
-        SmokestacksOfGnaak, SneakThief, UnitBase, from_name_and_zone,
+        Ability, AridDesert, BeastOfBurden, BlastedOak, Card, CardStatus, CauldronCrones,
+        CourtesanThais, DonnybrookInn, Drought, Enchantress, Flood, FootSoldier, FreeCity,
+        HeadlessHaunt, KiteArcher, KytheraMechanism, LuckyCharm, NimbusJinn, Region,
+        RimlandNomads, Rubble, Silence, SistersOfSilence, SkyBaron, SmokestacksOfGnaak,
+        SneakThief, UnitBase, from_name_and_zone,
     },
     deck::Deck,
     effect::Effect,
     game::{NO_CONTROLLER, Thresholds},
-    networking::message::ServerMessage,
+    networking::message::{ClientMessage, ServerMessage},
     query::{CardQuery, EffectQuery, LocationQuery, QueryCache, ZoneQuery},
     state::{
         AbilityRemoval, OngoingEffect, Player, PlayerWithDeck, State, TemporaryEffect,
@@ -18,6 +19,15 @@ use crate::{
 };
 
 fn setup_carrying_state() -> (State, async_channel::Receiver<ServerMessage>) {
+    let (state, server_rx, _) = setup_carrying_state_with_client();
+    (state, server_rx)
+}
+
+fn setup_carrying_state_with_client() -> (
+    State,
+    async_channel::Receiver<ServerMessage>,
+    async_channel::Sender<ClientMessage>,
+) {
     QueryCache::init();
 
     let player_one_id = uuid::Uuid::new_v4();
@@ -66,14 +76,14 @@ fn setup_carrying_state() -> (State, async_channel::Receiver<ServerMessage>) {
     };
 
     let (server_tx, server_rx) = async_channel::unbounded();
-    let (_, client_rx) = async_channel::unbounded();
+    let (client_tx, client_rx) = async_channel::unbounded();
     let state = State::new(
         uuid::Uuid::new_v4(),
         vec![player1, player2],
         server_tx,
         client_rx,
     );
-    (state, server_rx)
+    (state, server_rx, client_tx)
 }
 
 async fn insert_realm_card(state: &mut State, mut card: Box<dyn Card>, zone: Zone) -> uuid::Uuid {
@@ -85,6 +95,319 @@ async fn insert_realm_card(state: &mut State, mut card: Box<dyn Card>, zone: Zon
         .await
         .unwrap();
     card_id
+}
+
+#[tokio::test]
+async fn test_lucky_charm_narrows_random_card_query_through_ongoing_effect() {
+    let (mut state, server_rx, client_tx) = setup_carrying_state_with_client();
+    let player_id = state.players[0].id;
+    let game_id = state.game_id;
+
+    insert_realm_card(
+        &mut state,
+        Box::new(LuckyCharm::new(player_id)),
+        Zone::Location(Location::Square(1, Region::Surface)),
+    )
+    .await;
+
+    let targets = vec![
+        insert_realm_card(
+            &mut state,
+            Box::new(FootSoldier::new(player_id)),
+            Zone::Location(Location::Square(2, Region::Surface)),
+        )
+        .await,
+        insert_realm_card(
+            &mut state,
+            Box::new(FootSoldier::new(player_id)),
+            Zone::Location(Location::Square(3, Region::Surface)),
+        )
+        .await,
+        insert_realm_card(
+            &mut state,
+            Box::new(FootSoldier::new(player_id)),
+            Zone::Location(Location::Square(4, Region::Surface)),
+        )
+        .await,
+    ];
+
+    let query = CardQuery::from_ids(targets.clone()).randomised();
+    let pick = query.pick(&player_id, &state, false);
+    tokio::pin!(pick);
+
+    let mut saw_choice = false;
+    let picked = tokio::time::timeout(std::time::Duration::from_secs(2), async {
+        loop {
+            tokio::select! {
+                result = &mut pick => break result.unwrap().unwrap(),
+                msg = server_rx.recv() => match msg.unwrap() {
+                    ServerMessage::Wait { .. } | ServerMessage::Resume { .. } => {}
+                    ServerMessage::PickCard { cards, .. } => {
+                        assert_eq!(cards.len(), 2);
+                        assert!(cards.iter().all(|id| targets.contains(id)));
+                        let card_id = cards[0];
+                        client_tx
+                            .send(ClientMessage::PickCard {
+                                game_id,
+                                player_id,
+                                card_id,
+                            })
+                            .await
+                            .unwrap();
+                        saw_choice = true;
+                    }
+                    other => panic!("unexpected server message: {:?}", other),
+                },
+            }
+        }
+    })
+    .await
+    .unwrap();
+
+    assert!(saw_choice);
+    assert!(targets.contains(&picked));
+}
+
+#[tokio::test]
+async fn test_kythera_mechanism_converts_random_queries_to_choices() {
+    let (mut state, server_rx, client_tx) = setup_carrying_state_with_client();
+    let player_id = state.players[0].id;
+    let game_id = state.game_id;
+
+    insert_realm_card(
+        &mut state,
+        Box::new(KytheraMechanism::new(player_id)),
+        Zone::Location(Location::Square(1, Region::Surface)),
+    )
+    .await;
+
+    let targets = vec![
+        insert_realm_card(
+            &mut state,
+            Box::new(FootSoldier::new(player_id)),
+            Zone::Location(Location::Square(2, Region::Surface)),
+        )
+        .await,
+        insert_realm_card(
+            &mut state,
+            Box::new(FootSoldier::new(player_id)),
+            Zone::Location(Location::Square(3, Region::Surface)),
+        )
+        .await,
+    ];
+
+    let card_query = CardQuery::from_ids(targets.clone()).randomised();
+    let pick_card = card_query.pick(&player_id, &state, false);
+    tokio::pin!(pick_card);
+
+    let picked_card = tokio::time::timeout(std::time::Duration::from_secs(2), async {
+        loop {
+            tokio::select! {
+                result = &mut pick_card => break result.unwrap().unwrap(),
+                msg = server_rx.recv() => match msg.unwrap() {
+                    ServerMessage::Wait { .. } | ServerMessage::Resume { .. } => {}
+                    ServerMessage::PickCard { cards, .. } => {
+                        assert_eq!(cards.len(), targets.len());
+                        assert!(cards.iter().all(|id| targets.contains(id)));
+                        client_tx
+                            .send(ClientMessage::PickCard {
+                                game_id,
+                                player_id,
+                                card_id: cards[0],
+                            })
+                            .await
+                            .unwrap();
+                    }
+                    other => panic!("unexpected server message: {:?}", other),
+                },
+            }
+        }
+    })
+    .await
+    .unwrap();
+    assert!(targets.contains(&picked_card));
+
+    let zones = vec![
+        Zone::Location(Location::Square(2, Region::Surface)),
+        Zone::Location(Location::Square(3, Region::Surface)),
+    ];
+    let zone_query = ZoneQuery::random(zones.clone());
+    let pick_zone = zone_query.pick(&player_id, &state);
+    tokio::pin!(pick_zone);
+
+    let picked_zone = tokio::time::timeout(std::time::Duration::from_secs(2), async {
+        loop {
+            tokio::select! {
+                result = &mut pick_zone => break result.unwrap(),
+                msg = server_rx.recv() => match msg.unwrap() {
+                    ServerMessage::Resume { .. } => {}
+                    ServerMessage::PickZone { zones: offered, .. } => {
+                        assert_eq!(offered.len(), zones.len());
+                        assert!(offered.iter().all(|zone| zones.contains(zone)));
+                        client_tx
+                            .send(ClientMessage::PickZone {
+                                game_id,
+                                player_id,
+                                zone: offered[0].clone(),
+                            })
+                            .await
+                            .unwrap();
+                    }
+                    other => panic!("unexpected server message: {:?}", other),
+                },
+            }
+        }
+    })
+    .await
+    .unwrap();
+    assert!(zones.contains(&picked_zone));
+}
+
+#[tokio::test]
+async fn test_blasted_oak_restricts_card_targets_by_precedence() {
+    let (mut state, server_rx, client_tx) = setup_carrying_state_with_client();
+    let player_id = state.players[0].id;
+    let game_id = state.game_id;
+    let oak_zone = Zone::Location(Location::Square(1, Region::Surface));
+
+    let oak_id = insert_realm_card(
+        &mut state,
+        Box::new(BlastedOak::new(player_id)),
+        oak_zone.clone(),
+    )
+    .await;
+    let minion_id = insert_realm_card(
+        &mut state,
+        Box::new(FootSoldier::new(player_id)),
+        oak_zone.clone(),
+    )
+    .await;
+    let source = Drought::new(player_id);
+    let source_id = *source.get_id();
+    state.cards.insert(source_id, Box::new(source));
+    let site_id = state
+        .cards
+        .values()
+        .find(|card| card.is_site() && card.get_zone() == &oak_zone)
+        .map(|card| *card.get_id())
+        .unwrap();
+
+    let targets = vec![site_id, minion_id, oak_id];
+    let query = CardQuery::from_ids(targets).with_source_card(source_id);
+    let pick = query.pick(&player_id, &state, false);
+    tokio::pin!(pick);
+
+    let picked = tokio::time::timeout(std::time::Duration::from_secs(2), async {
+        loop {
+            tokio::select! {
+                result = &mut pick => break result.unwrap().unwrap(),
+                msg = server_rx.recv() => match msg.unwrap() {
+                    ServerMessage::Wait { .. } | ServerMessage::Resume { .. } => {}
+                    ServerMessage::PickCard { cards, .. } => {
+                        assert_eq!(cards, vec![oak_id]);
+                        client_tx
+                            .send(ClientMessage::PickCard {
+                                game_id,
+                                player_id,
+                                card_id: cards[0],
+                            })
+                            .await
+                            .unwrap();
+                    }
+                    other => panic!("unexpected server message: {:?}", other),
+                },
+            }
+        }
+    })
+    .await
+    .unwrap();
+
+    assert_eq!(picked, oak_id);
+}
+
+#[tokio::test]
+async fn test_blasted_oak_restricts_zone_targets_only_with_source() {
+    let (mut state, server_rx, client_tx) = setup_carrying_state_with_client();
+    let player_id = state.players[0].id;
+    let game_id = state.game_id;
+    let oak_zone = Zone::Location(Location::Square(1, Region::Surface));
+    let other_zone = Zone::Location(Location::Square(2, Region::Surface));
+
+    insert_realm_card(
+        &mut state,
+        Box::new(BlastedOak::new(player_id)),
+        oak_zone.clone(),
+    )
+    .await;
+    let source = Drought::new(player_id);
+    let source_id = *source.get_id();
+    state.cards.insert(source_id, Box::new(source));
+
+    let query = ZoneQuery::from_options(
+        vec![oak_zone.clone(), other_zone.clone()],
+        Some("Pick a location".to_string()),
+    )
+    .with_source_card(source_id);
+    let pick = query.pick(&player_id, &state);
+    tokio::pin!(pick);
+
+    let picked = tokio::time::timeout(std::time::Duration::from_secs(2), async {
+        loop {
+            tokio::select! {
+                result = &mut pick => break result.unwrap(),
+                msg = server_rx.recv() => match msg.unwrap() {
+                    ServerMessage::PickZone { zones, .. } => {
+                        assert_eq!(zones, vec![oak_zone.clone()]);
+                        client_tx
+                            .send(ClientMessage::PickZone {
+                                game_id,
+                                player_id,
+                                zone: zones[0].clone(),
+                            })
+                            .await
+                            .unwrap();
+                    }
+                    other => panic!("unexpected server message: {:?}", other),
+                },
+            }
+        }
+    })
+    .await
+    .unwrap();
+    assert_eq!(picked, oak_zone);
+
+    let query_without_source = ZoneQuery::from_options(
+        vec![oak_zone.clone(), other_zone.clone()],
+        Some("Pick a location".to_string()),
+    );
+    let pick_without_source = query_without_source.pick(&player_id, &state);
+    tokio::pin!(pick_without_source);
+
+    let picked_without_source =
+        tokio::time::timeout(std::time::Duration::from_secs(2), async {
+            loop {
+                tokio::select! {
+                    result = &mut pick_without_source => break result.unwrap(),
+                    msg = server_rx.recv() => match msg.unwrap() {
+                        ServerMessage::PickZone { zones, .. } => {
+                            assert_eq!(zones, vec![oak_zone.clone(), other_zone.clone()]);
+                            client_tx
+                                .send(ClientMessage::PickZone {
+                                    game_id,
+                                    player_id,
+                                    zone: other_zone.clone(),
+                                })
+                                .await
+                                .unwrap();
+                        }
+                        other => panic!("unexpected server message: {:?}", other),
+                    },
+                }
+            }
+        })
+        .await
+        .unwrap();
+    assert_eq!(picked_without_source, other_zone);
 }
 
 #[tokio::test]

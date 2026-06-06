@@ -63,38 +63,19 @@ impl Card for KytheraMechanism {
         Some(self)
     }
 
-    async fn card_query_override(
-        &self,
-        state: &State,
-        query: &CardQuery,
-    ) -> anyhow::Result<Option<CardQuery>> {
-        if !query.is_randomised() {
-            return Ok(None);
-        }
-
-        let query = query.clone();
-        let options = query.all(state);
-        Ok(Some(
-            CardQuery::from_ids(options)
-                .with_prompt("Choose a card to override random decision")
-                .with_source_card(*self.get_id()),
-        ))
-    }
-
-    fn zone_query_override(
-        &self,
-        state: &State,
-        query: &ZoneQuery,
-    ) -> anyhow::Result<Option<ZoneQuery>> {
-        if !query.is_randomised() {
-            return Ok(None);
-        }
-
-        let options = query.options(state);
-        Ok(Some(ZoneQuery::from_options(
-            options,
-            Some("Kythera Mechanism: Choose a zone to override random decision".to_string()),
-        )))
+    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+        Ok(vec![
+            OngoingEffect::choose_from_random_card_options(
+                *self.get_id(),
+                "Kythera Mechanism: Choose a card to override random decision",
+                usize::MAX,
+            ),
+            OngoingEffect::choose_from_random_zone_options(
+                *self.get_id(),
+                "Kythera Mechanism: Choose a zone to override random decision",
+                usize::MAX,
+            ),
+        ])
     }
 }
 

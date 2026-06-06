@@ -18,7 +18,7 @@ use crate::{
         ActivatedAbility, AvatarAction, CardId, Element, PlayerId, Thresholds, ThresholdsDiff,
         UnitAction, pick_amount, pick_card, pick_option, pick_zone,
     },
-    query::{CardQuery, ZoneQuery},
+    query::CardQuery,
     state::{AbilityModifier, LoggedEffect, OngoingEffect, State, TemporaryEffect},
 };
 use linkme::distributed_slice;
@@ -844,41 +844,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             "https://d27a44hjr9gen3.cloudfront.net/{}/{}-{}-{}-s.png",
             folder, set, name_for_url, after_card_name
         )
-    }
-
-    // When resolving a CardQuery, this method allows the card to override the query. A useful
-    // usecase for this method is for example overriding the valid targets of a spell when there's
-    // a card in play that affects targeting.
-    async fn card_query_override(
-        &self,
-        _state: &State,
-        _query: &CardQuery,
-    ) -> anyhow::Result<Option<CardQuery>> {
-        Ok(None)
-    }
-
-    // When resolving a ZoneQuery, this method allows the card to override the query. A useful
-    // usecase for this method is for example overriding the zones that the player can pick from
-    // when the there's a card in play that affects zone selection.
-    fn zone_query_override(
-        &self,
-        _state: &State,
-        _query: &ZoneQuery,
-    ) -> anyhow::Result<Option<ZoneQuery>> {
-        Ok(None)
-    }
-
-    // Allows any in-play card to restrict the valid targets of a CardQuery being resolved.
-    // This is called for all in-play cards before any pick is made (for both randomised and
-    // player-chosen targeting). If a card's presence mandates that certain targets must be
-    // chosen over others, return Some with the filtered list. Return None to leave unchanged.
-    fn restrict_card_query_targets(
-        &self,
-        _state: &State,
-        _query: &CardQuery,
-        _targets: &[uuid::Uuid],
-    ) -> Option<Vec<CardId>> {
-        None
     }
 
     // Removes the power counter with the given ID from the card.

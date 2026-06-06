@@ -10,7 +10,7 @@ use crate::{
 };
 use std::sync::{Arc, OnceLock};
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct CardQuery {
     id: Arc<OnceLock<uuid::Uuid>>,
     carried_by: Option<Option<CardId>>,
@@ -50,7 +50,55 @@ pub struct CardQuery {
     spatial_filters: Vec<SpatialFilter>,
     prompt: Option<String>,
     source_card_id: Option<CardId>,
+    allow_modifiers: bool,
     bearer_of: Option<CardId>,
+}
+
+impl Default for CardQuery {
+    fn default() -> Self {
+        Self {
+            id: Arc::new(OnceLock::new()),
+            carried_by: None,
+            randomise: None,
+            count: None,
+            ids: None,
+            card_names: None,
+            card_name_contains: None,
+            not_named: None,
+            controller_id: None,
+            same_controller_as: None,
+            different_controller_than: None,
+            not_in_ids: None,
+            without_abilities: None,
+            with_abilities: None,
+            without_statuses: None,
+            with_statuses: None,
+            card_types: None,
+            minion_types: None,
+            artifact_types: None,
+            rarity: None,
+            mana_cost: None,
+            min_power: None,
+            site_types: None,
+            site_is_water: None,
+            with_affinity: None,
+            with_affinity_in: None,
+            in_zones: None,
+            regions: None,
+            within_range_of: None,
+            can_be_attacked_by: None,
+            tapped: None,
+            oversized: None,
+            include_not_in_play: None,
+            can_be_targeted_by_player: None,
+            elements: None,
+            spatial_filters: Vec::new(),
+            prompt: None,
+            source_card_id: None,
+            allow_modifiers: true,
+            bearer_of: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -538,42 +586,58 @@ impl CardQuery {
             return Err(anyhow::anyhow!("resolve_one can only be used with count 1"));
         }
 
-        let mut card_ids = self.all(state);
+        let mut effective_query = self.clone();
+        let mut card_ids = effective_query.all(state);
         if card_ids.is_empty() {
             return Ok(None);
         }
 
-        // Apply must-target restrictions from cards in play (e.g. Blasted Oak)
-        for card in state.cards.values().filter(|c| c.get_zone().is_in_play()) {
-            if let Some(restricted) = card.restrict_card_query_targets(state, self, &card_ids) {
-                card_ids = restricted;
-                break;
-            }
-        }
-        if card_ids.is_empty() {
-            return Ok(None);
-        }
-
-        let output = if let Some(true) = self.randomise {
-            for card in state.cards.values() {
-                if card.get_controller_id(state) != *player_id {
-                    continue;
+        if self.allow_modifiers {
+            for effect in state.active_continuous_effects() {
+                if let crate::state::OngoingEffect::RestrictCardTargets { restriction, .. } =
+                    effect
+                    && let Some(restricted) =
+                        restriction(state, player_id, &effective_query, &card_ids)
+                {
+                    card_ids = restricted;
+                    break;
                 }
+            }
 
-                if let Some(query) = card.card_query_override(state, self).await? {
-                    let output = Box::pin(query.pick(player_id, state, use_preview)).await?;
+            if card_ids.is_empty() {
+                return Ok(None);
+            }
+
+            effective_query = effective_query.with_candidate_ids(card_ids.clone());
+
+            for effect in state.active_continuous_effects() {
+                if let crate::state::OngoingEffect::ModifyCardQuery { modifier, .. } = effect
+                    && let Some(query) = modifier(state, player_id, &effective_query)?
+                {
+                    let output = Box::pin(
+                        query
+                            .without_modifiers()
+                            .pick(player_id, state, use_preview),
+                    )
+                    .await?;
                     if let Some(output) = output {
                         QueryCache::store_card_result(state.game_id, query_id, output);
                     }
                     return Ok(output);
                 }
             }
+        }
 
+        if card_ids.is_empty() {
+            return Ok(None);
+        }
+
+        let output = if let Some(true) = effective_query.randomise {
             *card_ids
                 .choose(&mut rand::rng())
                 .expect("a card to be picked")
         } else {
-            let prompt = self
+            let prompt = effective_query
                 .prompt
                 .clone()
                 .unwrap_or_else(|| "Pick a card".to_string());
@@ -585,11 +649,18 @@ impl CardQuery {
                     false,
                     state,
                     &prompt,
-                    self.source_card_id,
+                    effective_query.source_card_id,
                 )
                 .await?
             } else {
-                pick_card_source(player_id, &card_ids, state, &prompt, self.source_card_id).await?
+                pick_card_source(
+                    player_id,
+                    &card_ids,
+                    state,
+                    &prompt,
+                    effective_query.source_card_id,
+                )
+                .await?
             }
         };
 
@@ -710,6 +781,24 @@ impl CardQuery {
     pub fn with_source_card(self, card_id: CardId) -> Self {
         Self {
             source_card_id: Some(card_id),
+            ..self
+        }
+    }
+
+    pub fn source_card_id(&self) -> Option<CardId> {
+        self.source_card_id
+    }
+
+    fn with_candidate_ids(self, ids: Vec<CardId>) -> Self {
+        Self {
+            ids: Some(ids),
+            ..self
+        }
+    }
+
+    fn without_modifiers(self) -> Self {
+        Self {
+            allow_modifiers: false,
             ..self
         }
     }

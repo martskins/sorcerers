@@ -20,7 +20,7 @@ pub struct ZoneQuery {
     pub(super) zone: Option<Zone>,
     /// Explicit list of zones to pick from (or randomly select from when `random` is true).
     pub(super) options: Option<Vec<Zone>>,
-    /// When true, a zone is chosen randomly from `options` (subject to `zone_query_override`).
+    /// When true, a zone is chosen randomly from `options`.
     pub(super) random: bool,
     /// When true, the option pool is restricted to in-play site zones.
     pub(super) sites_only: bool,
@@ -30,6 +30,7 @@ pub struct ZoneQuery {
     pub(super) controlled_by: Option<PlayerId>,
     pub(super) prompt: Option<String>,
     pub(super) source_card_id: Option<CardId>,
+    pub(super) allow_modifiers: bool,
     pub(super) spatial_filters: Vec<ZoneSpatialFilter>,
 }
 
@@ -45,6 +46,7 @@ impl Default for ZoneQuery {
             controlled_by: None,
             prompt: None,
             source_card_id: None,
+            allow_modifiers: true,
             spatial_filters: vec![],
         }
     }
@@ -120,7 +122,7 @@ impl ZoneQuery {
         }
     }
 
-    /// A zone is chosen randomly from `options` (cards may override via `zone_query_override`).
+    /// A zone is chosen randomly from `options`.
     pub fn random(options: Vec<Zone>) -> Self {
         Self {
             options: Some(options),
@@ -148,6 +150,17 @@ impl ZoneQuery {
     pub fn with_source_card(self, card_id: CardId) -> Self {
         Self {
             source_card_id: Some(card_id),
+            ..self
+        }
+    }
+
+    pub fn source_card_id(&self) -> Option<CardId> {
+        self.source_card_id
+    }
+
+    pub fn without_modifiers(self) -> Self {
+        Self {
+            allow_modifiers: false,
             ..self
         }
     }
