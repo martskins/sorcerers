@@ -83,7 +83,7 @@ impl Card for BridgeTroll {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             DRAIN_MANA_HOOK => {
-                let Effect::Attack { attacker_id, .. } = effect else {
+                let Effect::DeclareAttack { attacker_id, .. } = effect else {
                     return Ok(vec![]);
                 };
 

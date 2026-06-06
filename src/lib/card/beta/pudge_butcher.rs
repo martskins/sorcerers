@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::{effect::FightContext, prelude::*};
 
 #[derive(Debug, Clone)]
 struct ShootProjectile;
@@ -81,11 +81,12 @@ impl ActivatedAbility for ShootProjectile {
             )
             .await?;
             if options[picked_option] == BaseOption::Yes {
-                effects.push(Effect::Attack {
+                effects.push(Effect::Fight {
                     attacker_id: *card_id,
                     defender_id: target,
                     defending_ids: vec![],
                     damage_assignment: None,
+                    context: FightContext::FightOnly,
                 });
             }
         }

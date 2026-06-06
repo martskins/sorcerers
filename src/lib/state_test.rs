@@ -7,7 +7,7 @@ use crate::{
         SneakThief, UnitBase, from_name_and_zone,
     },
     deck::Deck,
-    effect::Effect,
+    effect::{Effect, FightContext},
     game::{NO_CONTROLLER, Thresholds},
     networking::message::{ClientMessage, ServerMessage},
     query::{CardQuery, EffectQuery, LocationQuery, QueryCache, ZoneQuery},
@@ -629,11 +629,12 @@ async fn test_free_city_defender_declaration_resolves_before_move_and_attack() {
     .await;
 
     state.queue(vec![
-        Effect::Attack {
+        Effect::Fight {
             attacker_id,
             defender_id: free_city_id,
             defending_ids: vec![],
             damage_assignment: None,
+            context: FightContext::Attack,
         },
         Effect::MoveCard {
             player_id,

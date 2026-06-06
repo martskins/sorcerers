@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::{effect::FightContext, prelude::*};
 
 #[derive(Debug, Clone)]
 pub struct GrappleShot {
@@ -120,11 +120,12 @@ impl Magic for GrappleShot {
             .await
             .unwrap_or(false);
             if strike {
-                effects.push(Effect::Attack {
+                effects.push(Effect::Fight {
                     attacker_id: ally_id,
                     defender_id: target_id,
                     defending_ids: vec![],
                     damage_assignment: None,
+                    context: FightContext::FightOnly,
                 });
             }
             Ok(effects)

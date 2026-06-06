@@ -128,11 +128,9 @@ impl Card for TvinnaxBerserker {
                     "Tvinnax Berserker: Choose a unit to attack",
                 )
                 .await?;
-                Ok(vec![Effect::Attack {
+                Ok(vec![Effect::DeclareAttack {
                     attacker_id: *self.get_id(),
-                    defender_id: picked_card_id,
-                    defending_ids: vec![],
-                    damage_assignment: None,
+                    target_id: picked_card_id,
                 }])
             }
             _ => Ok(vec![]),

@@ -94,11 +94,10 @@ impl Card for WitherwingHero {
                             move |state: &State, _card_id: &CardId, effect: &Effect| {
                                 Box::pin(async move {
                                     let (attacker_id, defender_id) = match effect {
-                                        Effect::Attack {
+                                        Effect::DeclareAttack {
                                             attacker_id,
-                                            defender_id,
-                                            ..
-                                        } => (*attacker_id, *defender_id),
+                                            target_id,
+                                        } => (*attacker_id, *target_id),
                                         _ => return Ok(vec![]),
                                     };
                                     let self_card = state.get_card(&self_id);

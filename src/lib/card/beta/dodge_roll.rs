@@ -81,16 +81,15 @@ impl Card for DodgeRoll {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook_id {
             EVADE_ATTACK_HOOK => {
-                let Effect::Attack {
-                    defender_id,
+                let Effect::DeclareAttack {
+                    target_id,
                     attacker_id,
-                    ..
                 } = effect
                 else {
                     return Ok(vec![]);
                 };
 
-                let defender = state.get_card(defender_id);
+                let defender = state.get_card(target_id);
                 let defender_controller = defender.get_controller_id(state);
                 let prompt = format!(
                     "Use Dodge Roll to evade the attack on {}?",
@@ -121,7 +120,7 @@ impl Card for DodgeRoll {
                 let attacker_controller = attacker.get_controller_id(state);
                 Ok(vec![
                     Effect::SetCardZone {
-                        card_id: *defender_id,
+                        card_id: *target_id,
                         zone: picked_site,
                     },
                     Effect::MoveCard {

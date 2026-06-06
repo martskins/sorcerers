@@ -82,11 +82,11 @@ impl Card for CaptainBaldassare {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             PLUNDER_SPELLS_HOOK => {
-                let Effect::Attack { defender_id, .. } = effect else {
+                let Effect::DeclareAttack { target_id, .. } = effect else {
                     return Ok(vec![]);
                 };
 
-                let defender = state.get_card(defender_id);
+                let defender = state.get_card(target_id);
                 let defending_player = defender.get_controller_id(state);
 
                 let deck = state

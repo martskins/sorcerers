@@ -1423,130 +1423,12 @@ impl ActivatedAbility for UnitAction {
             }
             UnitAction::Attack => {
                 let attacker = state.get_card(card_id);
-                let attacker_has_stealth = attacker.has_ability(state, &Ability::Stealth);
                 let cards = attacker.get_valid_attack_targets(state, false);
                 let prompt = "Pick a unit to attack";
                 let picked_card_id = pick_card(player_id, &cards, state, prompt).await?;
-                let attacked = state.get_card(&picked_card_id);
-
-                let opponent = state
-                    .players
-                    .iter()
-                    .find(|p| &p.id != player_id)
-                    .ok_or(anyhow::anyhow!("opponent not found"))?;
-                // Stealth attackers cannot be defended against (codex).
-                let possible_defenders = if attacker_has_stealth {
-                    vec![]
-                } else {
-                    state.get_defenders_for_attack(card_id, &picked_card_id)
-                };
-                if !possible_defenders.is_empty() {
-                    wait_for_opponent(
-                        player_id,
-                        state,
-                        "Wait for opponent to choose whether to defend".to_string(),
-                    )
-                    .await?;
-
-                    let defend = yes_or_no(
-                        &opponent.id,
-                        state,
-                        format!(
-                            "{} attacks {}, defend?",
-                            attacker.get_name(),
-                            attacked.get_name()
-                        ),
-                    )
-                    .await?;
-                    resume(player_id, state).await?;
-
-                    if defend {
-                        let defenders =
-                            pick_cards(&opponent.id, &possible_defenders, state, "Pick defenders")
-                                .await?;
-                        let defend_declared_effects: Vec<Effect> = defenders
-                            .iter()
-                            .map(|defender_id| Effect::DeclareDefender {
-                                attacker_id: *card_id,
-                                defender_id: *defender_id,
-                            })
-                            .collect();
-                        match defenders.len() {
-                            // If no defenders are picked, proceed with the original attack.
-                            0 => {
-                                return Ok(vec![Effect::Attack {
-                                    attacker_id: *card_id,
-                                    defender_id: picked_card_id,
-                                    defending_ids: vec![],
-                                    damage_assignment: None,
-                                }]);
-                            }
-                            // If a single defender is picked, change the attack to target the
-                            // defender.
-                            1 => {
-                                let defender_id = defenders[0];
-                                let defender = state.get_card(&defender_id);
-                                let mut effects = vec![
-                                    // Return the attack effect first so that MoveCard is applied
-                                    // before attack and the attack happens on the correct zone.
-                                    Effect::Attack {
-                                        attacker_id: *card_id,
-                                        defender_id,
-                                        defending_ids: vec![],
-                                        damage_assignment: None,
-                                    },
-                                    Effect::MoveCard {
-                                        player_id: opponent.id,
-                                        card_id: defender_id,
-                                        from: defender
-                                            .get_zone()
-                                            .clone()
-                                            .into_location()
-                                            .expect("defender must be in a location"),
-                                        to: LocationQuery::from_zone(attacked.get_zone().clone()),
-                                        tap: true,
-                                        through_path: None,
-                                    },
-                                ];
-                                effects.extend(defend_declared_effects);
-                                return Ok(effects);
-                            }
-                            _ => {
-                                wait_for_opponent(
-                                    &opponent.id,
-                                    state,
-                                    "Wait for opponent to distribute damage".to_string(),
-                                )
-                                .await?;
-
-                                let damage_distribution = distribute_damage(
-                                    player_id,
-                                    card_id,
-                                    attacker.get_power(state)?.unwrap_or_default(),
-                                    &defenders,
-                                    state,
-                                )
-                                .await?;
-
-                                resume(&opponent.id, state).await?;
-                                let mut effects = vec![Effect::Attack {
-                                    attacker_id: *card_id,
-                                    defender_id: picked_card_id,
-                                    defending_ids: defenders,
-                                    damage_assignment: Some(damage_distribution),
-                                }];
-                                effects.extend(defend_declared_effects);
-                                return Ok(effects);
-                            }
-                        }
-                    }
-                }
-
-                Ok(vec![Effect::Attack {
+                Ok(vec![Effect::DeclareAttack {
                     attacker_id: *card_id,
-                    defender_id: picked_card_id,
-                    defending_ids: vec![],
-                    damage_assignment: None,
+                    target_id: picked_card_id,
                 }])
             }
             UnitAction::Move => {
@@ -1652,11 +1534,12 @@ impl ActivatedAbility for UnitAction {
                 }
 
                 if let Some(damage_assignment) = intercept_damage_assignment {
-                    effects.push(Effect::Attack {
+                    effects.push(Effect::Fight {
                         attacker_id: *card_id,
                         defender_id: interceptors[0],
                         defending_ids: interceptors,
                         damage_assignment: Some(damage_assignment),
+                        context: crate::effect::FightContext::FightOnly,
                     });
                 }
 

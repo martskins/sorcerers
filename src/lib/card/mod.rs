@@ -2539,6 +2539,16 @@ impl Damage {
         }
     }
 
+    pub fn fight(amount: u16, is_ranged: bool) -> Self {
+        Self {
+            amount,
+            is_attack: false,
+            is_ranged,
+            is_lethal: false,
+            is_strike: true,
+        }
+    }
+
     pub fn lethal(amount: u16) -> Self {
         Self {
             amount,

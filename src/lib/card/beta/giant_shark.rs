@@ -1,4 +1,4 @@
-use crate::{prelude::*, query::entered_sites};
+use crate::{effect::FightContext, prelude::*, query::entered_sites};
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]
@@ -94,11 +94,12 @@ impl Card for GiantShark {
                     let shark = state.get_card(&shark_id);
                     let shark_zone = shark.get_zone().clone();
                     let target_zone = state.get_card(card_id).get_zone().clone();
-                    let mut effects = vec![Effect::Attack {
+                    let mut effects = vec![Effect::Fight {
                         attacker_id: shark_id,
                         defender_id: *card_id,
                         defending_ids: vec![],
                         damage_assignment: None,
+                        context: FightContext::FightOnly,
                     }];
 
                     if shark_zone != target_zone {

@@ -11,7 +11,7 @@ use crate::{
     deck::Deck,
     effect::{
         DeferredEffect, DrawKind, Effect, EffectCallback, EffectReplacementCallback,
-        TemporaryEffect, TokenType,
+        FightContext, TemporaryEffect, TokenType,
     },
     game::{ActivatedAbility, Direction, UnitAction},
     networking::message::{ClientMessage, ServerMessage},
@@ -832,11 +832,9 @@ async fn test_dodge_roll_replacement_triggers_once_for_multiple_copies() {
         }
     });
 
-    state.queue_one(Effect::Attack {
+    state.queue_one(Effect::DeclareAttack {
         attacker_id,
-        defender_id,
-        defending_ids: vec![],
-        damage_assignment: None,
+        target_id: defender_id,
     });
     drain_effects(&mut state).await;
 
@@ -1013,11 +1011,12 @@ async fn test_disabled_unit_does_not_counterstrike_when_attacked() {
     defender.add_status(CardStatus::Disabled);
     state.cards.insert(defender_id, Box::new(defender));
 
-    state.queue_one(Effect::Attack {
+    state.queue_one(Effect::Fight {
         attacker_id,
         defender_id,
         defending_ids: vec![],
         damage_assignment: None,
+        context: FightContext::Attack,
     });
     drain_effects(&mut state).await;
 
@@ -1049,11 +1048,12 @@ async fn test_multiple_defenders_split_attack_damage() {
     defender_two.set_zone(Zone::Location(Location::Square(3, Region::Surface)));
     state.cards.insert(defender_two_id, Box::new(defender_two));
 
-    state.queue_one(Effect::Attack {
+    state.queue_one(Effect::Fight {
         attacker_id,
         defender_id: defender_one_id,
         defending_ids: vec![defender_one_id, defender_two_id],
         damage_assignment: Some(HashMap::from([(defender_one_id, 1), (defender_two_id, 2)])),
+        context: FightContext::Attack,
     });
     drain_effects(&mut state).await;
 
@@ -1067,7 +1067,7 @@ async fn test_multiple_defenders_split_attack_damage() {
 }
 
 #[tokio::test]
-async fn test_attack_action_moves_single_defender_to_attacked_location() {
+async fn test_attack_action_declares_attack_only() {
     let attacker_zone = Zone::Location(Location::Square(1, Region::Surface));
     let attack_location = Zone::Location(Location::Square(2, Region::Surface));
     let (mut state, server_rx, client_tx) =
@@ -1141,18 +1141,14 @@ async fn test_attack_action_moves_single_defender_to_attacked_location() {
         .expect("attack action should resolve prompts");
 
     assert!(
-        effects.iter().any(|effect| {
-            matches!(
-                effect,
-                Effect::MoveCard {
-                    card_id,
-                    to,
-                    ..
-                } if *card_id == defender_id
-                    && to.options(&state).contains(&attack_location.clone().into_location().unwrap())
-            )
-        }),
-        "the chosen defender should move to the attacked location, not the attacker's starting location"
+        matches!(
+            effects.as_slice(),
+            [Effect::DeclareAttack {
+                attacker_id: actual_attacker_id,
+                target_id,
+            }] if *actual_attacker_id == attacker_id && *target_id == attacked_id
+        ),
+        "attack selection should only declare the attack; defender selection happens after attack triggers"
     );
 }
 
@@ -1191,11 +1187,12 @@ async fn test_multiple_defenders_fight_at_attacked_location() {
     defender_two.set_zone(defender_two_start);
     state.cards.insert(defender_two_id, Box::new(defender_two));
 
-    state.queue_one(Effect::Attack {
+    state.queue_one(Effect::Fight {
         attacker_id,
         defender_id: attacked_id,
         defending_ids: vec![defender_one_id, defender_two_id],
         damage_assignment: Some(HashMap::from([(defender_one_id, 1), (defender_two_id, 2)])),
+        context: FightContext::Attack,
     });
     drain_effects(&mut state).await;
 
@@ -1238,7 +1235,7 @@ async fn test_multiple_defender_first_strike_can_stop_split_damage() {
         .cards
         .insert(other_defender_id, Box::new(other_defender));
 
-    state.queue_one(Effect::Attack {
+    state.queue_one(Effect::Fight {
         attacker_id,
         defender_id: other_defender_id,
         defending_ids: vec![first_striker_id, other_defender_id],
@@ -1246,6 +1243,7 @@ async fn test_multiple_defender_first_strike_can_stop_split_damage() {
             (first_striker_id, 0),
             (other_defender_id, 1),
         ])),
+        context: FightContext::Attack,
     });
     drain_effects(&mut state).await;
 
@@ -1348,11 +1346,9 @@ async fn test_silenced_bridge_troll_hook_does_not_trigger() {
 
     *state.get_player_mana_mut(&opponent_id) = 5;
 
-    state.queue_one(Effect::Attack {
+    state.queue_one(Effect::DeclareAttack {
         attacker_id,
-        defender_id: bridge_troll_id,
-        defending_ids: vec![],
-        damage_assignment: None,
+        target_id: bridge_troll_id,
     });
     drain_effects(&mut state).await;
 
@@ -2942,11 +2938,12 @@ async fn test_animated_intersection_aura_gets_unit_actions_and_stays_on_intersec
         "animated intersection auras should be able to attack units in occupied squares"
     );
 
-    state.queue_one(Effect::Attack {
+    state.queue_one(Effect::Fight {
         attacker_id: aura_id,
         defender_id: target_id,
         defending_ids: vec![],
         damage_assignment: None,
+        context: FightContext::Attack,
     });
     drain_effects(&mut state).await;
 

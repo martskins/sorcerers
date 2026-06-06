@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::{effect::FightContext, prelude::*};
 
 #[derive(Debug, Clone)]
 struct KarkemishChimeraAttack;
@@ -64,11 +64,12 @@ impl ActivatedAbility for KarkemishChimeraAttack {
             return Ok(vec![]);
         }
 
-        Ok(vec![Effect::Attack {
+        Ok(vec![Effect::Fight {
             attacker_id: *card_id,
             defender_id: picked[0],
             defending_ids: picked,
             damage_assignment: None,
+            context: FightContext::Attack,
         }])
     }
 }

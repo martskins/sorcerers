@@ -122,12 +122,11 @@ impl Card for MordricDruids {
                                     let Some(defender_id) =
                                         state.effect_log().iter().rev().find_map(|logged| {
                                             match logged.effect {
-                                                Effect::Attack {
+                                                Effect::DeclareAttack {
                                                     attacker_id: logged_attacker,
-                                                    defender_id,
-                                                    ..
+                                                    target_id,
                                                 } if logged_attacker == *attacker_id => {
-                                                    Some(defender_id)
+                                                    Some(target_id)
                                                 }
                                                 _ => None,
                                             }

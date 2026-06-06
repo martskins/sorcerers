@@ -5,7 +5,8 @@ use crate::{
         Rubble, UnitBase,
     },
     game::{
-        BaseAction, CardId, Direction, PlayerAction, PlayerId, SoundEffect, pick_card, pick_option,
+        BaseAction, CardId, Direction, PlayerAction, PlayerId, SoundEffect, distribute_damage,
+        pick_card, pick_cards, pick_option, resume, wait_for_opponent, yes_or_no,
     },
     networking::message::ServerMessage,
     query::{CardQuery, EffectQuery, LocationQuery, QueryCache, ZoneQuery},
@@ -149,6 +150,21 @@ pub enum DrawKind {
 }
 
 #[derive(Debug, Clone)]
+pub enum FightContext {
+    Attack,
+    FightOnly,
+}
+
+impl FightContext {
+    fn damage(&self, amount: u16) -> Damage {
+        match self {
+            FightContext::Attack => Damage::strike(amount, false),
+            FightContext::FightOnly => Damage::fight(amount, false),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum Effect {
     Noop,
     PlayerLost {
@@ -289,11 +305,27 @@ pub enum Effect {
         striker_id: CardId,
         target_id: CardId,
     },
-    Attack {
+    DeclareAttack {
+        attacker_id: CardId,
+        target_id: CardId,
+    },
+    OpenDefendWindow {
+        attacker_id: CardId,
+        target_id: CardId,
+        can_be_defended: bool,
+    },
+    ResolveAttack {
+        attacker_id: CardId,
+        target_id: CardId,
+        defending_ids: Vec<CardId>,
+        damage_assignment: Option<HashMap<CardId, u16>>,
+    },
+    Fight {
         attacker_id: CardId,
         defender_id: CardId,
         defending_ids: Vec<CardId>,
         damage_assignment: Option<HashMap<CardId, u16>>,
+        context: FightContext,
     },
     DeclareDefender {
         attacker_id: CardId,
@@ -450,7 +482,10 @@ impl Effect {
             Effect::FinishStartTurn { player_id, .. } => Some(player_id),
             Effect::AdjustMana { player_id, .. } => Some(player_id),
             Effect::Strike { striker_id, .. } => Some(striker_id),
-            Effect::Attack { attacker_id, .. } => Some(attacker_id),
+            Effect::DeclareAttack { attacker_id, .. } => Some(attacker_id),
+            Effect::OpenDefendWindow { attacker_id, .. } => Some(attacker_id),
+            Effect::ResolveAttack { attacker_id, .. } => Some(attacker_id),
+            Effect::Fight { attacker_id, .. } => Some(attacker_id),
             Effect::DeclareDefender { defender_id, .. } => Some(defender_id),
             Effect::RemoveCardFromGame { card_id } => Some(card_id),
             Effect::TakeDamage { card_id, .. } => Some(card_id),
@@ -713,13 +748,12 @@ impl Effect {
                 state.get_card(target_id).get_name(),
                 state.get_card(striker_id).get_name(),
             )),
-            Effect::Attack {
+            Effect::DeclareAttack {
                 attacker_id,
-                defender_id,
-                ..
+                target_id,
             } => {
                 let attacker = state.get_card(attacker_id);
-                let defender = state.get_card(defender_id);
+                let defender = state.get_card(target_id);
                 let player = player_name(&attacker.get_controller_id(state), state);
                 Some(format!(
                     "{} attacks {} with {}",
@@ -727,6 +761,27 @@ impl Effect {
                     defender.get_name(),
                     attacker.get_name()
                 ))
+            }
+            Effect::OpenDefendWindow { .. } => None,
+            Effect::ResolveAttack { .. } => None,
+            Effect::Fight {
+                attacker_id,
+                defender_id,
+                context,
+                ..
+            } => {
+                if matches!(context, FightContext::Attack) {
+                    None
+                } else {
+                    let attacker = state.get_card(attacker_id);
+                    let defender = state.get_card(defender_id);
+                    Some(format!(
+                        "{} fights {} with {}",
+                        player_name(&attacker.get_controller_id(state), state),
+                        defender.get_name(),
+                        attacker.get_name()
+                    ))
+                }
             }
             Effect::DeclareDefender { .. } => None,
             Effect::TakeDamage {
@@ -1723,17 +1778,192 @@ impl Effect {
                     ),
                 });
             }
-            Effect::Attack {
+            Effect::DeclareAttack {
+                attacker_id,
+                target_id,
+            } => {
+                if !state.cards.contains_key(attacker_id) || !state.cards.contains_key(target_id) {
+                    return Ok(());
+                }
+
+                let attacker = state.get_card(attacker_id);
+                if !attacker
+                    .get_valid_attack_targets(state, false)
+                    .contains(target_id)
+                {
+                    return Ok(());
+                }
+
+                let can_be_defended = !attacker.has_ability(state, &Ability::Stealth);
+
+                // Declaring an attack is an interaction: the attacker loses Stealth.
+                state
+                    .get_card_mut(attacker_id)
+                    .remove_modifier(&Ability::Stealth);
+
+                state.queue_one(Effect::OpenDefendWindow {
+                    attacker_id: *attacker_id,
+                    target_id: *target_id,
+                    can_be_defended,
+                });
+            }
+            Effect::OpenDefendWindow {
+                attacker_id,
+                target_id,
+                can_be_defended,
+            } => {
+                if !state.cards.contains_key(attacker_id) || !state.cards.contains_key(target_id) {
+                    return Ok(());
+                }
+
+                let attacker = state.get_card(attacker_id);
+                if !attacker
+                    .get_valid_attack_targets(state, false)
+                    .contains(target_id)
+                {
+                    return Ok(());
+                }
+
+                let target = state.get_card(target_id);
+                let attacking_player = attacker.get_controller_id(state);
+                let defending_player = target.get_controller_id(state);
+                let possible_defenders = if *can_be_defended && attacking_player != defending_player
+                {
+                    state.get_defenders_for_attack(attacker_id, target_id)
+                } else {
+                    vec![]
+                };
+
+                if possible_defenders.is_empty() {
+                    state.queue_one(Effect::ResolveAttack {
+                        attacker_id: *attacker_id,
+                        target_id: *target_id,
+                        defending_ids: vec![],
+                        damage_assignment: None,
+                    });
+                    return Ok(());
+                }
+
+                wait_for_opponent(
+                    &attacking_player,
+                    state,
+                    "Wait for opponent to choose whether to defend".to_string(),
+                )
+                .await?;
+
+                let defend = yes_or_no(
+                    &defending_player,
+                    state,
+                    format!(
+                        "{} attacks {}, defend?",
+                        attacker.get_name(),
+                        target.get_name()
+                    ),
+                )
+                .await?;
+                resume(&attacking_player, state).await?;
+
+                if !defend {
+                    state.queue_one(Effect::ResolveAttack {
+                        attacker_id: *attacker_id,
+                        target_id: *target_id,
+                        defending_ids: vec![],
+                        damage_assignment: None,
+                    });
+                    return Ok(());
+                }
+
+                let picked_defenders =
+                    pick_cards(&defending_player, &possible_defenders, state, "Pick defenders")
+                        .await?;
+                let current_legal_defenders = state.get_defenders_for_attack(attacker_id, target_id);
+                let defenders = picked_defenders
+                    .into_iter()
+                    .filter(|id| possible_defenders.contains(id))
+                    .filter(|id| current_legal_defenders.contains(id))
+                    .collect::<Vec<_>>();
+
+                let damage_assignment = if defenders.len() > 1 {
+                    wait_for_opponent(
+                        &defending_player,
+                        state,
+                        "Wait for opponent to distribute damage".to_string(),
+                    )
+                    .await?;
+
+                    let attacker_power = attacker.get_power(state)?.unwrap_or_default();
+                    let damage_distribution = distribute_damage(
+                        &attacking_player,
+                        attacker_id,
+                        attacker_power,
+                        &defenders,
+                        state,
+                    )
+                    .await?;
+
+                    resume(&defending_player, state).await?;
+                    Some(damage_distribution)
+                } else {
+                    None
+                };
+
+                let mut effects = vec![Effect::ResolveAttack {
+                    attacker_id: *attacker_id,
+                    target_id: *target_id,
+                    defending_ids: defenders.clone(),
+                    damage_assignment,
+                }];
+                effects.extend(defenders.iter().map(|defender_id| Effect::DeclareDefender {
+                    attacker_id: *attacker_id,
+                    defender_id: *defender_id,
+                }));
+                state.queue(effects);
+            }
+            Effect::ResolveAttack {
+                attacker_id,
+                target_id,
+                defending_ids,
+                damage_assignment,
+            } => {
+                if !state.cards.contains_key(attacker_id) || !state.cards.contains_key(target_id) {
+                    return Ok(());
+                }
+
+                let attacker = state.get_card(attacker_id);
+                if !attacker
+                    .get_valid_attack_targets(state, false)
+                    .contains(target_id)
+                {
+                    return Ok(());
+                }
+
+                let legal_defenders = state.get_defenders_for_attack(attacker_id, target_id);
+                let valid_defenders = defending_ids
+                    .iter()
+                    .copied()
+                    .filter(|id| state.cards.contains_key(id))
+                    .filter(|id| legal_defenders.contains(id))
+                    .collect::<Vec<_>>();
+
+                state.queue_one(Effect::Fight {
+                    attacker_id: *attacker_id,
+                    defender_id: *target_id,
+                    defending_ids: valid_defenders,
+                    damage_assignment: damage_assignment.clone(),
+                    context: FightContext::Attack,
+                });
+            }
+            Effect::Fight {
                 attacker_id,
                 defender_id,
                 defending_ids,
                 damage_assignment,
-                ..
+                context,
             } => {
-                // Attacking is an interaction: the attacker loses Stealth.
-                state
-                    .get_card_mut(attacker_id)
-                    .remove_modifier(&Ability::Stealth);
+                if !state.cards.contains_key(attacker_id) || !state.cards.contains_key(defender_id)
+                {
+                    return Ok(());
+                }
 
                 let attacker = state.get_card(attacker_id);
                 let defender = state.get_card(defender_id);
@@ -1823,7 +2053,7 @@ impl Effect {
                                 first_strike_effects.push(Effect::TakeDamage {
                                     card_id: *defending_id,
                                     from: *attacker_id,
-                                    damage: Damage::strike(damage, false),
+                                    damage: context.damage(damage),
                                 });
                             }
                         }
@@ -1837,7 +2067,7 @@ impl Effect {
                                 first_strike_effects.push(Effect::TakeDamage {
                                     card_id: *attacker_id,
                                     from: *defending_id,
-                                    damage: Damage::strike(defender_power, false),
+                                    damage: context.damage(defender_power),
                                 });
                             }
                         }
@@ -1865,7 +2095,7 @@ impl Effect {
                                 effects.push(Effect::TakeDamage {
                                     card_id: *defending_id,
                                     from: *attacker_id,
-                                    damage: Damage::strike(damage, false),
+                                    damage: context.damage(damage),
                                 });
                             }
                         }
@@ -1889,7 +2119,7 @@ impl Effect {
                                 effects.push(Effect::TakeDamage {
                                     card_id: *attacker_id,
                                     from: *defending_id,
-                                    damage: Damage::strike(defender_power, false),
+                                    damage: context.damage(defender_power),
                                 });
                             }
                         }
@@ -1899,7 +2129,7 @@ impl Effect {
                             effects.push(Effect::TakeDamage {
                                 card_id: *defending_id,
                                 from: *attacker_id,
-                                damage: Damage::strike(damage, false),
+                                damage: context.damage(damage),
                             });
                         }
 
@@ -1912,7 +2142,7 @@ impl Effect {
                                 effects.push(Effect::TakeDamage {
                                     card_id: *attacker_id,
                                     from: *defending_id,
-                                    damage: Damage::strike(defender_power, false),
+                                    damage: context.damage(defender_power),
                                 });
                             }
                         }
@@ -1950,7 +2180,7 @@ impl Effect {
                         sim.queue_one(Effect::TakeDamage {
                             card_id: *first_defender.get_id(),
                             from: *first_attacker.get_id(),
-                            damage: Damage::strike(power, false),
+                            damage: context.damage(power),
                         });
                         Box::pin(sim.apply_effects_without_log()).await?;
                         sim.get_card(first_defender.get_id()).get_zone() != &Zone::Cemetery
@@ -1962,7 +2192,7 @@ impl Effect {
                     effects.push(Effect::TakeDamage {
                         card_id: *first_defender.get_id(),
                         from: *first_attacker.get_id(),
-                        damage: Damage::strike(power, false),
+                        damage: context.damage(power),
                     });
 
                     if first_defender_survived && first_defender.strikes_back(state)? {
@@ -1972,7 +2202,7 @@ impl Effect {
                         effects.push(Effect::TakeDamage {
                             card_id: *first_attacker.get_id(),
                             from: *first_defender.get_id(),
-                            damage: Damage::strike(power, false),
+                            damage: context.damage(power),
                         });
                     }
                 } else {
@@ -1983,7 +2213,7 @@ impl Effect {
                     effects.push(Effect::TakeDamage {
                         card_id: *defender_id,
                         from: *attacker_id,
-                        damage: Damage::strike(attacker_power, false),
+                        damage: context.damage(attacker_power),
                     });
 
                     if defender.strikes_back(state)? {
@@ -1993,7 +2223,7 @@ impl Effect {
                         effects.push(Effect::TakeDamage {
                             card_id: *attacker_id,
                             from: *defender_id,
-                            damage: Damage::strike(defender_power, false),
+                            damage: context.damage(defender_power),
                         });
                     }
                 }

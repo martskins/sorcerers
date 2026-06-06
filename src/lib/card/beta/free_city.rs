@@ -58,11 +58,9 @@ impl ActivatedAbility for FreeCityAttack {
         .await?;
 
         Ok(vec![
-            Effect::Attack {
+            Effect::DeclareAttack {
                 attacker_id: *card_id,
-                defender_id: target,
-                defending_ids: vec![],
-                damage_assignment: None,
+                target_id: target,
             },
             Effect::SetCardData {
                 card_id: *card_id,

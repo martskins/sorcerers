@@ -443,10 +443,9 @@ impl EffectQuery {
             }
             (
                 EffectQuery::Attack { attacker, defender },
-                Effect::Attack {
+                Effect::DeclareAttack {
                     attacker_id,
-                    defender_id,
-                    ..
+                    target_id,
                 },
             ) => {
                 if !attacker.matches(attacker_id, state) {
@@ -454,7 +453,7 @@ impl EffectQuery {
                 }
 
                 if let Some(defender) = defender
-                    && !defender.matches(defender_id, state)
+                    && !defender.matches(target_id, state)
                 {
                     return Ok(false);
                 }

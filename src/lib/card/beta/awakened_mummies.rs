@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::{effect::FightContext, prelude::*};
 
 const ENTER_ZONE_HOOK: HookId = 1;
 
@@ -115,9 +115,9 @@ impl Card for AwakenedMummies {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook_id {
             ENTER_ZONE_HOOK => {
-                let enemy_id = match effect {
+                let enemy_ids = match effect {
                     Effect::SummonCards { cards } => {
-                        let mut output = None;
+                        let mut output = vec![];
                         for (_, card_id, zone, location) in cards {
                             if zone != self.get_zone() {
                                 continue;
@@ -129,38 +129,37 @@ impl Card for AwakenedMummies {
                                 continue;
                             }
 
-                            output = Some(*card_id);
+                            output.push(card_id);
                         }
 
-                        match output {
-                            Some(card_id) => card_id,
-                            None => return Ok(vec![]),
-                        }
+                        output
                     }
-                    Effect::MoveCard { card_id, .. } => *card_id,
+                    Effect::MoveCard { card_id, .. } => vec![card_id],
                     _ => return Ok(vec![]),
                 };
+
                 let is_burrowed = self.get_region(state) == &Region::Underground;
                 if !is_burrowed {
                     return Ok(vec![]);
                 }
 
-                Ok(vec![
-                    Effect::SetCardRegion {
-                        card_id: *self.get_id(),
-                        destination: Region::Surface,
-                        tap: false,
-                    },
-                    // TODO: We need to separate attack into declare attackers, declare defenders
-                    // and fight. After that, this should be a fight, so that no defenders can be
-                    // declared here.
-                    Effect::Attack {
+                let mut effects = vec![Effect::SetCardRegion {
+                    card_id: *self.get_id(),
+                    destination: Region::Surface,
+                    tap: false,
+                }];
+
+                for enemy_id in enemy_ids {
+                    effects.push(Effect::Fight {
                         attacker_id: *self.get_id(),
-                        defender_id: enemy_id,
+                        defender_id: *enemy_id,
                         defending_ids: vec![],
                         damage_assignment: None,
-                    },
-                ])
+                        context: FightContext::FightOnly,
+                    })
+                }
+
+                Ok(effects)
             }
             _ => Ok(vec![]),
         }
@@ -172,3 +171,105 @@ static CONSTRUCTOR: (&'static str, CardConstructor) =
     (AwakenedMummies::NAME, |owner_id: PlayerId| {
         Box::new(AwakenedMummies::new(owner_id))
     });
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::card::FootSoldier;
+
+    #[tokio::test]
+    async fn moving_enemy_above_burrowed_mummies_queues_fight_only() {
+        let mut state = State::new_mock_state(vec![8]);
+        let player_id = state.players[0].id;
+        let opponent_id = state.players[1].id;
+        let underground = Zone::Location(Location::Square(8, Region::Underground));
+        let surface = Zone::Location(Location::Square(8, Region::Surface));
+
+        let mut mummies = AwakenedMummies::new(player_id);
+        let mummies_id = *mummies.get_id();
+        mummies.set_zone(underground.clone());
+        state.cards.insert(mummies_id, Box::new(mummies.clone()));
+
+        let mut enemy = FootSoldier::new(opponent_id);
+        let enemy_id = *enemy.get_id();
+        enemy.set_zone(surface.clone());
+        state.cards.insert(enemy_id, Box::new(enemy));
+
+        let effects = mummies
+            .resolve_hook(
+                ENTER_ZONE_HOOK,
+                &state,
+                &Effect::MoveCard {
+                    player_id: opponent_id,
+                    card_id: enemy_id,
+                    from: Location::Square(7, Region::Surface),
+                    to: LocationQuery::from_zone(surface),
+                    tap: true,
+                    through_path: None,
+                },
+            )
+            .await
+            .unwrap();
+
+        assert!(matches!(
+            effects.as_slice(),
+            [
+                Effect::SetCardRegion {
+                    card_id,
+                    destination: Region::Surface,
+                    ..
+                },
+                Effect::Fight {
+                    attacker_id,
+                    defender_id,
+                    defending_ids,
+                    damage_assignment: None,
+                    context: FightContext::FightOnly,
+                },
+            ] if *card_id == mummies_id
+                && *attacker_id == mummies_id
+                && *defender_id == enemy_id
+                && defending_ids.is_empty()
+        ));
+    }
+
+    #[tokio::test]
+    async fn fight_only_does_not_trigger_attack_hooks() {
+        let mut state = State::new_mock_state(vec![8]);
+        let player_id = state.players[0].id;
+        let opponent_id = state.players[1].id;
+        let zone = Zone::Location(Location::Square(8, Region::Surface));
+
+        let mut mummies = AwakenedMummies::new(player_id);
+        let mummies_id = *mummies.get_id();
+        mummies.set_zone(zone.clone());
+        state.cards.insert(mummies_id, Box::new(mummies));
+
+        let mut enemy = FootSoldier::new(opponent_id);
+        let enemy_id = *enemy.get_id();
+        enemy.set_zone(zone.clone());
+        state.cards.insert(enemy_id, Box::new(enemy));
+
+        let fight = Effect::Fight {
+            attacker_id: mummies_id,
+            defender_id: enemy_id,
+            defending_ids: vec![],
+            damage_assignment: None,
+            context: FightContext::FightOnly,
+        };
+        let attack_query = EffectQuery::Attack {
+            attacker: CardQuery::from_id(mummies_id),
+            defender: Some(CardQuery::from_id(enemy_id)),
+        };
+
+        assert!(!attack_query.matches(&fight, &state).await.unwrap());
+
+        assert!(matches!(
+            fight,
+            Effect::Fight {
+                context: FightContext::FightOnly,
+                ..
+            }
+        ));
+    }
+}

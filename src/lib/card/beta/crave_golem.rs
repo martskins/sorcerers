@@ -94,11 +94,9 @@ impl Card for CraveGolem {
             .await?;
         match target_id {
             Some(card_id) => {
-                return Ok(vec![Effect::Attack {
+                return Ok(vec![Effect::DeclareAttack {
                     attacker_id: *self.get_id(),
-                    defender_id: card_id,
-                    defending_ids: vec![],
-                    damage_assignment: None,
+                    target_id: card_id,
                 }]);
             }
             None => {
