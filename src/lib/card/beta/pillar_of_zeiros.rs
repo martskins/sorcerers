@@ -88,24 +88,24 @@ impl Card for PillarOfZeiros {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-        let controller_id = self.get_controller_id(state);
+                let controller_id = self.get_controller_id(state);
 
-        let dead_minions = CardQuery::new().minions().dead().all(state);
-        let count = dead_minions.len() as u32;
+                let dead_minions = CardQuery::new().minions().dead().all(state);
+                let count = dead_minions.len() as u32;
 
-        let mut effects: Vec<Effect> = dead_minions
-            .into_iter()
-            .map(|card_id| Effect::BanishCard { card_id })
-            .collect();
+                let mut effects: Vec<Effect> = dead_minions
+                    .into_iter()
+                    .map(|card_id| Effect::BanishCard { card_id })
+                    .collect();
 
-        for _ in 0..count {
-            effects.push(Effect::AdjustAvatarLife {
-                player_id: controller_id,
-                amount: 1,
-            });
-        }
+                for _ in 0..count {
+                    effects.push(Effect::AdjustAvatarLife {
+                        player_id: controller_id,
+                        amount: 1,
+                    });
+                }
 
-        Ok(effects)
+                Ok(effects)
             }
             _ => Ok(vec![]),
         }

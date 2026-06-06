@@ -71,6 +71,7 @@ impl Card for AccursedAlbatross {
             trigger: EffectQuery::UnitKilled {
                 unit: self.get_id().into(),
                 killer: None,
+                from_attack: None,
             },
             timing: HookTiming::After,
             source_zones: HookSourceZones::InPlay,

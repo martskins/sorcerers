@@ -1957,6 +1957,7 @@ impl Hook {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HookSourceZones {
     InPlay,
+    Cemetery,
     Any,
     Zones(Vec<Zone>),
     Zone(Zone),
@@ -1966,6 +1967,7 @@ impl HookSourceZones {
     pub fn matches(&self, zone: &Zone) -> bool {
         match self {
             HookSourceZones::InPlay => zone.is_in_play(),
+            HookSourceZones::Cemetery => *zone == Zone::Cemetery,
             HookSourceZones::Any => true,
             HookSourceZones::Zones(zones) => zones.contains(zone),
             HookSourceZones::Zone(z) => z == zone,
@@ -2509,6 +2511,16 @@ impl std::ops::Mul<u16> for Damage {
 }
 
 impl Damage {
+    pub fn fight(amount: u16) -> Self {
+        Self {
+            amount,
+            is_attack: true,
+            is_ranged: false,
+            is_lethal: false,
+            is_strike: true,
+        }
+    }
+
     pub fn basic(amount: u16) -> Self {
         Self {
             amount,
@@ -2533,16 +2545,6 @@ impl Damage {
         Self {
             amount,
             is_attack: true,
-            is_ranged,
-            is_lethal: false,
-            is_strike: true,
-        }
-    }
-
-    pub fn fight(amount: u16, is_ranged: bool) -> Self {
-        Self {
-            amount,
-            is_attack: false,
             is_ranged,
             is_lethal: false,
             is_strike: true,

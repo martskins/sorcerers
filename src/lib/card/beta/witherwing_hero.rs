@@ -1,8 +1,6 @@
-use std::{future::Future, pin::Pin, sync::Arc};
-
 use crate::prelude::*;
 
-const ON_SUMMON_HOOK: HookId = 1;
+const WEAKER_MINION_ATTACKED_HOOK: HookId = 1;
 
 #[derive(Debug, Clone)]
 pub struct WitherwingHero {
@@ -61,11 +59,20 @@ impl Card for WitherwingHero {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    async fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
+        let player_id = self.get_controller_id(state);
+        let power = self.get_power(state)?.unwrap_or_default();
         Ok(vec![Hook {
-            id: ON_SUMMON_HOOK,
-            trigger: EffectQuery::SummonCard {
-                card: self.get_id().into(),
+            id: WEAKER_MINION_ATTACKED_HOOK,
+            trigger: EffectQuery::Attack {
+                attacker: CardQuery::new().units(),
+                defender: Some(
+                    CardQuery::new()
+                        .minions()
+                        .controlled_by(&player_id)
+                        .in_zone_of_card(self.get_id())
+                        .with_min_power(power),
+                ),
             },
             timing: HookTiming::After,
             source_zones: HookSourceZones::InPlay,
@@ -75,79 +82,28 @@ impl Card for WitherwingHero {
     async fn resolve_hook(
         &self,
         hook_id: HookId,
-        _state: &State,
-        _effect: &Effect,
+        state: &State,
+        effect: &Effect,
     ) -> anyhow::Result<Vec<Effect>> {
         match hook_id {
-            ON_SUMMON_HOOK => {
-                let self_id = *self.get_id();
-                Ok(vec![Effect::AddDeferredEffect {
-                    effect: DeferredEffect {
-                        trigger_on_effect: EffectQuery::Attack {
-                            attacker: CardQuery::new(),
-                            defender: None,
-                        },
-                        expires_on_effect: Some(EffectQuery::BuryCard {
-                            card: CardQuery::from_id(self_id),
-                        }),
-                        on_effect: Arc::new(
-                            move |state: &State, _card_id: &CardId, effect: &Effect| {
-                                Box::pin(async move {
-                                    let (attacker_id, defender_id) = match effect {
-                                        Effect::DeclareAttack {
-                                            attacker_id,
-                                            target_id,
-                                        } => (*attacker_id, *target_id),
-                                        _ => return Ok(vec![]),
-                                    };
-                                    let self_card = state.get_card(&self_id);
-                                    if !self_card.get_zone().is_in_play() {
-                                        return Ok(vec![]);
-                                    }
-                                    let hero_controller = self_card.get_controller_id(state);
-                                    let hero_zone = self_card.get_zone().clone();
-                                    let hero_power =
-                                        self_card.get_unit_base().map(|ub| ub.power).unwrap_or(0);
-                                    let defender = state.get_card(&defender_id);
-                                    let defender_controller = defender.get_controller_id(state);
-                                    if defender_controller != hero_controller {
-                                        return Ok(vec![]);
-                                    }
-                                    if *defender.get_zone() != hero_zone {
-                                        return Ok(vec![]);
-                                    }
-                                    let defender_power =
-                                        defender.get_unit_base().map(|ub| ub.power).unwrap_or(0);
-                                    if defender_power >= hero_power {
-                                        return Ok(vec![]);
-                                    }
-                                    let _ = attacker_id;
-                                    let should_return = yes_or_no_source(
-                                        &hero_controller,
-                                        state,
-                                        "Return the attacked ally to its owner's hand?",
-                                        Some(self_id),
-                                    )
-                                    .await?;
-                                    if !should_return {
-                                        return Ok(vec![]);
-                                    }
-                                    Ok(vec![Effect::SetCardZone {
-                                        card_id: defender_id,
-                                        zone: Zone::Hand,
-                                    }])
-                                })
-                                    as Pin<
-                                        Box<
-                                            dyn Future<Output = anyhow::Result<Vec<Effect>>>
-                                                + Send
-                                                + '_,
-                                        >,
-                                    >
-                            },
-                        ),
-                        multitrigger: true,
-                    },
+            WEAKER_MINION_ATTACKED_HOOK => {
+                let Effect::DeclareAttack { target_id, .. } = effect else {
+                    return Ok(vec![]);
+                };
+
+                let should_return = yes_or_no_source(
+                    &self.get_controller_id(state),
+                    state,
+                    "Return the attacked ally to its owner's hand?",
+                    Some(*self.get_id()),
+                )
+                .await?;
+                if !should_return {
+                    return Ok(vec![]);
+                }
+                Ok(vec![Effect::SetCardZone {
+                    card_id: *target_id,
+                    zone: Zone::Hand,
                 }])
             }
             _ => Ok(vec![]),

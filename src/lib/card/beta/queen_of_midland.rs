@@ -1,12 +1,7 @@
-use std::{future::Future, pin::Pin, sync::Arc};
-
 use crate::prelude::*;
 
-const ON_SUMMON_HOOK: HookId = 1;
+const OPPONENT_DRAW_HOOK: HookId = 1;
 
-/// **Queen of Midland** — Unique Minion (5 cost, 1/2)
-///
-/// After an opponent draws a card, if they have more cards than you, you may draw a card.
 #[derive(Debug, Clone)]
 pub struct QueenOfMidland {
     unit_base: UnitBase,
@@ -68,11 +63,13 @@ impl Card for QueenOfMidland {
     fn get_unit_base_mut(&mut self) -> Option<&mut UnitBase> {
         Some(&mut self.unit_base)
     }
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    async fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
+        let player_id = self.get_controller_id(state);
+        let opponent_id = state.get_opponent_id(&player_id)?;
         Ok(vec![Hook {
-            id: ON_SUMMON_HOOK,
-            trigger: EffectQuery::SummonCard {
-                card: self.get_id().into(),
+            id: OPPONENT_DRAW_HOOK,
+            trigger: EffectQuery::DrawCard {
+                player_id: Some(opponent_id),
             },
             timing: HookTiming::After,
             source_zones: HookSourceZones::InPlay,
@@ -86,58 +83,34 @@ impl Card for QueenOfMidland {
         _effect: &Effect,
     ) -> anyhow::Result<Vec<Effect>> {
         match hook_id {
-            ON_SUMMON_HOOK => {
-                let queen_id = *self.get_id();
-                let controller_id = self.get_controller_id(state);
-                let opponent_id = state.get_opponent_id(&controller_id)?;
-
-                Ok(vec![Effect::AddDeferredEffect {
-                    effect: DeferredEffect {
-                        trigger_on_effect: EffectQuery::DrawCard {
-                            player_id: Some(opponent_id),
-                        },
-                        expires_on_effect: Some(EffectQuery::BuryCard {
-                            card: CardQuery::from_id(queen_id),
-                        }),
-                        on_effect: Arc::new(move |state: &State, _: &uuid::Uuid, _: &Effect| {
-                            Box::pin(async move {
-                                let my_hand = CardQuery::new()
-                                    .in_zone(&Zone::Hand)
-                                    .controlled_by(&controller_id)
-                                    .all(state)
-                                    .len();
-                                let opp_hand = CardQuery::new()
-                                    .in_zone(&Zone::Hand)
-                                    .controlled_by(&opponent_id)
-                                    .all(state)
-                                    .len();
-                                if opp_hand <= my_hand {
-                                    return Ok(vec![]);
-                                }
-                                let draw = yes_or_no_source(
-                                    &controller_id,
-                                    state,
-                                    "Draw a card?",
-                                    Some(queen_id),
-                                )
-                                .await?;
-                                if draw {
-                                    Ok(vec![Effect::DrawCard {
-                                        player_id: controller_id,
-                                        count: 1,
-                                        kind: DrawKind::Choice,
-                                    }])
-                                } else {
-                                    Ok(vec![])
-                                }
-                            })
-                                as Pin<
-                                    Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>,
-                                >
-                        }),
-                        multitrigger: true,
-                    },
-                }])
+            OPPONENT_DRAW_HOOK => {
+                let player_id = self.get_controller_id(state);
+                let opponent_id = state.get_opponent_id(&player_id)?;
+                let my_hand = CardQuery::new()
+                    .in_zone(&Zone::Hand)
+                    .controlled_by(&player_id)
+                    .all(state)
+                    .len();
+                let opp_hand = CardQuery::new()
+                    .in_zone(&Zone::Hand)
+                    .controlled_by(&opponent_id)
+                    .all(state)
+                    .len();
+                if opp_hand <= my_hand {
+                    return Ok(vec![]);
+                }
+                let draw =
+                    yes_or_no_source(&player_id, state, "Draw a card?", Some(*self.get_id()))
+                        .await?;
+                if draw {
+                    Ok(vec![Effect::DrawCard {
+                        player_id,
+                        count: 1,
+                        kind: DrawKind::Choice,
+                    }])
+                } else {
+                    Ok(vec![])
+                }
             }
             _ => Ok(vec![]),
         }

@@ -83,6 +83,7 @@ impl Card for GildedAegis {
             trigger: EffectQuery::UnitKilled {
                 unit: bearer_id.into(),
                 killer: None,
+                from_attack: None,
             },
             timing: HookTiming::Replace,
             source_zones: HookSourceZones::InPlay,

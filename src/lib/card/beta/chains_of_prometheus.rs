@@ -1,6 +1,6 @@
-use std::sync::Arc;
-
 use crate::prelude::*;
+
+const CARD_DRAW_HOOK: HookId = 1;
 
 #[derive(Debug, Clone)]
 pub struct ChainsOfPrometheus {
@@ -67,82 +67,75 @@ impl Card for ChainsOfPrometheus {
     }
 
     async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
-        Ok(vec![Hook::genesis(self.get_id())])
+        Ok(vec![Hook {
+            id: CARD_DRAW_HOOK,
+            trigger: EffectQuery::DrawCard { player_id: None },
+            timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
+        }])
     }
 
     async fn resolve_hook(
         &self,
         hook: HookId,
-        _state: &State,
-        _effect: &Effect,
+        state: &State,
+        effect: &Effect,
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-        let chains_id = *self.get_id();
+                let Effect::DrawCard { player_id, .. } = effect else {
+                    return Ok(vec![]);
+                };
+                let drawing_player = *player_id;
 
-        let deferred = DeferredEffect {
-            trigger_on_effect: EffectQuery::DrawCard { player_id: None },
-            expires_on_effect: Some(EffectQuery::BuryCard {
-                card: self.get_id().into(),
-            }),
-            on_effect: Arc::new(move |state: &State, _card_id: &CardId, effect: &Effect| {
-                let _ = chains_id;
-                Box::pin(async move {
-                    // Extract the drawing player from the effect.
-                    let Effect::DrawCard { player_id, .. } = effect else {
-                        return Ok(vec![]);
-                    };
-                    let drawing_player = *player_id;
+                // Find the drawing player's strongest untapped minion.
+                let untapped_minions = CardQuery::new()
+                    .minions()
+                    .untapped()
+                    .controlled_by(&drawing_player)
+                    .all(state);
 
-                    // Find the drawing player's strongest untapped minion.
-                    let untapped_minions = CardQuery::new()
-                        .minions()
-                        .untapped()
-                        .controlled_by(&drawing_player)
-                        .all(state);
+                if untapped_minions.is_empty() {
+                    return Ok(vec![]);
+                }
 
-                    if untapped_minions.is_empty() {
-                        return Ok(vec![]);
-                    }
+                let max_power = untapped_minions
+                    .iter()
+                    .filter_map(|id| {
+                        let card = state.get_card(id);
+                        let power = card.get_power(state).ok()??;
+                        Some(power)
+                    })
+                    .max()
+                    .unwrap_or_default();
+                let strongest = untapped_minions
+                    .into_iter()
+                    .filter(|id| {
+                        let card = state.get_card(id);
+                        match card.get_power(state) {
+                            Err(_) => false,
+                            Ok(power) => power.unwrap_or_default() == max_power,
+                        }
+                    })
+                    .collect::<Vec<CardId>>();
 
-                    // Find the minion with the highest power.
-                    let max_power = untapped_minions
-                        .iter()
-                        .filter_map(|id| {
-                            let card = state.get_card(id);
-                            let power = card.get_power(state).ok()??;
-                            Some(power)
-                        })
-                        .max()
-                        .unwrap_or_default();
-                    let strongest = untapped_minions
-                        .into_iter()
-                        .filter(|id| {
-                            let card = state.get_card(id);
-                            match card.get_power(state) {
-                                Err(_) => false,
-                                Ok(power) => power.unwrap_or_default() == max_power,
-                            }
-                        })
-                        .collect::<Vec<CardId>>();
-
-                    let picked_card = CardQuery::from_ids(strongest)
+                let mut minion_id = strongest[0];
+                if strongest.len() > 1 {
+                    let Some(picked_card) = CardQuery::from_ids(strongest)
                         .count(1)
                         .pick(&drawing_player, state, false)
-                        .await?;
-                    match picked_card {
-                        Some(id) => Ok(vec![Effect::SetTapped {
-                            card_id: id,
-                            tapped: true,
-                        }]),
-                        None => Ok(vec![]),
-                    }
-                })
-            }),
-            multitrigger: true,
-        };
+                        .await?
+                    else {
+                        return Ok(vec![]);
+                    };
 
-        Ok(vec![Effect::AddDeferredEffect { effect: deferred }])
+                    minion_id = picked_card;
+                }
+
+                Ok(vec![Effect::SetTapped {
+                    card_id: minion_id,
+                    tapped: true,
+                }])
             }
             _ => Ok(vec![]),
         }

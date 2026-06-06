@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-const ON_SUMMON_HOOK: HookId = 1;
+const ON_ALLIED_DEATH_HOOK: HookId = 1;
 
 #[derive(Debug, Clone)]
 pub struct ScourgeZombies {
@@ -60,16 +60,17 @@ impl Card for ScourgeZombies {
     async fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
         let controller_id = self.get_controller_id(state);
         Ok(vec![Hook {
-            id: ON_SUMMON_HOOK,
+            id: ON_ALLIED_DEATH_HOOK,
             trigger: EffectQuery::UnitKilled {
                 unit: CardQuery::new()
                     .minions()
                     .minion_type(&MinionType::Mortal)
                     .controlled_by(&controller_id),
                 killer: None,
+                from_attack: None,
             },
             timing: HookTiming::After,
-            source_zones: HookSourceZones::Zone(Zone::Cemetery),
+            source_zones: HookSourceZones::Cemetery,
         }])
     }
 
@@ -80,15 +81,15 @@ impl Card for ScourgeZombies {
         effect: &Effect,
     ) -> anyhow::Result<Vec<Effect>> {
         match hook_id {
-            ON_SUMMON_HOOK => {
-                let self_id = *self.get_id();
+            ON_ALLIED_DEATH_HOOK => {
                 let Effect::KillMinion { card_id, .. } = effect else {
                     return Ok(vec![]);
                 };
 
-                let self_controller = self.get_controller_id(state);
+                // TODO: Check if ally died on land.
+                let controller_id = self.get_controller_id(state);
                 let killed_card = state.get_card(card_id);
-                if killed_card.get_controller_id(state) != self_controller
+                if killed_card.get_controller_id(state) != controller_id
                     || killed_card.get_region(state) != &Region::Surface
                     || !killed_card.get_zone().is_in_play()
                 {
@@ -96,10 +97,10 @@ impl Card for ScourgeZombies {
                 }
 
                 if !yes_or_no_source(
-                    &self_controller,
+                    &controller_id,
                     state,
                     "Summon Scourge Zombies to the fallen Mortal's location tapped?",
-                    Some(self_id),
+                    Some(*self.get_id()),
                 )
                 .await?
                 {
@@ -109,8 +110,8 @@ impl Card for ScourgeZombies {
                 Ok(vec![
                     Effect::SummonCards {
                         cards: vec![(
-                            self_controller,
-                            self_id,
+                            controller_id,
+                            *self.get_id(),
                             Zone::Cemetery,
                             killed_card
                                 .get_zone()
@@ -120,7 +121,7 @@ impl Card for ScourgeZombies {
                         )],
                     },
                     Effect::SetTapped {
-                        card_id: self_id,
+                        card_id: *self.get_id(),
                         tapped: true,
                     },
                 ])

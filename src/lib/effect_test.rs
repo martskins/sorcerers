@@ -4,14 +4,15 @@ use crate::{
         CardBase, CardStatus, ColickyDragonettes, Damage, DeadOfNightDemon, DodgeRoll, Drought,
         Enchantress, Flood, FootSoldier, GildedAegis, Hook, HookId, HookSourceZones, HookTiming,
         OgreGoons, PhaseAssassin, PitVipers, PlanarGate, Region, RimlandNomads, RootSpider,
-        RoyalBodyguard, SacredScarabs, Sandstorm, ScourgeZombies, SeaRaider, SeirawanHydra, Silence,
-        SimpleVillage, SirianTemplar, SlingPixies, SpringRiver, TuftedTurtles, TvinnaxBerserker,
-        UnitBase, VaultsOfZul, WallOfFire, Wildfire, YourkeCrossbowmen, from_name_and_zone,
+        RoyalBodyguard, SacredScarabs, Sandstorm, ScourgeZombies, SeaRaider, SeirawanHydra,
+        Silence, SimpleVillage, SirianTemplar, SlingPixies, SpringRiver, TuftedTurtles,
+        TvinnaxBerserker, UnitBase, VaultsOfZul, WallOfFire, Wildfire, YourkeCrossbowmen,
+        from_name_and_zone,
     },
     deck::Deck,
     effect::{
-        DeferredEffect, DrawKind, Effect, EffectCallback, EffectReplacementCallback,
-        FightContext, TemporaryEffect, TokenType,
+        DeferredEffect, DrawKind, Effect, EffectCallback, EffectReplacementCallback, FightContext,
+        TemporaryEffect, TokenType,
     },
     game::{ActivatedAbility, Direction, UnitAction},
     networking::message::{ClientMessage, ServerMessage},
@@ -169,10 +170,7 @@ async fn drain_effects(state: &mut State) {
 
 #[tokio::test]
 async fn test_enter_zone_matches_played_aura() {
-    let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(
-        8,
-        Region::Surface,
-    ))]);
+    let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(8, Region::Surface))]);
     let player_id = state.players[0].id;
     let wildfire = Wildfire::new(player_id);
     let wildfire_id = *wildfire.get_id();
@@ -194,7 +192,10 @@ async fn test_enter_zone_matches_played_aura() {
     };
 
     assert!(query.matches(&effect, &state).await.unwrap());
-    assert_eq!(query.source_ids(&effect, &state).await.unwrap(), vec![wildfire_id]);
+    assert_eq!(
+        query.source_ids(&effect, &state).await.unwrap(),
+        vec![wildfire_id]
+    );
 }
 
 #[tokio::test]
@@ -854,13 +855,11 @@ async fn test_dodge_roll_replacement_triggers_once_for_multiple_copies() {
         .filter(|zone| **zone == Zone::Hand)
         .count();
     assert_eq!(
-        cemetery_count,
-        1,
+        cemetery_count, 1,
         "only one Dodge Roll should be cast for a single attack"
     );
     assert_eq!(
-        hand_count,
-        1,
+        hand_count, 1,
         "extra Dodge Roll copies should not also resolve the same attack"
     );
 }
@@ -1196,8 +1195,14 @@ async fn test_multiple_defenders_fight_at_attacked_location() {
     });
     drain_effects(&mut state).await;
 
-    assert_eq!(state.get_card(&defender_one_id).get_zone(), &attack_location);
-    assert_eq!(state.get_card(&defender_two_id).get_zone(), &attack_location);
+    assert_eq!(
+        state.get_card(&defender_one_id).get_zone(),
+        &attack_location
+    );
+    assert_eq!(
+        state.get_card(&defender_two_id).get_zone(),
+        &attack_location
+    );
     assert_eq!(
         state.get_card(&attacker_id).get_zone(),
         &Zone::Cemetery,
@@ -2338,7 +2343,9 @@ async fn test_summon_card_queues_genesis_effects() {
             player_id,
             id,
             Zone::Hand,
-            zone.clone().into_location().expect("test zone must be a location"),
+            zone.clone()
+                .into_location()
+                .expect("test zone must be a location"),
         )],
     }
     .apply(&mut state)

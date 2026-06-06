@@ -64,9 +64,9 @@ impl Magic for CriticalStrike {
 
         Ok(vec![Effect::AddDeferredEffect {
             effect: DeferredEffect {
-                trigger_on_effect: EffectQuery::DamageDealt {
-                    source: Some(CardQuery::new().minions().controlled_by(&controller_id)),
-                    target: None,
+                trigger_on_effect: EffectQuery::StrikeCard {
+                    card: CardQuery::new().units(),
+                    striker: Some(CardQuery::new().minions().controlled_by(&controller_id)),
                 },
                 expires_on_effect: Some(EffectQuery::TurnEnd {
                     player_id: Some(controller_id),

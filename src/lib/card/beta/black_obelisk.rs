@@ -94,24 +94,23 @@ impl Card for BlackObelisk {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             TURN_START_HOOK => {
-        let Some(site): Option<&dyn Site> = self.get_zone().get_site(state) else {
-            return Ok(vec![]);
-        };
+                let Some(site): Option<&dyn Site> = self.get_zone().get_site(state) else {
+                    return Ok(vec![]);
+                };
 
-        let controller_id = site.get_controller_id(state);
-        if controller_id != state.current_player() {
-            return Ok(vec![]);
-        }
+                let controller_id = site.get_controller_id(state);
+                if controller_id != state.current_player() {
+                    return Ok(vec![]);
+                }
 
-        if site.has_status(state, &CardStatus::Disabled) {
-            return Ok(vec![]);
-        }
+                if site.has_status(state, &CardStatus::Disabled) {
+                    return Ok(vec![]);
+                }
 
-        Ok(vec![Effect::AdjustAvatarLife {
-            player_id: controller_id,
-            amount: -2,
-        }])
-    
+                Ok(vec![Effect::AdjustAvatarLife {
+                    player_id: controller_id,
+                    amount: -2,
+                }])
             }
             _ => Ok(vec![]),
         }

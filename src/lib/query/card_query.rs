@@ -32,8 +32,8 @@ pub struct CardQuery {
     minion_types: Option<Vec<MinionType>>,
     artifact_types: Option<Vec<ArtifactType>>,
     rarity: Option<Rarity>,
-    mana_cost: Option<ManaCostFilter>,
-    min_power: Option<u16>,
+    mana_cost: Option<NumericFilter<u8>>,
+    power: Option<NumericFilter<u16>>,
     site_types: Option<Vec<SiteType>>,
     site_is_water: Option<bool>,
     with_affinity: Option<Vec<Element>>,
@@ -78,7 +78,7 @@ impl Default for CardQuery {
             artifact_types: None,
             rarity: None,
             mana_cost: None,
-            min_power: None,
+            power: None,
             site_types: None,
             site_is_water: None,
             with_affinity: None,
@@ -102,22 +102,21 @@ impl Default for CardQuery {
 }
 
 #[derive(Debug, Clone)]
-enum ManaCostFilter {
+enum NumericFilter<T> {
     #[allow(dead_code)]
-    GreaterThan(u8),
-    #[allow(dead_code)]
-    LessThan(u8),
-    LessThanOrEqualTo(u8),
-    EqualTo(u8),
+    GreaterThan(T),
+    LessThan(T),
+    LessThanOrEqualTo(T),
+    EqualTo(T),
 }
 
-impl ManaCostFilter {
-    fn matches(&self, mc: u8) -> bool {
+impl<T: PartialOrd + PartialEq> NumericFilter<T> {
+    fn matches(&self, mc: T) -> bool {
         match self {
-            ManaCostFilter::GreaterThan(val) => mc > *val,
-            ManaCostFilter::LessThan(val) => mc < *val,
-            ManaCostFilter::LessThanOrEqualTo(val) => mc <= *val,
-            ManaCostFilter::EqualTo(val) => mc == *val,
+            NumericFilter::GreaterThan(val) => mc > *val,
+            NumericFilter::LessThan(val) => mc < *val,
+            NumericFilter::LessThanOrEqualTo(val) => mc <= *val,
+            NumericFilter::EqualTo(val) => mc == *val,
         }
     }
 }
@@ -471,8 +470,12 @@ impl<'a> PreparedCardQuery<'a> {
             }
         }
 
-        if let Some(min_power) = query.min_power
-            && card.get_power(state).ok().flatten().unwrap_or(0) < min_power
+        if let Some(power) = &query.power
+            && card
+                .get_power(state)
+                .ok()
+                .flatten()
+                .is_none_or(|p| !power.matches(p))
         {
             return false;
         }
@@ -594,8 +597,7 @@ impl CardQuery {
 
         if self.allow_modifiers {
             for effect in state.active_continuous_effects() {
-                if let crate::state::OngoingEffect::RestrictCardTargets { restriction, .. } =
-                    effect
+                if let crate::state::OngoingEffect::RestrictCardTargets { restriction, .. } = effect
                     && let Some(restricted) =
                         restriction(state, player_id, &effective_query, &card_ids)
                 {
@@ -614,11 +616,11 @@ impl CardQuery {
                 if let crate::state::OngoingEffect::ModifyCardQuery { modifier, .. } = effect
                     && let Some(query) = modifier(state, player_id, &effective_query)?
                 {
-                    let output = Box::pin(
-                        query
-                            .without_modifiers()
-                            .pick(player_id, state, use_preview),
-                    )
+                    let output = Box::pin(query.without_modifiers().pick(
+                        player_id,
+                        state,
+                        use_preview,
+                    ))
                     .await?;
                     if let Some(output) = output {
                         QueryCache::store_card_result(state.game_id, query_id, output);
@@ -837,7 +839,7 @@ impl CardQuery {
 
     pub fn with_mana_cost(self, mana_cost: u8) -> Self {
         Self {
-            mana_cost: Some(ManaCostFilter::EqualTo(mana_cost)),
+            mana_cost: Some(NumericFilter::EqualTo(mana_cost)),
             ..self
         }
     }
@@ -1222,14 +1224,21 @@ impl CardQuery {
 
     pub fn mana_cost_less_than_or_equal_to(self, mc: u8) -> Self {
         Self {
-            mana_cost: Some(ManaCostFilter::LessThanOrEqualTo(mc)),
+            mana_cost: Some(NumericFilter::LessThanOrEqualTo(mc)),
             ..self
         }
     }
 
     pub fn with_min_power(self, power: u16) -> Self {
         Self {
-            min_power: Some(power),
+            power: Some(NumericFilter::GreaterThan(power)),
+            ..self
+        }
+    }
+
+    pub fn with_max_power(self, power: u16) -> Self {
+        Self {
+            power: Some(NumericFilter::LessThan(power)),
             ..self
         }
     }

@@ -1,8 +1,6 @@
-use std::{future::Future, pin::Pin, sync::Arc};
+use crate::prelude::*;
 
-use crate::{prelude::*, query::entered_sites};
-
-const ON_SUMMON_HOOK: HookId = 1;
+const ENTER_WATER_SITE_HOOK: HookId = 1;
 
 #[derive(Debug, Clone)]
 pub struct MarinersCurse {
@@ -64,18 +62,20 @@ impl Card for MarinersCurse {
         Some(self)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    async fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
+        let mut affected_water_sites = self.get_affected_zones(state);
+        affected_water_sites.retain(|z| match z.get_site(state) {
+            Some(site) => site.is_water_site(state).unwrap_or_default(),
+            None => false,
+        });
+
         Ok(vec![Hook {
-            id: ON_SUMMON_HOOK,
-            trigger: EffectQuery::OneOf(vec![
-                EffectQuery::PlayCard {
-                    card: self.get_id().into(),
-                    spellcaster: None,
-                },
-                EffectQuery::SummonCard {
-                    card: self.get_id().into(),
-                },
-            ]),
+            id: ENTER_WATER_SITE_HOOK,
+            trigger: EffectQuery::EnterZone {
+                card: CardQuery::new().minions(),
+                zone: ZoneQuery::from_options(affected_water_sites, None),
+                from: None,
+            },
             timing: HookTiming::After,
             source_zones: HookSourceZones::InPlay,
         }])
@@ -84,90 +84,40 @@ impl Card for MarinersCurse {
     async fn resolve_hook(
         &self,
         hook_id: HookId,
-        state: &State,
-        _effect: &Effect,
+        _state: &State,
+        effect: &Effect,
     ) -> anyhow::Result<Vec<Effect>> {
         match hook_id {
-            ON_SUMMON_HOOK => {
-                let aura_id = *self.get_id();
+            ENTER_WATER_SITE_HOOK => {
+                let card_id = match effect {
+                    Effect::SummonCards { cards } => {
+                        let mut output = None;
+                        for (_, card_id, zone, location) in cards {
+                            if zone == self.get_zone() && location.region() == &Region::Surface {
+                                output = Some(card_id);
+                            }
+                        }
 
-                let affected_zones = self.get_affected_zones(state);
-                let affected_water_sites = CardQuery::new()
-                    .water_sites()
-                    .in_zones(&affected_zones)
-                    .all(state);
-                let zones = affected_water_sites
-                    .into_iter()
-                    .map(|site_id| state.get_card(&site_id).get_zone().clone())
-                    .collect::<Vec<_>>();
-                Ok(vec![Effect::AddDeferredEffect {
-                    effect: DeferredEffect {
-                        trigger_on_effect: EffectQuery::EnterZone {
-                            card: CardQuery::new().minions(),
-                            zone: ZoneQuery::from_options(zones, None),
-                            from: None,
-                        },
-                        expires_on_effect: Some(EffectQuery::BuryCard {
-                            card: aura_id.into(),
-                        }),
-                        multitrigger: false,
-                        on_effect: Arc::new(
-                            move |state: &State, card_id: &CardId, effect: &Effect| {
-                                Box::pin(async move {
-                                    // Check if aura is still in play.
-                                    if !state.get_card(&aura_id).get_zone().is_in_play() {
-                                        return Ok(vec![]);
-                                    }
+                        match output {
+                            Some(card_id) => card_id,
+                            None => return Ok(vec![]),
+                        }
+                    }
+                    Effect::MoveCard { card_id, .. } => card_id,
+                    _ => return Ok(vec![]),
+                };
 
-                                    // Get the aura's affected zones.
-                                    let aura = state.get_card(&aura_id);
-                                    let affected_zones = if let Some(a) = aura.get_aura() {
-                                        a.get_affected_zones(state)
-                                    } else {
-                                        return Ok(vec![]);
-                                    };
-
-                                    let entered_affected_water = entered_sites(effect, state)
-                                        .await?
-                                        .into_iter()
-                                        .filter(|(entered_card_id, _)| entered_card_id == card_id)
-                                        .map(|(_, site_zone)| site_zone)
-                                        .any(|site_zone| {
-                                            affected_zones.contains(&site_zone)
-                                                && site_zone
-                                                    .get_site(state)
-                                                    .and_then(|site| site.is_water_site(state).ok())
-                                                    .unwrap_or(false)
-                                        });
-
-                                    if !entered_affected_water {
-                                        return Ok(vec![]);
-                                    }
-
-                                    let _aura_owner = aura.get_owner_id();
-                                    Ok(vec![
-                                        Effect::SetCardRegion {
-                                            card_id: *card_id,
-                                            destination: Region::Underwater,
-                                            tap: false,
-                                        },
-                                        Effect::SetCardZone {
-                                            card_id: aura_id,
-                                            zone: Zone::Hand,
-                                        },
-                                    ])
-                                })
-                                    as Pin<
-                                        Box<
-                                            dyn Future<Output = anyhow::Result<Vec<Effect>>>
-                                                + Send
-                                                + '_,
-                                        >,
-                                    >
-                            },
-                        ),
+                Ok(vec![
+                    Effect::SetCardRegion {
+                        card_id: *card_id,
+                        destination: Region::Underwater,
+                        tap: false,
                     },
-                }])
+                    Effect::SetCardZone {
+                        card_id: *self.get_id(),
+                        zone: Zone::Hand,
+                    },
+                ])
             }
             _ => Ok(vec![]),
         }

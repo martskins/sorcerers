@@ -81,18 +81,18 @@ impl Card for HolyGround {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-        let effects = CardQuery::new()
-            .near_to(self.get_zone())
-            .card_types(vec![CardType::Avatar])
-            .all(state)
-            .iter()
-            .map(|a| Effect::AdjustAvatarLife {
-                player_id: state.get_card(a).get_controller_id(state),
-                amount: 3,
-            })
-            .collect();
+                let effects = CardQuery::new()
+                    .near_to(self.get_zone())
+                    .card_types(vec![CardType::Avatar])
+                    .all(state)
+                    .iter()
+                    .map(|a| Effect::AdjustAvatarLife {
+                        player_id: state.get_card(a).get_controller_id(state),
+                        amount: 3,
+                    })
+                    .collect();
 
-        Ok(effects)
+                Ok(effects)
             }
             _ => Ok(vec![]),
         }

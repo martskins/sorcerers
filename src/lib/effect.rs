@@ -159,7 +159,7 @@ impl FightContext {
     fn damage(&self, amount: u16) -> Damage {
         match self {
             FightContext::Attack => Damage::strike(amount, false),
-            FightContext::FightOnly => Damage::fight(amount, false),
+            FightContext::FightOnly => Damage::fight(amount),
         }
     }
 }
@@ -1873,10 +1873,15 @@ impl Effect {
                     return Ok(());
                 }
 
-                let picked_defenders =
-                    pick_cards(&defending_player, &possible_defenders, state, "Pick defenders")
-                        .await?;
-                let current_legal_defenders = state.get_defenders_for_attack(attacker_id, target_id);
+                let picked_defenders = pick_cards(
+                    &defending_player,
+                    &possible_defenders,
+                    state,
+                    "Pick defenders",
+                )
+                .await?;
+                let current_legal_defenders =
+                    state.get_defenders_for_attack(attacker_id, target_id);
                 let defenders = picked_defenders
                     .into_iter()
                     .filter(|id| possible_defenders.contains(id))
@@ -2481,7 +2486,9 @@ impl Effect {
             Effect::SetCardData { card_id, data, .. } => {
                 let card = state.get_card_mut(card_id);
                 card.set_data(data)?;
-                state.add_passive_ongoing_effects_for_source(card_id).await?;
+                state
+                    .add_passive_ongoing_effects_for_source(card_id)
+                    .await?;
                 state.queue(location_survival_effects_for_realm(state));
             }
             Effect::TeleportCard {

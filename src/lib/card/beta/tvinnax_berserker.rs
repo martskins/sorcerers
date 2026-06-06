@@ -71,6 +71,7 @@ impl Card for TvinnaxBerserker {
                         .minions()
                         .controlled_by_different_controller_than_card(self.get_id()),
                     killer: Some(self.get_id().into()),
+                    from_attack: None,
                 },
                 timing: HookTiming::After,
                 source_zones: HookSourceZones::InPlay,

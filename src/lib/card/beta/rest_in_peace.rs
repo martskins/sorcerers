@@ -1,8 +1,6 @@
-use std::{future::Future, pin::Pin, sync::Arc};
-
 use crate::prelude::*;
 
-const ON_SUMMON_HOOK: HookId = 1;
+const ENTER_LAND_SITE_HOOK: HookId = 1;
 
 #[derive(Debug, Clone)]
 pub struct RestInPeace {
@@ -29,56 +27,6 @@ impl RestInPeace {
                 is_token: false,
                 ..Default::default()
             },
-        }
-    }
-
-    fn burrow_trigger(aura_id: uuid::Uuid, trigger_on_effect: EffectQuery) -> DeferredEffect {
-        DeferredEffect {
-            trigger_on_effect,
-            expires_on_effect: Some(EffectQuery::BuryCard {
-                card: CardQuery::from_id(aura_id),
-            }),
-            on_effect: Arc::new(
-                move |state: &State, minion_id: &uuid::Uuid, effect: &Effect| {
-                    let minion_id = *minion_id;
-                    Box::pin(async move {
-                        if !state.get_card(&aura_id).get_zone().is_in_play() {
-                            return Ok(vec![]);
-                        }
-                        let affected_zones = if let Some(aura) = state.get_card(&aura_id).get_aura()
-                        {
-                            aura.get_affected_zones(state)
-                        } else {
-                            return Ok(vec![]);
-                        };
-                        let occupied_zone = match effect {
-                            Effect::SummonCards { cards } if cards.len() == 1 => {
-                                cards[0].3.clone().into_zone()
-                            }
-                            Effect::MoveCard { to, player_id, .. } => {
-                                to.pick(player_id, state).await?.into_zone()
-                            }
-                            _ => return Ok(vec![]),
-                        };
-                        if !affected_zones.contains(&occupied_zone) {
-                            return Ok(vec![]);
-                        }
-                        let Some(site) = occupied_zone.get_site(state) else {
-                            return Ok(vec![]);
-                        };
-                        if !site.is_land_site(state)? {
-                            return Ok(vec![]);
-                        }
-                        Ok(vec![Effect::SetCardRegion {
-                            card_id: minion_id,
-                            destination: Region::Underground,
-                            tap: false,
-                        }])
-                    })
-                        as Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>>
-                },
-            ),
-            multitrigger: true,
         }
     }
 }
@@ -109,18 +57,22 @@ impl Card for RestInPeace {
         Some(self)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    async fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
+        let mut affected_land_sites = self.get_affected_zones(state);
+        affected_land_sites.retain(|z| match z.get_site(state) {
+            Some(site) => site.is_land_site(state).unwrap_or_default(),
+            None => false,
+        });
+
         Ok(vec![Hook {
-            id: ON_SUMMON_HOOK,
-            trigger: EffectQuery::OneOf(vec![
-                EffectQuery::PlayCard {
-                    card: self.get_id().into(),
-                    spellcaster: None,
-                },
-                EffectQuery::SummonCard {
-                    card: self.get_id().into(),
-                },
-            ]),
+            id: ENTER_LAND_SITE_HOOK,
+            trigger: EffectQuery::EnterZone {
+                card: CardQuery::new()
+                    .minions()
+                    .minion_types(vec![MinionType::Undead, MinionType::Spirit]),
+                zone: ZoneQuery::from_options(affected_land_sites, None),
+                from: None,
+            },
             timing: HookTiming::After,
             source_zones: HookSourceZones::InPlay,
         }])
@@ -130,33 +82,33 @@ impl Card for RestInPeace {
         &self,
         hook_id: HookId,
         _state: &State,
-        _effect: &Effect,
+        effect: &Effect,
     ) -> anyhow::Result<Vec<Effect>> {
         match hook_id {
-            ON_SUMMON_HOOK => {
-                let aura_id = *self.get_id();
-                Ok(vec![
-                    Effect::AddDeferredEffect {
-                        effect: Self::burrow_trigger(
-                            aura_id,
-                            EffectQuery::SummonCard {
-                                card: CardQuery::new()
-                                    .minions()
-                                    .minion_types(vec![MinionType::Spirit, MinionType::Undead]),
-                            },
-                        ),
-                    },
-                    Effect::AddDeferredEffect {
-                        effect: Self::burrow_trigger(
-                            aura_id,
-                            EffectQuery::MoveCard {
-                                card: CardQuery::new()
-                                    .minions()
-                                    .minion_types(vec![MinionType::Spirit, MinionType::Undead]),
-                            },
-                        ),
-                    },
-                ])
+            ENTER_LAND_SITE_HOOK => {
+                let card_id = match effect {
+                    Effect::SummonCards { cards } => {
+                        let mut output = None;
+                        for (_, card_id, zone, location) in cards {
+                            if zone == self.get_zone() && location.region() == &Region::Surface {
+                                output = Some(card_id);
+                            }
+                        }
+
+                        match output {
+                            Some(card_id) => card_id,
+                            None => return Ok(vec![]),
+                        }
+                    }
+                    Effect::MoveCard { card_id, .. } => card_id,
+                    _ => return Ok(vec![]),
+                };
+
+                Ok(vec![Effect::SetCardRegion {
+                    card_id: *card_id,
+                    destination: Region::Underground,
+                    tap: false,
+                }])
             }
             _ => Ok(vec![]),
         }

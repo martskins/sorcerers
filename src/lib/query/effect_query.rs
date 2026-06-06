@@ -44,6 +44,10 @@ pub enum EffectQuery {
         card: CardQuery,
         spellcaster: Option<CardQuery>,
     },
+    LifeLost {
+        player_id: PlayerId,
+        from_attack: Option<bool>,
+    },
     SummonCard {
         card: CardQuery,
     },
@@ -77,6 +81,7 @@ pub enum EffectQuery {
     UnitKilled {
         unit: CardQuery,
         killer: Option<CardQuery>,
+        from_attack: Option<bool>,
     },
     StrikeCard {
         card: CardQuery,
@@ -87,6 +92,14 @@ pub enum EffectQuery {
 impl EffectQuery {
     pub async fn source_ids(&self, effect: &Effect, state: &State) -> anyhow::Result<Vec<CardId>> {
         match (self, effect) {
+            // TODO: Implement this
+            // (
+            //     EffectQuery::LifeLost {
+            //         player_id: target_player_id,
+            //         from_attack,
+            //     },
+            //     Effect::AdjustAvatarLife { player_id, amount },
+            // ) => Ok(vec![]),
             (EffectQuery::OneOf(queries), _) => {
                 let mut source_ids = vec![];
                 for query in queries {
@@ -195,14 +208,22 @@ impl EffectQuery {
                 }
             }
             (
-                EffectQuery::UnitKilled { unit, killer },
+                EffectQuery::UnitKilled {
+                    unit,
+                    killer,
+                    from_attack: from_attack_target,
+                },
                 Effect::KillMinion {
-                    card_id, killer_id, ..
+                    card_id,
+                    killer_id,
+                    from_attack,
+                    ..
                 },
             ) => {
                 let card_matches = unit.matches(card_id, state);
                 let killer_matches = killer.clone().is_none_or(|k| k.matches(killer_id, state));
-                if card_matches && killer_matches {
+                let from_attack_matches = from_attack_target.is_none_or(|fa| fa == *from_attack);
+                if card_matches && killer_matches && from_attack_matches {
                     Ok(vec![*card_id])
                 } else {
                     Ok(vec![])
@@ -487,14 +508,22 @@ impl EffectQuery {
             }
 
             (
-                EffectQuery::UnitKilled { unit, killer },
+                EffectQuery::UnitKilled {
+                    unit,
+                    killer,
+                    from_attack: from_attack_target,
+                },
                 Effect::KillMinion {
-                    card_id, killer_id, ..
+                    card_id,
+                    killer_id,
+                    from_attack,
+                    ..
                 },
             ) => {
                 let card_matches = unit.matches(card_id, state);
                 let killer_matches = killer.clone().is_none_or(|k| k.matches(killer_id, state));
-                Ok(card_matches && killer_matches)
+                let from_attack_matches = from_attack_target.is_none_or(|fa| fa == *from_attack);
+                Ok(card_matches && killer_matches && from_attack_matches)
             }
             (
                 EffectQuery::StrikeCard { card, striker },

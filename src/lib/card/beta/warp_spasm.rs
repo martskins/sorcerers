@@ -89,32 +89,18 @@ impl Magic for WarpSpasm {
             },
             Effect::AddDeferredEffect {
                 effect: DeferredEffect {
-                    trigger_on_effect: EffectQuery::BuryCard {
-                        card: CardQuery::new().units(),
+                    trigger_on_effect: EffectQuery::UnitKilled {
+                        unit: CardQuery::new().minions(),
+                        killer: Some(self.get_id().into()),
+                        from_attack: Some(true),
                     },
                     expires_on_effect: Some(EffectQuery::TurnEnd { player_id: None }),
-                    on_effect: Arc::new(move |state: &State, _source, effect: &Effect| {
+                    on_effect: Arc::new(move |_state: &State, _source, _effect: &Effect| {
                         Box::pin(async move {
-                            let Effect::BuryCard { card_id } = effect else {
-                                return Ok(vec![]);
-                            };
-
-                            let killed_by_target_attack = state.effect_log().iter().any(|logged| {
-                                matches!(logged.effect, Effect::KillMinion {
-                                    card_id: killed_id,
-                                    killer_id,
-                                    from_attack: true,
-                                } if killed_id == *card_id && killer_id == target_id)
-                            });
-
-                            if killed_by_target_attack {
-                                Ok(vec![Effect::SetTapped {
-                                    card_id: target_id,
-                                    tapped: false,
-                                }])
-                            } else {
-                                Ok(vec![])
-                            }
+                            Ok(vec![Effect::SetTapped {
+                                card_id: target_id,
+                                tapped: false,
+                            }])
                         })
                     }),
                     multitrigger: true,

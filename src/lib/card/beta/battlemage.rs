@@ -1,16 +1,12 @@
-use std::{future::Future, pin::Pin, sync::Arc};
-
 use crate::prelude::*;
 
-const ON_SUMMON_HOOK: HookId = 1;
-const TURN_START_HOOK: HookId = 2;
+const KILL_ENEMY_HOOK: HookId = 1;
 
 #[derive(Debug, Clone)]
 pub struct Battlemage {
     card_base: CardBase,
     unit_base: UnitBase,
     avatar_base: AvatarBase,
-    trigger_registered: bool,
 }
 
 impl Battlemage {
@@ -39,85 +35,7 @@ impl Battlemage {
             avatar_base: AvatarBase {
                 ..Default::default()
             },
-            trigger_registered: false,
         }
-    }
-
-    fn register_trigger(&self) -> Vec<Effect> {
-        let battlemage_id = *self.get_id();
-        vec![
-            Effect::SetCardData {
-                card_id: battlemage_id,
-                data: std::sync::Arc::new(true),
-            },
-            Effect::AddDeferredEffect {
-                effect: DeferredEffect {
-                    trigger_on_effect: EffectQuery::DamageDealt {
-                        source: Some(CardQuery::from_id(battlemage_id)),
-                        target: None,
-                    },
-                    expires_on_effect: None,
-                    on_effect: Arc::new(
-                        move |state: &State, damaged_id: &CardId, effect: &Effect| {
-                            let damaged_id = *damaged_id;
-                            Box::pin(async move {
-                                let battlemage = state.get_card(&battlemage_id);
-                                if !battlemage.get_zone().is_in_play() {
-                                    return Ok(vec![]);
-                                }
-
-                                let Effect::TakeDamage { from, .. } = effect else {
-                                    return Ok(vec![]);
-                                };
-                                if from != &battlemage_id {
-                                    return Ok(vec![]);
-                                }
-
-                                let killed_enemy = state.effects.iter().any(|queued| {
-                                    matches!(queued, Effect::KillMinion { card_id, killer_id, from_attack: true }
-                                        if *card_id == damaged_id && *killer_id == battlemage_id)
-                                });
-                                if !killed_enemy {
-                                    return Ok(vec![]);
-                                }
-
-                                let controller = battlemage.get_controller_id(state);
-                                if state.get_card(&damaged_id).get_controller_id(state)
-                                    == controller
-                                {
-                                    return Ok(vec![]);
-                                }
-
-                                let draw = yes_or_no_source(
-                                    &controller,
-                                    state,
-                                    "Draw a spell?",
-                                    Some(battlemage_id),
-                                )
-                                .await?;
-                                if draw {
-                                    Ok(vec![Effect::DrawCard {
-                                        player_id: controller,
-                                        count: 1,
-                                        kind: DrawKind::Spell,
-                                    }])
-                                } else {
-                                    Ok(vec![])
-                                }
-                            })
-                                as Pin<
-                                    Box<
-                                        dyn Future<Output = anyhow::Result<Vec<Effect>>>
-                                            + Send
-                                            + '_,
-                                    >,
-                                >
-                        },
-                    ),
-                    multitrigger: true,
-                },
-            },
-        ]
     }
 }
 
@@ -159,51 +77,42 @@ impl Card for Battlemage {
         Some(self)
     }
 
-    fn set_data(
-        &mut self,
-        data: &std::sync::Arc<dyn std::any::Any + Send + Sync>,
-    ) -> anyhow::Result<()> {
-        if let Some(trigger_registered) = data.downcast_ref::<bool>() {
-            self.trigger_registered = *trigger_registered;
-            Ok(())
-        } else {
-            Err(anyhow::anyhow!("Invalid data type for Battlemage"))
-        }
-    }
-
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
-        Ok(vec![
-            Hook {
-                id: ON_SUMMON_HOOK,
-                trigger: EffectQuery::SummonCard {
-                    card: self.get_id().into(),
-                },
-                timing: HookTiming::After,
-                source_zones: HookSourceZones::InPlay,
+    async fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
+        let player_id = self.get_controller_id(state);
+        let opponent_id = state.get_opponent_id(&player_id)?;
+        Ok(vec![Hook {
+            id: KILL_ENEMY_HOOK,
+            trigger: EffectQuery::UnitKilled {
+                unit: CardQuery::new().units().controlled_by(&opponent_id),
+                killer: Some(self.get_id().into()),
+                from_attack: Some(true),
             },
-            Hook {
-                id: TURN_START_HOOK,
-                trigger: EffectQuery::TurnStart { player_id: None },
-                timing: HookTiming::After,
-                source_zones: HookSourceZones::InPlay,
-            },
-        ])
+            timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
+        }])
     }
 
     async fn resolve_hook(
         &self,
         hook_id: HookId,
-        _state: &State,
+        state: &State,
         _effect: &Effect,
     ) -> anyhow::Result<Vec<Effect>> {
         match hook_id {
-            ON_SUMMON_HOOK => Ok(self.register_trigger()),
-            TURN_START_HOOK => {
-                if self.trigger_registered {
+            KILL_ENEMY_HOOK => {
+                let controller_id = self.get_controller_id(state);
+                let draw =
+                    yes_or_no_source(controller_id, state, "Draw a spell?", Some(*self.get_id()))
+                        .await?;
+                if !draw {
                     return Ok(vec![]);
                 }
 
-                Ok(self.register_trigger())
+                Ok(vec![Effect::DrawCard {
+                    player_id: controller_id,
+                    count: 1,
+                    kind: DrawKind::Spell,
+                }])
             }
             _ => Ok(vec![]),
         }

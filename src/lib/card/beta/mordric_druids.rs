@@ -1,8 +1,6 @@
-use std::{future::Future, pin::Pin, sync::Arc};
-
 use crate::prelude::*;
 
-const ON_SUMMON_HOOK: HookId = 1;
+const LIFE_LOSS_HOOK: HookId = 1;
 
 #[derive(Debug, Clone)]
 pub struct MordricDruids {
@@ -65,11 +63,13 @@ impl Card for MordricDruids {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    async fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
+        let player_id = self.get_controller_id(state);
         Ok(vec![Hook {
-            id: ON_SUMMON_HOOK,
-            trigger: EffectQuery::SummonCard {
-                card: self.get_id().into(),
+            id: LIFE_LOSS_HOOK,
+            trigger: EffectQuery::LifeLost {
+                player_id,
+                from_attack: Some(true),
             },
             timing: HookTiming::After,
             source_zones: HookSourceZones::InPlay,
@@ -79,99 +79,62 @@ impl Card for MordricDruids {
     async fn resolve_hook(
         &self,
         hook_id: HookId,
-        state: &State,
+        _state: &State,
         _effect: &Effect,
     ) -> anyhow::Result<Vec<Effect>> {
         match hook_id {
-            ON_SUMMON_HOOK => {
-                let druids_id = *self.get_id();
-                let controller_id = self.get_controller_id(state);
-
-                Ok(vec![Effect::AddDeferredEffect {
-                    effect: DeferredEffect {
-                        trigger_on_effect: EffectQuery::DamageDealt {
-                            source: None,
-                            target: Some(CardQuery::new().avatars().controlled_by(&controller_id)),
-                        },
-                        expires_on_effect: Some(EffectQuery::BuryCard {
-                            card: CardQuery::from_id(druids_id),
-                        }),
-                        on_effect: Arc::new(
-                            move |state: &State, avatar_id: &CardId, effect: &Effect| {
-                                Box::pin(async move {
-                                    let Effect::TakeDamage {
-                                        from: attacker_id,
-                                        damage,
-                                        ..
-                                    } = effect
-                                    else {
-                                        return Ok(vec![]);
-                                    };
-
-                                    let druids = state.get_card(&druids_id);
-                                    if !druids.get_zone().is_in_play() {
-                                        return Ok(vec![]);
-                                    }
-
-                                    let attacker = state.get_card(attacker_id);
-                                    let attacker_controller = attacker.get_controller_id(state);
-                                    if attacker_controller == controller_id {
-                                        return Ok(vec![]);
-                                    }
-
-                                    let Some(defender_id) =
-                                        state.effect_log().iter().rev().find_map(|logged| {
-                                            match logged.effect {
-                                                Effect::DeclareAttack {
-                                                    attacker_id: logged_attacker,
-                                                    target_id,
-                                                } if logged_attacker == *attacker_id => {
-                                                    Some(target_id)
-                                                }
-                                                _ => None,
-                                            }
-                                        })
-                                    else {
-                                        return Ok(vec![]);
-                                    };
-
-                                    let defended_card = state.get_card(&defender_id);
-                                    if defended_card.get_controller_id(state) != controller_id {
-                                        return Ok(vec![]);
-                                    }
-
-                                    let druids_zone = druids.get_zone().clone();
-                                    let defended_zone = defended_card.get_zone().clone();
-                                    let is_nearby = druids_zone == defended_zone
-                                        || druids_zone.get_adjacent().contains(&defended_zone);
-                                    if !is_nearby {
-                                        return Ok(vec![]);
-                                    }
-
-                                    let reflected_avatar =
-                                        state.get_player_avatar_id(&attacker_controller)?;
-                                    if &reflected_avatar == avatar_id {
-                                        return Ok(vec![]);
-                                    }
-
-                                    Ok(vec![Effect::TakeDamage {
-                                        card_id: reflected_avatar,
-                                        from: druids_id,
-                                        damage: damage.clone(),
-                                    }])
-                                })
-                                    as Pin<
-                                        Box<
-                                            dyn Future<Output = anyhow::Result<Vec<Effect>>>
-                                                + Send
-                                                + '_,
-                                        >,
-                                    >
-                            },
-                        ),
-                        multitrigger: true,
-                    },
-                }])
+            LIFE_LOSS_HOOK => {
+                Ok(vec![])
+                // let druids = state.get_card(&druids_id);
+                // if !druids.get_zone().is_in_play() {
+                //     return Ok(vec![]);
+                // }
+                //
+                // let attacker = state.get_card(attacker_id);
+                // let attacker_controller = attacker.get_controller_id(state);
+                // if attacker_controller == controller_id {
+                //     return Ok(vec![]);
+                // }
+                //
+                // let Some(defender_id) =
+                //     state
+                //         .effect_log()
+                //         .iter()
+                //         .rev()
+                //         .find_map(|logged| match logged.effect {
+                //             Effect::DeclareAttack {
+                //                 attacker_id: logged_attacker,
+                //                 target_id,
+                //             } if logged_attacker == *attacker_id => Some(target_id),
+                //             _ => None,
+                //         })
+                // else {
+                //     return Ok(vec![]);
+                // };
+                //
+                // let defended_card = state.get_card(&defender_id);
+                // if defended_card.get_controller_id(state) != controller_id {
+                //     return Ok(vec![]);
+                // }
+                //
+                // let druids_zone = druids.get_zone().clone();
+                // let defended_zone = defended_card.get_zone().clone();
+                // let is_nearby = druids_zone == defended_zone
+                //     || druids_zone.get_adjacent().contains(&defended_zone);
+                // if !is_nearby {
+                //     return Ok(vec![]);
+                // }
+                //
+                // let reflected_avatar = state.get_player_avatar_id(&attacker_controller)?;
+                // if &reflected_avatar == avatar_id {
+                //     return Ok(vec![]);
+                // }
+                //
+                // Ok(vec![Effect::TakeDamage {
+                //     card_id: reflected_avatar,
+                //     from: druids_id,
+                //     damage: damage.clone(),
+                // }])
             }
             _ => Ok(vec![]),
         }

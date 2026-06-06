@@ -1,8 +1,6 @@
-use std::{future::Future, pin::Pin, sync::Arc};
-
 use crate::prelude::*;
 
-const ON_SUMMON_HOOK: HookId = 1;
+const BEARER_ATTACK_HOOK: HookId = 1;
 
 #[derive(Debug, Clone)]
 pub struct ScreamingSkull {
@@ -67,18 +65,20 @@ impl Card for ScreamingSkull {
         Some(self)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    async fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
+        let Some(bearer_id) = self.get_bearer()? else {
+            return Ok(vec![]);
+        };
+
+        let player_id = self.get_controller_id(state);
+        let opponent_id = state.get_opponent_id(&player_id)?;
         Ok(vec![Hook {
-            id: ON_SUMMON_HOOK,
-            trigger: EffectQuery::OneOf(vec![
-                EffectQuery::PlayCard {
-                    card: self.get_id().into(),
-                    spellcaster: None,
-                },
-                EffectQuery::SummonCard {
-                    card: self.get_id().into(),
-                },
-            ]),
+            id: BEARER_ATTACK_HOOK,
+            trigger: EffectQuery::UnitKilled {
+                unit: CardQuery::new().minions().controlled_by(&opponent_id),
+                killer: Some(bearer_id.into()),
+                from_attack: Some(true),
+            },
             timing: HookTiming::After,
             source_zones: HookSourceZones::InPlay,
         }])
@@ -91,72 +91,14 @@ impl Card for ScreamingSkull {
         _effect: &Effect,
     ) -> anyhow::Result<Vec<Effect>> {
         match hook_id {
-            ON_SUMMON_HOOK => {
-                let skull_id = *self.get_id();
-                Ok(vec![Effect::AddDeferredEffect {
-                    effect: DeferredEffect {
-                        trigger_on_effect: EffectQuery::DamageDealt {
-                            source: None,
-                            target: None,
-                        },
-                        expires_on_effect: Some(EffectQuery::BuryCard {
-                            card: CardQuery::from_id(skull_id),
-                        }),
-                        on_effect: Arc::new(
-                            move |state: &State, _: &uuid::Uuid, effect: &Effect| {
-                                Box::pin(async move {
-                                    let Effect::TakeDamage {
-                                        card_id: damaged_id,
-                                        from,
-                                        ..
-                                    } = effect
-                                    else {
-                                        return Ok(vec![]);
-                                    };
+            BEARER_ATTACK_HOOK => {
+                let Some(bearer_id) = self.get_bearer()? else {
+                    return Ok(vec![]);
+                };
 
-                                    let skull = state.get_card(&skull_id);
-                                    if !skull.get_zone().is_in_play() {
-                                        return Ok(vec![]);
-                                    }
-
-                                    let Some(bearer_id) = skull.get_bearer_id()? else {
-                                        return Ok(vec![]);
-                                    };
-                                    if from != &bearer_id {
-                                        return Ok(vec![]);
-                                    }
-
-                                    let killed_enemy = state.effects.iter().any(|queued| {
-                                        matches!(queued, Effect::KillMinion { card_id, killer_id, from_attack: true }
-                                if card_id == damaged_id && *killer_id == bearer_id)
-                                    });
-                                    if !killed_enemy {
-                                        return Ok(vec![]);
-                                    }
-
-                                    let bearer = state.get_card(&bearer_id);
-                                    let bearer_controller = bearer.get_controller_id(state);
-                                    let damaged = state.get_card(damaged_id);
-                                    if damaged.get_controller_id(state) == bearer_controller {
-                                        return Ok(vec![]);
-                                    }
-
-                                    Ok(vec![Effect::SetTapped {
-                                        card_id: bearer_id,
-                                        tapped: false,
-                                    }])
-                                })
-                                    as Pin<
-                                        Box<
-                                            dyn Future<Output = anyhow::Result<Vec<Effect>>>
-                                                + Send
-                                                + '_,
-                                        >,
-                                    >
-                            },
-                        ),
-                        multitrigger: true,
-                    },
+                Ok(vec![Effect::SetTapped {
+                    card_id: bearer_id,
+                    tapped: false,
                 }])
             }
             _ => Ok(vec![]),
