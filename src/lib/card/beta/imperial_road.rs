@@ -74,7 +74,18 @@ impl Card for ImperialRoad {
         Some(self)
     }
 
-    async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook::genesis(self.get_id())])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            GENESIS_HOOK_ID => {
         let controller_id = self.get_controller_id(state);
         let opponent_id = state.get_opponent_id(&controller_id)?;
         let my_zone = self.get_zone().clone();
@@ -144,6 +155,9 @@ impl Card for ImperialRoad {
         }
 
         Ok(effects)
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 

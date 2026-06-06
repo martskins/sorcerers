@@ -114,16 +114,34 @@ impl Card for MidlandArmy {
         Ok(vec![Box::new(ArtilleryBarrage)])
     }
 
-    fn deathrite(&self, state: &State, from: &Zone) -> Vec<Effect> {
-        let controller_id = self.get_controller_id(state);
-        from.get_adjacent()
-            .into_iter()
-            .map(|zone| Effect::SummonToken {
-                player_id: controller_id,
-                token_type: TokenType::FootSoldier,
-                zone,
-            })
-            .collect()
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook::deathrite(self.get_id())])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        state: &State,
+        effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            DEATHRITE_HOOK_ID => {
+                let Effect::TriggerDeathrite { from, .. } = effect else {
+                    return Ok(vec![]);
+                };
+                let controller_id = self.get_controller_id(state);
+                Ok(from
+                    .get_adjacent()
+                    .into_iter()
+                    .map(|zone| Effect::SummonToken {
+                        player_id: controller_id,
+                        token_type: TokenType::FootSoldier,
+                        zone,
+                    })
+                    .collect())
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 

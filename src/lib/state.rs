@@ -778,6 +778,7 @@ pub struct State {
     pub player_mana: HashMap<PlayerId, u8>,
     pub eliminated_players: HashSet<PlayerId>,
     pub players_with_accepted_hands: HashSet<PlayerId>,
+    pub marked_for_death: HashMap<CardId, Zone>,
     next_ongoing_effect_timestamp: u64,
     runtime_cache: StateRuntimeCache,
 }
@@ -824,6 +825,7 @@ impl State {
             player_mana,
             eliminated_players: HashSet::new(),
             players_with_accepted_hands: HashSet::new(),
+            marked_for_death: HashMap::new(),
             next_ongoing_effect_timestamp: 1,
             runtime_cache: StateRuntimeCache::default(),
         }
@@ -1016,6 +1018,20 @@ impl State {
     pub fn queue_front(&mut self, effect: Effect) {
         self.invalidate_runtime_caches();
         self.effects.push_front(effect);
+    }
+
+    pub fn mark_for_death(&mut self, card_id: CardId, from: Zone) -> bool {
+        self.invalidate_runtime_caches();
+        if self.marked_for_death.contains_key(&card_id) {
+            return false;
+        }
+        self.marked_for_death.insert(card_id, from);
+        true
+    }
+
+    pub fn take_marked_for_death(&mut self) -> HashMap<CardId, Zone> {
+        self.invalidate_runtime_caches();
+        std::mem::take(&mut self.marked_for_death)
     }
 
     pub fn effect_log(&self) -> &[LoggedEffect] {

@@ -66,7 +66,18 @@ impl Card for ChainsOfPrometheus {
         Some(self)
     }
 
-    async fn genesis(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook::genesis(self.get_id())])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        _state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            GENESIS_HOOK_ID => {
         let chains_id = *self.get_id();
 
         let deferred = DeferredEffect {
@@ -132,6 +143,9 @@ impl Card for ChainsOfPrometheus {
         };
 
         Ok(vec![Effect::AddDeferredEffect { effect: deferred }])
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 

@@ -61,7 +61,18 @@ impl Card for WraetannisTitan {
         Some(&mut self.unit_base)
     }
 
-    async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook::genesis(self.get_id())])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            GENESIS_HOOK_ID => {
         let opponent_id = state.get_opponent_id(&self.get_controller_id(state))?;
         let effects = CardQuery::new()
             .units()
@@ -75,6 +86,9 @@ impl Card for WraetannisTitan {
             })
             .collect();
         Ok(effects)
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 

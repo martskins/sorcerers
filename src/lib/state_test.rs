@@ -1530,10 +1530,12 @@ async fn test_courtesan_thais_genesis_overrides_next_turns() {
     let (mut state, _rx) = setup_carrying_state();
     let player_one = state.players[0].id;
     let player_two = state.players[1].id;
-    let thais = CourtesanThais::new(player_one);
+    let mut thais = CourtesanThais::new(player_one);
+    let thais_id = *thais.get_id();
+    thais.set_zone(Zone::Location(Location::Square(1, Region::Surface)));
+    state.cards.insert(thais_id, Box::new(thais));
 
-    let effects = thais.genesis(&state).await.unwrap();
-    state.queue(effects);
+    state.queue_one(Effect::TriggerGenesis { card_id: thais_id });
     state.apply_effects_without_log().await.unwrap();
 
     let next_turn = state.next_turn();

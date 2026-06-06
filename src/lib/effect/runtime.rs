@@ -14,6 +14,13 @@ struct PendingHook {
 }
 
 impl EffectEngine {
+    fn queues_resolved_hook_effects(effect: &Effect) -> bool {
+        matches!(
+            effect,
+            Effect::TriggerGenesis { .. } | Effect::TriggerDeathrite { .. }
+        )
+    }
+
     async fn collect_hooks(
         state: &State,
         effect: &Effect,
@@ -68,8 +75,12 @@ impl EffectEngine {
             }
 
             let effects = source.resolve_hook(hook.hook_id, state, effect).await?;
-            for effect in effects {
-                Box::pin(effect.apply(state)).await?;
+            if Self::queues_resolved_hook_effects(effect) {
+                state.queue(effects);
+            } else {
+                for effect in effects {
+                    Box::pin(effect.apply(state)).await?;
+                }
             }
         }
 

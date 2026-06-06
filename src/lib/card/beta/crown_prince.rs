@@ -62,31 +62,45 @@ impl Card for CrownPrince {
         Some(&mut self.unit_base)
     }
 
-    fn deathrite(&self, state: &State, _from: &Zone) -> Vec<Effect> {
-        let controller_id = self.get_controller_id(state);
-        let self_id = *self.get_id();
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook::deathrite(self.get_id())])
+    }
 
-        let other_mortal_exists = CardQuery::new()
-            .controlled_by(&controller_id)
-            .minions()
-            .in_play()
-            .id_not_in(vec![self_id])
-            .all(state)
-            .into_iter()
-            .any(|id| {
-                state
-                    .get_card(&id)
-                    .get_unit_base()
-                    .is_some_and(|ub| ub.types.contains(&MinionType::Mortal))
-            });
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            DEATHRITE_HOOK_ID => {
+                let controller_id = self.get_controller_id(state);
+                let self_id = *self.get_id();
 
-        if other_mortal_exists {
-            vec![Effect::SetCardZone {
-                card_id: self_id,
-                zone: Zone::Hand,
-            }]
-        } else {
-            vec![]
+                let other_mortal_exists = CardQuery::new()
+                    .controlled_by(&controller_id)
+                    .minions()
+                    .in_play()
+                    .id_not_in(vec![self_id])
+                    .all(state)
+                    .into_iter()
+                    .any(|id| {
+                        state
+                            .get_card(&id)
+                            .get_unit_base()
+                            .is_some_and(|ub| ub.types.contains(&MinionType::Mortal))
+                    });
+
+                if other_mortal_exists {
+                    Ok(vec![Effect::SetCardZone {
+                        card_id: self_id,
+                        zone: Zone::Hand,
+                    }])
+                } else {
+                    Ok(vec![])
+                }
+            }
+            _ => Ok(vec![]),
         }
     }
 }

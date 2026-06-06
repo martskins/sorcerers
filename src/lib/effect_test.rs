@@ -4,7 +4,7 @@ use crate::{
         CardBase, CardStatus, ColickyDragonettes, Damage, DeadOfNightDemon, DodgeRoll, Drought,
         Enchantress, Flood, FootSoldier, GildedAegis, Hook, HookId, HookSourceZones, HookTiming,
         OgreGoons, PhaseAssassin, PitVipers, PlanarGate, Region, RimlandNomads, RootSpider,
-        RoyalBodyguard, Sandstorm, ScourgeZombies, SeaRaider, SeirawanHydra, Silence,
+        RoyalBodyguard, SacredScarabs, Sandstorm, ScourgeZombies, SeaRaider, SeirawanHydra, Silence,
         SimpleVillage, SirianTemplar, SlingPixies, SpringRiver, TuftedTurtles, TvinnaxBerserker,
         UnitBase, VaultsOfZul, WallOfFire, YourkeCrossbowmen, from_name_and_zone,
     },
@@ -2299,7 +2299,8 @@ async fn test_summon_card_no_summoning_sickness_with_charge() {
 #[tokio::test]
 async fn test_summon_card_queues_genesis_effects() {
     // ApprenticeWizard genesis -> draw spell
-    let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
+    let zone = Zone::Location(Location::Square(1, Region::Surface));
+    let (mut state, _rx) = make_state(vec![zone.clone()]);
     let player_id = state.players[0].id;
 
     let wizard = ApprenticeWizard::new(player_id);
@@ -2311,25 +2312,127 @@ async fn test_summon_card_queues_genesis_effects() {
             player_id,
             id,
             Zone::Hand,
-            Location::Square(1, Region::Surface),
+            zone.clone().into_location().expect("test zone must be a location"),
         )],
     }
     .apply(&mut state)
     .await
     .unwrap();
 
-    let has_draw_spell = state.effects.iter().any(|e| {
+    let has_genesis_trigger = state.effects.iter().any(|e| {
         matches!(
             *e,
-            Effect::DrawCard {
-                kind: DrawKind::Spell,
-                ..
-            }
+            Effect::TriggerGenesis {
+                card_id
+            } if card_id == id
         )
     });
     assert!(
-        has_draw_spell,
-        "SummonCards should queue genesis effects (draw spell for ApprenticeWizard)"
+        has_genesis_trigger,
+        "SummonCards should queue a genesis trigger for ApprenticeWizard"
+    );
+
+    drain_effects(&mut state).await;
+    assert_eq!(state.cards.get(&id).unwrap().get_zone(), &zone);
+}
+
+#[tokio::test]
+async fn test_genesis_triggers_even_if_source_is_disabled() {
+    let zone = Zone::Location(Location::Square(1, Region::Surface));
+    let (mut state, _rx) = make_state(vec![zone.clone()]);
+    let player_id = state.players[0].id;
+
+    let mut wizard = ApprenticeWizard::new(player_id);
+    let wizard_id = *wizard.get_id();
+    wizard.set_zone(zone);
+    wizard.add_status(CardStatus::Disabled);
+    state.cards.insert(wizard_id, Box::new(wizard));
+
+    state.queue_one(Effect::TriggerGenesis { card_id: wizard_id });
+    drain_effects(&mut state).await;
+
+    assert!(
+        state.eliminated_players.contains(&player_id),
+        "disabled Genesis sources should still resolve their enters-the-realm trigger"
+    );
+}
+
+#[tokio::test]
+async fn test_genesis_is_ignored_if_source_left_realm_before_resolution() {
+    let zone = Zone::Location(Location::Square(1, Region::Surface));
+    let (mut state, _rx) = make_state(vec![zone.clone()]);
+    let player_id = state.players[0].id;
+
+    let mut wizard = ApprenticeWizard::new(player_id);
+    let wizard_id = *wizard.get_id();
+    wizard.set_zone(zone);
+    state.cards.insert(wizard_id, Box::new(wizard));
+
+    state.queue(vec![
+        Effect::TriggerGenesis { card_id: wizard_id },
+        Effect::BanishCard { card_id: wizard_id },
+    ]);
+    drain_effects(&mut state).await;
+
+    assert!(
+        !state.eliminated_players.contains(&player_id),
+        "Genesis should be ignored after its source has left the realm"
+    );
+    assert_eq!(state.get_card(&wizard_id).get_zone(), &Zone::Banish);
+}
+
+#[tokio::test]
+async fn test_deathrite_resolves_before_source_enters_cemetery() {
+    let zone = Zone::Location(Location::Square(1, Region::Surface));
+    let (mut state, _rx) = make_state(vec![zone.clone()]);
+    let player_id = state.players[0].id;
+
+    let mut scarabs = SacredScarabs::new(player_id);
+    let scarabs_id = *scarabs.get_id();
+    scarabs.set_zone(zone);
+    state.cards.insert(scarabs_id, Box::new(scarabs));
+
+    state.queue_one(Effect::BuryCard {
+        card_id: scarabs_id,
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(state.get_card(&scarabs_id).get_zone(), &Zone::Cemetery);
+    assert_eq!(
+        state
+            .get_card(&scarabs_id)
+            .get_damage_taken()
+            .unwrap_or_default(),
+        3,
+        "Sacred Scarabs should still occupy its death zone while Deathrite resolves"
+    );
+}
+
+#[tokio::test]
+async fn test_disabled_deathrite_source_does_not_resolve() {
+    let zone = Zone::Location(Location::Square(1, Region::Surface));
+    let (mut state, _rx) = make_state(vec![zone.clone()]);
+    let player_id = state.players[0].id;
+
+    let mut scarabs = SacredScarabs::new(player_id);
+    let scarabs_id = *scarabs.get_id();
+    scarabs.set_zone(zone);
+    scarabs.add_status(CardStatus::Disabled);
+    state.cards.insert(scarabs_id, Box::new(scarabs));
+
+    state.queue_one(Effect::BuryCard {
+        card_id: scarabs_id,
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(state.get_card(&scarabs_id).get_zone(), &Zone::Cemetery);
+    assert_eq!(
+        state
+            .get_card(&scarabs_id)
+            .get_damage_taken()
+            .unwrap_or_default(),
+        0,
+        "disabled Deathrite sources should not resolve"
     );
 }
 

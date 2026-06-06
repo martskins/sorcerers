@@ -63,18 +63,21 @@ impl Card for BrobdingnagBullfrog {
         Some(&mut self.unit_base)
     }
 
-    fn deathrite(&self, _state: &State, _from: &Zone) -> Vec<Effect> {
-        if let Some(swallowed_minion_id) = self.swallowed_minion {
-            return vec![Effect::SetBearer {
-                card_id: swallowed_minion_id,
-                bearer_id: None,
-            }];
-        }
-
-        vec![]
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![
+            Hook::genesis(self.get_id()),
+            Hook::deathrite(self.get_id()),
+        ])
     }
 
-    async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            GENESIS_HOOK_ID => {
         let minions = CardQuery::new()
             .minions()
             .in_zone(self.get_zone())
@@ -102,6 +105,19 @@ impl Card for BrobdingnagBullfrog {
                 bearer_id: Some(*self.get_id()),
             },
         ])
+            }
+            DEATHRITE_HOOK_ID => {
+                if let Some(swallowed_minion_id) = self.swallowed_minion {
+                    return Ok(vec![Effect::SetBearer {
+                        card_id: swallowed_minion_id,
+                        bearer_id: None,
+                    }]);
+                }
+
+                Ok(vec![])
+            }
+            _ => Ok(vec![]),
+        }
     }
 
     fn set_data(

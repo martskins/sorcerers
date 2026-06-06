@@ -112,8 +112,7 @@ impl Card for FenvaleMuse {
                     "Fenvale Muse: Pick a nearby River to trigger",
                 )
                 .await?;
-                let river = state.get_card(&river_id);
-                river.genesis(state).await
+                Ok(vec![Effect::TriggerGenesis { card_id: river_id }])
             }
             _ => Ok(vec![]),
         }

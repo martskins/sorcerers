@@ -66,7 +66,18 @@ impl Card for DarkTower {
         Some(&mut self.site_base)
     }
 
-    async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook::genesis(self.get_id())])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            GENESIS_HOOK_ID => {
         let count = state
             .cards
             .values()
@@ -83,6 +94,9 @@ impl Card for DarkTower {
             player_id: *self.get_owner_id(),
             mana: 1,
         }])
+            }
+            _ => Ok(vec![]),
+        }
     }
 
     fn get_site(&self) -> Option<&dyn Site> {

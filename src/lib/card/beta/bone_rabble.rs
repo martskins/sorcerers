@@ -62,53 +62,67 @@ impl Card for BoneRabble {
         Some(&mut self.unit_base)
     }
 
-    fn deathrite(&self, _state: &State, _from: &Zone) -> Vec<Effect> {
-        let owner_id = *self.get_owner_id();
-        let bone_rabble_id = *self.get_id();
-        vec![Effect::AddDeferredEffect {
-            effect: DeferredEffect {
-                trigger_on_effect: EffectQuery::PlayCard {
-                    card: CardQuery::new()
-                        .with_element(Element::Earth)
-                        .controlled_by(&owner_id)
-                        .sites(),
-                    spellcaster: None,
-                },
-                expires_on_effect: Some(EffectQuery::SummonCard {
-                    card: self.get_id().into(),
-                }),
-                on_effect: Arc::new(move |state: &State, card_id: &CardId, _effect: &Effect| {
-                    let owner_id = owner_id;
-                    Box::pin(async move {
-                        let site = state.get_card(card_id);
-                        let summon_bone_rabble = yes_or_no_source(
-                            &owner_id,
-                            state,
-                            "Summon Bone Rabble atop the played site?",
-                            Some(bone_rabble_id),
-                        )
-                        .await?;
-                        if summon_bone_rabble {
-                            Ok(vec![Effect::SummonCards {
-                                cards: vec![(
-                                    owner_id,
-                                    bone_rabble_id,
-                                    Zone::Cemetery,
-                                    site.get_zone()
-                                        .clone()
-                                        .into_location()
-                                        .expect("played site must be a location"),
-                                )],
-                            }])
-                        } else {
-                            Ok(vec![])
-                        }
-                    })
-                        as Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>>
-                }),
-                multitrigger: false,
-            },
-        }]
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook::deathrite(self.get_id())])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        _state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            DEATHRITE_HOOK_ID => {
+                let owner_id = *self.get_owner_id();
+                let bone_rabble_id = *self.get_id();
+                Ok(vec![Effect::AddDeferredEffect {
+                    effect: DeferredEffect {
+                        trigger_on_effect: EffectQuery::PlayCard {
+                            card: CardQuery::new()
+                                .with_element(Element::Earth)
+                                .controlled_by(&owner_id)
+                                .sites(),
+                            spellcaster: None,
+                        },
+                        expires_on_effect: Some(EffectQuery::SummonCard {
+                            card: self.get_id().into(),
+                        }),
+                        on_effect: Arc::new(move |state: &State, card_id: &CardId, _effect: &Effect| {
+                            let owner_id = owner_id;
+                            Box::pin(async move {
+                                let site = state.get_card(card_id);
+                                let summon_bone_rabble = yes_or_no_source(
+                                    &owner_id,
+                                    state,
+                                    "Summon Bone Rabble atop the played site?",
+                                    Some(bone_rabble_id),
+                                )
+                                .await?;
+                                if summon_bone_rabble {
+                                    Ok(vec![Effect::SummonCards {
+                                        cards: vec![(
+                                            owner_id,
+                                            bone_rabble_id,
+                                            Zone::Cemetery,
+                                            site.get_zone()
+                                                .clone()
+                                                .into_location()
+                                                .expect("played site must be a location"),
+                                        )],
+                                    }])
+                                } else {
+                                    Ok(vec![])
+                                }
+                            })
+                                as Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>>
+                        }),
+                        multitrigger: false,
+                    },
+                }])
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 

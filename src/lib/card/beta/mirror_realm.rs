@@ -73,7 +73,18 @@ impl Card for MirrorRealm {
         Some(self)
     }
 
-    async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook::genesis(self.get_id())])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            GENESIS_HOOK_ID => {
         let nearby_sites = CardQuery::new()
             .sites()
             .near_to(self.get_zone())
@@ -95,6 +106,9 @@ impl Card for MirrorRealm {
             card_id: *self.get_id(),
             copy_source_id: picked_site_id,
         }])
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 

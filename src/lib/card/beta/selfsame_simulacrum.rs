@@ -69,7 +69,18 @@ impl Card for SelfsameSimulacrum {
         Ok(())
     }
 
-    async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook::genesis(self.get_id())])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            GENESIS_HOOK_ID => {
         let controller_id = self.get_controller_id(state);
         let targets = CardQuery::new()
             .minions()
@@ -102,6 +113,9 @@ impl Card for SelfsameSimulacrum {
             card_id: *self.get_id(),
             data: std::sync::Arc::new(copied),
         }])
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 

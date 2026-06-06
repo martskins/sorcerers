@@ -81,7 +81,7 @@ impl Card for TheGeistwood {
     async fn resolve_hook(
         &self,
         hook_id: HookId,
-        state: &State,
+        _state: &State,
         effect: &Effect,
     ) -> anyhow::Result<Vec<Effect>> {
         match hook_id {
@@ -90,8 +90,7 @@ impl Card for TheGeistwood {
                     return Ok(vec![]);
                 };
 
-                let card = state.get_card(card_id);
-                card.genesis(state).await
+                Ok(vec![Effect::TriggerGenesis { card_id: *card_id }])
             }
             _ => Ok(vec![]),
         }

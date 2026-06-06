@@ -62,7 +62,18 @@ impl Card for CourtesanThais {
         Some(&mut self.unit_base)
     }
 
-    async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook::genesis(self.get_id())])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            GENESIS_HOOK_ID => {
         let current_player = state.current_player();
         let next_player = state.next_turn().player_id();
 
@@ -74,6 +85,9 @@ impl Card for CourtesanThais {
                 turn: Turn::controlled_by(current_player, next_player),
             },
         ])
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 

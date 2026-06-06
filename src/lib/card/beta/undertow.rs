@@ -70,7 +70,18 @@ impl Card for Undertow {
         Some(self)
     }
 
-    async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook::genesis(self.get_id())])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            GENESIS_HOOK_ID => {
         let player_id = self.get_controller_id(state);
         let body_of_water = state
             .get_body_of_water_at(self.get_zone())
@@ -106,6 +117,9 @@ impl Card for Undertow {
             tap: false,
             through_path: None,
         }])
+            }
+            _ => Ok(vec![]),
+        }
     }
 
     fn get_resource_provider(&self) -> Option<&dyn ResourceProvider> {

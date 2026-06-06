@@ -73,19 +73,31 @@ impl Card for RootsOfYggdrasil {
         Some(self)
     }
 
-    fn deathrite(&self, state: &State, _from: &Zone) -> Vec<Effect> {
-        CardQuery::new()
-            .in_play()
-            .card_types(vec![
-                CardType::Minion,
-                CardType::Artifact,
-                CardType::Site,
-                CardType::Aura,
-            ])
-            .all(state)
-            .into_iter()
-            .map(|card_id| Effect::BuryCard { card_id })
-            .collect()
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook::deathrite(self.get_id())])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            DEATHRITE_HOOK_ID => Ok(CardQuery::new()
+                .in_play()
+                .card_types(vec![
+                    CardType::Minion,
+                    CardType::Artifact,
+                    CardType::Site,
+                    CardType::Aura,
+                ])
+                .all(state)
+                .into_iter()
+                .map(|card_id| Effect::BuryCard { card_id })
+                .collect()),
+            _ => Ok(vec![]),
+        }
     }
 }
 

@@ -256,6 +256,14 @@ pub enum Effect {
     SummonCards {
         cards: Vec<(PlayerId, CardId, Zone, Location)>,
     },
+    TriggerGenesis {
+        card_id: CardId,
+    },
+    TriggerDeathrite {
+        card_id: CardId,
+        from: Zone,
+    },
+    FinalizeDeaths,
     SetTapped {
         card_id: CardId,
         tapped: bool,
@@ -432,6 +440,9 @@ impl Effect {
             Effect::PlayMagic { card_id, .. } => Some(card_id),
             Effect::PlayCard { card_id, .. } => Some(card_id),
             Effect::SummonCards { .. } => None,
+            Effect::TriggerGenesis { card_id } => Some(card_id),
+            Effect::TriggerDeathrite { card_id, .. } => Some(card_id),
+            Effect::FinalizeDeaths => None,
             Effect::SetTapped { card_id, .. } => Some(card_id),
             Effect::EndTurn { player_id } => Some(player_id),
             Effect::FinishEndTurn { player_id } => Some(player_id),
@@ -679,6 +690,9 @@ impl Effect {
                     Some(parts.join("; "))
                 }
             }
+            Effect::TriggerGenesis { .. } => None,
+            Effect::TriggerDeathrite { .. } => None,
+            Effect::FinalizeDeaths => None,
             Effect::SetTapped { .. } => None,
             Effect::EndTurn { player_id, .. } => {
                 Some(format!("{} passes the turn", player_name(player_id, state)))
@@ -956,7 +970,7 @@ impl Effect {
         EffectLifecycle::modify_effect(state, &mut effect).await?;
 
         match &effect {
-            Effect::Noop => {}
+            Effect::Noop | Effect::TriggerGenesis { .. } | Effect::TriggerDeathrite { .. } => {}
             Effect::PlayerLost { player_id } => {
                 state.eliminate_player(*player_id);
             }
@@ -1469,8 +1483,7 @@ impl Effect {
                     state
                         .add_passive_ongoing_effects_for_source(card_id)
                         .await?;
-                    let card = state.get_card(card_id);
-                    let mut effects = card.genesis(state).await?;
+                    let mut effects = vec![Effect::TriggerGenesis { card_id: *card_id }];
                     if !from_zone.is_in_play()
                         && zone.is_in_play()
                         && let Some(mana_effect) =
@@ -1534,9 +1547,8 @@ impl Effect {
                 let mut effects = vec![];
                 for (_, card_id, _from_zone, location) in cards {
                     let zone = location.clone().into_zone();
-                    let card = state.get_card(card_id);
                     let from_zone = snapshot.get_card(card_id).get_zone().clone();
-                    effects.extend(card.genesis(state).await?);
+                    effects.push(Effect::TriggerGenesis { card_id: *card_id });
                     if !from_zone.is_in_play()
                         && zone.is_in_play()
                         && let Some(mana_effect) =
@@ -2132,42 +2144,62 @@ impl Effect {
                 state.queue_one(Effect::BuryCard { card_id: *card_id });
             }
             Effect::BuryCard { card_id, .. } => {
-                // Deathrite fires BEFORE the card moves to the cemetery so that triggers
-                // which care about the card's current zone (e.g. summoning a token in its
-                // place) see it still in the realm.
                 let card = state.get_card(card_id);
                 let original_zone = card.get_zone().clone();
-                let is_token = card.is_token();
-                let is_site = card.is_site();
-                let controller_id = card.get_controller_id(state);
-                let effects = card.deathrite(state, &original_zone);
-                state.queue(effects);
-
-                // Effects are drained from the back of the queue, so enqueue removal before any
-                // cleanup effects that still need to reference the token.
-                if is_token {
-                    state.queue_one(Effect::RemoveCardFromGame { card_id: *card_id });
+                if !original_zone.is_in_play() {
+                    state.get_card_mut(card_id).set_zone(Zone::Cemetery);
+                    return Ok(());
                 }
 
-                state.queue_one(Effect::SetBearer {
-                    card_id: *card_id,
-                    bearer_id: None,
-                });
-
-                // All destroyed sites get replaced by a rubble, even other rubbles.
-                if is_site && original_zone.is_in_play() {
-                    state.queue_one(Effect::SummonToken {
-                        player_id: controller_id,
-                        token_type: TokenType::Rubble,
-                        zone: original_zone.clone(),
+                if state.mark_for_death(*card_id, original_zone.clone()) {
+                    state.queue_one(Effect::TriggerDeathrite {
+                        card_id: *card_id,
+                        from: original_zone,
                     });
+                    state.queue_front(Effect::FinalizeDeaths);
+                }
+            }
+            Effect::FinalizeDeaths => {
+                let marked = state.take_marked_for_death();
+                let mut survival_check_needed = false;
+                for (card_id, death_zone) in marked {
+                    let Some(card) = state.cards.get(&card_id) else {
+                        continue;
+                    };
+                    if card.get_zone() != &death_zone {
+                        continue;
+                    }
+
+                    let is_token = card.is_token();
+                    let is_site = card.is_site();
+                    let controller_id = card.get_controller_id(state);
+
+                    state.get_card_mut(&card_id).set_bearer_id(None);
+
+                    let borne_cards = CardQuery::new().carried_by(&card_id).all(state);
+                    for borne_card_id in borne_cards {
+                        state.get_card_mut(&borne_card_id).set_bearer_id(None);
+                    }
+
+                    state.remove_ongoing_effects_from_source(&card_id);
+                    state.get_card_mut(&card_id).set_zone(Zone::Cemetery);
+                    survival_check_needed = true;
+
+                    if is_token {
+                        state.queue_one(Effect::RemoveCardFromGame { card_id });
+                    }
+
+                    if is_site && death_zone.is_in_play() {
+                        state.queue_one(Effect::SummonToken {
+                            player_id: controller_id,
+                            token_type: TokenType::Rubble,
+                            zone: death_zone,
+                        });
+                    }
                 }
 
-                state.get_card_mut(card_id).set_zone(Zone::Cemetery);
-
-                let borne_cards = CardQuery::new().carried_by(card_id).all(state);
-                for borne_card_id in borne_cards {
-                    state.get_card_mut(&borne_card_id).set_bearer_id(None);
+                if survival_check_needed {
+                    state.queue(location_survival_effects_for_realm(state));
                 }
             }
             Effect::Animate {
@@ -2381,9 +2413,7 @@ impl Effect {
                     let effects = copy.play_mechanic(state, player_id, caster_id).await?;
                     state.queue(effects);
                 } else {
-                    let copy = state.get_card(&copy_id);
-                    let effects = copy.genesis(state).await?;
-                    state.queue(effects);
+                    state.queue_one(Effect::TriggerGenesis { card_id: copy_id });
                 }
             }
             Effect::SummonCopy {
@@ -2411,10 +2441,10 @@ impl Effect {
 
                 crate::game::force_sync_all(state).await?;
 
-                let card = state.get_card(&copy_id);
-                let mut effects: Vec<Effect> = vec![];
-                effects.extend(card.genesis(state).await?);
-                effects.push(Effect::BanishCard { card_id: copy_id });
+                let effects: Vec<Effect> = vec![
+                    Effect::BanishCard { card_id: copy_id },
+                    Effect::TriggerGenesis { card_id: copy_id },
+                ];
                 state.queue(effects);
             }
             Effect::RemoveCardFromGame { card_id } => {

@@ -62,7 +62,18 @@ impl Card for SlumberingGiantess {
         Some(&mut self.unit_base)
     }
 
-    async fn genesis(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook::genesis(self.get_id())])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        _state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            GENESIS_HOOK_ID => {
         Ok(vec![Effect::AddStatusCounter {
             card_id: *self.get_id(),
             counter: StatusCounter {
@@ -74,6 +85,9 @@ impl Card for SlumberingGiantess {
                 }),
             },
         }])
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 

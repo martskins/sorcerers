@@ -63,7 +63,18 @@ impl Card for Scarecrow {
         Some(self)
     }
 
-    async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook::genesis(self.get_id())])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            GENESIS_HOOK_ID => {
         let zone = self.get_zone();
         if !zone.is_in_play() {
             return Ok(vec![]);
@@ -82,6 +93,9 @@ impl Card for Scarecrow {
                 zone: Zone::Hand,
             })
             .collect())
+            }
+            _ => Ok(vec![]),
+        }
     }
 
     async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {

@@ -2357,14 +2357,7 @@ impl Game {
         }
 
         for aura_id in auras_to_dispell {
-            {
-                let card = state.get_card_mut(&aura_id);
-                card.set_zone(Zone::Cemetery);
-            }
-
-            let card = state.get_card(&aura_id);
-            let effects = card.deathrite(state, card.get_zone());
-            state.queue(effects);
+            state.queue_one(Effect::BuryCard { card_id: aura_id });
         }
 
         Ok(())

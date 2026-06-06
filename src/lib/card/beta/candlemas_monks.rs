@@ -64,10 +64,22 @@ impl Card for CandlemasMons {
         Some(&mut self.unit_base)
     }
 
-    fn deathrite(&self, state: &State, _from: &Zone) -> Vec<Effect> {
-        vec![Effect::EndTurn {
-            player_id: self.get_controller_id(state),
-        }]
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook::deathrite(self.get_id())])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            DEATHRITE_HOOK_ID => Ok(vec![Effect::EndTurn {
+                player_id: self.get_controller_id(state),
+            }]),
+            _ => Ok(vec![]),
+        }
     }
 }
 

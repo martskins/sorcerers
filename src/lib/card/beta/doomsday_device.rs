@@ -77,20 +77,16 @@ impl Card for DoomsdayDevice {
         Ok(())
     }
 
-    async fn genesis(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
-        Ok(vec![Effect::SetCardData {
-            card_id: *self.get_id(),
-            data: std::sync::Arc::new(6u8),
-        }])
-    }
-
     async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
-        Ok(vec![Hook {
-            id: TURN_END_HOOK,
-            trigger: EffectQuery::TurnEnd { player_id: None },
-            timing: HookTiming::After,
-            source_zones: HookSourceZones::InPlay,
-        }])
+        Ok(vec![
+            Hook::genesis(self.get_id()),
+            Hook {
+                id: TURN_END_HOOK,
+                trigger: EffectQuery::TurnEnd { player_id: None },
+                timing: HookTiming::After,
+                source_zones: HookSourceZones::InPlay,
+            },
+        ])
     }
 
     async fn resolve_hook(
@@ -100,6 +96,10 @@ impl Card for DoomsdayDevice {
         _effect: &Effect,
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
+            GENESIS_HOOK_ID => Ok(vec![Effect::SetCardData {
+                card_id: *self.get_id(),
+                data: std::sync::Arc::new(6u8),
+            }]),
             TURN_END_HOOK => {
         if !self.get_zone().is_in_play() {
             return Ok(vec![]);

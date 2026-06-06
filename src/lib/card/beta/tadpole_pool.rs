@@ -70,7 +70,18 @@ impl Card for TadpolePool {
         Some(self)
     }
 
-    async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook::genesis(self.get_id())])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            GENESIS_HOOK_ID => {
         let resources = state.get_player_resources(&self.get_controller_id(state))?;
         if resources.thresholds.water < 3 {
             return Ok(vec![]);
@@ -94,6 +105,9 @@ impl Card for TadpolePool {
                 zone: self.get_zone().clone(),
             },
         ])
+            }
+            _ => Ok(vec![]),
+        }
     }
 
     fn get_resource_provider(&self) -> Option<&dyn ResourceProvider> {

@@ -1627,17 +1627,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         self.get_base_mut().zone = zone;
     }
 
-    // TODO: Should genesis and deathrite be modelled as hooks as well? Doing it would mean the
-    // logic for determining whether it must trigger or not (say because the card is disabled) is
-    // centralised in a single place. It does feel like it would be very repetitive though.
-    async fn genesis(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
-        Ok(vec![])
-    }
-
-    fn deathrite(&self, _state: &State, _from: &Zone) -> Vec<Effect> {
-        vec![]
-    }
-
     fn can_be_targetted_by_player(&self, state: &State, player_id: &PlayerId) -> bool {
         // A card with Stealth cannot be targeted by opponents.
         if self.has_ability(state, &Ability::Stealth) && &self.get_controller_id(state) != player_id
@@ -1966,11 +1955,38 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
 pub type HookId = u16;
 
+pub const GENESIS_HOOK_ID: HookId = u16::MAX - 1;
+pub const DEATHRITE_HOOK_ID: HookId = u16::MAX;
+
 pub struct Hook {
     pub id: HookId,
     pub trigger: EffectQuery,
     pub timing: HookTiming,
     pub source_zones: HookSourceZones,
+}
+
+impl Hook {
+    pub fn genesis(card_id: &CardId) -> Self {
+        Self {
+            id: GENESIS_HOOK_ID,
+            trigger: EffectQuery::Genesis {
+                card: (*card_id).into(),
+            },
+            timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
+        }
+    }
+
+    pub fn deathrite(card_id: &CardId) -> Self {
+        Self {
+            id: DEATHRITE_HOOK_ID,
+            trigger: EffectQuery::Deathrite {
+                card: (*card_id).into(),
+            },
+            timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

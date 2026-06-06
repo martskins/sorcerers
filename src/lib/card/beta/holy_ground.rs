@@ -69,7 +69,18 @@ impl Card for HolyGround {
         Some(self)
     }
 
-    async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook::genesis(self.get_id())])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            GENESIS_HOOK_ID => {
         let effects = CardQuery::new()
             .near_to(self.get_zone())
             .card_types(vec![CardType::Avatar])
@@ -82,6 +93,9 @@ impl Card for HolyGround {
             .collect();
 
         Ok(effects)
+            }
+            _ => Ok(vec![]),
+        }
     }
 
     fn get_resource_provider(&self) -> Option<&dyn ResourceProvider> {

@@ -57,7 +57,18 @@ impl Card for ShiftingSands {
         &self.card_base
     }
 
-    async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook::genesis(self.get_id())])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            GENESIS_HOOK_ID => {
         let mut effects = vec![];
         for site in CardQuery::new()
             .sites()
@@ -66,9 +77,14 @@ impl Card for ShiftingSands {
             .site_types(vec![SiteType::Desert])
             .iter(state)
         {
-            effects.extend(site.genesis(state).await?);
+            effects.push(Effect::TriggerGenesis {
+                card_id: *site.get_id(),
+            });
         }
         Ok(effects)
+            }
+            _ => Ok(vec![]),
+        }
     }
 
     fn get_site_base(&self) -> Option<&SiteBase> {

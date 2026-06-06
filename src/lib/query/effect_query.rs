@@ -47,6 +47,12 @@ pub enum EffectQuery {
     SummonCard {
         card: CardQuery,
     },
+    Genesis {
+        card: CardQuery,
+    },
+    Deathrite {
+        card: CardQuery,
+    },
     BuryCard {
         card: CardQuery,
     },
@@ -148,6 +154,20 @@ impl EffectQuery {
                 .filter(|(_, card_id, _, _)| card.matches(card_id, state))
                 .map(|(_, card_id, _, _)| *card_id)
                 .collect()),
+            (EffectQuery::Genesis { card }, Effect::TriggerGenesis { card_id }) => {
+                if card.matches(card_id, state) {
+                    Ok(vec![*card_id])
+                } else {
+                    Ok(vec![])
+                }
+            }
+            (EffectQuery::Deathrite { card }, Effect::TriggerDeathrite { card_id, .. }) => {
+                if card.matches(card_id, state) {
+                    Ok(vec![*card_id])
+                } else {
+                    Ok(vec![])
+                }
+            }
             (
                 EffectQuery::UnitKilled { unit, killer },
                 Effect::KillMinion {
@@ -318,6 +338,12 @@ impl EffectQuery {
             (EffectQuery::SummonCard { card }, Effect::SummonCards { cards }) => Ok(cards
                 .iter()
                 .any(|(_, card_id, _, _)| card.matches(card_id, state))),
+            (EffectQuery::Genesis { card }, Effect::TriggerGenesis { card_id }) => {
+                Ok(card.matches(card_id, state))
+            }
+            (EffectQuery::Deathrite { card }, Effect::TriggerDeathrite { card_id, .. }) => {
+                Ok(card.matches(card_id, state))
+            }
             (
                 EffectQuery::PlayCard { card, spellcaster },
                 Effect::PlayMagic {

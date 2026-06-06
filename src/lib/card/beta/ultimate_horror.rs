@@ -56,7 +56,18 @@ impl Card for UltimateHorror {
         Some(&mut self.unit_base)
     }
 
-    async fn genesis(&self, state: &State) -> anyhow::Result<Vec<Effect>> {
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook::genesis(self.get_id())])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook {
+            GENESIS_HOOK_ID => {
         let controller_id = self.get_controller_id(state);
         let mut nearby_zones = self.get_zone().get_nearby_sites(state);
         nearby_zones.extend(self.get_zone().get_nearby_voids(state));
@@ -89,6 +100,9 @@ impl Card for UltimateHorror {
             });
         }
         Ok(effects)
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 
