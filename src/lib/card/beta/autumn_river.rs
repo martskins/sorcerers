@@ -70,7 +70,7 @@ impl Card for AutumnRiver {
         Some(self)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook::genesis(self.get_id())])
     }
 
@@ -82,23 +82,24 @@ impl Card for AutumnRiver {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-        let controller_id = self.get_controller_id(state);
-        let deck = state.get_player_deck(&controller_id)?;
-        if let Some(spell_id) = deck.peek_spell() {
-            let prompt = "Viewing the top card of your spellbook";
-            let action = "Put into the bottom of your spellbook?";
-            let action = take_action(&controller_id, &[*spell_id], state, prompt, action).await?;
-            if action {
-                let mut deck = deck.clone();
-                deck.rotate_spells(1);
-                return Ok(vec![Effect::RearrangeDeck {
-                    spells: deck.spells,
-                    sites: deck.sites,
-                }]);
-            }
-        }
+                let controller_id = self.get_controller_id(state);
+                let deck = state.get_player_deck(&controller_id)?;
+                if let Some(spell_id) = deck.peek_spell() {
+                    let prompt = "Viewing the top card of your spellbook";
+                    let action = "Put into the bottom of your spellbook?";
+                    let action =
+                        take_action(&controller_id, &[*spell_id], state, prompt, action).await?;
+                    if action {
+                        let mut deck = deck.clone();
+                        deck.rotate_spells(1);
+                        return Ok(vec![Effect::RearrangeDeck {
+                            spells: deck.spells,
+                            sites: deck.sites,
+                        }]);
+                    }
+                }
 
-        Ok(vec![])
+                Ok(vec![])
             }
             _ => Ok(vec![]),
         }

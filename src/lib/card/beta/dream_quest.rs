@@ -65,7 +65,7 @@ impl Card for DreamQuest {
         Ok(())
     }
 
-    async fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: NEXT_TURN_HOOK,
             trigger: EffectQuery::TurnStart {

@@ -67,7 +67,7 @@ impl Card for TheGeistwood {
         Some(self)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: GENESIS_ARE_DEATHRITE_HOOK,
             trigger: EffectQuery::BuryCard {

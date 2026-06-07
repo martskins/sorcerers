@@ -70,7 +70,7 @@ impl Card for TadpolePool {
         Some(self)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook::genesis(self.get_id())])
     }
 
@@ -82,29 +82,29 @@ impl Card for TadpolePool {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-        let resources = state.get_player_resources(&self.get_controller_id(state))?;
-        if resources.thresholds.water < 3 {
-            return Ok(vec![]);
-        }
+                let resources = state.get_player_resources(&self.get_controller_id(state))?;
+                if resources.thresholds.water < 3 {
+                    return Ok(vec![]);
+                }
 
-        let controller_id = self.get_controller_id(state);
-        Ok(vec![
-            Effect::SummonToken {
-                player_id: controller_id,
-                token_type: TokenType::Frog,
-                zone: self.get_zone().clone(),
-            },
-            Effect::SummonToken {
-                player_id: controller_id,
-                token_type: TokenType::Frog,
-                zone: self.get_zone().clone(),
-            },
-            Effect::SummonToken {
-                player_id: controller_id,
-                token_type: TokenType::Frog,
-                zone: self.get_zone().clone(),
-            },
-        ])
+                let controller_id = self.get_controller_id(state);
+                Ok(vec![
+                    Effect::SummonToken {
+                        player_id: controller_id,
+                        token_type: TokenType::Frog,
+                        zone: self.get_zone().clone(),
+                    },
+                    Effect::SummonToken {
+                        player_id: controller_id,
+                        token_type: TokenType::Frog,
+                        zone: self.get_zone().clone(),
+                    },
+                    Effect::SummonToken {
+                        player_id: controller_id,
+                        token_type: TokenType::Frog,
+                        zone: self.get_zone().clone(),
+                    },
+                ])
             }
             _ => Ok(vec![]),
         }

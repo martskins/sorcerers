@@ -69,7 +69,7 @@ impl Card for HolyGround {
         Some(self)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook::genesis(self.get_id())])
     }
 

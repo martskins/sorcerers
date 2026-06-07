@@ -62,7 +62,7 @@ impl Card for ConquerorWorm {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: TURN_END_HOOK,
             trigger: EffectQuery::TurnEnd { player_id: None },
@@ -79,46 +79,45 @@ impl Card for ConquerorWorm {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             TURN_END_HOOK => {
-        let controller_id = self.get_controller_id(state);
+                let controller_id = self.get_controller_id(state);
 
-        // Only trigger at the end of the controller's turn.
-        if state.current_player() != controller_id {
-            return Ok(vec![]);
-        }
+                // Only trigger at the end of the controller's turn.
+                if state.current_player() != controller_id {
+                    return Ok(vec![]);
+                }
 
-        // Only act if Conqueror Worm is in play.
-        let zone = self.get_zone();
-        if !zone.is_in_play() {
-            return Ok(vec![]);
-        }
+                // Only act if Conqueror Worm is in play.
+                let zone = self.get_zone();
+                if !zone.is_in_play() {
+                    return Ok(vec![]);
+                }
 
-        // Check if any enemy units occupy this site.
-        let opponent_id = state.get_opponent_id(&controller_id)?;
-        let enemy_units = CardQuery::new()
-            .units()
-            .controlled_by(&opponent_id)
-            .in_zone(zone)
-            .all(state);
+                // Check if any enemy units occupy this site.
+                let opponent_id = state.get_opponent_id(&controller_id)?;
+                let enemy_units = CardQuery::new()
+                    .units()
+                    .controlled_by(&opponent_id)
+                    .in_zone(zone)
+                    .all(state);
 
-        if !enemy_units.is_empty() {
-            return Ok(vec![]);
-        }
+                if !enemy_units.is_empty() {
+                    return Ok(vec![]);
+                }
 
-        // Get the site card at this zone.
-        let Some(site) = zone.get_site(state) else {
-            return Ok(vec![]);
-        };
+                // Get the site card at this zone.
+                let Some(site) = zone.get_site(state) else {
+                    return Ok(vec![]);
+                };
 
-        // Already controlled by us?
-        if site.get_controller_id(state) == controller_id {
-            return Ok(vec![]);
-        }
+                // Already controlled by us?
+                if site.get_controller_id(state) == controller_id {
+                    return Ok(vec![]);
+                }
 
-        Ok(vec![Effect::SetController {
-            card_id: *site.get_id(),
-            player_id: controller_id,
-        }])
-    
+                Ok(vec![Effect::SetController {
+                    card_id: *site.get_id(),
+                    player_id: controller_id,
+                }])
             }
             _ => Ok(vec![]),
         }

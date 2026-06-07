@@ -64,7 +64,7 @@ impl Card for InfernalLegion {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: TURN_END_HOOK,
             trigger: EffectQuery::TurnEnd { player_id: None },
@@ -81,20 +81,19 @@ impl Card for InfernalLegion {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             TURN_END_HOOK => {
-        let adjacent_units = CardQuery::new()
-            .units()
-            .adjacent_to(self.get_zone())
-            .all(state);
-        let mut effects = Vec::new();
-        for unit in adjacent_units {
-            effects.push(Effect::TakeDamage {
-                card_id: unit,
-                from: *self.get_id(),
-                damage: Damage::basic(3),
-            });
-        }
-        Ok(effects)
-    
+                let adjacent_units = CardQuery::new()
+                    .units()
+                    .adjacent_to(self.get_zone())
+                    .all(state);
+                let mut effects = Vec::new();
+                for unit in adjacent_units {
+                    effects.push(Effect::TakeDamage {
+                        card_id: unit,
+                        from: *self.get_id(),
+                        damage: Damage::basic(3),
+                    });
+                }
+                Ok(effects)
             }
             _ => Ok(vec![]),
         }

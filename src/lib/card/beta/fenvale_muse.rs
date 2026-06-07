@@ -63,7 +63,7 @@ impl Card for FenvaleMuse {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: TRIGGER_RIVER_GENESIS_HOOK,
             trigger: EffectQuery::PlayCard {

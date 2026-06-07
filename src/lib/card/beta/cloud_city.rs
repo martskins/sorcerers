@@ -150,7 +150,7 @@ impl Card for CloudCity {
         Some(&mut self.site_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: TURN_END_HOOK,
             trigger: EffectQuery::TurnEnd { player_id: None },
@@ -167,15 +167,14 @@ impl Card for CloudCity {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             TURN_END_HOOK => {
-        if self.moved_this_turn {
-            return Ok(vec![Effect::SetCardData {
-                card_id: *self.get_id(),
-                data: std::sync::Arc::new(false),
-            }]);
-        }
+                if self.moved_this_turn {
+                    return Ok(vec![Effect::SetCardData {
+                        card_id: *self.get_id(),
+                        data: std::sync::Arc::new(false),
+                    }]);
+                }
 
-        Ok(vec![])
-    
+                Ok(vec![])
             }
             _ => Ok(vec![]),
         }

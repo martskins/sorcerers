@@ -65,7 +65,7 @@ impl Card for AccursedAlbatross {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: KILL_ALLIES_ON_DEATH,
             trigger: EffectQuery::UnitKilled {

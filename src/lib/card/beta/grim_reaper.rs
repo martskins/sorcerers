@@ -63,7 +63,7 @@ impl Card for GrimReaper {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: KILL_MINION_HOOK,
             trigger: EffectQuery::UnitKilled {

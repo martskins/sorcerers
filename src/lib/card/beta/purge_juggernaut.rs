@@ -57,7 +57,7 @@ impl Card for PurgeJuggernaut {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: TURN_START_HOOK,
             trigger: EffectQuery::TurnStart { player_id: None },

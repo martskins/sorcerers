@@ -61,7 +61,7 @@ impl Card for DeathDealer {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook::genesis(self.get_id())])
     }
 
@@ -73,20 +73,20 @@ impl Card for DeathDealer {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-        let self_id = *self.get_id();
+                let self_id = *self.get_id();
 
-        Ok(CardQuery::new()
-            .minions()
-            .in_play()
-            .id_not_in(vec![self_id])
-            .all(state)
-            .into_iter()
-            .map(|id| Effect::KillMinion {
-                card_id: id,
-                killer_id: *self.get_id(),
-                from_attack: false,
-            })
-            .collect())
+                Ok(CardQuery::new()
+                    .minions()
+                    .in_play()
+                    .id_not_in(vec![self_id])
+                    .all(state)
+                    .into_iter()
+                    .map(|id| Effect::KillMinion {
+                        card_id: id,
+                        killer_id: *self.get_id(),
+                        from_attack: false,
+                    })
+                    .collect())
             }
             _ => Ok(vec![]),
         }

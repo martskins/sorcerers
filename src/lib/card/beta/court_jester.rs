@@ -63,7 +63,7 @@ impl Card for CourtJester {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: TURN_END_HOOK,
             trigger: EffectQuery::TurnEnd { player_id: None },
@@ -80,43 +80,42 @@ impl Card for CourtJester {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             TURN_END_HOOK => {
-        let controller_id = self.get_controller_id(state);
+                let controller_id = self.get_controller_id(state);
 
-        // Only trigger at the end of the controller's turn.
-        if state.current_player() != controller_id {
-            return Ok(vec![]);
-        }
+                // Only trigger at the end of the controller's turn.
+                if state.current_player() != controller_id {
+                    return Ok(vec![]);
+                }
 
-        let zone = self.get_zone();
-        if !zone.is_in_play() {
-            return Ok(vec![]);
-        }
+                let zone = self.get_zone();
+                if !zone.is_in_play() {
+                    return Ok(vec![]);
+                }
 
-        let nearby_avatars = CardQuery::new().avatars().near_to(zone).all(state);
-        let mut effects = vec![];
-        for avatar_id in nearby_avatars {
-            let avatar = state.get_card(&avatar_id);
-            let avatar_controller = avatar.get_controller_id(state);
+                let nearby_avatars = CardQuery::new().avatars().near_to(zone).all(state);
+                let mut effects = vec![];
+                for avatar_id in nearby_avatars {
+                    let avatar = state.get_card(&avatar_id);
+                    let avatar_controller = avatar.get_controller_id(state);
 
-            // Pick a random card from their hand to discard.
-            let random_hand_card = CardQuery::new()
-                .in_zone(&Zone::Hand)
-                .controlled_by(&avatar_controller)
-                .randomised()
-                .count(1)
-                .pick(&avatar_controller, state, false)
-                .await?;
+                    // Pick a random card from their hand to discard.
+                    let random_hand_card = CardQuery::new()
+                        .in_zone(&Zone::Hand)
+                        .controlled_by(&avatar_controller)
+                        .randomised()
+                        .count(1)
+                        .pick(&avatar_controller, state, false)
+                        .await?;
 
-            if let Some(card_id) = random_hand_card {
-                effects.push(Effect::DiscardCard {
-                    player_id: avatar_controller,
-                    card_id,
-                });
-            }
-        }
+                    if let Some(card_id) = random_hand_card {
+                        effects.push(Effect::DiscardCard {
+                            player_id: avatar_controller,
+                            card_id,
+                        });
+                    }
+                }
 
-        Ok(effects)
-    
+                Ok(effects)
             }
             _ => Ok(vec![]),
         }

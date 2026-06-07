@@ -57,7 +57,7 @@ impl Card for SeaRaider {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
         let player_id = self.get_controller_id(state);
         let opponent_id = state.get_opponent_id(&player_id)?;
         Ok(vec![Hook {

@@ -60,7 +60,7 @@ impl Card for BaneWidow {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook::genesis(self.get_id())])
     }
 
@@ -72,41 +72,41 @@ impl Card for BaneWidow {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-        let controller_id = self.get_controller_id(state);
-        let targets = CardQuery::new()
-            .minions()
-            .in_zone(self.get_zone())
-            .id_not_in(vec![*self.get_id()])
-            .all(state);
-        if targets.is_empty() {
-            return Ok(vec![]);
-        }
+                let controller_id = self.get_controller_id(state);
+                let targets = CardQuery::new()
+                    .minions()
+                    .in_zone(self.get_zone())
+                    .id_not_in(vec![*self.get_id()])
+                    .all(state);
+                if targets.is_empty() {
+                    return Ok(vec![]);
+                }
 
-        let use_genesis = yes_or_no_source(
-            &controller_id,
-            state,
-            "Kill a target minion here?",
-            Some(*self.get_id()),
-        )
-        .await?;
-        if !use_genesis {
-            return Ok(vec![]);
-        };
+                let use_genesis = yes_or_no_source(
+                    &controller_id,
+                    state,
+                    "Kill a target minion here?",
+                    Some(*self.get_id()),
+                )
+                .await?;
+                if !use_genesis {
+                    return Ok(vec![]);
+                };
 
-        let minion_id = pick_card_source(
-            &controller_id,
-            &targets,
-            state,
-            "Bane Widow: Pick a minion to kill",
-            Some(*self.get_id()),
-        )
-        .await?;
+                let minion_id = pick_card_source(
+                    &controller_id,
+                    &targets,
+                    state,
+                    "Bane Widow: Pick a minion to kill",
+                    Some(*self.get_id()),
+                )
+                .await?;
 
-        Ok(vec![Effect::KillMinion {
-            card_id: minion_id,
-            killer_id: *self.get_id(),
-            from_attack: false,
-        }])
+                Ok(vec![Effect::KillMinion {
+                    card_id: minion_id,
+                    killer_id: *self.get_id(),
+                    from_attack: false,
+                }])
             }
             _ => Ok(vec![]),
         }

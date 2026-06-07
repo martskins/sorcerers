@@ -64,7 +64,7 @@ impl Card for Blaze {
         Ok(())
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         let Some(target_id) = self.target_id else {
             return Ok(vec![]);
         };

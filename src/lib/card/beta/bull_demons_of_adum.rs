@@ -156,7 +156,7 @@ impl Card for BullDemonsOfAdum {
         Ok(vec![Box::new(TapMoveAndStrike)])
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: STRIKE_OCCUPANTS_HOOK,
             trigger: EffectQuery::EnterZone {

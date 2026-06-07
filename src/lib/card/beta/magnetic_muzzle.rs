@@ -66,7 +66,7 @@ impl Card for MagneticMuzzle {
         }]
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: TURN_END_HOOK,
             trigger: EffectQuery::TurnEnd { player_id: None },
@@ -83,46 +83,46 @@ impl Card for MagneticMuzzle {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             TURN_END_HOOK => {
-        if !self.get_zone().is_in_play() || self.get_bearer_id()?.is_some() {
-            return Ok(vec![]);
-        }
+                if !self.get_zone().is_in_play() || self.get_bearer_id()?.is_some() {
+                    return Ok(vec![]);
+                }
 
-        let nearby_minions = CardQuery::new()
-            .minions()
-            .near_to(self.get_zone())
-            .all(state);
-        if nearby_minions.is_empty() {
-            return Ok(vec![]);
-        }
+                let nearby_minions = CardQuery::new()
+                    .minions()
+                    .near_to(self.get_zone())
+                    .all(state);
+                if nearby_minions.is_empty() {
+                    return Ok(vec![]);
+                }
 
-        let player_id = state.current_player();
-        let target_id = pick_card(
-            &player_id,
-            &nearby_minions,
-            state,
-            "Pick a nearby minion to attach",
-        )
-        .await?;
-        let target = state.get_card(&target_id);
-        Ok(vec![
-            Effect::MoveCard {
-                player_id,
-                card_id: *self.get_id(),
-                from: (self.get_zone().clone())
-                    .into_location()
-                    .expect("MoveCard source must be a location"),
-                to: LocationQuery::from_zone(
-                    (target.get_zone().clone()).with_region(target.get_region(state).clone()),
-                ),
-                tap: false,
-                through_path: None,
-            },
-            Effect::SetBearer {
-                card_id: *self.get_id(),
-                bearer_id: Some(target_id),
-            },
-        ])
-    
+                let player_id = state.current_player();
+                let target_id = pick_card(
+                    &player_id,
+                    &nearby_minions,
+                    state,
+                    "Pick a nearby minion to attach",
+                )
+                .await?;
+                let target = state.get_card(&target_id);
+                Ok(vec![
+                    Effect::MoveCard {
+                        player_id,
+                        card_id: *self.get_id(),
+                        from: (self.get_zone().clone())
+                            .into_location()
+                            .expect("MoveCard source must be a location"),
+                        to: LocationQuery::from_zone(
+                            (target.get_zone().clone())
+                                .with_region(target.get_region(state).clone()),
+                        ),
+                        tap: false,
+                        through_path: None,
+                    },
+                    Effect::SetBearer {
+                        card_id: *self.get_id(),
+                        bearer_id: Some(target_id),
+                    },
+                ])
             }
             _ => Ok(vec![]),
         }

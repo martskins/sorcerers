@@ -63,7 +63,7 @@ impl Card for PanoramaManticore {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: TURN_END_HOOK,
             trigger: EffectQuery::TurnEnd { player_id: None },
@@ -80,53 +80,52 @@ impl Card for PanoramaManticore {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             TURN_END_HOOK => {
-        let controller_id = self.get_controller_id(state);
-        if controller_id != state.current_player() {
-            return Ok(vec![]);
-        }
-
-        let zone = self.get_zone();
-        if !zone.is_in_play() {
-            return Ok(vec![]);
-        }
-
-        let turn_effects: Vec<&LoggedEffect> = state
-            .effect_log()
-            .iter()
-            .take_while(|e| e.turn == state.turns)
-            .collect();
-        let played_fire_spell = turn_effects
-            .iter()
-            .find(|le| match le.effect {
-                Effect::PlayCard {
-                    card_id, player_id, ..
-                } if player_id == controller_id => {
-                    let card = state.get_card(&card_id);
-                    card.get_elements(state)
-                        .unwrap_or_default()
-                        .contains(&Element::Fire)
+                let controller_id = self.get_controller_id(state);
+                if controller_id != state.current_player() {
+                    return Ok(vec![]);
                 }
-                Effect::PlayMagic {
-                    card_id, player_id, ..
-                } if player_id == controller_id => {
-                    let card = state.get_card(&card_id);
-                    card.get_elements(state)
-                        .unwrap_or_default()
-                        .contains(&Element::Fire)
+
+                let zone = self.get_zone();
+                if !zone.is_in_play() {
+                    return Ok(vec![]);
                 }
-                _ => false,
-            })
-            .is_some();
 
-        if played_fire_spell {
-            return Ok(vec![Effect::SetTapped {
-                card_id: *self.get_id(),
-                tapped: false,
-            }]);
-        }
+                let turn_effects: Vec<&LoggedEffect> = state
+                    .effect_log()
+                    .iter()
+                    .take_while(|e| e.turn == state.turns)
+                    .collect();
+                let played_fire_spell = turn_effects
+                    .iter()
+                    .find(|le| match le.effect {
+                        Effect::PlayCard {
+                            card_id, player_id, ..
+                        } if player_id == controller_id => {
+                            let card = state.get_card(&card_id);
+                            card.get_elements(state)
+                                .unwrap_or_default()
+                                .contains(&Element::Fire)
+                        }
+                        Effect::PlayMagic {
+                            card_id, player_id, ..
+                        } if player_id == controller_id => {
+                            let card = state.get_card(&card_id);
+                            card.get_elements(state)
+                                .unwrap_or_default()
+                                .contains(&Element::Fire)
+                        }
+                        _ => false,
+                    })
+                    .is_some();
 
-        Ok(vec![])
-    
+                if played_fire_spell {
+                    return Ok(vec![Effect::SetTapped {
+                        card_id: *self.get_id(),
+                        tapped: false,
+                    }]);
+                }
+
+                Ok(vec![])
             }
             _ => Ok(vec![]),
         }

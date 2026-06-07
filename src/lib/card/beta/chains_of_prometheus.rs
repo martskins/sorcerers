@@ -66,7 +66,7 @@ impl Card for ChainsOfPrometheus {
         Some(self)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: CARD_DRAW_HOOK,
             trigger: EffectQuery::DrawCard { player_id: None },

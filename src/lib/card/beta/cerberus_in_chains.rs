@@ -79,7 +79,7 @@ impl Card for CerberusInChains {
         Ok(vec![self.get_zone().clone()]) // Cerberus can't move itself.
     }
 
-    async fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
         let player_id = self.get_controller_id(state);
         let avatar_id = state.get_player_avatar_id(&player_id)?;
         Ok(vec![Hook {

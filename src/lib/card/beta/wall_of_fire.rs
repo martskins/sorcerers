@@ -71,7 +71,7 @@ impl Card for WallOfFire {
         Ok(border_zones_of_controlled_sites(state, player_id))
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: MOVE_THROUGH_HERE_HOOK,
             trigger: EffectQuery::MoveCard {

@@ -60,7 +60,7 @@ impl Card for HighlandPrincess {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook::genesis(self.get_id())])
     }
 
@@ -72,48 +72,48 @@ impl Card for HighlandPrincess {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-        let controller_id = self.get_controller_id(state);
+                let controller_id = self.get_controller_id(state);
 
-        let deck = state.decks.get(&controller_id).unwrap();
-        let targets: Vec<CardId> = state
-            .cards
-            .values()
-            .filter(|c| c.is_artifact())
-            .filter(|c| c.get_zone() == &Zone::Spellbook)
-            .filter(|c| c.get_controller_id(state) == controller_id)
-            .filter(|c| {
-                c.get_costs(state)
-                    .map(|costs| costs.mana_value())
-                    .unwrap_or(u8::MAX)
-                    <= 1
-            })
-            .map(|c| *c.get_id())
-            .collect();
+                let deck = state.decks.get(&controller_id).unwrap();
+                let targets: Vec<CardId> = state
+                    .cards
+                    .values()
+                    .filter(|c| c.is_artifact())
+                    .filter(|c| c.get_zone() == &Zone::Spellbook)
+                    .filter(|c| c.get_controller_id(state) == controller_id)
+                    .filter(|c| {
+                        c.get_costs(state)
+                            .map(|costs| costs.mana_value())
+                            .unwrap_or(u8::MAX)
+                            <= 1
+                    })
+                    .map(|c| *c.get_id())
+                    .collect();
 
-        if targets.is_empty() {
-            return Ok(vec![Effect::ShuffleDeck {
-                player_id: controller_id,
-            }]);
-        }
+                if targets.is_empty() {
+                    return Ok(vec![Effect::ShuffleDeck {
+                        player_id: controller_id,
+                    }]);
+                }
 
-        let chosen = pick_card_with_options(
-            &controller_id,
-            &targets,
-            &deck.spells,
-            false,
-            state,
-            "Highland Princess: Choose an artifact to reveal and put into your hand",
-        )
-        .await?;
-        Ok(vec![
-            Effect::SetCardZone {
-                card_id: chosen,
-                zone: Zone::Hand,
-            },
-            Effect::ShuffleDeck {
-                player_id: controller_id,
-            },
-        ])
+                let chosen = pick_card_with_options(
+                    &controller_id,
+                    &targets,
+                    &deck.spells,
+                    false,
+                    state,
+                    "Highland Princess: Choose an artifact to reveal and put into your hand",
+                )
+                .await?;
+                Ok(vec![
+                    Effect::SetCardZone {
+                        card_id: chosen,
+                        zone: Zone::Hand,
+                    },
+                    Effect::ShuffleDeck {
+                        player_id: controller_id,
+                    },
+                ])
             }
             _ => Ok(vec![]),
         }

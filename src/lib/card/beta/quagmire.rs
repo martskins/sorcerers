@@ -70,7 +70,7 @@ impl Card for Quagmire {
         Some(self)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook::genesis(self.get_id())])
     }
 
@@ -82,24 +82,24 @@ impl Card for Quagmire {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-        let effects = CardQuery::new()
-            .units()
-            .near_to(self.get_zone())
-            .all(state)
-            .into_iter()
-            .map(|card_id| Effect::AddAbilityCounter {
-                card_id,
-                counter: AbilityCounter {
-                    id: uuid::Uuid::new_v4(),
-                    ability: Ability::Immobile,
-                    expires_on_effect: Some(EffectQuery::TurnStart {
-                        player_id: Some(self.get_controller_id(state)),
-                    }),
-                },
-            })
-            .collect();
+                let effects = CardQuery::new()
+                    .units()
+                    .near_to(self.get_zone())
+                    .all(state)
+                    .into_iter()
+                    .map(|card_id| Effect::AddAbilityCounter {
+                        card_id,
+                        counter: AbilityCounter {
+                            id: uuid::Uuid::new_v4(),
+                            ability: Ability::Immobile,
+                            expires_on_effect: Some(EffectQuery::TurnStart {
+                                player_id: Some(self.get_controller_id(state)),
+                            }),
+                        },
+                    })
+                    .collect();
 
-        Ok(effects)
+                Ok(effects)
             }
             _ => Ok(vec![]),
         }

@@ -76,7 +76,7 @@ impl Card for FeyChangeling {
             .collect())
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook::genesis(self.get_id())])
     }
 
@@ -88,39 +88,39 @@ impl Card for FeyChangeling {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-        let controller_id = self.get_controller_id(state);
-        let minions_here = CardQuery::new()
-            .units()
-            .in_zone(self.get_zone())
-            .id_not_in(vec![*self.get_id()])
-            .all(state);
+                let controller_id = self.get_controller_id(state);
+                let minions_here = CardQuery::new()
+                    .units()
+                    .in_zone(self.get_zone())
+                    .id_not_in(vec![*self.get_id()])
+                    .all(state);
 
-        if minions_here.is_empty() {
-            return Ok(vec![]);
-        }
+                if minions_here.is_empty() {
+                    return Ok(vec![]);
+                }
 
-        let want = yes_or_no_source(
-            &controller_id,
-            state,
-            "Return a minion here to its owner's hand?",
-            Some(*self.get_id()),
-        )
-        .await?;
-        if !want {
-            return Ok(vec![]);
-        }
+                let want = yes_or_no_source(
+                    &controller_id,
+                    state,
+                    "Return a minion here to its owner's hand?",
+                    Some(*self.get_id()),
+                )
+                .await?;
+                if !want {
+                    return Ok(vec![]);
+                }
 
-        let target_id = pick_card(
-            &controller_id,
-            &minions_here,
-            state,
-            "Fey Changeling Genesis: Pick a minion to return to hand",
-        )
-        .await?;
-        Ok(vec![Effect::SetCardZone {
-            card_id: target_id,
-            zone: Zone::Hand,
-        }])
+                let target_id = pick_card(
+                    &controller_id,
+                    &minions_here,
+                    state,
+                    "Fey Changeling Genesis: Pick a minion to return to hand",
+                )
+                .await?;
+                Ok(vec![Effect::SetCardZone {
+                    card_id: target_id,
+                    zone: Zone::Hand,
+                }])
             }
             _ => Ok(vec![]),
         }

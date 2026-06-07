@@ -70,7 +70,7 @@ impl Card for HumbleVillage {
         Some(self)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook::genesis(self.get_id())])
     }
 
@@ -82,31 +82,31 @@ impl Card for HumbleVillage {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-        let options = [BaseOption::Yes, BaseOption::No];
-        let option_labels: Vec<String> = options.iter().map(|o| o.to_string()).collect();
-        let picked_option = pick_option(
-            self.get_controller_id(state),
-            &option_labels,
-            state,
-            "Humble Village: Pay 1 to summon a foot soldier?",
-            false,
-        )
-        .await?;
-        if options[picked_option] == BaseOption::No {
-            return Ok(vec![]);
-        }
+                let options = [BaseOption::Yes, BaseOption::No];
+                let option_labels: Vec<String> = options.iter().map(|o| o.to_string()).collect();
+                let picked_option = pick_option(
+                    self.get_controller_id(state),
+                    &option_labels,
+                    state,
+                    "Humble Village: Pay 1 to summon a foot soldier?",
+                    false,
+                )
+                .await?;
+                if options[picked_option] == BaseOption::No {
+                    return Ok(vec![]);
+                }
 
-        Ok(vec![
-            Effect::AdjustMana {
-                player_id: self.get_controller_id(state),
-                mana: -1,
-            },
-            Effect::SummonToken {
-                player_id: self.get_controller_id(state),
-                token_type: TokenType::FootSoldier,
-                zone: self.get_zone().clone(),
-            },
-        ])
+                Ok(vec![
+                    Effect::AdjustMana {
+                        player_id: self.get_controller_id(state),
+                        mana: -1,
+                    },
+                    Effect::SummonToken {
+                        player_id: self.get_controller_id(state),
+                        token_type: TokenType::FootSoldier,
+                        zone: self.get_zone().clone(),
+                    },
+                ])
             }
             _ => Ok(vec![]),
         }

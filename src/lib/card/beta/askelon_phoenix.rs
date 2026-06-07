@@ -63,7 +63,7 @@ impl Card for AskelonPhoenix {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: FIRE_DAMAGE_TO_POWER_HOOK,
             trigger: EffectQuery::DamageDealt {

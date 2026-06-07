@@ -221,7 +221,7 @@ impl Card for Deathspeaker {
         Ok(())
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: TURN_START_HOOK,
             trigger: EffectQuery::TurnStart { player_id: None },
@@ -238,12 +238,11 @@ impl Card for Deathspeaker {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             TURN_START_HOOK => {
-        // Reset the once-per-turn ability usage at the start of the turn.
-        Ok(vec![Effect::SetCardData {
-            card_id: self.card_base.id,
-            data: std::sync::Arc::new(false),
-        }])
-    
+                // Reset the once-per-turn ability usage at the start of the turn.
+                Ok(vec![Effect::SetCardData {
+                    card_id: self.card_base.id,
+                    data: std::sync::Arc::new(false),
+                }])
             }
             _ => Ok(vec![]),
         }

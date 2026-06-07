@@ -64,7 +64,7 @@ impl Card for GuileSirens {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: TURN_START_HOOK,
             trigger: EffectQuery::TurnStart { player_id: None },
@@ -81,78 +81,77 @@ impl Card for GuileSirens {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             TURN_START_HOOK => {
-        if state.current_player() != self.get_controller_id(state) {
-            return Ok(vec![]);
-        }
+                if state.current_player() != self.get_controller_id(state) {
+                    return Ok(vec![]);
+                }
 
-        let controller_id = self.get_controller_id(state);
-        let opponent_id = state.get_opponent_id(&controller_id)?;
-        let Some(picked_card_id) = CardQuery::new()
-            .controlled_by(&opponent_id)
-            .minions()
-            .adjacent_to(self.get_zone())
-            .with_prompt("Pick a minion to lure in")
-            .with_source_card(*self.get_id())
-            .pick(&controller_id, state, false)
-            .await?
-        else {
-            return Ok(vec![]);
-        };
-        let picked_card = state.get_card(&picked_card_id);
-        let zones = picked_card
-            .get_zone()
-            .get_adjacent()
-            .iter()
-            .filter(|zone| zone.is_in_play())
-            .map(|zone| (zone.clone(), zone.steps_to_zone(self.get_zone())))
-            .collect::<Vec<(Zone, Option<u8>)>>();
-
-        let mut steps_to_zone = HashMap::new();
-        for (zone, steps) in zones {
-            if let Some(steps) = steps {
-                steps_to_zone
-                    .entry(steps)
-                    .or_insert(vec![])
-                    .push(zone.clone());
-            }
-        }
-
-        if let Some(min_steps) = steps_to_zone.keys().min() {
-            let closest_zones = steps_to_zone.get(min_steps).unwrap();
-            let picked_zone = if closest_zones.len() == 1 {
-                closest_zones.first().unwrap().clone()
-            } else {
-                pick_zone(
-                    &opponent_id,
-                    closest_zones,
-                    state,
-                    true,
-                    &format!(
-                        "Guile Sirens: Pick a zone to move {} to",
-                        picked_card.get_name()
-                    ),
-                )
-                .await?
-            };
-
-            return Ok(vec![Effect::MoveCard {
-                player_id: opponent_id,
-                card_id: picked_card_id,
-                from: picked_card
+                let controller_id = self.get_controller_id(state);
+                let opponent_id = state.get_opponent_id(&controller_id)?;
+                let Some(picked_card_id) = CardQuery::new()
+                    .controlled_by(&opponent_id)
+                    .minions()
+                    .adjacent_to(self.get_zone())
+                    .with_prompt("Pick a minion to lure in")
+                    .with_source_card(*self.get_id())
+                    .pick(&controller_id, state, false)
+                    .await?
+                else {
+                    return Ok(vec![]);
+                };
+                let picked_card = state.get_card(&picked_card_id);
+                let zones = picked_card
                     .get_zone()
-                    .clone()
-                    .into_location()
-                    .expect("Guile Sirens target must be in a location"),
-                to: LocationQuery::from_zone(
-                    picked_zone.with_region(picked_card.get_region(state).clone()),
-                ),
-                tap: false,
-                through_path: None,
-            }]);
-        }
+                    .get_adjacent()
+                    .iter()
+                    .filter(|zone| zone.is_in_play())
+                    .map(|zone| (zone.clone(), zone.steps_to_zone(self.get_zone())))
+                    .collect::<Vec<(Zone, Option<u8>)>>();
 
-        Ok(vec![])
-    
+                let mut steps_to_zone = HashMap::new();
+                for (zone, steps) in zones {
+                    if let Some(steps) = steps {
+                        steps_to_zone
+                            .entry(steps)
+                            .or_insert(vec![])
+                            .push(zone.clone());
+                    }
+                }
+
+                if let Some(min_steps) = steps_to_zone.keys().min() {
+                    let closest_zones = steps_to_zone.get(min_steps).unwrap();
+                    let picked_zone = if closest_zones.len() == 1 {
+                        closest_zones.first().unwrap().clone()
+                    } else {
+                        pick_zone(
+                            &opponent_id,
+                            closest_zones,
+                            state,
+                            true,
+                            &format!(
+                                "Guile Sirens: Pick a zone to move {} to",
+                                picked_card.get_name()
+                            ),
+                        )
+                        .await?
+                    };
+
+                    return Ok(vec![Effect::MoveCard {
+                        player_id: opponent_id,
+                        card_id: picked_card_id,
+                        from: picked_card
+                            .get_zone()
+                            .clone()
+                            .into_location()
+                            .expect("Guile Sirens target must be in a location"),
+                        to: LocationQuery::from_zone(
+                            picked_zone.with_region(picked_card.get_region(state).clone()),
+                        ),
+                        tap: false,
+                        through_path: None,
+                    }]);
+                }
+
+                Ok(vec![])
             }
             _ => Ok(vec![]),
         }

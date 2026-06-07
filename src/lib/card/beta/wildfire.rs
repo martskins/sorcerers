@@ -84,7 +84,7 @@ impl Card for Wildfire {
         Ok(())
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![
             Hook {
                 id: TRACK_VISITED_SITE_HOOK,

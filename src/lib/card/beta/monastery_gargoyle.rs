@@ -109,7 +109,7 @@ impl Card for MonasteryGargoyle {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![
             Hook {
                 id: TURN_END_HOOK,
@@ -134,15 +134,14 @@ impl Card for MonasteryGargoyle {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             TURN_END_HOOK | TURN_START_HOOK => {
-        let controller_id = self.get_controller_id(state);
-        if state.current_player() != controller_id {
-            return Ok(vec![]);
-        }
-        if !self.get_zone().is_in_play() {
-            return Ok(vec![]);
-        }
-        Self::toggle_form(*self.get_id(), controller_id, state).await
-    
+                let controller_id = self.get_controller_id(state);
+                if state.current_player() != controller_id {
+                    return Ok(vec![]);
+                }
+                if !self.get_zone().is_in_play() {
+                    return Ok(vec![]);
+                }
+                Self::toggle_form(*self.get_id(), controller_id, state).await
             }
             _ => Ok(vec![]),
         }

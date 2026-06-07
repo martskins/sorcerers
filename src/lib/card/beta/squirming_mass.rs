@@ -58,7 +58,7 @@ impl Card for SquirmingMass {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: MINION_DEATH_HOOK,
             trigger: EffectQuery::BuryCard {

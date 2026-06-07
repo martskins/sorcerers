@@ -65,7 +65,7 @@ impl Card for PendulumOfPeril {
         Some(self)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: TURN_END_HOOK,
             trigger: EffectQuery::TurnEnd { player_id: None },
@@ -82,48 +82,47 @@ impl Card for PendulumOfPeril {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             TURN_END_HOOK => {
-        let zone = self.get_zone();
-        if !zone.is_in_play() {
-            return Ok(vec![]);
-        }
+                let zone = self.get_zone();
+                if !zone.is_in_play() {
+                    return Ok(vec![]);
+                }
 
-        let current_player = state.current_player();
-        let adjacent_zones: Vec<Zone> = zone
-            .get_adjacent()
-            .into_iter()
-            .filter(|adjacent| adjacent != zone)
-            .collect();
-        let chosen_zone = if adjacent_zones.is_empty() {
-            None
-        } else {
-            Some(
-                pick_zone(
-                    &current_player,
-                    &adjacent_zones,
-                    state,
-                    false,
-                    "Pendulum of Peril: Pick an adjacent location to destroy all minions",
-                )
-                .await?,
-            )
-        };
+                let current_player = state.current_player();
+                let adjacent_zones: Vec<Zone> = zone
+                    .get_adjacent()
+                    .into_iter()
+                    .filter(|adjacent| adjacent != zone)
+                    .collect();
+                let chosen_zone = if adjacent_zones.is_empty() {
+                    None
+                } else {
+                    Some(
+                        pick_zone(
+                            &current_player,
+                            &adjacent_zones,
+                            state,
+                            false,
+                            "Pendulum of Peril: Pick an adjacent location to destroy all minions",
+                        )
+                        .await?,
+                    )
+                };
 
-        let mut minions = CardQuery::new().minions().in_zone(zone).all(state);
-        if let Some(chosen_zone) = chosen_zone {
-            minions.extend(CardQuery::new().minions().in_zone(&chosen_zone).all(state));
-        }
-        minions.sort();
-        minions.dedup();
+                let mut minions = CardQuery::new().minions().in_zone(zone).all(state);
+                if let Some(chosen_zone) = chosen_zone {
+                    minions.extend(CardQuery::new().minions().in_zone(&chosen_zone).all(state));
+                }
+                minions.sort();
+                minions.dedup();
 
-        Ok(minions
-            .into_iter()
-            .map(|card_id| Effect::KillMinion {
-                card_id,
-                killer_id: *self.get_id(),
-                from_attack: false,
-            })
-            .collect())
-    
+                Ok(minions
+                    .into_iter()
+                    .map(|card_id| Effect::KillMinion {
+                        card_id,
+                        killer_id: *self.get_id(),
+                        from_attack: false,
+                    })
+                    .collect())
             }
             _ => Ok(vec![]),
         }

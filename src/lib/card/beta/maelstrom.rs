@@ -72,7 +72,7 @@ impl Card for Maelström {
         Some(self)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: TURN_START_HOOK,
             trigger: EffectQuery::TurnStart { player_id: None },
@@ -89,53 +89,55 @@ impl Card for Maelström {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             TURN_START_HOOK => {
-        let controller_id = self.get_controller_id(state);
-        if state.current_player() != controller_id {
-            return Ok(vec![]);
-        }
-        let body_of_water = state
-            .get_body_of_water_at(self.get_zone())
-            .unwrap_or_default();
-        let minion_ids = CardQuery::new()
-            .minions()
-            .in_zones(&body_of_water)
-            .all(state);
+                let controller_id = self.get_controller_id(state);
+                if state.current_player() != controller_id {
+                    return Ok(vec![]);
+                }
+                let body_of_water = state
+                    .get_body_of_water_at(self.get_zone())
+                    .unwrap_or_default();
+                let minion_ids = CardQuery::new()
+                    .minions()
+                    .in_zones(&body_of_water)
+                    .all(state);
 
-        let mut effects = vec![];
-        for minion_id in minion_ids {
-            let minion = state.get_card(&minion_id);
-            let steps = minion
-                .get_zone()
-                .steps_to_zone(self.get_zone())
-                .unwrap_or_default();
-            let mut zones = minion.get_zones_within_steps(state, steps);
-            zones.retain(|zone| body_of_water.contains(zone));
-            zones.retain(|zone| zone.steps_to_zone(self.get_zone()).unwrap_or_default() <= steps);
+                let mut effects = vec![];
+                for minion_id in minion_ids {
+                    let minion = state.get_card(&minion_id);
+                    let steps = minion
+                        .get_zone()
+                        .steps_to_zone(self.get_zone())
+                        .unwrap_or_default();
+                    let mut zones = minion.get_zones_within_steps(state, steps);
+                    zones.retain(|zone| body_of_water.contains(zone));
+                    zones.retain(|zone| {
+                        zone.steps_to_zone(self.get_zone()).unwrap_or_default() <= steps
+                    });
 
-            let prompt = format!(
-                "Maelström: Pick a zone to move {}({}) to, or pick its current zone to not move it",
-                minion.get_name(),
-                minion.get_zone().get_square().unwrap_or_default()
-            );
-            let picked_zone = pick_zone(controller_id, &zones, state, true, &prompt).await?;
-            if &picked_zone != minion.get_zone() {
-                effects.push(Effect::MoveCard {
-                    card_id: minion_id,
-                    player_id: controller_id,
-                    from: (minion.get_zone().clone())
-                        .into_location()
-                        .expect("MoveCard source must be a location"),
-                    to: LocationQuery::from_zone(
-                        (picked_zone).with_region(minion.get_region(state).clone()),
-                    ),
-                    tap: false,
-                    through_path: None,
-                });
-            }
-        }
+                    let prompt = format!(
+                        "Maelström: Pick a zone to move {}({}) to, or pick its current zone to not move it",
+                        minion.get_name(),
+                        minion.get_zone().get_square().unwrap_or_default()
+                    );
+                    let picked_zone =
+                        pick_zone(controller_id, &zones, state, true, &prompt).await?;
+                    if &picked_zone != minion.get_zone() {
+                        effects.push(Effect::MoveCard {
+                            card_id: minion_id,
+                            player_id: controller_id,
+                            from: (minion.get_zone().clone())
+                                .into_location()
+                                .expect("MoveCard source must be a location"),
+                            to: LocationQuery::from_zone(
+                                (picked_zone).with_region(minion.get_region(state).clone()),
+                            ),
+                            tap: false,
+                            through_path: None,
+                        });
+                    }
+                }
 
-        Ok(effects)
-    
+                Ok(effects)
             }
             _ => Ok(vec![]),
         }

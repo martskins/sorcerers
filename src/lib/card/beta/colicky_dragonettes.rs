@@ -64,7 +64,7 @@ impl Card for ColickyDragonettes {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: TURN_END_HOOK,
             trigger: EffectQuery::TurnEnd { player_id: None },
@@ -81,33 +81,32 @@ impl Card for ColickyDragonettes {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             TURN_END_HOOK => {
-        let is_current_player = &state.current_player() == self.get_owner_id();
-        if !is_current_player {
-            return Ok(vec![]);
-        }
+                let is_current_player = &state.current_player() == self.get_owner_id();
+                if !is_current_player {
+                    return Ok(vec![]);
+                }
 
-        let prompt = "Choose a direction to shoot a projectile";
-        let direction = pick_direction_source(
-            self.get_owner_id(),
-            &CARDINAL_DIRECTIONS,
-            state,
-            prompt,
-            Some(*self.get_id()),
-        )
-        .await?;
-        Ok(vec![Effect::ShootProjectile {
-            id: uuid::Uuid::new_v4(),
-            range: None,
-            player_id: *self.get_owner_id(),
-            shooter: *self.get_id(),
-            from_zone: self.get_zone().clone(),
-            direction,
-            damage: 1,
-            ranged_strike: false,
-            piercing: false,
-            splash_damage: None,
-        }])
-    
+                let prompt = "Choose a direction to shoot a projectile";
+                let direction = pick_direction_source(
+                    self.get_owner_id(),
+                    &CARDINAL_DIRECTIONS,
+                    state,
+                    prompt,
+                    Some(*self.get_id()),
+                )
+                .await?;
+                Ok(vec![Effect::ShootProjectile {
+                    id: uuid::Uuid::new_v4(),
+                    range: None,
+                    player_id: *self.get_owner_id(),
+                    shooter: *self.get_id(),
+                    from_zone: self.get_zone().clone(),
+                    direction,
+                    damage: 1,
+                    ranged_strike: false,
+                    piercing: false,
+                    splash_damage: None,
+                }])
             }
             _ => Ok(vec![]),
         }

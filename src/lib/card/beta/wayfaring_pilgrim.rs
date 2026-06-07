@@ -76,7 +76,7 @@ impl Card for WayfaringPilgrim {
         Ok(())
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         let corner_squares = [1, 5, 16, 20];
         let corners = corner_squares
             .into_iter()

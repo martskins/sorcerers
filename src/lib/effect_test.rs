@@ -54,7 +54,7 @@ impl Card for TestHookSource {
         &self.card_base
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: TEST_HOOK_SOURCE_ID,
             trigger: EffectQuery::DrawCard { player_id: None },
@@ -2075,7 +2075,7 @@ async fn test_temporary_modify_effect_runs_before_handler_and_expires() {
 async fn test_deferred_one_shot_removes_itself_after_trigger() {
     let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
     let player_id = state.players[0].id;
-    let minion = OgreGoons::new(player_id);
+    let minion = TestHookSource::new(player_id, HookSourceZones::InPlay);
     let card_id = *minion.get_id();
     state.cards.insert(card_id, Box::new(minion));
 
@@ -2094,6 +2094,7 @@ async fn test_deferred_one_shot_removes_itself_after_trigger() {
     });
     drain_effects(&mut state).await;
 
+    assert_eq!(*state.get_player_mana_mut(&player_id), 1);
     assert!(state.deferred_effects().is_empty());
 }
 
@@ -2101,7 +2102,7 @@ async fn test_deferred_one_shot_removes_itself_after_trigger() {
 async fn test_deferred_multitrigger_remains_after_trigger() {
     let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
     let player_id = state.players[0].id;
-    let minion = OgreGoons::new(player_id);
+    let minion = TestHookSource::new(player_id, HookSourceZones::InPlay);
     let card_id = *minion.get_id();
     state.cards.insert(card_id, Box::new(minion));
 
@@ -2125,6 +2126,7 @@ async fn test_deferred_multitrigger_remains_after_trigger() {
     });
     drain_effects(&mut state).await;
 
+    assert_eq!(*state.get_player_mana_mut(&player_id), 2);
     assert_eq!(state.deferred_effects().len(), 1);
 }
 
@@ -2132,7 +2134,7 @@ async fn test_deferred_multitrigger_remains_after_trigger() {
 async fn test_deferred_expiry_removes_without_triggering() {
     let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
     let player_id = state.players[0].id;
-    let minion = OgreGoons::new(player_id);
+    let minion = TestHookSource::new(player_id, HookSourceZones::InPlay);
     let card_id = *minion.get_id();
     state.cards.insert(card_id, Box::new(minion));
 
@@ -2151,6 +2153,7 @@ async fn test_deferred_expiry_removes_without_triggering() {
     });
     drain_effects(&mut state).await;
 
+    assert_eq!(*state.get_player_mana_mut(&player_id), 0);
     assert!(state.deferred_effects().is_empty());
 }
 

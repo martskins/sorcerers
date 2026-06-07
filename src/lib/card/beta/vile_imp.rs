@@ -61,7 +61,7 @@ impl Card for VileImp {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook::genesis(self.get_id())])
     }
 
@@ -73,43 +73,43 @@ impl Card for VileImp {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-        let controller_id = self.get_controller_id(state);
-        let imp_id = *self.get_id();
+                let controller_id = self.get_controller_id(state);
+                let imp_id = *self.get_id();
 
-        let targets = CardQuery::new()
-            .units()
-            .adjacent_to(self.get_zone())
-            .id_not_in(vec![imp_id])
-            .all(state);
-        if targets.is_empty() {
-            return Ok(vec![]);
-        }
+                let targets = CardQuery::new()
+                    .units()
+                    .adjacent_to(self.get_zone())
+                    .id_not_in(vec![imp_id])
+                    .all(state);
+                if targets.is_empty() {
+                    return Ok(vec![]);
+                }
 
-        let use_genesis = yes_or_no_source(
-            &controller_id,
-            state,
-            "Deal 2 damage to an adjacent unit?",
-            Some(imp_id),
-        )
-        .await?;
-        if !use_genesis {
-            return Ok(vec![]);
-        };
+                let use_genesis = yes_or_no_source(
+                    &controller_id,
+                    state,
+                    "Deal 2 damage to an adjacent unit?",
+                    Some(imp_id),
+                )
+                .await?;
+                if !use_genesis {
+                    return Ok(vec![]);
+                };
 
-        let target_id = pick_card_source(
-            &controller_id,
-            &targets,
-            state,
-            "Vile Imp: Pick an adjacent unit",
-            Some(*self.get_id()),
-        )
-        .await?;
+                let target_id = pick_card_source(
+                    &controller_id,
+                    &targets,
+                    state,
+                    "Vile Imp: Pick an adjacent unit",
+                    Some(*self.get_id()),
+                )
+                .await?;
 
-        Ok(vec![Effect::TakeDamage {
-            card_id: target_id,
-            from: imp_id,
-            damage: Damage::basic(2),
-        }])
+                Ok(vec![Effect::TakeDamage {
+                    card_id: target_id,
+                    from: imp_id,
+                    damage: Damage::basic(2),
+                }])
             }
             _ => Ok(vec![]),
         }

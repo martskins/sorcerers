@@ -63,7 +63,7 @@ impl Card for UnlandAngler {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: TURN_START_HOOK,
             trigger: EffectQuery::TurnStart { player_id: None },
@@ -80,40 +80,40 @@ impl Card for UnlandAngler {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             TURN_START_HOOK => {
-        let controller_id = self.get_controller_id(state);
-        if state.current_player() != controller_id {
-            return Ok(vec![]);
-        }
-
-        if self.get_region(state) != &Region::Underwater {
-            return Ok(vec![]);
-        }
-
-        let opponent_id = state.get_opponent_id(&controller_id)?;
-        let effects = CardQuery::new()
-            .minions()
-            .controlled_by(&opponent_id)
-            .adjacent_to(self.get_zone())
-            .all(state)
-            .into_iter()
-            .map(|minion_id| {
-                let minion = state.get_card(&minion_id);
-                Effect::MoveCard {
-                    player_id: controller_id,
-                    card_id: minion_id,
-                    from: (minion.get_zone().clone())
-                        .into_location()
-                        .expect("MoveCard source must be a location"),
-                    to: LocationQuery::from_zone(
-                        (self.get_zone().clone()).with_region(minion.get_region(state).clone()),
-                    ),
-                    tap: minion.is_tapped(),
-                    through_path: None,
+                let controller_id = self.get_controller_id(state);
+                if state.current_player() != controller_id {
+                    return Ok(vec![]);
                 }
-            })
-            .collect();
-        Ok(effects)
-    
+
+                if self.get_region(state) != &Region::Underwater {
+                    return Ok(vec![]);
+                }
+
+                let opponent_id = state.get_opponent_id(&controller_id)?;
+                let effects = CardQuery::new()
+                    .minions()
+                    .controlled_by(&opponent_id)
+                    .adjacent_to(self.get_zone())
+                    .all(state)
+                    .into_iter()
+                    .map(|minion_id| {
+                        let minion = state.get_card(&minion_id);
+                        Effect::MoveCard {
+                            player_id: controller_id,
+                            card_id: minion_id,
+                            from: (minion.get_zone().clone())
+                                .into_location()
+                                .expect("MoveCard source must be a location"),
+                            to: LocationQuery::from_zone(
+                                (self.get_zone().clone())
+                                    .with_region(minion.get_region(state).clone()),
+                            ),
+                            tap: minion.is_tapped(),
+                            through_path: None,
+                        }
+                    })
+                    .collect();
+                Ok(effects)
             }
             _ => Ok(vec![]),
         }

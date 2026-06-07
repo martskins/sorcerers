@@ -64,7 +64,7 @@ impl Card for GreatOldOne {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook::genesis(self.get_id())])
     }
 
@@ -75,12 +75,10 @@ impl Card for GreatOldOne {
         _effect: &Effect,
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
-            GENESIS_HOOK_ID => {
-        Ok(vec![Effect::SetCardData {
-            card_id: *self.get_id(),
-            data: std::sync::Arc::new(true),
-        }])
-            }
+            GENESIS_HOOK_ID => Ok(vec![Effect::SetCardData {
+                card_id: *self.get_id(),
+                data: std::sync::Arc::new(true),
+            }]),
             _ => Ok(vec![]),
         }
     }

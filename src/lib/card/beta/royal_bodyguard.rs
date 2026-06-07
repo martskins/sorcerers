@@ -57,7 +57,7 @@ impl Card for RoyalBodyguard {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: TAKE_DAMAGE_INSTEAD_HOOK,
             trigger: EffectQuery::DamageDealt {

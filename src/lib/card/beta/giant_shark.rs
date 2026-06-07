@@ -63,7 +63,7 @@ impl Card for GiantShark {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
         let Some(body_of_water) = state.get_body_of_water_at(self.get_zone()) else {
             return Ok(vec![]);
         };

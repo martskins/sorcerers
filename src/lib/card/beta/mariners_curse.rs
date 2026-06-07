@@ -62,7 +62,7 @@ impl Card for MarinersCurse {
         Some(self)
     }
 
-    async fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
         let mut affected_water_sites = self.get_affected_zones(state);
         affected_water_sites.retain(|z| match z.get_site(state) {
             Some(site) => site.is_water_site(state).unwrap_or_default(),

@@ -63,7 +63,7 @@ impl Card for PhantasmalShade {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: DESTROY_ON_STRIKE,
             trigger: EffectQuery::DamageDealt {

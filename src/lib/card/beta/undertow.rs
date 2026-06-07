@@ -70,7 +70,7 @@ impl Card for Undertow {
         Some(self)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook::genesis(self.get_id())])
     }
 
@@ -82,41 +82,43 @@ impl Card for Undertow {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-        let player_id = self.get_controller_id(state);
-        let body_of_water = state
-            .get_body_of_water_at(self.get_zone())
-            .ok_or(anyhow::anyhow!("Undertow must be in a body of water"))?;
-        let controller_id = self.get_controller_id(state);
-        let Some(unit_id) = CardQuery::new()
-            .units()
-            .with_prompt("Choose a unit in the same body of water to move")
-            .with_source_card(*self.get_id())
-            .in_zones(&body_of_water)
-            .pick(&controller_id, state, false)
-            .await?
-        else {
-            return Ok(vec![]);
-        };
-        let unit = state.get_card(&unit_id);
-        let zones = unit.get_zones_within_steps(state, 1);
-        let picked_zone = pick_zone(
-            player_id,
-            &zones,
-            state,
-            false,
-            "Undertow: Choose a zone to move the unit to",
-        )
-        .await?;
-        Ok(vec![Effect::MoveCard {
-            card_id: unit_id,
-            to: LocationQuery::from_zone((picked_zone).with_region(unit.get_region(state).clone())),
-            player_id,
-            from: (unit.get_zone().clone())
-                .into_location()
-                .expect("MoveCard source must be a location"),
-            tap: false,
-            through_path: None,
-        }])
+                let player_id = self.get_controller_id(state);
+                let body_of_water = state
+                    .get_body_of_water_at(self.get_zone())
+                    .ok_or(anyhow::anyhow!("Undertow must be in a body of water"))?;
+                let controller_id = self.get_controller_id(state);
+                let Some(unit_id) = CardQuery::new()
+                    .units()
+                    .with_prompt("Choose a unit in the same body of water to move")
+                    .with_source_card(*self.get_id())
+                    .in_zones(&body_of_water)
+                    .pick(&controller_id, state, false)
+                    .await?
+                else {
+                    return Ok(vec![]);
+                };
+                let unit = state.get_card(&unit_id);
+                let zones = unit.get_zones_within_steps(state, 1);
+                let picked_zone = pick_zone(
+                    player_id,
+                    &zones,
+                    state,
+                    false,
+                    "Undertow: Choose a zone to move the unit to",
+                )
+                .await?;
+                Ok(vec![Effect::MoveCard {
+                    card_id: unit_id,
+                    to: LocationQuery::from_zone(
+                        (picked_zone).with_region(unit.get_region(state).clone()),
+                    ),
+                    player_id,
+                    from: (unit.get_zone().clone())
+                        .into_location()
+                        .expect("MoveCard source must be a location"),
+                    tap: false,
+                    through_path: None,
+                }])
             }
             _ => Ok(vec![]),
         }

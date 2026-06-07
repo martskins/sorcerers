@@ -69,7 +69,7 @@ impl Card for Thunderstorm {
         Some(&mut self.aura_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: TURN_END_HOOK,
             trigger: EffectQuery::TurnEnd { player_id: None },
@@ -86,44 +86,43 @@ impl Card for Thunderstorm {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             TURN_END_HOOK => {
-        if state.current_player() != self.get_controller_id(state) {
-            return Ok(vec![]);
-        }
+                if state.current_player() != self.get_controller_id(state) {
+                    return Ok(vec![]);
+                }
 
-        let zones = self.get_valid_move_zones(state).await?;
-        let affected_zones = self.get_affected_zones(state);
-        let picked_card_id = CardQuery::new()
-            .randomised()
-            .count(1)
-            .units()
-            .in_zones(&affected_zones)
-            .id_not_in(vec![*self.get_id()])
-            .pick(&self.get_controller_id(state), state, false)
-            .await?;
-        let mut effects = vec![Effect::MoveCard {
-            player_id: self.get_controller_id(state),
-            card_id: *self.get_id(),
-            from: (self.get_zone().clone())
-                .into_location()
-                .expect("MoveCard source must be a location"),
-            to: LocationQuery::from_options(
-                zones,
-                Some("Pick a zone to move Thunderstorm to".to_string()),
-            ),
-            tap: false,
-            through_path: None,
-        }];
+                let zones = self.get_valid_move_zones(state).await?;
+                let affected_zones = self.get_affected_zones(state);
+                let picked_card_id = CardQuery::new()
+                    .randomised()
+                    .count(1)
+                    .units()
+                    .in_zones(&affected_zones)
+                    .id_not_in(vec![*self.get_id()])
+                    .pick(&self.get_controller_id(state), state, false)
+                    .await?;
+                let mut effects = vec![Effect::MoveCard {
+                    player_id: self.get_controller_id(state),
+                    card_id: *self.get_id(),
+                    from: (self.get_zone().clone())
+                        .into_location()
+                        .expect("MoveCard source must be a location"),
+                    to: LocationQuery::from_options(
+                        zones,
+                        Some("Pick a zone to move Thunderstorm to".to_string()),
+                    ),
+                    tap: false,
+                    through_path: None,
+                }];
 
-        if let Some(picked_card_id) = picked_card_id {
-            effects.push(Effect::TakeDamage {
-                card_id: picked_card_id,
-                from: *self.get_id(),
-                damage: Damage::basic(3),
-            });
-        };
+                if let Some(picked_card_id) = picked_card_id {
+                    effects.push(Effect::TakeDamage {
+                        card_id: picked_card_id,
+                        from: *self.get_id(),
+                        damage: Damage::basic(3),
+                    });
+                };
 
-        Ok(effects)
-    
+                Ok(effects)
             }
             _ => Ok(vec![]),
         }

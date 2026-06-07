@@ -63,7 +63,7 @@ impl Card for MordricDruids {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
         let player_id = self.get_controller_id(state);
         Ok(vec![Hook {
             id: LIFE_LOSS_HOOK,

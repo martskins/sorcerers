@@ -63,7 +63,7 @@ impl Card for LordOfTheVoid {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: TURN_END_HOOK,
             trigger: EffectQuery::TurnEnd { player_id: None },
@@ -80,72 +80,71 @@ impl Card for LordOfTheVoid {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             TURN_END_HOOK => {
-        let controller_id = self.get_controller_id(state);
-        if state.current_player() != controller_id {
-            return Ok(vec![]);
-        }
-        if !self.get_zone().is_in_play() {
-            return Ok(vec![]);
-        }
+                let controller_id = self.get_controller_id(state);
+                if state.current_player() != controller_id {
+                    return Ok(vec![]);
+                }
+                if !self.get_zone().is_in_play() {
+                    return Ok(vec![]);
+                }
 
-        // Find adjacent zones that have a site and no avatar
-        let my_zone = self.get_zone().clone();
-        let candidate_sites: Vec<CardId> = CardQuery::new()
-            .sites()
-            .adjacent_sites_to(&my_zone)
-            .all(state)
-            .into_iter()
-            .filter(|site_id| {
-                let site_zone = state.get_card(site_id).get_zone().clone();
-                // Exclude zones with any avatar present
-                let has_avatar = CardQuery::new().avatars().in_zone(&site_zone).any(state);
-                !has_avatar
-            })
-            .collect();
+                // Find adjacent zones that have a site and no avatar
+                let my_zone = self.get_zone().clone();
+                let candidate_sites: Vec<CardId> = CardQuery::new()
+                    .sites()
+                    .adjacent_sites_to(&my_zone)
+                    .all(state)
+                    .into_iter()
+                    .filter(|site_id| {
+                        let site_zone = state.get_card(site_id).get_zone().clone();
+                        // Exclude zones with any avatar present
+                        let has_avatar = CardQuery::new().avatars().in_zone(&site_zone).any(state);
+                        !has_avatar
+                    })
+                    .collect();
 
-        if candidate_sites.is_empty() {
-            return Ok(vec![]);
-        }
+                if candidate_sites.is_empty() {
+                    return Ok(vec![]);
+                }
 
-        let do_banish = yes_or_no_source(
-            &controller_id,
-            state,
-            "Banish an adjacent site?",
-            Some(*self.get_id()),
-        )
-        .await?;
+                let do_banish = yes_or_no_source(
+                    &controller_id,
+                    state,
+                    "Banish an adjacent site?",
+                    Some(*self.get_id()),
+                )
+                .await?;
 
-        if !do_banish {
-            return Ok(vec![]);
-        }
+                if !do_banish {
+                    return Ok(vec![]);
+                }
 
-        let Some(target_site_id) = CardQuery::from_ids(candidate_sites)
-            .with_prompt("Pick a site to banish")
-            .with_source_card(*self.get_id())
-            .pick(&controller_id, state, false)
-            .await?
-        else {
-            return Ok(vec![]);
-        };
+                let Some(target_site_id) = CardQuery::from_ids(candidate_sites)
+                    .with_prompt("Pick a site to banish")
+                    .with_source_card(*self.get_id())
+                    .pick(&controller_id, state, false)
+                    .await?
+                else {
+                    return Ok(vec![]);
+                };
 
-        let target_zone = state.get_card(&target_site_id).get_zone().clone();
+                let target_zone = state.get_card(&target_site_id).get_zone().clone();
 
-        // Move all units at the target zone back to their owners, then banish the site
-        let units_there = CardQuery::new().units().in_zone(&target_zone).all(state);
-        let mut effects: Vec<Effect> = units_there
-            .into_iter()
-            .map(|unit_id| Effect::SetCardZone {
-                card_id: unit_id,
-                zone: Zone::Spellbook,
-            })
-            .collect();
+                // Move all units at the target zone back to their owners, then banish the site
+                let units_there = CardQuery::new().units().in_zone(&target_zone).all(state);
+                let mut effects: Vec<Effect> = units_there
+                    .into_iter()
+                    .map(|unit_id| Effect::SetCardZone {
+                        card_id: unit_id,
+                        zone: Zone::Spellbook,
+                    })
+                    .collect();
 
-        effects.push(Effect::BanishCard {
-            card_id: target_site_id,
-        });
+                effects.push(Effect::BanishCard {
+                    card_id: target_site_id,
+                });
 
-        Ok(effects)
-    
+                Ok(effects)
             }
             _ => Ok(vec![]),
         }

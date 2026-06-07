@@ -66,7 +66,7 @@ impl Card for LoneTower {
         Some(&mut self.site_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook::genesis(self.get_id())])
     }
 
@@ -78,22 +78,22 @@ impl Card for LoneTower {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-        let count = state
-            .cards
-            .values()
-            .filter(|c| c.get_zone().is_in_play())
-            .filter(|c| c.get_id() != self.get_id())
-            .filter(|c| &c.get_controller_id(state) == self.get_owner_id())
-            .filter(|c| c.get_name() == Self::NAME)
-            .count();
-        if count > 0 {
-            return Ok(vec![]);
-        }
+                let count = state
+                    .cards
+                    .values()
+                    .filter(|c| c.get_zone().is_in_play())
+                    .filter(|c| c.get_id() != self.get_id())
+                    .filter(|c| &c.get_controller_id(state) == self.get_owner_id())
+                    .filter(|c| c.get_name() == Self::NAME)
+                    .count();
+                if count > 0 {
+                    return Ok(vec![]);
+                }
 
-        Ok(vec![Effect::AdjustMana {
-            player_id: *self.get_owner_id(),
-            mana: 1,
-        }])
+                Ok(vec![Effect::AdjustMana {
+                    player_id: *self.get_owner_id(),
+                    mana: 1,
+                }])
             }
             _ => Ok(vec![]),
         }

@@ -60,7 +60,7 @@ impl Card for MageSlayer {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook::genesis(self.get_id())])
     }
 
@@ -72,48 +72,48 @@ impl Card for MageSlayer {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-        let controller_id = self.get_controller_id(state);
-        let my_zone = self.get_zone().clone();
+                let controller_id = self.get_controller_id(state);
+                let my_zone = self.get_zone().clone();
 
-        let spellcaster_abilities = [
-            Ability::Spellcaster(None),
-            Ability::Spellcaster(Some(Element::Fire)),
-            Ability::Spellcaster(Some(Element::Air)),
-            Ability::Spellcaster(Some(Element::Earth)),
-            Ability::Spellcaster(Some(Element::Water)),
-        ];
+                let spellcaster_abilities = [
+                    Ability::Spellcaster(None),
+                    Ability::Spellcaster(Some(Element::Fire)),
+                    Ability::Spellcaster(Some(Element::Air)),
+                    Ability::Spellcaster(Some(Element::Earth)),
+                    Ability::Spellcaster(Some(Element::Water)),
+                ];
 
-        let enemy_spellcasters: Vec<CardId> = state
-            .cards
-            .values()
-            .filter(|c| c.is_minion())
-            .filter(|c| c.get_controller_id(state) != controller_id)
-            .filter(|c| c.get_zone().is_nearby(&my_zone))
-            .filter(|c| {
-                spellcaster_abilities
-                    .iter()
-                    .any(|a| c.has_ability(state, a))
-            })
-            .map(|c| *c.get_id())
-            .collect();
+                let enemy_spellcasters: Vec<CardId> = state
+                    .cards
+                    .values()
+                    .filter(|c| c.is_minion())
+                    .filter(|c| c.get_controller_id(state) != controller_id)
+                    .filter(|c| c.get_zone().is_nearby(&my_zone))
+                    .filter(|c| {
+                        spellcaster_abilities
+                            .iter()
+                            .any(|a| c.has_ability(state, a))
+                    })
+                    .map(|c| *c.get_id())
+                    .collect();
 
-        if enemy_spellcasters.is_empty() {
-            return Ok(vec![]);
-        }
+                if enemy_spellcasters.is_empty() {
+                    return Ok(vec![]);
+                }
 
-        let chosen = pick_card(
-            &controller_id,
-            &enemy_spellcasters,
-            state,
-            "Mage Slayer: Pick a nearby enemy Spellcaster to kill",
-        )
-        .await?;
+                let chosen = pick_card(
+                    &controller_id,
+                    &enemy_spellcasters,
+                    state,
+                    "Mage Slayer: Pick a nearby enemy Spellcaster to kill",
+                )
+                .await?;
 
-        Ok(vec![Effect::KillMinion {
-            card_id: chosen,
-            killer_id: *self.get_id(),
-            from_attack: false,
-        }])
+                Ok(vec![Effect::KillMinion {
+                    card_id: chosen,
+                    killer_id: *self.get_id(),
+                    from_attack: false,
+                }])
             }
             _ => Ok(vec![]),
         }

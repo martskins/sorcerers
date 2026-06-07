@@ -50,7 +50,7 @@ impl Card for DodgeRoll {
         Some(self)
     }
 
-    async fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
         let controller_id = self.get_controller_id(state);
         let dodge_rolls_in_hand = CardQuery::new()
             .named(DodgeRoll::NAME.to_string())

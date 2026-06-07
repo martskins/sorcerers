@@ -72,7 +72,7 @@ impl Card for BottomlessPit {
         Some(self)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: KILL_ENTERING_MINION_HOOK,
             trigger: EffectQuery::EnterZone {

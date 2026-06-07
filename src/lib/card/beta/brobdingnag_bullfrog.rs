@@ -63,7 +63,7 @@ impl Card for BrobdingnagBullfrog {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![
             Hook::genesis(self.get_id()),
             Hook::deathrite(self.get_id()),

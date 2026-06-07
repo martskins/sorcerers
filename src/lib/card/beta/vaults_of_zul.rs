@@ -70,7 +70,7 @@ impl Card for VaultsOfZul {
         Some(self)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         if self.triggered || !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }

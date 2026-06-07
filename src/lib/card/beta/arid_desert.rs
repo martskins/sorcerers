@@ -66,7 +66,7 @@ impl Card for AridDesert {
         Some(&mut self.site_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook::genesis(self.get_id())])
     }
 
@@ -78,33 +78,33 @@ impl Card for AridDesert {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-        let controller_id = self.get_controller_id(state);
-        let Some(picked_site_id) = CardQuery::new()
-            .sites()
-            .nearby_sites_to(self.get_zone())
-            .with_prompt("Pick a site to deal 1 damage to all atop units")
-            .with_source_card(*self.get_id())
-            .pick(&controller_id, state, false)
-            .await?
-        else {
-            return Ok(vec![]);
-        };
+                let controller_id = self.get_controller_id(state);
+                let Some(picked_site_id) = CardQuery::new()
+                    .sites()
+                    .nearby_sites_to(self.get_zone())
+                    .with_prompt("Pick a site to deal 1 damage to all atop units")
+                    .with_source_card(*self.get_id())
+                    .pick(&controller_id, state, false)
+                    .await?
+                else {
+                    return Ok(vec![]);
+                };
 
-        let site = state.get_card(&picked_site_id);
-        let minions = CardQuery::new()
-            .minions()
-            .in_zone(site.get_zone())
-            .all(state);
-        let mut effects = vec![];
-        for minion in minions {
-            effects.push(Effect::TakeDamage {
-                card_id: minion,
-                from: *site.get_id(),
-                damage: Damage::basic(1),
-            });
-        }
+                let site = state.get_card(&picked_site_id);
+                let minions = CardQuery::new()
+                    .minions()
+                    .in_zone(site.get_zone())
+                    .all(state);
+                let mut effects = vec![];
+                for minion in minions {
+                    effects.push(Effect::TakeDamage {
+                        card_id: minion,
+                        from: *site.get_id(),
+                        damage: Damage::basic(1),
+                    });
+                }
 
-        Ok(effects)
+                Ok(effects)
             }
             _ => Ok(vec![]),
         }

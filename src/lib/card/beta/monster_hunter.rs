@@ -60,7 +60,7 @@ impl Card for MonsterHunter {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook::genesis(self.get_id())])
     }
 
@@ -72,40 +72,40 @@ impl Card for MonsterHunter {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-        let controller_id = self.get_controller_id(state);
-        let my_zone = self.get_zone().clone();
+                let controller_id = self.get_controller_id(state);
+                let my_zone = self.get_zone().clone();
 
-        let nearby_monsters: Vec<CardId> = state
-            .cards
-            .values()
-            .filter(|c| c.is_minion())
-            .filter(|c| c.get_controller_id(state) != controller_id)
-            .filter(|c| c.get_zone().is_nearby(&my_zone))
-            .filter(|c| {
-                c.get_unit_base()
-                    .map(|ub| ub.types.contains(&MinionType::Monster))
-                    .unwrap_or(false)
-            })
-            .map(|c| *c.get_id())
-            .collect();
+                let nearby_monsters: Vec<CardId> = state
+                    .cards
+                    .values()
+                    .filter(|c| c.is_minion())
+                    .filter(|c| c.get_controller_id(state) != controller_id)
+                    .filter(|c| c.get_zone().is_nearby(&my_zone))
+                    .filter(|c| {
+                        c.get_unit_base()
+                            .map(|ub| ub.types.contains(&MinionType::Monster))
+                            .unwrap_or(false)
+                    })
+                    .map(|c| *c.get_id())
+                    .collect();
 
-        if nearby_monsters.is_empty() {
-            return Ok(vec![]);
-        }
+                if nearby_monsters.is_empty() {
+                    return Ok(vec![]);
+                }
 
-        let chosen = pick_card(
-            &controller_id,
-            &nearby_monsters,
-            state,
-            "Monster Hunter: Pick a nearby Monster to kill",
-        )
-        .await?;
+                let chosen = pick_card(
+                    &controller_id,
+                    &nearby_monsters,
+                    state,
+                    "Monster Hunter: Pick a nearby Monster to kill",
+                )
+                .await?;
 
-        Ok(vec![Effect::KillMinion {
-            card_id: chosen,
-            killer_id: *self.get_id(),
-            from_attack: false,
-        }])
+                Ok(vec![Effect::KillMinion {
+                    card_id: chosen,
+                    killer_id: *self.get_id(),
+                    from_attack: false,
+                }])
             }
             _ => Ok(vec![]),
         }

@@ -66,7 +66,7 @@ impl Card for Observatory {
         Some(&mut self.site_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook::genesis(self.get_id())])
     }
 
@@ -78,43 +78,43 @@ impl Card for Observatory {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-        let deck = state
-            .decks
-            .get(&self.get_controller_id(state))
-            .unwrap()
-            .clone();
-        let mut spells = deck.spells.clone();
-        let mut cards = vec![];
-        for _ in 0..3 {
-            if let Some(card_id) = spells.pop() {
-                cards.push(card_id);
-            }
-        }
+                let deck = state
+                    .decks
+                    .get(&self.get_controller_id(state))
+                    .unwrap()
+                    .clone();
+                let mut spells = deck.spells.clone();
+                let mut cards = vec![];
+                for _ in 0..3 {
+                    if let Some(card_id) = spells.pop() {
+                        cards.push(card_id);
+                    }
+                }
 
-        while !cards.is_empty() {
-            let position = match cards.len() {
-                3 => "third from the top",
-                2 => "second from the top",
-                1 => "on the top",
-                _ => unreachable!(),
-            };
-            let picked_card_id = pick_card_with_preview(
-                self.get_controller_id(state),
-                &cards,
-                state,
-                &format!("Pick a spell to put back into your spellbook, {}", position),
-            )
-            .await?;
-            spells.push(picked_card_id);
+                while !cards.is_empty() {
+                    let position = match cards.len() {
+                        3 => "third from the top",
+                        2 => "second from the top",
+                        1 => "on the top",
+                        _ => unreachable!(),
+                    };
+                    let picked_card_id = pick_card_with_preview(
+                        self.get_controller_id(state),
+                        &cards,
+                        state,
+                        &format!("Pick a spell to put back into your spellbook, {}", position),
+                    )
+                    .await?;
+                    spells.push(picked_card_id);
 
-            let idx = cards.iter().position(|id| id == &picked_card_id).unwrap();
-            cards.remove(idx);
-        }
+                    let idx = cards.iter().position(|id| id == &picked_card_id).unwrap();
+                    cards.remove(idx);
+                }
 
-        Ok(vec![Effect::RearrangeDeck {
-            spells,
-            sites: deck.sites.clone(),
-        }])
+                Ok(vec![Effect::RearrangeDeck {
+                    spells,
+                    sites: deck.sites.clone(),
+                }])
             }
             _ => Ok(vec![]),
         }

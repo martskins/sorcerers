@@ -74,7 +74,7 @@ impl Card for ImperialRoad {
         Some(self)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook::genesis(self.get_id())])
     }
 
@@ -86,75 +86,75 @@ impl Card for ImperialRoad {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-        let controller_id = self.get_controller_id(state);
-        let opponent_id = state.get_opponent_id(&controller_id)?;
-        let my_zone = self.get_zone().clone();
-        let adjacent_zones: Vec<Zone> = my_zone
-            .get_adjacent()
-            .into_iter()
-            .filter(|z| z.get_site(state).is_none())
-            .collect();
+                let controller_id = self.get_controller_id(state);
+                let opponent_id = state.get_opponent_id(&controller_id)?;
+                let my_zone = self.get_zone().clone();
+                let adjacent_zones: Vec<Zone> = my_zone
+                    .get_adjacent()
+                    .into_iter()
+                    .filter(|z| z.get_site(state).is_none())
+                    .collect();
 
-        if adjacent_zones.is_empty() {
-            return Ok(vec![]);
-        }
+                if adjacent_zones.is_empty() {
+                    return Ok(vec![]);
+                }
 
-        let mut effects = vec![];
+                let mut effects = vec![];
 
-        for player_id in [opponent_id, controller_id] {
-            let sites_in_atlasbook: Vec<CardId> = state
-                .cards
-                .values()
-                .filter(|c| c.is_site())
-                .filter(|c| c.get_zone() == &Zone::Atlasbook)
-                .filter(|c| c.get_controller_id(state) == player_id)
-                .map(|c| *c.get_id())
-                .collect();
+                for player_id in [opponent_id, controller_id] {
+                    let sites_in_atlasbook: Vec<CardId> = state
+                        .cards
+                        .values()
+                        .filter(|c| c.is_site())
+                        .filter(|c| c.get_zone() == &Zone::Atlasbook)
+                        .filter(|c| c.get_controller_id(state) == player_id)
+                        .map(|c| *c.get_id())
+                        .collect();
 
-            if sites_in_atlasbook.is_empty() {
-                continue;
-            }
+                    if sites_in_atlasbook.is_empty() {
+                        continue;
+                    }
 
-            let Some(chosen_site) = CardQuery::from_ids(sites_in_atlasbook)
-                .with_prompt("Play an adjacent site?")
-                .with_source_card(*self.get_id())
-                .pick(&player_id, state, true)
-                .await?
-            else {
-                continue;
-            };
+                    let Some(chosen_site) = CardQuery::from_ids(sites_in_atlasbook)
+                        .with_prompt("Play an adjacent site?")
+                        .with_source_card(*self.get_id())
+                        .pick(&player_id, state, true)
+                        .await?
+                    else {
+                        continue;
+                    };
 
-            let valid_zones: Vec<Zone> = adjacent_zones
-                .iter()
-                .filter(|&z| z.get_site(state).is_none())
-                .cloned()
-                .collect();
+                    let valid_zones: Vec<Zone> = adjacent_zones
+                        .iter()
+                        .filter(|&z| z.get_site(state).is_none())
+                        .cloned()
+                        .collect();
 
-            if valid_zones.is_empty() {
-                continue;
-            }
+                    if valid_zones.is_empty() {
+                        continue;
+                    }
 
-            let zone = pick_zone(
-                &player_id,
-                &valid_zones,
-                state,
-                true,
-                "Imperial Road: Pick adjacent zone to place site",
-            )
-            .await?;
+                    let zone = pick_zone(
+                        &player_id,
+                        &valid_zones,
+                        state,
+                        true,
+                        "Imperial Road: Pick adjacent zone to place site",
+                    )
+                    .await?;
 
-            let avatar_id = state.get_player_avatar_id(&player_id)?;
-            effects.push(Effect::PlayCard {
-                player_id,
-                card_id: chosen_site,
-                zone: zone.into(),
-                // we pass avatar_id as the caster just to comply with the required parameters, but
-                // no caster_id is actually needed here, since sites don't need one.
-                spellcaster: avatar_id,
-            });
-        }
+                    let avatar_id = state.get_player_avatar_id(&player_id)?;
+                    effects.push(Effect::PlayCard {
+                        player_id,
+                        card_id: chosen_site,
+                        zone: zone.into(),
+                        // we pass avatar_id as the caster just to comply with the required parameters, but
+                        // no caster_id is actually needed here, since sites don't need one.
+                        spellcaster: avatar_id,
+                    });
+                }
 
-        Ok(effects)
+                Ok(effects)
             }
             _ => Ok(vec![]),
         }

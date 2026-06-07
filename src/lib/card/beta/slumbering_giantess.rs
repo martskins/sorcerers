@@ -62,7 +62,7 @@ impl Card for SlumberingGiantess {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook::genesis(self.get_id())])
     }
 
@@ -73,19 +73,17 @@ impl Card for SlumberingGiantess {
         _effect: &Effect,
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
-            GENESIS_HOOK_ID => {
-        Ok(vec![Effect::AddStatusCounter {
-            card_id: *self.get_id(),
-            counter: StatusCounter {
-                id: uuid::Uuid::new_v4(),
-                status: CardStatus::Disabled,
-                expires_on_effect: Some(EffectQuery::DamageDealt {
-                    source: None,
-                    target: Some(self.get_id().into()),
-                }),
-            },
-        }])
-            }
+            GENESIS_HOOK_ID => Ok(vec![Effect::AddStatusCounter {
+                card_id: *self.get_id(),
+                counter: StatusCounter {
+                    id: uuid::Uuid::new_v4(),
+                    status: CardStatus::Disabled,
+                    expires_on_effect: Some(EffectQuery::DamageDealt {
+                        source: None,
+                        target: Some(self.get_id().into()),
+                    }),
+                },
+            }]),
             _ => Ok(vec![]),
         }
     }

@@ -63,7 +63,7 @@ impl Card for QuarrelsomeKobolds {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: TURN_END_HOOK,
             trigger: EffectQuery::TurnEnd { player_id: None },
@@ -80,38 +80,37 @@ impl Card for QuarrelsomeKobolds {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             TURN_END_HOOK => {
-        if state.current_player() != self.get_controller_id(state) {
-            return Ok(vec![]);
-        }
+                if state.current_player() != self.get_controller_id(state) {
+                    return Ok(vec![]);
+                }
 
-        let zone = self.get_zone();
-        let adjacent_zones = zone.get_adjacent();
-        let mut units = vec![];
-        let player_id = self.get_controller_id(state);
-        for zone in adjacent_zones {
-            let units_in_zone = CardQuery::new()
-                .units()
-                .in_zone(&zone)
-                .can_be_targeted_by_player(&player_id)
-                .all(state);
-            units.extend(units_in_zone);
-        }
+                let zone = self.get_zone();
+                let adjacent_zones = zone.get_adjacent();
+                let mut units = vec![];
+                let player_id = self.get_controller_id(state);
+                for zone in adjacent_zones {
+                    let units_in_zone = CardQuery::new()
+                        .units()
+                        .in_zone(&zone)
+                        .can_be_targeted_by_player(&player_id)
+                        .all(state);
+                    units.extend(units_in_zone);
+                }
 
-        let prompt = "Pick a unit to deal damage to";
-        let picked_unit = pick_card_source(
-            self.get_controller_id(state),
-            &units,
-            state,
-            prompt,
-            Some(*self.get_id()),
-        )
-        .await?;
-        Ok(vec![Effect::TakeDamage {
-            card_id: picked_unit,
-            from: *self.get_id(),
-            damage: Damage::basic(self.get_power(state)?.unwrap_or(0)),
-        }])
-    
+                let prompt = "Pick a unit to deal damage to";
+                let picked_unit = pick_card_source(
+                    self.get_controller_id(state),
+                    &units,
+                    state,
+                    prompt,
+                    Some(*self.get_id()),
+                )
+                .await?;
+                Ok(vec![Effect::TakeDamage {
+                    card_id: picked_unit,
+                    from: *self.get_id(),
+                    damage: Damage::basic(self.get_power(state)?.unwrap_or(0)),
+                }])
             }
             _ => Ok(vec![]),
         }

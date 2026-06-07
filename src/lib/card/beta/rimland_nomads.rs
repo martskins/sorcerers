@@ -63,7 +63,7 @@ impl Card for RimlandNomads {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: PREVENT_DESERT_DAMAGE_HOOK,
             trigger: EffectQuery::DamageDealt {

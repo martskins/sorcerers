@@ -62,7 +62,7 @@ impl Card for EvilPresence {
         Some(self)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: SUMMON_SPIRIT_HOOK,
             trigger: EffectQuery::SummonCard {

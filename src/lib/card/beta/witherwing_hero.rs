@@ -59,7 +59,7 @@ impl Card for WitherwingHero {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
         let player_id = self.get_controller_id(state);
         let power = self.get_power(state)?.unwrap_or_default();
         Ok(vec![Hook {

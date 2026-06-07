@@ -34,7 +34,7 @@ impl EffectEngine {
                 continue;
             }
 
-            for hook in card.hooks(state).await? {
+            for hook in card.hooks(state)? {
                 if !hook.source_zones.matches(card.get_zone()) {
                     continue;
                 }

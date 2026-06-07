@@ -51,7 +51,7 @@ impl Card for CriticalStrike {
         Some(self)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: STRIKE_HOOK,
             trigger: EffectQuery::StrikeCard {

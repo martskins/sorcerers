@@ -76,7 +76,7 @@ impl Card for Mudflow {
         Some(self)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: TURN_START_HOOK,
             trigger: EffectQuery::TurnStart { player_id: None },
@@ -93,41 +93,40 @@ impl Card for Mudflow {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             TURN_START_HOOK => {
-        let controller_id = self.get_controller_id(state);
-        if state.current_player() != controller_id {
-            return Ok(vec![]);
-        }
-        if !self.get_zone().is_in_play() {
-            return Ok(vec![]);
-        }
+                let controller_id = self.get_controller_id(state);
+                if state.current_player() != controller_id {
+                    return Ok(vec![]);
+                }
+                if !self.get_zone().is_in_play() {
+                    return Ok(vec![]);
+                }
 
-        let Some(target_zone_id) = CardQuery::new()
-            .sites()
-            .near_to(self.get_zone())
-            .with_prompt("Pick a nearby site to surface/unburrow all minions")
-            .with_source_card(*self.get_id())
-            .pick(&controller_id, state, false)
-            .await?
-        else {
-            return Ok(vec![]);
-        };
+                let Some(target_zone_id) = CardQuery::new()
+                    .sites()
+                    .near_to(self.get_zone())
+                    .with_prompt("Pick a nearby site to surface/unburrow all minions")
+                    .with_source_card(*self.get_id())
+                    .pick(&controller_id, state, false)
+                    .await?
+                else {
+                    return Ok(vec![]);
+                };
 
-        let target_site = state.get_card(&target_zone_id);
-        let target_zone = target_site.get_zone().clone();
+                let target_site = state.get_card(&target_zone_id);
+                let target_zone = target_site.get_zone().clone();
 
-        let minions = CardQuery::new().minions().in_zone(&target_zone).all(state);
+                let minions = CardQuery::new().minions().in_zone(&target_zone).all(state);
 
-        let effects = minions
-            .into_iter()
-            .map(|minion_id| Effect::SetCardRegion {
-                card_id: minion_id,
-                destination: Region::Surface,
-                tap: false,
-            })
-            .collect();
+                let effects = minions
+                    .into_iter()
+                    .map(|minion_id| Effect::SetCardRegion {
+                        card_id: minion_id,
+                        destination: Region::Surface,
+                        tap: false,
+                    })
+                    .collect();
 
-        Ok(effects)
-    
+                Ok(effects)
             }
             _ => Ok(vec![]),
         }

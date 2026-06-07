@@ -73,7 +73,7 @@ impl Card for TorshammarTrinket {
         }])
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: TURN_END_HOOK,
             trigger: EffectQuery::TurnEnd { player_id: None },
@@ -90,22 +90,21 @@ impl Card for TorshammarTrinket {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             TURN_END_HOOK => {
-        let zone = self.get_zone();
-        if !zone.is_in_play() {
-            return Ok(vec![]);
-        }
+                let zone = self.get_zone();
+                if !zone.is_in_play() {
+                    return Ok(vec![]);
+                }
 
-        Ok(vec![
-            Effect::SetBearer {
-                card_id: *self.get_id(),
-                bearer_id: None,
-            },
-            Effect::SetCardZone {
-                card_id: *self.get_id(),
-                zone: Zone::Hand,
-            },
-        ])
-    
+                Ok(vec![
+                    Effect::SetBearer {
+                        card_id: *self.get_id(),
+                        bearer_id: None,
+                    },
+                    Effect::SetCardZone {
+                        card_id: *self.get_id(),
+                        zone: Zone::Hand,
+                    },
+                ])
             }
             _ => Ok(vec![]),
         }

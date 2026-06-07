@@ -62,7 +62,7 @@ impl Card for CauldronCrones {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook::genesis(self.get_id())])
     }
 
@@ -74,39 +74,39 @@ impl Card for CauldronCrones {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-        let controller_id = self.get_controller_id(state);
-        let sacrifice = yes_or_no_source(
-            &controller_id,
-            state,
-            "Sacrifice a minion here to draw a spell?",
-            Some(*self.get_id()),
-        )
-        .await?;
+                let controller_id = self.get_controller_id(state);
+                let sacrifice = yes_or_no_source(
+                    &controller_id,
+                    state,
+                    "Sacrifice a minion here to draw a spell?",
+                    Some(*self.get_id()),
+                )
+                .await?;
 
-        if !sacrifice {
-            return Ok(vec![]);
-        }
+                if !sacrifice {
+                    return Ok(vec![]);
+                }
 
-        let Some(picked) = CardQuery::new()
-            .minions()
-            .controlled_by(&controller_id)
-            .in_zone(self.get_zone())
-            .id_not_in(vec![*self.get_id()])
-            .with_prompt("Choose a minion to sacrifice")
-            .with_source_card(*self.get_id())
-            .pick(&controller_id, state, false)
-            .await?
-        else {
-            return Ok(vec![]);
-        };
-        Ok(vec![
-            Effect::BuryCard { card_id: picked },
-            Effect::DrawCard {
-                player_id: controller_id,
-                count: 1,
-                kind: DrawKind::Spell,
-            },
-        ])
+                let Some(picked) = CardQuery::new()
+                    .minions()
+                    .controlled_by(&controller_id)
+                    .in_zone(self.get_zone())
+                    .id_not_in(vec![*self.get_id()])
+                    .with_prompt("Choose a minion to sacrifice")
+                    .with_source_card(*self.get_id())
+                    .pick(&controller_id, state, false)
+                    .await?
+                else {
+                    return Ok(vec![]);
+                };
+                Ok(vec![
+                    Effect::BuryCard { card_id: picked },
+                    Effect::DrawCard {
+                        player_id: controller_id,
+                        count: 1,
+                        kind: DrawKind::Spell,
+                    },
+                ])
             }
             _ => Ok(vec![]),
         }

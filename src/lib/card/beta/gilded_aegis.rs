@@ -66,7 +66,7 @@ impl Card for GildedAegis {
         Some(self)
     }
 
-    async fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
         if !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }

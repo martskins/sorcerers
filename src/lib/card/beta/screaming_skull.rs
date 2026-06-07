@@ -65,7 +65,7 @@ impl Card for ScreamingSkull {
         Some(self)
     }
 
-    async fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
         let Some(bearer_id) = self.get_bearer()? else {
             return Ok(vec![]);
         };

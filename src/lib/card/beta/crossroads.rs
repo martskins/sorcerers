@@ -73,7 +73,7 @@ impl Card for Crossroads {
         Some(self)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook::genesis(self.get_id())])
     }
 
@@ -85,45 +85,45 @@ impl Card for Crossroads {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-        let controller_id = self.get_controller_id(state);
-        let deck = state.decks.get(&controller_id).unwrap().clone();
+                let controller_id = self.get_controller_id(state);
+                let deck = state.decks.get(&controller_id).unwrap().clone();
 
-        let mut remaining_sites = deck.sites.clone();
-        let mut looked_at: Vec<CardId> = vec![];
-        for _ in 0..4 {
-            if let Some(card_id) = remaining_sites.pop() {
-                looked_at.push(card_id);
-            }
-        }
+                let mut remaining_sites = deck.sites.clone();
+                let mut looked_at: Vec<CardId> = vec![];
+                for _ in 0..4 {
+                    if let Some(card_id) = remaining_sites.pop() {
+                        looked_at.push(card_id);
+                    }
+                }
 
-        if looked_at.is_empty() {
-            return Ok(vec![]);
-        }
+                if looked_at.is_empty() {
+                    return Ok(vec![]);
+                }
 
-        let chosen_id = pick_card_with_preview(
-            &controller_id,
-            &looked_at,
-            state,
-            "Crossroads: Pick a site to keep on top of your atlas",
-        )
-        .await?;
+                let chosen_id = pick_card_with_preview(
+                    &controller_id,
+                    &looked_at,
+                    state,
+                    "Crossroads: Pick a site to keep on top of your atlas",
+                )
+                .await?;
 
-        // The rest go to the bottom of the deck (front of sites vec).
-        let bottom: Vec<CardId> = looked_at
-            .iter()
-            .filter(|id| **id != chosen_id)
-            .cloned()
-            .collect();
+                // The rest go to the bottom of the deck (front of sites vec).
+                let bottom: Vec<CardId> = looked_at
+                    .iter()
+                    .filter(|id| **id != chosen_id)
+                    .cloned()
+                    .collect();
 
-        // New order: bottom cards at front, then remaining_sites, then chosen on top (end).
-        let mut new_sites = bottom;
-        new_sites.extend(remaining_sites);
-        new_sites.push(chosen_id);
+                // New order: bottom cards at front, then remaining_sites, then chosen on top (end).
+                let mut new_sites = bottom;
+                new_sites.extend(remaining_sites);
+                new_sites.push(chosen_id);
 
-        Ok(vec![Effect::RearrangeDeck {
-            spells: deck.spells.clone(),
-            sites: new_sites,
-        }])
+                Ok(vec![Effect::RearrangeDeck {
+                    spells: deck.spells.clone(),
+                    sites: new_sites,
+                }])
             }
             _ => Ok(vec![]),
         }

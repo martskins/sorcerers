@@ -61,7 +61,7 @@ impl Card for ApprenticeWizard {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook::genesis(self.get_id())])
     }
 
@@ -72,13 +72,11 @@ impl Card for ApprenticeWizard {
         _effect: &Effect,
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
-            GENESIS_HOOK_ID => {
-        Ok(vec![Effect::DrawCard {
-            player_id: *self.get_owner_id(),
-            count: 1,
-            kind: DrawKind::Spell,
-        }])
-            }
+            GENESIS_HOOK_ID => Ok(vec![Effect::DrawCard {
+                player_id: *self.get_owner_id(),
+                count: 1,
+                kind: DrawKind::Spell,
+            }]),
             _ => Ok(vec![]),
         }
     }

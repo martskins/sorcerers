@@ -61,7 +61,7 @@ impl Card for MiracleWorkers {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook::genesis(self.get_id())])
     }
 
@@ -73,11 +73,11 @@ impl Card for MiracleWorkers {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-        let controller_id = self.get_controller_id(state);
-        let current_turn = state.turns;
+                let controller_id = self.get_controller_id(state);
+                let current_turn = state.turns;
 
-        // Find allied minions that died this turn (BuryCard in the current turn's effect log).
-        let died_this_turn: Vec<CardId> = state
+                // Find allied minions that died this turn (BuryCard in the current turn's effect log).
+                let died_this_turn: Vec<CardId> = state
             .cards
             .values()
             .filter(|c| c.is_minion() && c.get_zone() == &Zone::Cemetery)
@@ -91,29 +91,29 @@ impl Card for MiracleWorkers {
             .map(|c| *c.get_id())
             .collect();
 
-        if died_this_turn.is_empty() {
-            return Ok(vec![]);
-        }
+                if died_this_turn.is_empty() {
+                    return Ok(vec![]);
+                }
 
-        let Some(chosen) = CardQuery::new()
-            .in_zone(&Zone::Cemetery)
-            .controlled_by(&controller_id)
-            .with_prompt("Return a minion that died this turn to your hand?")
-            .with_source_card(*self.get_id())
-            .pick(&controller_id, state, false)
-            .await?
-        else {
-            return Ok(vec![]);
-        };
+                let Some(chosen) = CardQuery::new()
+                    .in_zone(&Zone::Cemetery)
+                    .controlled_by(&controller_id)
+                    .with_prompt("Return a minion that died this turn to your hand?")
+                    .with_source_card(*self.get_id())
+                    .pick(&controller_id, state, false)
+                    .await?
+                else {
+                    return Ok(vec![]);
+                };
 
-        if !died_this_turn.contains(&chosen) {
-            return Ok(vec![]);
-        }
+                if !died_this_turn.contains(&chosen) {
+                    return Ok(vec![]);
+                }
 
-        Ok(vec![Effect::SetCardZone {
-            card_id: chosen,
-            zone: Zone::Hand,
-        }])
+                Ok(vec![Effect::SetCardZone {
+                    card_id: chosen,
+                    zone: Zone::Hand,
+                }])
             }
             _ => Ok(vec![]),
         }

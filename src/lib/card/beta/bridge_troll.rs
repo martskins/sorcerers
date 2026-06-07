@@ -77,7 +77,7 @@ impl Card for BridgeTroll {
         Ok(())
     }
 
-    async fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![
             Hook {
                 id: DRAIN_MANA_HOOK,

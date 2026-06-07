@@ -63,7 +63,7 @@ impl Card for BoneRabble {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: PLAY_EARTH_SITE_HOOK,
             trigger: EffectQuery::PlayCard {

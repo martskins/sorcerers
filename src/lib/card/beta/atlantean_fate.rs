@@ -94,7 +94,7 @@ impl Card for AtlanteanFate {
         ])
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook::genesis(self.get_id())])
     }
 
@@ -106,22 +106,22 @@ impl Card for AtlanteanFate {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-        let affected_zones: Vec<Zone> = self
-            .get_affected_zones(state)
-            .into_iter()
-            .filter(|z| z.get_site(state).is_some())
-            .collect();
-        Ok(CardQuery::new()
-            .card_types(vec![CardType::Minion, CardType::Artifact])
-            .in_zones(&affected_zones)
-            .all(state)
-            .into_iter()
-            .map(|id| Effect::SetCardRegion {
-                card_id: id,
-                destination: Region::Underwater,
-                tap: false,
-            })
-            .collect())
+                let affected_zones: Vec<Zone> = self
+                    .get_affected_zones(state)
+                    .into_iter()
+                    .filter(|z| z.get_site(state).is_some())
+                    .collect();
+                Ok(CardQuery::new()
+                    .card_types(vec![CardType::Minion, CardType::Artifact])
+                    .in_zones(&affected_zones)
+                    .all(state)
+                    .into_iter()
+                    .map(|id| Effect::SetCardRegion {
+                        card_id: id,
+                        destination: Region::Underwater,
+                        tap: false,
+                    })
+                    .collect())
             }
             _ => Ok(vec![]),
         }

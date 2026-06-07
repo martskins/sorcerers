@@ -63,7 +63,7 @@ impl Card for HeadlessHaunt {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: TURN_START_HOOK,
             trigger: EffectQuery::TurnStart { player_id: None },
@@ -80,26 +80,25 @@ impl Card for HeadlessHaunt {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             TURN_START_HOOK => {
-        if !self.get_zone().is_in_play() {
-            return Ok(vec![]);
-        }
+                if !self.get_zone().is_in_play() {
+                    return Ok(vec![]);
+                }
 
-        // Only fires on the owner's turn.
-        if state.current_player() != *self.get_owner_id() {
-            return Ok(vec![]);
-        }
+                // Only fires on the owner's turn.
+                if state.current_player() != *self.get_owner_id() {
+                    return Ok(vec![]);
+                }
 
-        Ok(vec![Effect::MoveCard {
-            player_id: *self.get_owner_id(),
-            card_id: *self.get_id(),
-            from: (self.get_zone().clone())
-                .into_location()
-                .expect("MoveCard source must be a location"),
-            to: LocationQuery::random(Zone::all_in_surface()),
-            tap: false,
-            through_path: None,
-        }])
-    
+                Ok(vec![Effect::MoveCard {
+                    player_id: *self.get_owner_id(),
+                    card_id: *self.get_id(),
+                    from: (self.get_zone().clone())
+                        .into_location()
+                        .expect("MoveCard source must be a location"),
+                    to: LocationQuery::random(Zone::all_in_surface()),
+                    tap: false,
+                    through_path: None,
+                }])
             }
             _ => Ok(vec![]),
         }

@@ -58,7 +58,7 @@ impl Card for TvinnaxBerserker {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         if !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }

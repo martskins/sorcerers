@@ -77,7 +77,7 @@ impl Card for DoomsdayDevice {
         Ok(())
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![
             Hook::genesis(self.get_id()),
             Hook {
@@ -101,43 +101,42 @@ impl Card for DoomsdayDevice {
                 data: std::sync::Arc::new(6u8),
             }]),
             TURN_END_HOOK => {
-        if !self.get_zone().is_in_play() {
-            return Ok(vec![]);
-        }
+                if !self.get_zone().is_in_play() {
+                    return Ok(vec![]);
+                }
 
-        if self.doom_counters == 0 {
-            return Ok(vec![]);
-        }
+                if self.doom_counters == 0 {
+                    return Ok(vec![]);
+                }
 
-        let self_id = *self.get_id();
+                let self_id = *self.get_id();
 
-        if self.doom_counters == 1 {
-            // Trigger the explosion.
-            let explosion_zones: Vec<Zone> = std::iter::once(self.get_zone().clone())
-                .chain(self.get_zone().get_nearby())
-                .collect();
+                if self.doom_counters == 1 {
+                    // Trigger the explosion.
+                    let explosion_zones: Vec<Zone> = std::iter::once(self.get_zone().clone())
+                        .chain(self.get_zone().get_nearby())
+                        .collect();
 
-            let mut effects: Vec<Effect> = CardQuery::new()
-                .units()
-                .in_zones(&explosion_zones)
-                .all(state)
-                .into_iter()
-                .map(|id| Effect::TakeDamage {
-                    card_id: id,
-                    from: self_id,
-                    damage: Damage::basic(6),
-                })
-                .collect();
+                    let mut effects: Vec<Effect> = CardQuery::new()
+                        .units()
+                        .in_zones(&explosion_zones)
+                        .all(state)
+                        .into_iter()
+                        .map(|id| Effect::TakeDamage {
+                            card_id: id,
+                            from: self_id,
+                            damage: Damage::basic(6),
+                        })
+                        .collect();
 
-            effects.push(Effect::BuryCard { card_id: self_id });
-            return Ok(effects);
-        }
+                    effects.push(Effect::BuryCard { card_id: self_id });
+                    return Ok(effects);
+                }
 
-        Ok(vec![Effect::SetCardData {
-            card_id: self_id,
-            data: std::sync::Arc::new(self.doom_counters - 1),
-        }])
-    
+                Ok(vec![Effect::SetCardData {
+                    card_id: self_id,
+                    data: std::sync::Arc::new(self.doom_counters - 1),
+                }])
             }
             _ => Ok(vec![]),
         }

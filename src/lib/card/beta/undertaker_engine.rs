@@ -57,7 +57,7 @@ impl Card for UndertakerEngine {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: TURN_END_HOOK,
             trigger: EffectQuery::TurnEnd { player_id: None },
@@ -74,72 +74,71 @@ impl Card for UndertakerEngine {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             TURN_END_HOOK => {
-        let controller_id = self.get_controller_id(state);
-        if state.current_player() != controller_id || !self.get_zone().is_in_play() {
-            return Ok(vec![]);
-        }
+                let controller_id = self.get_controller_id(state);
+                if state.current_player() != controller_id || !self.get_zone().is_in_play() {
+                    return Ok(vec![]);
+                }
 
-        let cards_here: Vec<CardId> = state
-            .cards
-            .values()
-            .filter(|card| card.get_zone() == self.get_zone())
-            .filter(|card| card.is_minion() || card.is_artifact())
-            .filter(|card| {
-                matches!(
-                    card.get_region(state),
-                    Region::Surface | Region::Underground
+                let cards_here: Vec<CardId> = state
+                    .cards
+                    .values()
+                    .filter(|card| card.get_zone() == self.get_zone())
+                    .filter(|card| card.is_minion() || card.is_artifact())
+                    .filter(|card| {
+                        matches!(
+                            card.get_region(state),
+                            Region::Surface | Region::Underground
+                        )
+                    })
+                    .map(|card| *card.get_id())
+                    .collect();
+                if cards_here.is_empty() {
+                    return Ok(vec![]);
+                }
+
+                let selected = pick_cards(
+                    &controller_id,
+                    &cards_here,
+                    state,
+                    "Undertaker Engine: Pick any artifacts and minions to burrow or unburrow",
                 )
-            })
-            .map(|card| *card.get_id())
-            .collect();
-        if cards_here.is_empty() {
-            return Ok(vec![]);
-        }
+                .await?;
 
-        let selected = pick_cards(
-            &controller_id,
-            &cards_here,
-            state,
-            "Undertaker Engine: Pick any artifacts and minions to burrow or unburrow",
-        )
-        .await?;
+                let mut effects = vec![];
+                for card_id in selected {
+                    let card = state.get_card(&card_id);
+                    let from_region = card.get_region(state).clone();
+                    let to_region = if from_region == Region::Underground {
+                        Region::Surface
+                    } else {
+                        Region::Underground
+                    };
 
-        let mut effects = vec![];
-        for card_id in selected {
-            let card = state.get_card(&card_id);
-            let from_region = card.get_region(state).clone();
-            let to_region = if from_region == Region::Underground {
-                Region::Surface
-            } else {
-                Region::Underground
-            };
+                    if card.is_minion()
+                        && from_region == Region::Surface
+                        && !card.has_ability(state, &Ability::Burrowing)
+                    {
+                        effects.push(Effect::AddAbilityCounter {
+                            card_id,
+                            counter: AbilityCounter {
+                                id: uuid::Uuid::new_v4(),
+                                ability: Ability::Burrowing,
+                                expires_on_effect: Some(EffectQuery::SetCardRegion {
+                                    card: card_id.into(),
+                                    destination: Some(Region::Surface),
+                                }),
+                            },
+                        });
+                    }
 
-            if card.is_minion()
-                && from_region == Region::Surface
-                && !card.has_ability(state, &Ability::Burrowing)
-            {
-                effects.push(Effect::AddAbilityCounter {
-                    card_id,
-                    counter: AbilityCounter {
-                        id: uuid::Uuid::new_v4(),
-                        ability: Ability::Burrowing,
-                        expires_on_effect: Some(EffectQuery::SetCardRegion {
-                            card: card_id.into(),
-                            destination: Some(Region::Surface),
-                        }),
-                    },
-                });
-            }
+                    effects.push(Effect::SetCardRegion {
+                        card_id,
+                        destination: to_region,
+                        tap: false,
+                    });
+                }
 
-            effects.push(Effect::SetCardRegion {
-                card_id,
-                destination: to_region,
-                tap: false,
-            });
-        }
-
-        Ok(effects)
-    
+                Ok(effects)
             }
             _ => Ok(vec![]),
         }

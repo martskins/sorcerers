@@ -61,7 +61,7 @@ impl Card for DeepSeaMermaids {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook::genesis(self.get_id())])
     }
 
@@ -73,16 +73,16 @@ impl Card for DeepSeaMermaids {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-        let controller_id = self.get_controller_id(state);
-        let deck = state.get_player_deck(&controller_id)?;
-        if let Some(card_id) = deck.spells.first() {
-            return Ok(vec![Effect::SetCardZone {
-                card_id: *card_id,
-                zone: Zone::Hand,
-            }]);
-        }
+                let controller_id = self.get_controller_id(state);
+                let deck = state.get_player_deck(&controller_id)?;
+                if let Some(card_id) = deck.spells.first() {
+                    return Ok(vec![Effect::SetCardZone {
+                        card_id: *card_id,
+                        zone: Zone::Hand,
+                    }]);
+                }
 
-        Ok(vec![])
+                Ok(vec![])
             }
             _ => Ok(vec![]),
         }

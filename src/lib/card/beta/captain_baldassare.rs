@@ -62,7 +62,7 @@ impl Card for CaptainBaldassare {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: PLUNDER_SPELLS_HOOK,
             trigger: EffectQuery::Attack {

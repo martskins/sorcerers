@@ -57,7 +57,7 @@ impl Card for AtlasWanderers {
         Some(&self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook::genesis(self.get_id())])
     }
 
@@ -69,43 +69,43 @@ impl Card for AtlasWanderers {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-        let controller_id = self.get_controller_id(state);
-        let Some(picked_site_id) = CardQuery::new()
-            .sites()
-            .adjacent_to(self.get_zone())
-            .with_prompt("Pick an adjacent site to swap with")
-            .with_source_card(*self.get_id())
-            .pick(&controller_id, state, false)
-            .await?
-        else {
-            return Ok(vec![]);
-        };
+                let controller_id = self.get_controller_id(state);
+                let Some(picked_site_id) = CardQuery::new()
+                    .sites()
+                    .adjacent_to(self.get_zone())
+                    .with_prompt("Pick an adjacent site to swap with")
+                    .with_source_card(*self.get_id())
+                    .pick(&controller_id, state, false)
+                    .await?
+                else {
+                    return Ok(vec![]);
+                };
 
-        let picked_site = state.get_card(&picked_site_id);
-        let from_zone = self.get_zone().clone();
-        let to_zone = picked_site.get_zone().clone();
+                let picked_site = state.get_card(&picked_site_id);
+                let from_zone = self.get_zone().clone();
+                let to_zone = picked_site.get_zone().clone();
 
-        let mut effects = Vec::new();
-        let from_cards = CardQuery::new()
-            .normal_sized()
-            .in_zone(&from_zone)
-            .all(state);
-        for card_id in from_cards {
-            effects.push(Effect::SetCardZone {
-                card_id,
-                zone: to_zone.clone(),
-            });
-        }
+                let mut effects = Vec::new();
+                let from_cards = CardQuery::new()
+                    .normal_sized()
+                    .in_zone(&from_zone)
+                    .all(state);
+                for card_id in from_cards {
+                    effects.push(Effect::SetCardZone {
+                        card_id,
+                        zone: to_zone.clone(),
+                    });
+                }
 
-        let to_cards = CardQuery::new().normal_sized().in_zone(&to_zone).all(state);
-        for card_id in to_cards {
-            effects.push(Effect::SetCardZone {
-                card_id,
-                zone: from_zone.clone(),
-            });
-        }
+                let to_cards = CardQuery::new().normal_sized().in_zone(&to_zone).all(state);
+                for card_id in to_cards {
+                    effects.push(Effect::SetCardZone {
+                        card_id,
+                        zone: from_zone.clone(),
+                    });
+                }
 
-        Ok(effects)
+                Ok(effects)
             }
             _ => Ok(vec![]),
         }

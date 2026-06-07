@@ -76,7 +76,7 @@ impl Card for PrimordialSpring {
         Some(self)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook::genesis(self.get_id())])
     }
 
@@ -88,38 +88,39 @@ impl Card for PrimordialSpring {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-        let controller_id = self.get_controller_id(state);
+                let controller_id = self.get_controller_id(state);
 
-        let my_site_count = CardQuery::new()
-            .sites()
-            .in_play()
-            .controlled_by(&controller_id)
-            .all(state)
-            .len();
-
-        let opponent_has_more = state
-            .players
-            .iter()
-            .filter(|p| p.id != controller_id)
-            .any(|p| {
-                CardQuery::new()
+                let my_site_count = CardQuery::new()
                     .sites()
                     .in_play()
-                    .controlled_by(&p.id)
+                    .controlled_by(&controller_id)
                     .all(state)
-                    .len()
-                    > my_site_count
-            });
+                    .len();
 
-        if opponent_has_more {
-            Ok(vec![Effect::DrawCard {
-                player_id: controller_id,
-                count: 3,
-                kind: DrawKind::Site,
-            }])
-        } else {
-            Ok(vec![])
-        }
+                let opponent_has_more =
+                    state
+                        .players
+                        .iter()
+                        .filter(|p| p.id != controller_id)
+                        .any(|p| {
+                            CardQuery::new()
+                                .sites()
+                                .in_play()
+                                .controlled_by(&p.id)
+                                .all(state)
+                                .len()
+                                > my_site_count
+                        });
+
+                if opponent_has_more {
+                    Ok(vec![Effect::DrawCard {
+                        player_id: controller_id,
+                        count: 3,
+                        kind: DrawKind::Site,
+                    }])
+                } else {
+                    Ok(vec![])
+                }
             }
             _ => Ok(vec![]),
         }

@@ -98,7 +98,7 @@ impl Card for ClamorOfHarpies {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook::genesis(self.get_id())])
     }
 
@@ -110,60 +110,60 @@ impl Card for ClamorOfHarpies {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-        let valid_cards: Vec<CardId> = state
-            .cards
-            .values()
-            .filter(|c| c.is_unit())
-            .filter(|c| c.can_be_targetted_by_player(state, &self.get_controller_id(state)))
-            .filter(|c| c.get_zone().is_in_play())
-            .filter(|c| {
-                c.get_power(state).unwrap_or_default().unwrap_or(0)
-                    < self.get_power(state).unwrap_or_default().unwrap_or(0)
-            })
-            .map(|c| *c.get_id())
-            .collect();
-        let prompt = "Pick a unit to bring here";
-        let card_id = pick_card_source(
-            self.get_controller_id(state),
-            &valid_cards,
-            state,
-            prompt,
-            Some(*self.get_id()),
-        )
-        .await?;
-        let card = state.get_card(&card_id);
-        let activated_abilities: Vec<Box<dyn ActivatedAbility>> = vec![
-            Box::new(ClamorOfHarpiesAction::Strike),
-            Box::new(ClamorOfHarpiesAction::DoNotStrike),
-        ];
-        let prompt = "Strike selected unit?";
-        let action = pick_action_source(
-            self.get_controller_id(state),
-            &activated_abilities,
-            state,
-            prompt,
-            false,
-            Some(*self.get_id()),
-        )
-        .await?;
-        let mut effects = vec![Effect::MoveCard {
-            player_id: self.get_controller_id(state),
-            card_id,
-            from: (card.get_zone().clone())
-                .into_location()
-                .expect("MoveCard source must be a location"),
-            to: LocationQuery::from_zone(
-                (self.get_zone().clone()).with_region(self.get_region(state).clone()),
-            ),
-            tap: false,
-            through_path: None,
-        }];
-        effects.extend(
-            action
-                .on_select(card.get_id(), &self.get_controller_id(state), state)
-                .await?,
-        );
-        Ok(effects)
+                let valid_cards: Vec<CardId> = state
+                    .cards
+                    .values()
+                    .filter(|c| c.is_unit())
+                    .filter(|c| c.can_be_targetted_by_player(state, &self.get_controller_id(state)))
+                    .filter(|c| c.get_zone().is_in_play())
+                    .filter(|c| {
+                        c.get_power(state).unwrap_or_default().unwrap_or(0)
+                            < self.get_power(state).unwrap_or_default().unwrap_or(0)
+                    })
+                    .map(|c| *c.get_id())
+                    .collect();
+                let prompt = "Pick a unit to bring here";
+                let card_id = pick_card_source(
+                    self.get_controller_id(state),
+                    &valid_cards,
+                    state,
+                    prompt,
+                    Some(*self.get_id()),
+                )
+                .await?;
+                let card = state.get_card(&card_id);
+                let activated_abilities: Vec<Box<dyn ActivatedAbility>> = vec![
+                    Box::new(ClamorOfHarpiesAction::Strike),
+                    Box::new(ClamorOfHarpiesAction::DoNotStrike),
+                ];
+                let prompt = "Strike selected unit?";
+                let action = pick_action_source(
+                    self.get_controller_id(state),
+                    &activated_abilities,
+                    state,
+                    prompt,
+                    false,
+                    Some(*self.get_id()),
+                )
+                .await?;
+                let mut effects = vec![Effect::MoveCard {
+                    player_id: self.get_controller_id(state),
+                    card_id,
+                    from: (card.get_zone().clone())
+                        .into_location()
+                        .expect("MoveCard source must be a location"),
+                    to: LocationQuery::from_zone(
+                        (self.get_zone().clone()).with_region(self.get_region(state).clone()),
+                    ),
+                    tap: false,
+                    through_path: None,
+                }];
+                effects.extend(
+                    action
+                        .on_select(card.get_id(), &self.get_controller_id(state), state)
+                        .await?,
+                );
+                Ok(effects)
             }
             _ => Ok(vec![]),
         }

@@ -177,7 +177,7 @@ impl Card for FreeCity {
         }
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+    fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![
             Hook {
                 id: TURN_START_HOOK,
