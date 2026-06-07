@@ -91,8 +91,8 @@ impl Card for GiantShark {
                 let mut card_ids = vec![];
                 match effect {
                     Effect::SummonCards { cards } => {
-                        for (_, card_id, zone, _) in cards {
-                            if zone.get_square() == self.get_zone().get_square() {
+                        for (_, card_id, _, loc) in cards {
+                            if loc.square() == self.get_zone().get_square() {
                                 card_ids.push(card_id);
                             }
                         }

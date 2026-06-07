@@ -1,10 +1,9 @@
 use crate::{
-    card::Region,
+    card::{Ability, Region},
     effect::{DrawKind, Effect},
     game::PlayerId,
     query::{CardQuery, ZoneQuery},
     state::State,
-    zone::Zone,
 };
 
 #[allow(clippy::large_enum_variant)]
@@ -26,7 +25,7 @@ pub enum EffectQuery {
     },
     RemoveAbility {
         card: CardQuery,
-        ability: crate::card::Ability,
+        ability: Ability,
     },
     TurnEnd {
         player_id: Option<PlayerId>,
@@ -183,7 +182,7 @@ impl EffectQuery {
                     player_id: effect_player_id,
                     ..
                 },
-            ) => Ok(optional_player_matches(query_player_id, effect_player_id)),
+            ) => Ok(query_player_id.is_none_or(|p| p == *effect_player_id)),
             (
                 EffectQuery::TurnEnd {
                     player_id: query_player_id,
@@ -192,7 +191,7 @@ impl EffectQuery {
                     player_id: effect_player_id,
                     ..
                 },
-            ) => Ok(optional_player_matches(query_player_id, effect_player_id)),
+            ) => Ok(query_player_id.is_none_or(|p| p == *effect_player_id)),
             (
                 EffectQuery::UntapCard { card },
                 Effect::SetTapped {
@@ -207,12 +206,14 @@ impl EffectQuery {
                 if let Some(source) = source
                     && !source.matches(from, state)
                 {
+                    println!("Source doesn't match");
                     return Ok(false);
                 }
 
                 if let Some(target) = target
                     && !target.matches(card_id, state)
                 {
+                    println!("Target doesn't match");
                     return Ok(false);
                 }
 
@@ -314,7 +315,7 @@ impl EffectQuery {
                     kind: DrawKind::Spell | DrawKind::Site | DrawKind::Choice,
                     ..
                 },
-            ) => Ok(optional_player_matches(query_pid, player_id)),
+            ) => Ok(query_pid.is_none_or(|p| p == *player_id)),
             (EffectQuery::OneOf(queries), effect) => {
                 for query in queries {
                     if Box::pin(query.matches(effect, state)).await? {
@@ -369,139 +370,4 @@ impl EffectQuery {
             _ => Ok(false),
         }
     }
-}
-
-pub async fn entered_zones(
-    effect: &Effect,
-    state: &State,
-) -> anyhow::Result<Vec<(uuid::Uuid, Zone, Zone)>> {
-    match effect {
-        Effect::MoveCard {
-            player_id,
-            card_id,
-            from,
-            to,
-            through_path,
-            ..
-        } => {
-            let mut entered = vec![];
-            let mut previous_zone = from.clone().into_zone();
-            let zones = match through_path {
-                Some(path) => path.clone(),
-                None => vec![to.pick(player_id, state).await?.into_zone()],
-            };
-
-            for zone in zones {
-                if previous_zone != zone {
-                    entered.push((*card_id, previous_zone.clone(), zone.clone()));
-                }
-                previous_zone = zone;
-            }
-
-            Ok(entered)
-        }
-        Effect::SummonCards { cards } => Ok(cards
-            .iter()
-            .map(|(_, card_id, from_zone, location)| {
-                (*card_id, from_zone.clone(), location.clone().into_zone())
-            })
-            .collect()),
-        _ => Ok(vec![]),
-    }
-}
-
-pub async fn entered_sites(
-    effect: &Effect,
-    state: &State,
-) -> anyhow::Result<Vec<(uuid::Uuid, Zone)>> {
-    match effect {
-        Effect::MoveCard {
-            player_id,
-            card_id,
-            from,
-            to,
-            through_path,
-            ..
-        } => {
-            let mut entered = vec![];
-            let mut previous_zone = from.clone().into_zone();
-            let zones = match through_path {
-                Some(path) => path.clone(),
-                None => vec![to.pick(player_id, state).await?.into_zone()],
-            };
-
-            for zone in zones {
-                if let Some(site_zone) = entered_site(&previous_zone, &zone, state) {
-                    entered.push((*card_id, site_zone));
-                }
-                previous_zone = zone;
-            }
-
-            Ok(entered)
-        }
-        Effect::SummonCards { cards } => Ok(cards
-            .iter()
-            .filter_map(|(_, card_id, _, location)| {
-                location
-                    .clone()
-                    .into_zone()
-                    .get_site_at_square(state)
-                    .map(|site| (*card_id, site.get_zone().clone()))
-            })
-            .collect()),
-        _ => Ok(vec![]),
-    }
-}
-
-pub async fn stopped_at_sites(
-    effect: &Effect,
-    state: &State,
-) -> anyhow::Result<Vec<(uuid::Uuid, Zone)>> {
-    match effect {
-        Effect::MoveCard {
-            player_id,
-            card_id,
-            from,
-            to,
-            through_path,
-            ..
-        } => {
-            let final_zone = match through_path {
-                Some(path) => path.last().cloned(),
-                None => Some(to.pick(player_id, state).await?.into_zone()),
-            };
-            let Some(final_zone) = final_zone else {
-                return Ok(vec![]);
-            };
-            if from.clone().into_zone() == final_zone {
-                return Ok(vec![]);
-            }
-            let Some(site) = final_zone.get_site_at_square(state) else {
-                return Ok(vec![]);
-            };
-
-            let stopped_cards = std::iter::once(*card_id)
-                .chain(CardQuery::new().carried_by(card_id).all(state))
-                .map(|stopped_id| (stopped_id, site.get_zone().clone()))
-                .collect();
-            Ok(stopped_cards)
-        }
-        _ => Ok(vec![]),
-    }
-}
-
-pub fn entered_site(from: &Zone, to: &Zone, state: &State) -> Option<Zone> {
-    let to_site = to.get_site_at_square(state)?;
-    let to_site_zone = to_site.get_zone();
-    let from_site_zone = from.get_site_at_square(state).map(|site| site.get_zone());
-
-    if from_site_zone == Some(to_site_zone) {
-        None
-    } else {
-        Some(to_site_zone.clone())
-    }
-}
-
-fn optional_player_matches(query: &Option<PlayerId>, actual: &PlayerId) -> bool {
-    query.as_ref().is_none_or(|q| q == actual)
 }

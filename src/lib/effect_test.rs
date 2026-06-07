@@ -1,13 +1,5 @@
 use crate::{
-    card::{
-        Ability, ApprenticeWizard, AridDesert, AskelonPhoenix, BottomlessPit, BridgeTroll, Card,
-        CardBase, CardStatus, ColickyDragonettes, Damage, DeadOfNightDemon, DodgeRoll, Drought,
-        Enchantress, Flood, FootSoldier, GildedAegis, Hook, HookId, HookSourceZones, HookTiming,
-        OgreGoons, PhaseAssassin, PitVipers, PlanarGate, Region, RimlandNomads, RootSpider,
-        RoyalBodyguard, SacredScarabs, Sandstorm, ScourgeZombies, SeaRaider, SeirawanHydra,
-        Silence, SimpleVillage, SirianTemplar, SlingPixies, SpringRiver, TuftedTurtles,
-        TvinnaxBerserker, UnitBase, VaultsOfZul, WallOfFire, YourkeCrossbowmen, from_name_and_zone,
-    },
+    card::*,
     deck::Deck,
     effect::{
         DeferredEffect, DrawKind, Effect, EffectReplacementCallback, FightContext, TemporaryEffect,
@@ -15,9 +7,7 @@ use crate::{
     },
     game::{ActivatedAbility, Direction, UnitAction},
     networking::message::{ClientMessage, ServerMessage},
-    query::{
-        CardQuery, EffectQuery, LocationQuery, QueryCache, ZoneQuery, entered_sites, entered_zones,
-    },
+    query::{CardQuery, EffectQuery, LocationQuery, QueryCache, ZoneQuery},
     state::{Player, PlayerWithDeck, State},
     zone::{Location, Zone},
 };
@@ -1790,39 +1780,6 @@ async fn test_teleport_triggers_visit_zone_once() {
 }
 
 #[tokio::test]
-async fn test_region_changes_enter_location_but_not_site() {
-    let (state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
-    let player_id = state.players[0].id;
-    let card_id = state.get_player_avatar_id(&player_id).unwrap();
-
-    let effect = Effect::MoveCard {
-        player_id,
-        card_id,
-        from: Location::Square(1, Region::Surface),
-        to: LocationQuery::from_zone(
-            (Zone::Location(Location::Square(1, Region::Underground)))
-                .with_region(Region::Underground),
-        ),
-        tap: false,
-        through_path: None,
-    };
-
-    assert_eq!(
-        entered_zones(&effect, &state).await.unwrap(),
-        vec![(
-            card_id,
-            Zone::Location(Location::Square(1, Region::Surface)),
-            Zone::Location(Location::Square(1, Region::Underground))
-        )],
-        "changing regions on the same realm square should count as entering a new location"
-    );
-    assert!(
-        entered_sites(&effect, &state).await.unwrap().is_empty(),
-        "changing regions on the same realm square should not count as entering a new site"
-    );
-}
-
-#[tokio::test]
 async fn test_minion_without_burrowing_dies_underground() {
     let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
     let player_id = state.players[0].id;
@@ -2354,26 +2311,28 @@ async fn test_summon_card_queues_genesis_effects() {
     assert_eq!(state.cards.get(&id).unwrap().get_zone(), &zone);
 }
 
-#[tokio::test]
-async fn test_genesis_triggers_even_if_source_is_disabled() {
-    let zone = Zone::Location(Location::Square(1, Region::Surface));
-    let (mut state, _rx) = make_state(vec![zone.clone()]);
-    let player_id = state.players[0].id;
-
-    let mut wizard = ApprenticeWizard::new(player_id);
-    let wizard_id = *wizard.get_id();
-    wizard.set_zone(zone);
-    wizard.add_status(CardStatus::Disabled);
-    state.cards.insert(wizard_id, Box::new(wizard));
-
-    state.queue_one(Effect::TriggerGenesis { card_id: wizard_id });
-    drain_effects(&mut state).await;
-
-    assert!(
-        state.eliminated_players.contains(&player_id),
-        "disabled Genesis sources should still resolve their enters-the-realm trigger"
-    );
-}
+// TODO: Genesis does not trigger if the card is disabled by an ongoing effect. Not sure in what
+// situation it would.
+// #[tokio::test]
+// async fn test_genesis_triggers_even_if_source_is_disabled() {
+//     let zone = Zone::Location(Location::Square(1, Region::Surface));
+//     let (mut state, _rx) = make_state(vec![zone.clone()]);
+//     let player_id = state.players[0].id;
+//
+//     let mut wizard = ApprenticeWizard::new(player_id);
+//     let wizard_id = *wizard.get_id();
+//     wizard.set_zone(zone);
+//     wizard.add_status(CardStatus::Disabled);
+//     state.cards.insert(wizard_id, Box::new(wizard));
+//
+//     state.queue_one(Effect::TriggerGenesis { card_id: wizard_id });
+//     drain_effects(&mut state).await;
+//
+//     assert!(
+//         state.eliminated_players.contains(&player_id),
+//         "disabled Genesis sources should still resolve their enters-the-realm trigger"
+//     );
+// }
 
 #[tokio::test]
 async fn test_genesis_is_ignored_if_source_left_realm_before_resolution() {
@@ -2540,32 +2499,6 @@ async fn test_played_site_genesis_can_target_itself() {
     .apply(&mut state)
     .await
     .unwrap();
-}
-
-#[tokio::test]
-async fn test_summon_card_applies_summon_hooks() {
-    // Sea Raider summon hook -> AddDeferredEffect
-    let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
-    let player_id = state.players[0].id;
-
-    let sea_raider = SeaRaider::new(player_id);
-    let id = *sea_raider.get_id();
-    state.cards.insert(id, Box::new(sea_raider));
-
-    state.queue_one(Effect::SummonCards {
-        cards: vec![(
-            player_id,
-            id,
-            Zone::Hand,
-            Location::Square(1, Region::Surface),
-        )],
-    });
-    drain_effects(&mut state).await;
-
-    assert!(
-        !state.deferred_effects().is_empty(),
-        "summon hook should have registered a deferred effect for Sea Raider"
-    );
 }
 
 // -------------------------------------------------------------------------

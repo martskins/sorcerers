@@ -73,7 +73,7 @@ impl Magic for AssortedAnimals {
             .in_zone(&Zone::Spellbook)
             .minions()
             .minion_types(vec![MinionType::Beast])
-            .mana_cost_less_than_or_equal_to(x_cost)
+            .mana_cost_lte(x_cost)
             .controlled_by(&controller_id)
             .all(state)
             .into_iter()

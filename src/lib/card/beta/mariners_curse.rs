@@ -92,8 +92,10 @@ impl Card for MarinersCurse {
                 let card_id = match effect {
                     Effect::SummonCards { cards } => {
                         let mut output = None;
-                        for (_, card_id, zone, location) in cards {
-                            if zone == self.get_zone() && location.region() == &Region::Surface {
+                        for (_, card_id, _, loc) in cards {
+                            if loc.square() == self.get_zone().get_square()
+                                && loc.region() == &Region::Surface
+                            {
                                 output = Some(card_id);
                             }
                         }

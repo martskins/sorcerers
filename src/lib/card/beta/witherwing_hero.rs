@@ -71,7 +71,7 @@ impl Card for WitherwingHero {
                         .minions()
                         .controlled_by(&player_id)
                         .in_zone_of_card(self.get_id())
-                        .with_min_power(power),
+                        .power_gte(power),
                 ),
             },
             timing: HookTiming::After,

@@ -118,8 +118,8 @@ impl Card for AwakenedMummies {
                 let enemy_ids = match effect {
                     Effect::SummonCards { cards } => {
                         let mut output = vec![];
-                        for (_, card_id, zone, location) in cards {
-                            if zone != self.get_zone() {
+                        for (_, card_id, _, location) in cards {
+                            if location.square() != self.get_zone().get_square() {
                                 continue;
                             }
 

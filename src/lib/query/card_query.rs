@@ -152,6 +152,7 @@ impl<T: PartialEq> VecFilter<T> {
 enum NumericFilter<T> {
     #[allow(dead_code)]
     GreaterThan(T),
+    GreaterThanOrEqualTo(T),
     LessThan(T),
     LessThanOrEqualTo(T),
     EqualTo(T),
@@ -161,6 +162,7 @@ impl<T: PartialOrd + PartialEq> NumericFilter<T> {
     fn matches(&self, mc: T) -> bool {
         match self {
             NumericFilter::GreaterThan(val) => mc > *val,
+            NumericFilter::GreaterThanOrEqualTo(val) => mc >= *val,
             NumericFilter::LessThan(val) => mc < *val,
             NumericFilter::LessThanOrEqualTo(val) => mc <= *val,
             NumericFilter::EqualTo(val) => mc == *val,
@@ -1264,21 +1266,28 @@ impl CardQuery {
         }
     }
 
-    pub fn mana_cost_less_than_or_equal_to(self, mc: u8) -> Self {
+    pub fn mana_cost_lte(self, mc: u8) -> Self {
         Self {
             mana_cost: Some(NumericFilter::LessThanOrEqualTo(mc)),
             ..self
         }
     }
 
-    pub fn with_min_power(self, power: u16) -> Self {
+    pub fn power_gte(self, power: u16) -> Self {
         Self {
-            power: Some(NumericFilter::GreaterThan(power)),
+            power: Some(NumericFilter::GreaterThanOrEqualTo(power)),
             ..self
         }
     }
 
-    pub fn with_max_power(self, power: u16) -> Self {
+    pub fn power_lte(self, power: u16) -> Self {
+        Self {
+            power: Some(NumericFilter::LessThanOrEqualTo(power)),
+            ..self
+        }
+    }
+
+    pub fn power_lt(self, power: u16) -> Self {
         Self {
             power: Some(NumericFilter::LessThan(power)),
             ..self
