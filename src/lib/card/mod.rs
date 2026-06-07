@@ -720,6 +720,12 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         self.get_base().is_token
     }
 
+    fn token_copy(&self) -> Box<dyn Card> {
+        let mut card = self.clone_box();
+        card.get_base_mut().is_token = true;
+        card
+    }
+
     fn is_affordable(
         &self,
         state: &State,

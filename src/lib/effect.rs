@@ -405,15 +405,6 @@ pub enum Effect {
         bearer_id: Option<CardId>,
         caster_id: CardId,
     },
-    /// Creates a token copy of the named card for the given player and summons it in the target
-    /// zone. The copy triggers its Genesis, then is automatically banished afterwards.
-    // TODO: This effect shouldn't banish it. We should queue a second effect in Deathspeaker to
-    // banish it, so we can reuse this effect in other cards.
-    SummonCopy {
-        card_name: String,
-        player_id: PlayerId,
-        zone: Zone,
-    },
 }
 
 fn player_name<'a>(player_id: &PlayerId, state: &'a State) -> &'a str {
@@ -511,7 +502,6 @@ impl Effect {
             Effect::MakeCardCopyOf { card_id, .. } => Some(card_id),
             Effect::CopyMagic { card_id, .. } => Some(card_id),
             Effect::CopyArtifact { artifact_id, .. } => Some(artifact_id),
-            Effect::SummonCopy { player_id, .. } => Some(player_id),
         }
     }
 
@@ -897,16 +887,6 @@ impl Effect {
                 "{} creates a copy of {}",
                 player_name(player_id, state),
                 state.get_card(artifact_id).get_name(),
-            )),
-            Effect::SummonCopy {
-                card_name,
-                player_id,
-                zone,
-            } => Some(format!(
-                "{} summons a copy of {} in {}",
-                player_name(player_id, state),
-                card_name,
-                zone
             )),
             Effect::RemoveCardFromGame { .. } => None,
         };
@@ -2664,37 +2644,6 @@ impl Effect {
                 } else {
                     state.queue_one(Effect::TriggerGenesis { card_id: copy_id });
                 }
-            }
-            Effect::SummonCopy {
-                card_name,
-                player_id,
-                zone,
-            } => {
-                let mut copy = crate::card::from_name(card_name, player_id);
-                copy.get_base_mut().is_token = true;
-
-                let has_charge = copy.has_ability(state, &Ability::Charge);
-                let copy_id = *copy.get_id();
-                state.cards.insert(copy_id, copy);
-                state.invalidate_runtime_caches();
-
-                let card = state.get_card_mut(&copy_id);
-                card.set_zone(zone.clone());
-                if !has_charge {
-                    card.add_status(CardStatus::SummoningSickness);
-                }
-
-                state
-                    .add_passive_ongoing_effects_for_source(&copy_id)
-                    .await?;
-
-                crate::game::force_sync_all(state).await?;
-
-                let effects: Vec<Effect> = vec![
-                    Effect::BanishCard { card_id: copy_id },
-                    Effect::TriggerGenesis { card_id: copy_id },
-                ];
-                state.queue(effects);
             }
             Effect::RemoveCardFromGame { card_id } => {
                 state.remove_ongoing_effects_from_source(card_id);

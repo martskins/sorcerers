@@ -32,6 +32,10 @@ impl ActivatedAbility for DeathspeakerAbility {
         Ok(Cost::ZERO.clone())
     }
 
+    // TODO: Deathspeaker should cast the original copy of the card, modifying it's mana cost if
+    // necessary and banishing after.
+    // We should probably just make the minions in the cemetery playable with
+    // TemporaryEffect::MakePlayable but on an OngoingEffect variant.
     async fn on_select(
         &self,
         card_id: &CardId,
@@ -51,19 +55,13 @@ impl ActivatedAbility for DeathspeakerAbility {
         };
 
         let chosen = state.get_card(&chosen_id);
-        let card_name = chosen.get_name().to_string();
         let mana_cost = chosen.get_base().costs.mana_value() as i8;
 
         // Step 2: Check Death's Door (avatar has taken max damage).
-        let deaths_door = state
-            .get_player_avatar_id(player_id)
-            .ok()
-            .and_then(|avatar_id| {
-                state
-                    .get_card(&avatar_id)
-                    .get_avatar_base()
-                    .map(|ab| ab.deaths_door)
-            })
+        let deathspeaker = state.get_card(card_id);
+        let deaths_door = deathspeaker
+            .get_avatar_base()
+            .map(|ab| ab.deaths_door)
             .unwrap_or(false);
 
         // Step 3: Check affordability (skip if on Death's Door).
@@ -103,11 +101,16 @@ impl ActivatedAbility for DeathspeakerAbility {
             });
         }
 
-        // Summon a token copy (it will trigger Genesis then be auto-banished).
-        effects.push(Effect::SummonCopy {
-            card_name,
-            player_id: *player_id,
-            zone: chosen_zone,
+        effects.push(Effect::SummonCards {
+            summoned_cards: vec![SummonCard {
+                player_id: deathspeaker.get_controller_id(state),
+                card_id: chosen_id,
+                from_zone: Zone::Cemetery,
+                to_location: chosen_zone
+                    .location()
+                    .expect("chosen zone to be a location")
+                    .clone(),
+            }],
         });
 
         // Record that this ability was used this turn.
