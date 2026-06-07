@@ -2,10 +2,10 @@ use crate::{
     card::{Ability, Card, CardData, CardStatus, CardType, Costs, SiteType, UnitBase},
     deck::Deck,
     effect::Counter,
-    effect::{Effect, EffectCallback, EffectEngine, EffectState},
+    effect::{Effect, EffectEngine, EffectState},
     game::{ActivatedAbility, CardId, PlayerId, Resources, Thresholds, ThresholdsDiff},
     networking::message::{ClientMessage, OngoingEffectData, ServerMessage},
-    query::{CardQuery, EffectQuery, ZoneQuery},
+    query::{CardQuery, ZoneQuery},
     zone::Zone,
 };
 use async_channel::{Receiver, Sender};
@@ -439,10 +439,6 @@ pub enum OngoingEffect {
         description: String,
         restriction: CardTargetRestriction,
     },
-    TriggeredEffect {
-        trigger_on_effect: EffectQuery,
-        on_effect: EffectCallback,
-    },
 }
 
 pub type CardQueryModifier =
@@ -587,7 +583,6 @@ impl OngoingEffect {
             Self::ModifyCardQuery { description, .. }
             | Self::ModifyZoneQuery { description, .. }
             | Self::RestrictCardTargets { description, .. } => description.clone(),
-            Self::TriggeredEffect { .. } => "Triggered ongoing effect".to_string(),
         }
     }
 
@@ -617,8 +612,7 @@ impl OngoingEffect {
             | Self::ModifyProvidedAffinities { affected_sites, .. } => affected_sites.all(state),
             Self::ModifyCardQuery { .. }
             | Self::ModifyZoneQuery { .. }
-            | Self::RestrictCardTargets { .. }
-            | Self::TriggeredEffect { .. } => Vec::new(),
+            | Self::RestrictCardTargets { .. } => Vec::new(),
         }
     }
 
@@ -730,12 +724,6 @@ impl std::fmt::Debug for OngoingEffect {
             Self::RestrictCardTargets { description, .. } => f
                 .debug_struct("RestrictCardTargets")
                 .field("description", description)
-                .finish(),
-            Self::TriggeredEffect {
-                trigger_on_effect, ..
-            } => f
-                .debug_struct("AddTriggeredEffect")
-                .field("trigger_on_effect", trigger_on_effect)
                 .finish(),
         }
     }

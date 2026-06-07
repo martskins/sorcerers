@@ -6,13 +6,12 @@ use crate::{
         OgreGoons, PhaseAssassin, PitVipers, PlanarGate, Region, RimlandNomads, RootSpider,
         RoyalBodyguard, SacredScarabs, Sandstorm, ScourgeZombies, SeaRaider, SeirawanHydra,
         Silence, SimpleVillage, SirianTemplar, SlingPixies, SpringRiver, TuftedTurtles,
-        TvinnaxBerserker, UnitBase, VaultsOfZul, WallOfFire, Wildfire, YourkeCrossbowmen,
-        from_name_and_zone,
+        TvinnaxBerserker, UnitBase, VaultsOfZul, WallOfFire, YourkeCrossbowmen, from_name_and_zone,
     },
     deck::Deck,
     effect::{
-        DeferredEffect, DrawKind, Effect, EffectCallback, EffectReplacementCallback, FightContext,
-        TemporaryEffect, TokenType,
+        DeferredEffect, DrawKind, Effect, EffectReplacementCallback, FightContext, TemporaryEffect,
+        TokenType,
     },
     game::{ActivatedAbility, Direction, UnitAction},
     networking::message::{ClientMessage, ServerMessage},
@@ -24,7 +23,7 @@ use crate::{
 };
 use std::{collections::HashMap, sync::Arc};
 
-const TEST_HOOK_SOURCE_ID: HookId = 1;
+const TEST_HOOK_SOURCE_ID: HookId = 1000;
 
 #[derive(Debug, Clone)]
 struct TestHookSource {
@@ -2115,104 +2114,91 @@ async fn test_temporary_modify_effect_runs_before_handler_and_expires() {
     );
 }
 
-// TODO: Fix this test
-// #[tokio::test]
-// async fn test_deferred_one_shot_removes_itself_after_trigger() {
-//     let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
-//     let player_id = state.players[0].id;
-//     let grant_mana: EffectCallback = Arc::new(|_state, source_id, _effect| {
-//         Box::pin(async move {
-//             Ok(vec![Effect::AdjustMana {
-//                 player_id: *source_id,
-//                 mana: 1,
-//             }])
-//         })
-//     });
-//
-//     state.deferred_effects_mut().push(DeferredEffect {
-//         trigger_on_effect: EffectQuery::DrawCard { player_id: None },
-//         expires_on_effect: None,
-//         on_effect: grant_mana,
-//         trigger_times: false,
-//     });
-//
-//     state.queue_one(Effect::DrawCard {
-//         player_id,
-//         count: 0,
-//         kind: DrawKind::Choice,
-//     });
-//     drain_effects(&mut state).await;
-//
-//     assert_eq!(*state.get_player_mana_mut(&player_id), 1);
-//     assert!(state.deferred_effects().is_empty());
-// }
+#[tokio::test]
+async fn test_deferred_one_shot_removes_itself_after_trigger() {
+    let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
+    let player_id = state.players[0].id;
+    let minion = OgreGoons::new(player_id);
+    let card_id = *minion.get_id();
+    state.cards.insert(card_id, Box::new(minion));
 
-// #[tokio::test]
-// async fn test_deferred_multitrigger_remains_after_trigger() {
-//     let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
-//     let player_id = state.players[0].id;
-//     let grant_mana: EffectCallback = Arc::new(|_state, source_id, _effect| {
-//         Box::pin(async move {
-//             Ok(vec![Effect::AdjustMana {
-//                 player_id: *source_id,
-//                 mana: 1,
-//             }])
-//         })
-//     });
-//
-//     state.deferred_effects_mut().push(DeferredEffect {
-//         trigger_on_effect: EffectQuery::DrawCard { player_id: None },
-//         expires_on_effect: None,
-//         on_effect: grant_mana,
-//         trigger_times: true,
-//     });
-//
-//     state.queue_one(Effect::DrawCard {
-//         player_id,
-//         count: 0,
-//         kind: DrawKind::Choice,
-//     });
-//     state.queue_one(Effect::DrawCard {
-//         player_id,
-//         count: 0,
-//         kind: DrawKind::Choice,
-//     });
-//     drain_effects(&mut state).await;
-//
-//     assert_eq!(*state.get_player_mana_mut(&player_id), 2);
-//     assert_eq!(state.deferred_effects().len(), 1);
-// }
+    state.deferred_effects_mut().push(DeferredEffect {
+        hook_id: TEST_HOOK_SOURCE_ID,
+        card_id,
+        trigger_on_effect: EffectQuery::DrawCard { player_id: None },
+        expires_on_effect: None,
+        trigger_times: Some(1),
+    });
 
-// #[tokio::test]
-// async fn test_deferred_expiry_removes_without_triggering() {
-//     let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
-//     let player_id = state.players[0].id;
-//     let grant_mana: EffectCallback = Arc::new(|_state, source_id, _effect| {
-//         Box::pin(async move {
-//             Ok(vec![Effect::AdjustMana {
-//                 player_id: *source_id,
-//                 mana: 1,
-//             }])
-//         })
-//     });
-//
-//     state.deferred_effects_mut().push(DeferredEffect {
-//         trigger_on_effect: EffectQuery::TurnStart { player_id: None },
-//         expires_on_effect: Some(EffectQuery::DrawCard { player_id: None }),
-//         on_effect: grant_mana,
-//         trigger_times: false,
-//     });
-//
-//     state.queue_one(Effect::DrawCard {
-//         player_id,
-//         count: 0,
-//         kind: DrawKind::Choice,
-//     });
-//     drain_effects(&mut state).await;
-//
-//     assert_eq!(*state.get_player_mana_mut(&player_id), 0);
-//     assert!(state.deferred_effects().is_empty());
-// }
+    state.queue_one(Effect::DrawCard {
+        player_id,
+        count: 0,
+        kind: DrawKind::Choice,
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(*state.get_player_mana_mut(&player_id), 1);
+    assert!(state.deferred_effects().is_empty());
+}
+
+#[tokio::test]
+async fn test_deferred_multitrigger_remains_after_trigger() {
+    let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
+    let player_id = state.players[0].id;
+    let minion = OgreGoons::new(player_id);
+    let card_id = *minion.get_id();
+    state.cards.insert(card_id, Box::new(minion));
+
+    state.deferred_effects_mut().push(DeferredEffect {
+        hook_id: TEST_HOOK_SOURCE_ID,
+        card_id,
+        trigger_on_effect: EffectQuery::DrawCard { player_id: None },
+        expires_on_effect: None,
+        trigger_times: None,
+    });
+
+    state.queue_one(Effect::DrawCard {
+        player_id,
+        count: 0,
+        kind: DrawKind::Choice,
+    });
+    state.queue_one(Effect::DrawCard {
+        player_id,
+        count: 0,
+        kind: DrawKind::Choice,
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(*state.get_player_mana_mut(&player_id), 2);
+    assert_eq!(state.deferred_effects().len(), 1);
+}
+
+#[tokio::test]
+async fn test_deferred_expiry_removes_without_triggering() {
+    let (mut state, _rx) = make_state(vec![Zone::Location(Location::Square(1, Region::Surface))]);
+    let player_id = state.players[0].id;
+    let minion = OgreGoons::new(player_id);
+    let card_id = *minion.get_id();
+    state.cards.insert(card_id, Box::new(minion));
+
+    state.deferred_effects_mut().push(DeferredEffect {
+        hook_id: TEST_HOOK_SOURCE_ID,
+        card_id,
+        trigger_on_effect: EffectQuery::TurnStart { player_id: None },
+        expires_on_effect: Some(EffectQuery::DrawCard { player_id: None }),
+        trigger_times: None,
+    });
+
+    state.queue_one(Effect::DrawCard {
+        player_id,
+        count: 0,
+        kind: DrawKind::Choice,
+    });
+    drain_effects(&mut state).await;
+
+    assert_eq!(*state.get_player_mana_mut(&player_id), 0);
+    assert!(state.deferred_effects().is_empty());
+}
 
 #[tokio::test]
 async fn test_temporary_expiry_removes_after_matching_resolved_effect() {

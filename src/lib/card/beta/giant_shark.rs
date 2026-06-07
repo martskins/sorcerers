@@ -1,5 +1,6 @@
-use crate::{effect::FightContext, prelude::*, query::entered_sites};
-use std::sync::Arc;
+use crate::{effect::FightContext, prelude::*};
+
+const ENTER_BODY_OF_WATER_HOOK: HookId = 1;
 
 #[derive(Debug, Clone)]
 pub struct GiantShark {
@@ -62,50 +63,64 @@ impl Card for GiantShark {
         Some(&mut self.unit_base)
     }
 
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
-        let shark_id = *self.get_id();
+    async fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
         let Some(body_of_water) = state.get_body_of_water_at(self.get_zone()) else {
             return Ok(vec![]);
         };
 
-        Ok(vec![OngoingEffect::TriggeredEffect {
-            trigger_on_effect: EffectQuery::EnterZone {
-                card: CardQuery::new().units(),
-                zone: ZoneQuery::from_options(body_of_water.clone(), None),
+        Ok(vec![Hook {
+            id: ENTER_BODY_OF_WATER_HOOK,
+            trigger: EffectQuery::EnterZone {
+                card: CardQuery::new().units().id_not(*self.get_id()),
+                zone: ZoneQuery::from_options(body_of_water, None),
                 from: None,
             },
-            on_effect: Arc::new(move |state: &State, card_id: &CardId, effect: &Effect| {
-                let body_of_water = body_of_water.clone();
-                Box::pin(async move {
-                    if card_id == &shark_id {
-                        return Ok(vec![]);
+            timing: HookTiming::After,
+            source_zones: HookSourceZones::InPlay,
+        }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook_id: HookId,
+        state: &State,
+        effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook_id {
+            ENTER_BODY_OF_WATER_HOOK => {
+                let mut card_ids = vec![];
+                match effect {
+                    Effect::SummonCards { cards } => {
+                        for (_, card_id, zone, _) in cards {
+                            if zone.get_square() == self.get_zone().get_square() {
+                                card_ids.push(card_id);
+                            }
+                        }
                     }
-
-                    let entered_this_body = entered_sites(effect, state)
-                        .await?
-                        .into_iter()
-                        .filter(|(entered_card_id, _)| entered_card_id == card_id)
-                        .any(|(_, site_zone)| body_of_water.contains(&site_zone));
-
-                    if !entered_this_body {
-                        return Ok(vec![]);
+                    Effect::MoveCard { card_id, .. } => {
+                        card_ids.push(card_id);
                     }
+                    _ => return Ok(vec![]),
+                }
 
-                    let shark = state.get_card(&shark_id);
-                    let shark_zone = shark.get_zone().clone();
+                let mut effects = vec![];
+                for card_id in card_ids {
+                    let shark_zone = self.get_zone().clone();
                     let target_zone = state.get_card(card_id).get_zone().clone();
-                    let mut effects = vec![Effect::Fight {
-                        attacker_id: shark_id,
+                    effects.push(Effect::Fight {
+                        attacker_id: *self.get_id(),
                         defender_id: *card_id,
                         defending_ids: vec![],
                         damage_assignment: None,
                         context: FightContext::FightOnly,
-                    }];
+                    });
 
                     if shark_zone != target_zone {
+                        // TODO: This is likely to move the shark from the cmeetery back to the
+                        // realm.
                         effects.push(Effect::MoveCard {
-                            player_id: shark.get_controller_id(state),
-                            card_id: shark_id,
+                            player_id: self.get_controller_id(state),
+                            card_id: *self.get_id(),
                             from: (shark_zone)
                                 .into_location()
                                 .expect("MoveCard source must be a location"),
@@ -116,11 +131,12 @@ impl Card for GiantShark {
                             through_path: None,
                         });
                     }
+                }
 
-                    Ok(effects)
-                })
-            }),
-        }])
+                Ok(effects)
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 

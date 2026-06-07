@@ -1,53 +1,4 @@
-use std::sync::Arc;
-
 use crate::prelude::*;
-
-async fn reveal_enemy_hands_in_range(
-    scout_id: uuid::Uuid,
-    state: &State,
-) -> anyhow::Result<Vec<Effect>> {
-    let scout = state.get_card(&scout_id);
-    if !scout.get_zone().is_in_play() {
-        return Ok(vec![]);
-    }
-
-    let controller_id = scout.get_controller_id(state);
-    let range = scout.get_steps_per_movement(state).unwrap_or(0);
-    let zones = scout.get_zones_within_steps(state, range);
-
-    for avatar_id in CardQuery::from_ids(state.cards.values().map(|card| *card.get_id()).collect())
-        .in_zones(&zones)
-        .all(state)
-        .into_iter()
-        .filter(|card_id| {
-            let card = state.get_card(card_id);
-            card.is_avatar() && card.get_controller_id(state) != controller_id
-        })
-    {
-        let avatar = state.get_card(&avatar_id);
-        let hand: Vec<CardId> = state
-            .cards
-            .values()
-            .filter(|card| card.get_zone() == &Zone::Hand)
-            .filter(|card| card.get_owner_id() == avatar.get_owner_id())
-            .map(|card| *card.get_id())
-            .collect();
-        if hand.is_empty() {
-            continue;
-        }
-
-        let player = state.get_player(avatar.get_owner_id())?;
-        reveal_cards(
-            &controller_id,
-            &hand,
-            state,
-            &format!("Swiven Scout: Seeing {}'s hand", player.name),
-        )
-        .await?;
-    }
-
-    Ok(vec![])
-}
 
 #[derive(Debug, Clone)]
 pub struct SwivenScout {
@@ -57,7 +8,8 @@ pub struct SwivenScout {
 
 impl SwivenScout {
     pub const NAME: &'static str = "Swiven Scout";
-    pub const DESCRIPTION: &'static str = "Movement +1 Enemy Avatars within Swiven Scout's range of motion play with their hands revealed.";
+    pub const DESCRIPTION: &'static str = "Movement +1
+Enemy Avatars within Swiven Scout's range of motion play with their hands revealed.";
 
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
@@ -84,8 +36,6 @@ impl SwivenScout {
     }
 }
 
-const TURN_START_HOOK: HookId = 1;
-
 #[async_trait::async_trait]
 impl Card for SwivenScout {
     fn get_name(&self) -> &str {
@@ -107,40 +57,42 @@ impl Card for SwivenScout {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
-        Ok(vec![Hook {
-            id: TURN_START_HOOK,
-            trigger: EffectQuery::TurnStart { player_id: None },
-            timing: HookTiming::After,
-            source_zones: HookSourceZones::InPlay,
-        }])
-    }
-
-    async fn resolve_hook(
-        &self,
-        hook: HookId,
-        state: &State,
-        _effect: &Effect,
-    ) -> anyhow::Result<Vec<Effect>> {
-        match hook {
-            TURN_START_HOOK => {
-        reveal_enemy_hands_in_range(*self.get_id(), state).await
-    
-            }
-            _ => Ok(vec![]),
+    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+        if !self.get_zone().is_in_play() {
+            return Ok(vec![]);
         }
-    }
 
-    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
-        let scout_id = *self.get_id();
-        Ok(vec![OngoingEffect::TriggeredEffect {
-            trigger_on_effect: EffectQuery::MoveCard {
-                card: CardQuery::new().units(),
-            },
-            on_effect: Arc::new(move |state: &State, _card_id: &CardId, _effect: &Effect| {
-                Box::pin(async move { reveal_enemy_hands_in_range(scout_id, state).await })
-            }),
-        }])
+        let controller_id = self.get_controller_id(state);
+        let range = self.get_steps_per_movement(state).unwrap_or(0);
+        let zones = self.get_zones_within_steps(state, range);
+
+        for avatar_id in
+            CardQuery::from_ids(state.cards.values().map(|card| *card.get_id()).collect())
+                .in_zones(&zones)
+                .all(state)
+                .into_iter()
+                .filter(|card_id| {
+                    let card = state.get_card(card_id);
+                    card.is_avatar() && card.get_controller_id(state) != controller_id
+                })
+        {
+            let avatar = state.get_card(&avatar_id);
+            let hand: Vec<CardId> = state
+                .cards
+                .values()
+                .filter(|card| card.get_zone() == &Zone::Hand)
+                .filter(|card| card.get_owner_id() == avatar.get_owner_id())
+                .map(|card| *card.get_id())
+                .collect();
+            if hand.is_empty() {
+                continue;
+            }
+
+            let _player = state.get_player(avatar.get_owner_id())?;
+            // TODO: Add effect to make cards in hand visible
+        }
+
+        Ok(vec![])
     }
 }
 

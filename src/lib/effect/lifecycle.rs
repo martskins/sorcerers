@@ -17,17 +17,6 @@ pub type EffectReplacementCallback = Arc<
         ) -> Pin<Box<dyn Future<Output = anyhow::Result<()>> + Send + 'a>>,
 >;
 
-pub type EffectCallback = Arc<
-    dyn Sync
-        + Send
-        + for<'a> Fn(
-            &'a State,
-            &'a CardId,
-            &'a Effect,
-        )
-            -> Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + 'a>>,
->;
-
 #[derive(Debug, Clone)]
 pub struct DeferredEffect {
     pub hook_id: HookId,

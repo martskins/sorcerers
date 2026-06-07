@@ -19,8 +19,7 @@ pub mod log;
 pub mod runtime;
 
 pub use lifecycle::{
-    DeferredEffect, EffectCallback, EffectLifecycle, EffectReplacementCallback, EffectState,
-    TemporaryEffect,
+    DeferredEffect, EffectLifecycle, EffectReplacementCallback, EffectState, TemporaryEffect,
 };
 pub use log::{EffectLogEmitter, LoggedEffect};
 pub use runtime::EffectEngine;
