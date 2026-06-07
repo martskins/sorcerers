@@ -79,14 +79,14 @@ impl ActivatedAbility for SettleAction {
                 through_path: None,
             },
             Effect::SummonCards {
-                cards: vec![(
-                    *player_id,
-                    site_id,
-                    Zone::Atlasbook,
-                    chosen_zone
+                summoned_cards: vec![SummonCard {
+                    player_id: *player_id,
+                    card_id: site_id,
+                    from_zone: Zone::Atlasbook,
+                    to_location: chosen_zone
                         .into_location()
                         .expect("Frontier Settlers target must be a location"),
-                )],
+                }],
             },
             Effect::SetCardData {
                 card_id: *card_id,

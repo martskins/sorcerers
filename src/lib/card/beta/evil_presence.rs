@@ -81,7 +81,7 @@ impl Card for EvilPresence {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-                let Effect::SummonCards { cards } = effect else {
+                let Effect::SummonCards { summoned_cards } = effect else {
                     return Ok(vec![]);
                 };
 
@@ -89,9 +89,9 @@ impl Card for EvilPresence {
                     card_id: *self.get_id(),
                     zone: Zone::Hand,
                 }];
-                for (_, card_id, _, _) in cards {
+                for sc in summoned_cards {
                     if state
-                        .get_card(card_id)
+                        .get_card(&sc.card_id)
                         .get_unit_base()
                         .is_none_or(|ub| !ub.types.contains(&MinionType::Spirit))
                     {
@@ -99,7 +99,7 @@ impl Card for EvilPresence {
                     }
 
                     effects.push(Effect::AddAbilityCounter {
-                        card_id: *card_id,
+                        card_id: sc.card_id,
                         counter: AbilityCounter {
                             id: uuid::Uuid::new_v4(),
                             ability: Ability::Charge,

@@ -96,15 +96,16 @@ impl Card for GhostShip {
                 };
 
                 Ok(vec![Effect::SummonCards {
-                    cards: vec![(
+                    summoned_cards: vec![SummonCard {
                         player_id,
-                        target_spirit,
-                        Zone::Cemetery,
-                        self.get_zone()
+                        card_id: target_spirit,
+                        from_zone: Zone::Cemetery,
+                        to_location: self
+                            .get_zone()
                             .clone()
                             .into_location()
                             .expect("Ghost Ship target must be a location"),
-                    )],
+                    }],
                 }])
             }
             _ => Ok(vec![]),

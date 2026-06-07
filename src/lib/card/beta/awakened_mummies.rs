@@ -116,20 +116,20 @@ impl Card for AwakenedMummies {
         match hook_id {
             ENTER_ZONE_HOOK => {
                 let enemy_ids = match effect {
-                    Effect::SummonCards { cards } => {
+                    Effect::SummonCards { summoned_cards } => {
                         let mut output = vec![];
-                        for (_, card_id, _, location) in cards {
-                            if location.square() != self.get_zone().get_square() {
+                        for sc in summoned_cards {
+                            if sc.to_location.square() != self.get_zone().get_square() {
                                 continue;
                             }
 
-                            if let Location::Square(_, region) = location
-                                && region != &Region::Surface
+                            if let Location::Square(_, region) = &sc.to_location
+                                && *region != Region::Surface
                             {
                                 continue;
                             }
 
-                            output.push(card_id);
+                            output.push(&sc.card_id);
                         }
 
                         output

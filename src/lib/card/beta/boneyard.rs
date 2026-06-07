@@ -86,41 +86,44 @@ impl Card for Boneyard {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-        let mut cards = vec![];
-        for player in &state.players {
-            let player_id = player.id;
-            let state = state.clone();
-            let zone = self.get_zone().clone();
+                let mut cards = vec![];
+                for player in &state.players {
+                    let player_id = player.id;
+                    let state = state.clone();
+                    let zone = self.get_zone().clone();
 
-            let all_cards = &CardQuery::new()
-                .in_zone(&Zone::Cemetery)
-                .controlled_by(&player_id)
-                .all(&state);
-            let minions = &CardQuery::new()
-                .in_zone(&Zone::Cemetery)
-                .minions()
-                .controlled_by(&player_id)
-                .all(&state);
-            let picked_minion_id = pick_card_with_options(
-                &player_id,
-                minions,
-                all_cards,
-                true,
-                &state,
-                "Pick a minion in your cemetery to summon to Boneyard",
-            )
-            .await?;
+                    let all_cards = &CardQuery::new()
+                        .in_zone(&Zone::Cemetery)
+                        .controlled_by(&player_id)
+                        .all(&state);
+                    let minions = &CardQuery::new()
+                        .in_zone(&Zone::Cemetery)
+                        .minions()
+                        .controlled_by(&player_id)
+                        .all(&state);
+                    let picked_minion_id = pick_card_with_options(
+                        &player_id,
+                        minions,
+                        all_cards,
+                        true,
+                        &state,
+                        "Pick a minion in your cemetery to summon to Boneyard",
+                    )
+                    .await?;
 
-            cards.push((
-                player_id,
-                picked_minion_id,
-                Zone::Cemetery,
-                zone.into_location()
-                    .expect("Boneyard summon target must be a location"),
-            ));
-        }
+                    cards.push(SummonCard {
+                        player_id,
+                        card_id: picked_minion_id,
+                        from_zone: Zone::Cemetery,
+                        to_location: zone
+                            .into_location()
+                            .expect("Boneyard summon target must be a location"),
+                    });
+                }
 
-        Ok(vec![Effect::SummonCards { cards }])
+                Ok(vec![Effect::SummonCards {
+                    summoned_cards: cards,
+                }])
             }
             _ => Ok(vec![]),
         }

@@ -100,15 +100,16 @@ impl Card for BoneRabble {
                 if summon_bone_rabble {
                     let site = state.get_card(card_id);
                     Ok(vec![Effect::SummonCards {
-                        cards: vec![(
-                            *owner_id,
-                            *self.get_id(),
-                            Zone::Cemetery,
-                            site.get_zone()
+                        summoned_cards: vec![SummonCard {
+                            player_id: *owner_id,
+                            card_id: *self.get_id(),
+                            from_zone: Zone::Cemetery,
+                            to_location: site
+                                .get_zone()
                                 .clone()
                                 .into_location()
                                 .expect("played site must be a location"),
-                        )],
+                        }],
                     }])
                 } else {
                     Ok(vec![])

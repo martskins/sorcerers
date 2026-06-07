@@ -96,15 +96,16 @@ impl Card for HighlandFalconer {
                 .await?;
                 let from_zone = state.get_card(&chosen).get_zone().clone();
                 let mut effects = vec![Effect::SummonCards {
-                    cards: vec![(
-                        controller_id,
-                        chosen,
-                        Zone::Spellbook,
-                        self.get_zone()
+                    summoned_cards: vec![SummonCard {
+                        player_id: controller_id,
+                        card_id: chosen,
+                        from_zone: Zone::Spellbook,
+                        to_location: self
+                            .get_zone()
                             .clone()
                             .into_location()
                             .expect("Highland Falconer must be in a location"),
-                    )],
+                    }],
                 }];
                 if from_zone == Zone::Spellbook {
                     effects.push(Effect::ShuffleDeck {

@@ -97,11 +97,12 @@ impl EffectQuery {
                     zone: zone_query,
                     ..
                 },
-                Effect::SummonCards { cards },
+                Effect::SummonCards { summoned_cards },
             ) => {
-                for (_, card, _, loc) in cards {
-                    let card_matches = card_query.matches(card, state);
-                    let zone_matches = zone_query.matches(state, &loc.clone().into_zone());
+                for sc in summoned_cards {
+                    let card_matches = card_query.matches(&sc.card_id, state);
+                    let zone_matches =
+                        zone_query.matches(state, &sc.to_location.clone().into_zone());
                     if card_matches && zone_matches {
                         return Ok(true);
                     }
@@ -226,9 +227,11 @@ impl EffectQuery {
             (EffectQuery::MoveCard { card }, Effect::MoveCard { card_id, .. }) => {
                 Ok(card.matches(card_id, state))
             }
-            (EffectQuery::SummonCard { card }, Effect::SummonCards { cards }) => Ok(cards
-                .iter()
-                .any(|(_, card_id, _, _)| card.matches(card_id, state))),
+            (EffectQuery::SummonCard { card }, Effect::SummonCards { summoned_cards }) => {
+                Ok(summoned_cards
+                    .iter()
+                    .any(|sc| card.matches(&sc.card_id, state)))
+            }
             (EffectQuery::Genesis { card }, Effect::TriggerGenesis { card_id }) => {
                 Ok(card.matches(card_id, state))
             }

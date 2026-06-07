@@ -164,6 +164,14 @@ impl FightContext {
 }
 
 #[derive(Debug, Clone)]
+pub struct SummonCard {
+    pub player_id: PlayerId,
+    pub card_id: CardId,
+    pub from_zone: Zone,
+    pub to_location: Location,
+}
+
+#[derive(Debug, Clone)]
 pub enum Effect {
     Noop,
     PlayerLost {
@@ -269,7 +277,7 @@ pub enum Effect {
         spellcaster: CardId,
     },
     SummonCards {
-        cards: Vec<(PlayerId, CardId, Zone, Location)>,
+        summoned_cards: Vec<SummonCard>,
     },
     TriggerGenesis {
         card_id: CardId,
@@ -706,18 +714,18 @@ impl Effect {
                     zone.pick(player_id, state).await?,
                 ))
             }
-            Effect::SummonCards { cards } => {
-                if cards.is_empty() {
+            Effect::SummonCards { summoned_cards } => {
+                if summoned_cards.is_empty() {
                     None
                 } else {
-                    let parts: Vec<String> = cards
+                    let parts: Vec<String> = summoned_cards
                         .iter()
-                        .map(|(player_id, card_id, _from_zone, location)| {
+                        .map(|sc| {
                             format!(
                                 "{} summons {} in {}",
-                                player_name(player_id, state),
-                                state.get_card(card_id).get_name(),
-                                location
+                                player_name(&sc.player_id, state),
+                                state.get_card(&sc.card_id).get_name(),
+                                sc.to_location
                             )
                         })
                         .collect();
@@ -1163,14 +1171,15 @@ impl Effect {
                     state.cards.insert(token_id, token);
                     state.invalidate_runtime_caches();
                     state.queue_one(Effect::SummonCards {
-                        cards: vec![(
-                            *player_id,
-                            token_id,
-                            Zone::None,
-                            zone.clone()
+                        summoned_cards: vec![SummonCard {
+                            player_id: *player_id,
+                            card_id: token_id,
+                            from_zone: Zone::None,
+                            to_location: zone
+                                .clone()
                                 .into_location()
                                 .ok_or(anyhow::anyhow!("token summon zone must be a location"))?,
-                        )],
+                        }],
                     });
                 } else {
                     // Non-unit tokens are just placed directly onto the board without going through
@@ -1509,13 +1518,14 @@ impl Effect {
                     // Minions are put into play via SummonCards, which handles zone
                     // placement, SummoningSickness, summon hooks, and genesis in one place.
                     state.queue_one(Effect::SummonCards {
-                        cards: vec![(
-                            *player_id,
-                            *card_id,
-                            Zone::Hand,
-                            zone.into_location()
+                        summoned_cards: vec![SummonCard {
+                            player_id: *player_id,
+                            card_id: *card_id,
+                            from_zone: Zone::Hand,
+                            to_location: zone
+                                .into_location()
                                 .ok_or(anyhow::anyhow!("play zone must be a location"))?,
-                        )],
+                        }],
                     });
                 } else {
                     let from_zone = {
@@ -1549,16 +1559,17 @@ impl Effect {
                     state.queue(effects);
                 }
             }
-            Effect::SummonCards { cards } => {
+            Effect::SummonCards { summoned_cards } => {
                 let snapshot = state.clone();
-                for (player_id, card_id, _from_zone, location) in cards {
-                    let zone = location.clone().into_zone();
-                    let has_charge = state.get_card(card_id).has_ability(state, &Ability::Charge);
-                    let original_zone = state.get_card(card_id).get_zone().clone();
-                    let owner_id = *state.get_card(card_id).get_owner_id();
+                for sc in summoned_cards {
+                    let zone = sc.to_location.clone().into_zone();
+                    let card = state.get_card(&sc.card_id);
+                    let has_charge = card.has_ability(state, &Ability::Charge);
+                    let original_zone = card.get_zone().clone();
+                    let owner_id = *card.get_owner_id();
                     {
-                        let card = state.get_card_mut(card_id);
-                        card.set_controller_id(player_id);
+                        let card = state.get_card_mut(&sc.card_id);
+                        card.set_controller_id(&sc.player_id);
                         card.set_zone(zone.clone());
                         if !has_charge {
                             card.add_status(CardStatus::SummoningSickness);
@@ -1571,23 +1582,23 @@ impl Effect {
 
                     if !original_zone.is_in_play() && zone.is_in_play() {
                         state
-                            .add_passive_ongoing_effects_for_source(card_id)
+                            .add_passive_ongoing_effects_for_source(&sc.card_id)
                             .await?;
                     } else if original_zone.is_in_play() && !zone.is_in_play() {
-                        state.remove_ongoing_effects_from_source(card_id);
+                        state.remove_ongoing_effects_from_source(&sc.card_id);
                     }
                     match original_zone {
                         Zone::Spellbook => {
                             state
                                 .get_player_deck_mut(&owner_id)?
                                 .spells
-                                .retain(|id| id != card_id);
+                                .retain(|id| *id != sc.card_id);
                         }
                         Zone::Atlasbook => {
                             state
                                 .get_player_deck_mut(&owner_id)?
                                 .sites
-                                .retain(|id| id != card_id);
+                                .retain(|id| *id != sc.card_id);
                         }
                         _ => {}
                     }
@@ -1599,20 +1610,22 @@ impl Effect {
                 crate::game::force_sync_all(state).await?;
 
                 let mut effects = vec![];
-                for (_, card_id, _from_zone, location) in cards {
-                    let zone = location.clone().into_zone();
-                    let from_zone = snapshot.get_card(card_id).get_zone().clone();
-                    effects.push(Effect::TriggerGenesis { card_id: *card_id });
+                for sc in summoned_cards {
+                    let zone = sc.to_location.clone().into_zone();
+                    let from_zone = snapshot.get_card(&sc.card_id).get_zone().clone();
+                    effects.push(Effect::TriggerGenesis {
+                        card_id: sc.card_id,
+                    });
                     if !from_zone.is_in_play()
                         && zone.is_in_play()
                         && let Some(mana_effect) =
-                            mana_effect_for_resource_entering_realm(state, card_id)?
+                            mana_effect_for_resource_entering_realm(state, &sc.card_id)?
                     {
                         effects.push(mana_effect);
                     }
                     effects.extend(location_survival_effects_for_cards(
                         state,
-                        std::iter::once(*card_id),
+                        std::iter::once(sc.card_id),
                     ));
                 }
 

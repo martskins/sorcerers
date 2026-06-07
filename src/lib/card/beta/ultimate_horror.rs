@@ -90,13 +90,14 @@ impl Card for UltimateHorror {
                     )
                     .await?;
                     effects.push(Effect::SummonCards {
-                        cards: vec![(
-                            controller_id,
+                        summoned_cards: vec![SummonCard {
+                            player_id: controller_id,
                             card_id,
-                            Zone::Cemetery,
-                            zone.into_location()
+                            from_zone: Zone::Cemetery,
+                            to_location: zone
+                                .into_location()
                                 .expect("Ultimate Horror target must be a location"),
-                        )],
+                        }],
                     });
                 }
                 Ok(effects)

@@ -95,12 +95,12 @@ impl Card for BottomlessPit {
     ) -> anyhow::Result<Vec<Effect>> {
         match dbg!(hook_id) {
             KILL_ENTERING_MINION_HOOK => match effect {
-                Effect::SummonCards { cards } => {
+                Effect::SummonCards { summoned_cards } => {
                     let mut effects = vec![];
-                    for (_, card_id, _, loc) in cards {
-                        if loc.square() == self.get_zone().get_square() {
+                    for sc in summoned_cards {
+                        if sc.to_location.square() == self.get_zone().get_square() {
                             effects.push(Effect::KillMinion {
-                                card_id: *card_id,
+                                card_id: sc.card_id,
                                 killer_id: *self.get_id(),
                                 from_attack: false,
                             })

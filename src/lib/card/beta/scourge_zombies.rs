@@ -109,16 +109,16 @@ impl Card for ScourgeZombies {
 
                 Ok(vec![
                     Effect::SummonCards {
-                        cards: vec![(
-                            controller_id,
-                            *self.get_id(),
-                            Zone::Cemetery,
-                            killed_card
+                        summoned_cards: vec![SummonCard {
+                            player_id: controller_id,
+                            card_id: *self.get_id(),
+                            from_zone: Zone::Cemetery,
+                            to_location: killed_card
                                 .get_zone()
                                 .clone()
                                 .into_location()
                                 .expect("Scourge Zombies trigger must have a location"),
-                        )],
+                        }],
                     },
                     Effect::SetTapped {
                         card_id: *self.get_id(),

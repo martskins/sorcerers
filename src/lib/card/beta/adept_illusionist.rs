@@ -38,13 +38,14 @@ impl ActivatedAbility for AdeptIllusionistAction {
 
         Ok(vec![
             Effect::SummonCards {
-                cards: vec![(
-                    *player_id,
-                    picked_card_id,
-                    Zone::Spellbook,
-                    zone.into_location()
+                summoned_cards: vec![SummonCard {
+                    player_id: *player_id,
+                    card_id: picked_card_id,
+                    from_zone: Zone::Spellbook,
+                    to_location: zone
+                        .into_location()
                         .expect("Adept Illusionist target must be a location"),
-                )],
+                }],
             },
             Effect::ShuffleDeck {
                 player_id: *player_id,

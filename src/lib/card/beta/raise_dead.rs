@@ -71,14 +71,14 @@ impl Magic for RaiseDead {
         let zones = minion.get_valid_play_zones(state, &player_id, caster_id)?;
         let picked_zone = pick_zone(self.get_owner_id(), &zones, state, false, &prompt).await?;
         Ok(vec![Effect::SummonCards {
-            cards: vec![(
-                *self.get_owner_id(),
-                minion_id,
-                Zone::Cemetery,
-                picked_zone
+            summoned_cards: vec![SummonCard {
+                player_id: *self.get_owner_id(),
+                card_id: minion_id,
+                from_zone: Zone::Cemetery,
+                to_location: picked_zone
                     .into_location()
                     .expect("Raise Dead target must be a location"),
-            )],
+            }],
         }])
     }
 }

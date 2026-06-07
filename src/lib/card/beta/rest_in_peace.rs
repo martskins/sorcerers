@@ -87,13 +87,13 @@ impl Card for RestInPeace {
         match hook_id {
             ENTER_LAND_SITE_HOOK => {
                 let card_id = match effect {
-                    Effect::SummonCards { cards } => {
+                    Effect::SummonCards { summoned_cards } => {
                         let mut output = None;
-                        for (_, card_id, _, loc) in cards {
-                            if loc.square() == self.get_zone().get_square()
-                                && loc.region() == &Region::Surface
+                        for sc in summoned_cards {
+                            if sc.to_location.square() == self.get_zone().get_square()
+                                && sc.to_location.region() == &Region::Surface
                             {
-                                output = Some(card_id);
+                                output = Some(&sc.card_id);
                             }
                         }
 

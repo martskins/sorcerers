@@ -85,29 +85,30 @@ impl Card for Battlefield {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-        let controller_id = self.get_controller_id(state);
-        let Some(picked_card_id) = CardQuery::new()
-            .in_zone(&Zone::Cemetery)
-            .artifact_types(vec![ArtifactType::Weapon, ArtifactType::Armor])
-            .with_prompt("Pick a weapon or armor to conjure")
-            .with_source_card(*self.get_id())
-            .pick(&controller_id, state, true)
-            .await?
-        else {
-            return Ok(vec![]);
-        };
+                let controller_id = self.get_controller_id(state);
+                let Some(picked_card_id) = CardQuery::new()
+                    .in_zone(&Zone::Cemetery)
+                    .artifact_types(vec![ArtifactType::Weapon, ArtifactType::Armor])
+                    .with_prompt("Pick a weapon or armor to conjure")
+                    .with_source_card(*self.get_id())
+                    .pick(&controller_id, state, true)
+                    .await?
+                else {
+                    return Ok(vec![]);
+                };
 
-        Ok(vec![Effect::SummonCards {
-            cards: vec![(
-                controller_id,
-                picked_card_id,
-                Zone::Cemetery,
-                self.get_zone()
-                    .clone()
-                    .into_location()
-                    .expect("Battlefield must be in a location"),
-            )],
-        }])
+                Ok(vec![Effect::SummonCards {
+                    summoned_cards: vec![SummonCard {
+                        player_id: controller_id,
+                        card_id: picked_card_id,
+                        from_zone: Zone::Cemetery,
+                        to_location: self
+                            .get_zone()
+                            .clone()
+                            .into_location()
+                            .expect("Battlefield must be in a location"),
+                    }],
+                }])
             }
             _ => Ok(vec![]),
         }

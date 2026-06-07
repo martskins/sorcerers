@@ -80,63 +80,63 @@ impl Card for MotherNature {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             TURN_START_HOOK => {
-        let controller_id = self.get_controller_id(state);
-        if state.current_player() != controller_id {
-            return Ok(vec![]);
-        }
-        let deck = state.get_player_deck(&controller_id)?;
-        if let Some(top_card_id) = deck.peek_spell() {
-            let player = state.get_player(&controller_id)?;
-            let opponent_id = state.get_opponent_id(&controller_id)?;
-            let cards = vec![*top_card_id];
-            reveal_cards(
-                &opponent_id,
-                &cards,
-                state,
-                &format!(
-                    "Mother Nature: Seeing the top card of {}'s spellbook",
-                    player.name
-                ),
-            )
-            .await?;
-
-            let card = state.get_card(top_card_id);
-            if card.is_minion() {
-                let summon = take_action(
-                    &player.id,
-                    &cards,
-                    state,
-                    "Mother Nature: Seeing the top card of your spellbook",
-                    "Mother Nature: Summon minion here?",
-                )
-                .await?;
-
-                if summon {
-                    return Ok(vec![Effect::SummonCards {
-                        cards: vec![(
-                            controller_id,
-                            *top_card_id,
-                            Zone::Spellbook,
-                            self.get_zone()
-                                .clone()
-                                .into_location()
-                                .expect("Mother Nature must be in a location"),
-                        )],
-                    }]);
+                let controller_id = self.get_controller_id(state);
+                if state.current_player() != controller_id {
+                    return Ok(vec![]);
                 }
-            } else {
-                reveal_cards(
-                    &player.id,
-                    &cards,
-                    state,
-                    "Mother Nature: Seeing the top card of your spellbook",
-                )
-                .await?;
-            }
-        }
+                let deck = state.get_player_deck(&controller_id)?;
+                if let Some(top_card_id) = deck.peek_spell() {
+                    let player = state.get_player(&controller_id)?;
+                    let opponent_id = state.get_opponent_id(&controller_id)?;
+                    let cards = vec![*top_card_id];
+                    reveal_cards(
+                        &opponent_id,
+                        &cards,
+                        state,
+                        &format!(
+                            "Mother Nature: Seeing the top card of {}'s spellbook",
+                            player.name
+                        ),
+                    )
+                    .await?;
 
-        Ok(vec![])
-    
+                    let card = state.get_card(top_card_id);
+                    if card.is_minion() {
+                        let summon = take_action(
+                            &player.id,
+                            &cards,
+                            state,
+                            "Mother Nature: Seeing the top card of your spellbook",
+                            "Mother Nature: Summon minion here?",
+                        )
+                        .await?;
+
+                        if summon {
+                            return Ok(vec![Effect::SummonCards {
+                                summoned_cards: vec![SummonCard {
+                                    player_id: controller_id,
+                                    card_id: *top_card_id,
+                                    from_zone: Zone::Spellbook,
+                                    to_location: self
+                                        .get_zone()
+                                        .clone()
+                                        .into_location()
+                                        .expect("Mother Nature must be in a location"),
+                                }],
+                            }]);
+                        }
+                    } else {
+                        reveal_cards(
+                            &player.id,
+                            &cards,
+                            state,
+                            "Mother Nature: Seeing the top card of your spellbook",
+                        )
+                        .await?;
+                    }
+                }
+
+                Ok(vec![])
             }
             _ => Ok(vec![]),
         }

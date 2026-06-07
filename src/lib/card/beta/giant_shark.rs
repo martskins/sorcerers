@@ -90,10 +90,10 @@ impl Card for GiantShark {
             ENTER_BODY_OF_WATER_HOOK => {
                 let mut card_ids = vec![];
                 match effect {
-                    Effect::SummonCards { cards } => {
-                        for (_, card_id, _, loc) in cards {
-                            if loc.square() == self.get_zone().get_square() {
-                                card_ids.push(card_id);
+                    Effect::SummonCards { summoned_cards } => {
+                        for sc in summoned_cards {
+                            if sc.to_location.square() == self.get_zone().get_square() {
+                                card_ids.push(&sc.card_id);
                             }
                         }
                     }

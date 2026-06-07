@@ -2,8 +2,8 @@ use crate::{
     card::*,
     deck::Deck,
     effect::{
-        DeferredEffect, DrawKind, Effect, EffectReplacementCallback, FightContext, TemporaryEffect,
-        TokenType,
+        DeferredEffect, DrawKind, Effect, EffectReplacementCallback, FightContext, SummonCard,
+        TemporaryEffect, TokenType,
     },
     game::{ActivatedAbility, Direction, UnitAction},
     networking::message::{ClientMessage, ServerMessage},
@@ -1588,12 +1588,12 @@ async fn test_enter_site_triggers_when_card_is_summoned_there() {
     state.cards.insert(ogre_id, Box::new(ogre));
 
     state.queue_one(Effect::SummonCards {
-        cards: vec![(
+        summoned_cards: vec![SummonCard {
             player_id,
-            ogre_id,
-            Zone::Cemetery,
-            Location::Square(1, Region::Surface),
-        )],
+            card_id: ogre_id,
+            from_zone: Zone::Cemetery,
+            to_location: Location::Square(1, Region::Surface),
+        }],
     });
     drain_effects(&mut state).await;
 
@@ -1821,12 +1821,12 @@ async fn test_minion_without_voidwalk_is_banished_in_void() {
         .insert(apprentice_wizard_id, Box::new(apprentice_wizard));
 
     state.queue_one(Effect::SummonCards {
-        cards: vec![(
+        summoned_cards: vec![SummonCard {
             player_id,
-            apprentice_wizard_id,
-            Zone::Hand,
-            Location::Square(1, Region::Void),
-        )],
+            card_id: apprentice_wizard_id,
+            from_zone: Zone::Hand,
+            to_location: Location::Square(1, Region::Void),
+        }],
     });
     drain_effects(&mut state).await;
 
@@ -2193,12 +2193,12 @@ async fn test_summon_card_puts_minion_in_target_zone() {
     state.cards.insert(id, Box::new(minion));
 
     Effect::SummonCards {
-        cards: vec![(
+        summoned_cards: vec![SummonCard {
             player_id,
-            id,
-            Zone::Hand,
-            Location::Square(1, Region::Surface),
-        )],
+            card_id: id,
+            from_zone: Zone::Hand,
+            to_location: Location::Square(1, Region::Surface),
+        }],
     }
     .apply(&mut state)
     .await
@@ -2220,12 +2220,12 @@ async fn test_summon_card_adds_summoning_sickness_to_minion() {
     state.cards.insert(id, Box::new(minion));
 
     Effect::SummonCards {
-        cards: vec![(
+        summoned_cards: vec![SummonCard {
             player_id,
-            id,
-            Zone::Hand,
-            Location::Square(1, Region::Surface),
-        )],
+            card_id: id,
+            from_zone: Zone::Hand,
+            to_location: Location::Square(1, Region::Surface),
+        }],
     }
     .apply(&mut state)
     .await
@@ -2250,12 +2250,12 @@ async fn test_summon_card_no_summoning_sickness_with_charge() {
     state.cards.insert(id, Box::new(minion));
 
     Effect::SummonCards {
-        cards: vec![(
+        summoned_cards: vec![SummonCard {
             player_id,
-            id,
-            Zone::Hand,
-            Location::Square(1, Region::Surface),
-        )],
+            card_id: id,
+            from_zone: Zone::Hand,
+            to_location: Location::Square(1, Region::Surface),
+        }],
     }
     .apply(&mut state)
     .await
@@ -2281,14 +2281,15 @@ async fn test_summon_card_queues_genesis_effects() {
     state.cards.insert(id, Box::new(wizard));
 
     Effect::SummonCards {
-        cards: vec![(
+        summoned_cards: vec![SummonCard {
             player_id,
-            id,
-            Zone::Hand,
-            zone.clone()
+            card_id: id,
+            from_zone: Zone::Hand,
+            to_location: zone
+                .clone()
                 .into_location()
                 .expect("test zone must be a location"),
-        )],
+        }],
     }
     .apply(&mut state)
     .await

@@ -27,7 +27,9 @@ pub(crate) mod prelude {
         HookSourceZones, HookTiming, Magic, MinionType, Rarity, Region, ResourceProvider,
         ResourceProviderBaseMethods, Rubble, Site, SiteBase, SiteType, UnitBase,
     };
-    pub use crate::effect::{AbilityCounter, Counter, DrawKind, Effect, StatusCounter, TokenType};
+    pub use crate::effect::{
+        AbilityCounter, Counter, DrawKind, Effect, StatusCounter, SummonCard, TokenType,
+    };
     pub use crate::game::{
         ActivatedAbility, AvatarAction, BaseOption, CARDINAL_DIRECTIONS, CardId, Direction,
         Element, NO_CONTROLLER, PlayerId, Thresholds, UnitAction, force_sync,
