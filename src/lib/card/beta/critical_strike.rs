@@ -1,6 +1,6 @@
-use std::{future::Future, pin::Pin, sync::Arc};
-
 use crate::prelude::*;
+
+const STRIKE_HOOK: HookId = 1;
 
 #[derive(Debug, Clone)]
 pub struct CriticalStrike {
@@ -50,6 +50,44 @@ impl Card for CriticalStrike {
     fn get_magic(&self) -> Option<&dyn Magic> {
         Some(self)
     }
+
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: STRIKE_HOOK,
+            trigger: EffectQuery::StrikeCard {
+                card: CardQuery::new().units(),
+                striker: Some(self.get_id().into()),
+            },
+            timing: HookTiming::Replace,
+            source_zones: HookSourceZones::Any,
+        }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook_id: HookId,
+        _state: &State,
+        effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook_id {
+            STRIKE_HOOK => {
+                let Effect::Strike {
+                    striker_id,
+                    target_id,
+                } = effect
+                else {
+                    return Ok(vec![]);
+                };
+
+                // TODO: Double damage here once damage is included in Effect::Strike
+                Ok(vec![Effect::Strike {
+                    striker_id: *striker_id,
+                    target_id: *target_id,
+                }])
+            }
+            _ => Ok(vec![]),
+        }
+    }
 }
 
 #[async_trait::async_trait]
@@ -64,6 +102,8 @@ impl Magic for CriticalStrike {
 
         Ok(vec![Effect::AddDeferredEffect {
             effect: DeferredEffect {
+                hook_id: STRIKE_HOOK,
+                card_id: *self.get_id(),
                 trigger_on_effect: EffectQuery::StrikeCard {
                     card: CardQuery::new().units(),
                     striker: Some(CardQuery::new().minions().controlled_by(&controller_id)),
@@ -71,26 +111,7 @@ impl Magic for CriticalStrike {
                 expires_on_effect: Some(EffectQuery::TurnEnd {
                     player_id: Some(controller_id),
                 }),
-                on_effect: Arc::new(move |_state: &State, _card_id: &CardId, effect: &Effect| {
-                    Box::pin(async move {
-                        if let Effect::TakeDamage {
-                            card_id,
-                            from,
-                            damage,
-                        } = effect
-                        {
-                            Ok(vec![Effect::TakeDamage {
-                                card_id: *card_id,
-                                from: *from,
-                                damage: damage.clone(),
-                            }])
-                        } else {
-                            Ok(vec![])
-                        }
-                    })
-                        as Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + '_>>
-                }),
-                multitrigger: false,
+                trigger_times: Some(1),
             },
         }])
     }

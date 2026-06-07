@@ -1,9 +1,12 @@
 use crate::prelude::*;
 use std::sync::Arc;
 
+const ON_MOVE_HOOK: HookId = 1;
+
 #[derive(Debug, Clone)]
 pub struct Blaze {
     card_base: CardBase,
+    target_id: Option<CardId>,
 }
 
 impl Blaze {
@@ -23,6 +26,7 @@ impl Blaze {
                 is_token: false,
                 ..Default::default()
             },
+            target_id: None,
         }
     }
 }
@@ -47,6 +51,66 @@ impl Card for Blaze {
 
     fn get_magic(&self) -> Option<&dyn Magic> {
         Some(self)
+    }
+
+    fn set_data(
+        &mut self,
+        data: &std::sync::Arc<dyn std::any::Any + Send + Sync>,
+    ) -> anyhow::Result<()> {
+        if let Some(data) = data.downcast_ref::<CardId>() {
+            self.target_id = Some(*data);
+        }
+
+        Ok(())
+    }
+
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: ON_MOVE_HOOK,
+            trigger: EffectQuery::MoveCard {
+                card: self.target_id.expect("target_id to be set").into(),
+            },
+            timing: HookTiming::After,
+            source_zones: HookSourceZones::Any,
+        }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook_id: HookId,
+        state: &State,
+        effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook_id {
+            ON_MOVE_HOOK => {
+                let Some(target_id) = self.target_id else {
+                    return Ok(vec![]);
+                };
+
+                let Effect::MoveCard { through_path, .. } = effect else {
+                    return Ok(vec![]);
+                };
+
+                let mut effects = vec![];
+                if let Some(path) = through_path {
+                    for zone in path {
+                        if Some(zone) != path.last() {
+                            let units = CardQuery::new().units().in_zone(zone).all(state);
+                            for unit_id in units {
+                                effects.push(Effect::TakeDamage {
+                                    card_id: unit_id,
+                                    from: target_id,
+                                    damage: Damage::basic(2),
+                                });
+                            }
+                        }
+                    }
+                }
+
+                Ok(effects)
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 
@@ -83,42 +147,19 @@ impl Magic for Blaze {
                     expires_on_effect: Some(EffectQuery::TurnEnd { player_id: None }),
                 },
             },
+            Effect::SetCardData {
+                card_id: *self.get_id(),
+                data: Arc::new(picked_card),
+            },
             Effect::AddDeferredEffect {
                 effect: DeferredEffect {
+                    hook_id: ON_MOVE_HOOK,
+                    card_id: *self.get_id(),
                     trigger_on_effect: EffectQuery::MoveCard {
                         card: picked_card.into(),
                     },
                     expires_on_effect: Some(EffectQuery::TurnEnd { player_id: None }),
-                    on_effect: Arc::new(|state: &State, card_id: &CardId, effect: &Effect| {
-                        Box::pin(async move {
-                            match effect {
-                                Effect::MoveCard { through_path, .. } => {
-                                    let mut effects = vec![];
-                                    if let Some(path) = through_path {
-                                        for zone in path {
-                                            if Some(zone) != path.last() {
-                                                let units = CardQuery::new()
-                                                    .units()
-                                                    .in_zone(zone)
-                                                    .all(state);
-                                                for unit_id in units {
-                                                    effects.push(Effect::TakeDamage {
-                                                        card_id: unit_id,
-                                                        from: *card_id,
-                                                        damage: Damage::basic(2),
-                                                    });
-                                                }
-                                            }
-                                        }
-                                    }
-
-                                    Ok(effects)
-                                }
-                                _ => unreachable!(),
-                            }
-                        })
-                    }),
-                    multitrigger: false,
+                    trigger_times: None,
                 },
             },
         ])

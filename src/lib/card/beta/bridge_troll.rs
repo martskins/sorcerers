@@ -1,11 +1,13 @@
 use crate::prelude::*;
 
 const DRAIN_MANA_HOOK: HookId = 1;
+const GIVE_MANA_HOOK: HookId = 2;
 
 #[derive(Debug, Clone)]
 pub struct BridgeTroll {
     unit_base: UnitBase,
     card_base: CardBase,
+    opponent_mana: u8,
 }
 
 impl BridgeTroll {
@@ -33,6 +35,7 @@ impl BridgeTroll {
                 is_token: false,
                 ..Default::default()
             },
+            opponent_mana: 0,
         }
     }
 }
@@ -63,16 +66,37 @@ impl Card for BridgeTroll {
         Some(&mut self.unit_base)
     }
 
-    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
-        Ok(vec![Hook {
-            id: DRAIN_MANA_HOOK,
-            trigger: EffectQuery::Attack {
-                attacker: CardQuery::new(),
-                defender: Some(self.get_id().into()),
+    fn set_data(
+        &mut self,
+        data: &std::sync::Arc<dyn std::any::Any + Send + Sync>,
+    ) -> anyhow::Result<()> {
+        if let Some(data) = data.downcast_ref::<u8>() {
+            self.opponent_mana = *data;
+        }
+
+        Ok(())
+    }
+
+    async fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![
+            Hook {
+                id: DRAIN_MANA_HOOK,
+                trigger: EffectQuery::Attack {
+                    attacker: CardQuery::new(),
+                    defender: Some(self.get_id().into()),
+                },
+                timing: HookTiming::After,
+                source_zones: HookSourceZones::InPlay,
             },
-            timing: HookTiming::Before,
-            source_zones: HookSourceZones::InPlay,
-        }])
+            Hook {
+                id: GIVE_MANA_HOOK,
+                trigger: EffectQuery::TurnStart {
+                    player_id: Some(self.get_controller_id(state)),
+                },
+                timing: HookTiming::After,
+                source_zones: HookSourceZones::Any,
+            },
+        ])
     }
 
     async fn resolve_hook(
@@ -82,6 +106,10 @@ impl Card for BridgeTroll {
         effect: &Effect,
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
+            GIVE_MANA_HOOK => Ok(vec![Effect::AdjustMana {
+                player_id: self.get_controller_id(state),
+                mana: self.opponent_mana as i8,
+            }]),
             DRAIN_MANA_HOOK => {
                 let Effect::DeclareAttack { attacker_id, .. } = effect else {
                     return Ok(vec![]);
@@ -98,21 +126,19 @@ impl Card for BridgeTroll {
                         player_id: attacker_controller,
                         mana: -opponent_mana,
                     },
+                    Effect::SetCardData {
+                        card_id: *self.get_id(),
+                        data: Arc::new(opponent_mana),
+                    },
                     Effect::AddDeferredEffect {
                         effect: DeferredEffect {
+                            hook_id: GIVE_MANA_HOOK,
+                            card_id: *self.get_id(),
                             trigger_on_effect: EffectQuery::TurnStart {
                                 player_id: Some(my_controller),
                             },
                             expires_on_effect: None,
-                            on_effect: Arc::new(move |_: &State, _: &uuid::Uuid, _: &Effect| {
-                                Box::pin(async move {
-                                    Ok(vec![Effect::AdjustMana {
-                                        player_id: my_controller,
-                                        mana: opponent_mana,
-                                    }])
-                                })
-                            }),
-                            multitrigger: false,
+                            trigger_times: Some(1),
                         },
                     },
                 ])

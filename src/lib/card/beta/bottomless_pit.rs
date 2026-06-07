@@ -90,26 +90,32 @@ impl Card for BottomlessPit {
     async fn resolve_hook(
         &self,
         hook_id: HookId,
-        state: &State,
+        _state: &State,
         effect: &Effect,
     ) -> anyhow::Result<Vec<Effect>> {
         match hook_id {
-            KILL_ENTERING_MINION_HOOK => Ok(EffectQuery::EnterZone {
-                card: CardQuery::new()
-                    .minions()
-                    .without_ability(Ability::Airborne),
-                zone: ZoneQuery::from_zone(self.get_zone().clone()),
-                from: None,
-            }
-            .source_ids(effect, state)
-            .await?
-            .into_iter()
-            .map(|card_id| Effect::KillMinion {
-                card_id,
-                killer_id: *self.get_id(),
-                from_attack: false,
-            })
-            .collect()),
+            KILL_ENTERING_MINION_HOOK => match effect {
+                Effect::SummonCards { cards } => {
+                    let mut effects = vec![];
+                    for (_, card_id, zone, _) in cards {
+                        if zone.get_square() == self.get_zone().get_square() {
+                            effects.push(Effect::KillMinion {
+                                card_id: *card_id,
+                                killer_id: *self.get_id(),
+                                from_attack: false,
+                            })
+                        }
+                    }
+
+                    Ok(effects)
+                }
+                Effect::MoveCard { card_id, .. } => Ok(vec![Effect::KillMinion {
+                    card_id: *card_id,
+                    killer_id: *self.get_id(),
+                    from_attack: false,
+                }]),
+                _ => Ok(vec![]),
+            },
             _ => Ok(vec![]),
         }
     }

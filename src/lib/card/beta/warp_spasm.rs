@@ -1,10 +1,12 @@
-use std::sync::Arc;
-
 use crate::prelude::*;
+
+const ATTACK_AND_KILL_HOOK: HookId = 1;
+const END_OF_TURN_HOOK: HookId = 2;
 
 #[derive(Debug, Clone)]
 pub struct WarpSpasm {
     card_base: CardBase,
+    target_id: Option<CardId>,
 }
 
 impl WarpSpasm {
@@ -24,6 +26,7 @@ impl WarpSpasm {
                 is_token: false,
                 ..Default::default()
             },
+            target_id: None,
         }
     }
 }
@@ -48,6 +51,74 @@ impl Card for WarpSpasm {
 
     fn get_magic(&self) -> Option<&dyn Magic> {
         Some(self)
+    }
+
+    fn set_data(
+        &mut self,
+        data: &std::sync::Arc<dyn std::any::Any + Send + Sync>,
+    ) -> anyhow::Result<()> {
+        if let Some(data) = data.downcast_ref::<CardId>() {
+            self.target_id = Some(*data);
+        }
+
+        Ok(())
+    }
+
+    async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        let Some(target_id) = self.target_id else {
+            return Ok(vec![]);
+        };
+
+        Ok(vec![
+            Hook {
+                id: ATTACK_AND_KILL_HOOK,
+                trigger: EffectQuery::UnitKilled {
+                    unit: CardQuery::new().units(),
+                    killer: Some(target_id.into()),
+                    from_attack: Some(true),
+                },
+                timing: HookTiming::After,
+                source_zones: HookSourceZones::Any,
+            },
+            Hook {
+                id: END_OF_TURN_HOOK,
+                trigger: EffectQuery::TurnEnd { player_id: None },
+                timing: HookTiming::After,
+                source_zones: HookSourceZones::Any,
+            },
+        ])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook_id: HookId,
+        _state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook_id {
+            ATTACK_AND_KILL_HOOK => {
+                let Some(target_id) = self.target_id else {
+                    return Ok(vec![]);
+                };
+
+                Ok(vec![Effect::SetTapped {
+                    card_id: target_id,
+                    tapped: false,
+                }])
+            }
+            END_OF_TURN_HOOK => {
+                let Some(target_id) = self.target_id else {
+                    return Ok(vec![]);
+                };
+
+                Ok(vec![Effect::KillMinion {
+                    card_id: target_id,
+                    killer_id: *self.get_id(),
+                    from_attack: false,
+                }])
+            }
+            _ => Ok(vec![]),
+        }
     }
 }
 
@@ -89,37 +160,24 @@ impl Magic for WarpSpasm {
             },
             Effect::AddDeferredEffect {
                 effect: DeferredEffect {
+                    hook_id: ATTACK_AND_KILL_HOOK,
+                    card_id: *self.get_id(),
                     trigger_on_effect: EffectQuery::UnitKilled {
                         unit: CardQuery::new().minions(),
                         killer: Some(self.get_id().into()),
                         from_attack: Some(true),
                     },
                     expires_on_effect: Some(EffectQuery::TurnEnd { player_id: None }),
-                    on_effect: Arc::new(move |_state: &State, _source, _effect: &Effect| {
-                        Box::pin(async move {
-                            Ok(vec![Effect::SetTapped {
-                                card_id: target_id,
-                                tapped: false,
-                            }])
-                        })
-                    }),
-                    multitrigger: true,
+                    trigger_times: None,
                 },
             },
             Effect::AddDeferredEffect {
                 effect: DeferredEffect {
+                    hook_id: END_OF_TURN_HOOK,
+                    card_id: *self.get_id(),
                     trigger_on_effect: EffectQuery::TurnEnd { player_id: None },
                     expires_on_effect: None,
-                    on_effect: Arc::new(move |_state: &State, _source, _effect: &Effect| {
-                        Box::pin(async move {
-                            Ok(vec![Effect::KillMinion {
-                                card_id: target_id,
-                                killer_id: target_id,
-                                from_attack: false,
-                            }])
-                        })
-                    }),
-                    multitrigger: false,
+                    trigger_times: Some(1),
                 },
             },
         ])

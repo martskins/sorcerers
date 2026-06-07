@@ -1,5 +1,3 @@
-use std::{future::Future, pin::Pin, sync::Arc};
-
 use crate::prelude::*;
 
 #[derive(Debug, Clone)]
@@ -84,15 +82,11 @@ impl Magic for Infiltrate {
             return Ok(vec![]);
         };
 
-        let original_controller = state.get_card(&target_id).get_controller_id(state);
-        let new_controller = controller_id;
-        let stealth_counter_id = uuid::Uuid::new_v4();
-
         Ok(vec![
             Effect::AddAbilityCounter {
                 card_id: target_id,
                 counter: AbilityCounter {
-                    id: stealth_counter_id,
+                    id: uuid::Uuid::new_v4(),
                     ability: Ability::Stealth,
                     expires_on_effect: None,
                 },
@@ -103,39 +97,16 @@ impl Magic for Infiltrate {
             },
             Effect::SetController {
                 card_id: target_id,
-                player_id: new_controller,
+                player_id: self.get_controller_id(state),
             },
-            Effect::AddDeferredEffect {
-                effect: DeferredEffect {
-                    trigger_on_effect: EffectQuery::RemoveAbility {
+            Effect::AddTemporaryEffect {
+                effect: TemporaryEffect::ControllerOverride {
+                    controller_id: self.get_controller_id(state),
+                    affected_cards: target_id.into(),
+                    expires_on_effect: EffectQuery::RemoveAbility {
                         card: target_id.into(),
                         ability: Ability::Stealth,
                     },
-                    expires_on_effect: Some(EffectQuery::BuryCard {
-                        card: target_id.into(),
-                    }),
-                    multitrigger: false,
-                    on_effect: Arc::new(
-                        move |state: &State, _triggered_card_id: &CardId, _effect: &Effect| {
-                            Box::pin(async move {
-                                let target = state.get_card(&target_id);
-                                if !target.has_ability(state, &Ability::Stealth) {
-                                    return Ok(vec![Effect::SetController {
-                                        card_id: target_id,
-                                        player_id: original_controller,
-                                    }]);
-                                }
-                                Ok(vec![])
-                            })
-                                as Pin<
-                                    Box<
-                                        dyn Future<Output = anyhow::Result<Vec<Effect>>>
-                                            + Send
-                                            + '_,
-                                    >,
-                                >
-                        },
-                    ),
                 },
             },
         ])

@@ -1,7 +1,7 @@
 use crate::{
     card::Region,
     effect::{DrawKind, Effect},
-    game::{CardId, PlayerId},
+    game::PlayerId,
     query::{CardQuery, ZoneQuery},
     state::State,
     zone::Zone,
@@ -90,203 +90,6 @@ pub enum EffectQuery {
 }
 
 impl EffectQuery {
-    pub async fn source_ids(&self, effect: &Effect, state: &State) -> anyhow::Result<Vec<CardId>> {
-        match (self, effect) {
-            // TODO: Implement this
-            // (
-            //     EffectQuery::LifeLost {
-            //         player_id: target_player_id,
-            //         from_attack,
-            //     },
-            //     Effect::AdjustAvatarLife { player_id, amount },
-            // ) => Ok(vec![]),
-            (EffectQuery::OneOf(queries), _) => {
-                let mut source_ids = vec![];
-                for query in queries {
-                    for source_id in Box::pin(query.source_ids(effect, state)).await? {
-                        if !source_ids.contains(&source_id) {
-                            source_ids.push(source_id);
-                        }
-                    }
-                }
-                Ok(source_ids)
-            }
-            (
-                EffectQuery::EnterZone {
-                    card: card_query,
-                    zone: zone_query,
-                    ..
-                },
-                Effect::SummonCards { cards },
-            ) => {
-                for (_, card, _, loc) in cards {
-                    let card_matches = card_query.matches(card, state);
-                    let zone_matches = zone_query.matches(state, &loc.clone().into_zone());
-                    if card_matches && zone_matches {
-                        return Ok(vec![*card]);
-                    }
-                }
-
-                Ok(vec![])
-            }
-            (
-                EffectQuery::EnterZone {
-                    card: card_query,
-                    zone: zone_query,
-                    ..
-                },
-                Effect::MoveCard {
-                    player_id,
-                    card_id,
-                    to,
-                    ..
-                },
-            ) => {
-                let card_matches = card_query.matches(card_id, state);
-                let loc = to.pick(player_id, state).await?;
-                let zone_matches = zone_query.matches(state, &loc.into_zone());
-                if card_matches && zone_matches {
-                    return Ok(vec![*card_id]);
-                }
-
-                Ok(vec![])
-            }
-            (
-                EffectQuery::EnterZone {
-                    card: card_query,
-                    zone: zone_query,
-                    from,
-                },
-                Effect::PlayCard {
-                    player_id,
-                    card_id,
-                    zone,
-                    ..
-                },
-            ) => {
-                if from.is_some() {
-                    return Ok(vec![]);
-                }
-
-                let card_matches = card_query.matches(card_id, state);
-                let picked_zone = zone.pick(player_id, state).await?;
-                let zone_matches = zone_query.matches(state, &picked_zone);
-                if card_matches && zone_matches {
-                    return Ok(vec![*card_id]);
-                }
-
-                Ok(vec![])
-            }
-            (EffectQuery::StopAtZone { card, zone: site }, _) => {
-                let sites = site.options(state);
-                Ok(stopped_at_sites(effect, state)
-                    .await?
-                    .into_iter()
-                    .filter(|(card_id, stopped_site)| {
-                        card.matches(card_id, state) && sites.contains(stopped_site)
-                    })
-                    .map(|(card_id, _)| card_id)
-                    .collect())
-            }
-            (EffectQuery::SummonCard { card }, Effect::SummonCards { cards }) => Ok(cards
-                .iter()
-                .filter(|(_, card_id, _, _)| card.matches(card_id, state))
-                .map(|(_, card_id, _, _)| *card_id)
-                .collect()),
-            (EffectQuery::Genesis { card }, Effect::TriggerGenesis { card_id }) => {
-                if card.matches(card_id, state) {
-                    Ok(vec![*card_id])
-                } else {
-                    Ok(vec![])
-                }
-            }
-            (EffectQuery::Deathrite { card }, Effect::TriggerDeathrite { card_id, .. }) => {
-                if card.matches(card_id, state) {
-                    Ok(vec![*card_id])
-                } else {
-                    Ok(vec![])
-                }
-            }
-            (
-                EffectQuery::UnitKilled {
-                    unit,
-                    killer,
-                    from_attack: from_attack_target,
-                },
-                Effect::KillMinion {
-                    card_id,
-                    killer_id,
-                    from_attack,
-                    ..
-                },
-            ) => {
-                let card_matches = unit.matches(card_id, state);
-                let killer_matches = killer.clone().is_none_or(|k| k.matches(killer_id, state));
-                let from_attack_matches = from_attack_target.is_none_or(|fa| fa == *from_attack);
-                if card_matches && killer_matches && from_attack_matches {
-                    Ok(vec![*card_id])
-                } else {
-                    Ok(vec![])
-                }
-            }
-            (
-                EffectQuery::StrikeCard { card, striker },
-                Effect::TakeDamage {
-                    card_id,
-                    from,
-                    damage,
-                },
-            ) => {
-                let card_matches = card.matches(card_id, state);
-                let striker_matches = striker.clone().is_none_or(|k| k.matches(from, state));
-                let is_strike = damage.is_strike;
-                if is_strike && card_matches && striker_matches {
-                    Ok(vec![*card_id])
-                } else {
-                    Ok(vec![])
-                }
-            }
-            (
-                EffectQuery::RangedStrike { striker },
-                Effect::ShootProjectile {
-                    shooter,
-                    ranged_strike,
-                    ..
-                },
-            ) => {
-                let striker_matches = striker.matches(shooter, state);
-                if *ranged_strike && striker_matches {
-                    return Ok(vec![*shooter]);
-                }
-
-                Ok(vec![])
-            }
-            (
-                EffectQuery::DefendDeclared { attacker, defender },
-                Effect::DeclareDefender {
-                    attacker_id,
-                    defender_id,
-                },
-            ) => {
-                if attacker.matches(attacker_id, state) && defender.matches(defender_id, state) {
-                    Ok(vec![*defender_id])
-                } else {
-                    Ok(vec![])
-                }
-            }
-            (_, _) => {
-                if Box::pin(self.matches(effect, state)).await? {
-                    Ok(effect
-                        .source_id()
-                        .map(|source_id| vec![*source_id])
-                        .unwrap_or_default())
-                } else {
-                    Ok(vec![])
-                }
-            }
-        }
-    }
-
     pub async fn matches(&self, effect: &Effect, state: &State) -> anyhow::Result<bool> {
         match (self, effect) {
             (
@@ -355,8 +158,22 @@ impl EffectQuery {
 
                 Ok(false)
             }
-            (EffectQuery::StopAtZone { .. }, _) => {
-                Ok(!self.source_ids(effect, state).await?.is_empty())
+            (
+                EffectQuery::StopAtZone {
+                    card: card_query,
+                    zone: zone_query,
+                },
+                Effect::MoveCard {
+                    player_id,
+                    card_id,
+                    to,
+                    ..
+                },
+            ) => {
+                let dest = to.pick(player_id, state).await?.into_zone();
+                let zone_matches = zone_query.matches(state, &dest);
+                let card_matches = card_query.matches(card_id, state);
+                Ok(zone_matches && card_matches)
             }
             (
                 EffectQuery::TurnStart {

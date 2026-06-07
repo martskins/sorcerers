@@ -1,7 +1,7 @@
 use crate::{
-    card::{Ability, UnitBase},
+    card::{Ability, HookId, UnitBase},
     effect::Effect,
-    game::CardId,
+    game::{CardId, PlayerId},
     query::{CardQuery, EffectQuery},
     state::State,
     zone::Zone,
@@ -28,21 +28,13 @@ pub type EffectCallback = Arc<
             -> Pin<Box<dyn Future<Output = anyhow::Result<Vec<Effect>>> + Send + 'a>>,
 >;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct DeferredEffect {
+    pub hook_id: HookId,
+    pub card_id: CardId,
     pub trigger_on_effect: EffectQuery,
     pub expires_on_effect: Option<EffectQuery>,
-    pub on_effect: EffectCallback,
-    pub multitrigger: bool,
-}
-
-impl std::fmt::Debug for DeferredEffect {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("DeferredEffect")
-            .field("trigger_on_effect", &self.trigger_on_effect)
-            .field("expires_on_effect", &self.expires_on_effect)
-            .finish()
-    }
+    pub trigger_times: Option<u8>,
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -75,6 +67,11 @@ pub enum TemporaryEffect {
     },
     ConnectSites {
         sites: Vec<Zone>,
+        affected_cards: CardQuery,
+        expires_on_effect: EffectQuery,
+    },
+    ControllerOverride {
+        controller_id: PlayerId,
         affected_cards: CardQuery,
         expires_on_effect: EffectQuery,
     },
@@ -139,6 +136,10 @@ impl std::fmt::Debug for TemporaryEffect {
                 .field("affected_cards", affected_cards)
                 .field("expires_on_effect", expires_on_effect)
                 .finish(),
+            Self::ControllerOverride {
+                ..
+                // TODO: Finish Debug impl
+            } => f.debug_struct("ControllerOverride").finish(),
         }
     }
 }
@@ -156,6 +157,7 @@ impl TemporaryEffect {
             }
             TemporaryEffect::ModifyEffect { .. } => vec![],
             TemporaryEffect::ConnectSites { .. } => vec![],
+            TemporaryEffect::ControllerOverride { affected_cards, .. } => affected_cards.all(state),
         }
     }
 
@@ -177,6 +179,9 @@ impl TemporaryEffect {
                 expires_on_effect, ..
             }
             | TemporaryEffect::ConnectSites {
+                expires_on_effect, ..
+            }
+            | TemporaryEffect::ControllerOverride {
                 expires_on_effect, ..
             } => Some(expires_on_effect),
         }
@@ -212,24 +217,29 @@ impl EffectLifecycle {
 
     async fn process_deferred_effects(state: &mut State, effect: &Effect) -> anyhow::Result<()> {
         let mut effects_to_remove = vec![];
-        let deferred_effects = state.deferred_effects().to_vec();
-        for (idx, de) in deferred_effects.iter().enumerate() {
-            let source_ids = de.trigger_on_effect.source_ids(effect, state).await?;
-            if !source_ids.is_empty() {
-                let source_ids = if de.multitrigger {
-                    source_ids
-                } else {
-                    source_ids.into_iter().take(1).collect()
-                };
-                for source_id in source_ids {
-                    let effects = (de.on_effect)(state, &source_id, effect).await?;
-                    state.queue(effects);
-                }
+        let mut deferred_effects = state.deferred_effects().to_vec();
+        for (idx, de) in deferred_effects.iter_mut().enumerate() {
+            if !de.trigger_on_effect.matches(effect, state).await? {
+                continue;
+            }
 
-                if !de.multitrigger {
-                    effects_to_remove.push(idx);
-                }
-            } else if let Some(expires_on_effect) = &de.expires_on_effect
+            match de.trigger_times.as_mut() {
+                Some(v) => *v -= 1,
+                None => continue,
+            }
+
+            let Some(card) = state.cards.get(&de.card_id) else {
+                return Err(anyhow::anyhow!("failed to get card by id"));
+            };
+
+            let effects = card.resolve_hook(de.hook_id, state, effect).await?;
+            state.queue(effects);
+
+            if de.trigger_times.is_some_and(|tt| tt == 0) {
+                effects_to_remove.push(idx);
+            }
+
+            if let Some(expires_on_effect) = &de.expires_on_effect
                 && expires_on_effect.matches(effect, state).await?
             {
                 effects_to_remove.push(idx);

@@ -1,10 +1,13 @@
-use std::{future::Future, pin::Pin, sync::Arc};
+use std::sync::Arc;
 
 use crate::prelude::*;
+
+const NEXT_TURN_HOOK: HookId = 1;
 
 #[derive(Debug, Clone)]
 pub struct DreamQuest {
     card_base: CardBase,
+    target_id: Option<CardId>,
 }
 
 impl DreamQuest {
@@ -24,6 +27,7 @@ impl DreamQuest {
                 is_token: false,
                 ..Default::default()
             },
+            target_id: None,
         }
     }
 }
@@ -49,6 +53,101 @@ impl Card for DreamQuest {
     fn get_magic(&self) -> Option<&dyn Magic> {
         Some(self)
     }
+
+    fn set_data(
+        &mut self,
+        data: &std::sync::Arc<dyn std::any::Any + Send + Sync>,
+    ) -> anyhow::Result<()> {
+        if let Some(data) = data.downcast_ref::<CardId>() {
+            self.target_id = Some(*data);
+        }
+
+        Ok(())
+    }
+
+    async fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
+        Ok(vec![Hook {
+            id: NEXT_TURN_HOOK,
+            trigger: EffectQuery::TurnStart {
+                player_id: Some(self.get_controller_id(state)),
+            },
+            timing: HookTiming::After,
+            source_zones: HookSourceZones::Any,
+        }])
+    }
+
+    async fn resolve_hook(
+        &self,
+        hook_id: HookId,
+        state: &State,
+        _effect: &Effect,
+    ) -> anyhow::Result<Vec<Effect>> {
+        match hook_id {
+            NEXT_TURN_HOOK => {
+                let Some(target_id) = self.target_id else {
+                    return Ok(vec![]);
+                };
+
+                let target = state.get_card(&target_id);
+                if !target.has_status(state, &CardStatus::Disabled) {
+                    // Minion is no longer asleep, do nothing.
+                    return Ok(vec![]);
+                }
+
+                let controller_id = self.get_controller_id(state);
+                let wake_up = yes_or_no_source(
+                    &controller_id,
+                    state,
+                    "Wake up the dreaming minion?",
+                    Some(*self.get_id()),
+                )
+                .await?;
+                if !wake_up {
+                    return Ok(vec![]);
+                }
+
+                let mut effects = vec![Effect::RemoveStatus {
+                    card_id: target_id,
+                    status: CardStatus::Disabled,
+                }];
+
+                let deck = state.get_player_deck(&controller_id)?.clone();
+                if !deck.spells.is_empty() {
+                    let chosen = pick_card_with_options(
+                        &controller_id,
+                        &deck.spells,
+                        &deck.spells,
+                        false,
+                        state,
+                        "Choose a card to put into your hand",
+                    )
+                    .await?;
+                    let mut spells = deck.spells.clone();
+                    spells.retain(|id| id != &chosen);
+                    effects = vec![
+                        Effect::ShuffleDeck {
+                            player_id: controller_id,
+                        },
+                        Effect::RearrangeDeck {
+                            spells,
+                            sites: deck.sites.clone(),
+                        },
+                        Effect::SetCardZone {
+                            card_id: chosen,
+                            zone: Zone::Hand,
+                        },
+                        Effect::RemoveStatus {
+                            card_id: target_id,
+                            status: CardStatus::Disabled,
+                        },
+                    ];
+                }
+
+                Ok(effects)
+            }
+            _ => Ok(vec![]),
+        }
+    }
 }
 
 #[async_trait::async_trait]
@@ -60,8 +159,6 @@ impl Magic for DreamQuest {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        let dream_quest_id = *self.get_id();
-
         // Find all allied Spellcaster minions in play.
         let all_minions = CardQuery::new()
             .controlled_by(&controller_id)
@@ -98,13 +195,11 @@ impl Magic for DreamQuest {
             return Ok(vec![]);
         };
 
-        let counter_id = uuid::Uuid::new_v4();
-
         Ok(vec![
             Effect::AddStatusCounter {
                 card_id: minion_id,
                 counter: StatusCounter {
-                    id: counter_id,
+                    id: uuid::Uuid::new_v4(),
                     status: CardStatus::Disabled,
                     expires_on_effect: Some(EffectQuery::DamageDealt {
                         source: None,
@@ -112,83 +207,19 @@ impl Magic for DreamQuest {
                     }),
                 },
             },
+            Effect::SetCardData {
+                card_id: *self.get_id(),
+                data: Arc::new(minion_id),
+            },
             Effect::AddDeferredEffect {
                 effect: DeferredEffect {
+                    hook_id: NEXT_TURN_HOOK,
+                    card_id: *self.get_id(),
                     trigger_on_effect: EffectQuery::TurnStart {
                         player_id: Some(controller_id),
                     },
                     expires_on_effect: None,
-                    on_effect: Arc::new(
-                        move |state: &State, _card_id: &CardId, _effect: &Effect| {
-                            let controller_id = controller_id;
-                            let minion_id = minion_id;
-                            Box::pin(async move {
-                                let minion = state.get_card(&minion_id);
-                                if !minion.has_status(state, &CardStatus::Disabled) {
-                                    // Minion is no longer asleep, do nothing.
-                                    return Ok(vec![]);
-                                }
-
-                                let wake_up = yes_or_no_source(
-                                    &controller_id,
-                                    state,
-                                    "Wake up the dreaming minion?",
-                                    Some(dream_quest_id),
-                                )
-                                .await?;
-                                if !wake_up {
-                                    return Ok(vec![]);
-                                }
-
-                                let mut effects = vec![Effect::RemoveStatus {
-                                    card_id: minion_id,
-                                    status: CardStatus::Disabled,
-                                }];
-
-                                let deck = state.get_player_deck(&controller_id)?.clone();
-                                if !deck.spells.is_empty() {
-                                    let chosen = pick_card_with_options(
-                                        &controller_id,
-                                        &deck.spells,
-                                        &deck.spells,
-                                        false,
-                                        state,
-                                        "Choose a card to put into your hand",
-                                    )
-                                    .await?;
-                                    let mut spells = deck.spells.clone();
-                                    spells.retain(|id| id != &chosen);
-                                    effects = vec![
-                                        Effect::ShuffleDeck {
-                                            player_id: controller_id,
-                                        },
-                                        Effect::RearrangeDeck {
-                                            spells,
-                                            sites: deck.sites.clone(),
-                                        },
-                                        Effect::SetCardZone {
-                                            card_id: chosen,
-                                            zone: Zone::Hand,
-                                        },
-                                        Effect::RemoveStatus {
-                                            card_id: minion_id,
-                                            status: CardStatus::Disabled,
-                                        },
-                                    ];
-                                }
-
-                                Ok(effects)
-                            })
-                                as Pin<
-                                    Box<
-                                        dyn Future<Output = anyhow::Result<Vec<Effect>>>
-                                            + Send
-                                            + '_,
-                                    >,
-                                >
-                        },
-                    ),
-                    multitrigger: false,
+                    trigger_times: Some(1),
                 },
             },
         ])

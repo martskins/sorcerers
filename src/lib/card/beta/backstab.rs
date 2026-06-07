@@ -59,7 +59,7 @@ impl Magic for Backstab {
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
         let caster_region = state.get_card(caster_id).get_region(state).clone();
-        let Some(mover_id) = CardQuery::new()
+        let Some(striker_id) = CardQuery::new()
             .card_types(vec![CardType::Minion])
             .in_zones(&Zone::all_in_region(caster_region))
             .with_prompt("Pick a minion to move")
@@ -70,12 +70,12 @@ impl Magic for Backstab {
             return Ok(vec![]);
         };
 
-        let mover = state.get_card(&mover_id);
+        let striker = state.get_card(&striker_id);
         let Some(target_id) = CardQuery::new()
             .card_types(vec![CardType::Minion])
             .tapped()
-            .in_zones(&mover.get_zone().get_adjacent())
-            .id_not_in(vec![mover_id])
+            .adjacent_locations_to(striker.get_zone())
+            .id_not_in(vec![striker_id])
             .with_prompt("Pick a tapped minion to strike")
             .with_source_card(*self.get_id())
             .pick(&controller_id, state, false)
@@ -85,7 +85,7 @@ impl Magic for Backstab {
         };
 
         Ok(vec![Effect::Strike {
-            striker_id: mover_id,
+            striker_id,
             target_id,
         }])
     }
