@@ -109,7 +109,7 @@ impl Card for LordOfUnland {
             .minions()
             .in_zones(&water_zones)
             .controlled_by(&controller_id)
-            .id_not(self.get_id())
+            .id_not(*self.get_id())
             .all(state);
 
         if allies.is_empty() {

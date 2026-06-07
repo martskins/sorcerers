@@ -71,7 +71,7 @@ impl Card for SecretTunnel {
         let connected_zones = CardQuery::new()
             .sites()
             .controlled_by(&controller_id)
-            .id_not(self.get_id())
+            .id_not(*self.get_id())
             .in_play()
             .all(state)
             .into_iter()

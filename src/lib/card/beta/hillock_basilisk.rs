@@ -67,7 +67,7 @@ impl Card for HillockBasilisk {
             affected_cards: CardQuery::new()
                 .units()
                 .in_zone_and_direction_from_card(self.get_id(), Direction::Up, 1, true)
-                .id_not(self.get_id()),
+                .id_not(*self.get_id()),
         }]
     }
 }

@@ -239,7 +239,7 @@ impl Zone {
                             .sites()
                             .in_play()
                             .controlled_by(player_id)
-                            .not_named(Rubble::NAME)
+                            .not_named(Rubble::NAME.to_string())
                             .all(state)
                             .into_iter()
                             .map(|cid| state.get_card(&cid).get_zone())

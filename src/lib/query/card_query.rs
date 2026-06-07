@@ -16,18 +16,13 @@ pub struct CardQuery {
     carried_by: Option<Option<CardId>>,
     randomise: Option<bool>,
     count: Option<usize>,
-    ids: Option<Vec<CardId>>,
-    card_names: Option<Vec<String>>,
-    card_name_contains: Option<String>,
-    not_named: Option<Vec<String>>,
+    card_id: Option<Vec<ValueFilter<CardId>>>,
+    card_name: Option<Vec<StringFilter>>,
     controller_id: Option<PlayerId>,
     same_controller_as: Option<CardId>,
     different_controller_than: Option<CardId>,
-    not_in_ids: Option<Vec<CardId>>,
-    without_abilities: Option<Vec<Ability>>,
-    with_abilities: Option<Vec<Ability>>,
-    without_statuses: Option<Vec<CardStatus>>,
-    with_statuses: Option<Vec<CardStatus>>,
+    abilities: Option<Vec<VecFilter<Ability>>>,
+    statuses: Option<Vec<VecFilter<CardStatus>>>,
     card_types: Option<Vec<CardType>>,
     minion_types: Option<Vec<MinionType>>,
     artifact_types: Option<Vec<ArtifactType>>,
@@ -61,18 +56,13 @@ impl Default for CardQuery {
             carried_by: None,
             randomise: None,
             count: None,
-            ids: None,
-            card_names: None,
-            card_name_contains: None,
-            not_named: None,
+            card_id: None,
+            card_name: None,
             controller_id: None,
             same_controller_as: None,
             different_controller_than: None,
-            not_in_ids: None,
-            without_abilities: None,
-            with_abilities: None,
-            without_statuses: None,
-            with_statuses: None,
+            abilities: None,
+            statuses: None,
             card_types: None,
             minion_types: None,
             artifact_types: None,
@@ -97,6 +87,63 @@ impl Default for CardQuery {
             source_card_id: None,
             allow_modifiers: true,
             bearer_of: None,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+enum StringFilter {
+    OneOf(Vec<String>),
+    Equals(String),
+    NotEquals(String),
+    ContainsSubstr(String),
+}
+
+impl StringFilter {
+    fn matches(&self, val: &str) -> bool {
+        match self {
+            StringFilter::OneOf(items) => items.contains(&val.to_string()),
+            StringFilter::Equals(item) => item == val,
+            StringFilter::NotEquals(item) => item != val,
+            StringFilter::ContainsSubstr(substr) => val.contains(substr),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+enum ValueFilter<T> {
+    OneOf(Vec<T>),
+    NoneOf(Vec<T>),
+    Equals(T),
+    NotEquals(T),
+}
+
+impl<T: PartialEq> ValueFilter<T> {
+    fn matches(&self, val: &T) -> bool {
+        match self {
+            ValueFilter::OneOf(items) => items.contains(val),
+            ValueFilter::NoneOf(items) => !items.contains(val),
+            ValueFilter::Equals(item) => item == val,
+            ValueFilter::NotEquals(item) => item != val,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+enum VecFilter<T> {
+    WithAll(Vec<T>),
+    WithoutAny(Vec<T>),
+    With(T),
+    Without(T),
+}
+
+impl<T: PartialEq> VecFilter<T> {
+    fn matches(&self, vals: &[T]) -> bool {
+        match self {
+            VecFilter::WithAll(items) => items.iter().all(|i| vals.contains(i)),
+            VecFilter::WithoutAny(items) => items.iter().all(|i| !vals.contains(i)),
+            VecFilter::With(item) => vals.contains(item),
+            VecFilter::Without(item) => !vals.contains(item),
         }
     }
 }
@@ -231,16 +278,13 @@ impl<'a> PreparedCardQuery<'a> {
         let card_id = card.get_id();
 
         // Cheap ID based filters
-        if let Some(ids) = &query.ids
-            && !ids.contains(card_id)
-        {
-            return false;
-        }
-
-        if let Some(not_in_ids) = &query.not_in_ids
-            && not_in_ids.contains(card_id)
-        {
-            return false;
+        if let Some(filters) = &query.card_id {
+            let card_id = card.get_id();
+            for filter in filters {
+                if !filter.matches(card_id) {
+                    return false;
+                }
+            }
         }
 
         // Zone and visibility filters
@@ -335,22 +379,13 @@ impl<'a> PreparedCardQuery<'a> {
         }
 
         // Name filters
-        if let Some(name) = &query.card_name_contains
-            && !card.get_name().contains(name)
-        {
-            return false;
-        }
-
-        if let Some(not_named) = &query.not_named
-            && not_named.iter().any(|n| n == card.get_name())
-        {
-            return false;
-        }
-
-        if let Some(names) = &query.card_names
-            && !names.iter().any(|n| n == card.get_name())
-        {
-            return false;
+        if let Some(filters) = &query.card_name {
+            let name = card.get_name();
+            for filter in filters {
+                if !filter.matches(name) {
+                    return false;
+                }
+            }
         }
 
         // Complex/Computed filters
@@ -382,33 +417,19 @@ impl<'a> PreparedCardQuery<'a> {
             }
         }
 
-        if let Some(abilities) = &query.without_abilities {
-            for ability in abilities {
-                if card.has_ability(state, ability) {
+        if let Some(abilities) = &query.abilities {
+            let card_abilities = card.get_abilities(state).unwrap_or_default();
+            for filter in abilities {
+                if !filter.matches(&card_abilities) {
                     return false;
                 }
             }
         }
 
-        if let Some(abilities) = &query.with_abilities {
-            for ability in abilities {
-                if !card.has_ability(state, ability) {
-                    return false;
-                }
-            }
-        }
-
-        if let Some(statuses) = &query.without_statuses {
-            for status in statuses {
-                if card.has_status(state, status) {
-                    return false;
-                }
-            }
-        }
-
-        if let Some(statuses) = &query.with_statuses {
-            for status in statuses {
-                if !card.has_status(state, status) {
+        if let Some(statuses) = &query.statuses {
+            let card_statuses = card.get_statuses(state);
+            for filter in statuses {
+                if !filter.matches(&card_statuses) {
                     return false;
                 }
             }
@@ -526,14 +547,14 @@ impl<'a> PreparedCardQuery<'a> {
 impl CardQuery {
     pub fn from_ids(ids: Vec<CardId>) -> Self {
         Self {
-            ids: Some(ids),
+            card_id: Some(vec![ValueFilter::OneOf(ids)]),
             ..Default::default()
         }
     }
 
-    pub fn from_id(id: uuid::Uuid) -> Self {
+    pub fn from_id(id: CardId) -> Self {
         Self {
-            ids: Some(vec![id]),
+            card_id: Some(vec![ValueFilter::Equals(id)]),
             ..Default::default()
         }
     }
@@ -610,7 +631,7 @@ impl CardQuery {
                 return Ok(None);
             }
 
-            effective_query = effective_query.with_candidate_ids(card_ids.clone());
+            effective_query = effective_query.id_in(card_ids.clone());
 
             for effect in state.active_continuous_effects() {
                 if let crate::state::OngoingEffect::ModifyCardQuery { modifier, .. } = effect
@@ -734,18 +755,13 @@ impl CardQuery {
         if self.carried_by.is_some()
             && self.randomise.is_none()
             && self.count.is_none()
-            && self.ids.is_none()
-            && self.card_names.is_none()
-            && self.card_name_contains.is_none()
-            && self.not_named.is_none()
+            && self.card_id.is_none()
+            && self.card_name.is_none()
             && self.controller_id.is_none()
             && self.same_controller_as.is_none()
             && self.different_controller_than.is_none()
-            && self.not_in_ids.is_none()
-            && self.without_abilities.is_none()
-            && self.with_abilities.is_none()
-            && self.without_statuses.is_none()
-            && self.with_statuses.is_none()
+            && self.abilities.is_none()
+            && self.statuses.is_none()
             && self.card_types.is_none()
             && self.minion_types.is_none()
             && self.artifact_types.is_none()
@@ -791,9 +807,11 @@ impl CardQuery {
         self.source_card_id
     }
 
-    fn with_candidate_ids(self, ids: Vec<CardId>) -> Self {
+    fn id_in(self, ids: Vec<CardId>) -> Self {
+        let mut new_filter = self.card_id.unwrap_or_default();
+        new_filter.push(ValueFilter::OneOf(ids));
         Self {
-            ids: Some(ids),
+            card_id: Some(new_filter),
             ..self
         }
     }
@@ -805,30 +823,38 @@ impl CardQuery {
         }
     }
 
-    pub fn card_name_contains(self, name: &str) -> Self {
+    pub fn name_contains(self, name: String) -> Self {
+        let mut new_filter = self.card_name.unwrap_or_default();
+        new_filter.push(StringFilter::ContainsSubstr(name));
         Self {
-            card_name_contains: Some(name.to_string()),
+            card_name: Some(new_filter),
             ..self
         }
     }
 
-    pub fn not_named(self, name: &str) -> Self {
+    pub fn not_named(self, name: String) -> Self {
+        let mut new_filter = self.card_name.unwrap_or_default();
+        new_filter.push(StringFilter::NotEquals(name));
         Self {
-            not_named: Some(vec![name.to_string()]),
+            card_name: Some(new_filter),
             ..self
         }
     }
 
-    pub fn cards_named(self, name: &str) -> Self {
+    pub fn named(self, name: String) -> Self {
+        let mut new_filter = self.card_name.unwrap_or_default();
+        new_filter.push(StringFilter::Equals(name));
         Self {
-            card_names: Some(vec![name.to_string()]),
+            card_name: Some(new_filter),
             ..self
         }
     }
 
-    pub fn cards_with_names(self, names: Vec<String>) -> Self {
+    pub fn name_in(self, names: Vec<String>) -> Self {
+        let mut new_filter = self.card_name.unwrap_or_default();
+        new_filter.push(StringFilter::OneOf(names));
         Self {
-            card_names: Some(names),
+            card_name: Some(new_filter),
             ..self
         }
     }
@@ -1044,44 +1070,56 @@ impl CardQuery {
         }
     }
 
-    pub fn without_ability(self, ability: &Ability) -> Self {
+    pub fn without_ability(self, ability: Ability) -> Self {
+        let mut new_filter = self.abilities.unwrap_or_default();
+        new_filter.push(VecFilter::Without(ability));
         Self {
-            without_abilities: Some(vec![ability.clone()]),
+            abilities: Some(new_filter),
             ..self
         }
     }
 
     pub fn without_abilities(self, abilities: Vec<Ability>) -> Self {
+        let mut new_filter = self.abilities.unwrap_or_default();
+        new_filter.push(VecFilter::WithoutAny(abilities));
         Self {
-            without_abilities: Some(abilities),
+            abilities: Some(new_filter),
             ..self
         }
     }
 
-    pub fn with_ability(self, ability: &Ability) -> Self {
+    pub fn with_ability(self, ability: Ability) -> Self {
+        let mut new_filter = self.abilities.unwrap_or_default();
+        new_filter.push(VecFilter::With(ability));
         Self {
-            with_abilities: Some(vec![ability.clone()]),
+            abilities: Some(new_filter),
             ..self
         }
     }
 
     pub fn with_abilities(self, abilities: Vec<Ability>) -> Self {
+        let mut new_filter = self.abilities.unwrap_or_default();
+        new_filter.push(VecFilter::WithAll(abilities));
         Self {
-            with_abilities: Some(abilities),
+            abilities: Some(new_filter),
             ..self
         }
     }
 
-    pub fn without_status(self, status: &CardStatus) -> Self {
+    pub fn without_status(self, status: CardStatus) -> Self {
+        let mut new_filter = self.statuses.unwrap_or_default();
+        new_filter.push(VecFilter::Without(status));
         Self {
-            without_statuses: Some(vec![status.clone()]),
+            statuses: Some(new_filter),
             ..self
         }
     }
 
-    pub fn with_status(self, status: &CardStatus) -> Self {
+    pub fn with_status(self, status: CardStatus) -> Self {
+        let mut new_filter = self.statuses.unwrap_or_default();
+        new_filter.push(VecFilter::With(status));
         Self {
-            with_statuses: Some(vec![status.clone()]),
+            statuses: Some(new_filter),
             ..self
         }
     }
@@ -1114,16 +1152,20 @@ impl CardQuery {
         }
     }
 
-    pub fn id_not(self, id: &uuid::Uuid) -> Self {
+    pub fn id_not(self, id: CardId) -> Self {
+        let mut new_filter = self.card_id.unwrap_or_default();
+        new_filter.push(ValueFilter::NotEquals(id));
         Self {
-            not_in_ids: Some(vec![*id]),
+            card_id: Some(new_filter),
             ..self
         }
     }
 
     pub fn id_not_in(self, not_in_ids: Vec<CardId>) -> Self {
+        let mut new_filter = self.card_id.unwrap_or_default();
+        new_filter.push(ValueFilter::NoneOf(not_in_ids));
         Self {
-            not_in_ids: Some(not_in_ids),
+            card_id: Some(new_filter),
             ..self
         }
     }
@@ -1279,16 +1321,12 @@ impl CardQuery {
     }
 
     pub fn matches(&self, card_id: &CardId, state: &State) -> bool {
-        if let Some(ids) = &self.ids
-            && !ids.contains(card_id)
-        {
-            return false;
-        }
-
-        if let Some(not_in_ids) = &self.not_in_ids
-            && not_in_ids.contains(card_id)
-        {
-            return false;
+        if let Some(filters) = &self.card_id {
+            for filter in filters {
+                if !filter.matches(card_id) {
+                    return false;
+                }
+            }
         }
 
         let card = state.get_card(card_id);

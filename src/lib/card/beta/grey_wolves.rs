@@ -70,9 +70,9 @@ impl Card for GreyWolves {
             affected_cards: self.get_id().into(),
             matching_cards: CardQuery::new()
                 .minions()
-                .cards_named(Self::NAME)
+                .named(Self::NAME.to_string())
                 .nearby_locations_to_card(self.get_id())
-                .id_not(self.get_id()),
+                .id_not(*self.get_id()),
         }])
     }
 }

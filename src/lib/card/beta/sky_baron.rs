@@ -69,7 +69,7 @@ impl Card for SkyBaron {
         }
         vec![OngoingEffect::RemoveAbilities {
             removal: AbilityRemoval::exact(Ability::Airborne),
-            affected_cards: CardQuery::new().units().id_not(self.get_id()),
+            affected_cards: CardQuery::new().units().id_not(*self.get_id()),
         }]
     }
 }

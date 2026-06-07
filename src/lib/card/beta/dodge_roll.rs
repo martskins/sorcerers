@@ -53,7 +53,7 @@ impl Card for DodgeRoll {
     async fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {
         let controller_id = self.get_controller_id(state);
         let dodge_rolls_in_hand = CardQuery::new()
-            .cards_named(DodgeRoll::NAME)
+            .named(DodgeRoll::NAME.to_string())
             .controlled_by(&controller_id)
             .including_not_in_play()
             .in_zone(&Zone::Hand)

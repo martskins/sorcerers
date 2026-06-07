@@ -69,7 +69,7 @@ impl Card for OldSaltAnchorman {
                 .in_play()
                 .controlled_by_same_controller_as_card(self.get_id())
                 .nearby_zones_to_card(self.get_id())
-                .id_not(self.get_id()),
+                .id_not(*self.get_id()),
         }]
     }
 }

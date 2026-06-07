@@ -99,7 +99,7 @@ impl Magic for ChaosTwister {
         let units = CardQuery::new()
             .units()
             .in_zone(landing_zone)
-            .id_not(&target_id)
+            .id_not(target_id)
             .all(state);
         for unit_id in units {
             effects.push(Effect::TakeDamage {

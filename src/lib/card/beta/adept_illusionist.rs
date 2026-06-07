@@ -17,7 +17,7 @@ impl ActivatedAbility for AdeptIllusionistAction {
     ) -> anyhow::Result<Vec<Effect>> {
         let Some(picked_card_id) = CardQuery::new()
             .controlled_by(&player_id.clone())
-            .cards_named(AdeptIllusionist::NAME)
+            .named(AdeptIllusionist::NAME.to_string())
             .including_not_in_play()
             .id_not_in(vec![*card_id])
             .pick(player_id, state, true)

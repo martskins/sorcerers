@@ -30,7 +30,7 @@ impl ActivatedAbility for GeomancerAbility {
                 let geomancer = state.get_card(card_id);
                 Ok(!CardQuery::new()
                     .sites()
-                    .cards_named(Rubble::NAME)
+                    .named(Rubble::NAME.to_string())
                     .adjacent_to(geomancer.get_zone())
                     .all(state)
                     .is_empty())

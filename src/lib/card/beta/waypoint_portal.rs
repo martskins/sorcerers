@@ -71,7 +71,7 @@ impl Magic for WaypointPortal {
         let Some(second_site_id) = CardQuery::new()
             .sites()
             .in_play()
-            .id_not(&first_site_id)
+            .id_not(first_site_id)
             .with_prompt("Pick the second site")
             .with_source_card(*self.get_id())
             .pick(&controller_id, state, false)

@@ -78,7 +78,7 @@ impl Card for BottomlessPit {
             trigger: EffectQuery::EnterZone {
                 card: CardQuery::new()
                     .minions()
-                    .without_ability(&Ability::Airborne),
+                    .without_ability(Ability::Airborne),
                 zone: ZoneQuery::from_zone(self.get_zone().clone()),
                 from: None,
             },
@@ -97,7 +97,7 @@ impl Card for BottomlessPit {
             KILL_ENTERING_MINION_HOOK => Ok(EffectQuery::EnterZone {
                 card: CardQuery::new()
                     .minions()
-                    .without_ability(&Ability::Airborne),
+                    .without_ability(Ability::Airborne),
                 zone: ZoneQuery::from_zone(self.get_zone().clone()),
                 from: None,
             }

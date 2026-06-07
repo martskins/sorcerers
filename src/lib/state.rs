@@ -3,9 +3,7 @@ use crate::{
     deck::Deck,
     effect::Counter,
     effect::{Effect, EffectCallback, EffectEngine, EffectState},
-    game::{
-        ActivatedAbility, CardId, PlayerId, Resources, Thresholds, ThresholdsDiff,
-    },
+    game::{ActivatedAbility, CardId, PlayerId, Resources, Thresholds, ThresholdsDiff},
     networking::message::{ClientMessage, OngoingEffectData, ServerMessage},
     query::{CardQuery, EffectQuery, ZoneQuery},
     zone::Zone,
@@ -1756,10 +1754,11 @@ impl State {
         let mut defenders = CardQuery::new()
             .units()
             .near_to(defender.get_zone())
-            .without_ability(&Ability::CannotDefend)
-            .without_status(&CardStatus::Disabled)
+            // TODO: Should CannotDefend be an ability? Sounds more like a status.
+            .without_ability(Ability::CannotDefend)
+            .without_status(CardStatus::Disabled)
             .untapped()
-            .id_not(defender_id)
+            .id_not(*defender_id)
             .controlled_by(&controller_id)
             .all(self);
 

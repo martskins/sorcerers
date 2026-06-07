@@ -68,38 +68,38 @@ impl Card for UltimateHorror {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-        let controller_id = self.get_controller_id(state);
-        let mut nearby_zones = self.get_zone().get_nearby_sites(state);
-        nearby_zones.extend(self.get_zone().get_nearby_voids(state));
-        let dead_voidwalkers = CardQuery::new()
-            .minions()
-            .dead()
-            .with_ability(&Ability::Voidwalk)
-            .all(state);
-        let mut effects = Vec::new();
-        for card_id in dead_voidwalkers {
-            let zone = pick_zone(
-                &controller_id,
-                &nearby_zones,
-                state,
-                false,
-                &format!(
-                    "Ultimate Horror: Pick a nearby site or void for {}",
-                    state.get_card(&card_id).get_name()
-                ),
-            )
-            .await?;
-            effects.push(Effect::SummonCards {
-                cards: vec![(
-                    controller_id,
-                    card_id,
-                    Zone::Cemetery,
-                    zone.into_location()
-                        .expect("Ultimate Horror target must be a location"),
-                )],
-            });
-        }
-        Ok(effects)
+                let controller_id = self.get_controller_id(state);
+                let mut nearby_zones = self.get_zone().get_nearby_sites(state);
+                nearby_zones.extend(self.get_zone().get_nearby_voids(state));
+                let dead_voidwalkers = CardQuery::new()
+                    .minions()
+                    .dead()
+                    .with_ability(Ability::Voidwalk)
+                    .all(state);
+                let mut effects = Vec::new();
+                for card_id in dead_voidwalkers {
+                    let zone = pick_zone(
+                        &controller_id,
+                        &nearby_zones,
+                        state,
+                        false,
+                        &format!(
+                            "Ultimate Horror: Pick a nearby site or void for {}",
+                            state.get_card(&card_id).get_name()
+                        ),
+                    )
+                    .await?;
+                    effects.push(Effect::SummonCards {
+                        cards: vec![(
+                            controller_id,
+                            card_id,
+                            Zone::Cemetery,
+                            zone.into_location()
+                                .expect("Ultimate Horror target must be a location"),
+                        )],
+                    });
+                }
+                Ok(effects)
             }
             _ => Ok(vec![]),
         }

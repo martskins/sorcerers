@@ -26,7 +26,7 @@ impl ActivatedAbility for StealArtifact {
         let candidate_units: Vec<CardId> = CardQuery::new()
             .units()
             .in_zone(&zone)
-            .id_not(card_id)
+            .id_not(*card_id)
             .all(state)
             .into_iter()
             .filter(|unit_id| CardQuery::new().artifacts().carried_by(unit_id).any(state))

@@ -1303,7 +1303,7 @@ impl Effect {
                             let splash_effects = CardQuery::new()
                                 .units()
                                 .in_zone(&zone)
-                                .id_not(&picked_unit_id)
+                                .id_not(picked_unit_id)
                                 .all(state)
                                 .into_iter()
                                 .map(|c| Effect::TakeDamage {
@@ -2331,7 +2331,7 @@ impl Effect {
                             CardQuery::new()
                                 .units()
                                 .in_zone(target.get_zone())
-                                .id_not(card_id)
+                                .id_not(*card_id)
                                 .all(&snapshot)
                                 .into_iter()
                                 .filter(|id| {

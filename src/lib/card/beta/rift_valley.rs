@@ -103,7 +103,7 @@ impl Card for RiftValley {
             .sites()
             .in_play()
             .controlled_by(player_id)
-            .not_named(Rubble::NAME)
+            .not_named(Rubble::NAME.to_string())
             .all(state)
             .into_iter()
             .filter_map(|card_id| state.get_card(&card_id).get_zone().get_square())

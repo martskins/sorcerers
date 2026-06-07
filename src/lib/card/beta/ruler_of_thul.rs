@@ -68,7 +68,7 @@ impl Card for RulerOfThul {
                 affected_cards: CardQuery::new()
                     .units()
                     .controlled_by_same_controller_as_card(self.get_id())
-                    .id_not(self.get_id())
+                    .id_not(*self.get_id())
                     .in_zone_of_card(self.get_id()),
             },
         ])

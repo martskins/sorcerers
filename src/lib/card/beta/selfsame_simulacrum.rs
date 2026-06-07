@@ -81,38 +81,38 @@ impl Card for SelfsameSimulacrum {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-        let controller_id = self.get_controller_id(state);
-        let targets = CardQuery::new()
-            .minions()
-            .near_to(self.get_zone())
-            .id_not(self.get_id())
-            .all(state);
-        if targets.is_empty() {
-            return Ok(vec![]);
-        }
+                let controller_id = self.get_controller_id(state);
+                let targets = CardQuery::new()
+                    .minions()
+                    .near_to(self.get_zone())
+                    .id_not(*self.get_id())
+                    .all(state);
+                if targets.is_empty() {
+                    return Ok(vec![]);
+                }
 
-        let chosen_id = pick_card(
-            &controller_id,
-            &targets,
-            state,
-            "Selfsame Simulacrum: Pick a nearby minion to copy",
-        )
-        .await?;
-        let mut copied = state
-            .get_card(&chosen_id)
-            .get_unit_base()
-            .cloned()
-            .ok_or(anyhow::anyhow!("chosen minion has no unit base"))?;
-        copied.damage = 0;
-        copied.tapped = false;
-        copied.carried_by = None;
-        copied.power_counters.clear();
-        copied.ability_counters.clear();
+                let chosen_id = pick_card(
+                    &controller_id,
+                    &targets,
+                    state,
+                    "Selfsame Simulacrum: Pick a nearby minion to copy",
+                )
+                .await?;
+                let mut copied = state
+                    .get_card(&chosen_id)
+                    .get_unit_base()
+                    .cloned()
+                    .ok_or(anyhow::anyhow!("chosen minion has no unit base"))?;
+                copied.damage = 0;
+                copied.tapped = false;
+                copied.carried_by = None;
+                copied.power_counters.clear();
+                copied.ability_counters.clear();
 
-        Ok(vec![Effect::SetCardData {
-            card_id: *self.get_id(),
-            data: std::sync::Arc::new(copied),
-        }])
+                Ok(vec![Effect::SetCardData {
+                    card_id: *self.get_id(),
+                    data: std::sync::Arc::new(copied),
+                }])
             }
             _ => Ok(vec![]),
         }

@@ -74,59 +74,58 @@ impl Card for PurgeJuggernaut {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             TURN_START_HOOK => {
-        let controller_id = self.get_controller_id(state);
-        if state.current_player() != controller_id {
-            return Ok(vec![]);
-        }
-        if !self.get_zone().is_in_play() {
-            return Ok(vec![]);
-        }
-        let self_id = *self.get_id();
-        let adjacent_locations: Vec<Zone> = self
-            .get_zone()
-            .get_adjacent()
-            .into_iter()
-            .filter(|z| z.get_site(state).is_some())
-            .collect();
-        if adjacent_locations.is_empty() {
-            return Ok(vec![]);
-        }
+                let controller_id = self.get_controller_id(state);
+                if state.current_player() != controller_id {
+                    return Ok(vec![]);
+                }
+                if !self.get_zone().is_in_play() {
+                    return Ok(vec![]);
+                }
+                let self_id = *self.get_id();
+                let adjacent_locations: Vec<Zone> = self
+                    .get_zone()
+                    .get_adjacent()
+                    .into_iter()
+                    .filter(|z| z.get_site(state).is_some())
+                    .collect();
+                if adjacent_locations.is_empty() {
+                    return Ok(vec![]);
+                }
 
-        let target_zone = pick_zone(
-            &controller_id,
-            &adjacent_locations,
-            state,
-            false,
-            "Purge Juggernaut: Pick an adjacent location",
-        )
-        .await?;
-        let killed_units: Vec<Effect> = CardQuery::new()
-            .units()
-            .in_zone(&target_zone)
-            .id_not(self.get_id())
-            .all(state)
-            .into_iter()
-            .map(|unit_id| Effect::KillMinion {
-                card_id: unit_id,
-                killer_id: self_id,
-                from_attack: false,
-            })
-            .collect();
-        let mut effects = vec![Effect::MoveCard {
-            player_id: controller_id,
-            card_id: self_id,
-            from: (self.get_zone().clone())
-                .into_location()
-                .expect("MoveCard source must be a location"),
-            to: LocationQuery::from_zone(
-                (target_zone.clone()).with_region(self.get_region(state).clone()),
-            ),
-            tap: true,
-            through_path: None,
-        }];
-        effects.extend(killed_units);
-        Ok(effects)
-    
+                let target_zone = pick_zone(
+                    &controller_id,
+                    &adjacent_locations,
+                    state,
+                    false,
+                    "Purge Juggernaut: Pick an adjacent location",
+                )
+                .await?;
+                let killed_units: Vec<Effect> = CardQuery::new()
+                    .units()
+                    .in_zone(&target_zone)
+                    .id_not(*self.get_id())
+                    .all(state)
+                    .into_iter()
+                    .map(|unit_id| Effect::KillMinion {
+                        card_id: unit_id,
+                        killer_id: self_id,
+                        from_attack: false,
+                    })
+                    .collect();
+                let mut effects = vec![Effect::MoveCard {
+                    player_id: controller_id,
+                    card_id: self_id,
+                    from: (self.get_zone().clone())
+                        .into_location()
+                        .expect("MoveCard source must be a location"),
+                    to: LocationQuery::from_zone(
+                        (target_zone.clone()).with_region(self.get_region(state).clone()),
+                    ),
+                    tap: true,
+                    through_path: None,
+                }];
+                effects.extend(killed_units);
+                Ok(effects)
             }
             _ => Ok(vec![]),
         }

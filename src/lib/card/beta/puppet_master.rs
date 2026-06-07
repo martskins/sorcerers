@@ -88,21 +88,21 @@ impl Card for PuppetMaster {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-        let controller_id = self.get_controller_id(state);
-        let self_id = *self.get_id();
-        let controlled_minions = CardQuery::new()
-            .units()
-            .tapped()
-            .in_zone(self.get_zone())
-            .id_not(&self_id)
-            .all(state);
-        Ok(vec![Effect::SetCardData {
-            card_id: self_id,
-            data: std::sync::Arc::new(PuppetMasterData {
-                controller_id: Some(controller_id),
-                controlled_minions,
-            }),
-        }])
+                let controller_id = self.get_controller_id(state);
+                let self_id = *self.get_id();
+                let controlled_minions = CardQuery::new()
+                    .units()
+                    .tapped()
+                    .in_zone(self.get_zone())
+                    .id_not(self_id)
+                    .all(state);
+                Ok(vec![Effect::SetCardData {
+                    card_id: self_id,
+                    data: std::sync::Arc::new(PuppetMasterData {
+                        controller_id: Some(controller_id),
+                        controlled_minions,
+                    }),
+                }])
             }
             _ => Ok(vec![]),
         }

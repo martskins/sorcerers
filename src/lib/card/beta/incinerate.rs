@@ -87,7 +87,7 @@ impl Magic for Incinerate {
         .await?;
         Ok(CardQuery::new()
             .units()
-            .id_not(self.get_id())
+            .id_not(*self.get_id())
             .in_zone(&picked_zone)
             .all(state)
             .into_iter()

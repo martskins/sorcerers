@@ -68,7 +68,7 @@ impl Card for HouseArnBannerman {
                 .units()
                 .nearby_locations_to_card(self.get_id())
                 .controlled_by_same_controller_as_card(self.get_id())
-                .id_not(self.get_id()),
+                .id_not(*self.get_id()),
         }]
     }
 }

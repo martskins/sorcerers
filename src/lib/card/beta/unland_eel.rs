@@ -83,7 +83,7 @@ impl Card for UnlandEel {
                 let other_minions = CardQuery::new()
                     .minions()
                     .in_zone(self.get_zone())
-                    .id_not(self.get_id())
+                    .id_not(*self.get_id())
                     .all(state);
                 if other_minions.is_empty() {
                     return Ok(vec![]);

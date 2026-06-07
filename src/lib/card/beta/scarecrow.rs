@@ -75,24 +75,24 @@ impl Card for Scarecrow {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-        let zone = self.get_zone();
-        if !zone.is_in_play() {
-            return Ok(vec![]);
-        }
+                let zone = self.get_zone();
+                if !zone.is_in_play() {
+                    return Ok(vec![]);
+                }
 
-        let airborne_minions = CardQuery::new()
-            .minions()
-            .in_zone(zone)
-            .with_ability(&Ability::Airborne)
-            .all(state);
+                let airborne_minions = CardQuery::new()
+                    .minions()
+                    .in_zone(zone)
+                    .with_ability(Ability::Airborne)
+                    .all(state);
 
-        Ok(airborne_minions
-            .into_iter()
-            .map(|card_id| Effect::SetCardZone {
-                card_id,
-                zone: Zone::Hand,
-            })
-            .collect())
+                Ok(airborne_minions
+                    .into_iter()
+                    .map(|card_id| Effect::SetCardZone {
+                        card_id,
+                        zone: Zone::Hand,
+                    })
+                    .collect())
             }
             _ => Ok(vec![]),
         }
@@ -101,7 +101,7 @@ impl Card for Scarecrow {
     async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         Ok(vec![OngoingEffect::MakeZoneUnvisitable {
             affected_zone: self.get_zone().clone(),
-            affected_cards: CardQuery::new().minions().with_ability(&Ability::Airborne),
+            affected_cards: CardQuery::new().minions().with_ability(Ability::Airborne),
         }])
     }
 }

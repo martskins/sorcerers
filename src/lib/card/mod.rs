@@ -279,7 +279,7 @@ impl CostType {
                         CostAction::Tap => {
                             query = query
                                 .untapped()
-                                .without_status(&CardStatus::SummoningSickness)
+                                .without_status(CardStatus::SummoningSickness)
                         }
                         CostAction::Discard => query = query.in_zone(&Zone::Hand),
                         CostAction::Sacrifice => query = query.in_zones(&Zone::all_realm()),
@@ -376,7 +376,7 @@ impl CostType {
                         CostAction::Tap => {
                             query = query
                                 .untapped()
-                                .without_status(&CardStatus::SummoningSickness)
+                                .without_status(CardStatus::SummoningSickness)
                         }
                         CostAction::Discard => query = query.in_zone(&Zone::Hand),
                         CostAction::Sacrifice => query = query.in_zones(&Zone::all_realm()),

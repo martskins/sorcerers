@@ -54,7 +54,7 @@ impl ActivatedAbility for WaveshaperFlood {
             CardQuery::new()
                 .minions()
                 .in_zone(picked_site.get_zone())
-                .without_ability(&Ability::Submerge)
+                .without_ability(Ability::Submerge)
                 .all(state)
                 .into_iter()
                 .map(|card_id| Effect::SetTapped {
@@ -66,7 +66,7 @@ impl ActivatedAbility for WaveshaperFlood {
         let tapped_minions = CardQuery::new()
             .minions()
             .in_zone(picked_site.get_zone())
-            .without_ability(&Ability::Submerge)
+            .without_ability(Ability::Submerge)
             .all(state);
 
         for tapped_minion_id in tapped_minions {

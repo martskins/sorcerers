@@ -47,7 +47,7 @@ fn bench_card_query(c: &mut Criterion) {
 
     group.bench_function("Name Contains", |b| {
         b.iter(|| {
-            let query = CardQuery::new().card_name_contains("Wizard");
+            let query = CardQuery::new().name_contains("Wizard".to_string());
             let _ = black_box(query.all(&state));
         })
     });

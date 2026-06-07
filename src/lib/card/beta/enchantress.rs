@@ -124,7 +124,7 @@ impl Card for Enchantress {
                     .auras()
                     .in_play()
                     .can_be_targeted_by_player(&controller_id)
-                    .id_not(&spell_id)
+                    .id_not(spell_id)
                     .all(state);
 
                 if auras.is_empty() {

@@ -85,27 +85,27 @@ impl Card for MirrorRealm {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-        let nearby_sites = CardQuery::new()
-            .sites()
-            .near_to(self.get_zone())
-            .id_not(self.get_id())
-            .all(state);
-        if nearby_sites.is_empty() {
-            return Ok(vec![]);
-        }
+                let nearby_sites = CardQuery::new()
+                    .sites()
+                    .near_to(self.get_zone())
+                    .id_not(*self.get_id())
+                    .all(state);
+                if nearby_sites.is_empty() {
+                    return Ok(vec![]);
+                }
 
-        let picked_site_id = pick_card(
-            self.get_controller_id(state),
-            &nearby_sites,
-            state,
-            "Mirror Realm: Pick a nearby site to copy",
-        )
-        .await?;
+                let picked_site_id = pick_card(
+                    self.get_controller_id(state),
+                    &nearby_sites,
+                    state,
+                    "Mirror Realm: Pick a nearby site to copy",
+                )
+                .await?;
 
-        Ok(vec![Effect::MakeCardCopyOf {
-            card_id: *self.get_id(),
-            copy_source_id: picked_site_id,
-        }])
+                Ok(vec![Effect::MakeCardCopyOf {
+                    card_id: *self.get_id(),
+                    copy_source_id: picked_site_id,
+                }])
             }
             _ => Ok(vec![]),
         }

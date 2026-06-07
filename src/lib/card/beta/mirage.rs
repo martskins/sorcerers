@@ -83,7 +83,7 @@ impl Card for Mirage {
             .sites()
             .controlled_by(player_id)
             .in_play()
-            .id_not(self.get_id())
+            .id_not(*self.get_id())
             .all(state);
 
         if !other_sites.is_empty()

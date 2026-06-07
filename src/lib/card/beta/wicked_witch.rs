@@ -65,7 +65,7 @@ impl Card for WickedWitch {
             affected_cards: CardQuery::new()
                 .minions()
                 .nearby_zones_to_card(self.get_id())
-                .id_not(self.get_id()),
+                .id_not(*self.get_id()),
         }]
     }
 }
