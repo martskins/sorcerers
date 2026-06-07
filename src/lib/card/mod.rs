@@ -1910,7 +1910,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     async fn resolve_hook(
         &self,
-        _hook: HookId,
+        _hook_id: HookId,
         _state: &State,
         _effect: &Effect,
     ) -> anyhow::Result<Vec<Effect>> {

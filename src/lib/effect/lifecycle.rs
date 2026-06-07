@@ -208,28 +208,25 @@ impl EffectLifecycle {
         let mut effects_to_remove = vec![];
         let mut deferred_effects = state.deferred_effects().to_vec();
         for (idx, de) in deferred_effects.iter_mut().enumerate() {
-            if !de.trigger_on_effect.matches(effect, state).await? {
-                continue;
+            if de.trigger_on_effect.matches(effect, state).await? {
+                if let Some(v) = de.trigger_times.as_mut() {
+                    *v -= 1
+                }
+
+                let Some(card) = state.cards.get(&de.card_id) else {
+                    return Err(anyhow::anyhow!("failed to get card by id"));
+                };
+
+                let effects = card.resolve_hook(de.hook_id, state, effect).await?;
+                state.queue(effects);
+
+                if de.trigger_times.is_some_and(|tt| tt == 0) {
+                    effects_to_remove.push(idx);
+                }
             }
 
-            match de.trigger_times.as_mut() {
-                Some(v) => *v -= 1,
-                None => continue,
-            }
-
-            let Some(card) = state.cards.get(&de.card_id) else {
-                return Err(anyhow::anyhow!("failed to get card by id"));
-            };
-
-            let effects = card.resolve_hook(de.hook_id, state, effect).await?;
-            state.queue(effects);
-
-            if de.trigger_times.is_some_and(|tt| tt == 0) {
-                effects_to_remove.push(idx);
-            }
-
-            if let Some(expires_on_effect) = &de.expires_on_effect
-                && expires_on_effect.matches(effect, state).await?
+            if let Some(ee) = &de.expires_on_effect
+                && ee.matches(effect, state).await?
             {
                 effects_to_remove.push(idx);
             }
