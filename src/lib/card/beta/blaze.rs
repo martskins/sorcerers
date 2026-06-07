@@ -65,10 +65,14 @@ impl Card for Blaze {
     }
 
     async fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
+        let Some(target_id) = self.target_id else {
+            return Ok(vec![]);
+        };
+
         Ok(vec![Hook {
             id: ON_MOVE_HOOK,
             trigger: EffectQuery::MoveCard {
-                card: self.target_id.expect("target_id to be set").into(),
+                card: target_id.into(),
             },
             timing: HookTiming::After,
             source_zones: HookSourceZones::Any,
