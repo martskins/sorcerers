@@ -243,7 +243,7 @@ impl Card for Geomancer {
         Some(self)
     }
 
-    fn get_activated_abilities(
+    fn base_get_activated_abilities(
         &self,
         state: &State,
     ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {

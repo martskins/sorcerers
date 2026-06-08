@@ -1851,6 +1851,29 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         }
     }
 
+    fn base_get_activated_abilities(
+        &self,
+        state: &State,
+    ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
+        if self.is_avatar() {
+            let mut abilities = self.base_avatar_activated_abilities(state)?;
+            if !state.card_has_special_abilities_removed(self.get_id()) {
+                abilities.extend(self.get_additional_activated_abilities(state)?);
+            }
+            Ok(abilities)
+        } else if state.is_unit_card(self.get_id()) {
+            let mut abilities = self.base_unit_activated_abilities(state)?;
+            if !state.card_has_special_abilities_removed(self.get_id()) {
+                abilities.extend(self.get_additional_activated_abilities(state)?);
+            }
+            Ok(abilities)
+        } else if state.card_has_special_abilities_removed(self.get_id()) {
+            Ok(vec![])
+        } else {
+            Ok(self.get_additional_activated_abilities(state)?)
+        }
+    }
+
     // Returns the available actions for this card, given the current game state.
     fn get_activated_abilities(
         &self,
@@ -1860,24 +1883,9 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             return Ok(vec![]);
         }
 
-        let mut abilities = if self.is_avatar() {
-            let mut abilities = self.base_avatar_activated_abilities(state)?;
-            if !state.card_has_special_abilities_removed(self.get_id()) {
-                abilities.extend(self.get_additional_activated_abilities(state)?);
-            }
-            abilities
-        } else if state.is_unit_card(self.get_id()) {
-            let mut abilities = self.base_unit_activated_abilities(state)?;
-            if !state.card_has_special_abilities_removed(self.get_id()) {
-                abilities.extend(self.get_additional_activated_abilities(state)?);
-            }
-            abilities
-        } else if state.card_has_special_abilities_removed(self.get_id()) {
-            vec![]
-        } else {
-            self.get_additional_activated_abilities(state)?
-        };
-
+        let mut abilities = self.base_get_activated_abilities(state)?;
+        // TODO: Is this check correct? I think we should be filtering these out where this is being
+        // called, but haven't properly thought about it yet.
         if !state.card_has_special_abilities_removed(self.get_id()) {
             abilities.extend(state.activated_abilities_from_get_ongoing_effects(self.get_id()));
             abilities.extend(state.activated_abilities_from_continuous_effects(self.get_id()));
