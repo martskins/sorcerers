@@ -86,11 +86,32 @@ pub enum EffectQuery {
         card: CardQuery,
         striker: Option<CardQuery>,
     },
+    Fight {
+        attacker: CardQuery,
+        defender: Option<CardQuery>,
+    },
 }
 
 impl EffectQuery {
     pub async fn matches(&self, effect: &Effect, state: &State) -> anyhow::Result<bool> {
         match (self, effect) {
+            (
+                EffectQuery::Fight {
+                    attacker: attacker_query,
+                    defender: defender_query,
+                },
+                Effect::Fight {
+                    attacker_id,
+                    defender_id,
+                    ..
+                },
+            ) => {
+                let attacker_matches = attacker_query.matches(attacker_id, state);
+                let defender_matches = defender_query
+                    .as_ref()
+                    .is_none_or(|dq| dq.matches(defender_id, state));
+                Ok(attacker_matches && defender_matches)
+            }
             (
                 EffectQuery::EnterZone {
                     card: card_query,

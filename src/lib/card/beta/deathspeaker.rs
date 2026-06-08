@@ -1,5 +1,7 @@
 use crate::prelude::*;
 
+const TURN_START_HOOK: HookId = 1;
+
 #[derive(Debug, Clone)]
 struct DeathspeakerAbility;
 
@@ -32,17 +34,12 @@ impl ActivatedAbility for DeathspeakerAbility {
         Ok(Cost::ZERO.clone())
     }
 
-    // TODO: Deathspeaker should cast the original copy of the card, modifying it's mana cost if
-    // necessary and banishing after.
-    // We should probably just make the minions in the cemetery playable with
-    // TemporaryEffect::MakePlayable but on an OngoingEffect variant.
     async fn on_select(
         &self,
         card_id: &CardId,
         player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
-        // Step 1: Pick a dead minion to copy.
         let Some(chosen_id) = CardQuery::new()
             .dead()
             .minions()
@@ -55,70 +52,8 @@ impl ActivatedAbility for DeathspeakerAbility {
         };
 
         let chosen = state.get_card(&chosen_id);
-        let mana_cost = chosen.get_base().costs.mana_value() as i8;
-
-        // Step 2: Check Death's Door (avatar has taken max damage).
-        let deathspeaker = state.get_card(card_id);
-        let deaths_door = deathspeaker
-            .get_avatar_base()
-            .map(|ab| ab.deaths_door)
-            .unwrap_or(false);
-
-        // Step 3: Check affordability (skip if on Death's Door).
-        if !deaths_door {
-            let available = *state.player_mana.get(player_id).unwrap_or(&0) as i8;
-            if available < mana_cost {
-                return Ok(vec![]);
-            }
-        }
-
-        // Step 4: Pick a zone to summon the copy.
-        let valid_zones = chosen.get_valid_play_zones(state, player_id, card_id)?;
-        if valid_zones.is_empty() {
-            return Ok(vec![]);
-        }
-
-        let chosen_zone = pick_zone(
-            player_id,
-            &valid_zones,
-            state,
-            false,
-            "Deathspeaker: Pick a zone to summon the copy",
-        )
-        .await?;
-
-        // Build effects.
-        let mut effects: Vec<Effect> = vec![];
-
-        // Banish the original dead minion.
-        effects.push(Effect::BanishCard { card_id: chosen_id });
-
-        // Consume mana unless on Death's Door.
-        if !deaths_door && mana_cost > 0 {
-            effects.push(Effect::AdjustMana {
-                player_id: *player_id,
-                mana: -mana_cost,
-            });
-        }
-
-        effects.push(Effect::SummonCards {
-            summoned_cards: vec![SummonCard {
-                player_id: deathspeaker.get_controller_id(state),
-                card_id: chosen_id,
-                from_zone: Zone::Cemetery,
-                to_location: chosen_zone
-                    .location()
-                    .expect("chosen zone to be a location")
-                    .clone(),
-            }],
-        });
-
-        // Record that this ability was used this turn.
-        effects.push(Effect::SetCardData {
-            card_id: *card_id,
-            data: std::sync::Arc::new(true),
-        });
-
+        let mut effects = vec![Effect::BanishCard { card_id: chosen_id }];
+        effects.extend(chosen.play_mechanic(state, player_id, card_id).await?);
         Ok(effects)
     }
 }
@@ -161,8 +96,6 @@ impl Deathspeaker {
         }
     }
 }
-
-const TURN_START_HOOK: HookId = 1;
 
 #[async_trait::async_trait]
 impl Card for Deathspeaker {
@@ -249,6 +182,26 @@ impl Card for Deathspeaker {
             }
             _ => Ok(vec![]),
         }
+    }
+
+    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+        if self.has_used_ability {
+            return Ok(vec![]);
+        }
+
+        let deaths_door = self
+            .get_avatar_base()
+            .map(|ab| ab.deaths_door)
+            .unwrap_or(false);
+        if !deaths_door {
+            return Ok(vec![]);
+        }
+
+        Ok(vec![OngoingEffect::ModifyManaCost {
+            mana_diff: -i8::MAX,
+            affected_cards: CardQuery::new().minions(),
+            zones: Some(ZoneQuery::from_zone(Zone::Cemetery)),
+        }])
     }
 }
 

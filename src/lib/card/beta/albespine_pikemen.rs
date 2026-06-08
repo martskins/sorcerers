@@ -78,17 +78,25 @@ impl Card for AlbespinePikemen {
         &self,
         hook: HookId,
         _state: &State,
-        _effect: &Effect,
+        effect: &Effect,
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
-            GAIN_FIRST_STRIKE_HOOK => Ok(vec![Effect::AddTemporaryEffect {
-                effect: TemporaryEffect::GrantAbility {
-                    ability: Ability::FirstStrike,
-                    affected_cards: self.get_id().into(),
-                    // TODO: Add a fight ended effect and plug this hook to it.
-                    expires_on_effect: EffectQuery::TurnEnd { player_id: None },
-                },
-            }]),
+            GAIN_FIRST_STRIKE_HOOK => {
+                let Effect::DeclareAttack { target_id, .. } = effect else {
+                    return Ok(vec![]);
+                };
+
+                Ok(vec![Effect::AddTemporaryEffect {
+                    effect: TemporaryEffect::GrantAbility {
+                        ability: Ability::FirstStrike,
+                        affected_cards: self.get_id().into(),
+                        expires_on_effect: EffectQuery::Fight {
+                            attacker: self.get_id().into(),
+                            defender: Some(target_id.into()),
+                        },
+                    },
+                }])
+            }
             _ => Ok(vec![]),
         }
     }
