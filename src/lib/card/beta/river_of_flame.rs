@@ -66,14 +66,14 @@ impl Card for RiverOfFlame {
         Some(self)
     }
 
-    fn area_modifiers(&self, _state: &State) -> Vec<OngoingEffect> {
+    async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         if !self.get_zone().is_in_play() {
-            return vec![];
+            return Ok(vec![]);
         }
-        vec![OngoingEffect::GrantAbility {
+        Ok(vec![OngoingEffect::GrantAbility {
             ability: Ability::Spellcaster(Some(Element::Fire)),
             affected_cards: CardQuery::new().units().in_zone_of_card(self.get_id()),
-        }]
+        }])
     }
 }
 

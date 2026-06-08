@@ -70,11 +70,11 @@ impl Card for PlanarGate {
         Some(self)
     }
 
-    fn area_modifiers(&self, _state: &State) -> Vec<OngoingEffect> {
-        vec![OngoingEffect::GrantAbility {
+    async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+        Ok(vec![OngoingEffect::GrantAbility {
             ability: Ability::Voidwalk,
             affected_cards: CardQuery::new().minions().in_zone_of_card(self.get_id()),
-        }]
+        }])
     }
 
     fn get_resource_provider(&self) -> Option<&dyn ResourceProvider> {

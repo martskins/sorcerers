@@ -1374,9 +1374,7 @@ impl State {
             return Ok(());
         }
 
-        let mut passive_effects = card.get_ongoing_effects(self).await?;
-        passive_effects.extend(card.area_modifiers(self));
-
+        let passive_effects = card.get_ongoing_effects(self).await?;
         self.ongoing_effects
             .retain(|effect| effect.source != Some(*source_id));
         for effect in passive_effects {
@@ -1486,7 +1484,10 @@ impl State {
             .expect("continuous effect index should be initialized"))
     }
 
-    pub fn ability_modifiers_from_area_modifiers(&self, card_id: &CardId) -> Vec<AbilityModifier> {
+    pub fn ability_modifiers_from_get_ongoing_effects(
+        &self,
+        card_id: &CardId,
+    ) -> Vec<AbilityModifier> {
         self.with_area_modifier_index(|index| {
             index
                 .ability_modifiers
@@ -1504,7 +1505,7 @@ impl State {
                 .has_status(self, &CardStatus::Disabled)
     }
 
-    pub fn counters_from_area_modifiers(&self, card_id: &CardId) -> Vec<Counter> {
+    pub fn counters_from_get_ongoing_effects(&self, card_id: &CardId) -> Vec<Counter> {
         self.with_area_modifier_index(|index| {
             index
                 .grants_counters
@@ -1514,7 +1515,7 @@ impl State {
         })
     }
 
-    pub fn activated_abilities_from_area_modifiers(
+    pub fn activated_abilities_from_get_ongoing_effects(
         &self,
         card_id: &CardId,
     ) -> Vec<Box<dyn ActivatedAbility>> {

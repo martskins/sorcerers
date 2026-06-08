@@ -79,9 +79,9 @@ impl Card for Blizzard {
         Some(self)
     }
 
-    fn area_modifiers(&self, _state: &State) -> Vec<OngoingEffect> {
+    async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         let affected_cards = CardQuery::new().in_affected_zones_of_card(self.get_id());
-        vec![
+        Ok(vec![
             OngoingEffect::GrantAbility {
                 ability: Ability::Unattackable,
                 affected_cards: affected_cards.clone(),
@@ -90,7 +90,7 @@ impl Card for Blizzard {
                 ability: Ability::Uninterceptable,
                 affected_cards,
             },
-        ]
+        ])
     }
 }
 

@@ -1482,7 +1482,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 }
 
                 let counters: i16 = state
-                    .counters_from_area_modifiers(self.get_id())
+                    .counters_from_get_ongoing_effects(self.get_id())
                     .iter()
                     .map(|counter| counter.toughness)
                     .sum();
@@ -1879,7 +1879,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         };
 
         if !state.card_has_special_abilities_removed(self.get_id()) {
-            abilities.extend(state.activated_abilities_from_area_modifiers(self.get_id()));
+            abilities.extend(state.activated_abilities_from_get_ongoing_effects(self.get_id()));
             abilities.extend(state.activated_abilities_from_continuous_effects(self.get_id()));
         }
 
@@ -1895,11 +1895,6 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         _state: &State,
     ) -> anyhow::Result<Vec<Box<dyn ActivatedAbility>>> {
         Ok(vec![])
-    }
-
-    // Returns the area-based ongoing effects that this card provides to other cards.
-    fn area_modifiers(&self, _state: &State) -> Vec<OngoingEffect> {
-        vec![]
     }
 
     fn area_effects(&self, _state: &State) -> anyhow::Result<Vec<Effect>> {
@@ -2673,7 +2668,7 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
                     .saturating_add_signed(state.power_diff_from_continuous_effects(self.get_id()));
 
                 let power_counters: i16 = state
-                    .counters_from_area_modifiers(self.get_id())
+                    .counters_from_get_ongoing_effects(self.get_id())
                     .iter()
                     .map(|counter| counter.power)
                     .sum();
@@ -2698,7 +2693,7 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
 
             apply_ability_modifiers(
                 &mut modifiers,
-                state.ability_modifiers_from_area_modifiers(self.get_id()),
+                state.ability_modifiers_from_get_ongoing_effects(self.get_id()),
             );
 
             // Units that can carry other units confer Airborne, Burrowing, Submerge, and/or
@@ -2733,7 +2728,7 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
             let mut modifiers = base.abilities.clone();
             apply_ability_modifiers(
                 &mut modifiers,
-                state.ability_modifiers_from_area_modifiers(self.get_id()),
+                state.ability_modifiers_from_get_ongoing_effects(self.get_id()),
             );
             if self.has_status(state, &CardStatus::Silenced)
                 || self.has_status(state, &CardStatus::Disabled)

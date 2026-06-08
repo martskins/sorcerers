@@ -62,15 +62,15 @@ impl Card for OldSaltAnchorman {
     }
 
     /// Grants Immobile to nearby allied units, preventing them from being moved.
-    fn area_modifiers(&self, _state: &State) -> Vec<OngoingEffect> {
-        vec![OngoingEffect::GrantAbility {
+    async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+        Ok(vec![OngoingEffect::GrantAbility {
             ability: Ability::Immobile,
             affected_cards: CardQuery::new()
                 .in_play()
                 .controlled_by_same_controller_as_card(self.get_id())
                 .nearby_zones_to_card(self.get_id())
                 .id_not(*self.get_id()),
-        }]
+        }])
     }
 }
 

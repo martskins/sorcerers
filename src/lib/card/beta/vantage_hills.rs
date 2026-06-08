@@ -69,11 +69,11 @@ impl Card for VantageHills {
         Some(self)
     }
 
-    fn area_modifiers(&self, _state: &State) -> Vec<OngoingEffect> {
-        vec![OngoingEffect::GrantAbility {
+    async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+        Ok(vec![OngoingEffect::GrantAbility {
             ability: Ability::Ranged(1),
             affected_cards: CardQuery::new().units().in_zone_of_card(self.get_id()),
-        }]
+        }])
     }
 
     fn get_resource_provider(&self) -> Option<&dyn ResourceProvider> {

@@ -73,17 +73,17 @@ impl Card for Iceberg {
         Some(self)
     }
 
-    fn area_modifiers(&self, _state: &State) -> Vec<OngoingEffect> {
+    async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         if !self.get_zone().is_in_play() {
-            return vec![];
+            return Ok(vec![]);
         }
 
-        vec![OngoingEffect::RemoveAbilities {
+        Ok(vec![OngoingEffect::RemoveAbilities {
             removal: AbilityRemoval::exact(Ability::Submerge),
             affected_cards: CardQuery::new()
                 .minions()
                 .nearby_zones_to_card(self.get_id()),
-        }]
+        }])
     }
 }
 

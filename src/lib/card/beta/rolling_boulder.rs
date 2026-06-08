@@ -50,20 +50,20 @@ impl ActivatedAbility for RollBoulder {
         }
 
         while let Some(zone) = last_zone.zone_in_direction(&picked_direction, 1) {
+            effects.push(Effect::MoveCard {
+                card_id: *boulder.get_id(),
+                from: (last_zone.clone())
+                    .into_location()
+                    .expect("MoveCard source must be a location"),
+                to: LocationQuery::from_zone(
+                    (zone.clone()).with_region(boulder.get_region(state).clone()),
+                ),
+                player_id: *player_id,
+                tap: false,
+                through_path: None,
+            });
             let units = CardQuery::new().units().in_zone(&zone).all(state);
             for unit in units {
-                effects.push(Effect::MoveCard {
-                    card_id: *boulder.get_id(),
-                    from: (last_zone.clone())
-                        .into_location()
-                        .expect("MoveCard source must be a location"),
-                    to: LocationQuery::from_zone(
-                        (zone.clone()).with_region(boulder.get_region(state).clone()),
-                    ),
-                    player_id: boulder.get_controller_id(state),
-                    tap: false,
-                    through_path: None,
-                });
                 effects.push(Effect::TakeDamage {
                     card_id: unit,
                     from: *boulder.get_id(),
@@ -143,11 +143,11 @@ impl Card for RollingBoulder {
         Some(self)
     }
 
-    fn area_modifiers(&self, _state: &State) -> Vec<OngoingEffect> {
-        vec![OngoingEffect::GrantActivatedAbility {
+    async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+        Ok(vec![OngoingEffect::GrantActivatedAbility {
             ability: Box::new(RollBoulder(*self.get_id())),
             affected_cards: CardQuery::new().units().in_zone_of_card(self.get_id()),
-        }]
+        }])
     }
 }
 

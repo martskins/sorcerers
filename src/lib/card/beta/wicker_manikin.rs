@@ -63,9 +63,9 @@ impl Card for WickerManikin {
         Some(self)
     }
 
-    fn area_modifiers(&self, _state: &State) -> Vec<OngoingEffect> {
+    async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         let affected_cards = CardQuery::new().units().in_zone_of_card(self.get_id());
-        vec![
+        Ok(vec![
             OngoingEffect::GrantAbility {
                 ability: Ability::Spellcaster(Some(Element::Air)),
                 affected_cards: affected_cards.clone(),
@@ -78,7 +78,7 @@ impl Card for WickerManikin {
                 ability: Ability::Spellcaster(Some(Element::Water)),
                 affected_cards,
             },
-        ]
+        ])
     }
 }
 

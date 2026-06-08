@@ -61,15 +61,15 @@ impl Card for HouseArnBannerman {
         Some(&mut self.unit_base)
     }
 
-    fn area_modifiers(&self, _state: &State) -> Vec<OngoingEffect> {
-        vec![OngoingEffect::GrantCounter {
+    async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+        Ok(vec![OngoingEffect::GrantCounter {
             counter: Counter::new(1, 0, None),
             affected_cards: CardQuery::new()
                 .units()
                 .nearby_locations_to_card(self.get_id())
                 .controlled_by_same_controller_as_card(self.get_id())
                 .id_not(*self.get_id()),
-        }]
+        }])
     }
 }
 

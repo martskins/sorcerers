@@ -256,15 +256,15 @@ impl Card for FreeCity {
             && attacker.get_zone() == self.get_zone()
     }
 
-    fn area_modifiers(&self, _state: &State) -> Vec<OngoingEffect> {
+    async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         if !self.used_ability {
-            return vec![];
+            return Ok(vec![]);
         }
 
-        vec![OngoingEffect::GrantAbility {
+        Ok(vec![OngoingEffect::GrantAbility {
             ability: Ability::CannotDefend,
             affected_cards: CardQuery::from_id(*self.get_id()),
-        }]
+        }])
     }
 }
 

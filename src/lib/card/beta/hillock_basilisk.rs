@@ -36,6 +36,7 @@ impl HillockBasilisk {
     }
 }
 
+#[async_trait::async_trait]
 impl Card for HillockBasilisk {
     fn get_name(&self) -> &str {
         Self::NAME
@@ -61,14 +62,14 @@ impl Card for HillockBasilisk {
         Some(&mut self.unit_base)
     }
 
-    fn area_modifiers(&self, _state: &State) -> Vec<OngoingEffect> {
-        vec![OngoingEffect::GrantStatus {
+    async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+        Ok(vec![OngoingEffect::GrantStatus {
             status: CardStatus::Disabled,
             affected_cards: CardQuery::new()
                 .units()
                 .in_zone_and_direction_from_card(self.get_id(), Direction::Up, 1, true)
                 .id_not(*self.get_id()),
-        }]
+        }])
     }
 }
 

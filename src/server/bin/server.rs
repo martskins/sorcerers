@@ -214,7 +214,7 @@ impl Server {
         game.state.cards.insert(*card.get_id(), card);
 
         let player_two = game.state.players[1].id;
-        let card = card::from_name_and_zone(ApprenticeWizard::NAME, &player_one, Zone::Cemetery);
+        let card = card::from_name_and_zone(RollingBoulder::NAME, &player_one, Zone::Hand);
         game.state.cards.insert(*card.get_id(), card);
         let card = card::from_name_and_zone(LightningBolt::NAME, &player_one, Zone::Hand);
         game.state.cards.insert(*card.get_id(), card);
