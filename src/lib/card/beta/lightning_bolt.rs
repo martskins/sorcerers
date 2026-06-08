@@ -54,10 +54,11 @@ impl Magic for LightningBolt {
     async fn resolve_magic(
         &self,
         state: &State,
-        _caster_id: &uuid::Uuid,
+        caster_id: &uuid::Uuid,
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
-        let zones = Zone::all_realm();
+        let caster_region = state.get_card(caster_id).get_region(state);
+        let zones = Zone::all_in_region(caster_region.clone());
         let picked_zone = pick_zone(
             self.get_owner_id(),
             &zones,

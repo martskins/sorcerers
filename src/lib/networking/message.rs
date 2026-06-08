@@ -53,6 +53,12 @@ pub struct OngoingEffectData {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EffectDebugData {
+    pub name: String,
+    pub description: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ServerMessage {
     RevealCards {
         player_id: PlayerId,
@@ -118,6 +124,10 @@ pub enum ServerMessage {
         health: HashMap<PlayerId, u16>,
         current_player: PlayerId,
         turn_player: PlayerId,
+        #[serde(default)]
+        stepped_effects: bool,
+        #[serde(default)]
+        effect_queue: Vec<EffectDebugData>,
         /// Present only when the server's debug-eval flag is enabled.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         evaluation: Option<Evaluation>,
@@ -336,6 +346,14 @@ pub enum ClientMessage {
         game_id: uuid::Uuid,
         player_id: PlayerId,
     },
+    ToggleSteppedEffects {
+        game_id: uuid::Uuid,
+        player_id: PlayerId,
+    },
+    StepNextEffect {
+        game_id: uuid::Uuid,
+        player_id: PlayerId,
+    },
 }
 
 const NIL: uuid::Uuid = PlayerId::nil();
@@ -350,6 +368,8 @@ impl ClientMessage {
             ClientMessage::PickCard { game_id, .. } => *game_id,
             ClientMessage::PickAction { game_id, .. } => *game_id,
             ClientMessage::EndTurn { game_id, .. } => *game_id,
+            ClientMessage::ToggleSteppedEffects { game_id, .. } => *game_id,
+            ClientMessage::StepNextEffect { game_id, .. } => *game_id,
             ClientMessage::PickZone { game_id, .. } => *game_id,
             ClientMessage::PickZoneGroup { game_id, .. } => *game_id,
             ClientMessage::PickPath { game_id, .. } => *game_id,
@@ -375,6 +395,8 @@ impl ClientMessage {
             ClientMessage::PickCard { player_id, .. } => player_id,
             ClientMessage::PickAction { player_id, .. } => player_id,
             ClientMessage::EndTurn { player_id, .. } => player_id,
+            ClientMessage::ToggleSteppedEffects { player_id, .. } => player_id,
+            ClientMessage::StepNextEffect { player_id, .. } => player_id,
             ClientMessage::PickZone { player_id, .. } => player_id,
             ClientMessage::PickZoneGroup { player_id, .. } => player_id,
             ClientMessage::PickPath { player_id, .. } => player_id,

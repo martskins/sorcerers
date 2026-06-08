@@ -114,46 +114,49 @@ impl EffectEngine {
 
     pub async fn drain_with_log(game: &mut Game) -> anyhow::Result<()> {
         while !game.state.effects.is_empty() {
-            if let Some(effect) = game.state.effects.pop_back() {
-                let eliminated_before = game.state.eliminated_players.clone();
-                let replace_hooks =
-                    Self::collect_hooks(&game.state, &effect, HookTiming::Replace).await?;
-                let replacements =
-                    Self::resolve_hook_replacements(&mut game.state, &effect, &replace_hooks)
-                        .await?;
-                if !replacements.is_empty() {
-                    game.state.queue(replacements);
-                    continue;
+            Self::step_with_log(game).await?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn step_with_log(game: &mut Game) -> anyhow::Result<()> {
+        if let Some(effect) = game.state.effects.pop_back() {
+            let eliminated_before = game.state.eliminated_players.clone();
+            let replace_hooks =
+                Self::collect_hooks(&game.state, &effect, HookTiming::Replace).await?;
+            let replacements =
+                Self::resolve_hook_replacements(&mut game.state, &effect, &replace_hooks).await?;
+            if !replacements.is_empty() {
+                game.state.queue(replacements);
+                return Ok(());
+            }
+
+            let before_hooks = Self::collect_hooks(&game.state, &effect, HookTiming::Before).await?;
+            Self::resolve_hooks(&mut game.state, &effect, &before_hooks).await?;
+
+            match effect.apply(&mut game.state).await {
+                Ok(_) => {}
+                Err(e) => {
+                    println!("Error applying effect {:?}: {:?}", effect, e);
                 }
+            }
 
-                let before_hooks =
-                    Self::collect_hooks(&game.state, &effect, HookTiming::Before).await?;
-                Self::resolve_hooks(&mut game.state, &effect, &before_hooks).await?;
+            EffectLogEmitter::emit(game, effect.clone()).await?;
 
-                match effect.apply(&mut game.state).await {
-                    Ok(_) => {}
-                    Err(e) => {
-                        println!("Error applying effect {:?}: {:?}", effect, e);
-                    }
-                }
+            // Gather post hooks after effects are applied so that we get the latest state and
+            // any state query done on the hooks function reflects the correct state of all
+            // cards.
+            let after_hooks = Self::collect_hooks(&game.state, &effect, HookTiming::After).await?;
+            Self::resolve_hooks(&mut game.state, &effect, &after_hooks).await?;
 
-                EffectLogEmitter::emit(game, effect.clone()).await?;
-
-                // Gather post hooks after effects are applied so that we get the latest state and
-                // any state query done on the hooks function reflects the correct state of all
-                // cards.
-                let after_hooks =
-                    Self::collect_hooks(&game.state, &effect, HookTiming::After).await?;
-                Self::resolve_hooks(&mut game.state, &effect, &after_hooks).await?;
-
-                Game::dispell_auras(&mut game.state).await?;
-                game.broadcast(&game.make_sync()?).await?;
-                if game.state.eliminated_players != eliminated_before
-                    && let Some(messages) = game.game_over_messages()
-                {
-                    for message in messages {
-                        game.send_to_player(&message).await?;
-                    }
+            Game::dispell_auras(&mut game.state).await?;
+            game.broadcast(&game.make_sync()?).await?;
+            if game.state.eliminated_players != eliminated_before
+                && let Some(messages) = game.game_over_messages()
+            {
+                for message in messages {
+                    game.send_to_player(&message).await?;
                 }
             }
         }
@@ -163,26 +166,32 @@ impl EffectEngine {
 
     pub async fn drain_without_log(state: &mut State) -> anyhow::Result<()> {
         while !state.effects.is_empty() {
-            if let Some(effect) = state.effects.pop_back() {
-                let replace_hooks =
-                    Self::collect_hooks(state, &effect, HookTiming::Replace).await?;
-                let replacements =
-                    Self::resolve_hook_replacements(state, &effect, &replace_hooks).await?;
-                if !replacements.is_empty() {
-                    state.queue(replacements);
-                    continue;
-                }
+            Self::step_without_log(state).await?;
+        }
 
-                let before_hooks = Self::collect_hooks(state, &effect, HookTiming::Before).await?;
-                Self::resolve_hooks(state, &effect, &before_hooks).await?;
+        Ok(())
+    }
 
-                effect.apply(state).await?;
-
-                let after_hooks = Self::collect_hooks(state, &effect, HookTiming::After).await?;
-                Self::resolve_hooks(state, &effect, &after_hooks).await?;
+    pub async fn step_without_log(state: &mut State) -> anyhow::Result<()> {
+        if let Some(effect) = state.effects.pop_back() {
+            let replace_hooks = Self::collect_hooks(state, &effect, HookTiming::Replace).await?;
+            let replacements =
+                Self::resolve_hook_replacements(state, &effect, &replace_hooks).await?;
+            if !replacements.is_empty() {
+                state.queue(replacements);
+                return Ok(());
             }
+
+            let before_hooks = Self::collect_hooks(state, &effect, HookTiming::Before).await?;
+            Self::resolve_hooks(state, &effect, &before_hooks).await?;
+
+            effect.apply(state).await?;
+
+            let after_hooks = Self::collect_hooks(state, &effect, HookTiming::After).await?;
+            Self::resolve_hooks(state, &effect, &after_hooks).await?;
         }
 
         Ok(())
     }
 }
+

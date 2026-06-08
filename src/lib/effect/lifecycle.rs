@@ -276,6 +276,21 @@ impl EffectState {
         self.queue.pop_back()
     }
 
+    pub fn get_queue_debug_data(&self) -> Vec<(String, String)> {
+        self.queue
+            .iter()
+            .map(|e| {
+                let full = format!("{:?}", e);
+                let name = full
+                    .split([' ', '{', '('])
+                    .next()
+                    .unwrap_or(&full)
+                    .to_string();
+                (name, full)
+            })
+            .collect()
+    }
+
     pub fn push_back(&mut self, effect: Effect) {
         self.queue.push_back(effect);
     }

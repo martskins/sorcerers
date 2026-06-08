@@ -2033,6 +2033,14 @@ impl Game {
                     player_id: self.state.current_player(),
                 });
             }
+            ClientMessage::ToggleSteppedEffects { .. } => {
+                self.state.stepped_effects = !self.state.stepped_effects;
+            }
+            ClientMessage::StepNextEffect { .. } => {
+                if self.state.stepped_effects {
+                    EffectEngine::step_with_log(self).await?;
+                }
+            }
             ClientMessage::PickCards {
                 card_ids,
                 player_id,
@@ -2247,6 +2255,9 @@ impl Game {
     }
 
     pub async fn process_effects(&mut self) -> anyhow::Result<()> {
+        if self.state.stepped_effects {
+            return Ok(());
+        }
         EffectEngine::drain_with_log(self).await
     }
 }

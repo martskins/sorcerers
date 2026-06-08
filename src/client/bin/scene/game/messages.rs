@@ -331,6 +331,8 @@ impl Game {
                 turn_player,
                 resources,
                 health,
+                stepped_effects,
+                effect_queue,
                 ..
             } => {
                 retain_aura_affected_zones(
@@ -346,6 +348,8 @@ impl Game {
                 self.data.avatar_health = health.clone();
                 self.data.ongoing_effects = None;
                 self.data.highlighted_ongoing_effect = None;
+                self.data.stepped_effects = *stepped_effects;
+                self.data.effect_queue = effect_queue.clone();
                 self.open_controlled_hand_viewer();
                 None
             }

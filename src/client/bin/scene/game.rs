@@ -25,7 +25,7 @@ use sorcerers::{
     game::{CardId, Direction, PlayerId, Resources},
     networking::{
         self,
-        message::{ClientMessage, OngoingEffectData, ServerMessage},
+        message::{ClientMessage, EffectDebugData, OngoingEffectData, ServerMessage},
     },
     zone::Zone,
 };
@@ -171,6 +171,9 @@ pub struct GameData {
     pub last_clicked_card_id: Option<CardId>,
     pub last_clicked_card_time: Option<f64>,
     pub pending_projectiles: Vec<PendingProjectileAnimation>,
+    pub stepped_effects: bool,
+    pub effect_queue: Vec<EffectDebugData>,
+    pub show_debug_effects: bool,
 }
 
 impl GameData {
@@ -196,6 +199,9 @@ impl GameData {
             last_clicked_card_id: None,
             last_clicked_card_time: None,
             pending_projectiles: Vec::new(),
+            stepped_effects: false,
+            effect_queue: Vec::new(),
+            show_debug_effects: false,
         }
     }
 }
@@ -299,6 +305,10 @@ impl GameComponents {
     }
 
     fn update(&mut self, data: &mut GameData, ctx: &Context) {
+        if ctx.input(|i| i.key_pressed(egui::Key::F3)) {
+            data.show_debug_effects = !data.show_debug_effects;
+        }
+
         Self::update_component(&mut self.opponent_status, data, ctx);
         Self::update_component(&mut self.player_status, data, ctx);
         Self::update_component(&mut self.realm, data, ctx);

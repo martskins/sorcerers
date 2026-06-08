@@ -25,6 +25,14 @@ impl Game {
 
         self.render_controls_button(ui, sr);
 
+        #[cfg(debug_assertions)]
+        self.render_debug_effects_button(ui, sr);
+
+        #[cfg(debug_assertions)]
+        if self.data.show_debug_effects {
+            self.render_debug_effects_panel(ui);
+        }
+
         if is_in_turn && is_idle {
             let client = self.client.clone();
             let player_id = self.data.player_id;
@@ -146,6 +154,87 @@ impl Game {
             } => self.render_game_over_window(ui, *winner_id, winner_name),
             _ => None,
         }
+    }
+
+    fn render_debug_effects_button(&mut self, ui: &mut Ui, sr: Rect) {
+        let icon_size = vec2(24.0, 24.0);
+        let icon_pos = pos2(sr.center().x + 124.0, 16.0);
+        let mut hovered = false;
+        egui::Area::new(egui::Id::new("debug_effects_btn"))
+            .fixed_pos(icon_pos)
+            .order(egui::Order::Foreground)
+            .show(ui, |ui| {
+                let (rect, response) = ui.allocate_exact_size(icon_size, egui::Sense::click());
+                hovered = response.hovered();
+                let fill = if self.data.show_debug_effects || hovered {
+                    Color32::from_rgb(255, 100, 100)
+                } else {
+                    Color32::from_rgb(180, 50, 50)
+                };
+                ui.painter().circle_filled(rect.center(), 12.0, fill);
+                ui.painter().text(
+                    rect.center(),
+                    egui::Align2::CENTER_CENTER,
+                    "D",
+                    FontId::proportional(14.0),
+                    Color32::WHITE,
+                );
+
+                if response.clicked() {
+                    self.data.show_debug_effects = !self.data.show_debug_effects;
+                }
+
+                response.on_hover_text("Debug Effects (F3)");
+            });
+    }
+
+    fn render_debug_effects_panel(&mut self, ui: &mut Ui) {
+        let sr = screen_rect().unwrap_or(Rect::ZERO);
+        egui::Window::new("Effect Debugger")
+            .default_pos(pos2(sr.max.x - 320.0, 80.0))
+            .default_size(vec2(300.0, 400.0))
+            .movable(true)
+            .resizable(true)
+            .show(ui.ctx(), |ui| {
+                ui.horizontal(|ui| {
+                    if ui
+                        .checkbox(&mut self.data.stepped_effects, "Stepped Mode")
+                        .changed()
+                    {
+                        self.client
+                            .send(ClientMessage::ToggleSteppedEffects {
+                                player_id: self.data.player_id,
+                                game_id: self.game_id,
+                            })
+                            .ok();
+                    }
+
+                    if self.data.stepped_effects && ui.button("Step Next").clicked() {
+                        self.client
+                            .send(ClientMessage::StepNextEffect {
+                                player_id: self.data.player_id,
+                                game_id: self.game_id,
+                            })
+                            .ok();
+                    }
+                });
+
+                ui.separator();
+                ui.label(format!("Queue Size: {}", self.data.effect_queue.len()));
+                egui::ScrollArea::vertical()
+                    .auto_shrink([false, false])
+                    .show(ui, |ui| {
+                        for (i, effect) in self.data.effect_queue.iter().enumerate().rev() {
+                            egui::CollapsingHeader::new(format!("{}: {}", i, effect.name))
+                                .id_source(format!("effect_{}", i))
+                                .show(ui, |ui| {
+                                    ui.add(egui::Label::new(
+                                        egui::RichText::new(&effect.description).monospace(),
+                                    ));
+                                });
+                        }
+                    });
+            });
     }
 
     fn render_controls_button(&mut self, ui: &mut Ui, sr: Rect) {

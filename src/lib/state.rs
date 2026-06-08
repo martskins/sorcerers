@@ -4,7 +4,7 @@ use crate::{
     effect::Counter,
     effect::{Effect, EffectEngine, EffectState},
     game::{ActivatedAbility, CardId, PlayerId, Resources, Thresholds, ThresholdsDiff},
-    networking::message::{ClientMessage, OngoingEffectData, ServerMessage},
+    networking::message::{ClientMessage, EffectDebugData, OngoingEffectData, ServerMessage},
     query::{CardQuery, ZoneQuery},
     zone::Zone,
 };
@@ -863,6 +863,7 @@ pub struct State {
     pub ongoing_effects: Vec<TimedOngoingEffect>,
     pub player_mana: HashMap<PlayerId, u8>,
     pub eliminated_players: HashSet<PlayerId>,
+    pub stepped_effects: bool,
     pub players_with_accepted_hands: HashSet<PlayerId>,
     pub marked_for_death: HashMap<CardId, Zone>,
     next_ongoing_effect_timestamp: u64,
@@ -910,6 +911,7 @@ impl State {
             ongoing_effects: Vec::new(),
             player_mana,
             eliminated_players: HashSet::new(),
+            stepped_effects: false,
             players_with_accepted_hands: HashSet::new(),
             marked_for_death: HashMap::new(),
             next_ongoing_effect_timestamp: 1,
@@ -1868,9 +1870,17 @@ impl State {
             current_player: self.current_turn_controller(),
             turn_player: self.current_player(),
             health,
+            stepped_effects: self.stepped_effects,
+            effect_queue: self
+                .effects
+                .get_queue_debug_data()
+                .into_iter()
+                .map(|(name, description)| EffectDebugData { name, description })
+                .collect(),
             evaluation: None,
         })
     }
+
 
     pub fn get_receiver(&self) -> Receiver<ClientMessage> {
         self.client_rx.clone()
