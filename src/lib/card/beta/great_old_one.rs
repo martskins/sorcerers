@@ -93,7 +93,7 @@ impl Card for GreatOldOne {
         Ok(())
     }
 
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+    async fn get_ongoing_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         if !self.flooded {
             return Ok(vec![]);
         }

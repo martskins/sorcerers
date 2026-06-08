@@ -1374,7 +1374,7 @@ impl State {
             return Ok(());
         }
 
-        let mut passive_effects = card.get_continuous_effects(self).await?;
+        let mut passive_effects = card.get_ongoing_effects(self).await?;
         passive_effects.extend(card.area_modifiers(self));
 
         self.ongoing_effects
@@ -1880,7 +1880,6 @@ impl State {
             evaluation: None,
         })
     }
-
 
     pub fn get_receiver(&self) -> Receiver<ClientMessage> {
         self.client_rx.clone()

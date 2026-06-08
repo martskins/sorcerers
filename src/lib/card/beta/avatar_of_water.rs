@@ -143,7 +143,7 @@ impl Card for AvatarOfWater {
         Ok(vec![Box::new(FloodSite)])
     }
 
-    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+    async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         match &self.flood_effect {
             Some(effect) => Ok(vec![effect.clone()]),
             None => Ok(vec![]),

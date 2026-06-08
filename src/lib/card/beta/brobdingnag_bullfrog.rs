@@ -131,7 +131,7 @@ impl Card for BrobdingnagBullfrog {
         Ok(())
     }
 
-    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+    async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         if let Some(swallowed_minion) = self.swallowed_minion {
             Ok(vec![OngoingEffect::GrantStatus {
                 status: CardStatus::Disabled,

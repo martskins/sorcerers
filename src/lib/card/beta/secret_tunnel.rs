@@ -66,7 +66,7 @@ impl Card for SecretTunnel {
         Some(self)
     }
 
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+    async fn get_ongoing_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         let controller_id = self.get_controller_id(state);
         let connected_zones = CardQuery::new()
             .sites()

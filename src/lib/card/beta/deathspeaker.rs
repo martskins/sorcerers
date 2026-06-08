@@ -184,7 +184,7 @@ impl Card for Deathspeaker {
         }
     }
 
-    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+    async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         if self.has_used_ability {
             return Ok(vec![]);
         }

@@ -66,7 +66,7 @@ impl Card for TorshammarTrinket {
         Some(self)
     }
 
-    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+    async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         Ok(vec![OngoingEffect::ModifyPower {
             power_diff: 1,
             affected_cards: CardQuery::new().bearer_of_card(self.get_id()),

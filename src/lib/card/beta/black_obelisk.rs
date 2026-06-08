@@ -66,7 +66,7 @@ impl Card for BlackObelisk {
         Some(self)
     }
 
-    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+    async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         if !self.get_zone().is_in_play() {
             return Ok(vec![]);
         }

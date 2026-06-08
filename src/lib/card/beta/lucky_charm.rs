@@ -63,7 +63,7 @@ impl Card for LuckyCharm {
         Some(self)
     }
 
-    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+    async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         Ok(vec![
             OngoingEffect::choose_from_random_card_options(
                 *self.get_id(),

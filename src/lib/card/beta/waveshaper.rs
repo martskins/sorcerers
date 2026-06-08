@@ -177,7 +177,7 @@ impl Card for Waveshaper {
         Ok(vec![Box::new(WaveshaperFlood)])
     }
 
-    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+    async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         match &self.flood_effect {
             Some(effect) => Ok(vec![effect.clone()]),
             None => Ok(vec![]),

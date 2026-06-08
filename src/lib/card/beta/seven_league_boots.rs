@@ -66,7 +66,7 @@ impl Card for SevenLeagueBoots {
         Some(self)
     }
 
-    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+    async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         Ok(vec![OngoingEffect::GrantAbility {
             ability: Ability::Movement(7),
             affected_cards: CardQuery::new().minions().bearer_of_card(self.get_id()),

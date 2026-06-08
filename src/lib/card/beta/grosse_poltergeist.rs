@@ -133,7 +133,7 @@ impl Card for GrossePoltergeist {
         Ok(vec![Box::new(PossessArtifact)])
     }
 
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+    async fn get_ongoing_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         let Some(artifact_id) = self.controlled_artifact else {
             return Ok(vec![]);
         };

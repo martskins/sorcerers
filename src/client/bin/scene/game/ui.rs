@@ -226,7 +226,7 @@ impl Game {
                     .show(ui, |ui| {
                         for (i, effect) in self.data.effect_queue.iter().enumerate().rev() {
                             egui::CollapsingHeader::new(format!("{}: {}", i, effect.name))
-                                .id_source(format!("effect_{}", i))
+                                .id_salt(format!("effect_{}", i))
                                 .show(ui, |ui| {
                                     ui.add(egui::Label::new(
                                         egui::RichText::new(&effect.description).monospace(),

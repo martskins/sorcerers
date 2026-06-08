@@ -63,7 +63,7 @@ impl Card for MagellanGlobe {
         Some(self)
     }
 
-    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+    async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         Ok(vec![
             OngoingEffect::ConnectTopBottomEdges {
                 affected_cards: CardQuery::new().units().in_play(),

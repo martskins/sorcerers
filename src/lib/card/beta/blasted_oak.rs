@@ -74,7 +74,7 @@ impl Card for BlastedOak {
         Some(self)
     }
 
-    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+    async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         let oak_id = *self.get_id();
 
         Ok(vec![
@@ -106,9 +106,7 @@ impl Card for BlastedOak {
 
                     let at_zone_targets: Vec<CardId> = targets
                         .iter()
-                        .filter(|&&id| {
-                            id != oak_id && state.get_card(&id).get_zone() == oak_zone
-                        })
+                        .filter(|&&id| id != oak_id && state.get_card(&id).get_zone() == oak_zone)
                         .cloned()
                         .collect();
 

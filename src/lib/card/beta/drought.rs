@@ -60,7 +60,7 @@ impl Card for Drought {
         Some(self)
     }
 
-    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+    async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         Ok(vec![OngoingEffect::ModifyProvidedAffinities {
             // TODO: This removes only one W affinity. Not sure what should happen with sites that
             // provide WW. Not sure if those sites even exist.

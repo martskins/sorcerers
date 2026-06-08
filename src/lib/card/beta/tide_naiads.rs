@@ -61,7 +61,7 @@ impl Card for TideNaiads {
         Some(&mut self.unit_base)
     }
 
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+    async fn get_ongoing_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         let site_id = self
             .get_zone()
             .get_site(state)

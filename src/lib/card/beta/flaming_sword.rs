@@ -63,7 +63,7 @@ impl Card for FlamingSword {
         Some(self)
     }
 
-    async fn get_continuous_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+    async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         Ok(vec![
             OngoingEffect::ModifyPower {
                 power_diff: 1,

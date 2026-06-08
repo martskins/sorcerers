@@ -63,7 +63,7 @@ impl Card for CrownOfTheVictor {
         Some(self)
     }
 
-    async fn get_continuous_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
+    async fn get_ongoing_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         let bearer_id = self
             .get_artifact()
             .expect("CrownOfTheVictor should have an artifact base")
