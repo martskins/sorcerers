@@ -63,7 +63,14 @@ impl ActivatedAbility for GeomancerAbility {
                 let zones = picked_card.get_valid_play_zones(state, player_id, &avatar_id)?;
                 let prompt = "Pick a zone to play the site";
                 let zone = pick_zone(player_id, &zones, state, false, prompt).await?;
-                geomancer_play_site_effects(card_id, player_id, state, picked_card_id, zone).await
+                geomancer_play_site_effects(
+                    card_id,
+                    player_id,
+                    state,
+                    picked_card_id,
+                    zone.get_square().unwrap(),
+                )
+                .await
             }
             GeomancerAbility::DrawSite => Ok(AvatarAction::DrawSite
                 .on_select(card_id, player_id, state)
@@ -116,13 +123,13 @@ async fn geomancer_play_site_effects(
     player_id: &PlayerId,
     state: &State,
     site_id: PlayerId,
-    zone: Zone,
+    square: u8,
 ) -> anyhow::Result<Vec<Effect>> {
     let mut effects = vec![
         Effect::PlayCard {
             player_id: *player_id,
             card_id: site_id,
-            zone: zone.clone().into(),
+            zone: Zone::Location(Location::Square(square, Region::Surface)).into(),
             spellcaster: *geomancer_id,
         },
         Effect::SetTapped {
@@ -145,7 +152,7 @@ async fn geomancer_play_site_effects(
             .get_adjacent()
             .iter()
             .filter(|z| z.get_site(state).is_none())
-            .filter(|z| z != &&zone)
+            .filter(|z| z.get_square().unwrap_or_default() != square)
             .cloned()
             .collect::<Vec<Zone>>();
         if !zones.is_empty() {
@@ -265,14 +272,14 @@ impl Avatar for Geomancer {
         Some(Box::new(GeomancerAbility::PlaySite))
     }
 
-    async fn play_site_at_zone(
+    async fn play_site_at_square(
         &self,
         state: &State,
         player_id: &PlayerId,
         site_id: &CardId,
-        zone: &Zone,
+        square: u8,
     ) -> anyhow::Result<Vec<Effect>> {
-        geomancer_play_site_effects(self.get_id(), player_id, state, *site_id, zone.clone()).await
+        geomancer_play_site_effects(self.get_id(), player_id, state, *site_id, square).await
     }
 }
 

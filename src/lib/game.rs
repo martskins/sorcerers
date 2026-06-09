@@ -1810,7 +1810,12 @@ impl Game {
                 .get_card(&playable.spellcaster_id)
                 .get_avatar()
                 .ok_or(anyhow::anyhow!("play site card must be an avatar"))?
-                .play_site_at_zone(&self.state, &playable.player_id, &playable.card_id, zone)
+                .play_site_at_square(
+                    &self.state,
+                    &playable.player_id,
+                    &playable.card_id,
+                    zone.get_square().unwrap(),
+                )
                 .await?;
             self.state.queue(effects);
         } else {

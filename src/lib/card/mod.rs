@@ -2376,17 +2376,17 @@ pub trait Avatar: Card {
         Some(Box::new(AvatarAction::PlaySite))
     }
 
-    async fn play_site_at_zone(
+    async fn play_site_at_square(
         &self,
         _state: &State,
         player_id: &PlayerId,
         site_id: &CardId,
-        zone: &Zone,
+        square: u8,
     ) -> anyhow::Result<Vec<Effect>> {
         Ok(vec![Effect::PlayCard {
             player_id: *player_id,
             card_id: *site_id,
-            zone: zone.clone().into(),
+            zone: Zone::Location(Location::Square(square, Region::Surface)).into(),
             spellcaster: *self.get_id(),
         }])
     }
