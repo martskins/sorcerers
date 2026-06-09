@@ -1,6 +1,6 @@
 use crate::prelude::*;
 
-/// **Sky Baron** — Elite Minion (6 cost, 6/2)
+/// **Sky Baron** — Elite Minion (6 cost, 6/6)
 ///
 /// Airborne. All other minions lose Airborne.
 #[derive(Debug, Clone)]
@@ -17,7 +17,7 @@ impl SkyBaron {
         Self {
             unit_base: UnitBase {
                 power: 6,
-                toughness: 2,
+                toughness: 6,
                 abilities: vec![Ability::Airborne],
                 types: vec![MinionType::Spirit],
                 tapped: false,

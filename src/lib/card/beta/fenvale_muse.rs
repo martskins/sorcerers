@@ -16,7 +16,7 @@ impl FenvaleMuse {
         Self {
             unit_base: UnitBase {
                 power: 0,
-                toughness: 1,
+                toughness: 0,
                 abilities: vec![Ability::Spellcaster(None)],
                 types: vec![MinionType::Mortal],
                 tapped: false,

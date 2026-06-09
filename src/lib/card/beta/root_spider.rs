@@ -1,8 +1,5 @@
 use crate::prelude::*;
 
-/// **Root Spider** — Exceptional Minion (3 cost, 2/1)
-///
-/// Burrowing. While Root Spider is burrowed, minions directly above it are disabled.
 #[derive(Debug, Clone)]
 pub struct RootSpider {
     unit_base: UnitBase,
@@ -18,7 +15,7 @@ impl RootSpider {
         Self {
             unit_base: UnitBase {
                 power: 2,
-                toughness: 1,
+                toughness: 2,
                 abilities: vec![Ability::Burrowing],
                 types: vec![MinionType::Beast],
                 tapped: false,

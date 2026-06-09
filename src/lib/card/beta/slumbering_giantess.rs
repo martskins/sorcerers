@@ -14,8 +14,8 @@ impl SlumberingGiantess {
     pub fn new(owner_id: PlayerId) -> Self {
         Self {
             unit_base: UnitBase {
-                power: 3,
-                toughness: 3,
+                power: 5,
+                toughness: 5,
                 abilities: vec![],
                 types: vec![MinionType::Mortal],
                 tapped: false,

@@ -14,7 +14,7 @@ impl FeyChangeling {
         Self {
             unit_base: UnitBase {
                 power: 1,
-                toughness: 2,
+                toughness: 1,
                 abilities: vec![],
                 types: vec![MinionType::Fairy],
                 tapped: false,

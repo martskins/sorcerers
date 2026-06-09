@@ -14,7 +14,7 @@ impl DeathDealer {
         Self {
             unit_base: UnitBase {
                 power: 4,
-                toughness: 2,
+                toughness: 4,
                 abilities: vec![],
                 types: vec![MinionType::Mortal],
                 tapped: false,

@@ -16,7 +16,7 @@ impl PanoramaManticore {
         Self {
             unit_base: UnitBase {
                 power: 5,
-                toughness: 2,
+                toughness: 5,
                 abilities: vec![Ability::Airborne, Ability::Lethal],
                 types: vec![MinionType::Beast],
                 tapped: false,

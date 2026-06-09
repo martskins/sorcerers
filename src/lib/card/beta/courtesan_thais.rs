@@ -16,7 +16,7 @@ impl CourtesanThais {
         Self {
             unit_base: UnitBase {
                 power: 0,
-                toughness: 3,
+                toughness: 0,
                 types: vec![MinionType::Mortal],
                 tapped: false,
                 ..Default::default()

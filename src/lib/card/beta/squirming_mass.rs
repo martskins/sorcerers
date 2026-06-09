@@ -17,7 +17,7 @@ impl SquirmingMass {
         Self {
             unit_base: UnitBase {
                 power: 0,
-                toughness: 3,
+                toughness: 0,
                 types: vec![MinionType::Beast],
                 tapped: false,
                 ..Default::default()
