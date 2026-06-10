@@ -273,7 +273,7 @@ pub enum Effect {
     PlayCard {
         player_id: PlayerId,
         card_id: CardId,
-        zone: ZoneQuery,
+        location: Location,
         spellcaster: CardId,
     },
     SummonCards {
@@ -693,7 +693,7 @@ impl Effect {
             Effect::PlayCard {
                 player_id,
                 card_id,
-                zone,
+                location,
                 ..
             } => {
                 let card = state.get_card(card_id).get_name();
@@ -701,7 +701,7 @@ impl Effect {
                     "{} plays {} in zone {}",
                     player_name(player_id, state),
                     card,
-                    zone.pick(player_id, state).await?,
+                    location,
                 ))
             }
             Effect::SummonCards { summoned_cards } => {
@@ -1463,11 +1463,14 @@ impl Effect {
             Effect::PlayCard {
                 card_id,
                 player_id,
-                zone,
+                location,
                 ..
             } => {
-                let zone = zone.pick(player_id, state).await?;
-                let costs = state.get_effective_costs(card_id, Some(&zone), player_id)?;
+                let costs = state.get_effective_costs(
+                    card_id,
+                    Some(&location.clone().into_zone()),
+                    player_id,
+                )?;
                 Box::pin(costs.pay(state, player_id)).await?;
                 let card = state.get_card(card_id);
                 let is_minion = card.is_minion();
@@ -1481,7 +1484,7 @@ impl Effect {
                         .find(|c| c.get_id() == card_id)
                         .expect("to find card");
                     if card.is_site()
-                        && let Some(site) = zone.get_site(&snapshot)
+                        && let Some(site) = location.get_site(&snapshot)
                         && site.get_name() == Rubble::NAME
                     {
                         state.queue_one(Effect::RemoveCardFromGame {
@@ -1498,9 +1501,7 @@ impl Effect {
                             player_id: *player_id,
                             card_id: *card_id,
                             from_zone: Zone::Hand,
-                            to_location: zone
-                                .into_location()
-                                .ok_or(anyhow::anyhow!("play zone must be a location"))?,
+                            to_location: location.clone(),
                         }],
                     });
                 } else {
@@ -1512,7 +1513,7 @@ impl Effect {
                             .expect("to find card");
                         card.set_controller_id(player_id);
                         let from_zone = card.get_zone().clone();
-                        card.set_zone(zone.clone());
+                        card.set_zone(location.clone().into_zone());
                         from_zone
                     };
 
@@ -1524,8 +1525,8 @@ impl Effect {
                         .add_passive_ongoing_effects_for_source(card_id)
                         .await?;
                     let mut effects = vec![Effect::TriggerGenesis { card_id: *card_id }];
+                    // TODO: Can from_zone even be in play??
                     if !from_zone.is_in_play()
-                        && zone.is_in_play()
                         && let Some(mana_effect) =
                             mana_effect_for_resource_entering_realm(state, card_id)?
                     {

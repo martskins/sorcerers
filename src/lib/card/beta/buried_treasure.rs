@@ -82,7 +82,7 @@ impl Card for BuriedTreasure {
         else {
             return Ok(vec![]);
         };
-        let picked_zone = state.get_card(&picked_card_id).get_zone();
+        let picked_zone = state.get_card(&picked_card_id).get_location();
         Ok(vec![
             Effect::SetCardRegion {
                 card_id: *self.get_id(),
@@ -92,7 +92,7 @@ impl Card for BuriedTreasure {
             Effect::PlayCard {
                 player_id: *player_id,
                 card_id: *self.get_id(),
-                zone: picked_zone.into(),
+                location: picked_zone.clone(),
                 spellcaster: *caster_id,
             },
         ])

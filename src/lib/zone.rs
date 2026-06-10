@@ -39,6 +39,31 @@ impl Location {
         Zone::Location(self)
     }
 
+    pub fn get_site<'a>(&self, state: &'a State) -> Option<&'a dyn Site> {
+        if matches!(self, Location::Square(_, _)) {
+            return self.get_site_at_square(state);
+        }
+
+        CardQuery::new()
+            .sites()
+            .in_location(self)
+            .first(state)
+            .and_then(|site_id| state.get_card(&site_id).get_site())
+    }
+
+    pub fn get_site_at_square<'a>(&self, state: &'a State) -> Option<&'a dyn Site> {
+        let square = self.square()?;
+        state
+            .cards
+            .values()
+            .find(|card| {
+                card.is_site()
+                    && card.get_zone().is_in_play()
+                    && card.get_zone().get_square() == Some(square)
+            })
+            .and_then(|card| card.get_site())
+    }
+
     pub fn get_adjacent(&self) -> Vec<Self> {
         match self {
             Location::Square(square, region) => {

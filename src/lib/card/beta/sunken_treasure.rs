@@ -93,7 +93,7 @@ impl Card for SunkenTreasure {
             Effect::PlayCard {
                 player_id: *player_id,
                 card_id: *self.get_id(),
-                zone: picked_zone.into(),
+                location: picked_zone.location().cloned().unwrap(),
                 spellcaster: *caster_id,
             },
         ])

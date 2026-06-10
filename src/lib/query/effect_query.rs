@@ -160,10 +160,7 @@ impl EffectQuery {
                     from,
                 },
                 Effect::PlayCard {
-                    player_id,
-                    card_id,
-                    zone,
-                    ..
+                    card_id, location, ..
                 },
             ) => {
                 if from.is_some() {
@@ -171,8 +168,7 @@ impl EffectQuery {
                 }
 
                 let card_matches = card_query.matches(card_id, state);
-                let picked_zone = zone.pick(player_id, state).await?;
-                let zone_matches = zone_query.matches(state, &picked_zone);
+                let zone_matches = zone_query.matches(state, &location.clone().into_zone());
                 if card_matches && zone_matches {
                     return Ok(true);
                 }

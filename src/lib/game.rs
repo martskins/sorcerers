@@ -1319,7 +1319,7 @@ impl ActivatedAbility for AvatarAction {
                 Ok(vec![Effect::PlayCard {
                     player_id: *player_id,
                     card_id: picked_card_id,
-                    zone: zone.clone().into(),
+                    location: zone.location().cloned().unwrap(),
                     spellcaster: avatar_id,
                 }])
             }
@@ -1822,7 +1822,7 @@ impl Game {
             self.state.queue_one(Effect::PlayCard {
                 player_id: playable.player_id,
                 card_id: playable.card_id,
-                zone: zone.clone().into(),
+                location: zone.location().cloned().unwrap(),
                 spellcaster: playable.spellcaster_id,
             });
         }

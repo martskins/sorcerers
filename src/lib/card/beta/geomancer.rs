@@ -129,7 +129,7 @@ async fn geomancer_play_site_effects(
         Effect::PlayCard {
             player_id: *player_id,
             card_id: site_id,
-            zone: Zone::Location(Location::Square(square, Region::Surface)).into(),
+            location: Location::Square(square, Region::Surface),
             spellcaster: *geomancer_id,
         },
         Effect::SetTapped {

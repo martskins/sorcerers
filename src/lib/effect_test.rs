@@ -7,7 +7,7 @@ use crate::{
     },
     game::{ActivatedAbility, Direction, UnitAction},
     networking::message::{ClientMessage, ServerMessage},
-    query::{CardQuery, EffectQuery, LocationQuery, QueryCache, ZoneQuery},
+    query::{CardQuery, EffectQuery, LocationQuery, QueryCache},
     state::{Player, PlayerWithDeck, State},
     zone::{Location, Zone},
 };
@@ -1958,7 +1958,7 @@ async fn test_played_site_generates_mana_once() {
     Effect::PlayCard {
         player_id,
         card_id: spring_river_id,
-        zone: ZoneQuery::from_zone(Zone::Location(Location::Square(1, Region::Surface))),
+        location: Location::Square(1, Region::Surface),
         spellcaster: avatar_id,
     }
     .apply(&mut state)
@@ -1997,7 +1997,7 @@ async fn test_playing_site_under_flood_does_not_recurse() {
     Effect::PlayCard {
         player_id,
         card_id: spring_river_id,
-        zone: ZoneQuery::from_zone(Zone::Location(Location::Square(1, Region::Surface))),
+        location: Location::Square(1, Region::Surface),
         spellcaster: avatar_id,
     }
     .apply(&mut state)
@@ -2275,8 +2275,8 @@ async fn test_summon_card_no_summoning_sickness_with_charge() {
 #[tokio::test]
 async fn test_summon_card_queues_genesis_effects() {
     // ApprenticeWizard genesis -> draw spell
-    let zone = Zone::Location(Location::Square(1, Region::Surface));
-    let (mut state, _rx) = make_state(vec![zone.clone()]);
+    let location = Zone::Location(Location::Square(1, Region::Surface));
+    let (mut state, _rx) = make_state(vec![location.clone()]);
     let player_id = state.players[0].id;
 
     let wizard = ApprenticeWizard::new(player_id);
@@ -2288,7 +2288,7 @@ async fn test_summon_card_queues_genesis_effects() {
             player_id,
             card_id: id,
             from_zone: Zone::Hand,
-            to_location: zone
+            to_location: location
                 .clone()
                 .into_location()
                 .expect("test zone must be a location"),
@@ -2312,7 +2312,7 @@ async fn test_summon_card_queues_genesis_effects() {
     );
 
     drain_effects(&mut state).await;
-    assert_eq!(state.cards.get(&id).unwrap().get_zone(), &zone);
+    assert_eq!(state.cards.get(&id).unwrap().get_zone(), &location);
 }
 
 // TODO: Genesis does not trigger if the card is disabled by an ongoing effect. Not sure in what
@@ -2340,13 +2340,13 @@ async fn test_summon_card_queues_genesis_effects() {
 
 #[tokio::test]
 async fn test_genesis_is_ignored_if_source_left_realm_before_resolution() {
-    let zone = Zone::Location(Location::Square(1, Region::Surface));
-    let (mut state, _rx) = make_state(vec![zone.clone()]);
+    let location = Zone::Location(Location::Square(1, Region::Surface));
+    let (mut state, _rx) = make_state(vec![location.clone()]);
     let player_id = state.players[0].id;
 
     let mut wizard = ApprenticeWizard::new(player_id);
     let wizard_id = *wizard.get_id();
-    wizard.set_zone(zone);
+    wizard.set_zone(location);
     state.cards.insert(wizard_id, Box::new(wizard));
 
     state.queue(vec![
@@ -2364,13 +2364,13 @@ async fn test_genesis_is_ignored_if_source_left_realm_before_resolution() {
 
 #[tokio::test]
 async fn test_deathrite_resolves_before_source_enters_cemetery() {
-    let zone = Zone::Location(Location::Square(1, Region::Surface));
-    let (mut state, _rx) = make_state(vec![zone.clone()]);
+    let location = Zone::Location(Location::Square(1, Region::Surface));
+    let (mut state, _rx) = make_state(vec![location.clone()]);
     let player_id = state.players[0].id;
 
     let mut scarabs = SacredScarabs::new(player_id);
     let scarabs_id = *scarabs.get_id();
-    scarabs.set_zone(zone);
+    scarabs.set_zone(location);
     state.cards.insert(scarabs_id, Box::new(scarabs));
 
     state.queue_one(Effect::BuryCard {
@@ -2391,13 +2391,13 @@ async fn test_deathrite_resolves_before_source_enters_cemetery() {
 
 #[tokio::test]
 async fn test_disabled_deathrite_source_does_not_resolve() {
-    let zone = Zone::Location(Location::Square(1, Region::Surface));
-    let (mut state, _rx) = make_state(vec![zone.clone()]);
+    let location = Zone::Location(Location::Square(1, Region::Surface));
+    let (mut state, _rx) = make_state(vec![location.clone()]);
     let player_id = state.players[0].id;
 
     let mut scarabs = SacredScarabs::new(player_id);
     let scarabs_id = *scarabs.get_id();
-    scarabs.set_zone(zone);
+    scarabs.set_zone(location);
     scarabs.add_status(CardStatus::Disabled);
     state.cards.insert(scarabs_id, Box::new(scarabs));
 
@@ -2497,7 +2497,7 @@ async fn test_played_site_genesis_can_target_itself() {
     Effect::PlayCard {
         player_id: player_one_id,
         card_id: desert_id,
-        zone: ZoneQuery::from_zone(Zone::Location(Location::Square(1, Region::Surface))),
+        location: Location::Square(1, Region::Surface),
         spellcaster: avatar_one_id,
     }
     .apply(&mut state)
@@ -2528,7 +2528,7 @@ async fn test_play_card_minion_ends_in_target_zone() {
     Effect::PlayCard {
         player_id,
         card_id: ogre_id,
-        zone: ZoneQuery::from_zone(Zone::Location(Location::Square(1, Region::Surface))),
+        location: Location::Square(1, Region::Surface),
         spellcaster: avatar_id,
     }
     .apply(&mut state)
@@ -2564,7 +2564,7 @@ async fn test_play_card_burrowing_minion_can_enter_underground() {
     Effect::PlayCard {
         player_id,
         card_id: spider_id,
-        zone: ZoneQuery::from_zone(Zone::Location(Location::Square(1, Region::Underground))),
+        location: Location::Square(1, Region::Underground),
         spellcaster: avatar_id,
     }
     .apply(&mut state)
@@ -2581,23 +2581,26 @@ async fn test_play_card_burrowing_minion_can_enter_underground() {
 
 #[tokio::test]
 async fn test_enchantress_triggers_when_controlled_spellcaster_plays_minion() {
-    let zone = Zone::Location(Location::Square(1, Region::Surface));
-    let (mut state, server_rx, client_tx) = make_state_with_client(vec![zone.clone()]);
+    let location = Location::Square(1, Region::Surface);
+    let (mut state, server_rx, client_tx) =
+        make_state_with_client(vec![location.clone().into_zone()]);
     let game_id = state.game_id;
     let player_id = state.players[0].id;
     *state.get_player_mana_mut(&player_id) = 1;
     let avatar_id = state.get_player_avatar_id(&player_id).unwrap();
-    state.get_card_mut(&avatar_id).set_zone(zone.clone());
+    state
+        .get_card_mut(&avatar_id)
+        .set_zone(location.clone().into_zone());
     state.reconcile_ongoing_effects_for_test().await.unwrap();
 
     let mut aura = Silence::new(player_id);
     let aura_id = *aura.get_id();
-    aura.set_zone(zone.clone());
+    aura.set_zone(location.clone().into_zone());
     state.cards.insert(aura_id, Box::new(aura));
 
     let mut caster = ApprenticeWizard::new(player_id);
     let caster_id = *caster.get_id();
-    caster.set_zone(zone.clone());
+    caster.set_zone(location.clone().into_zone());
     state.cards.insert(caster_id, Box::new(caster));
 
     let mut spell = PitVipers::new(player_id);
@@ -2641,7 +2644,7 @@ async fn test_enchantress_triggers_when_controlled_spellcaster_plays_minion() {
     state.queue_one(Effect::PlayCard {
         player_id,
         card_id: spell_id,
-        zone: ZoneQuery::from_zone(zone.clone()),
+        location: location.clone(),
         spellcaster: caster_id,
     });
     drain_effects(&mut state).await;
@@ -2651,18 +2654,18 @@ async fn test_enchantress_triggers_when_controlled_spellcaster_plays_minion() {
         "Enchantress should trigger from a minion spell played by another controlled spellcaster"
     );
     assert_eq!(
-        state.get_card(&aura_id).get_zone(),
-        &zone,
+        state.get_card(&aura_id).get_location(),
+        &location,
         "the animated aura should remain in the realm after location survival checks"
     );
 }
 
 #[tokio::test]
 async fn test_enchantress_triggers_when_enchantress_plays_minion() {
-    let zone = Zone::Location(Location::Square(1, Region::Surface));
+    let location = Location::Square(1, Region::Surface);
     let intersection = Zone::Location(Location::Intersection(vec![1, 2, 6, 7], Region::Surface));
     let (mut state, server_rx, client_tx) = make_state_with_client(vec![
-        zone.clone(),
+        location.clone().into_zone(),
         Zone::Location(Location::Square(2, Region::Surface)),
         Zone::Location(Location::Square(6, Region::Surface)),
         Zone::Location(Location::Square(7, Region::Surface)),
@@ -2671,7 +2674,9 @@ async fn test_enchantress_triggers_when_enchantress_plays_minion() {
     let player_id = state.players[0].id;
     *state.get_player_mana_mut(&player_id) = 1;
     let avatar_id = state.get_player_avatar_id(&player_id).unwrap();
-    state.get_card_mut(&avatar_id).set_zone(zone.clone());
+    state
+        .get_card_mut(&avatar_id)
+        .set_zone(location.clone().into_zone());
     state.reconcile_ongoing_effects_for_test().await.unwrap();
 
     let mut aura = Silence::new(player_id);
@@ -2728,7 +2733,7 @@ async fn test_enchantress_triggers_when_enchantress_plays_minion() {
     state.queue_one(Effect::PlayCard {
         player_id,
         card_id: spell_id,
-        zone: ZoneQuery::from_zone(zone),
+        location,
         spellcaster: avatar_id,
     });
     drain_effects(&mut state).await;
@@ -2746,7 +2751,7 @@ async fn test_enchantress_triggers_when_enchantress_plays_minion() {
 
 #[tokio::test]
 async fn test_enchantress_does_not_see_aura_spell_before_it_enters() {
-    let zone = Zone::Location(Location::Intersection(vec![1, 2, 6, 7], Region::Surface));
+    let location = Location::Intersection(vec![1, 2, 6, 7], Region::Surface);
     let (mut state, _server_rx, _client_tx) =
         make_state_with_client(vec![Zone::Location(Location::Square(1, Region::Surface))]);
     let player_id = state.players[0].id;
@@ -2762,7 +2767,7 @@ async fn test_enchantress_does_not_see_aura_spell_before_it_enters() {
     state.queue_one(Effect::PlayCard {
         player_id,
         card_id: aura_id,
-        zone: ZoneQuery::from_zone(zone),
+        location,
         spellcaster: avatar_id,
     });
 
@@ -2978,7 +2983,7 @@ async fn test_play_card_minion_has_summoning_sickness() {
     Effect::PlayCard {
         player_id,
         card_id: ogre_id,
-        zone: ZoneQuery::from_zone(Zone::Location(Location::Square(1, Region::Surface))),
+        location: Location::Square(1, Region::Surface),
         spellcaster: avatar_id,
     }
     .apply(&mut state)

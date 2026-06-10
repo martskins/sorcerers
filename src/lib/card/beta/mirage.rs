@@ -111,7 +111,7 @@ impl Card for Mirage {
                 Effect::PlayCard {
                     player_id: *player_id,
                     card_id: *self.get_id(),
-                    zone: ZoneQuery::from_zone(other_zone),
+                    location: other_zone.location().cloned().unwrap(),
                     spellcaster: *caster_id,
                 },
             ]);
@@ -129,7 +129,7 @@ impl Card for Mirage {
         Ok(vec![Effect::PlayCard {
             player_id: *player_id,
             card_id: *self.get_id(),
-            zone: zone.into(),
+            location: zone.location().cloned().unwrap(),
             spellcaster: *caster_id,
         }])
     }
