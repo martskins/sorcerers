@@ -73,7 +73,7 @@ impl Magic for HeatRay {
             range: None,
             player_id: *self.get_owner_id(),
             shooter: *caster.get_id(),
-            from_zone: caster.get_zone().clone(),
+            origin: caster.get_location().clone(),
             direction,
             damage: 2,
             ranged_strike: false,

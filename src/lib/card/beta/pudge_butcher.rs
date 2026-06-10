@@ -31,7 +31,7 @@ impl ActivatedAbility for ShootProjectile {
             range: None,
             player_id: *player_id,
             shooter: *card_id,
-            from_zone: pudge.get_zone().clone(),
+            origin: pudge.get_location().clone(),
             direction,
             damage: 0,
             ranged_strike: false,

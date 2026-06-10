@@ -56,7 +56,7 @@ impl ActivatedAbility for ShootProjectile {
             id: uuid::Uuid::new_v4(),
             range: None,
             player_id: *avatar.get_owner_id(),
-            from_zone: avatar.get_zone().clone(),
+            origin: avatar.get_location().clone(),
             shooter: *card_id,
             direction,
             damage,

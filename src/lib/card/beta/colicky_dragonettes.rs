@@ -100,7 +100,7 @@ impl Card for ColickyDragonettes {
                     range: None,
                     player_id: *self.get_owner_id(),
                     shooter: *self.get_id(),
-                    from_zone: self.get_zone().clone(),
+                    origin: self.get_location().clone(),
                     direction,
                     damage: 1,
                     ranged_strike: false,

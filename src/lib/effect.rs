@@ -205,7 +205,7 @@ pub enum Effect {
         range: Option<u8>,
         player_id: PlayerId,
         shooter: CardId,
-        from_zone: Zone,
+        origin: Location,
         direction: Direction,
         damage: u16,
         ranged_strike: bool,
@@ -1202,7 +1202,7 @@ impl Effect {
                 range,
                 player_id,
                 shooter,
-                from_zone,
+                origin: from_zone,
                 direction,
                 damage,
                 ranged_strike,
@@ -1215,7 +1215,7 @@ impl Effect {
                     .send(ServerMessage::ProjectileFired {
                         player_id: *player_id,
                         shooter: *shooter,
-                        origin: from_zone.location().cloned().unwrap(),
+                        origin: from_zone.clone(),
                         direction: direction.clone(),
                         range: *range,
                         ranged_strike: *ranged_strike,
@@ -1250,7 +1250,7 @@ impl Effect {
                         None => {
                             let mut units_query = CardQuery::new()
                                 .units()
-                                .in_zone(&zone)
+                                .in_location(&zone)
                                 .can_be_targeted_by_player(player_id);
                             // Allied units in the starting location are ignored by projectiles.
                             if is_starting_location {
@@ -1286,7 +1286,7 @@ impl Effect {
                         if let Some(splash_damage) = splash_damage {
                             let splash_effects = CardQuery::new()
                                 .units()
-                                .in_zone(&zone)
+                                .in_location(&zone)
                                 .id_not(picked_unit_id)
                                 .all(state)
                                 .into_iter()
@@ -1304,7 +1304,7 @@ impl Effect {
                         }
                     }
 
-                    next_zone = zone.zone_in_direction(direction, 1);
+                    next_zone = zone.step_in_direction(direction);
                     is_starting_location = false;
                 }
 

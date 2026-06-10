@@ -137,7 +137,7 @@ impl Card for SkirmishersOfMu {
                     range: Some(self.ranged_range(state)?.unwrap_or(1)),
                     player_id: controller_id,
                     shooter: *self.get_id(),
-                    from_zone: picked_zone,
+                    origin: picked_zone.location().cloned().unwrap(),
                     direction,
                     damage: self
                         .get_power(state)?

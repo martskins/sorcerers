@@ -72,7 +72,7 @@ impl Magic for Fireball {
             range: None,
             player_id: *self.get_owner_id(),
             shooter: *caster.get_id(),
-            from_zone: caster.get_zone().clone(),
+            origin: caster.get_location().clone(),
             direction: direction.clone(),
             damage: 4,
             ranged_strike: false,

@@ -880,6 +880,20 @@ impl CardQuery {
         }
     }
 
+    pub fn in_location(self, loc: &Location) -> Self {
+        Self {
+            in_zones: Some(vec![loc.clone().into_zone()]),
+            ..self
+        }
+    }
+
+    pub fn in_locations(self, locs: &[Location]) -> Self {
+        Self {
+            in_zones: Some(locs.iter().map(|l| l.clone().into_zone()).collect()),
+            ..self
+        }
+    }
+
     pub fn in_zones(self, zones: &[Zone]) -> Self {
         Self {
             in_zones: Some(zones.to_vec()),

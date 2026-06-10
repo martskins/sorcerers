@@ -1411,7 +1411,7 @@ impl ActivatedAbility for UnitAction {
                     range: Some(card.ranged_range(state)?.unwrap_or(1)),
                     player_id: *player_id,
                     shooter: *card_id,
-                    from_zone: card.get_zone().clone(),
+                    origin: card.get_location().clone(),
                     direction,
                     damage: card
                         .get_power(state)?
