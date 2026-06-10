@@ -104,7 +104,7 @@ impl Card for WallOfFire {
 
                 let final_zone = match through_path {
                     Some(path) => path.last().cloned(),
-                    None => Some(to.pick(player_id, state).await?.into_zone()),
+                    None => Some(to.pick(player_id, state).await?.into()),
                 };
                 let Some(final_zone) = final_zone else {
                     return Ok(vec![]);
@@ -115,7 +115,7 @@ impl Card for WallOfFire {
                     return Ok(vec![]);
                 }
 
-                let mut path = vec![from.clone().into_zone()];
+                let mut path = vec![from.clone().into()];
                 match through_path {
                     Some(through_path) => path.extend(through_path.iter().cloned()),
                     None => path.push(final_zone),

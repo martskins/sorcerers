@@ -122,8 +122,7 @@ impl EffectQuery {
             ) => {
                 for sc in summoned_cards {
                     let card_matches = card_query.matches(&sc.card_id, state);
-                    let zone_matches =
-                        zone_query.matches(state, &sc.to_location.clone().into_zone());
+                    let zone_matches = zone_query.matches(state, &sc.to_location.clone().into());
                     if card_matches && zone_matches {
                         return Ok(true);
                     }
@@ -146,7 +145,7 @@ impl EffectQuery {
             ) => {
                 let card_matches = card_query.matches(card_id, state);
                 let loc = to.pick(player_id, state).await?;
-                let zone_matches = zone_query.matches(state, &loc.into_zone());
+                let zone_matches = zone_query.matches(state, &loc.into());
                 if card_matches && zone_matches {
                     return Ok(true);
                 }
@@ -168,7 +167,7 @@ impl EffectQuery {
                 }
 
                 let card_matches = card_query.matches(card_id, state);
-                let zone_matches = zone_query.matches(state, &location.clone().into_zone());
+                let zone_matches = zone_query.matches(state, &location.into());
                 if card_matches && zone_matches {
                     return Ok(true);
                 }
@@ -187,7 +186,7 @@ impl EffectQuery {
                     ..
                 },
             ) => {
-                let dest = to.pick(player_id, state).await?.into_zone();
+                let dest = to.pick(player_id, state).await?.into();
                 let zone_matches = zone_query.matches(state, &dest);
                 let card_matches = card_query.matches(card_id, state);
                 Ok(zone_matches && card_matches)

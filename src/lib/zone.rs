@@ -14,6 +14,18 @@ pub enum Location {
     Intersection(Vec<u8>, Region),
 }
 
+impl From<Location> for Zone {
+    fn from(value: Location) -> Self {
+        Zone::Location(value)
+    }
+}
+
+impl From<&Location> for Zone {
+    fn from(value: &Location) -> Self {
+        Zone::Location(value.clone())
+    }
+}
+
 impl Location {
     pub fn region(&self) -> &Region {
         match self {
@@ -33,10 +45,6 @@ impl Location {
             Location::Square(square, _) => Location::Square(*square, region),
             Location::Intersection(squares, _) => Location::Intersection(squares.clone(), region),
         }
-    }
-
-    pub fn into_zone(self) -> Zone {
-        Zone::Location(self)
     }
 
     pub fn get_site<'a>(&self, state: &'a State) -> Option<&'a dyn Site> {

@@ -653,12 +653,15 @@ impl Effect {
                             .collect::<Vec<_>>()
                             .join(" → "),
                     )),
-                    None => Some(format!(
-                        "{} moves {} to {}",
-                        player_name(player_id, state),
-                        card_name,
-                        to.pick(player_id, state).await?.into_zone(),
-                    )),
+                    None => {
+                        let location: Location = to.pick(player_id, state).await?;
+                        Some(format!(
+                            "{} moves {} to {}",
+                            player_name(player_id, state),
+                            card_name,
+                            location,
+                        ))
+                    }
                 }
             }
             Effect::DrawCard {
@@ -1163,7 +1166,7 @@ impl Effect {
                     // SummonCards, since they don't need to trigger any summon hooks or genesis effects.
                     let mut token = token;
                     let token_id = *token.get_id();
-                    token.set_zone(location.clone().into_zone());
+                    token.set_zone(location.into());
                     state.cards.insert(token_id, token);
                     state
                         .add_passive_ongoing_effects_for_source(&token_id)
@@ -1358,7 +1361,7 @@ impl Effect {
                         }
                     }
                     None => {
-                        let zone = to.pick(player_id, state).await?.into_zone();
+                        let zone: Zone = to.pick(player_id, state).await?.into();
                         let card = state.get_card_mut(card_id);
                         card.set_zone(zone.clone());
                         if *tap {
@@ -1466,11 +1469,8 @@ impl Effect {
                 location,
                 ..
             } => {
-                let costs = state.get_effective_costs(
-                    card_id,
-                    Some(&location.clone().into_zone()),
-                    player_id,
-                )?;
+                let costs =
+                    state.get_effective_costs(card_id, Some(&location.into()), player_id)?;
                 Box::pin(costs.pay(state, player_id)).await?;
                 let card = state.get_card(card_id);
                 let is_minion = card.is_minion();
@@ -1513,7 +1513,7 @@ impl Effect {
                             .expect("to find card");
                         card.set_controller_id(player_id);
                         let from_zone = card.get_zone().clone();
-                        card.set_zone(location.clone().into_zone());
+                        card.set_zone(location.into());
                         from_zone
                     };
 
@@ -1539,7 +1539,7 @@ impl Effect {
             Effect::SummonCards { summoned_cards } => {
                 let snapshot = state.clone();
                 for sc in summoned_cards {
-                    let zone = sc.to_location.clone().into_zone();
+                    let zone: Zone = sc.to_location.clone().into();
                     let card = state.get_card(&sc.card_id);
                     let has_charge = card.has_ability(state, &Ability::Charge);
                     let original_zone = card.get_zone().clone();
@@ -1588,7 +1588,7 @@ impl Effect {
 
                 let mut effects = vec![];
                 for sc in summoned_cards {
-                    let zone = sc.to_location.clone().into_zone();
+                    let zone: Zone = sc.to_location.clone().into();
                     let from_zone = snapshot.get_card(&sc.card_id).get_zone().clone();
                     effects.push(Effect::TriggerGenesis {
                         card_id: sc.card_id,
@@ -2370,7 +2370,7 @@ impl Effect {
             Effect::BuryCard { card_id, .. } => {
                 let card = state.get_card(card_id);
                 let original_zone = card.get_location().clone();
-                if state.mark_for_death(*card_id, original_zone.clone().into_zone()) {
+                if state.mark_for_death(*card_id, original_zone.clone().into()) {
                     state.queue_one(Effect::TriggerDeathrite {
                         card_id: *card_id,
                         from: original_zone,

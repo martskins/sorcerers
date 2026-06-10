@@ -94,8 +94,8 @@ impl Card for SkirmishersOfMu {
                 };
 
                 let controller_id = self.get_controller_id(state);
-                let to = to.pick(player_id, state).await?.into_zone();
-                let mut path = vec![from.clone().into_zone(), to];
+                let to = to.pick(player_id, state).await?.into();
+                let mut path = vec![from.clone().into(), to];
                 if let Some(through_path) = through_path {
                     path = through_path.to_vec();
                 }
