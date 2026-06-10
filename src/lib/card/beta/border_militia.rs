@@ -86,7 +86,7 @@ impl Magic for BorderMilitia {
             .map(|site| Effect::SummonToken {
                 player_id: self.get_controller_id(state),
                 token_type: TokenType::FootSoldier,
-                zone: site.get_zone().clone(),
+                location: site.get_location().clone(),
             })
             .collect())
     }

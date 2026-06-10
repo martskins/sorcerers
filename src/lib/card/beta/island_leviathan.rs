@@ -33,7 +33,7 @@ impl ActivatedAbility for TransformIntoAMonster {
             Effect::SummonToken {
                 player_id: *player_id,
                 token_type: TokenType::Rubble,
-                zone: card.get_zone().clone(),
+                location: card.get_location().clone(),
             },
         ])
     }

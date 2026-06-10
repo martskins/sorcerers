@@ -194,7 +194,7 @@ pub enum Effect {
     SummonToken {
         player_id: PlayerId,
         token_type: TokenType,
-        zone: Zone,
+        location: Location,
     },
     Heal {
         card_id: CardId,
@@ -563,7 +563,7 @@ impl Effect {
             Effect::SummonToken {
                 player_id,
                 token_type,
-                zone,
+                location: zone,
             } => {
                 let token_name = match token_type {
                     TokenType::Rubble => "Rubble",
@@ -1131,7 +1131,7 @@ impl Effect {
             Effect::SummonToken {
                 player_id,
                 token_type,
-                zone,
+                location,
             } => {
                 let token: Box<dyn Card> = match token_type {
                     TokenType::Rubble => Box::new(Rubble::new(*player_id)),
@@ -1155,10 +1155,7 @@ impl Effect {
                             player_id: *player_id,
                             card_id: token_id,
                             from_zone: Zone::None,
-                            to_location: zone
-                                .clone()
-                                .into_location()
-                                .ok_or(anyhow::anyhow!("token summon zone must be a location"))?,
+                            to_location: location.clone(),
                         }],
                     });
                 } else {
@@ -1166,15 +1163,14 @@ impl Effect {
                     // SummonCards, since they don't need to trigger any summon hooks or genesis effects.
                     let mut token = token;
                     let token_id = *token.get_id();
-                    token.set_zone(zone.clone());
+                    token.set_zone(location.clone().into_zone());
                     state.cards.insert(token_id, token);
                     state
                         .add_passive_ongoing_effects_for_source(&token_id)
                         .await?;
                     state.invalidate_runtime_caches();
-                    if zone.is_in_play()
-                        && let Some(mana_effect) =
-                            mana_effect_for_resource_entering_realm(state, &token_id)?
+                    if let Some(mana_effect) =
+                        mana_effect_for_resource_entering_realm(state, &token_id)?
                     {
                         state.queue_one(mana_effect);
                     }
@@ -2420,7 +2416,7 @@ impl Effect {
                         state.queue_one(Effect::SummonToken {
                             player_id: controller_id,
                             token_type: TokenType::Rubble,
-                            zone: death_zone,
+                            location: death_zone.location().cloned().unwrap(),
                         });
                     }
                 }

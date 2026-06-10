@@ -3002,7 +3002,7 @@ async fn test_summon_token_unit_placed_in_target_zone() {
     Effect::SummonToken {
         player_id,
         token_type: TokenType::FootSoldier,
-        zone: Zone::Location(Location::Square(1, Region::Surface)),
+        location: Location::Square(1, Region::Surface),
     }
     .apply(&mut state)
     .await
@@ -3030,7 +3030,7 @@ async fn test_summon_token_unit_has_summoning_sickness() {
     Effect::SummonToken {
         player_id,
         token_type: TokenType::FootSoldier,
-        zone: Zone::Location(Location::Square(1, Region::Surface)),
+        location: Location::Square(1, Region::Surface),
     }
     .apply(&mut state)
     .await

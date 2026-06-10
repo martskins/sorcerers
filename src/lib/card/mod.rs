@@ -1586,6 +1586,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         None
     }
 
+    fn get_location(&self) -> &Location {
+        self.get_base().zone.location().unwrap()
+    }
+
     fn get_zone(&self) -> &Zone {
         &self.get_base().zone
     }

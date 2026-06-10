@@ -136,7 +136,7 @@ impl Card for MidlandArmy {
                     .map(|zone| Effect::SummonToken {
                         player_id: controller_id,
                         token_type: TokenType::FootSoldier,
-                        zone,
+                        location: zone.location().cloned().unwrap(),
                     })
                     .collect())
             }

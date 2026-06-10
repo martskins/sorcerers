@@ -92,17 +92,17 @@ impl Card for TadpolePool {
                     Effect::SummonToken {
                         player_id: controller_id,
                         token_type: TokenType::Frog,
-                        zone: self.get_zone().clone(),
+                        location: self.get_location().clone(),
                     },
                     Effect::SummonToken {
                         player_id: controller_id,
                         token_type: TokenType::Frog,
-                        zone: self.get_zone().clone(),
+                        location: self.get_location().clone(),
                     },
                     Effect::SummonToken {
                         player_id: controller_id,
                         token_type: TokenType::Frog,
-                        zone: self.get_zone().clone(),
+                        location: self.get_location().clone(),
                     },
                 ])
             }

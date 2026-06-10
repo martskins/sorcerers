@@ -75,7 +75,7 @@ impl Magic for Pollimorph {
             return Ok(vec![]);
         };
 
-        let target_zone = state.get_card(&target_id).get_zone().clone();
+        let target_loc = state.get_card(&target_id).get_location().clone();
         let target_controller = state.get_card(&target_id).get_controller_id(state);
 
         Ok(vec![
@@ -83,7 +83,7 @@ impl Magic for Pollimorph {
             Effect::SummonToken {
                 player_id: target_controller,
                 token_type: TokenType::Frog,
-                zone: target_zone,
+                location: target_loc,
             },
         ])
     }

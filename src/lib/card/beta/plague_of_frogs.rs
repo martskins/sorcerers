@@ -61,13 +61,13 @@ impl Magic for PlagueOfFrogs {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        let caster_zone = state.get_card(caster_id).get_zone().clone();
+        let caster_zone = state.get_card(caster_id).get_location().clone();
 
         Ok((0..7)
             .map(|_| Effect::SummonToken {
                 player_id: controller_id,
                 token_type: TokenType::Frog,
-                zone: caster_zone.clone(),
+                location: caster_zone.clone(),
             })
             .collect())
     }

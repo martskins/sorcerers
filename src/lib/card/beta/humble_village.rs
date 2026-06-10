@@ -104,7 +104,7 @@ impl Card for HumbleVillage {
                     Effect::SummonToken {
                         player_id: self.get_controller_id(state),
                         token_type: TokenType::FootSoldier,
-                        zone: self.get_zone().clone(),
+                        location: self.get_location().clone(),
                     },
                 ])
             }
