@@ -1215,7 +1215,7 @@ impl Effect {
                     .send(ServerMessage::ProjectileFired {
                         player_id: *player_id,
                         shooter: *shooter,
-                        from_zone: from_zone.clone(),
+                        origin: from_zone.location().cloned().unwrap(),
                         direction: direction.clone(),
                         range: *range,
                         ranged_strike: *ranged_strike,

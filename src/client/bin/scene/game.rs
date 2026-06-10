@@ -27,7 +27,7 @@ use sorcerers::{
         self,
         message::{ClientMessage, EffectDebugData, OngoingEffectData, ServerMessage},
     },
-    zone::Zone,
+    zone::{Location, Zone},
 };
 use std::collections::HashMap;
 
@@ -142,7 +142,7 @@ fn component_rect(component_type: ComponentType) -> anyhow::Result<Rect> {
 pub struct PendingProjectileAnimation {
     pub id: uuid::Uuid,
     pub shooter: CardId,
-    pub from_zone: Zone,
+    pub origin: Location,
     pub direction: Direction,
     pub range: Option<u8>,
     pub ranged_strike: bool,
@@ -347,11 +347,7 @@ impl GameComponents {
         Ok(())
     }
 
-    fn update_component<C: Component>(
-        component: &mut C,
-        data: &mut GameData,
-        ctx: &Context,
-    ) {
+    fn update_component<C: Component>(component: &mut C, data: &mut GameData, ctx: &Context) {
         if let Err(e) = component.update(data, ctx) {
             eprintln!("Error updating component: {}", e);
         }

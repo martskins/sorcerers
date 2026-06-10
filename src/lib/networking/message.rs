@@ -3,7 +3,7 @@ use crate::{
     deck::{Deck, DeckList, precon::PreconDeck},
     evaluation::Evaluation,
     game::{CardId, Direction, PlayerId, Resources, SoundEffect},
-    zone::Zone,
+    zone::{Location, Zone},
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -79,7 +79,7 @@ pub enum ServerMessage {
     ProjectileFired {
         player_id: PlayerId,
         shooter: CardId,
-        from_zone: Zone,
+        origin: Location,
         direction: Direction,
         range: Option<u8>,
         ranged_strike: bool,

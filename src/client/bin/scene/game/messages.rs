@@ -32,7 +32,7 @@ impl Game {
             }
             ServerMessage::ProjectileFired {
                 shooter,
-                from_zone,
+                origin,
                 direction,
                 range,
                 ranged_strike,
@@ -43,7 +43,7 @@ impl Game {
                     .push(PendingProjectileAnimation {
                         id: uuid::Uuid::new_v4(),
                         shooter: *shooter,
-                        from_zone: from_zone.clone(),
+                        origin: origin.clone(),
                         direction: direction.clone(),
                         range: *range,
                         ranged_strike: *ranged_strike,
@@ -247,14 +247,15 @@ impl Game {
                 if let Some(attacker_data) =
                     self.data.cards.iter().find(|c| c.id == *attacker).cloned()
                 {
-                    self.overlay = Some(GameOverlay::CombatResolution(CombatResolutionOverlay::new(
-                        self.client.clone(),
-                        &self.game_id,
-                        player_id,
-                        attacker_data,
-                        defenders_data,
-                        *damage,
-                    )));
+                    self.overlay =
+                        Some(GameOverlay::CombatResolution(CombatResolutionOverlay::new(
+                            self.client.clone(),
+                            &self.game_id,
+                            player_id,
+                            attacker_data,
+                            defenders_data,
+                            *damage,
+                        )));
                 }
                 None
             }

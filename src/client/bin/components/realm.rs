@@ -666,19 +666,18 @@ impl RealmComponent {
         }
     }
 
-    fn zone_center(&self, zone: &Zone) -> Option<Pos2> {
-        match zone {
-            Zone::Location(Location::Square(cell_id, _)) => self
+    fn location_center(&self, loc: &Location) -> Option<Pos2> {
+        match loc {
+            Location::Square(cell_id, _) => self
                 .cell_rects
                 .iter()
                 .find(|cell| cell.id == *cell_id)
                 .map(|cell| cell.rect.center()),
-            Zone::Location(Location::Intersection(locations, _)) => self
+            Location::Intersection(locations, _) => self
                 .intersection_rects
                 .iter()
                 .find(|intersection| intersection.locations == *locations)
                 .map(|intersection| intersection.rect.center()),
-            _ => None,
         }
     }
 
@@ -686,7 +685,7 @@ impl RealmComponent {
         &self,
         data: &GameData,
         shooter: CardId,
-        from_zone: &Zone,
+        origin: &Location,
         direction: &Direction,
         range: Option<u8>,
     ) -> Vec<Pos2> {
@@ -695,13 +694,13 @@ impl RealmComponent {
             .cards
             .iter()
             .find(|card| card.id == shooter)
-            .and_then(|card| self.zone_center(&card.zone));
-        let Some(start) = self.zone_center(from_zone).or(fallback_start) else {
+            .and_then(|card| self.location_center(&card.zone.location().cloned().unwrap()));
+        let Some(start) = self.location_center(origin).or(fallback_start) else {
             return points;
         };
         points.push(start);
 
-        let mut current_zone = from_zone.clone();
+        let mut current_zone = origin.clone();
         let mut steps = 0u8;
         loop {
             if let Some(max_range) = range
@@ -710,10 +709,10 @@ impl RealmComponent {
                 break;
             }
 
-            let Some(next_zone) = current_zone.zone_in_direction(direction, 1) else {
+            let Some(next_zone) = current_zone.step_in_direction(direction) else {
                 break;
             };
-            if let Some(point) = self.zone_center(&next_zone) {
+            if let Some(point) = self.location_center(&next_zone) {
                 points.push(point);
             }
             current_zone = next_zone;
@@ -749,7 +748,7 @@ impl RealmComponent {
             let points = self.projectile_points(
                 data,
                 projectile.shooter,
-                &projectile.from_zone,
+                &projectile.origin,
                 &projectile.direction,
                 projectile.range,
             );
@@ -1440,7 +1439,6 @@ impl RealmComponent {
 
         Ok(())
     }
-
 }
 
 impl Component for RealmComponent {
@@ -1849,7 +1847,12 @@ impl Component for RealmComponent {
                         .cell_rects
                         .iter()
                         .find(|cell| cell.rect.contains(*pos))
-                        .map(|cell| (Self::square_zone_choices(zones, cell.id), cell.rect.center()))
+                        .map(|cell| {
+                            (
+                                Self::square_zone_choices(zones, cell.id),
+                                cell.rect.center(),
+                            )
+                        })
                         .or_else(|| {
                             self.intersection_rects
                                 .iter()

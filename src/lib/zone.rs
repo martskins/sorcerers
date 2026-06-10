@@ -38,6 +38,72 @@ impl Location {
     pub fn into_zone(self) -> Zone {
         Zone::Location(self)
     }
+
+    pub fn steps_in_direction(&self, direction: &Direction, steps: u8) -> Option<Self> {
+        let mut current_zone = self.clone();
+        for _ in 0..steps {
+            match current_zone.step_in_direction(direction) {
+                Some(z) => current_zone = z,
+                None => return None,
+            }
+        }
+        Some(current_zone)
+    }
+
+    pub fn step_in_direction(&self, direction: &Direction) -> Option<Self> {
+        match self {
+            Location::Square(square, region) => {
+                let zone = match direction {
+                    Direction::Up => Location::Square(square.saturating_add(5), region.clone()),
+                    Direction::Down => Location::Square(square.saturating_sub(5), region.clone()),
+                    Direction::Left => Location::Square(square.saturating_sub(1), region.clone()),
+                    Direction::Right => Location::Square(square.saturating_add(1), region.clone()),
+                    Direction::TopLeft => {
+                        Location::Square(square.saturating_add(4), region.clone())
+                    }
+                    Direction::TopRight => {
+                        Location::Square(square.saturating_add(6), region.clone())
+                    }
+                    Direction::BottomLeft => {
+                        Location::Square(square.saturating_sub(6), region.clone())
+                    }
+                    Direction::BottomRight => {
+                        Location::Square(square.saturating_sub(4), region.clone())
+                    }
+                };
+
+                match direction {
+                    Direction::Up | Direction::Down => {
+                        if zone.square() > Some(20) || zone.square() < Some(1) {
+                            return None;
+                        }
+
+                        Some(zone)
+                    }
+                    _ => Some(zone),
+                }
+            }
+            Location::Intersection(locs, region) => {
+                let new_squares: Vec<u8> = locs
+                    .iter()
+                    .filter_map(|sq| {
+                        let realm_zone = Zone::Location(Location::Square(*sq, region.clone()));
+                        realm_zone.zone_in_direction(direction, 1)?.get_square()
+                    })
+                    .collect();
+
+                for intersection in Zone::all_intersections() {
+                    if let Zone::Location(Location::Intersection(ilocs, _)) = &intersection
+                        && ilocs == &new_squares
+                    {
+                        return Some(Location::Intersection(new_squares, region.clone()));
+                    }
+                }
+
+                None
+            }
+        }
+    }
 }
 
 impl std::fmt::Display for Location {
