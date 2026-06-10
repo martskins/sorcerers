@@ -81,7 +81,7 @@ impl Card for SacredScarabs {
                     .cards
                     .values()
                     .filter(|c| c.is_unit())
-                    .filter(|c| c.get_zone() == from)
+                    .filter(|c| c.get_location() == from)
                     .map(|c| *c.get_id())
                     .collect();
                 let mut effects = Vec::new();

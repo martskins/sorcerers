@@ -284,7 +284,7 @@ pub enum Effect {
     },
     TriggerDeathrite {
         card_id: CardId,
-        from: Zone,
+        from: Location,
     },
     FinalizeDeaths,
     SetTapped {
@@ -2368,13 +2368,8 @@ impl Effect {
             }
             Effect::BuryCard { card_id, .. } => {
                 let card = state.get_card(card_id);
-                let original_zone = card.get_zone().clone();
-                if !original_zone.is_in_play() {
-                    state.get_card_mut(card_id).set_zone(Zone::Cemetery);
-                    return Ok(());
-                }
-
-                if state.mark_for_death(*card_id, original_zone.clone()) {
+                let original_zone = card.get_location().clone();
+                if state.mark_for_death(*card_id, original_zone.clone().into_zone()) {
                     state.queue_one(Effect::TriggerDeathrite {
                         card_id: *card_id,
                         from: original_zone,

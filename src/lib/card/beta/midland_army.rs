@@ -133,10 +133,10 @@ impl Card for MidlandArmy {
                 Ok(from
                     .get_adjacent()
                     .into_iter()
-                    .map(|zone| Effect::SummonToken {
+                    .map(|location| Effect::SummonToken {
                         player_id: controller_id,
                         token_type: TokenType::FootSoldier,
-                        location: zone.location().cloned().unwrap(),
+                        location,
                     })
                     .collect())
             }

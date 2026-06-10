@@ -39,6 +39,67 @@ impl Location {
         Zone::Location(self)
     }
 
+    pub fn get_adjacent(&self) -> Vec<Self> {
+        match self {
+            Location::Square(square, region) => {
+                let mut adjacent = match square % 5 {
+                    0 => vec![
+                        Location::Square(square.saturating_add(5), region.clone()),
+                        Location::Square(square.saturating_sub(5), region.clone()),
+                        Location::Square(square.saturating_sub(1), region.clone()),
+                        Location::Square(*square, region.clone()),
+                    ],
+                    1 => vec![
+                        Location::Square(square.saturating_add(5), region.clone()),
+                        Location::Square(square.saturating_sub(5), region.clone()),
+                        Location::Square(square.saturating_add(1), region.clone()),
+                        Location::Square(*square, region.clone()),
+                    ],
+                    _ => vec![
+                        Location::Square(square.saturating_add(5), region.clone()),
+                        Location::Square(square.saturating_sub(5), region.clone()),
+                        Location::Square(square.saturating_add(1), region.clone()),
+                        Location::Square(square.saturating_sub(1), region.clone()),
+                        Location::Square(*square, region.clone()),
+                    ],
+                };
+                adjacent.retain(|s| s.square().unwrap_or(0) <= 20);
+                adjacent.retain(|s| s.square().unwrap_or(0) > 0);
+                adjacent
+            }
+            Location::Intersection(locs, region) => {
+                let mut locs = locs.clone();
+                locs.sort();
+                let mut intersections = vec![
+                    Location::Intersection(
+                        locs.iter().map(|l| l.saturating_add(5)).collect(),
+                        region.clone(),
+                    ),
+                    Location::Intersection(
+                        locs.iter().map(|l| l.saturating_add(1)).collect(),
+                        region.clone(),
+                    ),
+                ];
+
+                if locs[0] > 1 {
+                    intersections.push(Location::Intersection(
+                        locs.iter().map(|l| l.saturating_sub(1)).collect(),
+                        region.clone(),
+                    ));
+                }
+
+                if locs[0] > 5 {
+                    intersections.push(Location::Intersection(
+                        locs.iter().map(|l| l.saturating_sub(5)).collect(),
+                        region.clone(),
+                    ));
+                }
+
+                intersections
+            }
+        }
+    }
+
     pub fn steps_in_direction(&self, direction: &Direction, steps: u8) -> Option<Self> {
         let mut current_zone = self.clone();
         for _ in 0..steps {
