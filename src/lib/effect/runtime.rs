@@ -132,7 +132,8 @@ impl EffectEngine {
                 return Ok(());
             }
 
-            let before_hooks = Self::collect_hooks(&game.state, &effect, HookTiming::Before).await?;
+            let before_hooks =
+                Self::collect_hooks(&game.state, &effect, HookTiming::Before).await?;
             Self::resolve_hooks(&mut game.state, &effect, &before_hooks).await?;
 
             match effect.apply(&mut game.state).await {
@@ -194,4 +195,3 @@ impl EffectEngine {
         Ok(())
     }
 }
-

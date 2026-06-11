@@ -1087,10 +1087,9 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 .iter()
                 .filter(|z| {
                     z.get_site(state).is_some()
-                        || z.location()
-                            .is_some_and(|location| {
-                                is_continuously_connected_zone(state, self.get_id(), location)
-                            })
+                        || z.location().is_some_and(|location| {
+                            is_continuously_connected_zone(state, self.get_id(), location)
+                        })
                 })
                 .cloned()
                 .collect();

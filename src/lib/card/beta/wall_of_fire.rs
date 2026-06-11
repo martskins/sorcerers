@@ -121,14 +121,11 @@ impl Card for WallOfFire {
                     None => path.push(final_location),
                 }
 
-                if !path
-                    .windows(2)
-                    .any(|step| {
-                        let from = Zone::from(&step[0]);
-                        let to = Zone::from(&step[1]);
-                        zones_cross_border(&from, &to, self.get_zone())
-                    })
-                {
+                if !path.windows(2).any(|step| {
+                    let from = Zone::from(&step[0]);
+                    let to = Zone::from(&step[1]);
+                    zones_cross_border(&from, &to, self.get_zone())
+                }) {
                     return Ok(vec![]);
                 }
 

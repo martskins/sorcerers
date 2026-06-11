@@ -635,7 +635,11 @@ impl OngoingEffect {
             } => connected_zones.iter().map(Zone::from).collect(),
             Self::OverrideValidPlayZone {
                 affected_locations, ..
-            } => affected_locations.options(state).iter().map(Zone::from).collect(),
+            } => affected_locations
+                .options(state)
+                .iter()
+                .map(Zone::from)
+                .collect(),
             Self::ModifyManaCost {
                 zones: Some(zones), ..
             } => zones.options(state),
@@ -725,9 +729,7 @@ impl std::fmt::Debug for OngoingEffect {
                 .finish(),
             Self::OverrideValidPlayZone { .. } => f.debug_struct("OverrideValidPlayZone").finish(),
             Self::ModifyManaCost {
-                mana_diff,
-                zones,
-                ..
+                mana_diff, zones, ..
             } => f
                 .debug_struct("ModifyManaCost")
                 .field("mana_diff", mana_diff)

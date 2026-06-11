@@ -107,19 +107,21 @@ impl QueryCache {
                 .expect("failed to get random zone")
                 .clone()
         } else if let Some(options) = &qry.options {
-            Zone::Location(pick_zone_source(
-                player_id,
-                &options
-                    .iter()
-                    .filter_map(Zone::location)
-                    .cloned()
-                    .collect::<Vec<_>>(),
-                state,
-                false,
-                qry.prompt(),
-                qry.source_card_id,
+            Zone::Location(
+                pick_zone_source(
+                    player_id,
+                    &options
+                        .iter()
+                        .filter_map(Zone::location)
+                        .cloned()
+                        .collect::<Vec<_>>(),
+                    state,
+                    false,
+                    qry.prompt(),
+                    qry.source_card_id,
+                )
+                .await?,
             )
-            .await?)
         } else if qry.sites_only {
             let mut sites: Vec<Location> = state
                 .cards
@@ -134,29 +136,33 @@ impl QueryCache {
                 .filter_map(|c| c.get_zone().location().cloned())
                 .collect();
             sites.dedup();
-            Zone::Location(pick_zone_source(
-                player_id,
-                &sites,
-                state,
-                false,
-                qry.prompt(),
-                qry.source_card_id,
+            Zone::Location(
+                pick_zone_source(
+                    player_id,
+                    &sites,
+                    state,
+                    false,
+                    qry.prompt(),
+                    qry.source_card_id,
+                )
+                .await?,
             )
-            .await?)
         } else {
-            Zone::Location(pick_zone_source(
-                player_id,
-                &Zone::all_realm()
-                    .iter()
-                    .filter_map(Zone::location)
-                    .cloned()
-                    .collect::<Vec<_>>(),
-                state,
-                false,
-                qry.prompt(),
-                qry.source_card_id,
+            Zone::Location(
+                pick_zone_source(
+                    player_id,
+                    &Zone::all_realm()
+                        .iter()
+                        .filter_map(Zone::location)
+                        .cloned()
+                        .collect::<Vec<_>>(),
+                    state,
+                    false,
+                    qry.prompt(),
+                    qry.source_card_id,
+                )
+                .await?,
             )
-            .await?)
         };
 
         let mut cache = QUERY_CACHE
