@@ -165,7 +165,7 @@ pub enum ServerMessage {
         prompt: String,
         source_card_id: Option<CardId>,
         player_id: PlayerId,
-        paths: Vec<Vec<Zone>>,
+        paths: Vec<Vec<Location>>,
     },
     PickZone {
         prompt: String,
@@ -320,7 +320,7 @@ pub enum ClientMessage {
     PickPath {
         game_id: uuid::Uuid,
         player_id: PlayerId,
-        path: Vec<Zone>,
+        path: Vec<Location>,
     },
     PickZoneGroup {
         game_id: uuid::Uuid,

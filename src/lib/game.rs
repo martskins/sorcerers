@@ -565,13 +565,16 @@ pub async fn pick_path_source(
             prompt: prompt.to_string(),
             source_card_id,
             player_id: decision_player,
-            paths: paths.to_vec(),
+            paths: paths
+                .iter()
+                .map(|p| p.iter().map(|z| z.location().cloned().unwrap()).collect())
+                .collect(),
         })
         .await?;
 
     let msg = state.get_receiver().recv().await?;
     match msg {
-        ClientMessage::PickPath { path, .. } => Ok(path),
+        ClientMessage::PickPath { path, .. } => Ok(path.iter().map(|l| l.clone().into()).collect()),
         ClientMessage::PlayerDisconnected { player_id, .. } => {
             Err(GameError::PlayerDisconnected(player_id).into())
         }

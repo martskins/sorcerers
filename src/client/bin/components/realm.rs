@@ -579,7 +579,7 @@ impl RealmComponent {
         for path in paths {
             let mut points = Vec::new();
             for zone in path {
-                if let Zone::Location(Location::Square(id, _)) = zone
+                if let Location::Square(id, _) = zone
                     && let Some(cell_r) = self.cell_rects.iter().find(|c| c.id == *id)
                 {
                     points.push(cell_r.rect.center());

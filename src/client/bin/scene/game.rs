@@ -66,7 +66,7 @@ pub enum Status {
         max_amount: u8,
     },
     SelectingPath {
-        paths: Vec<Vec<Zone>>,
+        paths: Vec<Vec<Location>>,
         prompt: String,
         source_card_id: Option<CardId>,
     },
