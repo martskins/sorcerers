@@ -968,8 +968,8 @@ impl State {
         // Validate that all cards mentioned in the message exist in the game.
         match msg {
             ClientMessage::ClickCard { card_id, .. }
-            | ClientMessage::RequestPlayableZones { card_id, .. }
-            | ClientMessage::RequestAuraAffectedZones { card_id, .. }
+            | ClientMessage::RequestPlayableLocations { card_id, .. }
+            | ClientMessage::RequestAuraAreaOfEffect { card_id, .. }
             | ClientMessage::PlayCardAtLocation { card_id, .. }
             | ClientMessage::PickCard { card_id, .. } => {
                 self.cards

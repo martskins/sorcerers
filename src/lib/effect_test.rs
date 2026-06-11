@@ -807,14 +807,14 @@ async fn test_dodge_roll_replacement_triggers_once_for_multiple_copies() {
                         .await
                         .unwrap();
                 }
-                ServerMessage::PickZone {
+                ServerMessage::PickLocation {
                     player_id,
                     locations,
                     ..
                 } => {
                     assert!(locations.contains(&picked_destination));
                     client_tx
-                        .send(ClientMessage::PickZone {
+                        .send(ClientMessage::PickLocation {
                             game_id,
                             player_id,
                             location: picked_destination.clone(),

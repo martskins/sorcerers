@@ -167,18 +167,18 @@ pub enum ServerMessage {
         player_id: PlayerId,
         paths: Vec<Vec<Location>>,
     },
-    PickZone {
+    PickLocation {
         prompt: String,
         source_card_id: Option<CardId>,
         player_id: PlayerId,
         locations: Vec<Location>,
     },
-    PlayableZones {
+    PlayableLocations {
         player_id: PlayerId,
         card_id: CardId,
         locations: Vec<Location>,
     },
-    AuraAffectedZones {
+    AuraAreOfEffect {
         player_id: PlayerId,
         card_id: CardId,
         locations: Vec<Location>,
@@ -187,7 +187,7 @@ pub enum ServerMessage {
         player_id: PlayerId,
         effects: Vec<OngoingEffectData>,
     },
-    PickZoneGroup {
+    PickLocationGroup {
         prompt: String,
         source_card_id: Option<CardId>,
         player_id: PlayerId,
@@ -222,11 +222,11 @@ impl ServerMessage {
             ServerMessage::Wait { player_id, .. } => *player_id,
             ServerMessage::PickDirection { player_id, .. } => *player_id,
             ServerMessage::PickCard { player_id, .. } => *player_id,
-            ServerMessage::PickZone { player_id, .. } => *player_id,
-            ServerMessage::PlayableZones { player_id, .. } => *player_id,
-            ServerMessage::AuraAffectedZones { player_id, .. } => *player_id,
+            ServerMessage::PickLocation { player_id, .. } => *player_id,
+            ServerMessage::PlayableLocations { player_id, .. } => *player_id,
+            ServerMessage::AuraAreOfEffect { player_id, .. } => *player_id,
             ServerMessage::OngoingEffects { player_id, .. } => *player_id,
-            ServerMessage::PickZoneGroup { player_id, .. } => *player_id,
+            ServerMessage::PickLocationGroup { player_id, .. } => *player_id,
             ServerMessage::PickAction { player_id, .. } => *player_id,
             ServerMessage::PickPath { player_id, .. } => *player_id,
             ServerMessage::ConnectResponse { player_id, .. } => *player_id,
@@ -282,12 +282,12 @@ pub enum ClientMessage {
         player_id: PlayerId,
         card_id: CardId,
     },
-    RequestPlayableZones {
+    RequestPlayableLocations {
         game_id: uuid::Uuid,
         player_id: PlayerId,
         card_id: CardId,
     },
-    RequestAuraAffectedZones {
+    RequestAuraAreaOfEffect {
         game_id: uuid::Uuid,
         player_id: PlayerId,
         card_id: CardId,
@@ -322,12 +322,12 @@ pub enum ClientMessage {
         player_id: PlayerId,
         path: Vec<Location>,
     },
-    PickZoneGroup {
+    PickLocationGroup {
         game_id: uuid::Uuid,
         player_id: PlayerId,
         group_idx: usize,
     },
-    PickZone {
+    PickLocation {
         game_id: uuid::Uuid,
         player_id: PlayerId,
         location: Location,
@@ -370,12 +370,12 @@ impl ClientMessage {
             ClientMessage::EndTurn { game_id, .. } => *game_id,
             ClientMessage::ToggleSteppedEffects { game_id, .. } => *game_id,
             ClientMessage::StepNextEffect { game_id, .. } => *game_id,
-            ClientMessage::PickZone { game_id, .. } => *game_id,
-            ClientMessage::PickZoneGroup { game_id, .. } => *game_id,
+            ClientMessage::PickLocation { game_id, .. } => *game_id,
+            ClientMessage::PickLocationGroup { game_id, .. } => *game_id,
             ClientMessage::PickPath { game_id, .. } => *game_id,
             ClientMessage::ClickCard { game_id, .. } => *game_id,
-            ClientMessage::RequestPlayableZones { game_id, .. } => *game_id,
-            ClientMessage::RequestAuraAffectedZones { game_id, .. } => *game_id,
+            ClientMessage::RequestPlayableLocations { game_id, .. } => *game_id,
+            ClientMessage::RequestAuraAreaOfEffect { game_id, .. } => *game_id,
             ClientMessage::RequestOngoingEffects { game_id, .. } => *game_id,
             ClientMessage::PlayCardAtLocation { game_id, .. } => *game_id,
             ClientMessage::DrawCard { game_id, .. } => *game_id,
@@ -397,12 +397,12 @@ impl ClientMessage {
             ClientMessage::EndTurn { player_id, .. } => player_id,
             ClientMessage::ToggleSteppedEffects { player_id, .. } => player_id,
             ClientMessage::StepNextEffect { player_id, .. } => player_id,
-            ClientMessage::PickZone { player_id, .. } => player_id,
-            ClientMessage::PickZoneGroup { player_id, .. } => player_id,
+            ClientMessage::PickLocation { player_id, .. } => player_id,
+            ClientMessage::PickLocationGroup { player_id, .. } => player_id,
             ClientMessage::PickPath { player_id, .. } => player_id,
             ClientMessage::ClickCard { player_id, .. } => player_id,
-            ClientMessage::RequestPlayableZones { player_id, .. } => player_id,
-            ClientMessage::RequestAuraAffectedZones { player_id, .. } => player_id,
+            ClientMessage::RequestPlayableLocations { player_id, .. } => player_id,
+            ClientMessage::RequestAuraAreaOfEffect { player_id, .. } => player_id,
             ClientMessage::RequestOngoingEffects { player_id, .. } => player_id,
             ClientMessage::PlayCardAtLocation { player_id, .. } => player_id,
             ClientMessage::DrawCard { player_id, .. } => player_id,

@@ -605,7 +605,7 @@ pub async fn pick_zone_group_source(
 
     state
         .get_sender()
-        .send(ServerMessage::PickZoneGroup {
+        .send(ServerMessage::PickLocationGroup {
             prompt: prompt.to_string(),
             source_card_id,
             player_id: decision_player,
@@ -618,7 +618,7 @@ pub async fn pick_zone_group_source(
 
     let msg = state.get_receiver().recv().await?;
     let zone = match msg {
-        ClientMessage::PickZoneGroup { group_idx, .. } => Ok(groups[group_idx].clone()),
+        ClientMessage::PickLocationGroup { group_idx, .. } => Ok(groups[group_idx].clone()),
         ClientMessage::PlayerDisconnected { player_id, .. } => {
             Err(GameError::PlayerDisconnected(player_id).into())
         }
@@ -658,7 +658,7 @@ pub async fn pick_zone_near_source(
 
     state
         .get_sender()
-        .send(ServerMessage::PickZone {
+        .send(ServerMessage::PickLocation {
             prompt: prompt.to_string(),
             source_card_id,
             player_id: decision_player,
@@ -672,7 +672,7 @@ pub async fn pick_zone_near_source(
 
     let msg = state.get_receiver().recv().await?;
     let location = match msg {
-        ClientMessage::PickZone { location, .. } => Ok(location),
+        ClientMessage::PickLocation { location, .. } => Ok(location),
         ClientMessage::PlayerDisconnected { player_id, .. } => {
             Err(GameError::PlayerDisconnected(player_id).into())
         }
@@ -730,17 +730,20 @@ pub async fn pick_zone_source<T: PickLocationOption + Sync>(
 
     state
         .get_sender()
-        .send(ServerMessage::PickZone {
+        .send(ServerMessage::PickLocation {
             prompt: prompt.to_string(),
             source_card_id,
             player_id: decision_player,
-            locations: locations.iter().map(PickLocationOption::pick_location).collect(),
+            locations: locations
+                .iter()
+                .map(PickLocationOption::pick_location)
+                .collect(),
         })
         .await?;
 
     let msg = state.get_receiver().recv().await?;
     let location = match msg {
-        ClientMessage::PickZone { location, .. } => Ok(location),
+        ClientMessage::PickLocation { location, .. } => Ok(location),
         ClientMessage::PlayerDisconnected { player_id, .. } => {
             Err(GameError::PlayerDisconnected(player_id).into())
         }
@@ -1871,13 +1874,13 @@ impl Game {
             ClientMessage::PlayerDisconnected { player_id, .. } => {
                 self.player_disconnected(player_id).await?;
             }
-            ClientMessage::RequestPlayableZones {
+            ClientMessage::RequestPlayableLocations {
                 player_id, card_id, ..
             } => {
                 if let Some(playable) = self.playable_hand_card(player_id, card_id)? {
                     self.state
                         .get_sender()
-                        .send(ServerMessage::PlayableZones {
+                        .send(ServerMessage::PlayableLocations {
                             player_id: playable.player_id,
                             card_id: playable.card_id,
                             locations: playable
@@ -1889,7 +1892,7 @@ impl Game {
                         .await?;
                 }
             }
-            ClientMessage::RequestAuraAffectedZones {
+            ClientMessage::RequestAuraAreaOfEffect {
                 player_id, card_id, ..
             } => {
                 let locations = self
@@ -1901,7 +1904,7 @@ impl Game {
 
                 self.state
                     .get_sender()
-                    .send(ServerMessage::AuraAffectedZones {
+                    .send(ServerMessage::AuraAreOfEffect {
                         player_id: *player_id,
                         card_id: *card_id,
                         locations,

@@ -407,7 +407,7 @@ impl Component for PlayerHandComponent {
             if can_drag_cards && resp.drag_started() {
                 self.dragging_card = Some(fan_card.card.id);
                 self.drag_visual_pos = pointer;
-                self.client.send(ClientMessage::RequestPlayableZones {
+                self.client.send(ClientMessage::RequestPlayableLocations {
                     card_id: fan_card.card.id,
                     player_id: self.player_id,
                     game_id: self.game_id,

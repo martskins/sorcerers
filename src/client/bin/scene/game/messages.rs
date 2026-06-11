@@ -90,7 +90,7 @@ impl Game {
                 self.push_toast(CardToast::new_event(description.clone()));
                 None
             }
-            ServerMessage::PickZoneGroup {
+            ServerMessage::PickLocationGroup {
                 groups,
                 prompt,
                 source_card_id,
@@ -103,7 +103,7 @@ impl Game {
                 };
                 None
             }
-            ServerMessage::PickZone {
+            ServerMessage::PickLocation {
                 locations,
                 prompt,
                 source_card_id,
@@ -116,7 +116,7 @@ impl Game {
                 };
                 None
             }
-            ServerMessage::PlayableZones {
+            ServerMessage::PlayableLocations {
                 card_id, locations, ..
             } => {
                 self.data.status = Status::PreviewingPlayableZones {
@@ -125,11 +125,11 @@ impl Game {
                 };
                 None
             }
-            ServerMessage::AuraAffectedZones {
+            ServerMessage::AuraAreOfEffect {
                 card_id, locations, ..
             } => {
                 self.data
-                    .aura_affected_zones
+                    .aura_areas_of_effect
                     .insert(*card_id, Some(locations.clone()));
                 None
             }
@@ -341,7 +341,7 @@ impl Game {
                 ..
             } => {
                 retain_aura_affected_zones(
-                    &mut self.data.aura_affected_zones,
+                    &mut self.data.aura_areas_of_effect,
                     &self.data.cards,
                     cards,
                 );
@@ -367,7 +367,7 @@ impl Game {
                 ..
             } => {
                 retain_aura_affected_zones(
-                    &mut self.data.aura_affected_zones,
+                    &mut self.data.aura_areas_of_effect,
                     &self.data.cards,
                     cards,
                 );

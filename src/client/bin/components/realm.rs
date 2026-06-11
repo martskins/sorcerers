@@ -114,16 +114,16 @@ struct ProjectileFlight {
 }
 
 #[derive(Debug, Clone)]
-enum PendingZoneChoiceAction {
-    PickZone,
+enum PendingLocationChoiceAction {
+    PickLocation,
     PlayHandCard { card_id: CardId },
 }
 
 #[derive(Debug, Clone)]
-struct PendingZoneChoice {
+struct PendingLocationChoice {
     pos: Pos2,
-    zones: Vec<Zone>,
-    action: PendingZoneChoiceAction,
+    locations: Vec<Location>,
+    action: PendingLocationChoiceAction,
 }
 
 #[derive(Debug)]
@@ -141,7 +141,7 @@ pub struct RealmComponent {
     card_flights: Vec<CardFlight>,
     projectile_flights: Vec<ProjectileFlight>,
     card_filter: RealmCardFilter,
-    pending_zone_choice: Option<PendingZoneChoice>,
+    pending_zone_choice: Option<PendingLocationChoice>,
 }
 
 impl RealmComponent {
@@ -221,44 +221,41 @@ impl RealmComponent {
         }
     }
 
-    fn zone_choice_label(zone: &Zone) -> String {
-        match zone {
-            Zone::Location(Location::Square(_, region))
-            | Zone::Location(Location::Intersection(_, region)) => region.to_string(),
-            _ => zone.to_string(),
-        }
+    fn location_choice_label(location: &Location) -> String {
+        location.region().to_string()
     }
 
-    fn sorted_zone_choices(mut zones: Vec<Zone>) -> Vec<Zone> {
-        zones.sort_by(|a, b| {
-            Self::region_sort_key(a)
-                .cmp(&Self::region_sort_key(b))
+    fn sorted_location_choices(mut locations: Vec<Location>) -> Vec<Location> {
+        locations.sort_by(|a, b| {
+            Self::region_sort_key(&Zone::from(a))
+                .cmp(&Self::region_sort_key(&Zone::from(b)))
                 .then_with(|| a.to_string().cmp(&b.to_string()))
         });
-        zones.dedup();
-        zones
+        locations.dedup();
+        locations
     }
 
-    fn square_zone_choices(zones: &[Zone], cell_id: u8) -> Vec<Zone> {
-        Self::sorted_zone_choices(
-            zones
+    fn square_location_choices(locations: &[Location], cell_id: u8) -> Vec<Location> {
+        Self::sorted_location_choices(
+            locations
                 .iter()
-                .filter(|zone| {
-                    matches!(zone, Zone::Location(Location::Square(id, _)) if *id == cell_id)
-                })
+                .filter(|location| matches!(location, Location::Square(id, _) if *id == cell_id))
                 .cloned()
                 .collect(),
         )
     }
 
-    fn intersection_zone_choices(zones: &[Zone], intersection_locations: &[u8]) -> Vec<Zone> {
-        Self::sorted_zone_choices(
-            zones
+    fn intersection_location_choices(
+        locations: &[Location],
+        intersection_locations: &[u8],
+    ) -> Vec<Location> {
+        Self::sorted_location_choices(
+            locations
                 .iter()
-                .filter(|zone| {
+                .filter(|location| {
                     matches!(
-                        zone,
-                        Zone::Location(Location::Intersection(locations, _))
+                        location,
+                        Location::Intersection(locations, _)
                             if locations == intersection_locations
                     )
                 })
@@ -269,32 +266,24 @@ impl RealmComponent {
 
     fn resolve_zone_choice(
         &mut self,
-        zone: &Zone,
-        action: PendingZoneChoiceAction,
+        location: &Location,
+        action: PendingLocationChoiceAction,
         data: &mut GameData,
     ) -> anyhow::Result<()> {
         match action {
-            PendingZoneChoiceAction::PickZone => {
-                let location = zone
-                    .location()
-                    .cloned()
-                    .ok_or(anyhow::anyhow!("picked zone must be a location"))?;
-                self.client.send(ClientMessage::PickZone {
+            PendingLocationChoiceAction::PickLocation => {
+                self.client.send(ClientMessage::PickLocation {
                     player_id: self.player_id,
                     game_id: self.game_id,
-                    location,
+                    location: location.clone(),
                 })?;
             }
-            PendingZoneChoiceAction::PlayHandCard { card_id } => {
-                let location = zone
-                    .location()
-                    .cloned()
-                    .ok_or(anyhow::anyhow!("playable zone must be a location"))?;
+            PendingLocationChoiceAction::PlayHandCard { card_id } => {
                 self.client.send(ClientMessage::PlayCardAtLocation {
                     player_id: self.player_id,
                     game_id: self.game_id,
                     card_id,
-                    location,
+                    location: location.clone(),
                 })?;
             }
         }
@@ -306,30 +295,41 @@ impl RealmComponent {
 
     fn choose_zone_or_prompt(
         &mut self,
-        zones: Vec<Zone>,
+        locations: Vec<Location>,
         pos: Pos2,
-        action: PendingZoneChoiceAction,
+        action: PendingLocationChoiceAction,
         data: &mut GameData,
     ) -> anyhow::Result<()> {
-        match zones.as_slice() {
+        match locations.as_slice() {
             [] => {}
-            [zone] => self.resolve_zone_choice(zone, action, data)?,
+            [location] => self.resolve_zone_choice(location, action, data)?,
             _ => {
-                self.pending_zone_choice = Some(PendingZoneChoice { pos, zones, action });
+                self.pending_zone_choice = Some(PendingLocationChoice {
+                    pos,
+                    locations,
+                    action,
+                });
             }
         }
 
         Ok(())
     }
 
-    fn pending_zone_choice_is_valid(&self, choice: &PendingZoneChoice, data: &GameData) -> bool {
+    fn pending_zone_choice_is_valid(
+        &self,
+        choice: &PendingLocationChoice,
+        data: &GameData,
+    ) -> bool {
         match (&choice.action, &data.status) {
-            (PendingZoneChoiceAction::PickZone, Status::SelectingZone { locations, .. }) => choice
-                .zones
-                .iter()
-                .all(|zone| locations.contains(zone.location().unwrap())),
             (
-                PendingZoneChoiceAction::PlayHandCard { card_id },
+                PendingLocationChoiceAction::PickLocation,
+                Status::SelectingZone { locations, .. },
+            ) => choice
+                .locations
+                .iter()
+                .all(|location| locations.contains(location)),
+            (
+                PendingLocationChoiceAction::PlayHandCard { card_id },
                 Status::PreviewingPlayableZones {
                     card_id: preview_card_id,
                     locations,
@@ -337,9 +337,9 @@ impl RealmComponent {
             ) => {
                 card_id == preview_card_id
                     && choice
-                        .zones
+                        .locations
                         .iter()
-                        .all(|zone| locations.contains(zone.location().unwrap()))
+                        .all(|location| locations.contains(location))
             }
             _ => false,
         }
@@ -358,28 +358,28 @@ impl RealmComponent {
             return Ok(());
         }
 
-        let mut selected_zone = None;
+        let mut selected_location = None;
         egui::Area::new(egui::Id::new("realm_zone_choice_picker"))
             .fixed_pos(choice.pos)
             .order(egui::Order::Foreground)
             .show(ui.ctx(), |ui| {
                 egui::Frame::popup(ui.style()).show(ui, |ui| {
                     ui.horizontal(|ui| {
-                        for zone in &choice.zones {
+                        for location in &choice.locations {
                             if ui
-                                .button(Self::zone_choice_label(zone))
-                                .on_hover_text(zone.to_string())
+                                .button(Self::location_choice_label(location))
+                                .on_hover_text(location.to_string())
                                 .clicked()
                             {
-                                selected_zone = Some(zone.clone());
+                                selected_location = Some(location.clone());
                             }
                         }
                     });
                 });
             });
 
-        if let Some(zone) = selected_zone {
-            self.resolve_zone_choice(&zone, choice.action, data)?;
+        if let Some(location) = selected_location {
+            self.resolve_zone_choice(&location, choice.action, data)?;
         }
 
         Ok(())
@@ -1146,10 +1146,7 @@ impl RealmComponent {
                 _ => None,
             };
             if let Some(locations) = playable_preview_zones {
-                let choices = Self::square_zone_choices(
-                    &locations.iter().map(|l| l.into()).collect::<Vec<_>>(),
-                    cell.id,
-                );
+                let choices = Self::square_location_choices(locations, cell.id);
                 if !choices.is_empty() {
                     if matches!(data.status, Status::SelectingZone { .. }) {
                         let resp = ui.allocate_rect(rect, Sense::click());
@@ -1193,10 +1190,8 @@ impl RealmComponent {
             };
             if let Some(locations) = playable_preview_zones {
                 let rect = intersection.rect;
-                let choices = Self::intersection_zone_choices(
-                    &locations.iter().map(|l| l.into()).collect::<Vec<_>>(),
-                    &intersection.locations,
-                );
+                let choices =
+                    Self::intersection_location_choices(locations, &intersection.locations);
                 if !choices.is_empty() {
                     if matches!(data.status, Status::SelectingZone { .. }) {
                         let resp = ui.allocate_rect(rect, Sense::click());
@@ -1234,8 +1229,13 @@ impl RealmComponent {
             }
         }
 
-        if let Some((zones, pos)) = clicked_zone_choices {
-            self.choose_zone_or_prompt(zones, pos, PendingZoneChoiceAction::PickZone, data)?;
+        if let Some((locations, pos)) = clicked_zone_choices {
+            self.choose_zone_or_prompt(
+                locations,
+                pos,
+                PendingLocationChoiceAction::PickLocation,
+                data,
+            )?;
         }
 
         let mut clicked_group_idx = None;
@@ -1445,7 +1445,7 @@ impl RealmComponent {
                 return Ok(());
             }
 
-            self.client.send(ClientMessage::PickZoneGroup {
+            self.client.send(ClientMessage::PickLocationGroup {
                 player_id: self.player_id,
                 game_id: self.game_id,
                 group_idx,
@@ -1590,7 +1590,7 @@ impl Component for RealmComponent {
             };
             let resp = ui.allocate_rect(card_rect.rect, sense);
             if resp.hovered() && card_clicks_enabled && card_rect.card.card_type == CardType::Aura {
-                match data.aura_affected_zones.get(&card_rect.card.id) {
+                match data.aura_areas_of_effect.get(&card_rect.card.id) {
                     Some(Some(locations)) if !locations.is_empty() => {
                         Self::draw_affected_zone_highlight(
                             painter,
@@ -1607,8 +1607,8 @@ impl Component for RealmComponent {
                     None => {
                         // Do not request aura affected zones if waiting for any other message.
                         if data.status == Status::Idle {
-                            data.aura_affected_zones.insert(card_rect.card.id, None);
-                            self.client.send(ClientMessage::RequestAuraAffectedZones {
+                            data.aura_areas_of_effect.insert(card_rect.card.id, None);
+                            self.client.send(ClientMessage::RequestAuraAreaOfEffect {
                                 player_id: self.player_id,
                                 game_id: self.game_id,
                                 card_id: card_rect.card.id,
@@ -1873,13 +1873,7 @@ impl Component for RealmComponent {
                         .find(|cell| cell.rect.contains(*pos))
                         .map(|cell| {
                             (
-                                Self::square_zone_choices(
-                                    &locations
-                                        .iter()
-                                        .map(|l| l.clone().into())
-                                        .collect::<Vec<_>>(),
-                                    cell.id,
-                                ),
+                                Self::square_location_choices(locations, cell.id),
                                 cell.rect.center(),
                             )
                         })
@@ -1889,8 +1883,8 @@ impl Component for RealmComponent {
                                 .find(|intersection| intersection.rect.contains(*pos))
                                 .map(|intersection| {
                                     (
-                                        Self::intersection_zone_choices(
-                                            &locations.iter().map(|l| l.into()).collect::<Vec<_>>(),
+                                        Self::intersection_location_choices(
+                                            locations,
                                             &intersection.locations,
                                         ),
                                         intersection.rect.center(),
@@ -1898,11 +1892,11 @@ impl Component for RealmComponent {
                                 })
                         });
 
-                    if let Some((zones, pos)) = dropped_zone_choices {
+                    if let Some((locations, pos)) = dropped_zone_choices {
                         self.choose_zone_or_prompt(
-                            zones,
+                            locations,
                             pos,
-                            PendingZoneChoiceAction::PlayHandCard { card_id: *card_id },
+                            PendingLocationChoiceAction::PlayHandCard { card_id: *card_id },
                             data,
                         )?;
                     } else {

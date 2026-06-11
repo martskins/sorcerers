@@ -241,11 +241,11 @@ async fn test_kythera_mechanism_converts_random_queries_to_choices() {
                 result = &mut pick_zone => break result.unwrap(),
                 msg = server_rx.recv() => match msg.unwrap() {
                     ServerMessage::Resume { .. } => {}
-                    ServerMessage::PickZone { locations: offered, .. } => {
+                    ServerMessage::PickLocation { locations: offered, .. } => {
                         assert_eq!(offered.len(), zones.len());
                         assert!(offered.iter().all(|loc| zones.contains(&loc.into())));
                         client_tx
-                            .send(ClientMessage::PickZone {
+                            .send(ClientMessage::PickLocation {
                                 game_id,
                                 player_id,
                                 location: offered[0].clone(),
@@ -356,10 +356,10 @@ async fn test_blasted_oak_restricts_zone_targets_only_with_source() {
             tokio::select! {
                 result = &mut pick => break result.unwrap(),
                 msg = server_rx.recv() => match msg.unwrap() {
-                    ServerMessage::PickZone { locations, .. } => {
+                    ServerMessage::PickLocation { locations, .. } => {
                         assert_eq!(locations, vec![oak_zone.clone()]);
                         client_tx
-                            .send(ClientMessage::PickZone {
+                            .send(ClientMessage::PickLocation {
                                 game_id,
                                 player_id,
                                 location: locations[0].clone(),
@@ -388,10 +388,10 @@ async fn test_blasted_oak_restricts_zone_targets_only_with_source() {
             tokio::select! {
                 result = &mut pick_without_source => break result.unwrap(),
                 msg = server_rx.recv() => match msg.unwrap() {
-                    ServerMessage::PickZone { locations, .. } => {
+                    ServerMessage::PickLocation { locations, .. } => {
                         assert_eq!(locations, vec![oak_zone.clone(), other_zone.clone()]);
                         client_tx
-                            .send(ClientMessage::PickZone {
+                            .send(ClientMessage::PickLocation {
                                 game_id,
                                 player_id,
                                 location: other_zone.clone(),
