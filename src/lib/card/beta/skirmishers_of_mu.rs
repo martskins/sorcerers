@@ -114,10 +114,9 @@ impl Card for SkirmishersOfMu {
                     return Ok(vec![]);
                 }
 
-                let path_zones = path.iter().map(Zone::from).collect::<Vec<_>>();
-                let picked_zone = pick_zone(
+                let picked_zone = pick_location(
                     controller_id,
-                    &path_zones,
+                    &path,
                     state,
                     false,
                     "Skirmishers of Mu: Pick a zone to perform a ranged strike from",

@@ -2853,17 +2853,17 @@ async fn test_animated_intersection_aura_gets_unit_actions_and_stays_on_intersec
 
     let move_zones = state
         .get_card(&aura_id)
-        .get_valid_move_zones(&state)
+        .get_valid_move_locations(&state)
         .await
         .unwrap();
     assert!(
         move_zones
             .iter()
-            .all(|zone| matches!(zone, Zone::Location(Location::Intersection(_, _)))),
+            .all(|zone| matches!(zone, Location::Intersection(_, _))),
         "animated intersection auras should move from intersection to intersection"
     );
     assert!(
-        !move_zones.contains(&Zone::Location(Location::Square(1, Region::Surface))),
+        !move_zones.contains(&Location::Square(1, Region::Surface)),
         "animated intersection auras should not move to a constituent square"
     );
 

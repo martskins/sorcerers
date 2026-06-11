@@ -58,8 +58,8 @@ impl Magic for Earthquake {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
-        let areas = Zone::all_intersections();
-        let area = pick_zone(
+        let areas = crate::game::zones_to_locations(&Zone::all_intersections());
+        let area = pick_location(
             &controller_id,
             &areas,
             state,

@@ -64,11 +64,11 @@ impl Card for SwivenScout {
 
         let controller_id = self.get_controller_id(state);
         let range = self.get_steps_per_movement(state).unwrap_or(0);
-        let zones = self.get_zones_within_steps(state, range);
+        let zones = self.get_locations_within_steps(state, range);
 
         for avatar_id in
             CardQuery::from_ids(state.cards.values().map(|card| *card.get_id()).collect())
-                .in_zones(&zones)
+                .in_locations(&zones)
                 .all(state)
                 .into_iter()
                 .filter(|card_id| {

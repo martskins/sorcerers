@@ -61,7 +61,7 @@ impl Card for EastWestDragon {
         Some(&mut self.unit_base)
     }
 
-    async fn get_valid_move_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {
+    async fn get_valid_move_locations(&self, state: &State) -> anyhow::Result<Vec<Location>> {
         let sq = match self.get_zone().get_square() {
             Some(s) => s,
             None => return Ok(vec![]),
@@ -70,11 +70,11 @@ impl Card for EastWestDragon {
         let row = (sq - 1) / 5;
         let row_start = row * 5 + 1;
         let row_end = row * 5 + 5;
-        let self_zone = self.get_zone().clone();
+        let self_location = self.get_location().clone();
 
-        let same_row_zones: Vec<Zone> = (row_start..=row_end)
-            .map(|sq| Zone::Location(Location::Square(sq, Region::Surface)))
-            .filter(|z| z != &self_zone)
+        let same_row_zones: Vec<Location> = (row_start..=row_end)
+            .map(|sq| Location::Square(sq, Region::Surface))
+            .filter(|z| z != &self_location)
             .filter(|z| z.get_site(state).is_some())
             .collect();
 

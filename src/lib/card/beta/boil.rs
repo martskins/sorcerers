@@ -60,10 +60,10 @@ impl Magic for Boil {
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
         let card = state.get_card(caster_id);
-        let zones = card.get_zones_within_steps(state, 2);
+        let zones = card.get_locations_within_steps(state, 2);
         let Some(picked_site_id) = CardQuery::new()
             .with_element(Element::Water)
-            .in_zones(&zones)
+            .in_locations(&zones)
             .sites()
             .pick(&controller_id, state, false)
             .await?

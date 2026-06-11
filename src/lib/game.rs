@@ -686,37 +686,23 @@ pub async fn pick_zone_near_source(
     location
 }
 
-pub trait PickLocationOption {
-    fn pick_location(&self) -> Location;
+pub fn zones_to_locations(zones: &[Zone]) -> Vec<Location> {
+    zones.iter().filter_map(Zone::location).cloned().collect()
 }
 
-impl PickLocationOption for Location {
-    fn pick_location(&self) -> Location {
-        self.clone()
-    }
-}
-
-impl PickLocationOption for Zone {
-    fn pick_location(&self) -> Location {
-        self.location()
-            .cloned()
-            .expect("pick_zone option must be a location")
-    }
-}
-
-pub async fn pick_zone<T: PickLocationOption + Sync>(
+pub async fn pick_location(
     player_id: impl AsRef<PlayerId>,
-    locations: &[T],
+    locations: &[Location],
     state: &State,
     block_opponent: bool,
     prompt: &str,
 ) -> anyhow::Result<Location> {
-    pick_zone_source(player_id, locations, state, block_opponent, prompt, None).await
+    pick_location_source(player_id, locations, state, block_opponent, prompt, None).await
 }
 
-pub async fn pick_zone_source<T: PickLocationOption + Sync>(
+pub async fn pick_location_source(
     player_id: impl AsRef<PlayerId>,
-    locations: &[T],
+    locations: &[Location],
     state: &State,
     block_opponent: bool,
     prompt: &str,
@@ -734,10 +720,7 @@ pub async fn pick_zone_source<T: PickLocationOption + Sync>(
             prompt: prompt.to_string(),
             source_card_id,
             player_id: decision_player,
-            locations: locations
-                .iter()
-                .map(PickLocationOption::pick_location)
-                .collect(),
+            locations: locations.to_vec(),
         })
         .await?;
 
@@ -1342,8 +1325,9 @@ impl ActivatedAbility for AvatarAction {
                 // we pass avatar_id as the caster just to comply with the required parameters, but
                 // no caster_id is actually needed here, since sites don't need one.
                 let zones = picked_card.get_valid_play_zones(state, player_id, &avatar_id)?;
+                let locations = zones_to_locations(&zones);
                 let prompt = "Pick a zone to play the site";
-                let zone = pick_zone(player_id, &zones, state, false, prompt).await?;
+                let zone = pick_location(player_id, &locations, state, false, prompt).await?;
                 Ok(vec![Effect::PlayCard {
                     player_id: *player_id,
                     card_id: picked_card_id,
@@ -1461,23 +1445,10 @@ impl ActivatedAbility for UnitAction {
             }
             UnitAction::Move => {
                 let card = state.get_card(card_id);
-                let zones = card.get_valid_move_zones(state).await?;
+                let zones = card.get_valid_move_locations(state).await?;
                 let prompt = "Pick a zone to move to";
-                let zone = pick_zone(player_id, &zones, state, false, prompt).await?;
-                let zone = Zone::Location(zone);
+                let zone = pick_location(player_id, &zones, state, false, prompt).await?;
                 let paths = card.get_valid_move_paths(state, &zone).await?;
-                let paths = paths
-                    .iter()
-                    .map(|path| {
-                        path.iter()
-                            .map(|zone| {
-                                zone.location()
-                                    .cloned()
-                                    .ok_or(anyhow::anyhow!("move path step must be a location"))
-                            })
-                            .collect::<anyhow::Result<Vec<_>>>()
-                    })
-                    .collect::<anyhow::Result<Vec<_>>>()?;
                 let path = if paths.len() > 1 {
                     let prompt = "Pick a path to move along";
                     pick_path(player_id, &paths, state, prompt).await?
@@ -2001,8 +1972,9 @@ impl Game {
                     };
 
                     let prompt = "Pick a zone to play the site";
+                    let locations = zones_to_locations(&playable.zones);
                     let zone =
-                        pick_zone(&acting_player, &playable.zones, &self.state, false, prompt)
+                        pick_location(&acting_player, &locations, &self.state, false, prompt)
                             .await?;
                     let zone = Zone::Location(zone);
                     self.queue_play_hand_card_at_zone(player_id, card_id, &zone)

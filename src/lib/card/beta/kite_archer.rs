@@ -98,9 +98,10 @@ impl Card for KiteArcher {
                 }
 
                 let zones = self.get_zone().get_adjacent();
-                let picked_zone = pick_zone(
+                let locations = crate::game::zones_to_locations(&zones);
+                let picked_zone = pick_location(
                     self.get_owner_id(),
-                    &zones,
+                    &locations,
                     state,
                     false,
                     "Choose to step to",

@@ -59,9 +59,10 @@ impl Magic for LightningBolt {
     ) -> anyhow::Result<Vec<Effect>> {
         let caster_region = state.get_card(caster_id).get_region(state);
         let zones = Zone::all_in_region(caster_region.clone());
-        let picked_zone = pick_zone(
+        let locations = crate::game::zones_to_locations(&zones);
+        let picked_zone = pick_location(
             self.get_owner_id(),
-            &zones,
+            &locations,
             state,
             false,
             "Lightning Bolt: Choose a zone",

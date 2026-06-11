@@ -16,7 +16,7 @@ use crate::{
     effect::{AbilityCounter, Counter, Effect, StatusCounter},
     game::{
         ActivatedAbility, AvatarAction, CardId, Element, PlayerId, Thresholds, ThresholdsDiff,
-        UnitAction, pick_amount, pick_card, pick_option, pick_zone,
+        UnitAction, pick_amount, pick_card, pick_location, pick_option, zones_to_locations,
     },
     query::CardQuery,
     state::{AbilityModifier, LoggedEffect, OngoingEffect, State, TemporaryEffect},
@@ -943,28 +943,33 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         ))
     }
 
-    // Returns the zones that are within the given steps of the specified zone, using this card as
+    // Returns the locations that are within the given steps of the specified location, using this card as
     // the reference for movement capabilities.
-    fn get_zones_within_steps_of(&self, state: &State, steps: u8, zone: &Zone) -> Vec<Zone> {
-        fn top_bottom_wrapped_neighbours(zone: &Zone) -> Vec<Zone> {
-            match zone {
-                Zone::Location(Location::Square(id, region)) if *id >= 1 && *id <= 5 => {
-                    vec![Zone::Location(Location::Square(id + 15, region.clone()))]
+    fn get_locations_within_steps_of(
+        &self,
+        state: &State,
+        steps: u8,
+        location: &Location,
+    ) -> Vec<Location> {
+        fn top_bottom_wrapped_neighbours(location: &Location) -> Vec<Location> {
+            match location {
+                Location::Square(id, region) if *id >= 1 && *id <= 5 => {
+                    vec![Location::Square(id + 15, region.clone())]
                 }
-                Zone::Location(Location::Square(id, region)) if *id >= 16 && *id <= 20 => {
-                    vec![Zone::Location(Location::Square(id - 15, region.clone()))]
+                Location::Square(id, region) if *id >= 16 && *id <= 20 => {
+                    vec![Location::Square(id - 15, region.clone())]
                 }
                 _ => vec![],
             }
         }
 
-        fn left_right_wrapped_neighbours(zone: &Zone) -> Vec<Zone> {
-            match zone {
-                Zone::Location(Location::Square(id, region)) if (*id - 1) % 5 == 0 => {
-                    vec![Zone::Location(Location::Square(id + 4, region.clone()))]
+        fn left_right_wrapped_neighbours(location: &Location) -> Vec<Location> {
+            match location {
+                Location::Square(id, region) if (*id - 1) % 5 == 0 => {
+                    vec![Location::Square(id + 4, region.clone())]
                 }
-                Zone::Location(Location::Square(id, region)) if *id % 5 == 0 => {
-                    vec![Zone::Location(Location::Square(id - 4, region.clone()))]
+                Location::Square(id, region) if *id % 5 == 0 => {
+                    vec![Location::Square(id - 4, region.clone())]
                 }
                 _ => vec![],
             }
@@ -993,29 +998,37 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 });
 
         let mut visited = Vec::new();
-        let mut to_visit = vec![(zone.clone(), 0)];
+        let mut to_visit = vec![(location.clone(), 0)];
 
-        while let Some((current_zone, current_step)) = to_visit.pop() {
+        while let Some((current_location, current_step)) = to_visit.pop() {
             if current_step > steps {
                 continue;
             }
 
-            if !visited.contains(&current_zone) {
-                visited.push(current_zone.clone());
+            if !visited.contains(&current_location) {
+                visited.push(current_location.clone());
 
                 if self.has_ability(state, &Ability::Airborne) {
-                    for nearby in current_zone.get_nearby() {
+                    for nearby in Zone::from(&current_location)
+                        .get_nearby()
+                        .into_iter()
+                        .filter_map(|zone| zone.into_location())
+                    {
                         if self
-                            .can_move_between_zones(state, &current_zone, &nearby)
+                            .can_move_between_locations(state, &current_location, &nearby)
                             .unwrap_or(false)
                         {
                             to_visit.push((nearby, current_step + 1));
                         }
                     }
                 } else {
-                    for adjacent in current_zone.get_adjacent() {
+                    for adjacent in Zone::from(&current_location)
+                        .get_adjacent()
+                        .into_iter()
+                        .filter_map(|zone| zone.into_location())
+                    {
                         if self
-                            .can_move_between_zones(state, &current_zone, &adjacent)
+                            .can_move_between_locations(state, &current_location, &adjacent)
                             .unwrap_or(false)
                         {
                             to_visit.push((adjacent, current_step + 1));
@@ -1023,9 +1036,9 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     }
 
                     if wraps_top_and_bottom {
-                        for wrapped in top_bottom_wrapped_neighbours(&current_zone) {
+                        for wrapped in top_bottom_wrapped_neighbours(&current_location) {
                             if self
-                                .can_move_between_zones(state, &current_zone, &wrapped)
+                                .can_move_between_locations(state, &current_location, &wrapped)
                                 .unwrap_or(false)
                             {
                                 to_visit.push((wrapped, current_step + 1));
@@ -1034,9 +1047,9 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     }
 
                     if wraps_left_and_right {
-                        for wrapped in left_right_wrapped_neighbours(&current_zone) {
+                        for wrapped in left_right_wrapped_neighbours(&current_location) {
                             if self
-                                .can_move_between_zones(state, &current_zone, &wrapped)
+                                .can_move_between_locations(state, &current_location, &wrapped)
                                 .unwrap_or(false)
                             {
                                 to_visit.push((wrapped, current_step + 1));
@@ -1045,9 +1058,12 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     }
 
                     if self.has_ability(state, &Ability::Leap) {
-                        for landing in leap_destinations(state, &current_zone) {
+                        for landing in leap_destinations(state, &Zone::from(&current_location))
+                            .into_iter()
+                            .filter_map(|zone| zone.into_location())
+                        {
                             if self
-                                .can_move_between_zones(state, &current_zone, &landing)
+                                .can_move_between_locations(state, &current_location, &landing)
                                 .unwrap_or(false)
                             {
                                 to_visit.push((landing, current_step + 1));
@@ -1056,9 +1072,16 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                     }
                 }
 
-                for connected in temporarily_connected_sites(state, self.get_id(), &current_zone) {
+                for connected in temporarily_connected_sites(
+                    state,
+                    self.get_id(),
+                    &Zone::from(&current_location),
+                )
+                .into_iter()
+                .filter_map(|zone| zone.into_location())
+                {
                     if self
-                        .can_move_between_zones(state, &current_zone, &connected)
+                        .can_move_between_locations(state, &current_location, &connected)
                         .unwrap_or(false)
                     {
                         to_visit.push((connected, current_step + 1));
@@ -1066,30 +1089,25 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 }
 
                 for connected in continuously_connected_zones(state, self.get_id()) {
-                    let connected_zone = Zone::from(&connected);
                     if self
-                        .can_move_between_zones(state, &current_zone, &connected_zone)
+                        .can_move_between_locations(state, &current_location, &connected)
                         .unwrap_or(false)
                     {
-                        to_visit.push((connected_zone, current_step + 1));
+                        to_visit.push((connected, current_step + 1));
                     }
                 }
             }
         }
 
-        if state.is_unit_card(self.get_id())
-            && matches!(zone, Zone::Location(Location::Intersection(_, _)))
-        {
-            visited.retain(|z| matches!(z, Zone::Location(Location::Intersection(_, _))));
+        if state.is_unit_card(self.get_id()) && matches!(location, Location::Intersection(_, _)) {
+            visited.retain(|location| matches!(location, Location::Intersection(_, _)));
         } else if state.is_unit_card(self.get_id()) && !self.has_ability(state, &Ability::Voidwalk)
         {
             visited = visited
                 .iter()
-                .filter(|z| {
-                    z.get_site(state).is_some()
-                        || z.location().is_some_and(|location| {
-                            is_continuously_connected_zone(state, self.get_id(), location)
-                        })
+                .filter(|location| {
+                    location.get_site(state).is_some()
+                        || is_continuously_connected_zone(state, self.get_id(), location)
                 })
                 .cloned()
                 .collect();
@@ -1098,9 +1116,49 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         visited
     }
 
-    // Returns the zones that are within the given steps of this card's current zone.
-    fn get_zones_within_steps(&self, state: &State, steps: u8) -> Vec<Zone> {
-        self.get_zones_within_steps_of(state, steps, self.get_zone())
+    // Returns the locations that are within the given steps of this card's current location.
+    fn get_locations_within_steps(&self, state: &State, steps: u8) -> Vec<Location> {
+        self.get_locations_within_steps_of(state, steps, self.get_location())
+    }
+
+    fn can_move_between_locations(
+        &self,
+        state: &State,
+        from: &Location,
+        to: &Location,
+    ) -> anyhow::Result<bool> {
+        if !state.is_unit_card(self.get_id()) {
+            return Ok(true);
+        }
+
+        let from_zone = Zone::from(from);
+        let to_zone = Zone::from(to);
+
+        for ce in state.active_continuous_effects() {
+            if let OngoingEffect::BlockMovementThrough {
+                border,
+                affected_cards,
+            } = ce
+                && affected_cards.matches(self.get_id(), state)
+                && zones_cross_border(&from_zone, &to_zone, &border.clone().into())
+            {
+                return Ok(false);
+            }
+        }
+
+        if let Some(site) = from_zone.get_site(state)
+            && !site.can_be_exited_by(self.get_id(), &to_zone, self.get_region(state), state)?
+        {
+            return Ok(false);
+        }
+
+        if let Some(site) = to_zone.get_site(state)
+            && !site.can_be_entered_by(self.get_id(), &from_zone, self.get_region(state), state)?
+        {
+            return Ok(false);
+        }
+
+        to_zone.can_be_entered_by(state, self.get_id())
     }
 
     fn can_move_between_zones(
@@ -1109,35 +1167,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         from: &Zone,
         to: &Zone,
     ) -> anyhow::Result<bool> {
-        if !state.is_unit_card(self.get_id()) {
-            return Ok(true);
-        }
-
-        for ce in state.active_continuous_effects() {
-            if let OngoingEffect::BlockMovementThrough {
-                border,
-                affected_cards,
-            } = ce
-                && affected_cards.matches(self.get_id(), state)
-                && zones_cross_border(from, to, &border.clone().into())
-            {
-                return Ok(false);
-            }
-        }
-
-        if let Some(site) = from.get_site(state)
-            && !site.can_be_exited_by(self.get_id(), to, self.get_region(state), state)?
-        {
+        let (Some(from), Some(to)) = (from.location(), to.location()) else {
             return Ok(false);
-        }
-
-        if let Some(site) = to.get_site(state)
-            && !site.can_be_entered_by(self.get_id(), from, self.get_region(state), state)?
-        {
-            return Ok(false);
-        }
-
-        to.can_be_entered_by(state, self.get_id())
+        };
+        self.can_move_between_locations(state, from, to)
     }
 
     // Retuns the region the card is currently on. If the card is not in a zone with a site, it is
@@ -1313,32 +1346,35 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
     }
 
     fn zones_in_range(&self, state: &State) -> Vec<Zone> {
-        self.get_zones_within_steps(state, self.get_steps_per_movement(state).unwrap_or(0))
+        self.get_locations_within_steps(state, self.get_steps_per_movement(state).unwrap_or(0))
+            .iter()
+            .map(Zone::from)
+            .collect()
     }
 
-    // Returns all valid move paths from the card's current zone to the given zone. The paths
-    // include the starting, ending and all intermediate zones.
+    // Returns all valid move paths from the card's current location to the given location. The paths
+    // include the starting, ending and all intermediate locations.
     async fn get_valid_move_paths(
         &self,
         state: &State,
-        to: &Zone,
-    ) -> anyhow::Result<Vec<Vec<Zone>>> {
-        let from = self.get_zone().clone();
-        let valid_zones = self.get_valid_move_zones(state).await?;
-        if !valid_zones.contains(to) {
+        to: &Location,
+    ) -> anyhow::Result<Vec<Vec<Location>>> {
+        let from = self.get_location().clone();
+        let valid_locations = self.get_valid_move_locations(state).await?;
+        if !valid_locations.contains(to) {
             return Ok(vec![]);
         }
 
         let max_steps = self.get_steps_per_movement(state)?;
-        let is_traversable = |current: &Zone, next: &Zone| -> anyhow::Result<bool> {
+        let is_traversable = |current: &Location, next: &Location| -> anyhow::Result<bool> {
             Ok(self
-                .get_zones_within_steps_of(state, 1, current)
+                .get_locations_within_steps_of(state, 1, current)
                 .contains(next)
-                && self.can_move_between_zones(state, current, next)?)
+                && self.can_move_between_locations(state, current, next)?)
         };
 
         let mut paths = Vec::new();
-        let mut queue: Vec<(Vec<Zone>, Zone)> = vec![(vec![from.clone()], from.clone())];
+        let mut queue: Vec<(Vec<Location>, Location)> = vec![(vec![from.clone()], from.clone())];
         while let Some((path, current)) = queue.pop() {
             if &current == to {
                 if path.len() - 1 <= max_steps.into() {
@@ -1349,7 +1385,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             if path.len() > max_steps.into() {
                 continue;
             }
-            for next in valid_zones.iter() {
+            for next in valid_locations.iter() {
                 if path.contains(next) || &current == next {
                     continue;
                 }
@@ -1381,16 +1417,16 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         Ok(extra_steps + 1)
     }
 
-    async fn get_valid_move_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {
-        self.base_valid_move_zones(state).await
+    async fn get_valid_move_locations(&self, state: &State) -> anyhow::Result<Vec<Location>> {
+        self.base_valid_move_locations(state).await
     }
 
     // Returns the valid attack targets for this card.
-    fn get_valid_attack_targets_from_zone(
+    fn get_valid_attack_targets_from_location(
         &self,
         state: &State,
         _ranged: bool,
-        zone: &Zone,
+        location: &Location,
     ) -> Vec<CardId> {
         let attacker_region = self.get_region(state);
         let attacker_is_airborne = self.has_ability(state, &Ability::Airborne);
@@ -1416,24 +1452,26 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                         || self.has_ability(state, &Ability::CanSeeStealthed))
             })
             .filter(|target| {
+                let Some(target_location) = target.get_zone().location() else {
+                    return false;
+                };
                 let target_region = target.get_region(state);
                 let target_is_airborne = target.has_ability(state, &Ability::Airborne);
 
-                let shares_occupied_square =
-                    matches!(zone, Zone::Location(Location::Intersection(_, _)))
-                        && zone
-                            .squares()
-                            .iter()
-                            .any(|square| target.get_zone().squares().contains(square));
+                let shares_occupied_square = matches!(location, Location::Intersection(_, _))
+                    && location
+                        .squares()
+                        .iter()
+                        .any(|square| target_location.squares().contains(square));
 
                 // Airborne units can attack nearby, others only adjacent. Units occupying an
                 // intersection are already in each constituent square.
                 let in_range = if shares_occupied_square {
                     true
                 } else if attacker_is_airborne {
-                    zone.is_nearby(target.get_zone())
+                    location.get_nearby().contains(target_location)
                 } else {
-                    zone.is_adjacent(target.get_zone())
+                    location.get_adjacent().contains(target_location)
                 };
                 if !in_range {
                     return false;
@@ -1469,7 +1507,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
 
     // Returns the valid attack targets for this card.
     fn get_valid_attack_targets(&self, state: &State, ranged: bool) -> Vec<CardId> {
-        self.get_valid_attack_targets_from_zone(state, ranged, self.get_zone())
+        self.get_valid_attack_targets_from_location(state, ranged, self.get_location())
     }
 
     // Returns the toughness of the card. Returns None for non-unit cards.
@@ -1725,8 +1763,9 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
         match self.get_card_type() {
             CardType::Minion => {
                 let zones = self.get_valid_play_zones(state, player_id, caster_id)?;
+                let locations = zones_to_locations(&zones);
                 let prompt = "Pick a zone to play the card";
-                let zone = pick_zone(player_id, &zones, state, false, prompt).await?;
+                let zone = pick_location(player_id, &locations, state, false, prompt).await?;
                 Ok(vec![Effect::PlayCard {
                     player_id: *player_id,
                     card_id: *self.get_id(),
@@ -1826,9 +1865,11 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                         }
                     }
                     false => {
-                        let picked_zone = pick_zone(
+                        let zones = self.get_valid_play_zones(state, player_id, caster_id)?;
+                        let locations = zones_to_locations(&zones);
+                        let picked_zone = pick_location(
                             player_id,
-                            &self.get_valid_play_zones(state, player_id, caster_id)?,
+                            &locations,
                             state,
                             false,
                             "Pick a zone to play the artifact",
@@ -1845,8 +1886,9 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
             }
             CardType::Aura => {
                 let zones = self.get_valid_play_zones(state, player_id, caster_id)?;
+                let locations = zones_to_locations(&zones);
                 let prompt = "Pick a zone to play the aura";
-                let zone = pick_zone(player_id, &zones, state, false, prompt).await?;
+                let zone = pick_location(player_id, &locations, state, false, prompt).await?;
                 Ok(vec![Effect::PlayCard {
                     player_id: *player_id,
                     card_id: *self.get_id(),
@@ -2599,7 +2641,7 @@ pub trait CardBaseMethods: Card {
         from: &CardId,
         damage: Damage,
     ) -> anyhow::Result<Vec<Effect>>;
-    async fn base_valid_move_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>>;
+    async fn base_valid_move_locations(&self, state: &State) -> anyhow::Result<Vec<Location>>;
     fn base_avatar_activated_abilities(
         &self,
         state: &State,
@@ -2911,56 +2953,50 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
         }
     }
 
-    async fn base_valid_move_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {
+    async fn base_valid_move_locations(&self, state: &State) -> anyhow::Result<Vec<Location>> {
         // If the card is not a unit, it might be an aura, in which case the result of
-        // get_zones_within_steps should be returned as is.
+        // get_locations_within_steps should be returned as is.
         if !state.is_unit_card(self.get_id()) {
-            return Ok(self.get_zones_within_steps(state, self.get_steps_per_movement(state)?));
+            return Ok(self.get_locations_within_steps(state, self.get_steps_per_movement(state)?));
         }
 
-        let mut zones: Vec<Zone> = vec![];
-        let starts_in_intersection = matches!(
-            self.get_zone(),
-            Zone::Location(Location::Intersection(_, _))
-        );
-        for zone in &self.get_zones_within_steps(state, self.get_steps_per_movement(state)?) {
+        let mut locations: Vec<Location> = vec![];
+        let starts_in_intersection = matches!(self.get_location(), Location::Intersection(_, _));
+        for location in &self.get_locations_within_steps(state, self.get_steps_per_movement(state)?)
+        {
+            let zone = Zone::from(location);
             if starts_in_intersection {
-                if matches!(zone, Zone::Location(Location::Intersection(_, _)))
-                    && zone != self.get_zone()
+                if matches!(location, Location::Intersection(_, _))
+                    && location != self.get_location()
                 {
-                    zones.push(zone.clone());
+                    locations.push(location.clone());
                 }
                 continue;
             }
 
-            if !zone.can_be_entered_by(state, self.get_id())? {
+            if !Zone::from(location).can_be_entered_by(state, self.get_id())? {
                 continue;
             }
 
             if zone.get_site(state).is_none() {
                 if self.has_ability(state, &Ability::Voidwalk)
-                    || is_continuously_connected_zone(
-                        state,
-                        self.get_id(),
-                        zone.location()
-                            .expect("valid movement zone must be a location"),
-                    )
+                    || is_continuously_connected_zone(state, self.get_id(), location)
                 {
-                    zones.push(zone.clone());
+                    locations.push(location.clone());
                 }
                 continue;
             }
 
             // Oversized units may only move to intersection zones where all 4 sub-zones have sites.
             if self.is_oversized(state)
-                && let Zone::Location(Location::Intersection(sqs, region)) = zone
+                && let Location::Intersection(sqs, region) = location
                 && sqs.iter().all(|sq| {
                     Zone::Location(Location::Square(*sq, region.clone()))
                         .get_site(state)
                         .is_some()
                 })
             {
-                zones.push(zone.clone());
+                locations.push(location.clone());
                 continue;
             };
 
@@ -2968,7 +3004,7 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
                 continue;
             };
 
-            zones.push(zone.clone());
+            locations.push(location.clone());
         }
 
         for ce in state.active_continuous_effects() {
@@ -2978,11 +3014,11 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
             } = ce
                 && affected_cards.matches(self.get_id(), state)
             {
-                zones.retain(|zone| allowed_locations.contains(zone.location().unwrap()));
+                locations.retain(|location| allowed_locations.contains(location));
             }
         }
 
-        Ok(zones)
+        Ok(locations)
     }
 
     fn base_avatar_activated_abilities(

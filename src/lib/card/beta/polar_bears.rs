@@ -75,24 +75,29 @@ impl Card for PolarBears {
         Some(&mut self.unit_base)
     }
 
-    fn get_zones_within_steps_of(&self, state: &State, steps: u8, zone: &Zone) -> Vec<Zone> {
+    fn get_locations_within_steps_of(
+        &self,
+        state: &State,
+        steps: u8,
+        location: &Location,
+    ) -> Vec<Location> {
         let mut visited = Vec::new();
-        let mut to_visit = vec![(zone.clone(), 0u8)];
+        let mut to_visit = vec![(location.clone(), 0u8)];
 
-        while let Some((current_zone, current_step)) = to_visit.pop() {
+        while let Some((current_location, current_step)) = to_visit.pop() {
             if current_step > steps {
                 continue;
             }
 
-            if !visited.contains(&current_zone) {
-                visited.push(current_zone.clone());
+            if !visited.contains(&current_location) {
+                visited.push(current_location.clone());
 
-                for adjacent in current_zone.get_adjacent() {
-                    to_visit.push((adjacent, current_step + 1));
+                for adjacent in Zone::from(&current_location).get_adjacent() {
+                    to_visit.push((adjacent.into_location().unwrap(), current_step + 1));
                 }
 
-                for wrapped in PolarBears::wrapped_neighbours(&current_zone) {
-                    to_visit.push((wrapped, current_step + 1));
+                for wrapped in PolarBears::wrapped_neighbours(&current_location.clone().into()) {
+                    to_visit.push((wrapped.into_location().unwrap(), current_step + 1));
                 }
             }
         }

@@ -61,16 +61,16 @@ impl Magic for FlankingManeuver {
         let controller = caster.get_controller_id(state);
 
         // All realm zones that contain ally minions.
-        let source_zones: Vec<Zone> = CardQuery::new()
+        let source_locations: Vec<Location> = CardQuery::new()
             .minions()
             .in_play()
             .controlled_by(&controller)
             .all(state)
             .into_iter()
-            .map(|cid| state.get_card(&cid).get_zone().clone())
+            .map(|cid| state.get_card(&cid).get_location().clone())
             .collect();
 
-        if source_zones.is_empty() {
+        if source_locations.is_empty() {
             return Ok(vec![Effect::DrawCard {
                 player_id: controller,
                 count: 1,
@@ -78,9 +78,9 @@ impl Magic for FlankingManeuver {
             }]);
         }
 
-        let source_zone = pick_zone(
+        let source_zone = pick_location(
             &controller,
-            &source_zones,
+            &source_locations,
             state,
             false,
             "Flanking Maneuver: Pick a site to teleport allies from",
@@ -102,9 +102,10 @@ impl Magic for FlankingManeuver {
             }]);
         }
 
-        let dest_zone = pick_zone(
+        let destination_locations = crate::game::zones_to_locations(&destinations);
+        let dest_zone = pick_location(
             &controller,
-            &destinations,
+            &destination_locations,
             state,
             false,
             "Flanking Maneuver: Pick a knight's move destination",

@@ -108,10 +108,14 @@ impl Card for Maelström {
                         .get_zone()
                         .steps_to_zone(self.get_zone())
                         .unwrap_or_default();
-                    let mut zones = minion.get_zones_within_steps(state, steps);
-                    zones.retain(|zone| body_of_water.contains(zone));
+                    let body_locations = crate::game::zones_to_locations(&body_of_water);
+                    let mut zones = minion.get_locations_within_steps(state, steps);
+                    zones.retain(|zone| body_locations.contains(zone));
                     zones.retain(|zone| {
-                        zone.steps_to_zone(self.get_zone()).unwrap_or_default() <= steps
+                        Zone::from(zone)
+                            .steps_to_zone(self.get_zone())
+                            .unwrap_or_default()
+                            <= steps
                     });
 
                     let prompt = format!(
@@ -120,7 +124,7 @@ impl Card for Maelström {
                         minion.get_zone().get_square().unwrap_or_default()
                     );
                     let picked_zone =
-                        pick_zone(controller_id, &zones, state, true, &prompt).await?;
+                        pick_location(controller_id, &zones, state, true, &prompt).await?;
                     if Some(&picked_zone) != minion.get_zone().location() {
                         effects.push(Effect::MoveCard {
                             card_id: minion_id,

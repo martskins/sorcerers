@@ -61,7 +61,11 @@ impl Magic for Disenchant {
         let controller_id = self.get_controller_id(state);
         let caster = state.get_card(caster_id);
 
-        let zones_within_two = caster.get_zones_within_steps(state, 2);
+        let zones_within_two = caster
+            .get_locations_within_steps(state, 2)
+            .into_iter()
+            .map(Zone::from)
+            .collect();
         let target_zone = ZoneQuery::from_options(
             zones_within_two,
             Some("Disenchant: Pick a zone to disenchant".to_string()),

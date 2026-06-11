@@ -119,9 +119,10 @@ impl Card for Nightmare {
                         continue;
                     }
 
-                    let target_zone = pick_zone(
+                    let adjacent_locations = crate::game::zones_to_locations(&adjacent_zones);
+                    let target_zone = pick_location(
                         &controller_id,
-                        &adjacent_zones,
+                        &adjacent_locations,
                         state,
                         false,
                         "Nightmare: Choose adjacent location to push enemy minion",

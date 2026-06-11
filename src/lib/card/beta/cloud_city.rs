@@ -31,7 +31,8 @@ impl ActivatedAbility for FlyToVoid {
             return Ok(vec![]);
         }
 
-        let picked_void = pick_zone(
+        let nearby_voids = crate::game::zones_to_locations(&nearby_voids);
+        let picked_void = pick_location(
             card.get_controller_id(state),
             &nearby_voids,
             state,

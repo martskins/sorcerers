@@ -15,8 +15,8 @@ impl ActivatedAbility for ShootPayload {
         player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
-        let zones = state.get_card(card_id).get_zones_within_steps(state, 3);
-        let picked_zone = pick_zone(
+        let zones = state.get_card(card_id).get_locations_within_steps(state, 3);
+        let picked_zone = pick_location(
             player_id,
             &zones,
             state,

@@ -92,7 +92,8 @@ impl Card for PurgeJuggernaut {
                     return Ok(vec![]);
                 }
 
-                let target_zone = pick_zone(
+                let adjacent_locations = crate::game::zones_to_locations(&adjacent_locations);
+                let target_zone = pick_location(
                     &controller_id,
                     &adjacent_locations,
                     state,

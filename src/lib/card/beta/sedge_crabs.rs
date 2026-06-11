@@ -61,8 +61,8 @@ impl Card for SedgeCrabs {
         Some(&mut self.unit_base)
     }
 
-    async fn get_valid_move_zones(&self, state: &State) -> anyhow::Result<Vec<Zone>> {
-        let mut zones = self.base_valid_move_zones(state).await?;
+    async fn get_valid_move_locations(&self, state: &State) -> anyhow::Result<Vec<Location>> {
+        let mut zones = self.base_valid_move_locations(state).await?;
         let crabs_square = self.get_zone().get_square().unwrap_or_default() as i8;
         zones.retain(|z| {
             let zone_square = z.get_square().unwrap_or_default() as i8;

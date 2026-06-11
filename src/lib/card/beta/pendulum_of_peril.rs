@@ -96,10 +96,11 @@ impl Card for PendulumOfPeril {
                 let chosen_zone = if adjacent_zones.is_empty() {
                     None
                 } else {
+                    let adjacent_locations = crate::game::zones_to_locations(&adjacent_zones);
                     Some(
-                        pick_zone(
+                        pick_location(
                             &current_player,
-                            &adjacent_zones,
+                            &adjacent_locations,
                             state,
                             false,
                             "Pendulum of Peril: Pick an adjacent location to destroy all minions",

@@ -39,6 +39,13 @@ impl Location {
         }
     }
 
+    pub fn squares(&self) -> Vec<u8> {
+        match self {
+            Location::Square(square, _) => vec![*square],
+            Location::Intersection(squares, _) => squares.clone(),
+        }
+    }
+
     pub fn square(&self) -> Option<u8> {
         match self {
             Location::Square(square, _) => Some(*square),
@@ -147,6 +154,13 @@ impl Location {
                 intersections
             }
         }
+    }
+
+    pub fn get_nearby(&self) -> Vec<Self> {
+        get_nearby_zones(&Zone::from(self))
+            .into_iter()
+            .filter_map(Zone::into_location)
+            .collect()
     }
 
     pub fn steps_in_direction(&self, direction: &Direction, steps: u8) -> Option<Self> {

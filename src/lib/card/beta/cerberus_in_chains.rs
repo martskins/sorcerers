@@ -75,8 +75,8 @@ impl Card for CerberusInChains {
         Ok(vec![avatar_zone])
     }
 
-    async fn get_valid_move_zones(&self, _state: &State) -> anyhow::Result<Vec<Zone>> {
-        Ok(vec![self.get_zone().clone()]) // Cerberus can't move itself.
+    async fn get_valid_move_locations(&self, _state: &State) -> anyhow::Result<Vec<Location>> {
+        Ok(vec![self.get_location().clone()]) // Cerberus can't move itself.
     }
 
     fn hooks(&self, state: &State) -> anyhow::Result<Vec<Hook>> {

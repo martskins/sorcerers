@@ -98,8 +98,8 @@ impl Card for Undertow {
                     return Ok(vec![]);
                 };
                 let unit = state.get_card(&unit_id);
-                let zones = unit.get_zones_within_steps(state, 1);
-                let picked_zone = pick_zone(
+                let zones = unit.get_locations_within_steps(state, 1);
+                let picked_zone = pick_location(
                     player_id,
                     &zones,
                     state,

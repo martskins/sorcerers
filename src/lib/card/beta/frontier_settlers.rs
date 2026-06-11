@@ -3,9 +3,9 @@ use crate::prelude::*;
 #[derive(Debug, Clone)]
 struct SettleAction;
 
-fn adjacent_void_or_rubble(card_id: &CardId, state: &State) -> Vec<Zone> {
+fn adjacent_void_or_rubble(card_id: &CardId, state: &State) -> Vec<Location> {
     let card = state.get_card(card_id);
-    card.get_zone()
+    card.get_location()
         .get_adjacent()
         .into_iter()
         .filter(|z| match z.get_site(state) {
@@ -47,8 +47,8 @@ impl ActivatedAbility for SettleAction {
         player_id: &PlayerId,
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
-        let valid_zones = adjacent_void_or_rubble(card_id, state);
-        if valid_zones.is_empty() {
+        let valid_locations = adjacent_void_or_rubble(card_id, state);
+        if valid_locations.is_empty() {
             return Ok(vec![]);
         }
 
@@ -57,9 +57,9 @@ impl ActivatedAbility for SettleAction {
             None => return Ok(vec![]),
         };
 
-        let chosen_zone = pick_zone(
+        let chosen_zone = pick_location(
             player_id,
-            &valid_zones,
+            &valid_locations,
             state,
             false,
             "Pick an adjacent void or Rubble zone to settle",

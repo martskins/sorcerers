@@ -141,9 +141,10 @@ impl Card for Wildfire {
                     .collect::<Vec<Effect>>();
 
                 let prompt = "Pick a zone to move to";
-                let picked_zone = pick_zone_source(
+                let locations = crate::game::zones_to_locations(&zones);
+                let picked_zone = pick_location_source(
                     self.get_owner_id(),
-                    &zones,
+                    &locations,
                     state,
                     false,
                     prompt,

@@ -57,12 +57,12 @@ async fn test_astral_alcazar_connects_site_to_any_void() {
     state.reconcile_ongoing_effects_for_test().await.unwrap();
 
     let zones = unit
-        .get_valid_move_zones(&state)
+        .get_valid_move_locations(&state)
         .await
         .expect("zones to be computed");
-    assert!(zones.contains(&Zone::Location(Location::Square(1, Region::Void))));
-    assert!(zones.contains(&Zone::Location(Location::Square(20, Region::Void))));
-    assert!(!zones.contains(&Zone::Location(Location::Square(8, Region::Void))));
+    assert!(zones.contains(&Location::Square(1, Region::Void)));
+    assert!(zones.contains(&Location::Square(20, Region::Void)));
+    assert!(!zones.contains(&Location::Square(8, Region::Void)));
 }
 
 #[tokio::test]
@@ -81,11 +81,11 @@ async fn test_astral_alcazar_does_not_connect_any_void_to_site() {
     state.reconcile_ongoing_effects_for_test().await.unwrap();
 
     let zones = unit
-        .get_valid_move_zones(&state)
+        .get_valid_move_locations(&state)
         .await
         .expect("zones to be computed");
-    assert!(zones.contains(&Zone::Location(Location::Square(20, Region::Void))));
-    assert!(!zones.contains(&Zone::Location(Location::Square(1, Region::Void))));
+    assert!(zones.contains(&Location::Square(20, Region::Void)));
+    assert!(!zones.contains(&Location::Square(1, Region::Void)));
 }
 
 #[tokio::test]
@@ -103,10 +103,10 @@ async fn test_great_wall_blocks_enemy_ground_movement_through_top_border() {
     state.cards.insert(*enemy.get_id(), Box::new(enemy.clone()));
 
     let zones = enemy
-        .get_valid_move_zones(&state)
+        .get_valid_move_locations(&state)
         .await
         .expect("zones to be computed");
-    assert!(!zones.contains(&Zone::Location(Location::Square(8, Region::Surface))));
+    assert!(!zones.contains(&Location::Square(8, Region::Surface)));
 }
 
 #[tokio::test]
@@ -124,10 +124,10 @@ async fn test_great_wall_blocks_enemy_ground_movement_out_through_top_border() {
     state.cards.insert(*enemy.get_id(), Box::new(enemy.clone()));
 
     let zones = enemy
-        .get_valid_move_zones(&state)
+        .get_valid_move_locations(&state)
         .await
         .expect("zones to be computed");
-    assert!(!zones.contains(&Zone::Location(Location::Square(13, Region::Surface))));
+    assert!(!zones.contains(&Location::Square(13, Region::Surface)));
 }
 
 #[tokio::test]
@@ -145,10 +145,10 @@ async fn test_great_wall_allows_allied_and_airborne_movement_through_top_border(
     state.cards.insert(*ally.get_id(), Box::new(ally.clone()));
 
     let ally_zones = ally
-        .get_valid_move_zones(&state)
+        .get_valid_move_locations(&state)
         .await
         .expect("zones to be computed");
-    assert!(ally_zones.contains(&Zone::Location(Location::Square(8, Region::Surface))));
+    assert!(ally_zones.contains(&Location::Square(8, Region::Surface)));
 
     let mut airborne_enemy = ApprenticeWizard::new(enemy_id);
     airborne_enemy.set_zone(Zone::Location(Location::Square(13, Region::Surface)));
@@ -158,10 +158,10 @@ async fn test_great_wall_allows_allied_and_airborne_movement_through_top_border(
         .insert(*airborne_enemy.get_id(), Box::new(airborne_enemy.clone()));
 
     let airborne_enemy_zones = airborne_enemy
-        .get_valid_move_zones(&state)
+        .get_valid_move_locations(&state)
         .await
         .expect("zones to be computed");
-    assert!(airborne_enemy_zones.contains(&Zone::Location(Location::Square(8, Region::Surface))));
+    assert!(airborne_enemy_zones.contains(&Location::Square(8, Region::Surface)));
 }
 
 #[tokio::test]
@@ -180,10 +180,7 @@ async fn test_great_wall_blocks_paths_through_top_border() {
     state.cards.insert(*enemy.get_id(), Box::new(enemy.clone()));
 
     let paths = enemy
-        .get_valid_move_paths(
-            &state,
-            &Zone::Location(Location::Square(3, Region::Surface)),
-        )
+        .get_valid_move_paths(&state, &Location::Square(3, Region::Surface))
         .await
         .expect("paths to be computed");
     assert!(paths.is_empty());
@@ -246,22 +243,19 @@ async fn test_get_valid_move_paths_movement_plus_1() {
     state.cards.insert(*card.get_id(), Box::new(card.clone()));
 
     let paths = card
-        .get_valid_move_paths(
-            &state,
-            &Zone::Location(Location::Square(14, Region::Surface)),
-        )
+        .get_valid_move_paths(&state, &Location::Square(14, Region::Surface))
         .await
         .expect("paths to be computed");
     assert_eq!(paths.len(), 2, "Expected 2 paths, got {:?}", paths);
     assert!(paths.contains(&vec![
-        Zone::Location(Location::Square(8, Region::Surface)),
-        Zone::Location(Location::Square(9, Region::Surface)),
-        Zone::Location(Location::Square(14, Region::Surface))
+        Location::Square(8, Region::Surface),
+        Location::Square(9, Region::Surface),
+        Location::Square(14, Region::Surface)
     ]));
     assert!(paths.contains(&vec![
-        Zone::Location(Location::Square(8, Region::Surface)),
-        Zone::Location(Location::Square(13, Region::Surface)),
-        Zone::Location(Location::Square(14, Region::Surface))
+        Location::Square(8, Region::Surface),
+        Location::Square(13, Region::Surface),
+        Location::Square(14, Region::Surface)
     ]));
 }
 
@@ -275,26 +269,23 @@ async fn test_get_valid_move_paths_movement_plus_1_airborne() {
     state.cards.insert(*card.get_id(), Box::new(card.clone()));
 
     let paths = card
-        .get_valid_move_paths(
-            &state,
-            &Zone::Location(Location::Square(14, Region::Surface)),
-        )
+        .get_valid_move_paths(&state, &Location::Square(14, Region::Surface))
         .await
         .expect("paths to be computed");
     assert_eq!(paths.len(), 3, "Expected 3 valid paths, got {:?}", paths);
     assert!(paths.contains(&vec![
-        Zone::Location(Location::Square(8, Region::Surface)),
-        Zone::Location(Location::Square(9, Region::Surface)),
-        Zone::Location(Location::Square(14, Region::Surface))
+        Location::Square(8, Region::Surface),
+        Location::Square(9, Region::Surface),
+        Location::Square(14, Region::Surface)
     ]));
     assert!(paths.contains(&vec![
-        Zone::Location(Location::Square(8, Region::Surface)),
-        Zone::Location(Location::Square(14, Region::Surface))
+        Location::Square(8, Region::Surface),
+        Location::Square(14, Region::Surface)
     ]));
     assert!(paths.contains(&vec![
-        Zone::Location(Location::Square(8, Region::Surface)),
-        Zone::Location(Location::Square(13, Region::Surface)),
-        Zone::Location(Location::Square(14, Region::Surface))
+        Location::Square(8, Region::Surface),
+        Location::Square(13, Region::Surface),
+        Location::Square(14, Region::Surface)
     ]));
 }
 
@@ -308,30 +299,27 @@ async fn test_get_valid_move_paths_movement_plus_2() {
     state.cards.insert(*card.get_id(), Box::new(card.clone()));
 
     let paths = card
-        .get_valid_move_paths(
-            &state,
-            &Zone::Location(Location::Square(15, Region::Surface)),
-        )
+        .get_valid_move_paths(&state, &Location::Square(15, Region::Surface))
         .await
         .expect("paths to be computed");
     assert_eq!(paths.len(), 3, "Expected 2 paths, got {:?}", paths);
     assert!(paths.contains(&vec![
-        Zone::Location(Location::Square(8, Region::Surface)),
-        Zone::Location(Location::Square(9, Region::Surface)),
-        Zone::Location(Location::Square(10, Region::Surface)),
-        Zone::Location(Location::Square(15, Region::Surface))
+        Location::Square(8, Region::Surface),
+        Location::Square(9, Region::Surface),
+        Location::Square(10, Region::Surface),
+        Location::Square(15, Region::Surface)
     ]));
     assert!(paths.contains(&vec![
-        Zone::Location(Location::Square(8, Region::Surface)),
-        Zone::Location(Location::Square(9, Region::Surface)),
-        Zone::Location(Location::Square(14, Region::Surface)),
-        Zone::Location(Location::Square(15, Region::Surface))
+        Location::Square(8, Region::Surface),
+        Location::Square(9, Region::Surface),
+        Location::Square(14, Region::Surface),
+        Location::Square(15, Region::Surface)
     ]));
     assert!(paths.contains(&vec![
-        Zone::Location(Location::Square(8, Region::Surface)),
-        Zone::Location(Location::Square(13, Region::Surface)),
-        Zone::Location(Location::Square(14, Region::Surface)),
-        Zone::Location(Location::Square(15, Region::Surface))
+        Location::Square(8, Region::Surface),
+        Location::Square(13, Region::Surface),
+        Location::Square(14, Region::Surface),
+        Location::Square(15, Region::Surface)
     ]));
 }
 
@@ -344,16 +332,16 @@ async fn test_get_valid_move_zones_basic_movement() {
     state.cards.insert(*card.get_id(), Box::new(card.clone()));
 
     let mut zones = card
-        .get_valid_move_zones(&state)
+        .get_valid_move_locations(&state)
         .await
         .expect("zones to be computed");
     zones.sort();
     let mut expected = vec![
-        Zone::Location(Location::Square(8, Region::Surface)),
-        Zone::Location(Location::Square(7, Region::Surface)),
-        Zone::Location(Location::Square(9, Region::Surface)),
-        Zone::Location(Location::Square(3, Region::Surface)),
-        Zone::Location(Location::Square(13, Region::Surface)),
+        Location::Square(8, Region::Surface),
+        Location::Square(7, Region::Surface),
+        Location::Square(9, Region::Surface),
+        Location::Square(3, Region::Surface),
+        Location::Square(13, Region::Surface),
     ];
     expected.sort();
     assert_eq!(zones, expected);
@@ -369,23 +357,23 @@ async fn test_get_valid_move_zones_movement_plus_1() {
     state.cards.insert(*card.get_id(), Box::new(card.clone()));
 
     let mut zones = card
-        .get_valid_move_zones(&state)
+        .get_valid_move_locations(&state)
         .await
         .expect("zones to be computed");
     zones.sort();
     let mut expected = vec![
-        Zone::Location(Location::Square(8, Region::Surface)),
-        Zone::Location(Location::Square(7, Region::Surface)),
-        Zone::Location(Location::Square(9, Region::Surface)),
-        Zone::Location(Location::Square(3, Region::Surface)),
-        Zone::Location(Location::Square(13, Region::Surface)),
-        Zone::Location(Location::Square(18, Region::Surface)),
-        Zone::Location(Location::Square(6, Region::Surface)),
-        Zone::Location(Location::Square(10, Region::Surface)),
-        Zone::Location(Location::Square(12, Region::Surface)),
-        Zone::Location(Location::Square(14, Region::Surface)),
-        Zone::Location(Location::Square(2, Region::Surface)),
-        Zone::Location(Location::Square(4, Region::Surface)),
+        Location::Square(8, Region::Surface),
+        Location::Square(7, Region::Surface),
+        Location::Square(9, Region::Surface),
+        Location::Square(3, Region::Surface),
+        Location::Square(13, Region::Surface),
+        Location::Square(18, Region::Surface),
+        Location::Square(6, Region::Surface),
+        Location::Square(10, Region::Surface),
+        Location::Square(12, Region::Surface),
+        Location::Square(14, Region::Surface),
+        Location::Square(2, Region::Surface),
+        Location::Square(4, Region::Surface),
     ];
     expected.sort();
     assert_eq!(zones, expected);
@@ -400,14 +388,14 @@ async fn test_get_valid_move_zones_basic_movement_with_voids() {
     state.cards.insert(*card.get_id(), Box::new(card.clone()));
 
     let mut zones = card
-        .get_valid_move_zones(&state)
+        .get_valid_move_locations(&state)
         .await
         .expect("zones to be computed");
     zones.sort();
     let mut expected = vec![
-        Zone::Location(Location::Square(8, Region::Surface)),
-        Zone::Location(Location::Square(9, Region::Surface)),
-        Zone::Location(Location::Square(3, Region::Surface)),
+        Location::Square(8, Region::Surface),
+        Location::Square(9, Region::Surface),
+        Location::Square(3, Region::Surface),
     ];
     expected.sort();
     assert_eq!(zones, expected);
@@ -424,18 +412,18 @@ async fn test_get_valid_move_zones_movement_plus_1_with_voids() {
     state.cards.insert(*card.get_id(), Box::new(card.clone()));
 
     let mut zones = card
-        .get_valid_move_zones(&state)
+        .get_valid_move_locations(&state)
         .await
         .expect("zones to be computed");
     zones.sort();
     let mut expected = vec![
-        Zone::Location(Location::Square(2, Region::Surface)),
-        Zone::Location(Location::Square(3, Region::Surface)),
-        Zone::Location(Location::Square(4, Region::Surface)),
-        Zone::Location(Location::Square(8, Region::Surface)),
-        Zone::Location(Location::Square(9, Region::Surface)),
-        Zone::Location(Location::Square(12, Region::Surface)),
-        Zone::Location(Location::Square(13, Region::Surface)),
+        Location::Square(2, Region::Surface),
+        Location::Square(3, Region::Surface),
+        Location::Square(4, Region::Surface),
+        Location::Square(8, Region::Surface),
+        Location::Square(9, Region::Surface),
+        Location::Square(12, Region::Surface),
+        Location::Square(13, Region::Surface),
     ];
     expected.sort();
     assert_eq!(zones, expected);
@@ -452,16 +440,16 @@ async fn test_get_valid_move_zones_basic_movement_with_voidwalk() {
     state.cards.insert(*card.get_id(), Box::new(card.clone()));
 
     let mut zones = card
-        .get_valid_move_zones(&state)
+        .get_valid_move_locations(&state)
         .await
         .expect("zones to be computed");
     zones.sort();
     let mut expected = vec![
-        Zone::Location(Location::Square(8, Region::Surface)),
-        Zone::Location(Location::Square(7, Region::Surface)),
-        Zone::Location(Location::Square(9, Region::Surface)),
-        Zone::Location(Location::Square(3, Region::Surface)),
-        Zone::Location(Location::Square(13, Region::Surface)),
+        Location::Square(8, Region::Surface),
+        Location::Square(7, Region::Surface),
+        Location::Square(9, Region::Surface),
+        Location::Square(3, Region::Surface),
+        Location::Square(13, Region::Surface),
     ];
     expected.sort();
     assert_eq!(zones, expected);
@@ -477,20 +465,20 @@ async fn test_get_valid_move_zones_airborne() {
     state.cards.insert(*card.get_id(), Box::new(card.clone()));
 
     let mut zones = card
-        .get_valid_move_zones(&state)
+        .get_valid_move_locations(&state)
         .await
         .expect("zones to be computed");
     zones.sort();
     let mut expected = vec![
-        Zone::Location(Location::Square(8, Region::Surface)),
-        Zone::Location(Location::Square(7, Region::Surface)),
-        Zone::Location(Location::Square(9, Region::Surface)),
-        Zone::Location(Location::Square(3, Region::Surface)),
-        Zone::Location(Location::Square(13, Region::Surface)),
-        Zone::Location(Location::Square(12, Region::Surface)),
-        Zone::Location(Location::Square(14, Region::Surface)),
-        Zone::Location(Location::Square(2, Region::Surface)),
-        Zone::Location(Location::Square(4, Region::Surface)),
+        Location::Square(8, Region::Surface),
+        Location::Square(7, Region::Surface),
+        Location::Square(9, Region::Surface),
+        Location::Square(3, Region::Surface),
+        Location::Square(13, Region::Surface),
+        Location::Square(12, Region::Surface),
+        Location::Square(14, Region::Surface),
+        Location::Square(2, Region::Surface),
+        Location::Square(4, Region::Surface),
     ];
     expected.sort();
     assert_eq!(zones, expected);
@@ -507,19 +495,19 @@ async fn test_get_valid_move_zones_airborne_with_voids() {
     state.cards.insert(*card.get_id(), Box::new(card.clone()));
 
     let mut zones = card
-        .get_valid_move_zones(&state)
+        .get_valid_move_locations(&state)
         .await
         .expect("zones to be computed");
     zones.sort();
 
     let mut expected = vec![
-        Zone::Location(Location::Square(2, Region::Surface)),
-        Zone::Location(Location::Square(3, Region::Surface)),
-        Zone::Location(Location::Square(4, Region::Surface)),
-        Zone::Location(Location::Square(8, Region::Surface)),
-        Zone::Location(Location::Square(9, Region::Surface)),
-        Zone::Location(Location::Square(12, Region::Surface)),
-        Zone::Location(Location::Square(13, Region::Surface)),
+        Location::Square(2, Region::Surface),
+        Location::Square(3, Region::Surface),
+        Location::Square(4, Region::Surface),
+        Location::Square(8, Region::Surface),
+        Location::Square(9, Region::Surface),
+        Location::Square(12, Region::Surface),
+        Location::Square(13, Region::Surface),
     ];
     expected.sort();
     assert_eq!(zones, expected);
@@ -537,20 +525,20 @@ async fn test_get_valid_move_zones_airborne_and_voidwalk() {
     state.cards.insert(*card.get_id(), Box::new(card.clone()));
 
     let mut zones = card
-        .get_valid_move_zones(&state)
+        .get_valid_move_locations(&state)
         .await
         .expect("zones to be computed");
     zones.sort();
     let mut expected = vec![
-        Zone::Location(Location::Square(8, Region::Surface)),
-        Zone::Location(Location::Square(7, Region::Surface)),
-        Zone::Location(Location::Square(9, Region::Surface)),
-        Zone::Location(Location::Square(3, Region::Surface)),
-        Zone::Location(Location::Square(13, Region::Surface)),
-        Zone::Location(Location::Square(12, Region::Surface)),
-        Zone::Location(Location::Square(14, Region::Surface)),
-        Zone::Location(Location::Square(2, Region::Surface)),
-        Zone::Location(Location::Square(4, Region::Surface)),
+        Location::Square(8, Region::Surface),
+        Location::Square(7, Region::Surface),
+        Location::Square(9, Region::Surface),
+        Location::Square(3, Region::Surface),
+        Location::Square(13, Region::Surface),
+        Location::Square(12, Region::Surface),
+        Location::Square(14, Region::Surface),
+        Location::Square(2, Region::Surface),
+        Location::Square(4, Region::Surface),
     ];
     expected.sort();
     assert_eq!(zones, expected);

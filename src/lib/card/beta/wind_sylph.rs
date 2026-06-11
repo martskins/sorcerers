@@ -152,9 +152,10 @@ impl Card for WindSylph {
                     return Ok(vec![]);
                 }
 
-                let target_zone = pick_zone(
+                let valid_locations = crate::game::zones_to_locations(&valid_zones);
+                let target_zone = pick_location(
                     &controller_id,
-                    &valid_zones,
+                    &valid_locations,
                     state,
                     false,
                     "Wind Sylph: Pick a zone to push that unit to",

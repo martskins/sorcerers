@@ -55,9 +55,10 @@ impl ActivatedAbility for PathfinderSitewalk {
             return Ok(vec![]);
         }
 
-        let zone = pick_zone(
+        let locations = crate::game::zones_to_locations(&zones);
+        let zone = pick_location(
             player_id,
-            &zones,
+            &locations,
             state,
             false,
             "Pathfinder: Pick an adjacent location for your top site",

@@ -60,8 +60,8 @@ impl Magic for Mortality {
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
         let caster_card = state.get_card(caster_id);
-        let zones = caster_card.get_zones_within_steps(state, 2);
-        let target_zone = pick_zone(
+        let zones = caster_card.get_locations_within_steps(state, 2);
+        let target_zone = pick_location(
             &controller_id,
             &zones,
             state,

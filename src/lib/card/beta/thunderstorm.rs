@@ -90,7 +90,7 @@ impl Card for Thunderstorm {
                     return Ok(vec![]);
                 }
 
-                let zones = self.get_valid_move_zones(state).await?;
+                let zones = self.get_valid_move_locations(state).await?;
                 let affected_locations = self.get_affected_zones(state);
                 let picked_card_id = CardQuery::new()
                     .randomised()
@@ -106,7 +106,7 @@ impl Card for Thunderstorm {
                     from: (self.get_zone().clone())
                         .into_location()
                         .expect("MoveCard source must be a location"),
-                    to: LocationQuery::from_options(
+                    to: LocationQuery::from_locations(
                         zones,
                         Some("Pick a zone to move Thunderstorm to".to_string()),
                     ),

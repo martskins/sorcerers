@@ -122,9 +122,10 @@ impl Card for GuileSirens {
                     let picked_location = if closest_zones.len() == 1 {
                         closest_zones.first().unwrap().location().cloned().unwrap()
                     } else {
-                        pick_zone(
+                        let closest_locations = crate::game::zones_to_locations(closest_zones);
+                        pick_location(
                             &opponent_id,
-                            closest_zones,
+                            &closest_locations,
                             state,
                             true,
                             &format!(

@@ -77,10 +77,11 @@ impl Card for UltimateHorror {
                     .with_ability(Ability::Voidwalk)
                     .all(state);
                 let mut effects = Vec::new();
+                let nearby_locations = crate::game::zones_to_locations(&nearby_zones);
                 for card_id in dead_voidwalkers {
-                    let zone = pick_zone(
+                    let zone = pick_location(
                         &controller_id,
-                        &nearby_zones,
+                        &nearby_locations,
                         state,
                         false,
                         &format!(

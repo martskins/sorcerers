@@ -1,7 +1,7 @@
 use rand::seq::IndexedRandom;
 
 use crate::{
-    game::{CardId, PlayerId, pick_zone_source},
+    game::{CardId, PlayerId, pick_location_source},
     query::ZoneQuery,
     state::State,
     zone::{Location, Zone},
@@ -108,7 +108,7 @@ impl QueryCache {
                 .clone()
         } else if let Some(options) = &qry.options {
             Zone::Location(
-                pick_zone_source(
+                pick_location_source(
                     player_id,
                     &options
                         .iter()
@@ -137,7 +137,7 @@ impl QueryCache {
                 .collect();
             sites.dedup();
             Zone::Location(
-                pick_zone_source(
+                pick_location_source(
                     player_id,
                     &sites,
                     state,
@@ -149,7 +149,7 @@ impl QueryCache {
             )
         } else {
             Zone::Location(
-                pick_zone_source(
+                pick_location_source(
                     player_id,
                     &Zone::all_realm()
                         .iter()

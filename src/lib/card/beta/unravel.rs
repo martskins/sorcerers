@@ -60,9 +60,9 @@ impl Magic for Unravel {
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = self.get_controller_id(state);
         let caster = state.get_card(caster_id);
-        let zones = caster.get_zones_within_steps(state, 2);
+        let zones = caster.get_locations_within_steps(state, 2);
 
-        let picked_zone = pick_zone(
+        let picked_zone = pick_location(
             &controller_id,
             &zones,
             state,

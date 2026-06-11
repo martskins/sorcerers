@@ -79,13 +79,13 @@ impl Magic for LeapAttack {
         .await?;
 
         let leaper = state.get_card(&leaper_id);
-        let current_zone = leaper.get_zone().clone();
-        let mut one_step_zones = leaper.get_zones_within_steps(state, 1);
-        if !one_step_zones.contains(&current_zone) {
-            one_step_zones.push(current_zone.clone());
+        let current_location = leaper.get_location().clone();
+        let mut one_step_zones = leaper.get_locations_within_steps(state, 1);
+        if !one_step_zones.contains(&current_location) {
+            one_step_zones.push(current_location.clone());
         }
 
-        let dest_zone = pick_zone(
+        let dest_zone = pick_location(
             &controller_id,
             &one_step_zones,
             state,
@@ -103,14 +103,12 @@ impl Magic for LeapAttack {
             .collect();
 
         let mut effects = vec![];
-        if Some(&dest_zone) != current_zone.location() {
+        if dest_zone != current_location {
             effects.push(Effect::MoveCard {
                 player_id: controller_id,
                 card_id: leaper_id,
-                from: (current_zone.clone())
-                    .into_location()
-                    .expect("MoveCard source must be a location"),
-                to: LocationQuery::from_zone(
+                from: current_location,
+                to: LocationQuery::from_location(
                     (dest_zone.clone()).with_region(leaper.get_region(state).clone()),
                 ),
                 tap: false,

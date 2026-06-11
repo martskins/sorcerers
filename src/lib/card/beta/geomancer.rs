@@ -62,7 +62,8 @@ impl ActivatedAbility for GeomancerAbility {
                 // no caster_id is actually needed here, since sites don't need one.
                 let zones = picked_card.get_valid_play_zones(state, player_id, &avatar_id)?;
                 let prompt = "Pick a zone to play the site";
-                let zone = pick_zone(player_id, &zones, state, false, prompt).await?;
+                let locations = crate::game::zones_to_locations(&zones);
+                let zone = pick_location(player_id, &locations, state, false, prompt).await?;
                 geomancer_play_site_effects(
                     card_id,
                     player_id,
@@ -156,9 +157,10 @@ async fn geomancer_play_site_effects(
             .cloned()
             .collect::<Vec<Zone>>();
         if !zones.is_empty() {
-            let picked_zone = pick_zone(
+            let locations = crate::game::zones_to_locations(&zones);
+            let picked_zone = pick_location(
                 player_id,
-                &zones,
+                &locations,
                 state,
                 false,
                 "Geomancer: Pick a void to fill with a rubble",

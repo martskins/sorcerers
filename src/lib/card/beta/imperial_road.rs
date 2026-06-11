@@ -134,9 +134,10 @@ impl Card for ImperialRoad {
                         continue;
                     }
 
-                    let zone = pick_zone(
+                    let valid_locations = crate::game::zones_to_locations(&valid_zones);
+                    let zone = pick_location(
                         &player_id,
-                        &valid_zones,
+                        &valid_locations,
                         state,
                         true,
                         "Imperial Road: Pick adjacent zone to place site",

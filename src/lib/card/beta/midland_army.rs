@@ -20,9 +20,9 @@ impl ActivatedAbility for ArtilleryBarrage {
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
         let card = state.get_card(card_id);
-        let zones = card.get_zones_within_steps(state, 3);
+        let zones = card.get_locations_within_steps(state, 3);
 
-        let target_zone = pick_zone(
+        let target_zone = pick_location(
             player_id,
             &zones,
             state,

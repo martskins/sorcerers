@@ -25,10 +25,11 @@ impl ActivatedAbility for Constrict {
         let mut constrict_zone = constrictor.get_zone().clone();
 
         if yes_or_no_source(player_id, state, "Take a step first?", Some(*card_id)).await? {
-            let mut zones = constrictor.get_zones_within_steps_of(state, 1, constrictor.get_zone());
-            zones.retain(|zone| zone != constrictor.get_zone());
+            let current_location = constrictor.get_location().clone();
+            let mut zones = constrictor.get_locations_within_steps_of(state, 1, &current_location);
+            zones.retain(|zone| zone != &current_location);
             if !zones.is_empty() {
-                let picked_zone = pick_zone(
+                let picked_zone = pick_location(
                     player_id,
                     &zones,
                     state,

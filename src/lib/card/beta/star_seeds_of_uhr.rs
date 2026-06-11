@@ -55,7 +55,7 @@ impl Magic for StarSeedsOfUhr {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = state.get_card(caster_id).get_controller_id(state);
-        let mut voids: Vec<Zone> = Zone::all_realm()
+        let voids: Vec<Zone> = Zone::all_realm()
             .into_iter()
             .filter(|zone| zone.get_site(state).is_none())
             .collect();
@@ -71,11 +71,12 @@ impl Magic for StarSeedsOfUhr {
             return Ok(vec![]);
         }
 
+        let mut locations = crate::game::zones_to_locations(&voids);
         let mut effects = vec![];
-        while !voids.is_empty() && effects.len() < 13 {
-            let zone = pick_zone(
+        while !locations.is_empty() && effects.len() < 13 {
+            let zone = pick_location(
                 &controller_id,
-                &voids,
+                &locations,
                 state,
                 false,
                 "Star-seeds of Uhr: Pick a void to fill with Rubble",
@@ -86,9 +87,9 @@ impl Magic for StarSeedsOfUhr {
                 token_type: TokenType::Rubble,
                 location: zone.clone(),
             });
-            voids.retain(|candidate| candidate.location() != Some(&zone));
+            locations.retain(|candidate| candidate != &zone);
 
-            if voids.is_empty()
+            if locations.is_empty()
                 || effects.len() >= 13
                 || !yes_or_no_source(
                     &controller_id,

@@ -59,9 +59,9 @@ impl Magic for MinorExplosion {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let caster = state.get_card(caster_id);
-        let valid_zones = caster.get_zones_within_steps(state, 2);
+        let valid_zones = caster.get_locations_within_steps(state, 2);
         let prompt = "Pick a zone to center the explosion";
-        let zone = pick_zone_source(
+        let zone = pick_location_source(
             self.get_owner_id(),
             &valid_zones,
             state,
