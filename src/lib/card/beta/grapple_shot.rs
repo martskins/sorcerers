@@ -70,7 +70,7 @@ impl Magic for GrappleShot {
         };
 
         let ally_card = state.get_card(&ally_id);
-        let ally_zone = ally_card.get_zone();
+        let ally_location = ally_card.get_location();
         let direction = pick_direction_source(
             &controller_id,
             &CARDINAL_DIRECTIONS,
@@ -79,33 +79,27 @@ impl Magic for GrappleShot {
             Some(ally_id),
         )
         .await?;
-        let mut cur_zone = ally_zone.clone();
+        let mut cur_location = ally_location.clone();
         let mut hit_unit_id = None;
-        loop {
-            match cur_zone.zone_in_direction(&direction, 1) {
-                Some(Zone::Location(Location::Square(next_sq, region)))
-                    if (1..=20).contains(&next_sq) =>
-                {
-                    cur_zone = Zone::Location(Location::Square(next_sq, region));
-                    let units = CardQuery::new().units().in_zone(&cur_zone).all(state);
-                    if let Some(unit_id) = units.first() {
-                        hit_unit_id = Some(*unit_id);
-                        break;
-                    };
-                }
-                _ => break,
-            }
+        while let Some(next_location) = cur_location.step_in_direction(&direction) {
+            cur_location = next_location;
+            let units = CardQuery::new()
+                .units()
+                .in_location(cur_location.clone())
+                .all(state);
+            if let Some(unit_id) = units.first() {
+                hit_unit_id = Some(*unit_id);
+                break;
+            };
         }
 
         if let Some(target_id) = hit_unit_id {
             let mut effects = vec![Effect::MoveCard {
                 player_id: controller_id,
                 card_id: ally_id,
-                from: (ally_zone.clone())
-                    .into_location()
-                    .expect("MoveCard source must be a location"),
-                to: LocationQuery::from_zone(
-                    (cur_zone.clone()).with_region(ally_card.get_region(state).clone()),
+                from: ally_location.clone(),
+                to: LocationQuery::from_location(
+                    cur_location.with_region(ally_card.get_region(state).clone()),
                 ),
                 tap: false,
                 through_path: None,

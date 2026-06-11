@@ -64,12 +64,12 @@ impl Card for DalceanPhalanx {
     async fn get_valid_move_locations(&self, state: &State) -> anyhow::Result<Vec<Location>> {
         let locations = self.base_valid_move_locations(state).await?;
         let mut valid_locations = vec![self.get_location().clone()];
-        while let Some(zone) = valid_locations
+        while let Some(location) = valid_locations
             .last()
             .unwrap()
-            .zone_in_direction(&Direction::Up, 1)
+            .step_in_direction(&Direction::Up)
         {
-            valid_locations.push(zone.into_location().unwrap());
+            valid_locations.push(location);
         }
 
         Ok(locations

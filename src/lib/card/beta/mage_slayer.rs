@@ -73,7 +73,6 @@ impl Card for MageSlayer {
         match hook {
             GENESIS_HOOK_ID => {
                 let controller_id = self.get_controller_id(state);
-                let my_zone = self.get_zone().clone();
 
                 let spellcaster_abilities = [
                     Ability::Spellcaster(None),
@@ -87,8 +86,9 @@ impl Card for MageSlayer {
                     .cards
                     .values()
                     .filter(|c| c.is_minion())
+                    .filter(|c| c.get_zone().is_in_play())
                     .filter(|c| c.get_controller_id(state) != controller_id)
-                    .filter(|c| c.get_zone().is_nearby(&my_zone))
+                    .filter(|c| c.get_location().is_nearby(self.get_location()))
                     .filter(|c| {
                         spellcaster_abilities
                             .iter()

@@ -34,12 +34,12 @@ impl ActivatedAbility for RollBoulder {
         )
         .await?;
 
-        let mut last_zone = boulder.get_zone().clone();
+        let mut last_location = boulder.get_location().clone();
         let mut effects = Vec::new();
         let units = CardQuery::new()
             .units()
             .id_not_in(vec![*card_id])
-            .in_zone(&last_zone)
+            .in_location(last_location.clone())
             .all(state);
         for unit in units {
             effects.push(Effect::TakeDamage {
@@ -49,20 +49,21 @@ impl ActivatedAbility for RollBoulder {
             });
         }
 
-        while let Some(zone) = last_zone.zone_in_direction(&picked_direction, 1) {
+        while let Some(location) = last_location.step_in_direction(&picked_direction) {
             effects.push(Effect::MoveCard {
                 card_id: *boulder.get_id(),
-                from: (last_zone.clone())
-                    .into_location()
-                    .expect("MoveCard source must be a location"),
-                to: LocationQuery::from_zone(
-                    (zone.clone()).with_region(boulder.get_region(state).clone()),
+                from: last_location.clone(),
+                to: LocationQuery::from_location(
+                    location.clone().with_region(boulder.get_region(state).clone()),
                 ),
                 player_id: *player_id,
                 tap: false,
                 through_path: None,
             });
-            let units = CardQuery::new().units().in_zone(&zone).all(state);
+            let units = CardQuery::new()
+                .units()
+                .in_location(location.clone())
+                .all(state);
             for unit in units {
                 effects.push(Effect::TakeDamage {
                     card_id: unit,
@@ -71,7 +72,7 @@ impl ActivatedAbility for RollBoulder {
                 });
             }
 
-            last_zone = zone.clone();
+            last_location = location;
         }
 
         // reverse the effects vec so that they are applied in FIFO order

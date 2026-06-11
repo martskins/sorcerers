@@ -85,7 +85,14 @@ impl Magic for Craterize {
             card_id: picked_site_id,
         }];
 
-        let picked_zone = picked_site.get_zone();
+        let picked_location = picked_site.get_location();
+        let Some(picked_square) = picked_location.square() else {
+            return Ok(effects);
+        };
+        let square_then = |square: u8, first: &Direction, second: &Direction| {
+            Location::square_after_steps_in_direction(square, first, 1)
+                .and_then(|square| Location::square_after_steps_in_direction(square, second, 1))
+        };
         // Damage Pattern:
         // -------------------------------
         // |  1  |  2  |  4  |  2  |  1  |
@@ -99,47 +106,54 @@ impl Magic for Craterize {
         // |  1  |  2  |  4  |  2  |  1  |
         // -------------------------------
         #[rustfmt::skip]
-        let zone_damage = vec![
-            (Some(picked_zone.clone()), 10),
-            (picked_zone.zone_in_direction(&Direction::Up, 1), 7),
-            (picked_zone.zone_in_direction(&Direction::Up, 2), 4),
-            (picked_zone.zone_in_direction(&Direction::Down, 1), 7),
-            (picked_zone.zone_in_direction(&Direction::Down, 2), 4),
-            (picked_zone.zone_in_direction(&Direction::Right, 1), 7),
-            (picked_zone.zone_in_direction(&Direction::Right, 2), 4),
-            (picked_zone.zone_in_direction(&Direction::Left, 1), 7),
-            (picked_zone.zone_in_direction(&Direction::Left, 2), 4),
-            (picked_zone.zone_in_direction(&Direction::TopLeft, 1), 4),
-            (picked_zone.zone_in_direction(&Direction::TopLeft, 2), 1),
-            (picked_zone.zone_in_direction(&Direction::TopRight, 1), 4),
-            (picked_zone.zone_in_direction(&Direction::TopRight, 2), 1),
-            (picked_zone.zone_in_direction(&Direction::BottomLeft, 1), 4),
-            (picked_zone.zone_in_direction(&Direction::BottomLeft, 2), 1),
-            (picked_zone.zone_in_direction(&Direction::BottomRight, 1), 4),
-            (picked_zone.zone_in_direction(&Direction::BottomRight, 2), 1),
-            (picked_zone.zone_in_direction(&Direction::TopLeft, 1).and_then(|z| z.zone_in_direction(&Direction::Up, 1)), 2),
-            (picked_zone.zone_in_direction(&Direction::TopLeft, 1).and_then(|z| z.zone_in_direction(&Direction::Left, 1)), 2),
-            (picked_zone.zone_in_direction(&Direction::TopRight, 1).and_then(|z| z.zone_in_direction(&Direction::Up, 1)), 2),
-            (picked_zone.zone_in_direction(&Direction::TopRight, 1).and_then(|z| z.zone_in_direction(&Direction::Right, 1)), 2),
-            (picked_zone.zone_in_direction(&Direction::BottomLeft, 1).and_then(|z| z.zone_in_direction(&Direction::Up, 1)), 2),
-            (picked_zone.zone_in_direction(&Direction::BottomLeft, 1).and_then(|z| z.zone_in_direction(&Direction::Left, 1)), 2),
-            (picked_zone.zone_in_direction(&Direction::BottomRight, 1).and_then(|z| z.zone_in_direction(&Direction::Up, 1)), 2),
-            (picked_zone.zone_in_direction(&Direction::BottomRight, 1).and_then(|z| z.zone_in_direction(&Direction::Right, 1)), 2),
+        let square_damage = vec![
+            (Some(picked_square), 10),
+            (picked_location.square_in_direction(&Direction::Up, 1), 7),
+            (picked_location.square_in_direction(&Direction::Up, 2), 4),
+            (picked_location.square_in_direction(&Direction::Down, 1), 7),
+            (picked_location.square_in_direction(&Direction::Down, 2), 4),
+            (picked_location.square_in_direction(&Direction::Right, 1), 7),
+            (picked_location.square_in_direction(&Direction::Right, 2), 4),
+            (picked_location.square_in_direction(&Direction::Left, 1), 7),
+            (picked_location.square_in_direction(&Direction::Left, 2), 4),
+            (picked_location.square_in_direction(&Direction::TopLeft, 1), 4),
+            (picked_location.square_in_direction(&Direction::TopLeft, 2), 1),
+            (picked_location.square_in_direction(&Direction::TopRight, 1), 4),
+            (picked_location.square_in_direction(&Direction::TopRight, 2), 1),
+            (picked_location.square_in_direction(&Direction::BottomLeft, 1), 4),
+            (picked_location.square_in_direction(&Direction::BottomLeft, 2), 1),
+            (picked_location.square_in_direction(&Direction::BottomRight, 1), 4),
+            (picked_location.square_in_direction(&Direction::BottomRight, 2), 1),
+            (square_then(picked_square, &Direction::TopLeft, &Direction::Up), 2),
+            (square_then(picked_square, &Direction::TopLeft, &Direction::Left), 2),
+            (square_then(picked_square, &Direction::TopRight, &Direction::Up), 2),
+            (square_then(picked_square, &Direction::TopRight, &Direction::Right), 2),
+            (square_then(picked_square, &Direction::BottomLeft, &Direction::Up), 2),
+            (square_then(picked_square, &Direction::BottomLeft, &Direction::Left), 2),
+            (square_then(picked_square, &Direction::BottomRight, &Direction::Up), 2),
+            (square_then(picked_square, &Direction::BottomRight, &Direction::Right), 2),
         ];
 
-        for (zone, damage) in zone_damage {
-            if let Some(zone) = zone {
-                if zone.get_site(state).is_none() {
+        for (square, damage) in square_damage {
+            if let Some(square) = square {
+                let surface_location = Location::Square(square, Region::Surface);
+                if surface_location.get_site(state).is_none() {
                     continue;
                 }
 
-                let units = CardQuery::new().units().in_zone(&zone).all(state);
-                for unit_id in units {
-                    effects.push(Effect::TakeDamage {
-                        card_id: unit_id,
-                        from: *self.get_id(),
-                        damage: Damage::basic(damage),
-                    });
+                for location in [
+                    surface_location,
+                    Location::Square(square, Region::Underground),
+                    Location::Square(square, Region::Underwater),
+                ] {
+                    let units = CardQuery::new().units().in_location(location).all(state);
+                    for unit_id in units {
+                        effects.push(Effect::TakeDamage {
+                            card_id: unit_id,
+                            from: *self.get_id(),
+                            damage: Damage::basic(damage),
+                        });
+                    }
                 }
             }
         }

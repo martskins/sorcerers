@@ -68,18 +68,19 @@ impl Magic for IceLance {
         )
         .await?;
         let caster = state.get_card(caster_id);
+        let location = caster.get_location();
 
-        let zone_dmg = vec![
-            (Some(caster.get_zone().clone()), 3),
-            (caster.get_zone().zone_in_direction(&direction, 1), 2),
-            (caster.get_zone().zone_in_direction(&direction, 2), 1),
+        let location_dmg = vec![
+            (Some(location.clone()), 3),
+            (location.steps_in_direction(&direction, 1), 2),
+            (location.steps_in_direction(&direction, 2), 1),
         ];
 
         let mut effects = vec![];
-        for (zone, dmg) in zone_dmg {
-            if let Some(zone) = zone {
+        for (location, dmg) in location_dmg {
+            if let Some(location) = location {
                 let qry = CardQuery::new()
-                    .in_zone(&zone)
+                    .in_location(location)
                     .units()
                     .id_not_in(vec![*caster_id])
                     .with_prompt("Pick a unit to damage")

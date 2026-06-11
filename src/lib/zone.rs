@@ -1,8 +1,6 @@
 use crate::{
     card::{Ability, CardType, Region, Rubble, Site},
-    game::{
-        CardId, Direction, PlayerId, are_adjacent, are_nearby, get_adjacent_zones, get_nearby_zones,
-    },
+    game::{CardId, Direction, PlayerId, get_adjacent_zones, get_nearby_zones},
     query::CardQuery,
     state::{OngoingEffect, State},
 };
@@ -55,6 +53,36 @@ impl Location {
 
     pub fn get_square(&self) -> Option<u8> {
         self.square()
+    }
+
+    pub fn square_after_steps_in_direction(
+        square: u8,
+        direction: &Direction,
+        steps: u8,
+    ) -> Option<u8> {
+        let mut current_square = square;
+        for _ in 0..steps {
+            current_square = match direction {
+                Direction::Up => current_square.saturating_add(5),
+                Direction::Down => current_square.saturating_sub(5),
+                Direction::Left => current_square.saturating_sub(1),
+                Direction::Right => current_square.saturating_add(1),
+                Direction::TopLeft => current_square.saturating_add(4),
+                Direction::TopRight => current_square.saturating_add(6),
+                Direction::BottomLeft => current_square.saturating_sub(6),
+                Direction::BottomRight => current_square.saturating_sub(4),
+            };
+
+            if !(1..=20).contains(&current_square) {
+                return None;
+            }
+        }
+
+        Some(current_square)
+    }
+
+    pub fn square_in_direction(&self, direction: &Direction, steps: u8) -> Option<u8> {
+        Self::square_after_steps_in_direction(self.square()?, direction, steps)
     }
 
     pub fn all_in_region(region: Region) -> Vec<Location> {
@@ -163,6 +191,14 @@ impl Location {
             .collect()
     }
 
+    pub fn is_nearby(&self, other: &Location) -> bool {
+        self.get_nearby().contains(other)
+    }
+
+    pub fn is_adjacent(&self, other: &Location) -> bool {
+        self.get_adjacent().contains(other)
+    }
+
     pub fn get_nearby_locations(&self, state: &State) -> Vec<Self> {
         self.get_nearby()
             .into_iter()
@@ -224,51 +260,20 @@ impl Location {
         Some(current_zone)
     }
 
-    pub fn zone_in_direction(&self, direction: &Direction, steps: u8) -> Option<Zone> {
-        self.steps_in_direction(direction, steps).map(Zone::from)
-    }
-
     pub fn step_in_direction(&self, direction: &Direction) -> Option<Self> {
         match self {
-            Location::Square(square, region) => {
-                let zone = match direction {
-                    Direction::Up => Location::Square(square.saturating_add(5), region.clone()),
-                    Direction::Down => Location::Square(square.saturating_sub(5), region.clone()),
-                    Direction::Left => Location::Square(square.saturating_sub(1), region.clone()),
-                    Direction::Right => Location::Square(square.saturating_add(1), region.clone()),
-                    Direction::TopLeft => {
-                        Location::Square(square.saturating_add(4), region.clone())
-                    }
-                    Direction::TopRight => {
-                        Location::Square(square.saturating_add(6), region.clone())
-                    }
-                    Direction::BottomLeft => {
-                        Location::Square(square.saturating_sub(6), region.clone())
-                    }
-                    Direction::BottomRight => {
-                        Location::Square(square.saturating_sub(4), region.clone())
-                    }
-                };
-
-                match direction {
-                    Direction::Up | Direction::Down => {
-                        if zone.square() > Some(20) || zone.square() < Some(1) {
-                            return None;
-                        }
-
-                        Some(zone)
-                    }
-                    _ => Some(zone),
-                }
-            }
+            Location::Square(square, region) => Some(Location::Square(
+                Self::square_after_steps_in_direction(*square, direction, 1)?,
+                region.clone(),
+            )),
             Location::Intersection(locs, region) => {
                 let new_squares: Vec<u8> = locs
                     .iter()
-                    .filter_map(|sq| {
-                        let realm_zone = Zone::Location(Location::Square(*sq, region.clone()));
-                        realm_zone.zone_in_direction(direction, 1)?.get_square()
-                    })
+                    .filter_map(|sq| Self::square_after_steps_in_direction(*sq, direction, 1))
                     .collect();
+                if new_squares.len() != locs.len() {
+                    return None;
+                }
 
                 for intersection in Zone::all_intersections() {
                     if let Zone::Location(Location::Intersection(ilocs, _)) = &intersection
@@ -621,14 +626,6 @@ impl Zone {
         }
     }
 
-    pub fn is_nearby(&self, other: &Zone) -> bool {
-        are_nearby(self, other)
-    }
-
-    pub fn is_adjacent(&self, other: &Zone) -> bool {
-        are_adjacent(self, other)
-    }
-
     pub fn get_nearby(&self) -> Vec<Zone> {
         get_nearby_zones(self)
     }
@@ -740,84 +737,6 @@ impl Zone {
                 })
             }
             _ => false,
-        }
-    }
-
-    pub fn zone_in_direction(&self, direction: &Direction, steps: u8) -> Option<Self> {
-        let mut current_zone = self.clone();
-        for _ in 0..steps {
-            match current_zone.step_in_direction(direction) {
-                Some(z) => current_zone = z,
-                None => return None,
-            }
-        }
-        Some(current_zone)
-    }
-
-    fn step_in_direction(&self, direction: &Direction) -> Option<Self> {
-        match self {
-            Zone::Location(Location::Square(square, region)) => {
-                let zone = match direction {
-                    Direction::Up => {
-                        Zone::Location(Location::Square(square.saturating_add(5), region.clone()))
-                    }
-                    Direction::Down => {
-                        Zone::Location(Location::Square(square.saturating_sub(5), region.clone()))
-                    }
-                    Direction::Left => {
-                        Zone::Location(Location::Square(square.saturating_sub(1), region.clone()))
-                    }
-                    Direction::Right => {
-                        Zone::Location(Location::Square(square.saturating_add(1), region.clone()))
-                    }
-                    Direction::TopLeft => {
-                        Zone::Location(Location::Square(square.saturating_add(4), region.clone()))
-                    }
-                    Direction::TopRight => {
-                        Zone::Location(Location::Square(square.saturating_add(6), region.clone()))
-                    }
-                    Direction::BottomLeft => {
-                        Zone::Location(Location::Square(square.saturating_sub(6), region.clone()))
-                    }
-                    Direction::BottomRight => {
-                        Zone::Location(Location::Square(square.saturating_sub(4), region.clone()))
-                    }
-                };
-
-                match direction {
-                    Direction::Up | Direction::Down => {
-                        if zone.get_square() > Some(20) || zone.get_square() < Some(1) {
-                            return None;
-                        }
-
-                        Some(zone)
-                    }
-                    _ => Some(zone),
-                }
-            }
-            Zone::Location(Location::Intersection(locs, region)) => {
-                let new_squares: Vec<u8> = locs
-                    .iter()
-                    .filter_map(|sq| {
-                        let realm_zone = Zone::Location(Location::Square(*sq, region.clone()));
-                        realm_zone.zone_in_direction(direction, 1)?.get_square()
-                    })
-                    .collect();
-
-                for intersection in Zone::all_intersections() {
-                    if let Zone::Location(Location::Intersection(ilocs, _)) = &intersection
-                        && ilocs == &new_squares
-                    {
-                        return Some(Zone::Location(Location::Intersection(
-                            new_squares,
-                            region.clone(),
-                        )));
-                    }
-                }
-
-                None
-            }
-            _ => None,
         }
     }
 

@@ -58,32 +58,32 @@ impl Magic for MajorExplosion {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let caster = state.get_card(caster_id);
-        let zones = caster.get_locations_within_steps(state, 2);
-        let prompt = "Pick a zone to center the explosion";
-        let zone = pick_location_source(
+        let locations = caster.get_locations_within_steps(state, 2);
+        let prompt = "Pick a location to center the explosion";
+        let location = pick_location_source(
             self.get_owner_id(),
-            &zones,
+            &locations,
             state,
             false,
             prompt,
             Some(*self.get_id()),
         )
         .await?;
-        let zone_dmg: Vec<(Option<Zone>, u16)> = vec![
-            (Some(zone.clone().into()), 7),
-            (zone.zone_in_direction(&Direction::Up, 1), 5),
-            (zone.zone_in_direction(&Direction::Down, 1), 5),
-            (zone.zone_in_direction(&Direction::Left, 1), 5),
-            (zone.zone_in_direction(&Direction::Right, 1), 5),
-            (zone.zone_in_direction(&Direction::TopLeft, 1), 3),
-            (zone.zone_in_direction(&Direction::TopRight, 1), 3),
-            (zone.zone_in_direction(&Direction::BottomLeft, 1), 3),
-            (zone.zone_in_direction(&Direction::BottomRight, 1), 3),
+        let location_dmg: Vec<(Option<Location>, u16)> = vec![
+            (Some(location.clone()), 7),
+            (location.steps_in_direction(&Direction::Up, 1), 5),
+            (location.steps_in_direction(&Direction::Down, 1), 5),
+            (location.steps_in_direction(&Direction::Left, 1), 5),
+            (location.steps_in_direction(&Direction::Right, 1), 5),
+            (location.steps_in_direction(&Direction::TopLeft, 1), 3),
+            (location.steps_in_direction(&Direction::TopRight, 1), 3),
+            (location.steps_in_direction(&Direction::BottomLeft, 1), 3),
+            (location.steps_in_direction(&Direction::BottomRight, 1), 3),
         ];
         let mut effects = vec![];
-        for (zone, dmg) in zone_dmg {
-            if let Some(z) = zone {
-                let units = CardQuery::new().units().in_zone(&z).all(state);
+        for (location, dmg) in location_dmg {
+            if let Some(location) = location {
+                let units = CardQuery::new().units().in_location(location).all(state);
                 for unit in units {
                     effects.push(Effect::TakeDamage {
                         card_id: unit,

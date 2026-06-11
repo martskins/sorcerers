@@ -78,11 +78,12 @@ impl Magic for Windblast {
                 continue;
             }
 
-            let Some(to_zone) = unit.get_zone().zone_in_direction(&direction, 1) else {
+            let from_location = unit.get_location();
+            let Some(to_location) = from_location.step_in_direction(&direction) else {
                 continue;
             };
-            if to_zone.get_site(state).is_none()
-                || !unit.can_move_between_zones(state, unit.get_zone(), &to_zone)?
+            if to_location.get_site(state).is_none()
+                || !unit.can_move_between_locations(state, from_location, &to_location)?
             {
                 continue;
             }
@@ -90,10 +91,8 @@ impl Magic for Windblast {
             effects.push(Effect::MoveCard {
                 player_id: unit.get_controller_id(state),
                 card_id: unit_id,
-                from: (unit.get_zone().clone())
-                    .into_location()
-                    .expect("MoveCard source must be a location"),
-                to: LocationQuery::from_zone((to_zone).with_region(Region::Surface)),
+                from: from_location.clone(),
+                to: LocationQuery::from_location(to_location.with_region(Region::Surface)),
                 tap: false,
                 through_path: None,
             });

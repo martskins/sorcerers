@@ -969,14 +969,6 @@ pub struct Resources {
     pub thresholds: Thresholds,
 }
 
-pub fn are_adjacent(square1: &Zone, square2: &Zone) -> bool {
-    get_adjacent_zones(square1).contains(square2)
-}
-
-pub fn are_nearby(square1: &Zone, square2: &Zone) -> bool {
-    get_nearby_zones(square1).contains(square2)
-}
-
 pub fn get_nearby_zones(zone: &Zone) -> Vec<Zone> {
     let mut adjacent = get_adjacent_zones(zone);
     let region = match zone {

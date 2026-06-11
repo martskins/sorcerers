@@ -87,7 +87,10 @@ impl Card for RoyalBodyguard {
                 };
 
                 let target = state.get_card(card_id);
-                let is_nearby = self.get_zone().is_nearby(target.get_zone());
+                let Some(target_location) = target.get_zone().location() else {
+                    return Ok(vec![]);
+                };
+                let is_nearby = self.get_location().is_nearby(target_location);
                 if !is_nearby {
                     return Ok(vec![]);
                 }

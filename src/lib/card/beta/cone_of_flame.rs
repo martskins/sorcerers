@@ -67,21 +67,23 @@ impl Magic for ConeOfFlame {
         )
         .await?;
         let caster = state.get_card(caster_id);
-        let zone = caster.get_zone();
-        let zone_dmg = vec![
-            (zone.zone_in_direction(&dir, 1), 5),
-            (zone.zone_in_direction(&dir, 2), 3),
-            (zone.zone_in_direction(&dir, 3), 1),
-            (zone.zone_in_direction(&dir.rotate(1)?, 1), 3),
-            (zone.zone_in_direction(&dir.rotate(1)?, 2), 1),
-            (zone.zone_in_direction(&dir.rotate(7)?, 1), 3),
-            (zone.zone_in_direction(&dir.rotate(7)?, 2), 1),
+        let location = caster.get_location();
+        let region = location.region().clone();
+        let square_dmg = vec![
+            (location.square_in_direction(&dir, 1), 5),
+            (location.square_in_direction(&dir, 2), 3),
+            (location.square_in_direction(&dir, 3), 1),
+            (location.square_in_direction(&dir.rotate(1)?, 1), 3),
+            (location.square_in_direction(&dir.rotate(1)?, 2), 1),
+            (location.square_in_direction(&dir.rotate(7)?, 1), 3),
+            (location.square_in_direction(&dir.rotate(7)?, 2), 1),
         ];
 
         let mut effects = vec![];
-        for (zone, dmg) in zone_dmg {
-            if let Some(zone) = zone {
-                let units = CardQuery::new().units().in_zone(&zone).all(state);
+        for (square, dmg) in square_dmg {
+            if let Some(square) = square {
+                let location = Location::Square(square, region.clone());
+                let units = CardQuery::new().units().in_location(location).all(state);
                 for unit in units {
                     effects.push(Effect::TakeDamage {
                         card_id: unit,

@@ -50,8 +50,9 @@ impl GreatWall {
             return false;
         }
 
-        self.get_zone()
-            .zone_in_direction(&Direction::Up, 1)
+        self.get_location()
+            .step_in_direction(&Direction::Up)
+            .map(Zone::Location)
             .is_some_and(|top_zone| &top_zone == other_side)
     }
 }

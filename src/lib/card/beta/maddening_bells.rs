@@ -74,7 +74,8 @@ impl Card for MaddeningBells {
             .cards
             .values()
             .filter(|c| c.is_minion())
-            .filter(|c| c.get_zone().is_nearby(self.get_zone()))
+            .filter(|c| c.get_zone().is_in_play())
+            .filter(|c| c.get_location().is_nearby(self.get_location()))
             .filter(|c| {
                 [
                     Ability::Spellcaster(None),

@@ -30,47 +30,50 @@ impl MeteorShower {
         }
     }
 
-    fn sites_that_share_no_borders_with(state: &State, selected_zones: &[Zone]) -> Vec<CardId> {
+    fn sites_that_share_no_borders_with(
+        state: &State,
+        selected_locations: &[Location],
+    ) -> Vec<CardId> {
         CardQuery::new()
             .sites()
             .in_play()
             .all(state)
             .into_iter()
             .filter(|site_id| {
-                let zone = state.get_card(site_id).get_zone();
-                selected_zones
+                let location = state.get_card(site_id).get_location();
+                selected_locations
                     .iter()
-                    .all(|selected| zone != selected && !zone.is_adjacent(selected))
+                    .all(|selected| location != selected && !location.is_adjacent(selected))
             })
             .collect()
     }
 
-    fn large_impact(zone: &Zone) -> Vec<(Option<Zone>, u16)> {
+    fn large_impact(location: &Location) -> Vec<(Option<Location>, u16)> {
         vec![
-            (Some(zone.clone()), 7),
-            (zone.zone_in_direction(&Direction::Up, 1), 5),
-            (zone.zone_in_direction(&Direction::Down, 1), 5),
-            (zone.zone_in_direction(&Direction::Left, 1), 5),
-            (zone.zone_in_direction(&Direction::Right, 1), 5),
-            (zone.zone_in_direction(&Direction::TopLeft, 1), 3),
-            (zone.zone_in_direction(&Direction::TopRight, 1), 3),
-            (zone.zone_in_direction(&Direction::BottomLeft, 1), 3),
-            (zone.zone_in_direction(&Direction::BottomRight, 1), 3),
+            (Some(location.clone()), 7),
+            (location.steps_in_direction(&Direction::Up, 1), 5),
+            (location.steps_in_direction(&Direction::Down, 1), 5),
+            (location.steps_in_direction(&Direction::Left, 1), 5),
+            (location.steps_in_direction(&Direction::Right, 1), 5),
+            (location.steps_in_direction(&Direction::TopLeft, 1), 3),
+            (location.steps_in_direction(&Direction::TopRight, 1), 3),
+            (location.steps_in_direction(&Direction::BottomLeft, 1), 3),
+            (location.steps_in_direction(&Direction::BottomRight, 1), 3),
         ]
     }
 
-    fn medium_impact(zone: &Zone) -> Vec<(Option<Zone>, u16)> {
+    fn medium_impact(location: &Location) -> Vec<(Option<Location>, u16)> {
         vec![
-            (Some(zone.clone()), 4),
-            (zone.zone_in_direction(&Direction::Up, 1), 2),
-            (zone.zone_in_direction(&Direction::Down, 1), 2),
-            (zone.zone_in_direction(&Direction::Left, 1), 2),
-            (zone.zone_in_direction(&Direction::Right, 1), 2),
+            (Some(location.clone()), 4),
+            (location.steps_in_direction(&Direction::Up, 1), 2),
+            (location.steps_in_direction(&Direction::Down, 1), 2),
+            (location.steps_in_direction(&Direction::Left, 1), 2),
+            (location.steps_in_direction(&Direction::Right, 1), 2),
         ]
     }
 
-    fn small_impact(zone: &Zone) -> Vec<(Option<Zone>, u16)> {
-        vec![(Some(zone.clone()), 3)]
+    fn small_impact(location: &Location) -> Vec<(Option<Location>, u16)> {
+        vec![(Some(location.clone()), 3)]
     }
 }
 
@@ -113,45 +116,45 @@ impl Magic for MeteorShower {
             "Meteor Shower: Pick the center site for the 7-damage impact",
         )
         .await?;
-        let first_zone = state.get_card(&first_site_id).get_zone().clone();
+        let first_location = state.get_card(&first_site_id).get_location().clone();
 
         let second_site_id = pick_card(
             &controller_id,
-            &Self::sites_that_share_no_borders_with(state, std::slice::from_ref(&first_zone)),
+            &Self::sites_that_share_no_borders_with(state, std::slice::from_ref(&first_location)),
             state,
             "Meteor Shower: Pick the center site for the 4-damage impact",
         )
         .await?;
-        let second_zone = state.get_card(&second_site_id).get_zone().clone();
+        let second_location = state.get_card(&second_site_id).get_location().clone();
 
         let third_site_id = pick_card(
             &controller_id,
             &Self::sites_that_share_no_borders_with(
                 state,
-                &[first_zone.clone(), second_zone.clone()],
+                &[first_location.clone(), second_location.clone()],
             ),
             state,
             "Meteor Shower: Pick the site for the 3-damage impact",
         )
         .await?;
-        let third_zone = state.get_card(&third_site_id).get_zone().clone();
+        let third_location = state.get_card(&third_site_id).get_location().clone();
 
         let impacts = vec![
-            Self::large_impact(&first_zone),
-            Self::medium_impact(&second_zone),
-            Self::small_impact(&third_zone),
+            Self::large_impact(&first_location),
+            Self::medium_impact(&second_location),
+            Self::small_impact(&third_location),
         ];
 
         let mut effects = vec![];
-        for (zone, damage) in impacts.into_iter().flatten() {
-            let Some(zone) = zone else {
+        for (location, damage) in impacts.into_iter().flatten() {
+            let Some(location) = location else {
                 continue;
             };
-            if zone.get_site(state).is_none() {
+            if location.get_site(state).is_none() {
                 continue;
             }
 
-            for unit_id in CardQuery::new().units().in_zone(&zone).all(state) {
+            for unit_id in CardQuery::new().units().in_location(location).all(state) {
                 effects.push(Effect::TakeDamage {
                     card_id: unit_id,
                     from: *self.get_id(),
