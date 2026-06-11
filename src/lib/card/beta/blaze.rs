@@ -97,9 +97,9 @@ impl Card for Blaze {
 
                 let mut effects = vec![];
                 if let Some(path) = through_path {
-                    for zone in path {
-                        if Some(zone) != path.last() {
-                            let units = CardQuery::new().units().in_zone(zone).all(state);
+                    for loc in path {
+                        if Some(loc) != path.last() {
+                            let units = CardQuery::new().units().in_location(loc).all(state);
                             for unit_id in units {
                                 effects.push(Effect::TakeDamage {
                                     card_id: unit_id,

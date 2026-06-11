@@ -102,28 +102,32 @@ impl Card for WallOfFire {
                     return Ok(vec![]);
                 };
 
-                let final_zone = match through_path {
+                let final_location = match through_path {
                     Some(path) => path.last().cloned(),
-                    None => Some(to.pick(player_id, state).await?.into()),
+                    None => Some(to.pick(player_id, state).await?),
                 };
-                let Some(final_zone) = final_zone else {
+                let Some(final_location) = final_location else {
                     return Ok(vec![]);
                 };
 
                 // Unit must pass through Wall of Fire, not merely stop on it.
-                if final_zone == *self.get_zone() {
+                if final_location == *self.get_location() {
                     return Ok(vec![]);
                 }
 
-                let mut path = vec![from.clone().into()];
+                let mut path = vec![from.clone()];
                 match through_path {
                     Some(through_path) => path.extend(through_path.iter().cloned()),
-                    None => path.push(final_zone),
+                    None => path.push(final_location),
                 }
 
                 if !path
                     .windows(2)
-                    .any(|step| zones_cross_border(&step[0], &step[1], self.get_zone()))
+                    .any(|step| {
+                        let from = Zone::from(&step[0]);
+                        let to = Zone::from(&step[1]);
+                        zones_cross_border(&from, &to, self.get_zone())
+                    })
                 {
                     return Ok(vec![]);
                 }

@@ -74,14 +74,16 @@ impl Card for SacredScarabs {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             DEATHRITE_HOOK_ID => {
-                let Effect::TriggerDeathrite { from, .. } = effect else {
+                let Effect::TriggerDeathrite { card_id, from, .. } = effect else {
                     return Ok(vec![]);
                 };
                 let units_here: Vec<CardId> = state
                     .cards
                     .values()
                     .filter(|c| c.is_unit())
-                    .filter(|c| c.get_location() == from)
+                    .filter(|c| {
+                        c.get_id() == card_id || c.get_zone().location() == Some(from)
+                    })
                     .map(|c| *c.get_id())
                     .collect();
                 let mut effects = Vec::new();

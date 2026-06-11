@@ -75,13 +75,13 @@ impl Card for AstralAlcazar {
     }
 
     async fn get_ongoing_effects(&self, state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
-        let connected_zones = Zone::all_in_region(Region::Void)
+        let connected_locations = Location::all_in_region(Region::Void)
             .into_iter()
-            .filter(|zone| zone.get_site_at_square(state).is_none())
+            .filter(|loc| loc.get_site_at_square(state).is_none())
             .collect();
 
         Ok(vec![OngoingEffect::ConnectZones {
-            connected_zones,
+            connected_locations,
             affected_cards: CardQuery::new().units().in_zone_of_card(self.get_id()),
         }])
     }

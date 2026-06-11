@@ -282,11 +282,15 @@ impl RealmComponent {
                 })?;
             }
             PendingZoneChoiceAction::PlayHandCard { card_id } => {
-                self.client.send(ClientMessage::PlayCardAtZone {
+                let location = zone
+                    .location()
+                    .cloned()
+                    .ok_or(anyhow::anyhow!("playable zone must be a location"))?;
+                self.client.send(ClientMessage::PlayCardAtLocation {
                     player_id: self.player_id,
                     game_id: self.game_id,
                     card_id,
-                    zone: zone.clone(),
+                    location,
                 })?;
             }
         }

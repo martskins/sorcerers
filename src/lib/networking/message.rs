@@ -296,11 +296,11 @@ pub enum ClientMessage {
         game_id: uuid::Uuid,
         player_id: PlayerId,
     },
-    PlayCardAtZone {
+    PlayCardAtLocation {
         game_id: uuid::Uuid,
         player_id: PlayerId,
         card_id: CardId,
-        zone: Zone,
+        location: Location,
     },
     PickDirection {
         game_id: uuid::Uuid,
@@ -377,7 +377,7 @@ impl ClientMessage {
             ClientMessage::RequestPlayableZones { game_id, .. } => *game_id,
             ClientMessage::RequestAuraAffectedZones { game_id, .. } => *game_id,
             ClientMessage::RequestOngoingEffects { game_id, .. } => *game_id,
-            ClientMessage::PlayCardAtZone { game_id, .. } => *game_id,
+            ClientMessage::PlayCardAtLocation { game_id, .. } => *game_id,
             ClientMessage::DrawCard { game_id, .. } => *game_id,
             ClientMessage::PickDirection { game_id, .. } => *game_id,
             ClientMessage::PickCards { game_id, .. } => *game_id,
@@ -404,7 +404,7 @@ impl ClientMessage {
             ClientMessage::RequestPlayableZones { player_id, .. } => player_id,
             ClientMessage::RequestAuraAffectedZones { player_id, .. } => player_id,
             ClientMessage::RequestOngoingEffects { player_id, .. } => player_id,
-            ClientMessage::PlayCardAtZone { player_id, .. } => player_id,
+            ClientMessage::PlayCardAtLocation { player_id, .. } => player_id,
             ClientMessage::DrawCard { player_id, .. } => player_id,
             ClientMessage::PickDirection { player_id, .. } => player_id,
             ClientMessage::JoinQueue { player_id, .. } => player_id,

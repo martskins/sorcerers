@@ -1066,11 +1066,12 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 }
 
                 for connected in continuously_connected_zones(state, self.get_id()) {
+                    let connected_zone = Zone::from(&connected);
                     if self
-                        .can_move_between_zones(state, &current_zone, &connected)
+                        .can_move_between_zones(state, &current_zone, &connected_zone)
                         .unwrap_or(false)
                     {
-                        to_visit.push((connected, current_step + 1));
+                        to_visit.push((connected_zone, current_step + 1));
                     }
                 }
             }
@@ -1086,7 +1087,10 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 .iter()
                 .filter(|z| {
                     z.get_site(state).is_some()
-                        || is_continuously_connected_zone(state, self.get_id(), z)
+                        || z.location()
+                            .is_some_and(|location| {
+                                is_continuously_connected_zone(state, self.get_id(), location)
+                            })
                 })
                 .cloned()
                 .collect();
@@ -1116,7 +1120,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 affected_cards,
             } = ce
                 && affected_cards.matches(self.get_id(), state)
-                && zones_cross_border(from, to, border)
+                && zones_cross_border(from, to, &border.clone().into())
             {
                 return Ok(false);
             }
@@ -2936,7 +2940,12 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
 
             if zone.get_site(state).is_none() {
                 if self.has_ability(state, &Ability::Voidwalk)
-                    || is_continuously_connected_zone(state, self.get_id(), zone)
+                    || is_continuously_connected_zone(
+                        state,
+                        self.get_id(),
+                        zone.location()
+                            .expect("valid movement zone must be a location"),
+                    )
                 {
                     zones.push(zone.clone());
                 }
@@ -2966,11 +2975,11 @@ impl<T: Card + ?Sized> CardBaseMethods for T {
         for ce in state.active_continuous_effects() {
             if let OngoingEffect::RestrictMoveToZones {
                 affected_cards,
-                allowed_zones,
+                allowed_locations,
             } = ce
                 && affected_cards.matches(self.get_id(), state)
             {
-                zones.retain(|zone| allowed_zones.contains(zone));
+                zones.retain(|zone| allowed_locations.contains(zone.location().unwrap()));
             }
         }
 
@@ -3119,30 +3128,30 @@ fn temporarily_connected_sites(state: &State, card_id: &CardId, zone: &Zone) -> 
         .collect()
 }
 
-fn continuously_connected_zones(state: &State, card_id: &CardId) -> Vec<Zone> {
+fn continuously_connected_zones(state: &State, card_id: &CardId) -> Vec<Location> {
     state
         .active_continuous_effects()
         .into_iter()
         .filter_map(|effect| match effect {
             OngoingEffect::ConnectZones {
-                connected_zones,
+                connected_locations,
                 affected_cards,
-            } if affected_cards.matches(card_id, state) => Some(connected_zones.clone()),
+            } if affected_cards.matches(card_id, state) => Some(connected_locations.clone()),
             _ => None,
         })
         .flatten()
         .collect()
 }
 
-fn is_continuously_connected_zone(state: &State, card_id: &CardId, zone: &Zone) -> bool {
+fn is_continuously_connected_zone(state: &State, card_id: &CardId, location: &Location) -> bool {
     state
         .active_continuous_effects()
         .into_iter()
         .any(|effect| match effect {
             OngoingEffect::ConnectZones {
-                connected_zones,
+                connected_locations,
                 affected_cards,
-            } => affected_cards.matches(card_id, state) && connected_zones.contains(zone),
+            } => affected_cards.matches(card_id, state) && connected_locations.contains(location),
             _ => false,
         })
 }

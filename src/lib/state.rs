@@ -1,12 +1,11 @@
 use crate::{
     card::{Ability, Card, CardData, CardStatus, CardType, Costs, SiteType, UnitBase},
     deck::Deck,
-    effect::Counter,
-    effect::{Effect, EffectEngine, EffectState},
+    effect::{Counter, Effect, EffectEngine, EffectState},
     game::{ActivatedAbility, CardId, PlayerId, Resources, Thresholds, ThresholdsDiff},
     networking::message::{ClientMessage, EffectDebugData, OngoingEffectData, ServerMessage},
     query::{CardQuery, ZoneQuery},
-    zone::Zone,
+    zone::{Location, Zone},
 };
 use async_channel::{Receiver, Sender};
 use std::{
@@ -354,7 +353,7 @@ pub enum OngoingEffect {
         matching_cards: CardQuery,
     },
     MakeZoneUnvisitable {
-        affected_zone: Zone,
+        location: Location,
         affected_cards: CardQuery,
     },
     DoubleDamageTaken {
@@ -370,10 +369,10 @@ pub enum OngoingEffect {
     },
     RestrictMoveToZones {
         affected_cards: CardQuery,
-        allowed_zones: Vec<Zone>,
+        allowed_locations: Vec<Location>,
     },
     BlockMovementThrough {
-        border: Zone,
+        border: Location,
         affected_cards: CardQuery,
     },
     ConnectTopBottomEdges {
@@ -383,7 +382,7 @@ pub enum OngoingEffect {
         affected_cards: CardQuery,
     },
     ConnectZones {
-        connected_zones: Vec<Zone>,
+        connected_locations: Vec<Location>,
         affected_cards: CardQuery,
     },
     ChangeSiteType {
@@ -523,7 +522,10 @@ impl OngoingEffect {
             Self::ModifyPowerForEach { power_per_card, .. } => {
                 format!("Power {:+} for each matching card", power_per_card)
             }
-            Self::MakeZoneUnvisitable { affected_zone, .. } => {
+            Self::MakeZoneUnvisitable {
+                location: affected_zone,
+                ..
+            } => {
                 format!("Makes {} unvisitable", affected_zone)
             }
             Self::DoubleDamageTaken { except_strikes, .. } if *except_strikes => {
@@ -534,7 +536,10 @@ impl OngoingEffect {
                 format!("Reduces damage taken by {}", amount)
             }
             Self::PreventDamageFromMagic { .. } => "Prevents magic damage".to_string(),
-            Self::RestrictMoveToZones { allowed_zones, .. } => {
+            Self::RestrictMoveToZones {
+                allowed_locations: allowed_zones,
+                ..
+            } => {
                 format!("Restricts movement to {} zones", allowed_zones.len())
             }
             Self::BlockMovementThrough { border, .. } => {
@@ -543,7 +548,8 @@ impl OngoingEffect {
             Self::ConnectTopBottomEdges { .. } => "Connects top and bottom edges".to_string(),
             Self::ConnectLeftRightEdges { .. } => "Connects left and right edges".to_string(),
             Self::ConnectZones {
-                connected_zones, ..
+                connected_locations: connected_zones,
+                ..
             } => format!("Connects {} zones", connected_zones.len()),
             Self::ChangeSiteType { site_type, .. } => {
                 format!("Changes site type to {:?}", site_type)
@@ -618,12 +624,15 @@ impl OngoingEffect {
 
     fn explicit_affected_zones(&self, state: &State) -> Vec<Zone> {
         match self {
-            Self::MakeZoneUnvisitable { affected_zone, .. } => vec![affected_zone.clone()],
-            Self::RestrictMoveToZones { allowed_zones, .. } => allowed_zones.clone(),
-            Self::BlockMovementThrough { border, .. } => vec![border.clone()],
+            Self::MakeZoneUnvisitable { location, .. } => vec![location.clone().into()],
+            Self::RestrictMoveToZones {
+                allowed_locations, ..
+            } => allowed_locations.iter().map(|l| l.into()).collect(),
+            Self::BlockMovementThrough { border, .. } => vec![border.clone().into()],
             Self::ConnectZones {
-                connected_zones, ..
-            } => connected_zones.clone(),
+                connected_locations: connected_zones,
+                ..
+            } => connected_zones.iter().map(Zone::from).collect(),
             Self::OverrideValidPlayZone { affected_zones, .. } => affected_zones.options(state),
             Self::ModifyManaCost {
                 zones: Some(zones), ..
@@ -645,7 +654,10 @@ impl std::fmt::Debug for OngoingEffect {
                 .debug_struct("ModifyPowerForEach")
                 .field("power_per_card", power_per_card)
                 .finish(),
-            Self::MakeZoneUnvisitable { affected_zone, .. } => f
+            Self::MakeZoneUnvisitable {
+                location: affected_zone,
+                ..
+            } => f
                 .debug_struct("MakeZoneUnvisitable")
                 .field("affected_zone", affected_zone)
                 .finish(),
@@ -660,7 +672,10 @@ impl std::fmt::Debug for OngoingEffect {
             Self::PreventDamageFromMagic { .. } => {
                 f.debug_struct("PreventDamageFromMagic").finish()
             }
-            Self::RestrictMoveToZones { allowed_zones, .. } => f
+            Self::RestrictMoveToZones {
+                allowed_locations: allowed_zones,
+                ..
+            } => f
                 .debug_struct("RestrictMoveToZones")
                 .field("allowed_zones", allowed_zones)
                 .finish(),
@@ -671,7 +686,8 @@ impl std::fmt::Debug for OngoingEffect {
             Self::ConnectTopBottomEdges { .. } => f.debug_struct("ConnectTopBottomEdges").finish(),
             Self::ConnectLeftRightEdges { .. } => f.debug_struct("ConnectLeftRightEdges").finish(),
             Self::ConnectZones {
-                connected_zones, ..
+                connected_locations: connected_zones,
+                ..
             } => f
                 .debug_struct("ConnectZones")
                 .field("connected_zones", connected_zones)
@@ -950,7 +966,7 @@ impl State {
             ClientMessage::ClickCard { card_id, .. }
             | ClientMessage::RequestPlayableZones { card_id, .. }
             | ClientMessage::RequestAuraAffectedZones { card_id, .. }
-            | ClientMessage::PlayCardAtZone { card_id, .. }
+            | ClientMessage::PlayCardAtLocation { card_id, .. }
             | ClientMessage::PickCard { card_id, .. } => {
                 self.cards
                     .get(card_id)
@@ -1767,7 +1783,7 @@ impl State {
 
     pub fn get_interceptors_for_move(
         &self,
-        path: &[Zone],
+        path: &[Location],
         moving_card_id: &CardId,
         controller_id: &PlayerId,
     ) -> Vec<CardId> {
@@ -1800,7 +1816,7 @@ impl State {
             if card.is_tapped() {
                 continue;
             }
-            if !card.occupies_zone(self, final_zone) {
+            if !card.occupies_zone(self, &final_zone.into()) {
                 continue;
             }
             if moving_card_is_airborne

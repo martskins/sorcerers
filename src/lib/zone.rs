@@ -40,6 +40,12 @@ impl Location {
         }
     }
 
+    pub fn all_in_region(region: Region) -> Vec<Location> {
+        (1..=20)
+            .map(|sq| Location::Square(sq, region.clone()))
+            .collect()
+    }
+
     pub fn with_region(&self, region: Region) -> Self {
         match self {
             Location::Square(square, _) => Location::Square(*square, region),
@@ -324,9 +330,11 @@ impl Zone {
         for ce in state.active_continuous_effects() {
             match ce {
                 OngoingEffect::MakeZoneUnvisitable {
-                    affected_zone,
+                    location,
                     affected_cards,
-                } if affected_zone == self && affected_cards.matches(card_id, state) => {
+                } if location == self.location().unwrap()
+                    && affected_cards.matches(card_id, state) =>
+                {
                     can_enter = false;
                     break;
                 }

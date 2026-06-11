@@ -544,20 +544,20 @@ pub async fn pick_option_source(
 
 pub async fn pick_path(
     player_id: impl AsRef<PlayerId>,
-    paths: &[Vec<Zone>],
+    paths: &[Vec<Location>],
     state: &State,
     prompt: &str,
-) -> anyhow::Result<Vec<Zone>> {
+) -> anyhow::Result<Vec<Location>> {
     pick_path_source(player_id, paths, state, prompt, None).await
 }
 
 pub async fn pick_path_source(
     player_id: impl AsRef<PlayerId>,
-    paths: &[Vec<Zone>],
+    paths: &[Vec<Location>],
     state: &State,
     prompt: &str,
     source_card_id: Option<CardId>,
-) -> anyhow::Result<Vec<Zone>> {
+) -> anyhow::Result<Vec<Location>> {
     let decision_player = state.decision_player(player_id.as_ref());
     state
         .get_sender()
@@ -565,16 +565,13 @@ pub async fn pick_path_source(
             prompt: prompt.to_string(),
             source_card_id,
             player_id: decision_player,
-            paths: paths
-                .iter()
-                .map(|p| p.iter().map(|z| z.location().cloned().unwrap()).collect())
-                .collect(),
+            paths: paths.to_vec(),
         })
         .await?;
 
     let msg = state.get_receiver().recv().await?;
     match msg {
-        ClientMessage::PickPath { path, .. } => Ok(path.iter().map(|l| l.clone().into()).collect()),
+        ClientMessage::PickPath { path, .. } => Ok(path),
         ClientMessage::PlayerDisconnected { player_id, .. } => {
             Err(GameError::PlayerDisconnected(player_id).into())
         }
@@ -1450,6 +1447,18 @@ impl ActivatedAbility for UnitAction {
                 let prompt = "Pick a zone to move to";
                 let zone = pick_zone(player_id, &zones, state, false, prompt).await?;
                 let paths = card.get_valid_move_paths(state, &zone).await?;
+                let paths = paths
+                    .iter()
+                    .map(|path| {
+                        path.iter()
+                            .map(|zone| {
+                                zone.location()
+                                    .cloned()
+                                    .ok_or(anyhow::anyhow!("move path step must be a location"))
+                            })
+                            .collect::<anyhow::Result<Vec<_>>>()
+                    })
+                    .collect::<anyhow::Result<Vec<_>>>()?;
                 let path = if paths.len() > 1 {
                     let prompt = "Pick a path to move along";
                     pick_path(player_id, &paths, state, prompt).await?
@@ -1536,11 +1545,8 @@ impl ActivatedAbility for UnitAction {
                     effects.push(Effect::MoveCard {
                         player_id: *player_id,
                         card_id: *card_id,
-                        from: zone
-                            .clone()
-                            .into_location()
-                            .expect("move path step must be a location"),
-                        to: LocationQuery::from_zone(to_zone.clone()),
+                        from: zone.clone(),
+                        to: LocationQuery::from_location(to_zone),
                         tap: true,
                         through_path: Some(path.clone()),
                     });
@@ -1895,13 +1901,14 @@ impl Game {
                     })
                     .await?;
             }
-            ClientMessage::PlayCardAtZone {
+            ClientMessage::PlayCardAtLocation {
                 player_id,
                 card_id,
-                zone,
+                location,
                 ..
             } => {
-                self.queue_play_hand_card_at_zone(player_id, card_id, zone)
+                let zone = Zone::Location(location.clone());
+                self.queue_play_hand_card_at_zone(player_id, card_id, &zone)
                     .await?;
             }
             ClientMessage::ClickCard {

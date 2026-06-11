@@ -100,7 +100,7 @@ impl Card for Scarecrow {
 
     async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         Ok(vec![OngoingEffect::MakeZoneUnvisitable {
-            affected_zone: self.get_zone().clone(),
+            location: self.get_location().clone(),
             affected_cards: CardQuery::new().minions().with_ability(Ability::Airborne),
         }])
     }

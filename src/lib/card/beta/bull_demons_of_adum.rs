@@ -25,7 +25,7 @@ impl ActivatedAbility for TapMoveAndStrike {
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
         let bull_demons = state.get_card(card_id);
-        let start_zone = bull_demons.get_zone().clone();
+        let start_zone = bull_demons.get_location().clone();
 
         let direction = pick_direction_source(
             player_id,
@@ -37,18 +37,18 @@ impl ActivatedAbility for TapMoveAndStrike {
         .await?;
 
         let mut effects: Vec<Effect> = vec![];
-        let mut path: Vec<Zone> = vec![];
-        let mut current_zone = start_zone.clone();
+        let mut path: Vec<Location> = vec![];
+        let mut current_location = start_zone.clone();
 
         for _ in 0..3 {
-            match current_zone.zone_in_direction(&direction, 1) {
-                Some(next_zone) => {
+            match current_location.steps_in_direction(&direction, 1) {
+                Some(next_location) => {
                     // Strike each untapped unit in the destination zone.
                     let targets = CardQuery::new()
                         .units()
                         .untapped()
                         .id_not_in(vec![*card_id])
-                        .in_zone(&next_zone)
+                        .in_location(&next_location)
                         .all(state);
 
                     for target_id in targets {
@@ -58,8 +58,8 @@ impl ActivatedAbility for TapMoveAndStrike {
                         });
                     }
 
-                    path.push(next_zone.clone());
-                    current_zone = next_zone;
+                    path.push(next_location.clone());
+                    current_location = next_location;
                 }
                 None => break,
             }
@@ -69,10 +69,8 @@ impl ActivatedAbility for TapMoveAndStrike {
             effects.push(Effect::MoveCard {
                 player_id: *player_id,
                 card_id: *card_id,
-                from: start_zone
-                    .into_location()
-                    .expect("Bull Demons of Adum must start in a location"),
-                to: LocationQuery::from_zone(
+                from: start_zone,
+                to: LocationQuery::from_location(
                     final_zone.with_region(state.get_card(card_id).get_region(state).clone()),
                 ),
                 tap: false,

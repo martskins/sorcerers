@@ -94,8 +94,8 @@ impl Card for SkirmishersOfMu {
                 };
 
                 let controller_id = self.get_controller_id(state);
-                let to = to.pick(player_id, state).await?.into();
-                let mut path = vec![from.clone().into(), to];
+                let to = to.pick(player_id, state).await?;
+                let mut path = vec![from.clone(), to];
                 if let Some(through_path) = through_path {
                     path = through_path.to_vec();
                 }
@@ -114,9 +114,10 @@ impl Card for SkirmishersOfMu {
                     return Ok(vec![]);
                 }
 
+                let path_zones = path.iter().map(Zone::from).collect::<Vec<_>>();
                 let picked_zone = pick_zone(
                     controller_id,
-                    &path,
+                    &path_zones,
                     state,
                     false,
                     "Skirmishers of Mu: Pick a zone to perform a ranged strike from",

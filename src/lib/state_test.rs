@@ -855,9 +855,9 @@ async fn test_carried_minion_moves_independently_through_path_and_clears_bearer(
         ),
         tap: false,
         through_path: Some(vec![
-            Zone::Location(Location::Square(1, Region::Surface)),
-            Zone::Location(Location::Square(2, Region::Surface)),
-            Zone::Location(Location::Square(3, Region::Surface)),
+            Location::Square(1, Region::Surface),
+            Location::Square(2, Region::Surface),
+            Location::Square(3, Region::Surface),
         ]),
     };
 
@@ -940,9 +940,9 @@ fn test_inteceptors() {
         .insert(*kite_archer.get_id(), Box::new(kite_archer.clone()));
 
     let path = vec![
-        Zone::Location(Location::Square(8, Region::Surface)),
-        Zone::Location(Location::Square(13, Region::Surface)),
-        Zone::Location(Location::Square(18, Region::Surface)),
+        Location::Square(8, Region::Surface),
+        Location::Square(13, Region::Surface),
+        Location::Square(18, Region::Surface),
     ];
     let interceptors =
         state.get_interceptors_for_move(&path, rimland_nomads.get_id(), &opponent_id);
@@ -968,9 +968,9 @@ fn test_no_inteceptors() {
         .insert(*kite_archer.get_id(), Box::new(kite_archer.clone()));
 
     let path = vec![
-        Zone::Location(Location::Square(8, Region::Surface)),
-        Zone::Location(Location::Square(13, Region::Surface)),
-        Zone::Location(Location::Square(18, Region::Surface)),
+        Location::Square(8, Region::Surface),
+        Location::Square(13, Region::Surface),
+        Location::Square(18, Region::Surface),
     ];
     let interceptors =
         state.get_interceptors_for_move(&path, rimland_nomads.get_id(), &opponent_id);
@@ -996,9 +996,9 @@ fn test_tapped_units_cannot_intercept() {
         .insert(*foot_soldier.get_id(), Box::new(foot_soldier));
 
     let path = vec![
-        Zone::Location(Location::Square(8, Region::Surface)),
-        Zone::Location(Location::Square(13, Region::Surface)),
-        Zone::Location(Location::Square(18, Region::Surface)),
+        Location::Square(8, Region::Surface),
+        Location::Square(13, Region::Surface),
+        Location::Square(18, Region::Surface),
     ];
     let interceptors =
         state.get_interceptors_for_move(&path, rimland_nomads.get_id(), &opponent_id);
@@ -1028,9 +1028,9 @@ fn test_stealthed_units_cannot_be_intercepted() {
         .insert(*foot_soldier.get_id(), Box::new(foot_soldier));
 
     let path = vec![
-        Zone::Location(Location::Square(8, Region::Surface)),
-        Zone::Location(Location::Square(13, Region::Surface)),
-        Zone::Location(Location::Square(18, Region::Surface)),
+        Location::Square(8, Region::Surface),
+        Location::Square(13, Region::Surface),
+        Location::Square(18, Region::Surface),
     ];
     let interceptors =
         state.get_interceptors_for_move(&path, rimland_nomads.get_id(), &opponent_id);
@@ -1055,9 +1055,9 @@ fn test_voidwalking_interceptor_must_be_at_final_location() {
         .insert(*headless_haunt.get_id(), Box::new(headless_haunt.clone()));
 
     let path = vec![
-        Zone::Location(Location::Square(8, Region::Surface)),
-        Zone::Location(Location::Square(13, Region::Surface)),
-        Zone::Location(Location::Square(18, Region::Surface)),
+        Location::Square(8, Region::Surface),
+        Location::Square(13, Region::Surface),
+        Location::Square(18, Region::Surface),
     ];
     let interceptors =
         state.get_interceptors_for_move(&path, rimland_nomads.get_id(), &opponent_id);
@@ -1088,9 +1088,9 @@ fn test_airborne_unit_can_only_be_intercepted_by_airborne_or_ranged_units() {
         .insert(*kite_archer.get_id(), Box::new(kite_archer.clone()));
 
     let path = vec![
-        Zone::Location(Location::Square(8, Region::Surface)),
-        Zone::Location(Location::Square(13, Region::Surface)),
-        Zone::Location(Location::Square(18, Region::Surface)),
+        Location::Square(8, Region::Surface),
+        Location::Square(13, Region::Surface),
+        Location::Square(18, Region::Surface),
     ];
     let interceptors = state.get_interceptors_for_move(&path, nimbus_jinn.get_id(), &opponent_id);
     assert_eq!(interceptors.len(), 1);

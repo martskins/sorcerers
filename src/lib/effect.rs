@@ -9,7 +9,7 @@ use crate::{
         pick_card, pick_cards, pick_option, resume, wait_for_opponent, yes_or_no,
     },
     networking::message::ServerMessage,
-    query::{CardQuery, EffectQuery, LocationQuery, QueryCache, ZoneQuery},
+    query::{CardQuery, EffectQuery, LocationQuery, QueryCache},
     state::{OngoingEffect, Phase, State, Turn},
 };
 use std::{collections::HashMap, fmt::Debug};
@@ -257,7 +257,7 @@ pub enum Effect {
         from: Location,
         to: LocationQuery,
         tap: bool,
-        through_path: Option<Vec<Zone>>,
+        through_path: Option<Vec<Location>>,
     },
     DrawCard {
         player_id: PlayerId,
@@ -1334,10 +1334,11 @@ impl Effect {
 
                 match through_path {
                     Some(path) => {
-                        for path_zone in path.iter() {
-                            let zone = ZoneQuery::from_zone(path_zone.clone())
+                        for location in path.iter() {
+                            let zone: Zone = LocationQuery::from_location(location.clone())
                                 .pick(player_id, state)
-                                .await?;
+                                .await?
+                                .into();
                             let card = state.get_card_mut(card_id);
                             card.set_zone(zone.clone());
                             if *tap {
@@ -2369,7 +2370,10 @@ impl Effect {
             }
             Effect::BuryCard { card_id, .. } => {
                 let card = state.get_card(card_id);
-                let original_zone = card.get_location().clone();
+                let Some(original_zone) = card.get_zone().location().cloned() else {
+                    state.get_card_mut(card_id).set_zone(Zone::Cemetery);
+                    return Ok(());
+                };
                 if state.mark_for_death(*card_id, original_zone.clone().into()) {
                     state.queue_one(Effect::TriggerDeathrite {
                         card_id: *card_id,

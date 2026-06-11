@@ -1310,8 +1310,8 @@ fn test_disabled_units_cannot_defend_or_intercept() {
 
     let interceptors = state.get_interceptors_for_move(
         &[
-            Zone::Location(Location::Square(2, Region::Surface)),
-            Zone::Location(Location::Square(3, Region::Surface)),
+            Location::Square(2, Region::Surface),
+            Location::Square(3, Region::Surface),
         ],
         &opponent_avatar_id,
         &player_id,
@@ -1523,8 +1523,8 @@ async fn test_vaults_of_zul_triggers_on_stop_not_intermediate_enter() {
         ),
         tap: false,
         through_path: Some(vec![
-            Zone::Location(Location::Square(2, Region::Surface)),
-            Zone::Location(Location::Square(3, Region::Surface)),
+            Location::Square(2, Region::Surface),
+            Location::Square(3, Region::Surface),
         ]),
     });
     drain_effects(&mut state).await;
@@ -1565,8 +1565,8 @@ async fn test_vaults_of_zul_triggers_on_stop_not_intermediate_enter() {
         ),
         tap: false,
         through_path: Some(vec![
-            Zone::Location(Location::Square(2, Region::Surface)),
-            Zone::Location(Location::Square(3, Region::Surface)),
+            Location::Square(2, Region::Surface),
+            Location::Square(3, Region::Surface),
         ]),
     });
     drain_effects(&mut state).await;
