@@ -171,7 +171,7 @@ pub enum ServerMessage {
         prompt: String,
         source_card_id: Option<CardId>,
         player_id: PlayerId,
-        zones: Vec<Zone>,
+        locations: Vec<Location>,
     },
     PlayableZones {
         player_id: PlayerId,

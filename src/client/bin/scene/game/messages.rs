@@ -104,16 +104,13 @@ impl Game {
                 None
             }
             ServerMessage::PickZone {
-                zones,
+                locations,
                 prompt,
                 source_card_id,
                 ..
             } => {
                 self.data.status = Status::SelectingZone {
-                    locations: zones
-                        .iter()
-                        .map(|z| z.location().cloned().unwrap())
-                        .collect(),
+                    locations: locations.clone(),
                     prompt: prompt.clone(),
                     source_card_id: *source_card_id,
                 };

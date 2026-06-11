@@ -758,20 +758,22 @@ async fn test_dodge_roll_replacement_triggers_once_for_multiple_copies() {
     let game_id = state.game_id;
     let player_id = state.players[0].id;
     let opponent_id = state.players[1].id;
-    let origin = Zone::Location(Location::Square(1, Region::Surface));
-    let destination = Zone::Location(Location::Square(2, Region::Surface));
+    let origin = Location::Square(1, Region::Surface);
+    let destination = Location::Square(2, Region::Surface);
 
     let avatar_id = state.get_player_avatar_id(&player_id).unwrap();
-    state.get_card_mut(&avatar_id).set_zone(origin.clone());
+    state
+        .get_card_mut(&avatar_id)
+        .set_zone(origin.clone().into());
 
     let mut attacker = FootSoldier::new(opponent_id);
     let attacker_id = *attacker.get_id();
-    attacker.set_zone(origin.clone());
+    attacker.set_zone(origin.clone().into());
     state.cards.insert(attacker_id, Box::new(attacker));
 
     let mut defender = FootSoldier::new(player_id);
     let defender_id = *defender.get_id();
-    defender.set_zone(origin.clone());
+    defender.set_zone(origin.clone().into());
     state.cards.insert(defender_id, Box::new(defender));
 
     let mut first_dodge_roll = DodgeRoll::new(player_id);
@@ -806,14 +808,16 @@ async fn test_dodge_roll_replacement_triggers_once_for_multiple_copies() {
                         .unwrap();
                 }
                 ServerMessage::PickZone {
-                    player_id, zones, ..
+                    player_id,
+                    locations,
+                    ..
                 } => {
-                    assert!(zones.contains(&picked_destination));
+                    assert!(locations.contains(&picked_destination));
                     client_tx
                         .send(ClientMessage::PickZone {
                             game_id,
                             player_id,
-                            zone: picked_destination.clone(),
+                            zone: picked_destination.clone().into(),
                         })
                         .await
                         .unwrap();
@@ -829,8 +833,8 @@ async fn test_dodge_roll_replacement_triggers_once_for_multiple_copies() {
     });
     drain_effects(&mut state).await;
 
-    assert_eq!(state.get_card(&defender_id).get_zone(), &destination);
-    assert_eq!(state.get_card(&attacker_id).get_zone(), &origin);
+    assert_eq!(state.get_card(&defender_id).get_location(), &destination);
+    assert_eq!(state.get_card(&attacker_id).get_location(), &origin);
 
     let dodge_roll_zones = [
         state.get_card(&first_dodge_roll_id).get_zone().clone(),
@@ -2582,22 +2586,24 @@ async fn test_play_card_burrowing_minion_can_enter_underground() {
 #[tokio::test]
 async fn test_enchantress_triggers_when_controlled_spellcaster_plays_minion() {
     let location = Location::Square(1, Region::Surface);
-    let (mut state, server_rx, client_tx) = make_state_with_client(vec![location.into()]);
+    let (mut state, server_rx, client_tx) = make_state_with_client(vec![location.clone().into()]);
     let game_id = state.game_id;
     let player_id = state.players[0].id;
     *state.get_player_mana_mut(&player_id) = 1;
     let avatar_id = state.get_player_avatar_id(&player_id).unwrap();
-    state.get_card_mut(&avatar_id).set_zone(location.into());
+    state
+        .get_card_mut(&avatar_id)
+        .set_zone(location.clone().into());
     state.reconcile_ongoing_effects_for_test().await.unwrap();
 
     let mut aura = Silence::new(player_id);
     let aura_id = *aura.get_id();
-    aura.set_zone(location.into());
+    aura.set_zone(location.clone().into());
     state.cards.insert(aura_id, Box::new(aura));
 
     let mut caster = ApprenticeWizard::new(player_id);
     let caster_id = *caster.get_id();
-    caster.set_zone(location.into());
+    caster.set_zone(location.clone().into());
     state.cards.insert(caster_id, Box::new(caster));
 
     let mut spell = PitVipers::new(player_id);
@@ -2662,7 +2668,7 @@ async fn test_enchantress_triggers_when_enchantress_plays_minion() {
     let location = Location::Square(1, Region::Surface);
     let intersection = Zone::Location(Location::Intersection(vec![1, 2, 6, 7], Region::Surface));
     let (mut state, server_rx, client_tx) = make_state_with_client(vec![
-        location.into(),
+        location.clone().into(),
         Zone::Location(Location::Square(2, Region::Surface)),
         Zone::Location(Location::Square(6, Region::Surface)),
         Zone::Location(Location::Square(7, Region::Surface)),
@@ -2671,7 +2677,9 @@ async fn test_enchantress_triggers_when_enchantress_plays_minion() {
     let player_id = state.players[0].id;
     *state.get_player_mana_mut(&player_id) = 1;
     let avatar_id = state.get_player_avatar_id(&player_id).unwrap();
-    state.get_card_mut(&avatar_id).set_zone(location.into());
+    state
+        .get_card_mut(&avatar_id)
+        .set_zone(location.clone().into());
     state.reconcile_ongoing_effects_for_test().await.unwrap();
 
     let mut aura = Silence::new(player_id);

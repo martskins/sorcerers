@@ -659,7 +659,11 @@ pub async fn pick_zone_near_source(
             prompt: prompt.to_string(),
             source_card_id,
             player_id: decision_player,
-            zones: zone.get_nearby(),
+            locations: zone
+                .get_nearby()
+                .into_iter()
+                .map(|z| z.location().cloned().unwrap())
+                .collect(),
         })
         .await?;
 
@@ -709,7 +713,10 @@ pub async fn pick_zone_source(
             prompt: prompt.to_string(),
             source_card_id,
             player_id: decision_player,
-            zones: zones.to_vec(),
+            locations: zones
+                .iter()
+                .map(|z| z.location().cloned().unwrap())
+                .collect(),
         })
         .await?;
 

@@ -2,9 +2,9 @@ use crate::{
     card::{
         Ability, AridDesert, BeastOfBurden, BlastedOak, Card, CardStatus, CauldronCrones,
         CourtesanThais, DonnybrookInn, Drought, Enchantress, Flood, FootSoldier, FreeCity,
-        HeadlessHaunt, KiteArcher, KytheraMechanism, LuckyCharm, NimbusJinn, Region,
-        RimlandNomads, Rubble, Silence, SistersOfSilence, SkyBaron, SmokestacksOfGnaak,
-        SneakThief, UnitBase, from_name_and_zone,
+        HeadlessHaunt, KiteArcher, KytheraMechanism, LuckyCharm, NimbusJinn, Region, RimlandNomads,
+        Rubble, Silence, SistersOfSilence, SkyBaron, SmokestacksOfGnaak, SneakThief, UnitBase,
+        from_name_and_zone,
     },
     deck::Deck,
     effect::{Effect, FightContext},
@@ -241,14 +241,14 @@ async fn test_kythera_mechanism_converts_random_queries_to_choices() {
                 result = &mut pick_zone => break result.unwrap(),
                 msg = server_rx.recv() => match msg.unwrap() {
                     ServerMessage::Resume { .. } => {}
-                    ServerMessage::PickZone { zones: offered, .. } => {
+                    ServerMessage::PickZone { locations: offered, .. } => {
                         assert_eq!(offered.len(), zones.len());
-                        assert!(offered.iter().all(|zone| zones.contains(zone)));
+                        assert!(offered.iter().all(|loc| zones.contains(&loc.into())));
                         client_tx
                             .send(ClientMessage::PickZone {
                                 game_id,
                                 player_id,
-                                zone: offered[0].clone(),
+                                zone: offered[0].clone().into(),
                             })
                             .await
                             .unwrap();
@@ -330,13 +330,13 @@ async fn test_blasted_oak_restricts_zone_targets_only_with_source() {
     let (mut state, server_rx, client_tx) = setup_carrying_state_with_client();
     let player_id = state.players[0].id;
     let game_id = state.game_id;
-    let oak_zone = Zone::Location(Location::Square(1, Region::Surface));
-    let other_zone = Zone::Location(Location::Square(2, Region::Surface));
+    let oak_zone = Location::Square(1, Region::Surface);
+    let other_zone = Location::Square(2, Region::Surface);
 
     insert_realm_card(
         &mut state,
         Box::new(BlastedOak::new(player_id)),
-        oak_zone.clone(),
+        oak_zone.clone().into(),
     )
     .await;
     let source = Drought::new(player_id);
@@ -344,7 +344,7 @@ async fn test_blasted_oak_restricts_zone_targets_only_with_source() {
     state.cards.insert(source_id, Box::new(source));
 
     let query = ZoneQuery::from_options(
-        vec![oak_zone.clone(), other_zone.clone()],
+        vec![oak_zone.clone().into(), other_zone.clone().into()],
         Some("Pick a location".to_string()),
     )
     .with_source_card(source_id);
@@ -356,13 +356,13 @@ async fn test_blasted_oak_restricts_zone_targets_only_with_source() {
             tokio::select! {
                 result = &mut pick => break result.unwrap(),
                 msg = server_rx.recv() => match msg.unwrap() {
-                    ServerMessage::PickZone { zones, .. } => {
-                        assert_eq!(zones, vec![oak_zone.clone()]);
+                    ServerMessage::PickZone { locations, .. } => {
+                        assert_eq!(locations, vec![oak_zone.clone()]);
                         client_tx
                             .send(ClientMessage::PickZone {
                                 game_id,
                                 player_id,
-                                zone: zones[0].clone(),
+                                zone: locations[0].clone().into(),
                             })
                             .await
                             .unwrap();
@@ -374,40 +374,39 @@ async fn test_blasted_oak_restricts_zone_targets_only_with_source() {
     })
     .await
     .unwrap();
-    assert_eq!(picked, oak_zone);
+    assert_eq!(picked, oak_zone.clone().into());
 
     let query_without_source = ZoneQuery::from_options(
-        vec![oak_zone.clone(), other_zone.clone()],
+        vec![oak_zone.clone().into(), other_zone.clone().into()],
         Some("Pick a location".to_string()),
     );
     let pick_without_source = query_without_source.pick(&player_id, &state);
     tokio::pin!(pick_without_source);
 
-    let picked_without_source =
-        tokio::time::timeout(std::time::Duration::from_secs(2), async {
-            loop {
-                tokio::select! {
-                    result = &mut pick_without_source => break result.unwrap(),
-                    msg = server_rx.recv() => match msg.unwrap() {
-                        ServerMessage::PickZone { zones, .. } => {
-                            assert_eq!(zones, vec![oak_zone.clone(), other_zone.clone()]);
-                            client_tx
-                                .send(ClientMessage::PickZone {
-                                    game_id,
-                                    player_id,
-                                    zone: other_zone.clone(),
-                                })
-                                .await
-                                .unwrap();
-                        }
-                        other => panic!("unexpected server message: {:?}", other),
-                    },
-                }
+    let picked_without_source = tokio::time::timeout(std::time::Duration::from_secs(2), async {
+        loop {
+            tokio::select! {
+                result = &mut pick_without_source => break result.unwrap(),
+                msg = server_rx.recv() => match msg.unwrap() {
+                    ServerMessage::PickZone { locations, .. } => {
+                        assert_eq!(locations, vec![oak_zone.clone(), other_zone.clone()]);
+                        client_tx
+                            .send(ClientMessage::PickZone {
+                                game_id,
+                                player_id,
+                                zone: other_zone.clone().into(),
+                            })
+                            .await
+                            .unwrap();
+                    }
+                    other => panic!("unexpected server message: {:?}", other),
+                },
             }
-        })
-        .await
-        .unwrap();
-    assert_eq!(picked_without_source, other_zone);
+        }
+    })
+    .await
+    .unwrap();
+    assert_eq!(picked_without_source, other_zone.into());
 }
 
 #[tokio::test]
