@@ -110,7 +110,10 @@ impl Game {
                 ..
             } => {
                 self.data.status = Status::SelectingZone {
-                    zones: zones.clone(),
+                    locations: zones
+                        .iter()
+                        .map(|z| z.location().cloned().unwrap())
+                        .collect(),
                     prompt: prompt.clone(),
                     source_card_id: *source_card_id,
                 };

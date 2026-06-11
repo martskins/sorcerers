@@ -316,9 +316,10 @@ impl RealmComponent {
 
     fn pending_zone_choice_is_valid(&self, choice: &PendingZoneChoice, data: &GameData) -> bool {
         match (&choice.action, &data.status) {
-            (PendingZoneChoiceAction::PickZone, Status::SelectingZone { zones, .. }) => {
-                choice.zones.iter().all(|zone| zones.contains(zone))
-            }
+            (PendingZoneChoiceAction::PickZone, Status::SelectingZone { locations, .. }) => choice
+                .zones
+                .iter()
+                .all(|zone| locations.contains(zone.location().unwrap())),
             (
                 PendingZoneChoiceAction::PlayHandCard { card_id },
                 Status::PreviewingPlayableZones {
@@ -1132,13 +1133,8 @@ impl RealmComponent {
             self.draw_zone_guide(painter, cell.id, occupied_zones.contains(&cell.id));
 
             let playable_preview_zones = match &data.status {
-                Status::SelectingZone { zones, .. } => Some(
-                    &zones
-                        .iter()
-                        .map(|z| z.location().cloned().unwrap())
-                        .collect(),
-                ),
-                Status::PreviewingPlayableZones { locations, .. } => Some(locations),
+                Status::SelectingZone { locations, .. }
+                | Status::PreviewingPlayableZones { locations, .. } => Some(locations),
                 _ => None,
             };
             if let Some(locations) = playable_preview_zones {
@@ -1183,13 +1179,8 @@ impl RealmComponent {
 
         for intersection in &self.intersection_rects {
             let playable_preview_zones = match &data.status {
-                Status::SelectingZone { zones, .. } => Some(
-                    &zones
-                        .iter()
-                        .map(|z| z.location().cloned().unwrap())
-                        .collect(),
-                ),
-                Status::PreviewingPlayableZones { locations, .. } => Some(locations),
+                Status::SelectingZone { locations, .. }
+                | Status::PreviewingPlayableZones { locations, .. } => Some(locations),
                 _ => None,
             };
             if let Some(locations) = playable_preview_zones {

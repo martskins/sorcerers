@@ -76,7 +76,7 @@ pub enum Status {
         source_card_id: Option<CardId>,
     },
     SelectingZone {
-        zones: Vec<Zone>,
+        locations: Vec<Location>,
         prompt: String,
         source_card_id: Option<CardId>,
     },
