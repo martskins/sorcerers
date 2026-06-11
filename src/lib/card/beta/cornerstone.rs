@@ -63,22 +63,22 @@ impl Card for Cornerstone {
         Some(&mut self.site_base)
     }
 
-    fn get_valid_play_zones(
+    fn get_valid_play_locations(
         &self,
         state: &State,
         player_id: &PlayerId,
         caster_id: &uuid::Uuid,
-    ) -> anyhow::Result<Vec<Zone>> {
-        let mut valid_zones = self.base_get_valid_play_zones(state, player_id, caster_id)?;
-        let corners: [Zone; 4] = [
-            Zone::Location(Location::Square(1, Region::Surface)),
-            Zone::Location(Location::Square(5, Region::Surface)),
-            Zone::Location(Location::Square(16, Region::Surface)),
-            Zone::Location(Location::Square(20, Region::Surface)),
+    ) -> anyhow::Result<Vec<Location>> {
+        let mut valid_zones = self.base_get_valid_play_locations(state, player_id, caster_id)?;
+        let corners: [Location; 4] = [
+            Location::Square(1, Region::Surface),
+            Location::Square(5, Region::Surface),
+            Location::Square(16, Region::Surface),
+            Location::Square(20, Region::Surface),
         ];
-        let valid_corners: Vec<Zone> = corners
+        let valid_corners: Vec<Location> = corners
             .into_iter()
-            .filter(|z| z.get_site(state).is_none())
+            .filter(|location| location.get_site(state).is_none())
             .collect();
         valid_zones.extend(valid_corners);
         Ok(valid_zones)

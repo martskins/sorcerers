@@ -7,7 +7,7 @@ const TURN_END_HOOK: HookId = 2;
 pub struct Wildfire {
     aura_base: AuraBase,
     card_base: CardBase,
-    sites_visited: Vec<Zone>,
+    sites_visited: Vec<Location>,
 }
 
 impl Wildfire {
@@ -33,11 +33,11 @@ impl Wildfire {
         }
     }
 
-    fn unvisited_adjacent_locations(&self, state: &State) -> Vec<Zone> {
-        self.get_zone()
+    fn unvisited_adjacent_locations(&self, state: &State) -> Vec<Location> {
+        self.get_location()
             .get_adjacent_locations(state)
             .into_iter()
-            .filter(|z| !self.sites_visited.contains(z))
+            .filter(|location| !self.sites_visited.contains(location))
             .collect()
     }
 }
@@ -77,7 +77,7 @@ impl Card for Wildfire {
         &mut self,
         data: &std::sync::Arc<dyn std::any::Any + Send + Sync>,
     ) -> anyhow::Result<()> {
-        if let Some(sites_visited) = data.downcast_ref::<Vec<Zone>>() {
+        if let Some(sites_visited) = data.downcast_ref::<Vec<Location>>() {
             self.sites_visited = sites_visited.clone();
         }
 
@@ -114,7 +114,7 @@ impl Card for Wildfire {
         match hook {
             TRACK_VISITED_SITE_HOOK => {
                 let mut sites_visited = self.sites_visited.clone();
-                sites_visited.push(self.get_zone().clone());
+                sites_visited.push(self.get_location().clone());
                 Ok(vec![Effect::SetCardData {
                     card_id: *self.get_id(),
                     data: std::sync::Arc::new(sites_visited),
@@ -141,10 +141,9 @@ impl Card for Wildfire {
                     .collect::<Vec<Effect>>();
 
                 let prompt = "Pick a zone to move to";
-                let locations = crate::game::zones_to_locations(&zones);
                 let picked_zone = pick_location_source(
                     self.get_owner_id(),
-                    &locations,
+                    &zones,
                     state,
                     false,
                     prompt,
@@ -170,13 +169,13 @@ impl Card for Wildfire {
         }
     }
 
-    fn get_valid_play_zones(
+    fn get_valid_play_locations(
         &self,
         state: &State,
         _player_id: &PlayerId,
         caster_id: &uuid::Uuid,
-    ) -> anyhow::Result<Vec<Zone>> {
-        Ok(state.get_card(caster_id).get_zone().get_nearby_sites(state))
+    ) -> anyhow::Result<Vec<Location>> {
+        Ok(state.get_card(caster_id).get_location().get_nearby_sites(state))
     }
 
     fn get_aura(&self) -> Option<&dyn Aura> {
@@ -198,14 +197,15 @@ mod tests {
         let state = State::new_mock_state(vec![8, 13]);
         let player_id = state.players[0].id;
         let from_zone = Zone::Location(Location::Square(13, Region::Surface));
+        let from_location = Location::Square(13, Region::Surface);
 
         let mut wildfire = Wildfire::new(player_id);
         wildfire.set_zone(from_zone.clone());
-        wildfire.sites_visited = vec![from_zone];
+        wildfire.sites_visited = vec![from_location];
 
         assert_eq!(
             wildfire.unvisited_adjacent_locations(&state),
-            vec![Zone::Location(Location::Square(8, Region::Surface))]
+            vec![Location::Square(8, Region::Surface)]
         );
     }
 }

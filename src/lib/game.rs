@@ -686,10 +686,6 @@ pub async fn pick_zone_near_source(
     location
 }
 
-pub fn zones_to_locations(zones: &[Zone]) -> Vec<Location> {
-    zones.iter().filter_map(Zone::location).cloned().collect()
-}
-
 pub async fn pick_location(
     player_id: impl AsRef<PlayerId>,
     locations: &[Location],
@@ -1205,7 +1201,7 @@ struct PlayableHandCard {
     card_id: CardId,
     spellcaster_id: CardId,
     card_type: CardType,
-    zones: Vec<Zone>,
+    locations: Vec<Location>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -1324,8 +1320,8 @@ impl ActivatedAbility for AvatarAction {
                 let avatar_id = state.get_player_avatar_id(player_id)?;
                 // we pass avatar_id as the caster just to comply with the required parameters, but
                 // no caster_id is actually needed here, since sites don't need one.
-                let zones = picked_card.get_valid_play_zones(state, player_id, &avatar_id)?;
-                let locations = zones_to_locations(&zones);
+                let locations =
+                    picked_card.get_valid_play_locations(state, player_id, &avatar_id)?;
                 let prompt = "Pick a zone to play the site";
                 let zone = pick_location(player_id, &locations, state, false, prompt).await?;
                 Ok(vec![Effect::PlayCard {
@@ -1734,7 +1730,7 @@ impl Game {
 
         let avatar_id = self.state.get_player_avatar_id(&acting_player)?;
         let card_type = card.get_card_type();
-        let zones = match card_type {
+        let locations = match card_type {
             CardType::Site => {
                 let avatar = self.state.get_card(&avatar_id);
                 let Some(avatar) = avatar.get_avatar() else {
@@ -1748,7 +1744,7 @@ impl Game {
                     return Ok(None);
                 }
 
-                card.get_valid_play_zones(&self.state, &acting_player, &avatar_id)?
+                card.get_valid_play_locations(&self.state, &acting_player, &avatar_id)?
             }
             CardType::Artifact | CardType::Minion | CardType::Aura => {
                 let avatar = self.state.get_card(&avatar_id);
@@ -1759,11 +1755,12 @@ impl Game {
                     return Ok(None);
                 }
 
-                card.get_valid_play_zones(&self.state, &acting_player, &avatar_id)?
+                card.get_valid_play_locations(&self.state, &acting_player, &avatar_id)?
                     .into_iter()
-                    .filter(|zone| {
+                    .filter(|location| {
+                        let zone = Zone::from(location);
                         self.state
-                            .get_effective_costs(card_id, Some(zone), &acting_player)
+                            .get_effective_costs(card_id, Some(&zone), &acting_player)
                             .and_then(|cost| cost.can_afford(&self.state, acting_player))
                             .unwrap_or(false)
                     })
@@ -1772,7 +1769,7 @@ impl Game {
             CardType::Magic | CardType::Avatar => Vec::new(),
         };
 
-        if zones.is_empty() {
+        if locations.is_empty() {
             return Ok(None);
         }
 
@@ -1781,7 +1778,7 @@ impl Game {
             card_id: *card_id,
             spellcaster_id: avatar_id,
             card_type,
-            zones,
+            locations,
         }))
     }
 
@@ -1794,7 +1791,10 @@ impl Game {
         let Some(playable) = self.playable_hand_card(player_id, card_id)? else {
             return Ok(());
         };
-        if !playable.zones.contains(zone) {
+        let Some(location) = zone.location() else {
+            return Ok(());
+        };
+        if !playable.locations.contains(location) {
             return Ok(());
         }
 
@@ -1854,11 +1854,7 @@ impl Game {
                         .send(ServerMessage::PlayableLocations {
                             player_id: playable.player_id,
                             card_id: playable.card_id,
-                            locations: playable
-                                .zones
-                                .iter()
-                                .map(|l| l.location().cloned().unwrap())
-                                .collect(),
+                            locations: playable.locations,
                         })
                         .await?;
                 }
@@ -1972,10 +1968,14 @@ impl Game {
                     };
 
                     let prompt = "Pick a zone to play the site";
-                    let locations = zones_to_locations(&playable.zones);
-                    let zone =
-                        pick_location(&acting_player, &locations, &self.state, false, prompt)
-                            .await?;
+                    let zone = pick_location(
+                        &acting_player,
+                        &playable.locations,
+                        &self.state,
+                        false,
+                        prompt,
+                    )
+                    .await?;
                     let zone = Zone::Location(zone);
                     self.queue_play_hand_card_at_zone(player_id, card_id, &zone)
                         .await?;

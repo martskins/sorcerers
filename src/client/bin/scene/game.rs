@@ -80,7 +80,7 @@ pub enum Status {
         prompt: String,
         source_card_id: Option<CardId>,
     },
-    PreviewingPlayableZones {
+    PreviewingPlayableLocations {
         card_id: CardId,
         locations: Vec<Location>,
     },

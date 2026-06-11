@@ -85,13 +85,13 @@ impl Card for RiftValley {
         Some(&mut self.site_base)
     }
 
-    fn get_valid_play_zones(
+    fn get_valid_play_locations(
         &self,
         state: &State,
         player_id: &PlayerId,
         caster_id: &uuid::Uuid,
-    ) -> anyhow::Result<Vec<Zone>> {
-        let mut valid_zones = self.base_get_valid_play_zones(state, player_id, caster_id)?;
+    ) -> anyhow::Result<Vec<Location>> {
+        let mut valid_zones = self.base_get_valid_play_locations(state, player_id, caster_id)?;
         let occupied_squares = CardQuery::new()
             .sites()
             .in_play()
@@ -130,7 +130,10 @@ impl Card for RiftValley {
                         .iter()
                         .any(|controlled_square| Self::same_column(square, *controlled_square));
 
-                (can_pull_apart_row || can_pull_apart_column).then_some(zone)
+                (can_pull_apart_row || can_pull_apart_column).then_some(
+                    zone.into_location()
+                        .expect("Rift Valley play location must be a location"),
+                )
             });
 
         valid_zones.extend(rift_valley_zones);

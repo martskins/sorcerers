@@ -61,18 +61,17 @@ impl Card for RoamingMonster {
         Some(&mut self.unit_base)
     }
 
-    fn get_valid_play_zones(
+    fn get_valid_play_locations(
         &self,
         state: &State,
         _player_id: &PlayerId,
         _caster_id: &uuid::Uuid,
-    ) -> anyhow::Result<Vec<Zone>> {
+    ) -> anyhow::Result<Vec<Location>> {
         Ok(CardQuery::new()
             .sites()
             .all(state)
             .into_iter()
-            .map(|site_id| state.get_card(&site_id).get_zone())
-            .cloned()
+            .map(|site_id| state.get_card(&site_id).get_location().clone())
             .collect())
     }
 }

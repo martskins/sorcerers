@@ -117,8 +117,7 @@ impl Card for Mirage {
             ]);
         }
 
-        let zones = self.base_get_valid_play_zones(state, player_id, caster_id)?;
-        let locations = crate::game::zones_to_locations(&zones);
+        let locations = self.base_get_valid_play_locations(state, player_id, caster_id)?;
         let zone = pick_location(
             player_id,
             &locations,

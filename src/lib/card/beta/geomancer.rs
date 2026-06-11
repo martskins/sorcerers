@@ -60,9 +60,9 @@ impl ActivatedAbility for GeomancerAbility {
                 let avatar_id = state.get_player_avatar_id(player_id)?;
                 // we pass avatar_id as the caster just to comply with the required parameters, but
                 // no caster_id is actually needed here, since sites don't need one.
-                let zones = picked_card.get_valid_play_zones(state, player_id, &avatar_id)?;
+                let locations =
+                    picked_card.get_valid_play_locations(state, player_id, &avatar_id)?;
                 let prompt = "Pick a zone to play the site";
-                let locations = crate::game::zones_to_locations(&zones);
                 let zone = pick_location(player_id, &locations, state, false, prompt).await?;
                 geomancer_play_site_effects(
                     card_id,
@@ -148,16 +148,13 @@ async fn geomancer_play_site_effects(
         > 0;
     if is_earth_site {
         let geomancer = state.get_card(geomancer_id);
-        let zones = geomancer
-            .get_zone()
-            .get_adjacent()
-            .iter()
-            .filter(|z| z.get_site(state).is_none())
-            .filter(|z| z.get_square().unwrap_or_default() != square)
-            .cloned()
-            .collect::<Vec<Zone>>();
-        if !zones.is_empty() {
-            let locations = crate::game::zones_to_locations(&zones);
+        let locations = geomancer
+            .get_location()
+            .get_adjacent_voids(state)
+            .into_iter()
+            .filter(|location| location.get_square().unwrap_or_default() != square)
+            .collect::<Vec<Location>>();
+        if !locations.is_empty() {
             let picked_zone = pick_location(
                 player_id,
                 &locations,

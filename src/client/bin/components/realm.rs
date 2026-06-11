@@ -330,7 +330,7 @@ impl RealmComponent {
                 .all(|location| locations.contains(location)),
             (
                 PendingLocationChoiceAction::PlayHandCard { card_id },
-                Status::PreviewingPlayableZones {
+                Status::PreviewingPlayableLocations {
                     card_id: preview_card_id,
                     locations,
                 },
@@ -1142,7 +1142,7 @@ impl RealmComponent {
 
             let playable_preview_zones = match &data.status {
                 Status::SelectingZone { locations, .. }
-                | Status::PreviewingPlayableZones { locations, .. } => Some(locations),
+                | Status::PreviewingPlayableLocations { locations, .. } => Some(locations),
                 _ => None,
             };
             if let Some(locations) = playable_preview_zones {
@@ -1177,7 +1177,7 @@ impl RealmComponent {
                         continue;
                     }
                     Status::SelectingCard { preview: false, .. } | Status::Idle => {}
-                    Status::SelectingZone { .. } | Status::PreviewingPlayableZones { .. } => {}
+                    Status::SelectingZone { .. } | Status::PreviewingPlayableLocations { .. } => {}
                 }
             }
         }
@@ -1185,7 +1185,7 @@ impl RealmComponent {
         for intersection in &self.intersection_rects {
             let playable_preview_zones = match &data.status {
                 Status::SelectingZone { locations, .. }
-                | Status::PreviewingPlayableZones { locations, .. } => Some(locations),
+                | Status::PreviewingPlayableLocations { locations, .. } => Some(locations),
                 _ => None,
             };
             if let Some(locations) = playable_preview_zones {
@@ -1224,7 +1224,7 @@ impl RealmComponent {
                         continue;
                     }
                     Status::SelectingCard { preview: false, .. } | Status::Idle => {}
-                    Status::SelectingZone { .. } | Status::PreviewingPlayableZones { .. } => {}
+                    Status::SelectingZone { .. } | Status::PreviewingPlayableLocations { .. } => {}
                 }
             }
         }
@@ -1861,7 +1861,7 @@ impl Component for RealmComponent {
                 self.refresh_geometry();
             }
             ComponentCommand::DropHandCard { card_id, pos } => {
-                if let Status::PreviewingPlayableZones {
+                if let Status::PreviewingPlayableLocations {
                     card_id: preview_card_id,
                     locations,
                 } = &data.status.clone()

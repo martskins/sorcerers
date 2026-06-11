@@ -63,12 +63,12 @@ impl Card for AwakenedMummies {
         Some(&mut self.unit_base)
     }
 
-    fn get_valid_play_zones(
+    fn get_valid_play_locations(
         &self,
         state: &State,
         player_id: &PlayerId,
         _caster_id: &CardId,
-    ) -> anyhow::Result<Vec<Zone>> {
+    ) -> anyhow::Result<Vec<Location>> {
         Ok(Zone::all_in_region(Region::Underground)
             .into_iter()
             .filter(|zone| {
@@ -89,6 +89,7 @@ impl Card for AwakenedMummies {
                 zone.get_site(state)
                     .is_some_and(|site| !site.is_water_site(state).unwrap_or_default())
             })
+            .filter_map(Zone::into_location)
             .collect())
     }
 

@@ -163,6 +163,56 @@ impl Location {
             .collect()
     }
 
+    pub fn get_nearby_locations(&self, state: &State) -> Vec<Self> {
+        self.get_nearby()
+            .into_iter()
+            .filter(|location| Zone::from(location).is_location(state))
+            .collect()
+    }
+
+    pub fn get_adjacent_locations(&self, state: &State) -> Vec<Self> {
+        self.get_adjacent()
+            .into_iter()
+            .filter(|location| Zone::from(location).is_location(state))
+            .collect()
+    }
+
+    pub fn get_nearby_sites(&self, state: &State) -> Vec<Self> {
+        self.get_nearby()
+            .into_iter()
+            .filter(|location| location.get_site(state).is_some())
+            .collect()
+    }
+
+    pub fn get_adjacent_sites(&self, state: &State) -> Vec<Self> {
+        self.get_adjacent()
+            .into_iter()
+            .filter(|location| location.get_site(state).is_some())
+            .collect()
+    }
+
+    pub fn get_nearby_voids(&self, state: &State) -> Vec<Self> {
+        self.get_nearby()
+            .into_iter()
+            .filter_map(|location| {
+                let square = location.get_square()?;
+                let void = Location::Square(square, Region::Void);
+                Zone::from(&void).is_location(state).then_some(void)
+            })
+            .collect()
+    }
+
+    pub fn get_adjacent_voids(&self, state: &State) -> Vec<Self> {
+        self.get_adjacent()
+            .into_iter()
+            .filter_map(|location| {
+                let square = location.get_square()?;
+                let void = Location::Square(square, Region::Void);
+                Zone::from(&void).is_location(state).then_some(void)
+            })
+            .collect()
+    }
+
     pub fn steps_in_direction(&self, direction: &Direction, steps: u8) -> Option<Self> {
         let mut current_zone = self.clone();
         for _ in 0..steps {

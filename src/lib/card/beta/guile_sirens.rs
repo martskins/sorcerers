@@ -100,12 +100,14 @@ impl Card for GuileSirens {
                 };
                 let picked_card = state.get_card(&picked_card_id);
                 let zones = picked_card
-                    .get_zone()
-                    .get_adjacent()
-                    .iter()
-                    .filter(|zone| zone.is_in_play())
-                    .map(|zone| (zone.clone(), zone.steps_to_zone(self.get_zone())))
-                    .collect::<Vec<(Zone, Option<u8>)>>();
+                    .get_location()
+                    .get_adjacent_locations(state)
+                    .into_iter()
+                    .map(|location| {
+                        let steps = Zone::from(&location).steps_to_zone(self.get_zone());
+                        (location, steps)
+                    })
+                    .collect::<Vec<(Location, Option<u8>)>>();
 
                 let mut steps_to_zone = HashMap::new();
                 for (zone, steps) in zones {
@@ -120,12 +122,11 @@ impl Card for GuileSirens {
                 if let Some(min_steps) = steps_to_zone.keys().min() {
                     let closest_zones = steps_to_zone.get(min_steps).unwrap();
                     let picked_location = if closest_zones.len() == 1 {
-                        closest_zones.first().unwrap().location().cloned().unwrap()
+                        closest_zones.first().unwrap().clone()
                     } else {
-                        let closest_locations = crate::game::zones_to_locations(closest_zones);
                         pick_location(
                             &opponent_id,
-                            &closest_locations,
+                            closest_zones,
                             state,
                             true,
                             &format!(

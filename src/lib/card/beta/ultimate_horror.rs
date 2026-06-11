@@ -69,15 +69,14 @@ impl Card for UltimateHorror {
         match hook {
             GENESIS_HOOK_ID => {
                 let controller_id = self.get_controller_id(state);
-                let mut nearby_zones = self.get_zone().get_nearby_sites(state);
-                nearby_zones.extend(self.get_zone().get_nearby_voids(state));
+                let mut nearby_locations = self.get_location().get_nearby_sites(state);
+                nearby_locations.extend(self.get_location().get_nearby_voids(state));
                 let dead_voidwalkers = CardQuery::new()
                     .minions()
                     .dead()
                     .with_ability(Ability::Voidwalk)
                     .all(state);
                 let mut effects = Vec::new();
-                let nearby_locations = crate::game::zones_to_locations(&nearby_zones);
                 for card_id in dead_voidwalkers {
                     let zone = pick_location(
                         &controller_id,

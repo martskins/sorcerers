@@ -88,15 +88,15 @@ impl Card for PendulumOfPeril {
                 }
 
                 let current_player = state.current_player();
-                let adjacent_zones: Vec<Zone> = zone
+                let location = self.get_location();
+                let adjacent_locations: Vec<Location> = location
                     .get_adjacent()
                     .into_iter()
-                    .filter(|adjacent| adjacent != zone)
+                    .filter(|adjacent| adjacent != location)
                     .collect();
-                let chosen_zone = if adjacent_zones.is_empty() {
+                let chosen_zone = if adjacent_locations.is_empty() {
                     None
                 } else {
-                    let adjacent_locations = crate::game::zones_to_locations(&adjacent_zones);
                     Some(
                         pick_location(
                             &current_player,

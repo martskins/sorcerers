@@ -102,13 +102,17 @@ impl Card for Maelström {
                     .all(state);
 
                 let mut effects = vec![];
+                let body_locations = body_of_water
+                    .iter()
+                    .filter_map(Zone::location)
+                    .cloned()
+                    .collect::<Vec<_>>();
                 for minion_id in minion_ids {
                     let minion = state.get_card(&minion_id);
                     let steps = minion
                         .get_zone()
                         .steps_to_zone(self.get_zone())
                         .unwrap_or_default();
-                    let body_locations = crate::game::zones_to_locations(&body_of_water);
                     let mut zones = minion.get_locations_within_steps(state, steps);
                     zones.retain(|zone| body_locations.contains(zone));
                     zones.retain(|zone| {

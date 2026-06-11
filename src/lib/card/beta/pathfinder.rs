@@ -24,12 +24,13 @@ impl ActivatedAbility for PathfinderSitewalk {
         };
         let pathfinder = state.get_card(card_id);
         let site = state.get_card(site_id);
-        let valid_play_zones = site.get_valid_play_zones(state, player_id, card_id)?;
+        let valid_play_locations = site.get_valid_play_locations(state, player_id, card_id)?;
         Ok(pathfinder
             .get_zone()
             .get_adjacent_locations(state)
             .into_iter()
-            .any(|zone| valid_play_zones.contains(&zone)))
+            .filter_map(Zone::into_location)
+            .any(|location| valid_play_locations.contains(&location)))
     }
 
     async fn on_select(
@@ -44,18 +45,17 @@ impl ActivatedAbility for PathfinderSitewalk {
         };
         let pathfinder = state.get_card(card_id);
         let site = state.get_card(&site_id);
-        let valid_play_zones = site.get_valid_play_zones(state, player_id, card_id)?;
-        let zones = pathfinder
-            .get_zone()
+        let valid_play_locations = site.get_valid_play_locations(state, player_id, card_id)?;
+        let locations = pathfinder
+            .get_location()
             .get_adjacent_locations(state)
             .into_iter()
-            .filter(|zone| valid_play_zones.contains(zone))
-            .collect::<Vec<Zone>>();
-        if zones.is_empty() {
+            .filter(|location| valid_play_locations.contains(location))
+            .collect::<Vec<Location>>();
+        if locations.is_empty() {
             return Ok(vec![]);
         }
 
-        let locations = crate::game::zones_to_locations(&zones);
         let zone = pick_location(
             player_id,
             &locations,

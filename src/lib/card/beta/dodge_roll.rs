@@ -104,9 +104,8 @@ impl Card for DodgeRoll {
 
                 let avatar_id = state.get_player_avatar_id(&defender_controller)?;
                 let avatar = state.get_card(&avatar_id);
-                let adjacent_zones = defender.get_zone().get_adjacent();
-                let adjacent_locations = crate::game::zones_to_locations(&adjacent_zones);
-                let prompt = "Dodgpick_location_sourceadjacent site to move to";
+                let adjacent_locations = defender.get_location().get_adjacent_locations(state);
+                let prompt = "Dodge Roll: Pick an adjacent location to move to";
                 let picked_site = pick_location_source(
                     defender_controller,
                     &adjacent_locations,

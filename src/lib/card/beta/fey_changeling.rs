@@ -61,18 +61,18 @@ impl Card for FeyChangeling {
         Some(&mut self.unit_base)
     }
 
-    fn get_valid_play_zones(
+    fn get_valid_play_locations(
         &self,
         state: &State,
         _player_id: &PlayerId,
         _caster_id: &uuid::Uuid,
-    ) -> anyhow::Result<Vec<Zone>> {
+    ) -> anyhow::Result<Vec<Location>> {
         Ok(CardQuery::new()
             .sites()
             .in_play()
             .all(state)
             .into_iter()
-            .map(|cid| state.get_card(&cid).get_zone().clone())
+            .map(|cid| state.get_card(&cid).get_location().clone())
             .collect())
     }
 

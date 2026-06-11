@@ -55,11 +55,12 @@ impl Magic for StarSeedsOfUhr {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let controller_id = state.get_card(caster_id).get_controller_id(state);
-        let voids: Vec<Zone> = Zone::all_realm()
+        let mut locations: Vec<Location> = Zone::all_realm()
             .into_iter()
             .filter(|zone| zone.get_site(state).is_none())
+            .filter_map(Zone::into_location)
             .collect();
-        if voids.is_empty()
+        if locations.is_empty()
             || !yes_or_no_source(
                 &controller_id,
                 state,
@@ -71,7 +72,6 @@ impl Magic for StarSeedsOfUhr {
             return Ok(vec![]);
         }
 
-        let mut locations = crate::game::zones_to_locations(&voids);
         let mut effects = vec![];
         while !locations.is_empty() && effects.len() < 13 {
             let zone = pick_location(

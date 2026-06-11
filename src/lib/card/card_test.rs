@@ -545,7 +545,7 @@ async fn test_get_valid_move_zones_airborne_and_voidwalk() {
 }
 
 #[test]
-fn test_get_valid_play_zones_site_second_site() {
+fn test_get_valid_play_locations_site_second_site() {
     let zones_with_sites = vec![3];
     let mut state = State::new_mock_state(zones_with_sites);
     let player_id = state.players[0].id;
@@ -556,17 +556,17 @@ fn test_get_valid_play_zones_site_second_site() {
     let avatar_id = state
         .get_player_avatar_id(&player_id)
         .expect("avatar id to be some");
-    let mut zones = card
-        .get_valid_play_zones(&state, &player_id, &avatar_id)
+    let mut locations = card
+        .get_valid_play_locations(&state, &player_id, &avatar_id)
         .expect("zones to be computed");
-    zones.sort();
+    locations.sort();
     let mut expected = vec![
-        Zone::Location(Location::Square(8, Region::Surface)),
-        Zone::Location(Location::Square(4, Region::Surface)),
-        Zone::Location(Location::Square(2, Region::Surface)),
+        Location::Square(8, Region::Surface),
+        Location::Square(4, Region::Surface),
+        Location::Square(2, Region::Surface),
     ];
     expected.sort();
-    assert_eq!(zones, expected);
+    assert_eq!(locations, expected);
 }
 
 #[test]
@@ -599,18 +599,15 @@ fn test_awakened_mummies_can_be_played_underground_at_land_sites() {
     let avatar_id = state
         .get_player_avatar_id(&player_id)
         .expect("avatar id to be some");
-    let zones = card
-        .get_valid_play_zones(&state, &player_id, &avatar_id)
+    let locations = card
+        .get_valid_play_locations(&state, &player_id, &avatar_id)
         .expect("zones to be computed");
 
-    assert!(zones.contains(&Zone::Location(Location::Square(1, Region::Underground))));
-    assert!(!zones.contains(&Zone::Location(Location::Square(2, Region::Underground))));
-    assert!(zones.iter().all(|zone| {
-        matches!(
-            zone,
-            Zone::Location(Location::Square(_, Region::Underground))
-        )
-    }));
+    assert!(locations.contains(&Location::Square(1, Region::Underground)));
+    assert!(!locations.contains(&Location::Square(2, Region::Underground)));
+    assert!(locations
+        .iter()
+        .all(|location| matches!(location, Location::Square(_, Region::Underground))));
 }
 
 #[test]
@@ -630,12 +627,12 @@ fn test_burrowing_minion_can_be_played_surface_or_underground() {
     let avatar_id = state
         .get_player_avatar_id(&player_id)
         .expect("avatar id to be some");
-    let zones = card
-        .get_valid_play_zones(&state, &player_id, &avatar_id)
+    let locations = card
+        .get_valid_play_locations(&state, &player_id, &avatar_id)
         .expect("zones to be computed");
 
-    assert!(zones.contains(&Zone::Location(Location::Square(1, Region::Surface))));
-    assert!(zones.contains(&Zone::Location(Location::Square(1, Region::Underground))));
+    assert!(locations.contains(&Location::Square(1, Region::Surface)));
+    assert!(locations.contains(&Location::Square(1, Region::Underground)));
 }
 
 #[test]
@@ -651,13 +648,16 @@ fn test_auras_can_be_played_at_any_surface_intersection() {
     let avatar_id = state
         .get_player_avatar_id(&player_id)
         .expect("avatar id to be some");
-    let mut zones = card
-        .get_valid_play_zones(&state, &player_id, &avatar_id)
+    let mut locations = card
+        .get_valid_play_locations(&state, &player_id, &avatar_id)
         .expect("zones to be computed");
-    zones.sort();
-    let mut expected = Zone::all_intersections();
+    locations.sort();
+    let mut expected = Zone::all_intersections()
+        .into_iter()
+        .filter_map(Zone::into_location)
+        .collect::<Vec<_>>();
     expected.sort();
-    assert_eq!(zones, expected);
+    assert_eq!(locations, expected);
 }
 
 #[test]

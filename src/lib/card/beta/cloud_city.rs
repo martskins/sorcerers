@@ -20,18 +20,11 @@ impl ActivatedAbility for FlyToVoid {
         state: &State,
     ) -> anyhow::Result<Vec<Effect>> {
         let card = state.get_card(card_id);
-        let nearby_voids: Vec<Zone> = card
-            .get_zone()
-            .get_nearby()
-            .iter()
-            .filter(|z| z.get_site(state).is_none())
-            .cloned()
-            .collect();
+        let nearby_voids = card.get_location().get_nearby_voids(state);
         if nearby_voids.is_empty() {
             return Ok(vec![]);
         }
 
-        let nearby_voids = crate::game::zones_to_locations(&nearby_voids);
         let picked_void = pick_location(
             card.get_controller_id(state),
             &nearby_voids,

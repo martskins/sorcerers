@@ -93,7 +93,10 @@ impl Magic for FlankingManeuver {
             .controlled_by(&controller)
             .all(state);
 
-        let destinations = get_knight_move_zones(&source_zone.clone().into());
+        let destinations = get_knight_move_zones(&source_zone.clone().into())
+            .into_iter()
+            .filter_map(Zone::into_location)
+            .collect::<Vec<_>>();
         if destinations.is_empty() {
             return Ok(vec![Effect::DrawCard {
                 player_id: controller,
@@ -102,10 +105,9 @@ impl Magic for FlankingManeuver {
             }]);
         }
 
-        let destination_locations = crate::game::zones_to_locations(&destinations);
         let dest_zone = pick_location(
             &controller,
-            &destination_locations,
+            &destinations,
             state,
             false,
             "Flanking Maneuver: Pick a knight's move destination",

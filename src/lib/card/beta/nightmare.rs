@@ -96,8 +96,8 @@ impl Card for Nightmare {
                     .filter(|id| state.get_card(id).get_controller_id(state) != controller_id)
                     .collect::<Vec<_>>();
 
-                let adjacent_zones = my_zone.get_adjacent();
-                if adjacent_zones.is_empty() {
+                let adjacent_locations = self.get_location().get_adjacent();
+                if adjacent_locations.is_empty() {
                     return Ok(vec![]);
                 }
 
@@ -119,7 +119,6 @@ impl Card for Nightmare {
                         continue;
                     }
 
-                    let adjacent_locations = crate::game::zones_to_locations(&adjacent_zones);
                     let target_zone = pick_location(
                         &controller_id,
                         &adjacent_locations,

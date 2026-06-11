@@ -123,11 +123,12 @@ impl Card for WindSylph {
                 )
                 .await?;
                 let unit = state.get_card(&unit_id);
-                let mut valid_zones = vec![];
+                let mut valid_locations = vec![];
                 for dir in &PUSH_DIRECTIONS {
-                    let Some(zone) = unit.get_zone().zone_in_direction(dir, 1) else {
+                    let Some(location) = unit.get_location().steps_in_direction(dir, 1) else {
                         continue;
                     };
+                    let zone = Zone::from(&location);
 
                     let can_enter = match zone.get_site(state) {
                         Some(site) => site.can_be_entered_by(
@@ -143,16 +144,15 @@ impl Card for WindSylph {
                     };
 
                     if can_enter {
-                        valid_zones.push(zone);
+                        valid_locations.push(location);
                     }
                 }
-                valid_zones.sort();
-                valid_zones.dedup();
-                if valid_zones.is_empty() {
+                valid_locations.sort();
+                valid_locations.dedup();
+                if valid_locations.is_empty() {
                     return Ok(vec![]);
                 }
 
-                let valid_locations = crate::game::zones_to_locations(&valid_zones);
                 let target_zone = pick_location(
                     &controller_id,
                     &valid_locations,

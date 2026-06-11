@@ -88,14 +88,9 @@ impl Card for ImperialRoad {
             GENESIS_HOOK_ID => {
                 let controller_id = self.get_controller_id(state);
                 let opponent_id = state.get_opponent_id(&controller_id)?;
-                let my_zone = self.get_zone().clone();
-                let adjacent_zones: Vec<Zone> = my_zone
-                    .get_adjacent()
-                    .into_iter()
-                    .filter(|z| z.get_site(state).is_none())
-                    .collect();
+                let adjacent_locations = self.get_location().get_adjacent_voids(state);
 
-                if adjacent_zones.is_empty() {
+                if adjacent_locations.is_empty() {
                     return Ok(vec![]);
                 }
 
@@ -124,17 +119,12 @@ impl Card for ImperialRoad {
                         continue;
                     };
 
-                    let valid_zones: Vec<Zone> = adjacent_zones
-                        .iter()
-                        .filter(|&z| z.get_site(state).is_none())
-                        .cloned()
-                        .collect();
+                    let valid_locations = adjacent_locations.clone();
 
-                    if valid_zones.is_empty() {
+                    if valid_locations.is_empty() {
                         continue;
                     }
 
-                    let valid_locations = crate::game::zones_to_locations(&valid_zones);
                     let zone = pick_location(
                         &player_id,
                         &valid_locations,

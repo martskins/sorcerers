@@ -62,13 +62,16 @@ impl Card for WallOfFire {
         Some(self)
     }
 
-    fn get_valid_play_zones(
+    fn get_valid_play_locations(
         &self,
         state: &State,
         player_id: &PlayerId,
         _caster_id: &uuid::Uuid,
-    ) -> anyhow::Result<Vec<Zone>> {
-        Ok(border_zones_of_controlled_sites(state, player_id))
+    ) -> anyhow::Result<Vec<Location>> {
+        Ok(border_zones_of_controlled_sites(state, player_id)
+            .into_iter()
+            .filter_map(Zone::into_location)
+            .collect())
     }
 
     fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {

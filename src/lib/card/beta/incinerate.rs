@@ -59,7 +59,7 @@ impl Magic for Incinerate {
         _cost_paid: Cost,
     ) -> anyhow::Result<Vec<Effect>> {
         let caster = state.get_card(caster_id);
-        let mut zones: Vec<Zone> = state
+        let mut locations: Vec<Location> = state
             .cards
             .values()
             .filter(|c| c.get_zone().is_in_play())
@@ -71,12 +71,11 @@ impl Magic for Incinerate {
                     .types
                     .contains(&MinionType::Dragon)
             })
-            .flat_map(|c| c.get_zone().get_nearby())
+            .flat_map(|c| c.get_location().get_nearby())
             .collect();
-        zones.push(caster.get_zone().clone());
+        locations.push(caster.get_location().clone());
 
         let prompt = "Pick a zone to deal 4 damage to all other units in that zone";
-        let locations = crate::game::zones_to_locations(&zones);
         let picked_zone = pick_location_source(
             self.get_owner_id(),
             &locations,

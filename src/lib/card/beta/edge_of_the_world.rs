@@ -72,14 +72,14 @@ impl Card for EdgeOfTheWorld {
         Some(self)
     }
 
-    fn get_valid_play_zones(
+    fn get_valid_play_locations(
         &self,
         state: &State,
         player_id: &PlayerId,
         caster_id: &uuid::Uuid,
-    ) -> anyhow::Result<Vec<Zone>> {
+    ) -> anyhow::Result<Vec<Location>> {
         Ok(self
-            .base_get_valid_play_zones(state, player_id, caster_id)?
+            .base_get_valid_play_locations(state, player_id, caster_id)?
             .into_iter()
             .filter(|zone| !zone.get_adjacent_voids(state).is_empty())
             .collect())
