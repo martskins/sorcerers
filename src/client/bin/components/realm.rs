@@ -1583,10 +1583,13 @@ impl Component for RealmComponent {
             let resp = ui.allocate_rect(card_rect.rect, sense);
             if resp.hovered() && card_clicks_enabled && card_rect.card.card_type == CardType::Aura {
                 match data.aura_affected_zones.get(&card_rect.card.id) {
-                    Some(Some(zones)) if !zones.is_empty() => {
+                    Some(Some(locations)) if !locations.is_empty() => {
                         Self::draw_affected_zone_highlight(
                             painter,
-                            zones,
+                            &locations
+                                .iter()
+                                .map(|l| l.clone().into())
+                                .collect::<Vec<_>>(),
                             realm_rect,
                             mirrored,
                             &intersection_rects,

@@ -192,7 +192,12 @@ impl ZoneQuery {
                 .get(card_id)
                 .map(|card| {
                     card.get_aura()
-                        .map(|aura| aura.get_affected_zones(state))
+                        .map(|aura| {
+                            aura.get_affected_zones(state)
+                                .iter()
+                                .map(|l| l.clone().into())
+                                .collect()
+                        })
                         .unwrap_or_else(|| vec![card.get_zone().clone()])
                 })
                 .unwrap_or_default(),

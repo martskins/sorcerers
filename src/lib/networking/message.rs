@@ -181,7 +181,7 @@ pub enum ServerMessage {
     AuraAffectedZones {
         player_id: PlayerId,
         card_id: CardId,
-        zones: Vec<Zone>,
+        locations: Vec<Location>,
     },
     OngoingEffects {
         player_id: PlayerId,

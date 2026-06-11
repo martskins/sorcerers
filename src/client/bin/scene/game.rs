@@ -159,7 +159,7 @@ pub struct GameData {
     pub unseen_events: usize,
     pub resources: HashMap<PlayerId, Resources>,
     pub avatar_health: HashMap<PlayerId, u16>,
-    pub aura_affected_zones: HashMap<uuid::Uuid, Option<Vec<Zone>>>,
+    pub aura_affected_zones: HashMap<uuid::Uuid, Option<Vec<Location>>>,
     pub ongoing_effects: Option<Vec<OngoingEffectData>>,
     pub show_ongoing_effects: bool,
     pub show_controls_help: bool,

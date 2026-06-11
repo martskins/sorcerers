@@ -32,7 +32,7 @@ impl AtlanteanFate {
         state
             .cards
             .values()
-            .filter(|c| affected_zones.contains(c.get_zone()))
+            .filter(|c| affected_zones.contains(c.get_location()))
             .filter(|c| c.is_site())
             .filter(|c| c.get_zone().is_in_play())
             .filter(|c| c.get_base().rarity != Rarity::Ordinary)
@@ -106,14 +106,14 @@ impl Card for AtlanteanFate {
     ) -> anyhow::Result<Vec<Effect>> {
         match hook {
             GENESIS_HOOK_ID => {
-                let affected_zones: Vec<Zone> = self
+                let affected_locations: Vec<Location> = self
                     .get_affected_zones(state)
                     .into_iter()
                     .filter(|z| z.get_site(state).is_some())
                     .collect();
                 Ok(CardQuery::new()
                     .card_types(vec![CardType::Minion, CardType::Artifact])
-                    .in_zones(&affected_zones)
+                    .in_locations(&affected_locations)
                     .all(state)
                     .into_iter()
                     .map(|id| Effect::SetCardRegion {

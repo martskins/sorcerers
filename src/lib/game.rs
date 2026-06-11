@@ -1864,7 +1864,7 @@ impl Game {
             ClientMessage::RequestAuraAffectedZones {
                 player_id, card_id, ..
             } => {
-                let zones = self
+                let locations = self
                     .state
                     .get_card(card_id)
                     .get_aura()
@@ -1876,7 +1876,7 @@ impl Game {
                     .send(ServerMessage::AuraAffectedZones {
                         player_id: *player_id,
                         card_id: *card_id,
-                        zones,
+                        locations,
                     })
                     .await?;
             }

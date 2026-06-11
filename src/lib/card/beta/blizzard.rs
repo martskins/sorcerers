@@ -41,7 +41,7 @@ impl Aura for Blizzard {
         Ok(turns_in_play >= 1)
     }
 
-    fn get_affected_zones(&self, state: &State) -> Vec<Zone> {
+    fn get_affected_zones(&self, state: &State) -> Vec<Location> {
         let affected_zones = self.base_get_affected_zones(state);
         affected_zones
             .into_iter()

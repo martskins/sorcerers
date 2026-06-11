@@ -91,12 +91,12 @@ impl Card for Thunderstorm {
                 }
 
                 let zones = self.get_valid_move_zones(state).await?;
-                let affected_zones = self.get_affected_zones(state);
+                let affected_locations = self.get_affected_zones(state);
                 let picked_card_id = CardQuery::new()
                     .randomised()
                     .count(1)
                     .units()
-                    .in_zones(&affected_zones)
+                    .in_locations(&affected_locations)
                     .id_not_in(vec![*self.get_id()])
                     .pick(&self.get_controller_id(state), state, false)
                     .await?;

@@ -1,7 +1,7 @@
 use super::*;
 
 fn retain_aura_affected_zones(
-    cache: &mut HashMap<uuid::Uuid, Option<Vec<Zone>>>,
+    cache: &mut HashMap<uuid::Uuid, Option<Vec<Location>>>,
     previous_cards: &[CardData],
     next_cards: &[CardData],
 ) {
@@ -125,10 +125,12 @@ impl Game {
                 };
                 None
             }
-            ServerMessage::AuraAffectedZones { card_id, zones, .. } => {
+            ServerMessage::AuraAffectedZones {
+                card_id, locations, ..
+            } => {
                 self.data
                     .aura_affected_zones
-                    .insert(*card_id, Some(zones.clone()));
+                    .insert(*card_id, Some(locations.clone()));
                 None
             }
             ServerMessage::OngoingEffects { effects, .. } => {

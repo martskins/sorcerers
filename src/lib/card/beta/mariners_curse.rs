@@ -73,7 +73,13 @@ impl Card for MarinersCurse {
             id: ENTER_WATER_SITE_HOOK,
             trigger: EffectQuery::EnterZone {
                 card: CardQuery::new().minions(),
-                zone: ZoneQuery::from_options(affected_water_sites, None),
+                zone: ZoneQuery::from_options(
+                    affected_water_sites
+                        .iter()
+                        .map(|l| l.clone().into())
+                        .collect(),
+                    None,
+                ),
                 from: None,
             },
             timing: HookTiming::After,
