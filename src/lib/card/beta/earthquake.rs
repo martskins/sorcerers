@@ -67,7 +67,7 @@ impl Magic for Earthquake {
             "Earthquake: Pick a two-by-two area",
         )
         .await?;
-        let Zone::Location(Location::Intersection(squares, _)) = area else {
+        let Location::Intersection(squares, _) = area else {
             return Ok(vec![]);
         };
         let affected_zones = squares

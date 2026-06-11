@@ -116,7 +116,7 @@ impl Card for EvilPresence {
 
     async fn get_ongoing_effects(&self, _state: &State) -> anyhow::Result<Vec<OngoingEffect>> {
         Ok(vec![OngoingEffect::OverrideValidPlayZone {
-            affected_zones: ZoneQuery::new().affected_zones_of_card(self.get_id()),
+            affected_locations: LocationQuery::new().affected_zones_of_card(self.get_id()),
             affected_cards: CardQuery::new()
                 .minions()
                 .minion_type(&MinionType::Spirit)

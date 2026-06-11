@@ -109,7 +109,7 @@ impl Card for Undertow {
                 .await?;
                 Ok(vec![Effect::MoveCard {
                     card_id: unit_id,
-                    to: LocationQuery::from_zone(
+                    to: LocationQuery::from_location(
                         (picked_zone).with_region(unit.get_region(state).clone()),
                     ),
                     player_id,

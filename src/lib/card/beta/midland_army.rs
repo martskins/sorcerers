@@ -35,7 +35,7 @@ impl ActivatedAbility for ArtilleryBarrage {
             .cards
             .values()
             .filter(|c| c.is_unit())
-            .filter(|c| c.get_zone() == &target_zone)
+            .filter(|c| c.get_zone().location() == Some(&target_zone))
             .map(|c| Effect::TakeDamage {
                 card_id: *c.get_id(),
                 from: *card_id,

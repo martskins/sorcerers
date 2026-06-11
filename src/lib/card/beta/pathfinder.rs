@@ -72,7 +72,7 @@ impl ActivatedAbility for PathfinderSitewalk {
             Effect::PlayCard {
                 player_id: *player_id,
                 card_id: site_id,
-                location: zone.location().cloned().unwrap(),
+                location: zone.clone(),
                 spellcaster: *card_id,
             },
             Effect::MoveCard {
@@ -81,7 +81,7 @@ impl ActivatedAbility for PathfinderSitewalk {
                 from: (pathfinder.get_zone().clone())
                     .into_location()
                     .expect("MoveCard source must be a location"),
-                to: LocationQuery::from_zone(
+                to: LocationQuery::from_location(
                     (zone).with_region(pathfinder.get_region(state).clone()),
                 ),
                 tap: false,

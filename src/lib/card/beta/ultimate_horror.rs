@@ -94,9 +94,7 @@ impl Card for UltimateHorror {
                             player_id: controller_id,
                             card_id,
                             from_zone: Zone::Cemetery,
-                            to_location: zone
-                                .into_location()
-                                .expect("Ultimate Horror target must be a location"),
+                            to_location: zone,
                         }],
                     });
                 }

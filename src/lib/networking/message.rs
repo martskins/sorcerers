@@ -330,7 +330,7 @@ pub enum ClientMessage {
     PickZone {
         game_id: uuid::Uuid,
         player_id: PlayerId,
-        zone: Zone,
+        location: Location,
     },
     PickAmount {
         game_id: uuid::Uuid,

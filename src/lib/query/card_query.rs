@@ -920,9 +920,9 @@ impl CardQuery {
         }
     }
 
-    pub fn in_zone(self, zone: &Zone) -> Self {
+    pub fn in_zone(self, zone: impl Into<Zone>) -> Self {
         Self {
-            in_zones: Some(vec![zone.clone()]),
+            in_zones: Some(vec![zone.into()]),
             ..self
         }
     }

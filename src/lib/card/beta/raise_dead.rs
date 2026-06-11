@@ -75,9 +75,7 @@ impl Magic for RaiseDead {
                 player_id: *self.get_owner_id(),
                 card_id: minion_id,
                 from_zone: Zone::Cemetery,
-                to_location: picked_zone
-                    .into_location()
-                    .expect("Raise Dead target must be a location"),
+                to_location: picked_zone,
             }],
         }])
     }

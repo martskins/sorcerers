@@ -1731,7 +1731,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 Ok(vec![Effect::PlayCard {
                     player_id: *player_id,
                     card_id: *self.get_id(),
-                    location: zone.location().cloned().unwrap(),
+                    location: zone,
                     spellcaster: *caster_id,
                 }])
             }
@@ -1838,7 +1838,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                         Ok(vec![Effect::PlayCard {
                             player_id: *player_id,
                             card_id: *card_id,
-                            location: picked_zone.location().cloned().unwrap(),
+                            location: picked_zone,
                             spellcaster: *caster_id,
                         }])
                     }
@@ -1851,7 +1851,7 @@ pub trait Card: Debug + Send + Sync + CloneBoxedCard {
                 Ok(vec![Effect::PlayCard {
                     player_id: *player_id,
                     card_id: *self.get_id(),
-                    location: zone.location().cloned().unwrap(),
+                    location: zone,
                     spellcaster: *caster_id,
                 }])
             }

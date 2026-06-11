@@ -70,7 +70,7 @@ impl Magic for MajorExplosion {
         )
         .await?;
         let zone_dmg: Vec<(Option<Zone>, u16)> = vec![
-            (Some(zone.clone()), 7),
+            (Some(zone.clone().into()), 7),
             (zone.zone_in_direction(&Direction::Up, 1), 5),
             (zone.zone_in_direction(&Direction::Down, 1), 5),
             (zone.zone_in_direction(&Direction::Left, 1), 5),

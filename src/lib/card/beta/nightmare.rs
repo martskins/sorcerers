@@ -135,7 +135,7 @@ impl Card for Nightmare {
                         from: (minion_zone)
                             .into_location()
                             .expect("MoveCard source must be a location"),
-                        to: LocationQuery::from_zone(target_zone.with_region(region)),
+                        to: LocationQuery::from_location(target_zone.with_region(region)),
                         tap: false,
                         through_path: None,
                     });

@@ -817,7 +817,7 @@ async fn test_dodge_roll_replacement_triggers_once_for_multiple_copies() {
                         .send(ClientMessage::PickZone {
                             game_id,
                             player_id,
-                            zone: picked_destination.clone().into(),
+                            location: picked_destination.clone(),
                         })
                         .await
                         .unwrap();

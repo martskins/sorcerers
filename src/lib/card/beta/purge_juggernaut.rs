@@ -118,7 +118,7 @@ impl Card for PurgeJuggernaut {
                     from: (self.get_zone().clone())
                         .into_location()
                         .expect("MoveCard source must be a location"),
-                    to: LocationQuery::from_zone(
+                    to: LocationQuery::from_location(
                         (target_zone.clone()).with_region(self.get_region(state).clone()),
                     ),
                     tap: true,

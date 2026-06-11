@@ -638,7 +638,7 @@ pub async fn pick_zone_near(
     state: &State,
     block_opponent: bool,
     prompt: &str,
-) -> anyhow::Result<Zone> {
+) -> anyhow::Result<Location> {
     pick_zone_near_source(player_id, zone, state, block_opponent, prompt, None).await
 }
 
@@ -649,7 +649,7 @@ pub async fn pick_zone_near_source(
     block_opponent: bool,
     prompt: &str,
     source_card_id: Option<CardId>,
-) -> anyhow::Result<Zone> {
+) -> anyhow::Result<Location> {
     let decision_player = state.decision_player(player_id.as_ref());
     let opponent_id = state.get_opponent_id(player_id.as_ref())?;
     if block_opponent {
@@ -671,8 +671,8 @@ pub async fn pick_zone_near_source(
         .await?;
 
     let msg = state.get_receiver().recv().await?;
-    let zone = match msg {
-        ClientMessage::PickZone { zone, .. } => Ok(zone),
+    let location = match msg {
+        ClientMessage::PickZone { location, .. } => Ok(location),
         ClientMessage::PlayerDisconnected { player_id, .. } => {
             Err(GameError::PlayerDisconnected(player_id).into())
         }
@@ -683,27 +683,45 @@ pub async fn pick_zone_near_source(
         resume(&opponent_id, state).await?;
     }
 
-    zone
+    location
 }
 
-pub async fn pick_zone(
+pub trait PickLocationOption {
+    fn pick_location(&self) -> Location;
+}
+
+impl PickLocationOption for Location {
+    fn pick_location(&self) -> Location {
+        self.clone()
+    }
+}
+
+impl PickLocationOption for Zone {
+    fn pick_location(&self) -> Location {
+        self.location()
+            .cloned()
+            .expect("pick_zone option must be a location")
+    }
+}
+
+pub async fn pick_zone<T: PickLocationOption + Sync>(
     player_id: impl AsRef<PlayerId>,
-    zones: &[Zone],
+    locations: &[T],
     state: &State,
     block_opponent: bool,
     prompt: &str,
-) -> anyhow::Result<Zone> {
-    pick_zone_source(player_id, zones, state, block_opponent, prompt, None).await
+) -> anyhow::Result<Location> {
+    pick_zone_source(player_id, locations, state, block_opponent, prompt, None).await
 }
 
-pub async fn pick_zone_source(
+pub async fn pick_zone_source<T: PickLocationOption + Sync>(
     player_id: impl AsRef<PlayerId>,
-    zones: &[Zone],
+    locations: &[T],
     state: &State,
     block_opponent: bool,
     prompt: &str,
     source_card_id: Option<CardId>,
-) -> anyhow::Result<Zone> {
+) -> anyhow::Result<Location> {
     let decision_player = state.decision_player(player_id.as_ref());
     let opponent_id = state.get_opponent_id(player_id.as_ref())?;
     if block_opponent {
@@ -716,16 +734,13 @@ pub async fn pick_zone_source(
             prompt: prompt.to_string(),
             source_card_id,
             player_id: decision_player,
-            locations: zones
-                .iter()
-                .map(|z| z.location().cloned().unwrap())
-                .collect(),
+            locations: locations.iter().map(PickLocationOption::pick_location).collect(),
         })
         .await?;
 
     let msg = state.get_receiver().recv().await?;
-    let zone = match msg {
-        ClientMessage::PickZone { zone, .. } => Ok(zone),
+    let location = match msg {
+        ClientMessage::PickZone { location, .. } => Ok(location),
         ClientMessage::PlayerDisconnected { player_id, .. } => {
             Err(GameError::PlayerDisconnected(player_id).into())
         }
@@ -736,7 +751,7 @@ pub async fn pick_zone_source(
         resume(&opponent_id, state).await?;
     }
 
-    zone
+    location
 }
 
 pub async fn force_sync_all(state: &State) -> anyhow::Result<()> {
@@ -1329,7 +1344,7 @@ impl ActivatedAbility for AvatarAction {
                 Ok(vec![Effect::PlayCard {
                     player_id: *player_id,
                     card_id: picked_card_id,
-                    location: zone.location().cloned().unwrap(),
+                    location: zone,
                     spellcaster: avatar_id,
                 }])
             }
@@ -1446,6 +1461,7 @@ impl ActivatedAbility for UnitAction {
                 let zones = card.get_valid_move_zones(state).await?;
                 let prompt = "Pick a zone to move to";
                 let zone = pick_zone(player_id, &zones, state, false, prompt).await?;
+                let zone = Zone::Location(zone);
                 let paths = card.get_valid_move_paths(state, &zone).await?;
                 let paths = paths
                     .iter()
@@ -1985,6 +2001,7 @@ impl Game {
                     let zone =
                         pick_zone(&acting_player, &playable.zones, &self.state, false, prompt)
                             .await?;
+                    let zone = Zone::Location(zone);
                     self.queue_play_hand_card_at_zone(player_id, card_id, &zone)
                         .await?;
                     return Ok(());

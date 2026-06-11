@@ -276,13 +276,20 @@ impl From<&Zone> for LocationQuery {
 }
 
 impl LocationQuery {
+    pub fn new() -> Self {
+        Self {
+            zone_query: ZoneQuery::new(),
+        }
+    }
+
     pub fn from_location(location: Location) -> Self {
         Self {
             zone_query: ZoneQuery::from_zone(Zone::Location(location)),
         }
     }
 
-    pub fn from_zone(zone: Zone) -> Self {
+    pub fn from_zone(zone: impl Into<Zone>) -> Self {
+        let zone = zone.into();
         let Zone::Location(location) = zone else {
             panic!("LocationQuery::from_zone requires an in-play location");
         };
@@ -295,10 +302,29 @@ impl LocationQuery {
         }
     }
 
+    pub fn from_locations(options: Vec<Location>, prompt: Option<String>) -> Self {
+        Self {
+            zone_query: ZoneQuery::from_options(
+                options.into_iter().map(Zone::from).collect(),
+                prompt,
+            ),
+        }
+    }
+
     pub fn random(options: Vec<Zone>) -> Self {
         Self {
             zone_query: ZoneQuery::random(options),
         }
+    }
+
+    pub fn zone_of_card(mut self, card_id: &CardId) -> Self {
+        self.zone_query = self.zone_query.zone_of_card(card_id);
+        self
+    }
+
+    pub fn affected_zones_of_card(mut self, card_id: &CardId) -> Self {
+        self.zone_query = self.zone_query.affected_zones_of_card(card_id);
+        self
     }
 
     pub fn options(&self, state: &State) -> Vec<Location> {

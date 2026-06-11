@@ -166,7 +166,7 @@ impl Card for WindSylph {
                     from: (unit.get_zone().clone())
                         .into_location()
                         .expect("MoveCard source must be a location"),
-                    to: LocationQuery::from_zone(
+                    to: LocationQuery::from_location(
                         (target_zone).with_region(unit.get_region(state).clone()),
                     ),
                     tap: false,

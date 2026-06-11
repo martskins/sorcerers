@@ -103,7 +103,7 @@ impl Magic for LeapAttack {
             .collect();
 
         let mut effects = vec![];
-        if dest_zone != current_zone {
+        if Some(&dest_zone) != current_zone.location() {
             effects.push(Effect::MoveCard {
                 player_id: controller_id,
                 card_id: leaper_id,

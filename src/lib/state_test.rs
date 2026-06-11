@@ -248,7 +248,7 @@ async fn test_kythera_mechanism_converts_random_queries_to_choices() {
                             .send(ClientMessage::PickZone {
                                 game_id,
                                 player_id,
-                                zone: offered[0].clone().into(),
+                                location: offered[0].clone(),
                             })
                             .await
                             .unwrap();
@@ -362,7 +362,7 @@ async fn test_blasted_oak_restricts_zone_targets_only_with_source() {
                             .send(ClientMessage::PickZone {
                                 game_id,
                                 player_id,
-                                zone: locations[0].clone().into(),
+                                location: locations[0].clone(),
                             })
                             .await
                             .unwrap();
@@ -394,7 +394,7 @@ async fn test_blasted_oak_restricts_zone_targets_only_with_source() {
                             .send(ClientMessage::PickZone {
                                 game_id,
                                 player_id,
-                                zone: other_zone.clone().into(),
+                                location: other_zone.clone(),
                             })
                             .await
                             .unwrap();

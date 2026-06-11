@@ -81,7 +81,7 @@ impl Card for DwarvenForge {
                 zones: Some(ZoneQuery::new().zone_of_card(self.get_id())),
             },
             OngoingEffect::OverrideValidPlayZone {
-                affected_zones: ZoneQuery::new().zone_of_card(self.get_id()),
+                affected_locations: LocationQuery::new().zone_of_card(self.get_id()),
                 affected_cards: CardQuery::new()
                     .artifacts()
                     .artifact_types(vec![ArtifactType::Weapon, ArtifactType::Armor])

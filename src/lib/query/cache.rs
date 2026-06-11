@@ -4,7 +4,7 @@ use crate::{
     game::{CardId, PlayerId, pick_zone_source},
     query::ZoneQuery,
     state::State,
-    zone::Zone,
+    zone::{Location, Zone},
 };
 use std::{
     collections::HashMap,
@@ -107,17 +107,21 @@ impl QueryCache {
                 .expect("failed to get random zone")
                 .clone()
         } else if let Some(options) = &qry.options {
-            pick_zone_source(
+            Zone::Location(pick_zone_source(
                 player_id,
-                options,
+                &options
+                    .iter()
+                    .filter_map(Zone::location)
+                    .cloned()
+                    .collect::<Vec<_>>(),
                 state,
                 false,
                 qry.prompt(),
                 qry.source_card_id,
             )
-            .await?
+            .await?)
         } else if qry.sites_only {
-            let mut sites: Vec<Zone> = state
+            let mut sites: Vec<Location> = state
                 .cards
                 .values()
                 .filter(|c| c.is_site())
@@ -127,10 +131,10 @@ impl QueryCache {
                         .as_ref()
                         .is_none_or(|p| c.get_controller_id(state) == *p)
                 })
-                .map(|c| c.get_zone().clone())
+                .filter_map(|c| c.get_zone().location().cloned())
                 .collect();
             sites.dedup();
-            pick_zone_source(
+            Zone::Location(pick_zone_source(
                 player_id,
                 &sites,
                 state,
@@ -138,17 +142,21 @@ impl QueryCache {
                 qry.prompt(),
                 qry.source_card_id,
             )
-            .await?
+            .await?)
         } else {
-            pick_zone_source(
+            Zone::Location(pick_zone_source(
                 player_id,
-                &Zone::all_realm(),
+                &Zone::all_realm()
+                    .iter()
+                    .filter_map(Zone::location)
+                    .cloned()
+                    .collect::<Vec<_>>(),
                 state,
                 false,
                 qry.prompt(),
                 qry.source_card_id,
             )
-            .await?
+            .await?)
         };
 
         let mut cache = QUERY_CACHE

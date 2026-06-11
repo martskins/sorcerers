@@ -84,9 +84,9 @@ impl Magic for StarSeedsOfUhr {
             effects.push(Effect::SummonToken {
                 player_id: controller_id,
                 token_type: TokenType::Rubble,
-                location: zone.location().cloned().unwrap(),
+                location: zone.clone(),
             });
-            voids.retain(|candidate| candidate != &zone);
+            voids.retain(|candidate| candidate.location() != Some(&zone));
 
             if voids.is_empty()
                 || effects.len() >= 13

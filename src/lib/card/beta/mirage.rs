@@ -129,7 +129,7 @@ impl Card for Mirage {
         Ok(vec![Effect::PlayCard {
             player_id: *player_id,
             card_id: *self.get_id(),
-            location: zone.location().cloned().unwrap(),
+            location: zone,
             spellcaster: *caster_id,
         }])
     }

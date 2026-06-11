@@ -48,7 +48,7 @@ impl ActivatedAbility for Constrict {
                     tap: true,
                     through_path: None,
                 });
-                constrict_zone = picked_zone;
+                constrict_zone = picked_zone.into();
             }
         }
 

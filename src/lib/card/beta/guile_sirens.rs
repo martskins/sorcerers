@@ -119,8 +119,8 @@ impl Card for GuileSirens {
 
                 if let Some(min_steps) = steps_to_zone.keys().min() {
                     let closest_zones = steps_to_zone.get(min_steps).unwrap();
-                    let picked_zone = if closest_zones.len() == 1 {
-                        closest_zones.first().unwrap().clone()
+                    let picked_location = if closest_zones.len() == 1 {
+                        closest_zones.first().unwrap().location().cloned().unwrap()
                     } else {
                         pick_zone(
                             &opponent_id,
@@ -143,8 +143,8 @@ impl Card for GuileSirens {
                             .clone()
                             .into_location()
                             .expect("Guile Sirens target must be in a location"),
-                        to: LocationQuery::from_zone(
-                            picked_zone.with_region(picked_card.get_region(state).clone()),
+                        to: LocationQuery::from_location(
+                            picked_location.with_region(picked_card.get_region(state).clone()),
                         ),
                         tap: false,
                         through_path: None,

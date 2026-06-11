@@ -26,6 +26,12 @@ impl From<&Location> for Zone {
     }
 }
 
+impl From<&Zone> for Zone {
+    fn from(value: &Zone) -> Self {
+        value.clone()
+    }
+}
+
 impl Location {
     pub fn region(&self) -> &Region {
         match self {
@@ -38,6 +44,10 @@ impl Location {
             Location::Square(square, _) => Some(*square),
             Location::Intersection(_, _) => None,
         }
+    }
+
+    pub fn get_square(&self) -> Option<u8> {
+        self.square()
     }
 
     pub fn all_in_region(region: Region) -> Vec<Location> {
@@ -148,6 +158,10 @@ impl Location {
             }
         }
         Some(current_zone)
+    }
+
+    pub fn zone_in_direction(&self, direction: &Direction, steps: u8) -> Option<Zone> {
+        self.steps_in_direction(direction, steps).map(Zone::from)
     }
 
     pub fn step_in_direction(&self, direction: &Direction) -> Option<Self> {
@@ -360,12 +374,14 @@ impl Zone {
             .into_iter()
             .filter(|e| match e {
                 OngoingEffect::OverrideValidPlayZone {
-                    affected_zones,
+                    affected_locations,
                     affected_cards,
                     ..
                 } => {
-                    affected_zones.options(state).contains(self)
-                        && affected_cards.matches(card_id, state)
+                    self.location().is_some_and(|location| {
+                        affected_locations.options(state).contains(location)
+                            && affected_cards.matches(card_id, state)
+                    })
                 }
                 _ => false,
             })

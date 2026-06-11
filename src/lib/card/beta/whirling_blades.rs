@@ -87,12 +87,12 @@ impl Magic for WhirlingBlades {
         )
         .await?;
 
-        let mut path_zones = vec![from_zone.clone(), destination.clone()];
+        let mut path_zones = vec![from_zone.clone(), destination.clone().into()];
         path_zones.sort();
         path_zones.dedup();
         let power = ally.get_power(state)?.unwrap_or_default();
         let mut effects = vec![];
-        if destination != from_zone {
+        if Some(&destination) != from_zone.location() {
             effects.push(Effect::MoveCard {
                 player_id: controller_id,
                 card_id: ally_id,
@@ -100,7 +100,7 @@ impl Magic for WhirlingBlades {
                     .clone()
                     .into_location()
                     .expect("Whirling Blades ally must be in a location"),
-                to: LocationQuery::from_zone(
+                to: LocationQuery::from_location(
                     destination.with_region(ally.get_region(state).clone()),
                 ),
                 tap: false,

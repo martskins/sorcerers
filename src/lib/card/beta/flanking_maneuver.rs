@@ -93,7 +93,7 @@ impl Magic for FlankingManeuver {
             .controlled_by(&controller)
             .all(state);
 
-        let destinations = get_knight_move_zones(&source_zone);
+        let destinations = get_knight_move_zones(&source_zone.clone().into());
         if destinations.is_empty() {
             return Ok(vec![Effect::DrawCard {
                 player_id: controller,
@@ -133,10 +133,7 @@ impl Magic for FlankingManeuver {
             effects.push(Effect::TeleportCard {
                 player_id: controller,
                 card_id: picked,
-                to_location: dest_zone
-                    .clone()
-                    .into_location()
-                    .expect("teleport target must be a location"),
+                to_location: dest_zone.clone(),
             });
         }
 

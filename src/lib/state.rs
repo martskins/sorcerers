@@ -4,7 +4,7 @@ use crate::{
     effect::{Counter, Effect, EffectEngine, EffectState},
     game::{ActivatedAbility, CardId, PlayerId, Resources, Thresholds, ThresholdsDiff},
     networking::message::{ClientMessage, EffectDebugData, OngoingEffectData, ServerMessage},
-    query::{CardQuery, ZoneQuery},
+    query::{CardQuery, LocationQuery, ZoneQuery},
     zone::{Location, Zone},
 };
 use async_channel::{Receiver, Sender};
@@ -418,7 +418,7 @@ pub enum OngoingEffect {
         affected_cards: CardQuery,
     },
     OverrideValidPlayZone {
-        affected_zones: ZoneQuery,
+        affected_locations: LocationQuery,
         affected_cards: CardQuery,
     },
     ModifyManaCost {
@@ -633,7 +633,9 @@ impl OngoingEffect {
                 connected_locations: connected_zones,
                 ..
             } => connected_zones.iter().map(Zone::from).collect(),
-            Self::OverrideValidPlayZone { affected_zones, .. } => affected_zones.options(state),
+            Self::OverrideValidPlayZone {
+                affected_locations, ..
+            } => affected_locations.options(state).iter().map(Zone::from).collect(),
             Self::ModifyManaCost {
                 zones: Some(zones), ..
             } => zones.options(state),
@@ -723,7 +725,9 @@ impl std::fmt::Debug for OngoingEffect {
                 .finish(),
             Self::OverrideValidPlayZone { .. } => f.debug_struct("OverrideValidPlayZone").finish(),
             Self::ModifyManaCost {
-                mana_diff, zones, ..
+                mana_diff,
+                zones,
+                ..
             } => f
                 .debug_struct("ModifyManaCost")
                 .field("mana_diff", mana_diff)

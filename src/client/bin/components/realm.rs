@@ -275,10 +275,14 @@ impl RealmComponent {
     ) -> anyhow::Result<()> {
         match action {
             PendingZoneChoiceAction::PickZone => {
+                let location = zone
+                    .location()
+                    .cloned()
+                    .ok_or(anyhow::anyhow!("picked zone must be a location"))?;
                 self.client.send(ClientMessage::PickZone {
                     player_id: self.player_id,
                     game_id: self.game_id,
-                    zone: zone.clone(),
+                    location,
                 })?;
             }
             PendingZoneChoiceAction::PlayHandCard { card_id } => {

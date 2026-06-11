@@ -47,7 +47,7 @@ impl ActivatedAbility for FlyToVoid {
                 from: (card.get_zone().clone())
                     .into_location()
                     .expect("MoveCard source must be a location"),
-                to: LocationQuery::from_zone(
+                to: LocationQuery::from_location(
                     (picked_void.clone()).with_region(card.get_region(state).clone()),
                 ),
                 tap: false,
@@ -67,7 +67,7 @@ impl ActivatedAbility for FlyToVoid {
                 from: (card.get_zone().clone())
                     .into_location()
                     .expect("MoveCard source must be a location"),
-                to: LocationQuery::from_zone(
+                to: LocationQuery::from_location(
                     (picked_void.clone())
                         .with_region(state.get_card(&unit).get_region(state).clone()),
                 ),

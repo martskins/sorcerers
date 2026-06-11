@@ -71,7 +71,7 @@ impl Card for Jihad {
 
         Ok(vec![
             OngoingEffect::OverrideValidPlayZone {
-                affected_zones: ZoneQuery::new().affected_zones_of_card(self.get_id()),
+                affected_locations: LocationQuery::new().affected_zones_of_card(self.get_id()),
                 affected_cards: CardQuery::new()
                     .minions()
                     .with_affinity(Element::Fire)

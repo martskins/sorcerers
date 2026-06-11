@@ -121,7 +121,7 @@ impl Card for DodgeRoll {
                 Ok(vec![
                     Effect::SetCardZone {
                         card_id: *target_id,
-                        zone: picked_site,
+                        zone: picked_site.into(),
                     },
                     Effect::MoveCard {
                         player_id: attacker_controller,

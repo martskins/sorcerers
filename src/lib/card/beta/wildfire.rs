@@ -158,7 +158,7 @@ impl Card for Wildfire {
                         .clone()
                         .into_location()
                         .expect("Wildfire must be in a location"),
-                    to: LocationQuery::from_zone(picked_zone),
+                    to: LocationQuery::from_location(picked_zone),
                     tap: false,
                     through_path: None,
                 });

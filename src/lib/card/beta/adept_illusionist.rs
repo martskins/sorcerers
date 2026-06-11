@@ -27,7 +27,7 @@ impl ActivatedAbility for AdeptIllusionistAction {
         };
 
         let card = state.get_card(card_id);
-        let zone: Zone = pick_zone_near(
+        let location = pick_zone_near(
             player_id,
             card.get_zone(),
             state,
@@ -42,9 +42,7 @@ impl ActivatedAbility for AdeptIllusionistAction {
                     player_id: *player_id,
                     card_id: picked_card_id,
                     from_zone: Zone::Spellbook,
-                    to_location: zone
-                        .into_location()
-                        .expect("Adept Illusionist target must be a location"),
+                    to_location: location,
                 }],
             },
             Effect::ShuffleDeck {

@@ -167,7 +167,7 @@ async fn geomancer_play_site_effects(
             effects.push(Effect::SummonToken {
                 player_id: geomancer.get_controller_id(state),
                 token_type: TokenType::Rubble,
-                location: picked_zone.location().cloned().unwrap(),
+                location: picked_zone,
             });
         }
     }
