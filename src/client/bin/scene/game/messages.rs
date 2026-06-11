@@ -116,10 +116,12 @@ impl Game {
                 };
                 None
             }
-            ServerMessage::PlayableZones { card_id, zones, .. } => {
+            ServerMessage::PlayableZones {
+                card_id, locations, ..
+            } => {
                 self.data.status = Status::PreviewingPlayableZones {
                     card_id: *card_id,
-                    zones: zones.clone(),
+                    locations: locations.clone(),
                 };
                 None
             }

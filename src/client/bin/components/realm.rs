@@ -323,9 +323,15 @@ impl RealmComponent {
                 PendingZoneChoiceAction::PlayHandCard { card_id },
                 Status::PreviewingPlayableZones {
                     card_id: preview_card_id,
-                    zones,
+                    locations,
                 },
-            ) => card_id == preview_card_id && choice.zones.iter().all(|zone| zones.contains(zone)),
+            ) => {
+                card_id == preview_card_id
+                    && choice
+                        .zones
+                        .iter()
+                        .all(|zone| locations.contains(zone.location().unwrap()))
+            }
             _ => false,
         }
     }
@@ -1126,12 +1132,20 @@ impl RealmComponent {
             self.draw_zone_guide(painter, cell.id, occupied_zones.contains(&cell.id));
 
             let playable_preview_zones = match &data.status {
-                Status::SelectingZone { zones, .. }
-                | Status::PreviewingPlayableZones { zones, .. } => Some(zones),
+                Status::SelectingZone { zones, .. } => Some(
+                    &zones
+                        .iter()
+                        .map(|z| z.location().cloned().unwrap())
+                        .collect(),
+                ),
+                Status::PreviewingPlayableZones { locations, .. } => Some(locations),
                 _ => None,
             };
-            if let Some(zones) = playable_preview_zones {
-                let choices = Self::square_zone_choices(zones, cell.id);
+            if let Some(locations) = playable_preview_zones {
+                let choices = Self::square_zone_choices(
+                    &locations.iter().map(|l| l.into()).collect::<Vec<_>>(),
+                    cell.id,
+                );
                 if !choices.is_empty() {
                     if matches!(data.status, Status::SelectingZone { .. }) {
                         let resp = ui.allocate_rect(rect, Sense::click());
@@ -1169,13 +1183,21 @@ impl RealmComponent {
 
         for intersection in &self.intersection_rects {
             let playable_preview_zones = match &data.status {
-                Status::SelectingZone { zones, .. }
-                | Status::PreviewingPlayableZones { zones, .. } => Some(zones),
+                Status::SelectingZone { zones, .. } => Some(
+                    &zones
+                        .iter()
+                        .map(|z| z.location().cloned().unwrap())
+                        .collect(),
+                ),
+                Status::PreviewingPlayableZones { locations, .. } => Some(locations),
                 _ => None,
             };
-            if let Some(zones) = playable_preview_zones {
+            if let Some(locations) = playable_preview_zones {
                 let rect = intersection.rect;
-                let choices = Self::intersection_zone_choices(zones, &intersection.locations);
+                let choices = Self::intersection_zone_choices(
+                    &locations.iter().map(|l| l.into()).collect::<Vec<_>>(),
+                    &intersection.locations,
+                );
                 if !choices.is_empty() {
                     if matches!(data.status, Status::SelectingZone { .. }) {
                         let resp = ui.allocate_rect(rect, Sense::click());
@@ -1839,7 +1861,7 @@ impl Component for RealmComponent {
             ComponentCommand::DropHandCard { card_id, pos } => {
                 if let Status::PreviewingPlayableZones {
                     card_id: preview_card_id,
-                    zones,
+                    locations,
                 } = &data.status.clone()
                     && preview_card_id == card_id
                 {
@@ -1849,7 +1871,13 @@ impl Component for RealmComponent {
                         .find(|cell| cell.rect.contains(*pos))
                         .map(|cell| {
                             (
-                                Self::square_zone_choices(zones, cell.id),
+                                Self::square_zone_choices(
+                                    &locations
+                                        .iter()
+                                        .map(|l| l.clone().into())
+                                        .collect::<Vec<_>>(),
+                                    cell.id,
+                                ),
                                 cell.rect.center(),
                             )
                         })
@@ -1860,7 +1888,7 @@ impl Component for RealmComponent {
                                 .map(|intersection| {
                                     (
                                         Self::intersection_zone_choices(
-                                            zones,
+                                            &locations.iter().map(|l| l.into()).collect::<Vec<_>>(),
                                             &intersection.locations,
                                         ),
                                         intersection.rect.center(),

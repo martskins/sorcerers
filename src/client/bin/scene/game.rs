@@ -82,7 +82,7 @@ pub enum Status {
     },
     PreviewingPlayableZones {
         card_id: CardId,
-        zones: Vec<Zone>,
+        locations: Vec<Location>,
     },
     ViewingCards {
         cards: Vec<CardId>,

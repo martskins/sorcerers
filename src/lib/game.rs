@@ -1845,7 +1845,11 @@ impl Game {
                         .send(ServerMessage::PlayableZones {
                             player_id: playable.player_id,
                             card_id: playable.card_id,
-                            zones: playable.zones,
+                            locations: playable
+                                .zones
+                                .iter()
+                                .map(|l| l.location().cloned().unwrap())
+                                .collect(),
                         })
                         .await?;
                 }

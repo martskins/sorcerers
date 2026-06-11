@@ -176,7 +176,7 @@ pub enum ServerMessage {
     PlayableZones {
         player_id: PlayerId,
         card_id: CardId,
-        zones: Vec<Zone>,
+        locations: Vec<Location>,
     },
     AuraAffectedZones {
         player_id: PlayerId,
