@@ -91,13 +91,13 @@ impl Game {
                 None
             }
             ServerMessage::PickZoneGroup {
-                groups: zones,
+                groups,
                 prompt,
                 source_card_id,
                 ..
             } => {
                 self.data.status = Status::SelectingZoneGroup {
-                    groups: zones.clone(),
+                    groups: groups.clone(),
                     prompt: prompt.clone(),
                     source_card_id: *source_card_id,
                 };

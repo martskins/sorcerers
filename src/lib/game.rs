@@ -609,7 +609,10 @@ pub async fn pick_zone_group_source(
             prompt: prompt.to_string(),
             source_card_id,
             player_id: decision_player,
-            groups: groups.to_vec(),
+            groups: groups
+                .iter()
+                .map(|g| g.iter().map(|z| z.location().cloned().unwrap()).collect())
+                .collect(),
         })
         .await?;
 

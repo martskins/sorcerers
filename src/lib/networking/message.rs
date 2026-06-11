@@ -191,7 +191,7 @@ pub enum ServerMessage {
         prompt: String,
         source_card_id: Option<CardId>,
         player_id: PlayerId,
-        groups: Vec<Vec<Zone>>,
+        groups: Vec<Vec<Location>>,
     },
     PickDirection {
         prompt: String,

@@ -71,7 +71,7 @@ pub enum Status {
         source_card_id: Option<CardId>,
     },
     SelectingZoneGroup {
-        groups: Vec<Vec<Zone>>,
+        groups: Vec<Vec<Location>>,
         prompt: String,
         source_card_id: Option<CardId>,
     },

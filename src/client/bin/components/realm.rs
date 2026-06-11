@@ -1240,7 +1240,7 @@ impl RealmComponent {
                 groups.iter().position(|group| {
                     group
                         .iter()
-                        .any(|zone| matches!(zone, Zone::Location(Location::Square(id, _)) if *id == cell_rect.id))
+                        .any(|zone| matches!(zone, Location::Square(id, _) if *id == cell_rect.id))
                 })
             });
 
@@ -1252,7 +1252,7 @@ impl RealmComponent {
                 };
                 let color = Color32::from_rgba_unmultiplied(80, 200, 190, base_alpha);
                 for zone in group {
-                    if let Zone::Location(Location::Square(cell_id, _)) = zone
+                    if let Location::Square(cell_id, _) = zone
                         && let Some(cell) = self.cell_rects.iter().find(|c| c.id == *cell_id)
                     {
                         let resp = ui.allocate_rect(cell.rect, Sense::click());
