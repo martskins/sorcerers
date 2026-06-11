@@ -99,7 +99,8 @@ impl Card for Blaze {
                 if let Some(path) = through_path {
                     for loc in path {
                         if Some(loc) != path.last() {
-                            let units = CardQuery::new().units().in_location(loc).all(state);
+                            let units =
+                                CardQuery::new().units().in_location(loc.clone()).all(state);
                             for unit_id in units {
                                 effects.push(Effect::TakeDamage {
                                     card_id: unit_id,

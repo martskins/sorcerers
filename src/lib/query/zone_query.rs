@@ -275,6 +275,12 @@ impl From<&Zone> for LocationQuery {
     }
 }
 
+impl Default for LocationQuery {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LocationQuery {
     pub fn new() -> Self {
         Self {

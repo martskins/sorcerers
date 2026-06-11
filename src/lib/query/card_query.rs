@@ -885,7 +885,7 @@ impl CardQuery {
         }
     }
 
-    pub fn in_location(self, loc: &Location) -> Self {
+    pub fn in_location(self, loc: Location) -> Self {
         Self {
             in_zones: Some(vec![loc.into()]),
             ..self

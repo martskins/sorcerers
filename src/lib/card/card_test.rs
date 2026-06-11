@@ -17,7 +17,7 @@ fn test_additional_cost_tap() {
         CardQuery::new()
             .untapped()
             .units()
-            .in_zone(&Zone::Location(Location::Square(10, Region::Surface))),
+            .in_location(Location::Square(10, Region::Surface)),
     ));
     let can_afford = cost
         .can_afford(&state, player_id)
@@ -199,13 +199,13 @@ fn test_additional_cost_two_taps() {
             CardQuery::new()
                 .untapped()
                 .units()
-                .in_zone(&Zone::Location(Location::Square(10, Region::Surface))),
+                .in_location(Location::Square(10, Region::Surface)),
         ))
         .with_additional(AdditionalCost::tap(
             CardQuery::new()
                 .untapped()
                 .units()
-                .in_zone(&Zone::Location(Location::Square(10, Region::Surface))),
+                .in_location(Location::Square(10, Region::Surface)),
         ));
     let can_afford = cost
         .can_afford(&state, player_id)
@@ -591,7 +591,8 @@ fn test_awakened_mummies_can_be_played_underground_at_land_sites() {
         .cards
         .values()
         .find(|card| {
-            card.is_site() && *card.get_zone() == Zone::Location(Location::Square(2, Region::Surface))
+            card.is_site()
+                && *card.get_zone() == Zone::Location(Location::Square(2, Region::Surface))
         })
         .map(|card| *card.get_id())
         .expect("mock site should exist");
@@ -599,7 +600,9 @@ fn test_awakened_mummies_can_be_played_underground_at_land_sites() {
 
     let mut water_site = SpringRiver::new(player_id);
     water_site.set_zone(Zone::Location(Location::Square(2, Region::Surface)));
-    state.cards.insert(*water_site.get_id(), Box::new(water_site));
+    state
+        .cards
+        .insert(*water_site.get_id(), Box::new(water_site));
 
     let mut card = AwakenedMummies::new(player_id);
     card.set_zone(Zone::Hand);
@@ -612,14 +615,8 @@ fn test_awakened_mummies_can_be_played_underground_at_land_sites() {
         .get_valid_play_zones(&state, &player_id, &avatar_id)
         .expect("zones to be computed");
 
-    assert!(zones.contains(&Zone::Location(Location::Square(
-        1,
-        Region::Underground
-    ))));
-    assert!(!zones.contains(&Zone::Location(Location::Square(
-        2,
-        Region::Underground
-    ))));
+    assert!(zones.contains(&Zone::Location(Location::Square(1, Region::Underground))));
+    assert!(!zones.contains(&Zone::Location(Location::Square(2, Region::Underground))));
     assert!(zones.iter().all(|zone| {
         matches!(
             zone,
@@ -649,14 +646,8 @@ fn test_burrowing_minion_can_be_played_surface_or_underground() {
         .get_valid_play_zones(&state, &player_id, &avatar_id)
         .expect("zones to be computed");
 
-    assert!(zones.contains(&Zone::Location(Location::Square(
-        1,
-        Region::Surface
-    ))));
-    assert!(zones.contains(&Zone::Location(Location::Square(
-        1,
-        Region::Underground
-    ))));
+    assert!(zones.contains(&Zone::Location(Location::Square(1, Region::Surface))));
+    assert!(zones.contains(&Zone::Location(Location::Square(1, Region::Underground))));
 }
 
 #[test]
@@ -702,9 +693,12 @@ fn test_auras_can_only_be_played_surface_or_void() {
             .expect("void intersection should validate")
     );
     assert!(
-        !Zone::Location(Location::Intersection(vec![1, 2, 6, 7], Region::Underground))
-            .is_valid_play_zone_for(&state, &card_id, &player_id)
-            .expect("underground intersection should validate")
+        !Zone::Location(Location::Intersection(
+            vec![1, 2, 6, 7],
+            Region::Underground
+        ))
+        .is_valid_play_zone_for(&state, &card_id, &player_id)
+        .expect("underground intersection should validate")
     );
     assert!(
         !Zone::Location(Location::Intersection(vec![1, 2, 6, 7], Region::Underwater))

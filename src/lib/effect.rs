@@ -1238,7 +1238,7 @@ impl Effect {
                 let mut next_zone = Some(from_zone.clone());
                 let mut is_starting_location = true;
                 let mut range: Option<u8> = *range;
-                while let Some(zone) = next_zone {
+                while let Some(location) = next_zone {
                     // Check if the projectile is out of range. If not, decrease the remaning range.
                     if !is_starting_location && let Some(steps) = range.as_mut() {
                         if *steps == 0 {
@@ -1253,7 +1253,7 @@ impl Effect {
                         None => {
                             let mut units_query = CardQuery::new()
                                 .units()
-                                .in_location(&zone)
+                                .in_location(location.clone())
                                 .can_be_targeted_by_player(player_id);
                             // Allied units in the starting location are ignored by projectiles.
                             if is_starting_location {
@@ -1289,7 +1289,7 @@ impl Effect {
                         if let Some(splash_damage) = splash_damage {
                             let splash_effects = CardQuery::new()
                                 .units()
-                                .in_location(&zone)
+                                .in_location(location.clone())
                                 .id_not(picked_unit_id)
                                 .all(state)
                                 .into_iter()
@@ -1307,7 +1307,7 @@ impl Effect {
                         }
                     }
 
-                    next_zone = zone.step_in_direction(direction);
+                    next_zone = location.step_in_direction(direction);
                     is_starting_location = false;
                 }
 

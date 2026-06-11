@@ -39,7 +39,7 @@ fn bench_card_query(c: &mut Criterion) {
     group.bench_function("Zone + Untapped", |b| {
         b.iter(|| {
             let query = CardQuery::new()
-                .in_zone(&Zone::Location(Location::Square(10, Region::Surface)))
+                .in_location(Location::Square(10, Region::Surface))
                 .untapped();
             let _ = black_box(query.all(&state));
         })

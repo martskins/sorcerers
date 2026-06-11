@@ -48,7 +48,7 @@ impl ActivatedAbility for TapMoveAndStrike {
                         .units()
                         .untapped()
                         .id_not_in(vec![*card_id])
-                        .in_location(&next_location)
+                        .in_location(next_location.clone())
                         .all(state);
 
                     for target_id in targets {

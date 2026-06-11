@@ -70,7 +70,7 @@ impl Location {
 
         CardQuery::new()
             .sites()
-            .in_location(self)
+            .in_location(self.clone())
             .first(state)
             .and_then(|site_id| state.get_card(&site_id).get_site())
     }
@@ -377,12 +377,10 @@ impl Zone {
                     affected_locations,
                     affected_cards,
                     ..
-                } => {
-                    self.location().is_some_and(|location| {
-                        affected_locations.options(state).contains(location)
-                            && affected_cards.matches(card_id, state)
-                    })
-                }
+                } => self.location().is_some_and(|location| {
+                    affected_locations.options(state).contains(location)
+                        && affected_cards.matches(card_id, state)
+                }),
                 _ => false,
             })
             .count()
