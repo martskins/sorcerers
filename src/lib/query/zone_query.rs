@@ -335,6 +335,18 @@ impl LocationQuery {
         }
     }
 
+    pub fn any_void() -> Self {
+        Self {
+            zone_query: ZoneQuery::any_void(),
+        }
+    }
+
+    pub fn any_site(controlled_by: Option<PlayerId>, prompt: Option<String>) -> Self {
+        Self {
+            zone_query: ZoneQuery::any_site(controlled_by, prompt),
+        }
+    }
+
     pub fn zone_of_card(mut self, card_id: &CardId) -> Self {
         self.zone_query = self.zone_query.zone_of_card(card_id);
         self

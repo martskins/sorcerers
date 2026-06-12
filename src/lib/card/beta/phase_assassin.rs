@@ -67,10 +67,10 @@ impl Card for PhaseAssassin {
     fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: GAIN_STEALTH_HOOK,
-            trigger: EffectQuery::EnterZone {
+            trigger: EffectQuery::EnterLocation {
                 card: self.get_id().into(),
-                zone: ZoneQuery::any_void(),
-                from: Some(ZoneQuery::any_site(None, None)),
+                location: LocationQuery::any_void(),
+                from: Some(LocationQuery::any_site(None, None)),
             },
             timing: HookTiming::After,
             source_zones: HookSourceZones::InPlay,

@@ -88,7 +88,6 @@ impl Card for WayfaringPilgrim {
                     Location::Square(sq, Region::Void),
                 ]
             })
-            .map(Zone::Location)
             .collect();
 
         let Some(square) = self.get_location().get_square() else {
@@ -101,9 +100,9 @@ impl Card for WayfaringPilgrim {
 
         Ok(vec![Hook {
             id: VISIT_CORNER_HOOK,
-            trigger: EffectQuery::EnterZone {
+            trigger: EffectQuery::EnterLocation {
                 card: self.get_id().into(),
-                zone: ZoneQuery::from_options(corners, None),
+                location: LocationQuery::from_locations(corners, None),
                 from: None,
             },
             timing: HookTiming::After,

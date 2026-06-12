@@ -2,7 +2,7 @@ use crate::{
     card::{Ability, Region},
     effect::{DrawKind, Effect},
     game::PlayerId,
-    query::{CardQuery, ZoneQuery},
+    query::{CardQuery, LocationQuery},
     state::State,
 };
 
@@ -10,14 +10,14 @@ use crate::{
 #[derive(Debug, Clone)]
 pub enum EffectQuery {
     OneOf(Vec<EffectQuery>),
-    EnterZone {
+    EnterLocation {
         card: CardQuery,
-        zone: ZoneQuery,
-        from: Option<ZoneQuery>,
+        location: LocationQuery,
+        from: Option<LocationQuery>,
     },
-    StopAtZone {
+    StopAtLocation {
         card: CardQuery,
-        zone: ZoneQuery,
+        location: LocationQuery,
     },
     DamageDealt {
         source: Option<CardQuery>,
@@ -113,17 +113,22 @@ impl EffectQuery {
                 Ok(attacker_matches && defender_matches)
             }
             (
-                EffectQuery::EnterZone {
+                EffectQuery::EnterLocation {
                     card: card_query,
-                    zone: zone_query,
-                    ..
+                    location: location_query,
+                    from,
                 },
                 Effect::SummonCards { summoned_cards },
             ) => {
+                if from.is_some() {
+                    return Ok(false);
+                }
+
                 for sc in summoned_cards {
                     let card_matches = card_query.matches(&sc.card_id, state);
-                    let zone_matches = zone_query.matches(state, &sc.to_location.clone().into());
-                    if card_matches && zone_matches {
+                    let location_matches =
+                        location_query.options(state).contains(&sc.to_location);
+                    if card_matches && location_matches {
                         return Ok(true);
                     }
                 }
@@ -131,31 +136,35 @@ impl EffectQuery {
                 Ok(false)
             }
             (
-                EffectQuery::EnterZone {
+                EffectQuery::EnterLocation {
                     card: card_query,
-                    zone: zone_query,
-                    ..
+                    location: location_query,
+                    from: from_query,
                 },
                 Effect::MoveCard {
                     player_id,
                     card_id,
+                    from,
                     to,
                     ..
                 },
             ) => {
                 let card_matches = card_query.matches(card_id, state);
-                let loc = to.pick(player_id, state).await?;
-                let zone_matches = zone_query.matches(state, &loc.into());
-                if card_matches && zone_matches {
+                let destination = to.pick(player_id, state).await?;
+                let from_matches = from_query
+                    .as_ref()
+                    .is_none_or(|query| query.options(state).contains(from));
+                let location_matches = location_query.options(state).contains(&destination);
+                if card_matches && from_matches && location_matches {
                     return Ok(true);
                 }
 
                 Ok(false)
             }
             (
-                EffectQuery::EnterZone {
+                EffectQuery::EnterLocation {
                     card: card_query,
-                    zone: zone_query,
+                    location: location_query,
                     from,
                 },
                 Effect::PlayCard {
@@ -167,17 +176,17 @@ impl EffectQuery {
                 }
 
                 let card_matches = card_query.matches(card_id, state);
-                let zone_matches = zone_query.matches(state, &location.into());
-                if card_matches && zone_matches {
+                let location_matches = location_query.options(state).contains(location);
+                if card_matches && location_matches {
                     return Ok(true);
                 }
 
                 Ok(false)
             }
             (
-                EffectQuery::StopAtZone {
+                EffectQuery::StopAtLocation {
                     card: card_query,
-                    zone: zone_query,
+                    location: location_query,
                 },
                 Effect::MoveCard {
                     player_id,
@@ -186,10 +195,10 @@ impl EffectQuery {
                     ..
                 },
             ) => {
-                let dest = to.pick(player_id, state).await?.into();
-                let zone_matches = zone_query.matches(state, &dest);
+                let dest = to.pick(player_id, state).await?;
+                let location_matches = location_query.options(state).contains(&dest);
                 let card_matches = card_query.matches(card_id, state);
-                Ok(zone_matches && card_matches)
+                Ok(location_matches && card_matches)
             }
             (
                 EffectQuery::TurnStart {

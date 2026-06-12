@@ -157,9 +157,9 @@ impl Card for BullDemonsOfAdum {
     fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: STRIKE_OCCUPANTS_HOOK,
-            trigger: EffectQuery::EnterZone {
+            trigger: EffectQuery::EnterLocation {
                 card: self.get_id().into(),
-                zone: ZoneQuery::new(),
+                location: LocationQuery::new(),
                 from: None,
             },
             timing: HookTiming::After,

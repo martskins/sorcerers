@@ -97,9 +97,11 @@ impl Card for AwakenedMummies {
         let opponent_id = state.get_opponent_id(&player_id)?;
         Ok(vec![Hook {
             id: ENTER_ZONE_HOOK,
-            trigger: EffectQuery::EnterZone {
+            trigger: EffectQuery::EnterLocation {
                 card: CardQuery::new().minions().controlled_by(&opponent_id),
-                zone: ZoneQuery::from_location(self.get_location().with_region(Region::Surface)),
+                location: LocationQuery::from_location(
+                    self.get_location().with_region(Region::Surface),
+                ),
                 from: None,
             },
             timing: HookTiming::After,

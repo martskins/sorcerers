@@ -172,12 +172,12 @@ async fn drain_effects(state: &mut State) {
 //     let effect = Effect::PlayCard {
 //         player_id,
 //         card_id: wildfire_id,
-//         zone: ZoneQuery::from_zone(zone.clone()),
+//         location: LocationQuery::from_zone(zone.clone()),
 //         spellcaster: state.get_player_avatar_id(&player_id).unwrap(),
 //     };
-//     let query = EffectQuery::EnterZone {
+//     let query = EffectQuery::EnterLocation {
 //         card: CardQuery::from_id(wildfire_id),
-//         zone: ZoneQuery::from_zone(zone),
+//         location: LocationQuery::from_zone(zone),
 //         from: None,
 //     };
 //

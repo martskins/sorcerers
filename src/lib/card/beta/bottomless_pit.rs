@@ -75,11 +75,11 @@ impl Card for BottomlessPit {
     fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: KILL_ENTERING_MINION_HOOK,
-            trigger: EffectQuery::EnterZone {
+            trigger: EffectQuery::EnterLocation {
                 card: CardQuery::new()
                     .minions()
                     .without_ability(Ability::Airborne),
-                zone: ZoneQuery::from_location(self.get_location().clone()),
+                location: LocationQuery::from_location(self.get_location().clone()),
                 from: None,
             },
             timing: HookTiming::After,

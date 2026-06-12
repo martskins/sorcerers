@@ -88,9 +88,9 @@ impl Card for Wildfire {
         Ok(vec![
             Hook {
                 id: TRACK_VISITED_SITE_HOOK,
-                trigger: EffectQuery::EnterZone {
+                trigger: EffectQuery::EnterLocation {
                     card: self.get_id().into(),
-                    zone: ZoneQuery::new(),
+                    location: LocationQuery::new(),
                     from: None,
                 },
                 timing: HookTiming::After,

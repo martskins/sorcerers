@@ -66,10 +66,10 @@ impl Card for GhostShip {
     fn hooks(&self, _state: &State) -> anyhow::Result<Vec<Hook>> {
         Ok(vec![Hook {
             id: SUMMON_SPIRIT_HOOK,
-            trigger: EffectQuery::EnterZone {
+            trigger: EffectQuery::EnterLocation {
                 card: self.get_id().into(),
-                zone: ZoneQuery::any_site(None, None),
-                from: Some(ZoneQuery::any_void()),
+                location: LocationQuery::any_site(None, None),
+                from: Some(LocationQuery::any_void()),
             },
             timing: HookTiming::After,
             source_zones: HookSourceZones::InPlay,
